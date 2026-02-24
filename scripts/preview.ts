@@ -92,8 +92,6 @@ async function main() {
     header .logo { font-weight: bold; font-size: 1.1em; white-space: nowrap; }
     header .tagline { font-size: 0.85em; opacity: 0.9; color: #fff; }
     main { padding: 16px 0; }
-    .highlights { background: #fff; border: 1px solid #e0e0e0; border-radius: 4px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.95em; line-height: 1.7; }
-    .highlights-title { font-weight: bold; margin-bottom: 6px; color: #ff6600; }
     .stats { font-size: 0.8em; color: #888; margin-bottom: 16px; }
     .nav { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; font-size: 0.9em; border-top: 1px solid #e0e0e0; margin-top: 16px; }
     .nav a { color: #ff6600; font-weight: 500; }
@@ -130,11 +128,6 @@ async function main() {
       <span class="date">${today}</span>
       <span></span>
     </nav>
-
-    <div class="highlights">
-      <div class="highlights-title">今日看点</div>
-      今日技术圈关注焦点集中在 AI 工具链的快速演进和开源生态的持续繁荣。多篇文章探讨了 LLM 在实际开发流程中的深度整合，从代码生成到自动化测试的全链路应用正在成为主流趋势。与此同时，安全领域的讨论也在升温，隐私保护和数据治理成为不可忽视的话题。
-    </div>
 
     <div class="stats">
       扫描 85/90 源 · 获取 342 篇 · 精选 ${mockArticles.length} 篇

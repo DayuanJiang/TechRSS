@@ -6,7 +6,6 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 
 export interface DigestData {
   date: string;
-  highlights: string;
   total_feeds: number;
   success_feeds: number;
   total_articles: number;

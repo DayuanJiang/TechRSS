@@ -16,7 +16,6 @@ async function main() {
 
   const data = {
     date: today,
-    highlights: '今日技术圈关注焦点集中在 AI 工具链的快速演进和开源生态的持续繁荣。多篇文章探讨了 LLM 在实际开发流程中的深度整合。',
     total_feeds: 90,
     success_feeds: 85,
     total_articles: 342,

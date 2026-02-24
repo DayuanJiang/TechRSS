@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { RSS_FEEDS } from '../src/lib/feeds';
 import { fetchAllFeeds } from '../src/lib/rss';
-import { scoreArticles, summarizeArticles, generateHighlights } from '../src/lib/ai';
+import { scoreArticles, summarizeArticles } from '../src/lib/ai';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 
@@ -90,13 +90,10 @@ async function main() {
     return { ...a, ...sm, rank: i + 1 };
   });
 
-  const highlights = await generateHighlights(final);
-
   // Write JSON
   await mkdir(DATA_DIR, { recursive: true });
   const output = {
     date: today,
-    highlights,
     total_feeds: RSS_FEEDS.length,
     success_feeds: successCount,
     total_articles: allArticles.length,

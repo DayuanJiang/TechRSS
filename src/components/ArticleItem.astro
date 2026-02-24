@@ -22,38 +22,61 @@ const timeAgo = (() => {
   if (diffH < 24) return `${diffH}h`;
   return `${diffD}d`;
 })();
+
+const catColorMap: Record<string, string> = {
+  'ai-ml': 'bg-cat-ai/10 text-cat-ai',
+  'security': 'bg-cat-security/10 text-cat-security',
+  'engineering': 'bg-cat-engineering/10 text-cat-engineering',
+  'tools': 'bg-cat-tools/10 text-cat-tools',
+  'opinion': 'bg-cat-opinion/10 text-cat-opinion',
+  'other': 'bg-cat-other/10 text-cat-other',
+};
+const catColor = catColorMap[article.category] || catColorMap['other'];
 ---
-<li class="article-item py-2 sm:py-1.5 border-b border-gray-100 last:border-b-0">
-  <div class="flex items-start gap-1">
-    <span class="shrink-0 w-6 sm:w-7 text-right text-gray-400 text-xs sm:text-sm pt-0.5">{article.rank}.</span>
-    <div class="min-w-0">
-      <a class="text-gray-800 text-sm sm:text-[0.95em] leading-snug visited:text-hn-gray hover:underline break-words" href={article.link} target="_blank" rel="noopener">
-        {article.title_zh || article.title}
-      </a>
-      <span class="text-[11px] sm:text-xs text-hn-gray ml-1 whitespace-nowrap">({domain})</span>
-    </div>
+<article class="article-card bg-bg-card rounded-xl border border-gray-200/60 px-3 py-2.5 cursor-pointer">
+  {/* Title */}
+  <h3 class="text-[15px] font-medium leading-snug mb-1.5">
+    <a class="text-text-primary visited:text-text-primary hover:text-accent-warm transition-colors break-words" href={article.link} target="_blank" rel="noopener" onclick="event.stopPropagation()">
+      {article.title_zh || article.title}
+    </a>
+  </h3>
+
+  {/* Metadata line */}
+  <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-text-secondary leading-none">
+    <span class={`inline-block px-1.5 py-px rounded-full font-medium ${catColor}`}>{cat.label}</span>
+    {timeAgo && <span>{timeAgo}</span>}
+    {domain && <><span class="opacity-30">·</span><span class="truncate max-w-[140px]">{domain}</span></>}
+    <span class="opacity-30">·</span>
+    <span>深度{article.depth} · 新颖{article.novelty} · 广度{article.breadth}</span>
+    <svg class="chevron-icon w-3 h-3 ml-auto opacity-30" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
   </div>
-  <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] sm:text-xs text-hn-gray mt-0.5 ml-7 sm:ml-8">
-    <span class="text-hn-orange font-medium">深度 {article.depth} · 新颖 {article.novelty} · 广度 {article.breadth}</span>
-    <span>·</span>
-    <span class="inline-block px-1 py-px rounded bg-gray-100 text-gray-500">{cat.emoji} {cat.label}</span>
-    {timeAgo && <><span>·</span><span>{timeAgo}</span></>}
-    {article.source_name && <><span>·</span><span>{article.source_name}</span></>}
-    <span>·</span>
-    <button class="toggle-btn bg-transparent border-none text-hn-gray cursor-pointer p-0 hover:underline min-h-[28px] sm:min-h-0 inline-flex items-center">展开</button>
-  </div>
-  <div class="article-details hidden ml-7 sm:ml-8 text-[13px] sm:text-sm leading-relaxed text-gray-600 pt-2 pb-1">
-    {article.summary && <div class="mb-2">{article.summary}</div>}
-    {article.reason && <div class="text-hn-orange italic mb-1">{article.reason}</div>}
-    {article.keywords && article.keywords.length > 0 && (
-      <div class="text-xs text-gray-400">
-        {article.keywords.join(' · ')}
+
+  {/* Expandable details */}
+  <div class="collapsed mt-2">
+    <div class="inner">
+      <div class="bg-bg-expanded rounded-lg p-2.5 space-y-2">
+        {article.summary && (
+          <p class="text-[13px] leading-relaxed text-text-primary">{article.summary}</p>
+        )}
+        {article.reason && (
+          <blockquote class="border-l-2 border-accent-warm pl-2.5 text-[12px] text-text-secondary italic">
+            {article.reason}
+          </blockquote>
+        )}
+        {article.keywords && article.keywords.length > 0 && (
+          <div class="flex flex-wrap gap-1">
+            {article.keywords.map(kw => (
+              <span class="inline-block px-1.5 py-px rounded-full bg-gray-100 text-[10px] text-text-secondary">{kw}</span>
+            ))}
+          </div>
+        )}
+        <div>
+          <a class="text-accent-warm text-xs font-medium hover:underline inline-flex items-center gap-1 min-h-[32px]" href={article.link} target="_blank" rel="noopener" onclick="event.stopPropagation()">
+            阅读原文
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
       </div>
-    )}
-    <div class="mt-2">
-      <a class="text-hn-orange text-sm hover:underline inline-block min-h-[36px] leading-[36px]" href={article.link} target="_blank" rel="noopener">
-        阅读原文 &rarr;
-      </a>
     </div>
   </div>
-</li>
+</article>
