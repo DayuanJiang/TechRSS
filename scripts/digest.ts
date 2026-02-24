@@ -109,7 +109,9 @@ async function main() {
   const scored = deduped.map((article, index) => {
     const s = scores.get(index);
     if (!s) return null;
-    return { ...article, ...s, score: s.depth + s.novelty + s.breadth };
+    const score = s.depth + s.novelty + s.breadth;
+    if (score / 3 < 3) return null;
+    return { ...article, ...s, score };
   }).filter((a): a is NonNullable<typeof a> => a !== null);
 
   // Step 5: Summarize articles (with retry for failures)
