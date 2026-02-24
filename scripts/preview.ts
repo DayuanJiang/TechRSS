@@ -33,7 +33,6 @@ async function main() {
       link: a.link,
       pub_date: a.pubDate.toISOString(),
       summary: `这是一篇来自 ${a.sourceName} 的文章。${a.description.slice(0, 200)}`,
-      reason: '深度技术分析，值得一读。',
       source_name: a.sourceName,
       score,
       category: cat,
@@ -66,7 +65,6 @@ async function main() {
       </div>
       <div class="article-details">
         <div class="summary">${a.summary}</div>
-        <div class="reason">${a.reason}</div>
         <div style="margin-top:4px;font-size:0.9em;color:#999">${a.keywords.join(' · ')}</div>
         <div style="margin-top:6px">
           <a href="${a.link}" target="_blank" rel="noopener" style="color:#ff6600;font-size:0.9em">阅读原文 &rarr;</a>
@@ -108,7 +106,6 @@ async function main() {
     .article-details { display: none; padding: 8px 0 8px 32px; font-size: 0.88em; line-height: 1.7; color: #555; }
     .article-details.open { display: block; }
     .article-details .summary { margin-bottom: 6px; }
-    .article-details .reason { color: #ff6600; font-style: italic; }
     .toggle-btn { background: none; border: none; color: #828282; cursor: pointer; font-size: 0.8em; padding: 0; }
     .toggle-btn:hover { text-decoration: underline; }
     .category-tag { display: inline-block; font-size: 0.75em; padding: 1px 6px; border-radius: 3px; background: #f0f0f0; color: #666; }

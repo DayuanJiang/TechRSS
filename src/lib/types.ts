@@ -24,7 +24,6 @@ export interface ArticleRow {
   link: string;
   pub_date: string;
   summary: string;
-  reason: string;
   source_name: string;
   score: number;
   depth: number;

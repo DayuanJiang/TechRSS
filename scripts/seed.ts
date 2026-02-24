@@ -26,7 +26,6 @@ async function main() {
       link: a.link,
       pub_date: a.pubDate.toISOString(),
       summary: `这是来自 ${a.sourceName} 的文章摘要。${a.description.slice(0, 150)}`,
-      reason: '深度技术分析，值得一读。',
       source_name: a.sourceName,
       score: 30 - i,
       category: categories[i % categories.length],

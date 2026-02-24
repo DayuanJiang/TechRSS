@@ -86,7 +86,7 @@ async function main() {
   const summaries = await summarizeArticles(indexed);
 
   const final = top.map((a, i) => {
-    const sm = summaries.get(i) || { titleZh: a.title, summary: a.description.slice(0, 200), reason: '' };
+    const sm = summaries.get(i) || { titleZh: a.title, summary: a.description.slice(0, 200) };
     return { ...a, ...sm, rank: i + 1 };
   });
 
@@ -104,7 +104,6 @@ async function main() {
       link: a.link,
       pub_date: a.pubDate.toISOString(),
       summary: a.summary,
-      reason: a.reason,
       source_name: a.sourceName,
       score: a.score,
       depth: a.depth,
