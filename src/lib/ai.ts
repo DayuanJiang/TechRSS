@@ -84,6 +84,14 @@ function buildScoringPrompt(articles: Array<{ index: number; title: string; desc
 - opinion: 行业观点、个人思考、职业发展、文化评论
 - other: 以上都不太适合的
 
+## 校准示例（仅供参考，不需要评分）
+- 含完整 benchmark 对比的数据库性能分析 → depth 9, novelty 7, breadth 6
+- 每周安全新闻汇总博客 → depth 3, novelty 3, breadth 5
+- 首次披露的重大 CVE（含 PoC）→ depth 8, novelty 10, breadth 10
+- 某框架的入门教程 → depth 4, novelty 2, breadth 5
+- 个人周记/月度总结 → depth 2, novelty 2, breadth 3
+- 带有生产环境数据的架构迁移复盘 → depth 9, novelty 8, breadth 7
+
 ## 关键词提取
 提取 2-4 个最能代表文章主题的关键词（用英文，简短，如 "Rust", "LLM", "database", "performance"）
 
