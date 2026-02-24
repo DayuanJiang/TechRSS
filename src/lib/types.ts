@@ -27,6 +27,9 @@ export interface ArticleRow {
   reason: string;
   source_name: string;
   score: number;
+  depth: number;
+  novelty: number;
+  breadth: number;
   category: string;
   keywords: string[];
   rank: number;

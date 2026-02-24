@@ -10,9 +10,9 @@ const MAX_CONCURRENT = 2;
 interface ScoringResult {
   results: Array<{
     index: number;
-    relevance: number;
-    quality: number;
-    timeliness: number;
+    depth: number;
+    novelty: number;
+    breadth: number;
     category: string;
     keywords: string[];
   }>;
@@ -58,23 +58,23 @@ function buildScoringPrompt(articles: Array<{ index: number; title: string; desc
 
 ## 评分维度
 
-### 1. 相关性 (relevance) - 对技术/编程/AI/互联网从业者的价值
-- 10: 所有技术人都应该知道的重大事件/突破
+### 1. 深度 (depth) - 文章的研究深度和证据质量
+- 10: 有代码、数据、基准测试、一手经验的深度分析
+- 7-9: 有具体技术细节和实践经验
+- 4-6: 信息准确但缺少深入分析
+- 1-3: 纯转述新闻稿或无实质内容
+
+### 2. 新颖性 (novelty) - 信息或观点的独特程度
+- 10: 首次披露、独特视角、挑战主流认知
+- 7-9: 有新的洞见或不常见的角度
+- 4-6: 有一定新意但话题已有较多报道
+- 1-3: 同一话题的第 N 篇重复报道
+
+### 3. 广度 (breadth) - 对技术从业者群体的覆盖面
+- 10: 所有技术人都应知道的重大事件（重大 CVE、范式转变等）
 - 7-9: 对大部分技术从业者有价值
 - 4-6: 对特定技术领域有价值
-- 1-3: 与技术行业关联不大
-
-### 2. 质量 (quality) - 文章本身的深度和写作质量
-- 10: 深度分析，原创洞见，引用丰富
-- 7-9: 有深度，观点独到
-- 4-6: 信息准确，表达清晰
-- 1-3: 浅尝辄止或纯转述
-
-### 3. 时效性 (timeliness) - 当前是否值得阅读
-- 10: 正在发生的重大事件/刚发布的重要工具
-- 7-9: 近期热点相关
-- 4-6: 常青内容，不过时
-- 1-3: 过时或无时效价值
+- 1-3: 极小众领域，受众极少
 
 ## 分类标签（必须从以下选一个）
 - ai-ml: AI、机器学习、LLM、深度学习相关
@@ -96,9 +96,9 @@ ${articlesList}
   "results": [
     {
       "index": 0,
-      "relevance": 8,
-      "quality": 7,
-      "timeliness": 9,
+      "depth": 8,
+      "novelty": 7,
+      "breadth": 9,
       "category": "engineering",
       "keywords": ["Rust", "compiler", "performance"]
     }
@@ -107,11 +107,11 @@ ${articlesList}
 }
 
 export async function scoreArticles(articles: Article[]): Promise<Map<number, {
-  relevance: number; quality: number; timeliness: number;
+  depth: number; novelty: number; breadth: number;
   category: string; keywords: string[];
 }>> {
   const allScores = new Map<number, {
-    relevance: number; quality: number; timeliness: number;
+    depth: number; novelty: number; breadth: number;
     category: string; keywords: string[];
   }>();
   const indexed = articles.map((a, i) => ({ index: i, title: a.title, description: a.description, sourceName: a.sourceName }));
@@ -134,9 +134,9 @@ export async function scoreArticles(articles: Article[]): Promise<Map<number, {
           for (const r of parsed.results) {
             const clamp = (v: number) => Math.min(10, Math.max(1, Math.round(v)));
             allScores.set(r.index, {
-              relevance: clamp(r.relevance),
-              quality: clamp(r.quality),
-              timeliness: clamp(r.timeliness),
+              depth: clamp(r.depth),
+              novelty: clamp(r.novelty),
+              breadth: clamp(r.breadth),
               category: validCategories.has(r.category) ? r.category : 'other',
               keywords: Array.isArray(r.keywords) ? r.keywords.slice(0, 4) : [],
             });
@@ -145,7 +145,7 @@ export async function scoreArticles(articles: Article[]): Promise<Map<number, {
       } catch (error) {
         console.warn(`[ai] Scoring batch failed: ${error instanceof Error ? error.message : error}`);
         for (const item of batch) {
-          allScores.set(item.index, { relevance: 5, quality: 5, timeliness: 5, category: 'other', keywords: [] });
+          allScores.set(item.index, { depth: 5, novelty: 5, breadth: 5, category: 'other', keywords: [] });
         }
       }
     }));
@@ -164,16 +164,17 @@ function buildSummaryPrompt(articles: Array<{ index: number; title: string; desc
 
   return `你是一个技术内容摘要专家。请为以下文章完成三件事：
 
-1. **中文标题** (titleZh): 将英文标题翻译成自然的中文。如果原标题已经是中文则保持不变。
+1. **中文标题** (titleZh): 用一句中文概括文章的核心内容（不是翻译原标题，而是一句话总结讲了什么）。如果原标题已经是中文则保持不变。例如：原标题 "Writing about agentic patterns" → "AI 智能体工程中的六种核心设计模式及其适用场景"
 2. **摘要** (summary): 4-6 句话的结构化摘要，让读者不点进原文也能了解核心内容。包含：
    - 文章讨论的核心问题或主题（1 句）
    - 关键论点、技术方案或发现（2-3 句）
    - 结论或作者的核心观点（1 句）
 3. **推荐理由** (reason): 1 句话说明"为什么值得读"，区别于摘要（摘要说"是什么"，推荐理由说"为什么"）。
 
-请用中文撰写摘要和推荐理由。如果原文是英文，请翻译为中文。标题翻译也用中文。
+请用中文撰写摘要和推荐理由。如果原文是英文，请翻译为中文。
 
 摘要要求：
+- 禁止使用以下句式开头：'作者...'、'文章指出...'、'文章介绍了...'、'本文...'、'该文...'。直接陈述事实和结论。
 - 直接说重点，不要用"本文讨论了..."、"这篇文章介绍了..."这种开头
 - 包含具体的技术名词、数据、方案名称或观点
 - 保留关键数字和指标（如性能提升百分比、用户数、版本号等）

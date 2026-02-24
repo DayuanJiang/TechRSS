@@ -72,8 +72,8 @@ async function main() {
   const scores = await scoreArticles(deduped);
 
   const scored = deduped.map((article, index) => {
-    const s = scores.get(index) || { relevance: 5, quality: 5, timeliness: 5, category: 'other', keywords: [] };
-    return { ...article, ...s, score: s.relevance + s.quality + s.timeliness };
+    const s = scores.get(index) || { depth: 5, novelty: 5, breadth: 5, category: 'other', keywords: [] };
+    return { ...article, ...s, score: s.depth + s.novelty + s.breadth };
   });
   scored.sort((a, b) => b.score - a.score);
   const top = scored.slice(0, 100);
@@ -110,6 +110,9 @@ async function main() {
       reason: a.reason,
       source_name: a.sourceName,
       score: a.score,
+      depth: a.depth,
+      novelty: a.novelty,
+      breadth: a.breadth,
       category: a.category,
       keywords: a.keywords,
       rank: a.rank,
