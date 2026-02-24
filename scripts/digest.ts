@@ -105,7 +105,7 @@ async function main() {
 
   // Step 5: Summarize only new articles
   console.log(`[digest] Step 5/5: Generating summaries for ${scored.length} new articles...`);
-  const indexed = scored.map((a, i) => ({ ...a, index: i }));
+  const indexed = scored.map((a, i) => ({ ...a, index: i, avgScore: a.score / 3 }));
   const summaries = await summarizeArticles(indexed);
 
   const newArticles = scored.map((a, i) => {

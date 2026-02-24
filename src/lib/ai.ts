@@ -203,10 +203,12 @@ export async function scoreArticles(articles: Article[]): Promise<Map<number, {
 
 // --- Summarization ---
 
-function buildSummaryPrompt(articles: Array<{ index: number; title: string; description: string; sourceName: string; link: string }>): string {
-  const articlesList = articles.map(a =>
-    `Index ${a.index}: [${a.sourceName}] ${a.title}\nURL: ${a.link}\n${a.description.slice(0, 800)}`
-  ).join('\n\n---\n\n');
+function buildSummaryPrompt(articles: Array<{ index: number; title: string; description: string; sourceName: string; link: string; avgScore?: number }>): string {
+  const articlesList = articles.map(a => {
+    const avg = a.avgScore ?? 0;
+    const wordHint = avg >= 6 ? '（摘要约 300 字）' : '（摘要约 100 字）';
+    return `Index ${a.index}: [${a.sourceName}] ${a.title} ${wordHint}\nURL: ${a.link}\n${a.description.slice(0, 800)}`;
+  }).join('\n\n---\n\n');
 
   return `你是一个面向 AI 和软件工程从业者的技术内容摘要专家。请为以下文章生成中文标题和摘要。
 
@@ -215,7 +217,7 @@ function buildSummaryPrompt(articles: Array<{ index: number; title: string; desc
 用一句简短的中文概括文章讲了什么。不是翻译原标题，而是提炼核心信息。如果原标题已经是中文且足够好则保持不变。
 
 要求：
-- 控制在 15-25 个字以内，宁短勿长
+- 控制在 20-25 个字以内，宁短勿长
 - 突出最关键的一个信息点，不要试图涵盖所有内容
 - 技术名词保留英文（如 Rust、RAG、Claude）
 
@@ -226,7 +228,7 @@ function buildSummaryPrompt(articles: Array<{ index: number; title: string; desc
 
 ## 摘要 (summary)
 
-3-5 句话，让读者不点原文就能获取核心信息。用中文撰写。
+让读者不点原文就能获取核心信息。用中文撰写。每篇文章标题后标注了目标字数，请严格遵守字数要求。
 
 写法规则：
 - 第一句直接给出核心事实或结论，不要铺垫
@@ -260,11 +262,17 @@ ${articlesList}
 }`;
 }
 
-export async function summarizeArticles(articles: Array<Article & { index: number }>): Promise<Map<number, {
+export async function summarizeArticles(articles: Array<Article & { index: number; avgScore?: number }>): Promise<Map<number, {
   titleZh: string; summary: string;
 }>> {
   const summaries = new Map<number, { titleZh: string; summary: string }>();
-  const indexed = articles.map(a => ({ index: a.index, title: a.title, description: a.description, sourceName: a.sourceName, link: a.link }));
+
+  // Skip articles with avgScore < 3
+  const toSummarize = articles.filter(a => (a.avgScore ?? 0) >= 3);
+  const skipped = articles.length - toSummarize.length;
+  if (skipped > 0) console.log(`[ai] Skipping ${skipped} low-score articles (avgScore < 3)`);
+
+  const indexed = toSummarize.map(a => ({ index: a.index, title: a.title, description: a.description, sourceName: a.sourceName, link: a.link, avgScore: a.avgScore }));
 
   const batches: typeof indexed[] = [];
   for (let i = 0; i < indexed.length; i += BATCH_SIZE) {
