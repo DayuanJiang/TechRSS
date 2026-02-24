@@ -31,9 +31,26 @@ async function loadRecentLinks(excludeDate: string, days: number): Promise<Set<s
   return links;
 }
 
+/** Load today's existing data file if it exists */
+async function loadTodayData(today: string): Promise<{ articles: any[] } | null> {
+  const filePath = path.join(DATA_DIR, `${today}.json`);
+  if (!existsSync(filePath)) return null;
+  try {
+    return JSON.parse(await readFile(filePath, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
 async function main() {
   const today = getTodayDate();
   console.log(`[digest] === TechDigest — ${today} ===`);
+
+  // Load existing today's data for incremental update
+  const existingData = await loadTodayData(today);
+  const existingArticles = existingData?.articles || [];
+  const existingLinksToday = new Set(existingArticles.map((a: any) => a.link));
+  console.log(`[digest] Existing articles today: ${existingArticles.length}`);
 
   // Step 1: Fetch feeds
   console.log(`[digest] Step 1/5: Fetching ${RSS_FEEDS.length} RSS feeds...`);
@@ -61,34 +78,59 @@ async function main() {
     process.exit(1);
   }
 
-  // Step 3: Cross-day dedup
-  console.log('[digest] Step 3/5: Cross-day dedup...');
+  // Step 3: Dedup against cross-day AND today's existing articles
+  console.log('[digest] Step 3/5: Dedup...');
   const existingLinks = await loadRecentLinks(today, 3);
-  const deduped = recent.filter(a => !existingLinks.has(a.link));
-  console.log(`[digest] Removed ${recent.length - deduped.length} duplicates, ${deduped.length} remaining`);
+  const deduped = recent.filter(a => !existingLinks.has(a.link) && !existingLinksToday.has(a.link));
+  console.log(`[digest] ${deduped.length} new articles after dedup`);
 
-  // Step 4: Score
-  console.log(`[digest] Step 4/5: AI scoring ${deduped.length} articles...`);
+  if (deduped.length === 0) {
+    console.log('[digest] No new articles. Skipping AI calls.');
+    // Still rebuild with existing data to ensure site is up to date
+    await mkdir(DATA_DIR, { recursive: true });
+    const outPath = path.join(DATA_DIR, `${today}.json`);
+    await writeFile(outPath, JSON.stringify(existingData, null, 2));
+    console.log(`[digest] Done! No changes.`);
+    return;
+  }
+
+  // Step 4: Score only new articles
+  console.log(`[digest] Step 4/5: AI scoring ${deduped.length} new articles...`);
   const scores = await scoreArticles(deduped);
 
   const scored = deduped.map((article, index) => {
     const s = scores.get(index) || { depth: 5, novelty: 5, breadth: 5, category: 'other', keywords: [] };
     return { ...article, ...s, score: s.depth + s.novelty + s.breadth };
   });
-  scored.sort((a, b) => b.score - a.score);
-  const top = scored.slice(0, 100);
 
-  console.log(`[digest] Top ${top.length} selected (score range: ${top[top.length - 1]?.score || 0}-${top[0]?.score || 0})`);
-
-  // Step 5: Summarize
-  console.log(`[digest] Step 5/5: Generating summaries for ${top.length} articles...`);
-  const indexed = top.map((a, i) => ({ ...a, index: i }));
+  // Step 5: Summarize only new articles
+  console.log(`[digest] Step 5/5: Generating summaries for ${scored.length} new articles...`);
+  const indexed = scored.map((a, i) => ({ ...a, index: i }));
   const summaries = await summarizeArticles(indexed);
 
-  const final = top.map((a, i) => {
+  const newArticles = scored.map((a, i) => {
     const sm = summaries.get(i) || { titleZh: a.title, summary: a.description.slice(0, 200) };
-    return { ...a, ...sm, rank: i + 1 };
+    return {
+      title: a.title,
+      title_zh: sm.titleZh || a.title,
+      link: a.link,
+      pub_date: a.pubDate.toISOString(),
+      summary: sm.summary,
+      source_name: a.sourceName,
+      score: a.score,
+      depth: a.depth,
+      novelty: a.novelty,
+      breadth: a.breadth,
+      category: a.category,
+      keywords: a.keywords,
+    };
   });
+
+  // Merge: existing + new, re-sort by score, re-rank
+  const merged = [...existingArticles, ...newArticles];
+  merged.sort((a: any, b: any) => b.score - a.score);
+  const top = merged.slice(0, 100);
+  top.forEach((a: any, i: number) => { a.rank = i + 1; });
 
   // Write JSON
   await mkdir(DATA_DIR, { recursive: true });
@@ -98,27 +140,13 @@ async function main() {
     success_feeds: successCount,
     total_articles: allArticles.length,
     filtered_articles: recent.length,
-    articles: final.map(a => ({
-      title: a.title,
-      title_zh: a.titleZh || a.title,
-      link: a.link,
-      pub_date: a.pubDate.toISOString(),
-      summary: a.summary,
-      source_name: a.sourceName,
-      score: a.score,
-      depth: a.depth,
-      novelty: a.novelty,
-      breadth: a.breadth,
-      category: a.category,
-      keywords: a.keywords,
-      rank: a.rank,
-    })),
+    articles: top,
   };
 
   const outPath = path.join(DATA_DIR, `${today}.json`);
   await writeFile(outPath, JSON.stringify(output, null, 2));
   console.log(`[digest] Written ${outPath}`);
-  console.log(`[digest] Done! ${successCount} feeds -> ${allArticles.length} articles -> ${recent.length} recent -> ${final.length} saved`);
+  console.log(`[digest] Done! ${existingArticles.length} existing + ${newArticles.length} new -> ${top.length} total`);
 }
 
 main().catch(err => {
