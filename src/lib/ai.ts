@@ -1,7 +1,8 @@
-import { bedrock } from '@ai-sdk/amazon-bedrock';
+import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
 import { generateText } from 'ai';
 import type { Article } from './types';
 
+const bedrock = createAmazonBedrock({ region: 'us-east-1' });
 const MODEL_ID = 'zai.glm-4.7';
 const BATCH_SIZE = 10;
 const MAX_CONCURRENT = 2;
