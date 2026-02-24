@@ -206,8 +206,8 @@ export async function scoreArticles(articles: Article[]): Promise<Map<number, {
 function buildSummaryPrompt(articles: Array<{ index: number; title: string; description: string; sourceName: string; link: string; avgScore?: number }>): string {
   const articlesList = articles.map(a => {
     const avg = a.avgScore ?? 0;
-    const wordHint = avg >= 6 ? '（摘要约 300 字）' : '（摘要约 100 字）';
-    return `Index ${a.index}: [${a.sourceName}] ${a.title} ${wordHint}\nURL: ${a.link}\n${a.description.slice(0, 800)}`;
+    const targetLen = avg >= 6 ? 300 : 100;
+    return `Index ${a.index}: [${a.sourceName}] ${a.title}\n目标摘要长度: ${targetLen}字\nURL: ${a.link}\n${a.description.slice(0, 800)}`;
   }).join('\n\n---\n\n');
 
   return `你是一个面向 AI 和软件工程从业者的技术内容摘要专家。请为以下文章生成中文标题和摘要。
@@ -228,7 +228,9 @@ function buildSummaryPrompt(articles: Array<{ index: number; title: string; desc
 
 ## 摘要 (summary)
 
-让读者不点原文就能获取核心信息。用中文撰写。每篇文章标题后标注了目标字数，请严格遵守字数要求。
+让读者不点原文就能获取核心信息。用中文撰写。
+
+⚠️ 字数要求（必须严格遵守）：每篇文章下方标注了"目标摘要长度"，标注 300 字的必须写到 250-350 字，标注 100 字的必须控制在 80-120 字。不够字数要展开细节，超出字数要精简。所有摘要必须用中文撰写，即使原文是英文。
 
 写法规则：
 - 第一句直接给出核心事实或结论，不要铺垫
