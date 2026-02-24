@@ -1,5 +1,6 @@
 import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
-import { generateText } from 'ai';
+import { generateText, Output } from 'ai';
+import { z } from 'zod';
 import type { Article } from './types';
 
 const bedrock = createAmazonBedrock({ region: 'us-east-1' });
@@ -7,42 +8,20 @@ const MODEL_ID = 'zai.glm-4.7';
 const BATCH_SIZE = 10;
 const MAX_CONCURRENT = 2;
 
-interface ScoringResult {
-  results: Array<{
-    index: number;
-    depth: number;
-    novelty: number;
-    breadth: number;
-    category: string;
-    keywords: string[];
-  }>;
-}
+const scoringItemSchema = z.object({
+  index: z.number(),
+  depth: z.number(),
+  novelty: z.number(),
+  breadth: z.number(),
+  category: z.string(),
+  keywords: z.array(z.string()),
+});
 
-interface SummaryResult {
-  results: Array<{
-    index: number;
-    titleZh: string;
-    summary: string;
-  }>;
-}
-
-async function callLLM(prompt: string): Promise<string> {
-  const { text } = await generateText({
-    model: bedrock(MODEL_ID),
-    prompt,
-    maxOutputTokens: 4096,
-    temperature: 0.3,
-  });
-  return text;
-}
-
-function parseJsonResponse<T>(text: string): T {
-  let jsonText = text.trim();
-  if (jsonText.startsWith('```')) {
-    jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-  }
-  return JSON.parse(jsonText) as T;
-}
+const summaryItemSchema = z.object({
+  index: z.number(),
+  titleZh: z.string(),
+  summary: z.string(),
+});
 
 // --- Scoring ---
 
@@ -135,21 +114,7 @@ function buildScoringPrompt(articles: Array<{ index: number; title: string; desc
 
 ## 待评分文章
 
-${articlesList}
-
-严格按以下 JSON 格式返回，不要包含 markdown 代码块或其他文字：
-{
-  "results": [
-    {
-      "index": 0,
-      "depth": 8,
-      "novelty": 7,
-      "breadth": 9,
-      "category": "engineering",
-      "keywords": ["Rust", "compiler", "performance"]
-    }
-  ]
-}`;
+${articlesList}`;
 }
 
 export async function scoreArticles(articles: Article[]): Promise<Map<number, {
@@ -169,30 +134,32 @@ export async function scoreArticles(articles: Article[]): Promise<Map<number, {
 
   console.log(`[ai] Scoring ${articles.length} articles in ${batches.length} batches`);
   const validCategories = new Set(['ai-ml', 'security', 'engineering', 'tools', 'opinion', 'other']);
+  const clamp = (v: number) => Math.min(10, Math.max(1, Math.round(v)));
 
   for (let i = 0; i < batches.length; i += MAX_CONCURRENT) {
     const group = batches.slice(i, i + MAX_CONCURRENT);
     await Promise.all(group.map(async (batch) => {
       try {
-        const text = await callLLM(buildScoringPrompt(batch));
-        const parsed = parseJsonResponse<ScoringResult>(text);
-        if (parsed.results) {
-          for (const r of parsed.results) {
-            const clamp = (v: number) => Math.min(10, Math.max(1, Math.round(v)));
+        const { output } = await generateText({
+          model: bedrock(MODEL_ID),
+          output: Output.object({ schema: z.object({ results: z.array(scoringItemSchema) }) }),
+          prompt: buildScoringPrompt(batch),
+          maxOutputTokens: 4096,
+          temperature: 0.3,
+        });
+        if (output?.results) {
+          for (const r of output.results) {
             allScores.set(r.index, {
               depth: clamp(r.depth),
               novelty: clamp(r.novelty),
               breadth: clamp(r.breadth),
               category: validCategories.has(r.category) ? r.category : 'other',
-              keywords: Array.isArray(r.keywords) ? r.keywords.slice(0, 4) : [],
+              keywords: r.keywords.slice(0, 4),
             });
           }
         }
       } catch (error) {
         console.warn(`[ai] Scoring batch failed: ${error instanceof Error ? error.message : error}`);
-        for (const item of batch) {
-          allScores.set(item.index, { depth: 5, novelty: 5, breadth: 5, category: 'other', keywords: [] });
-        }
       }
     }));
     console.log(`[ai] Scoring: ${Math.min(i + MAX_CONCURRENT, batches.length)}/${batches.length} batches`);
@@ -251,17 +218,7 @@ function buildSummaryPrompt(articles: Array<{ index: number; title: string; desc
 ## 待摘要文章
 
 ${articlesList}
-
-严格按以下 JSON 格式返回，不要包含 markdown 代码块或其他文字：
-{
-  "results": [
-    {
-      "index": 0,
-      "titleZh": "中文标题",
-      "summary": "摘要内容..."
-    }
-  ]
-}`;
+`;
 }
 
 export async function summarizeArticles(articles: Array<Article & { index: number; avgScore?: number }>): Promise<Map<number, {
@@ -274,34 +231,29 @@ export async function summarizeArticles(articles: Array<Article & { index: numbe
   const skipped = articles.length - toSummarize.length;
   if (skipped > 0) console.log(`[ai] Skipping ${skipped} low-score articles (avgScore < 3)`);
 
-  const indexed = toSummarize.map(a => ({ index: a.index, title: a.title, description: a.description, sourceName: a.sourceName, link: a.link, avgScore: a.avgScore }));
+  console.log(`[ai] Summarizing ${toSummarize.length} articles one by one`);
 
-  const batches: typeof indexed[] = [];
-  for (let i = 0; i < indexed.length; i += BATCH_SIZE) {
-    batches.push(indexed.slice(i, i + BATCH_SIZE));
-  }
-
-  console.log(`[ai] Summarizing ${articles.length} articles in ${batches.length} batches`);
-
-  for (let i = 0; i < batches.length; i += MAX_CONCURRENT) {
-    const group = batches.slice(i, i + MAX_CONCURRENT);
-    await Promise.all(group.map(async (batch) => {
+  const summaryConcurrent = 10;
+  for (let i = 0; i < toSummarize.length; i += summaryConcurrent) {
+    const group = toSummarize.slice(i, i + summaryConcurrent);
+    await Promise.all(group.map(async (a) => {
+      const item = { index: a.index, title: a.title, description: a.description, sourceName: a.sourceName, link: a.link, avgScore: a.avgScore };
       try {
-        const text = await callLLM(buildSummaryPrompt(batch));
-        const parsed = parseJsonResponse<SummaryResult>(text);
-        if (parsed.results) {
-          for (const r of parsed.results) {
-            summaries.set(r.index, { titleZh: r.titleZh || '', summary: r.summary || '' });
-          }
+        const { output } = await generateText({
+          model: bedrock(MODEL_ID),
+          output: Output.object({ schema: summaryItemSchema }),
+          prompt: buildSummaryPrompt([item]),
+          maxOutputTokens: 4096,
+          temperature: 0.3,
+        });
+        if (output) {
+          summaries.set(a.index, { titleZh: output.titleZh, summary: output.summary });
         }
       } catch (error) {
-        console.warn(`[ai] Summary batch failed: ${error instanceof Error ? error.message : error}`);
-        for (const item of batch) {
-          summaries.set(item.index, { titleZh: item.title, summary: item.title });
-        }
+        console.warn(`[ai] Summary failed for index ${a.index}: ${error instanceof Error ? error.message : error}`);
       }
     }));
-    console.log(`[ai] Summary: ${Math.min(i + MAX_CONCURRENT, batches.length)}/${batches.length} batches`);
+    console.log(`[ai] Summary: ${Math.min(i + summaryConcurrent, toSummarize.length)}/${toSummarize.length}`);
   }
 
   return summaries;

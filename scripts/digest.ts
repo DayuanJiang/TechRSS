@@ -94,28 +94,45 @@ async function main() {
     return;
   }
 
-  // Step 4: Score only new articles
+  // Step 4: Score new articles (with retry for failures)
   console.log(`[digest] Step 4/5: AI scoring ${deduped.length} new articles...`);
-  const scores = await scoreArticles(deduped);
+  let scores = await scoreArticles(deduped);
+
+  const unscoredIndices = deduped.map((_, i) => i).filter(i => !scores.has(i));
+  if (unscoredIndices.length > 0) {
+    console.log(`[digest] Retrying ${unscoredIndices.length} failed scores...`);
+    const retryArticles = unscoredIndices.map(i => deduped[i]);
+    const retryScores = await scoreArticles(retryArticles);
+    retryScores.forEach((v, retryIdx) => { scores.set(unscoredIndices[retryIdx], v); });
+  }
 
   const scored = deduped.map((article, index) => {
-    const s = scores.get(index) || { depth: 5, novelty: 5, breadth: 5, category: 'other', keywords: [] };
+    const s = scores.get(index);
+    if (!s) return null;
     return { ...article, ...s, score: s.depth + s.novelty + s.breadth };
-  });
+  }).filter((a): a is NonNullable<typeof a> => a !== null);
 
-  // Step 5: Summarize only new articles
+  // Step 5: Summarize articles (with retry for failures)
   console.log(`[digest] Step 5/5: Generating summaries for ${scored.length} new articles...`);
   const indexed = scored.map((a, i) => ({ ...a, index: i, avgScore: a.score / 3 }));
-  const summaries = await summarizeArticles(indexed);
+  let summaries = await summarizeArticles(indexed);
+
+  const unsummarizedIndices = indexed.filter(a => (a.avgScore ?? 0) >= 3 && !summaries.has(a.index)).map(a => a.index);
+  if (unsummarizedIndices.length > 0) {
+    console.log(`[digest] Retrying ${unsummarizedIndices.length} failed summaries...`);
+    const retryItems = unsummarizedIndices.map(i => indexed[i]);
+    const retrySummaries = await summarizeArticles(retryItems);
+    retrySummaries.forEach((v, k) => { summaries.set(k, v); });
+  }
 
   const newArticles = scored.map((a, i) => {
-    const sm = summaries.get(i) || { titleZh: a.title, summary: a.description.slice(0, 200) };
+    const sm = summaries.get(i);
     return {
       title: a.title,
-      title_zh: sm.titleZh || a.title,
+      title_zh: sm?.titleZh || a.title,
       link: a.link,
       pub_date: a.pubDate.toISOString(),
-      summary: sm.summary,
+      summary: sm?.summary || '',
       source_name: a.sourceName,
       score: a.score,
       depth: a.depth,
