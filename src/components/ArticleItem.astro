@@ -1,0 +1,59 @@
+---
+import type { ArticleRow } from '../lib/types';
+import { CATEGORY_META, type CategoryId } from '../lib/types';
+
+interface Props {
+  article: ArticleRow;
+}
+const { article } = Astro.props;
+
+const cat = CATEGORY_META[article.category as CategoryId] || CATEGORY_META['other'];
+const domain = (() => {
+  try { return new URL(article.link).hostname.replace('www.', ''); }
+  catch { return article.source_name; }
+})();
+
+const pubDate = article.pub_date ? new Date(article.pub_date) : null;
+const timeAgo = (() => {
+  if (!pubDate) return '';
+  const diffMs = Date.now() - pubDate.getTime();
+  const diffH = Math.floor(diffMs / 3_600_000);
+  const diffD = Math.floor(diffMs / 86_400_000);
+  if (diffH < 24) return `${diffH}h`;
+  return `${diffD}d`;
+})();
+---
+<li class="article-item py-2 sm:py-1.5 border-b border-gray-100 last:border-b-0">
+  <div class="flex items-start gap-1">
+    <span class="shrink-0 w-6 sm:w-7 text-right text-gray-400 text-xs sm:text-sm pt-0.5">{article.rank}.</span>
+    <div class="min-w-0">
+      <a class="text-gray-800 text-sm sm:text-[0.95em] leading-snug visited:text-hn-gray hover:underline break-words" href={article.link} target="_blank" rel="noopener">
+        {article.title_zh || article.title}
+      </a>
+      <span class="text-[11px] sm:text-xs text-hn-gray ml-1 whitespace-nowrap">({domain})</span>
+    </div>
+  </div>
+  <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] sm:text-xs text-hn-gray mt-0.5 ml-7 sm:ml-8">
+    <span class="text-hn-orange font-medium">{article.score}/30</span>
+    <span>·</span>
+    <span class="inline-block px-1 py-px rounded bg-gray-100 text-gray-500">{cat.emoji} {cat.label}</span>
+    {timeAgo && <><span>·</span><span>{timeAgo}</span></>}
+    {article.source_name && <><span>·</span><span>{article.source_name}</span></>}
+    <span>·</span>
+    <button class="toggle-btn bg-transparent border-none text-hn-gray cursor-pointer p-0 hover:underline min-h-[28px] sm:min-h-0 inline-flex items-center">展开</button>
+  </div>
+  <div class="article-details hidden ml-7 sm:ml-8 text-[13px] sm:text-sm leading-relaxed text-gray-600 pt-2 pb-1">
+    {article.summary && <div class="mb-2">{article.summary}</div>}
+    {article.reason && <div class="text-hn-orange italic mb-1">{article.reason}</div>}
+    {article.keywords && article.keywords.length > 0 && (
+      <div class="text-xs text-gray-400">
+        {article.keywords.join(' · ')}
+      </div>
+    )}
+    <div class="mt-2">
+      <a class="text-hn-orange text-sm hover:underline inline-block min-h-[36px] leading-[36px]" href={article.link} target="_blank" rel="noopener">
+        阅读原文 &rarr;
+      </a>
+    </div>
+  </div>
+</li>
