@@ -1,4 +1,5 @@
-import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
+import { bedrock } from '@ai-sdk/amazon-bedrock';
+import { generateText } from 'ai';
 import type { Article } from './types';
 
 const MODEL_ID = 'zai.glm-4.7';
@@ -25,17 +26,14 @@ interface SummaryResult {
   }>;
 }
 
-const client = new BedrockRuntimeClient({
-  region: process.env.AWS_REGION || 'us-east-1',
-});
-
 async function callLLM(prompt: string): Promise<string> {
-  const response = await client.send(new ConverseCommand({
-    modelId: MODEL_ID,
-    messages: [{ role: 'user', content: [{ text: prompt }] }],
-    inferenceConfig: { maxTokens: 4096, temperature: 0.3 },
-  }));
-  return response.output?.message?.content?.[0]?.text ?? '';
+  const { text } = await generateText({
+    model: bedrock(MODEL_ID),
+    prompt,
+    maxOutputTokens: 4096,
+    temperature: 0.3,
+  });
+  return text;
 }
 
 function parseJsonResponse<T>(text: string): T {
