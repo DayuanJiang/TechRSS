@@ -5,11 +5,9 @@ import type { Article } from './types';
 
 const bedrock = createAmazonBedrock({ region: 'us-east-1' });
 const MODEL_ID = 'zai.glm-4.7';
-const BATCH_SIZE = 10;
-const MAX_CONCURRENT = 2;
+const MAX_CONCURRENT = 10;
 
 const articleResultSchema = z.object({
-  index: z.number(),
   depth: z.number(),
   novelty: z.number(),
   breadth: z.number(),
@@ -21,11 +19,8 @@ const articleResultSchema = z.object({
 
 export type ArticleResult = z.infer<typeof articleResultSchema>;
 
-function buildPrompt(articles: Array<{ index: number; title: string; content: string; sourceName: string; link: string }>): string {
-  const MAX_CONTENT_CHARS = 5000;
-  const articlesList = articles.map(a =>
-    `Index ${a.index}: [${a.sourceName}] ${a.title}\nURL: ${a.link}\n${a.content.slice(0, MAX_CONTENT_CHARS)}`
-  ).join('\n\n---\n\n');
+function buildPrompt(article: { title: string; content: string; sourceName: string; link: string }): string {
+  const articleText = `[${article.sourceName}] ${article.title}\nURL: ${article.link}\n${article.content}`;
 
   return `你是一个技术内容策展人，正在为一份面向 AI 和软件工程从业者的每日精选摘要筛选文章。文章来源主要是独立技术博客，话题以 AI/LLM、安全和系统工程为主。你的目标是帮读者筛出真正值得阅读的内容，评分区分度至关重要。
 
@@ -38,7 +33,6 @@ function buildPrompt(articles: Array<{ index: number; title: string; content: st
 ## 评分纪律
 
 - 大胆使用极端分数：水文/简讯给 1-3，深度技术内容给 8-10
-- 先浏览全部文章，再逐篇评分，确保批次内分数有区分度
 - 不要因为话题热门（如 AI）就自动给高分，要看文章本身的质量
 
 ## 评分维度
@@ -160,50 +154,43 @@ function buildPrompt(articles: Array<{ index: number; title: string; content: st
 
 ## 待处理文章
 
-${articlesList}`;
+${articleText}`;
 }
 
 export async function processArticles(articles: Article[]): Promise<Map<number, ArticleResult>> {
   const allResults = new Map<number, ArticleResult>();
-  const indexed = articles.map((a, i) => ({ index: i, title: a.title, content: a.content, sourceName: a.sourceName, link: a.link }));
 
-  const batches: typeof indexed[] = [];
-  for (let i = 0; i < indexed.length; i += BATCH_SIZE) {
-    batches.push(indexed.slice(i, i + BATCH_SIZE));
-  }
-
-  console.log(`[ai] Processing ${articles.length} articles in ${batches.length} batches`);
+  console.log(`[ai] Processing ${articles.length} articles (1 per call, concurrency ${MAX_CONCURRENT})`);
   const validCategories = new Set(['ai-ml', 'security', 'engineering', 'tools', 'opinion', 'other']);
   const clamp = (v: number) => Math.min(10, Math.max(1, Math.round(v)));
 
-  for (let i = 0; i < batches.length; i += MAX_CONCURRENT) {
-    const group = batches.slice(i, i + MAX_CONCURRENT);
-    await Promise.all(group.map(async (batch) => {
+  for (let i = 0; i < articles.length; i += MAX_CONCURRENT) {
+    const group = articles.slice(i, i + MAX_CONCURRENT);
+    await Promise.all(group.map(async (article, j) => {
+      const index = i + j;
       try {
         const { output } = await generateText({
           model: bedrock(MODEL_ID),
-          output: Output.object({ schema: z.object({ results: z.array(articleResultSchema) }) }),
-          prompt: buildPrompt(batch),
-          maxOutputTokens: 8192,
+          output: Output.object({ schema: articleResultSchema }),
+          prompt: buildPrompt({ title: article.title, content: article.content, sourceName: article.sourceName, link: article.link }),
+          maxOutputTokens: 4096,
           temperature: 0.3,
         });
-        if (output?.results) {
-          for (const r of output.results) {
-            allResults.set(r.index, {
-              ...r,
-              depth: clamp(r.depth),
-              novelty: clamp(r.novelty),
-              breadth: clamp(r.breadth),
-              category: validCategories.has(r.category) ? r.category : 'other',
-              keywords: r.keywords.slice(0, 4),
-            });
-          }
+        if (output) {
+          allResults.set(index, {
+            ...output,
+            depth: clamp(output.depth),
+            novelty: clamp(output.novelty),
+            breadth: clamp(output.breadth),
+            category: validCategories.has(output.category) ? output.category : 'other',
+            keywords: output.keywords.slice(0, 4),
+          });
         }
       } catch (error) {
-        console.warn(`[ai] Batch failed: ${error instanceof Error ? error.message : error}`);
+        console.warn(`[ai] Failed article ${index} "${article.title}": ${error instanceof Error ? error.message : error}`);
       }
     }));
-    console.log(`[ai] Progress: ${Math.min(i + MAX_CONCURRENT, batches.length)}/${batches.length} batches`);
+    console.log(`[ai] Progress: ${Math.min(i + MAX_CONCURRENT, articles.length)}/${articles.length}`);
   }
 
   return allResults;
