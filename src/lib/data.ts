@@ -48,6 +48,11 @@ export interface HnStoredItem {
   };
   aisummary?: HnStoredItem['aiSummary'];
   classifications?: { tags?: string[] };
+  detail?: {
+    aiSummary?: HnStoredItem['aiSummary'];
+    aisummary?: HnStoredItem['aiSummary'];
+    [key: string]: unknown;
+  };
 }
 
 export interface HnData {
