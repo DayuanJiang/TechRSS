@@ -1,11 +1,17 @@
 import { writeFile, readFile, readdir, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
+import TurndownService from 'turndown';
 import { RSS_FEEDS } from '../src/lib/feeds';
 import { fetchAllFeeds } from '../src/lib/rss';
-import { scoreArticles, summarizeArticles } from '../src/lib/ai';
+import { processArticles } from '../src/lib/ai';
+import type { Article } from '../src/lib/types';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
+const CONTENT_FETCH_TIMEOUT_MS = 10_000;
+const CONTENT_CONCURRENCY = 10;
+
+const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
 
 function getTodayDate(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Shanghai' });
@@ -42,6 +48,40 @@ async function loadTodayData(today: string): Promise<{ articles: any[] } | null>
   }
 }
 
+/** Fetch full article content from URL, convert HTML to markdown */
+async function fetchArticleContent(url: string): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), CONTENT_FETCH_TIMEOUT_MS);
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'TechDigest/1.0 (RSS Reader)' },
+    });
+    clearTimeout(timeout);
+    if (!response.ok) return null;
+    const html = await response.text();
+    return turndown.turndown(html);
+  } catch {
+    return null;
+  }
+}
+
+/** Fetch full content for all articles, replacing content field. Falls back to RSS content. */
+async function fetchAllContent(articles: Article[]): Promise<void> {
+  console.log(`[digest] Fetching full content for ${articles.length} articles...`);
+  for (let i = 0; i < articles.length; i += CONTENT_CONCURRENCY) {
+    const batch = articles.slice(i, i + CONTENT_CONCURRENCY);
+    await Promise.all(batch.map(async (article) => {
+      const fullContent = await fetchArticleContent(article.link);
+      if (fullContent) {
+        article.content = fullContent;
+      }
+    }));
+    const progress = Math.min(i + CONTENT_CONCURRENCY, articles.length);
+    console.log(`[digest] Content fetch: ${progress}/${articles.length}`);
+  }
+}
+
 async function main() {
   const today = getTodayDate();
   console.log(`[digest] === TechDigest — ${today} ===`);
@@ -53,7 +93,7 @@ async function main() {
   console.log(`[digest] Existing articles today: ${existingArticles.length}`);
 
   // Step 1: Fetch feeds
-  console.log(`[digest] Step 1/5: Fetching ${RSS_FEEDS.length} RSS feeds...`);
+  console.log(`[digest] Step 1/4: Fetching ${RSS_FEEDS.length} RSS feeds...`);
   const { articles: allArticles, successCount } = await fetchAllFeeds(RSS_FEEDS);
 
   if (allArticles.length === 0) {
@@ -62,7 +102,7 @@ async function main() {
   }
 
   // Step 2: Filter to last 24h (fallback 48h)
-  console.log('[digest] Step 2/5: Filtering to last 24 hours...');
+  console.log('[digest] Step 2/4: Filtering to last 24 hours...');
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
   let recent = allArticles.filter(a => a.pubDate.getTime() > cutoff.getTime());
   console.log(`[digest] ${recent.length} articles within last 24h`);
@@ -79,14 +119,13 @@ async function main() {
   }
 
   // Step 3: Dedup against cross-day AND today's existing articles
-  console.log('[digest] Step 3/5: Dedup...');
+  console.log('[digest] Step 3/4: Dedup...');
   const existingLinks = await loadRecentLinks(today, 3);
   const deduped = recent.filter(a => !existingLinks.has(a.link) && !existingLinksToday.has(a.link));
   console.log(`[digest] ${deduped.length} new articles after dedup`);
 
   if (deduped.length === 0) {
     console.log('[digest] No new articles. Skipping AI calls.');
-    // Still rebuild with existing data to ensure site is up to date
     await mkdir(DATA_DIR, { recursive: true });
     const outPath = path.join(DATA_DIR, `${today}.json`);
     await writeFile(outPath, JSON.stringify(existingData, null, 2));
@@ -94,56 +133,41 @@ async function main() {
     return;
   }
 
-  // Step 4: Score new articles (with retry for failures)
-  console.log(`[digest] Step 4/5: AI scoring ${deduped.length} new articles...`);
-  let scores = await scoreArticles(deduped);
+  // Fetch full article content
+  await fetchAllContent(deduped);
 
-  const unscoredIndices = deduped.map((_, i) => i).filter(i => !scores.has(i));
-  if (unscoredIndices.length > 0) {
-    console.log(`[digest] Retrying ${unscoredIndices.length} failed scores...`);
-    const retryArticles = unscoredIndices.map(i => deduped[i]);
-    const retryScores = await scoreArticles(retryArticles);
-    retryScores.forEach((v, retryIdx) => { scores.set(unscoredIndices[retryIdx], v); });
+  // Step 4: AI process (score + summarize in one call)
+  console.log(`[digest] Step 4/4: AI processing ${deduped.length} new articles...`);
+  let results = await processArticles(deduped);
+
+  // Retry failed articles
+  const failedIndices = deduped.map((_, i) => i).filter(i => !results.has(i));
+  if (failedIndices.length > 0) {
+    console.log(`[digest] Retrying ${failedIndices.length} failed articles...`);
+    const retryArticles = failedIndices.map(i => deduped[i]);
+    const retryResults = await processArticles(retryArticles);
+    retryResults.forEach((v, retryIdx) => { results.set(failedIndices[retryIdx], v); });
   }
 
-  const scored = deduped.map((article, index) => {
-    const s = scores.get(index);
-    if (!s) return null;
-    const score = s.depth + s.novelty + s.breadth;
-    if (score / 3 < 3) return null;
-    return { ...article, ...s, score };
-  }).filter((a): a is NonNullable<typeof a> => a !== null);
-
-  // Step 5: Summarize articles (with retry for failures)
-  console.log(`[digest] Step 5/5: Generating summaries for ${scored.length} new articles...`);
-  const indexed = scored.map((a, i) => ({ ...a, index: i, avgScore: a.score / 3 }));
-  let summaries = await summarizeArticles(indexed);
-
-  const unsummarizedIndices = indexed.filter(a => (a.avgScore ?? 0) >= 3 && !summaries.has(a.index)).map(a => a.index);
-  if (unsummarizedIndices.length > 0) {
-    console.log(`[digest] Retrying ${unsummarizedIndices.length} failed summaries...`);
-    const retryItems = unsummarizedIndices.map(i => indexed[i]);
-    const retrySummaries = await summarizeArticles(retryItems);
-    retrySummaries.forEach((v, k) => { summaries.set(k, v); });
-  }
-
-  const newArticles = scored.map((a, i) => {
-    const sm = summaries.get(i);
+  const newArticles = deduped.map((article, index) => {
+    const r = results.get(index);
+    if (!r) return null;
+    const score = r.depth + r.novelty + r.breadth;
     return {
-      title: a.title,
-      title_zh: sm?.titleZh || a.title,
-      link: a.link,
-      pub_date: a.pubDate.toISOString(),
-      summary: sm?.summary || '',
-      source_name: a.sourceName,
-      score: a.score,
-      depth: a.depth,
-      novelty: a.novelty,
-      breadth: a.breadth,
-      category: a.category,
-      keywords: a.keywords,
+      title: article.title,
+      title_zh: r.titleZh || article.title,
+      link: article.link,
+      pub_date: article.pubDate.toISOString(),
+      summary: r.summary || '',
+      source_name: article.sourceName,
+      score,
+      depth: r.depth,
+      novelty: r.novelty,
+      breadth: r.breadth,
+      category: r.category,
+      keywords: r.keywords,
     };
-  });
+  }).filter((a): a is NonNullable<typeof a> => a !== null);
 
   // Merge: existing + new, re-sort by score, re-rank
   const merged = [...existingArticles, ...newArticles];

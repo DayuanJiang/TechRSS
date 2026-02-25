@@ -25,7 +25,7 @@ async function main() {
       title_zh: `[模拟] ${a.title}`,
       link: a.link,
       pub_date: a.pubDate.toISOString(),
-      summary: `这是来自 ${a.sourceName} 的文章摘要。${a.description.slice(0, 150)}`,
+      summary: `这是来自 ${a.sourceName} 的文章摘要。${a.content.slice(0, 150)}`,
       source_name: a.sourceName,
       score: 30 - i,
       category: categories[i % categories.length],

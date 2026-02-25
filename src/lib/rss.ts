@@ -48,15 +48,15 @@ function parseAtomEntries(entries: any[], feed: { name: string; htmlUrl: string 
     }
 
     const pubDateStr = entry.published || entry.updated || '';
-    const description = stripHtml(
-      typeof entry.summary === 'object' ? entry.summary['#text'] : (entry.summary || entry.content?.['#text'] || entry.content || '')
-    );
+    const rawContent = entry.content?.['#text'] || entry.content || '';
+    const rawSummary = typeof entry.summary === 'object' ? entry.summary['#text'] : (entry.summary || '');
+    const description = stripHtml(rawContent || rawSummary);
 
     return {
       title,
       link,
       pubDate: parseDate(pubDateStr) || new Date(0),
-      description: String(description).slice(0, 500),
+      content: String(description),
       sourceName: feed.name,
       sourceUrl: feed.htmlUrl,
     };
@@ -70,14 +70,14 @@ function parseRSSItems(items: any[], feed: { name: string; htmlUrl: string }): A
     const link = String(item.link || item.guid?.['#text'] || item.guid || '');
     const pubDateStr = item.pubDate || item['dc:date'] || item.date || '';
     const description = stripHtml(
-      item.description || item['content:encoded'] || ''
+      item['content:encoded'] || item.description || ''
     );
 
     return {
       title,
       link,
       pubDate: parseDate(pubDateStr) || new Date(0),
-      description: String(description).slice(0, 500),
+      content: String(description),
       sourceName: feed.name,
       sourceUrl: feed.htmlUrl,
     };

@@ -32,7 +32,7 @@ async function main() {
       title_zh: `[模拟中文] ${a.title}`,
       link: a.link,
       pub_date: a.pubDate.toISOString(),
-      summary: `这是一篇来自 ${a.sourceName} 的文章。${a.description.slice(0, 200)}`,
+      summary: `这是一篇来自 ${a.sourceName} 的文章。${a.content.slice(0, 200)}`,
       source_name: a.sourceName,
       score,
       category: cat,

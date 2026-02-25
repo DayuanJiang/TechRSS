@@ -8,31 +8,31 @@ const MODEL_ID = 'zai.glm-4.7';
 const BATCH_SIZE = 10;
 const MAX_CONCURRENT = 2;
 
-const scoringItemSchema = z.object({
+const articleResultSchema = z.object({
   index: z.number(),
   depth: z.number(),
   novelty: z.number(),
   breadth: z.number(),
   category: z.string(),
   keywords: z.array(z.string()),
-});
-
-const summaryItemSchema = z.object({
-  index: z.number(),
   titleZh: z.string(),
   summary: z.string(),
 });
 
-// --- Scoring ---
+export type ArticleResult = z.infer<typeof articleResultSchema>;
 
-function buildScoringPrompt(articles: Array<{ index: number; title: string; description: string; sourceName: string }>): string {
+function buildPrompt(articles: Array<{ index: number; title: string; content: string; sourceName: string; link: string }>): string {
   const articlesList = articles.map(a =>
-    `Index ${a.index}: [${a.sourceName}] ${a.title}\n${a.description.slice(0, 300)}`
+    `Index ${a.index}: [${a.sourceName}] ${a.title}\nURL: ${a.link}\n${a.content}`
   ).join('\n\n---\n\n');
 
   return `你是一个技术内容策展人，正在为一份面向 AI 和软件工程从业者的每日精选摘要筛选文章。文章来源主要是独立技术博客，话题以 AI/LLM、安全和系统工程为主。你的目标是帮读者筛出真正值得阅读的内容，评分区分度至关重要。
 
-请对以下文章进行三个维度的评分（1-10 整数），并分配分类标签和提取关键词。
+请对以下文章进行三个维度的评分（1-10 整数），分配分类标签，提取关键词，并生成中文标题和摘要。
+
+---
+
+# 第一部分：评分
 
 ## 评分纪律
 
@@ -112,72 +112,9 @@ function buildScoringPrompt(articles: Array<{ index: number; title: string; desc
 ## 关键词
 提取 2-4 个英文关键词，专有名词保持原样，其余小写。如 "Claude", "RAG", "inference", "performance"。
 
-## 待评分文章
+---
 
-${articlesList}`;
-}
-
-export async function scoreArticles(articles: Article[]): Promise<Map<number, {
-  depth: number; novelty: number; breadth: number;
-  category: string; keywords: string[];
-}>> {
-  const allScores = new Map<number, {
-    depth: number; novelty: number; breadth: number;
-    category: string; keywords: string[];
-  }>();
-  const indexed = articles.map((a, i) => ({ index: i, title: a.title, description: a.description, sourceName: a.sourceName }));
-
-  const batches: typeof indexed[] = [];
-  for (let i = 0; i < indexed.length; i += BATCH_SIZE) {
-    batches.push(indexed.slice(i, i + BATCH_SIZE));
-  }
-
-  console.log(`[ai] Scoring ${articles.length} articles in ${batches.length} batches`);
-  const validCategories = new Set(['ai-ml', 'security', 'engineering', 'tools', 'opinion', 'other']);
-  const clamp = (v: number) => Math.min(10, Math.max(1, Math.round(v)));
-
-  for (let i = 0; i < batches.length; i += MAX_CONCURRENT) {
-    const group = batches.slice(i, i + MAX_CONCURRENT);
-    await Promise.all(group.map(async (batch) => {
-      try {
-        const { output } = await generateText({
-          model: bedrock(MODEL_ID),
-          output: Output.object({ schema: z.object({ results: z.array(scoringItemSchema) }) }),
-          prompt: buildScoringPrompt(batch),
-          maxOutputTokens: 4096,
-          temperature: 0.3,
-        });
-        if (output?.results) {
-          for (const r of output.results) {
-            allScores.set(r.index, {
-              depth: clamp(r.depth),
-              novelty: clamp(r.novelty),
-              breadth: clamp(r.breadth),
-              category: validCategories.has(r.category) ? r.category : 'other',
-              keywords: r.keywords.slice(0, 4),
-            });
-          }
-        }
-      } catch (error) {
-        console.warn(`[ai] Scoring batch failed: ${error instanceof Error ? error.message : error}`);
-      }
-    }));
-    console.log(`[ai] Scoring: ${Math.min(i + MAX_CONCURRENT, batches.length)}/${batches.length} batches`);
-  }
-
-  return allScores;
-}
-
-// --- Summarization ---
-
-function buildSummaryPrompt(articles: Array<{ index: number; title: string; description: string; sourceName: string; link: string; avgScore?: number }>): string {
-  const articlesList = articles.map(a => {
-    const avg = a.avgScore ?? 0;
-    const targetLen = avg >= 6 ? 300 : 100;
-    return `Index ${a.index}: [${a.sourceName}] ${a.title}\n目标摘要长度: ${targetLen}字\nURL: ${a.link}\n${a.description.slice(0, 800)}`;
-  }).join('\n\n---\n\n');
-
-  return `你是一个面向 AI 和软件工程从业者的技术内容摘要专家。请为以下文章生成中文标题和摘要。
+# 第二部分：中文标题和摘要
 
 ## 中文标题 (titleZh)
 
@@ -197,7 +134,10 @@ function buildSummaryPrompt(articles: Array<{ index: number; title: string; desc
 
 让读者不点原文就能获取核心信息。用中文撰写。
 
-⚠️ 字数要求（必须严格遵守）：每篇文章下方标注了"目标摘要长度"，标注 300 字的必须写到 250-350 字，标注 100 字的必须控制在 80-120 字。不够字数要展开细节，超出字数要精简。所有摘要必须用中文撰写，即使原文是英文。
+⚠️ 字数要求（必须严格遵守）：先根据你自己的评分计算平均分 (depth+novelty+breadth)/3：
+- 平均分 >= 6 的文章写 500 字左右摘要
+- 平均分 > 3 且 < 6 的文章写 80-120 字摘要
+- 平均分 <= 3 的文章不写摘要，summary 字段留空字符串
 
 写法规则：
 - 第一句直接给出核心事实或结论，不要铺垫
@@ -215,47 +155,55 @@ function buildSummaryPrompt(articles: Array<{ index: number; title: string; desc
 
 保留具体信息：数字、版本号、模型名、百分比、基准测试名称。不要用 "显著提升" 替代 "提升 40%"，不要用 "某大模型" 替代 "Claude 3.5 Sonnet"。
 
-## 待摘要文章
+---
 
-${articlesList}
-`;
+## 待处理文章
+
+${articlesList}`;
 }
 
-export async function summarizeArticles(articles: Array<Article & { index: number; avgScore?: number }>): Promise<Map<number, {
-  titleZh: string; summary: string;
-}>> {
-  const summaries = new Map<number, { titleZh: string; summary: string }>();
+export async function processArticles(articles: Article[]): Promise<Map<number, ArticleResult>> {
+  const allResults = new Map<number, ArticleResult>();
+  const indexed = articles.map((a, i) => ({ index: i, title: a.title, content: a.content, sourceName: a.sourceName, link: a.link }));
 
-  // Skip articles with avgScore < 3
-  const toSummarize = articles.filter(a => (a.avgScore ?? 0) >= 3);
-  const skipped = articles.length - toSummarize.length;
-  if (skipped > 0) console.log(`[ai] Skipping ${skipped} low-score articles (avgScore < 3)`);
+  const batches: typeof indexed[] = [];
+  for (let i = 0; i < indexed.length; i += BATCH_SIZE) {
+    batches.push(indexed.slice(i, i + BATCH_SIZE));
+  }
 
-  console.log(`[ai] Summarizing ${toSummarize.length} articles one by one`);
+  console.log(`[ai] Processing ${articles.length} articles in ${batches.length} batches`);
+  const validCategories = new Set(['ai-ml', 'security', 'engineering', 'tools', 'opinion', 'other']);
+  const clamp = (v: number) => Math.min(10, Math.max(1, Math.round(v)));
 
-  const summaryConcurrent = 10;
-  for (let i = 0; i < toSummarize.length; i += summaryConcurrent) {
-    const group = toSummarize.slice(i, i + summaryConcurrent);
-    await Promise.all(group.map(async (a) => {
-      const item = { index: a.index, title: a.title, description: a.description, sourceName: a.sourceName, link: a.link, avgScore: a.avgScore };
+  for (let i = 0; i < batches.length; i += MAX_CONCURRENT) {
+    const group = batches.slice(i, i + MAX_CONCURRENT);
+    await Promise.all(group.map(async (batch) => {
       try {
         const { output } = await generateText({
           model: bedrock(MODEL_ID),
-          output: Output.object({ schema: summaryItemSchema }),
-          prompt: buildSummaryPrompt([item]),
-          maxOutputTokens: 4096,
+          output: Output.object({ schema: z.object({ results: z.array(articleResultSchema) }) }),
+          prompt: buildPrompt(batch),
+          maxOutputTokens: 8192,
           temperature: 0.3,
         });
-        if (output) {
-          summaries.set(a.index, { titleZh: output.titleZh, summary: output.summary });
+        if (output?.results) {
+          for (const r of output.results) {
+            allResults.set(r.index, {
+              ...r,
+              depth: clamp(r.depth),
+              novelty: clamp(r.novelty),
+              breadth: clamp(r.breadth),
+              category: validCategories.has(r.category) ? r.category : 'other',
+              keywords: r.keywords.slice(0, 4),
+            });
+          }
         }
       } catch (error) {
-        console.warn(`[ai] Summary failed for index ${a.index}: ${error instanceof Error ? error.message : error}`);
+        console.warn(`[ai] Batch failed: ${error instanceof Error ? error.message : error}`);
       }
     }));
-    console.log(`[ai] Summary: ${Math.min(i + summaryConcurrent, toSummarize.length)}/${toSummarize.length}`);
+    console.log(`[ai] Progress: ${Math.min(i + MAX_CONCURRENT, batches.length)}/${batches.length} batches`);
   }
 
-  return summaries;
+  return allResults;
 }
-
