@@ -22,8 +22,9 @@ const articleResultSchema = z.object({
 export type ArticleResult = z.infer<typeof articleResultSchema>;
 
 function buildPrompt(articles: Array<{ index: number; title: string; content: string; sourceName: string; link: string }>): string {
+  const MAX_CONTENT_CHARS = 5000;
   const articlesList = articles.map(a =>
-    `Index ${a.index}: [${a.sourceName}] ${a.title}\nURL: ${a.link}\n${a.content}`
+    `Index ${a.index}: [${a.sourceName}] ${a.title}\nURL: ${a.link}\n${a.content.slice(0, MAX_CONTENT_CHARS)}`
   ).join('\n\n---\n\n');
 
   return `你是一个技术内容策展人，正在为一份面向 AI 和软件工程从业者的每日精选摘要筛选文章。文章来源主要是独立技术博客，话题以 AI/LLM、安全和系统工程为主。你的目标是帮读者筛出真正值得阅读的内容，评分区分度至关重要。
