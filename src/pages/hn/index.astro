@@ -1,0 +1,53 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { loadHnData } from '../../lib/data';
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const hnData = loadHnData();
+const items = hnData?.items || [];
+
+function timeAgo(ts: number): string {
+  const diff = Date.now() - ts * 1000;
+  const h = Math.floor(diff / 3_600_000);
+  const d = Math.floor(diff / 86_400_000);
+  if (h < 24) return `${h}h`;
+  return `${d}d`;
+}
+---
+<Layout title="HN 讨论 - TechDigest">
+  {items.length === 0 ? (
+    <div class="text-center py-8">
+      <p class="text-text-secondary text-sm">暂无数据</p>
+    </div>
+  ) : (
+    <div class="space-y-2">
+      {items.map(item => {
+        const ai = item.aiSummary || item.aisummary || {};
+        const tags = item.classifications?.tags || [];
+        const emoji = ai.emoji || '';
+        const title = ai.chinese_title || item.title;
+        return (
+          <a href={`${base}hn/${item.id}/`} class="hn-card block bg-bg-card rounded-xl border border-gray-200/60 px-3 py-2.5 no-underline text-inherit">
+            <h3 class="text-[15px] font-medium leading-snug mb-1.5 text-text-primary break-words">
+              {emoji} {title}
+            </h3>
+            <div class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-text-secondary leading-none mb-1.5">
+              <span class="font-medium text-accent-warm">{item.score} 分</span>
+              <span class="opacity-30">·</span>
+              <span>{item.by}</span>
+              <span class="opacity-30">·</span>
+              <span>{timeAgo(item.createdAt)}</span>
+            </div>
+            {tags.length > 0 && (
+              <div class="flex flex-wrap gap-1">
+                {tags.map(tag => (
+                  <span class="inline-block px-1.5 py-px rounded-full bg-gray-100 text-[10px] text-text-secondary">{tag}</span>
+                ))}
+              </div>
+            )}
+          </a>
+        );
+      })}
+    </div>
+  )}
+</Layout>

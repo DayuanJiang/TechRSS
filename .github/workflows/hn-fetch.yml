@@ -1,0 +1,53 @@
+name: HN Fetch
+
+on:
+  schedule:
+    # 09:00-18:00 CST (01:00-10:00 UTC) — every hour
+    - cron: '0 1-10 * * *'
+    # 18:00-01:00 CST (10:00-17:00 UTC) — every 30 minutes
+    - cron: '30 10-17 * * *'
+    - cron: '0 10-17 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  hn-fetch-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    concurrency:
+      group: hn-fetch
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+
+      - run: git pull --rebase
+
+      - run: npx tsx scripts/hn.ts
+
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git stash --include-untracked
+          git pull --rebase
+          git stash pop || true
+          git add data/hn.json
+          git diff --cached --quiet || git commit -m "data: hn update"
+          git push
+
+      - run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/
+      - id: deploy
+        uses: actions/deploy-pages@v4
