@@ -5,7 +5,7 @@ import path from 'node:path';
 const DATA_DIR = path.join(process.cwd(), 'data');
 const HN_FILE = path.join(DATA_DIR, 'hn.json');
 const NH_API = 'https://api.newshacker.me';
-const LIST_SIZE = 20;
+const LIST_SIZE = 50;
 
 interface NhListItem {
   id: number;
