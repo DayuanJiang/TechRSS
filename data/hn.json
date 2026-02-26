@@ -1,6 +1,574 @@
 {
-  "updatedAt": "2026-02-26T09:58:07.982Z",
+  "updatedAt": "2026-02-26T10:39:59.400Z",
   "items": [
+    {
+      "id": 47157398,
+      "by": "thellimist",
+      "title": "I made MCP cheaper in one command",
+      "url": "https://kanyilmaz.me/2026/02/23/cli-vs-mcp.html",
+      "score": 225,
+      "detailUpdatedAt": 1772100797,
+      "createdAt": 1772053232,
+      "aiSummaryUpdatedAt": 1772101621,
+      "aisummary": {
+        "chinese_title": "一命令把 MCP 变便宜：用 CLI/桥接避开上下文膨胀与高 token 成本",
+        "emoji": "🛠️",
+        "sarcastic_question": "把MCP换CLI就能省到底吗？"
+      },
+      "classifications": {
+        "topics": [
+          1,
+          4,
+          6
+        ],
+        "facets": [
+          5,
+          4
+        ],
+        "tags": [
+          "MCP",
+          "CLI",
+          "clihub",
+          "MCPorter",
+          "agents",
+          "LLM",
+          "GitHub"
+        ]
+      },
+      "classificationsUpdatedAt": 1772056896,
+      "aiSummary": {
+        "chinese_title": "一命令把 MCP 变便宜：用 CLI/桥接避开上下文膨胀与高 token 成本",
+        "emoji": "🛠️",
+        "sarcastic_question": "把MCP换CLI就能省到底吗？"
+      },
+      "detail": {
+        "id": 47157398,
+        "by": "thellimist",
+        "title": "I made MCP cheaper in one command",
+        "url": "https://kanyilmaz.me/2026/02/23/cli-vs-mcp.html",
+        "score": 122,
+        "detailUpdatedAt": 1772070209,
+        "createdAt": 1772053232,
+        "aiSummaryUpdatedAt": 1772071042,
+        "aisummary": {
+          "chinese_title": "一命令将 MCP 转为 CLI：用 CLI 降低上下文膨胀与成本",
+          "discussion_overview": [
+            {
+              "category": "MCP 导致的上下文/Token 膨胀问题",
+              "summary": "多条评论指出 MCP 常把完整工具目录以 JSON Schema 形式注入每次请求，导致上下文膨胀——有人统计 GitHub Copilot 插件约有 20 个工具，文章示例提到要加载 15540 tokens 的开销。工具调用会触发 agent 回环：调用后模型需把整个对话（包含历史）作为输入重发，评论中给出若会话有 100k tokens、10 次工具调用可能把输入推到 1–5M tokens 的量级。工具响应经常是大块 JSON dump，含 identifiers、URLs 等对 token 不友好的字段，而缓存命中率并不稳定（理想 90% 但实际有评论提到可低至 ~40%），因此单靠缓存难以彻底解决成本问题。",
+              "supportid": [
+                "47158526",
+                "47160671",
+                "47159632",
+                "47158078",
+                "47158042"
+              ]
+            },
+            {
+              "category": "把 MCP 转为 CLI 的工程实践与优势",
+              "summary": "很多人把把 MCP 转成 CLI 或用本地 CLI 作为工程实践视为立竿见影的降本方案：CLI 可以按需拉取并用 jq/tail 等工具逐块处理输出，避免把整个 schema 或大 JSON dump 丢进模型上下文。评论举出多个实现与项目示例（如 mcpshim 通过 unix socket 用 JSON 做本地桥接，CLIHUB 将 MCP 编译为自包含二进制），并提到 Playwright CLI vs Playwright MCP、mini-browser、Gemini 3 在 CLI 上表现更好等实测经验。CLI 还带来审计与权限边界优势（天然命令日志、易于白名单控制命令/flags/工作目录），同时允许模型通过管道组合多步命令提升准确性，但也存在 OAuth、运行时体积与打包依赖等工程挑战。",
+              "supportid": [
+                "47158257",
+                "47158451",
+                "47158660",
+                "47158640",
+                "47158761",
+                "47157979",
+                "47158031",
+                "47159188",
+                "47158546"
+              ]
+            },
+            {
+              "category": "工具发现与架构替代：Skills / Tool Search / 语义抽象",
+              "summary": "部分评论反驳“所有 MCP 都会把全部工具倾倒进上下文”的绝对说法，指出像 Claude Code 与 Anthropic 的 Tool Search 已实现按需检索工具（progressive disclosure），不必一次性注入完整目录。另有观点提出应将工具抽象提升为语义原语（例如 search/read/create），由服务投影这些语义并在执行时才拉取具体适配器，这样能压缩智能体需要导航的语义空间。也有人认为把 MCP 转 CLI 在某种程度上“重新发明 Skills”，强调现有的 Skills 规范与渐进披露能解决部分问题，但现实中许多 MCP 实现仍倾向于一次性导出冗长描述。",
+              "supportid": [
+                "47158757",
+                "47158844",
+                "47160341",
+                "47158497",
+                "47157889"
+              ]
+            },
+            {
+              "category": "工程实现的权衡：认证、守护进程、打包与历史记录",
+              "summary": "评论详细讨论了实现层面的权衡：OAuth 与持久会话（daemon）是把 MCP 生成成 CLI 时的主要障碍之一，不同项目在这方面有不同取舍。CLIHUB 被描述为把 MCP 编译成零依赖二进制、适合分发与 CI；mcpshim 则是本地 runtime 桥接、便于开发者；MCPorter 是功能更全但依赖较多的生成器。另有实务经验提示某些集成（例如需要状态的 Playwright）仍需守护进程或磁盘持久化，而记录工具调用历史以便审计/回放被认为是生产化部署的重要实践。",
+              "supportid": [
+                "47158451",
+                "47158202",
+                "47158237",
+                "47159556",
+                "47158557",
+                "47159188"
+              ]
+            },
+            {
+              "category": "长期方向与替代技术思路",
+              "summary": "多数评论认为 CLI 是有效的工程优化，但不是根本性长期解法；更理想的方向包括模型/平台改进注意力机制以扩展上下文而不显著增加推理成本，以及提供帐户级别的系统提示缓存并对其大幅降价。工程层面还能通过对工具调用做批处理/并行化来摊薄成本，或在执行时才按需拉取具体工具适配器以压缩语义空间。总体上，社区在短期内采用 CLI/桥接工具缓解成本与审计问题，但对是否应把整个生态围绕 CLI 重构仍有争议。",
+              "supportid": [
+                "47159878",
+                "47159632",
+                "47160341",
+                "47160422"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "MCP",
+              "explanation": "MCP（一个用于向 LLM/agent 暴露工具目录、参数 schema 和调用端点的协议，常以 JSON Schema 形式描述工具）"
+            },
+            {
+              "term": "CLI",
+              "explanation": "CLI（Command Line Interface，命令行界面）— 通过文本命令与程序交互的接口，便于管道化、逐块处理输出、产生日志并减少送入模型的上下文字节。"
+            },
+            {
+              "term": "Skills",
+              "explanation": "Skills（agent 的技能/能力抽象）— 把具体工具封装为可搜索/按需调用的能力接口，通常用于实现渐进披露以避免一次性注入全部工具描述。"
+            },
+            {
+              "term": "Tool Search",
+              "explanation": "Tool Search（Anthropic 的工具检索/发现机制）— 允许模型按需搜索和选择工具，而非把完整工具目录以 JSON dump 形式放入每次请求上下文。"
+            },
+            {
+              "term": "mcpshim",
+              "explanation": "mcpshim（开源项目）— 本地 runtime 桥接/代理，通过 unix socket 与 MCP 服务用简单 JSON 通信，把 MCP 暴露为轻量本地接口，便于用 shell 客户端调用。"
+            },
+            {
+              "term": "CLIHUB",
+              "explanation": "CLIHUB（项目/工具）— 将 MCP servers 编译成可移植、自包含的零依赖二进制，适用于分发、CI 或无法运行守护进程的环境。"
+            },
+            {
+              "term": "MCPorter",
+              "explanation": "MCPorter（TypeScript 项目）— 把 MCP 转为 CLI 的生成器，功能丰富（包括守护进程支持、SDK、自动配置发现），但依赖较多。"
+            },
+            {
+              "term": "progressive disclosure",
+              "explanation": "progressive disclosure（逐步披露）— 按需将工具描述或参数拉入上下文的策略，以减少一次性注入大量 schema 并控制模型的注意力消耗。"
+            }
+          ],
+          "context": "这次讨论基于把 MCP（用于向 LLM/agent 暴露工具和 schema 的协议）通过工具或一条命令转为 CLI，从而减少模型上下文中的冗余 tokens。评论中提出 MCP 常把整个工具目录以 JSON Schema 注入请求、工具调用又会触发对话回环，导致输入 token 成本成倍增长；社区用具体数值（如 15540 tokens、会话 100k tokens 导致 1–5M 输入）来说明问题。为应对这个痛点，出现了多种工程方案和开源项目：mcpshim（本地桥接）、CLIHUB（编译成二进制）、MCPorter（生成器）、CMCP（聚合器）等，同时也讨论了 Cloudflare 的 Code Mode MCP 和 Anthropic 的 Tool Search/Claude Code 等按需发现机制。评论还权衡了 OAuth/守护进程/包体积、审计日志与长期改进（如更好的 attention、系统提示缓存）等因素。",
+          "emoji": "🔧",
+          "sarcastic_question": "改成CLI就能解决注意力和授权问题吗？"
+        },
+        "classifications": {
+          "topics": [
+            1,
+            4,
+            6
+          ],
+          "facets": [
+            5,
+            4
+          ],
+          "tags": [
+            "MCP",
+            "CLI",
+            "clihub",
+            "MCPorter",
+            "agents",
+            "LLM",
+            "GitHub"
+          ]
+        },
+        "classificationsUpdatedAt": 1772056896,
+        "aiSummary": {
+          "chinese_title": "一命令将 MCP 转为 CLI：用 CLI 降低上下文膨胀与成本",
+          "discussion_overview": [
+            {
+              "category": "MCP 导致的上下文/Token 膨胀问题",
+              "summary": "多条评论指出 MCP 常把完整工具目录以 JSON Schema 形式注入每次请求，导致上下文膨胀——有人统计 GitHub Copilot 插件约有 20 个工具，文章示例提到要加载 15540 tokens 的开销。工具调用会触发 agent 回环：调用后模型需把整个对话（包含历史）作为输入重发，评论中给出若会话有 100k tokens、10 次工具调用可能把输入推到 1–5M tokens 的量级。工具响应经常是大块 JSON dump，含 identifiers、URLs 等对 token 不友好的字段，而缓存命中率并不稳定（理想 90% 但实际有评论提到可低至 ~40%），因此单靠缓存难以彻底解决成本问题。",
+              "supportid": [
+                "47158526",
+                "47160671",
+                "47159632",
+                "47158078",
+                "47158042"
+              ]
+            },
+            {
+              "category": "把 MCP 转为 CLI 的工程实践与优势",
+              "summary": "很多人把把 MCP 转成 CLI 或用本地 CLI 作为工程实践视为立竿见影的降本方案：CLI 可以按需拉取并用 jq/tail 等工具逐块处理输出，避免把整个 schema 或大 JSON dump 丢进模型上下文。评论举出多个实现与项目示例（如 mcpshim 通过 unix socket 用 JSON 做本地桥接，CLIHUB 将 MCP 编译为自包含二进制），并提到 Playwright CLI vs Playwright MCP、mini-browser、Gemini 3 在 CLI 上表现更好等实测经验。CLI 还带来审计与权限边界优势（天然命令日志、易于白名单控制命令/flags/工作目录），同时允许模型通过管道组合多步命令提升准确性，但也存在 OAuth、运行时体积与打包依赖等工程挑战。",
+              "supportid": [
+                "47158257",
+                "47158451",
+                "47158660",
+                "47158640",
+                "47158761",
+                "47157979",
+                "47158031",
+                "47159188",
+                "47158546"
+              ]
+            },
+            {
+              "category": "工具发现与架构替代：Skills / Tool Search / 语义抽象",
+              "summary": "部分评论反驳“所有 MCP 都会把全部工具倾倒进上下文”的绝对说法，指出像 Claude Code 与 Anthropic 的 Tool Search 已实现按需检索工具（progressive disclosure），不必一次性注入完整目录。另有观点提出应将工具抽象提升为语义原语（例如 search/read/create），由服务投影这些语义并在执行时才拉取具体适配器，这样能压缩智能体需要导航的语义空间。也有人认为把 MCP 转 CLI 在某种程度上“重新发明 Skills”，强调现有的 Skills 规范与渐进披露能解决部分问题，但现实中许多 MCP 实现仍倾向于一次性导出冗长描述。",
+              "supportid": [
+                "47158757",
+                "47158844",
+                "47160341",
+                "47158497",
+                "47157889"
+              ]
+            },
+            {
+              "category": "工程实现的权衡：认证、守护进程、打包与历史记录",
+              "summary": "评论详细讨论了实现层面的权衡：OAuth 与持久会话（daemon）是把 MCP 生成成 CLI 时的主要障碍之一，不同项目在这方面有不同取舍。CLIHUB 被描述为把 MCP 编译成零依赖二进制、适合分发与 CI；mcpshim 则是本地 runtime 桥接、便于开发者；MCPorter 是功能更全但依赖较多的生成器。另有实务经验提示某些集成（例如需要状态的 Playwright）仍需守护进程或磁盘持久化，而记录工具调用历史以便审计/回放被认为是生产化部署的重要实践。",
+              "supportid": [
+                "47158451",
+                "47158202",
+                "47158237",
+                "47159556",
+                "47158557",
+                "47159188"
+              ]
+            },
+            {
+              "category": "长期方向与替代技术思路",
+              "summary": "多数评论认为 CLI 是有效的工程优化，但不是根本性长期解法；更理想的方向包括模型/平台改进注意力机制以扩展上下文而不显著增加推理成本，以及提供帐户级别的系统提示缓存并对其大幅降价。工程层面还能通过对工具调用做批处理/并行化来摊薄成本，或在执行时才按需拉取具体工具适配器以压缩语义空间。总体上，社区在短期内采用 CLI/桥接工具缓解成本与审计问题，但对是否应把整个生态围绕 CLI 重构仍有争议。",
+              "supportid": [
+                "47159878",
+                "47159632",
+                "47160341",
+                "47160422"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "MCP",
+              "explanation": "MCP（一个用于向 LLM/agent 暴露工具目录、参数 schema 和调用端点的协议，常以 JSON Schema 形式描述工具）"
+            },
+            {
+              "term": "CLI",
+              "explanation": "CLI（Command Line Interface，命令行界面）— 通过文本命令与程序交互的接口，便于管道化、逐块处理输出、产生日志并减少送入模型的上下文字节。"
+            },
+            {
+              "term": "Skills",
+              "explanation": "Skills（agent 的技能/能力抽象）— 把具体工具封装为可搜索/按需调用的能力接口，通常用于实现渐进披露以避免一次性注入全部工具描述。"
+            },
+            {
+              "term": "Tool Search",
+              "explanation": "Tool Search（Anthropic 的工具检索/发现机制）— 允许模型按需搜索和选择工具，而非把完整工具目录以 JSON dump 形式放入每次请求上下文。"
+            },
+            {
+              "term": "mcpshim",
+              "explanation": "mcpshim（开源项目）— 本地 runtime 桥接/代理，通过 unix socket 与 MCP 服务用简单 JSON 通信，把 MCP 暴露为轻量本地接口，便于用 shell 客户端调用。"
+            },
+            {
+              "term": "CLIHUB",
+              "explanation": "CLIHUB（项目/工具）— 将 MCP servers 编译成可移植、自包含的零依赖二进制，适用于分发、CI 或无法运行守护进程的环境。"
+            },
+            {
+              "term": "MCPorter",
+              "explanation": "MCPorter（TypeScript 项目）— 把 MCP 转为 CLI 的生成器，功能丰富（包括守护进程支持、SDK、自动配置发现），但依赖较多。"
+            },
+            {
+              "term": "progressive disclosure",
+              "explanation": "progressive disclosure（逐步披露）— 按需将工具描述或参数拉入上下文的策略，以减少一次性注入大量 schema 并控制模型的注意力消耗。"
+            }
+          ],
+          "context": "这次讨论基于把 MCP（用于向 LLM/agent 暴露工具和 schema 的协议）通过工具或一条命令转为 CLI，从而减少模型上下文中的冗余 tokens。评论中提出 MCP 常把整个工具目录以 JSON Schema 注入请求、工具调用又会触发对话回环，导致输入 token 成本成倍增长；社区用具体数值（如 15540 tokens、会话 100k tokens 导致 1–5M 输入）来说明问题。为应对这个痛点，出现了多种工程方案和开源项目：mcpshim（本地桥接）、CLIHUB（编译成二进制）、MCPorter（生成器）、CMCP（聚合器）等，同时也讨论了 Cloudflare 的 Code Mode MCP 和 Anthropic 的 Tool Search/Claude Code 等按需发现机制。评论还权衡了 OAuth/守护进程/包体积、审计日志与长期改进（如更好的 attention、系统提示缓存）等因素。",
+          "emoji": "🔧",
+          "sarcastic_question": "改成CLI就能解决注意力和授权问题吗？"
+        }
+      }
+    },
+    {
+      "id": 47161160,
+      "by": "jnord",
+      "title": "RAM now represents 35 percent of bill of materials for HP PCs",
+      "url": "https://arstechnica.com/gadgets/2026/02/ram-now-represents-35-percent-of-bill-of-materials-for-hp-pcs/",
+      "score": 264,
+      "detailUpdatedAt": 1772100798,
+      "createdAt": 1772074832,
+      "aiSummaryUpdatedAt": 1772101307,
+      "aisummary": {
+        "chinese_title": "内存占HP PC物料成本35%：AI需求引发DRAM/VRAM短缺与产业、软件影响争论",
+        "emoji": "💸",
+        "sarcastic_question": "内存涨价了，你现在要开始写高效代码吗？"
+      },
+      "classifications": {
+        "topics": [
+          7,
+          10
+        ],
+        "facets": [
+          10
+        ],
+        "tags": [
+          "RAM",
+          "HP",
+          "PCs",
+          "Bill of materials (BOM)",
+          "MacBook",
+          "Europe",
+          "Ars Technica"
+        ]
+      },
+      "classificationsUpdatedAt": 1772078196,
+      "aiSummary": {
+        "chinese_title": "内存占HP PC物料成本35%：AI需求引发DRAM/VRAM短缺与产业、软件影响争论",
+        "emoji": "💸",
+        "sarcastic_question": "内存涨价了，你现在要开始写高效代码吗？"
+      },
+      "detail": {
+        "id": 47161160,
+        "by": "jnord",
+        "title": "RAM now represents 35 percent of bill of materials for HP PCs",
+        "url": "https://arstechnica.com/gadgets/2026/02/ram-now-represents-35-percent-of-bill-of-materials-for-hp-pcs/",
+        "score": 161,
+        "detailUpdatedAt": 1772086396,
+        "createdAt": 1772074832,
+        "aiSummaryUpdatedAt": 1772087241,
+        "aisummary": {
+          "chinese_title": "RAM占HP PC BOM 35%：AI拉动DRAM短缺、价格与建厂争议",
+          "discussion_overview": [
+            {
+              "category": "软件与内存敏感性回归",
+              "summary": "部分评论认为内存涨价可能促使开发者重新重视内存优化，回到以往“内存有限需精简”的做法，尤其在嵌入式与资源受限设备中这种技能仍然至关重要。也有人指出性能优化长期以来就是关于命中缓存（cache），相对的计算与内存速度比已发生变化——把今天的cache视作过去的RAM，但LLM（大型语言模型）对缓存不友好，这限制了通用软件通过缓存缓解内存压力的效果。游戏开发者和嵌入式开发者更可能因硬件成本约束而强制优化，而部分认为多数高层抽象不会因此完全消失但会在关键领域复苏。",
+              "supportid": [
+                "47162021",
+                "47162334",
+                "47162361",
+                "47161688",
+                "47161588"
+              ]
+            },
+            {
+              "category": "AI/超大模型需求与‘谁买走了内存’的争议",
+              "summary": "评论中对“OpenAI买走40%全球RAM”这类说法存在争议：有人向ChatGPT求证后得到否认，认为这些数字是估计或夸张，但多数人承认LLM与超大模型确实对DRAM需求造成短期冲击。观点分歧在于这是否可持续：一派认为只要LLM热潮持续、且没有足够新产能加入，高价会长期存在；另一派认为OpenAI等公司现金流或竞争压力可能导致需求回落，价格在18–36个月内回落。也有评论指出制造产能投入巨大（如厂房与资本支出），长期看若厂商扩产（例如SK Hynix的大规模投资），价格终将回归但可能需数年。",
+              "supportid": [
+                "47162055",
+                "47161841",
+                "47162296",
+                "47162425",
+                "47162258"
+              ]
+            },
+            {
+              "category": "欧洲自建内存产能的可行性与障碍",
+              "summary": "有人建议欧洲投资RAM制造以实现供应链自给，但反对意见列出多重障碍：建设DRAM产线需要巨额资本、先进设备（如EUV光刻机）与长期周期，且很多后段封装/测试（OSAT）与IP都集中在亚洲。欧盟的环境与监管框架、较少的实操制造经验、教育与实务工程师短缺，以及在补贴与产业政策上的劣势，都使得短期内在欧洲建成竞争性DRAM产能非常困难。评论普遍认为若没有长期稳定的政府补贴或将其上升为国家安全项目，私人资本很难承担这类高风险长期投入。",
+              "supportid": [
+                "47161451",
+                "47161692",
+                "47162058",
+                "47161494",
+                "47161594",
+                "47162200"
+              ]
+            },
+            {
+              "category": "市场循环、竞争与中国厂商扩张",
+              "summary": "讨论中多次提到内存行业的周期性：价格暴涨后常通过扩产再次回落，有人预测这轮也会如此。中国制造商（如CXMT）正在扩产，且当韩国/Japan 厂商转向投资HBM等高端产品时，可能让中国厂商在传统DRAM/消费市场迅速抢占份额，但贸易壁垒与出口限制会影响它们的全球布局。评论里也提醒，这既是正常的产业竞争与扩张，也可能伴随地缘政治与贸易政策的干预，最终影响谁能以更低价格向全球市场供应电子产品。",
+              "supportid": [
+                "47162494",
+                "47162080",
+                "47162094",
+                "47162203",
+                "47162219"
+              ]
+            },
+            {
+              "category": "对消费者与游戏/终端产品的即时冲击",
+              "summary": "多数人感到直接影响：有人庆幸早期为笔记本加大内存（如24GB），也有开发者举例称某款Rockchip需要的外部1GB内存从$3涨到$32，直接摧毁了产品经济性。手机与笔记本厂商可能通过缩减其他配置、吞噬利润或提高售价来吸收成本，中端手机最易受挤压。显卡方面，评论提到自2016年GTX 1070以来消费级VRAM增长缓慢（例如RTX 5060仍为8GB），如果显存与RAM继续昂贵，游戏厂商与GPU厂商会被迫在优化与定价间做出抉择。",
+              "supportid": [
+                "47161240",
+                "47161553",
+                "47161383",
+                "47161440",
+                "47162398",
+                "47162178",
+                "47162243"
+              ]
+            },
+            {
+              "category": "BOM（物料清单）定义与会计口径的差异",
+              "summary": "有评论指出‘BOM’不是单一的货币发票，而是多种用途的物料清单——包含 sales BOM、manufacturing BOM、procurement BOM 等不同版本。RAM占BOM的比例依赖于所用的BOM口径：用于销售报价的BOM、用于生产的BOM或用于采购的BOM，百分比会有很大差异。因此媒体或报告引用“RAM占35%”时需要看具体口径，否则不同部门内部的BOM可能给出从接近0%到接近70%的截然不同数字。",
+              "supportid": [
+                "47161627",
+                "47161924"
+              ]
+            },
+            {
+              "category": "专用硬件、ASIC/TPU与内存瓶颈",
+              "summary": "有人质疑是否存在能替代大量RAM需求的“晶圆级AI主机”或ASIC阵列，讨论中确认确实有针对AI的专用加速器（如Google 的TPU，GPU在实践中也被视为AI领域的ASIC）。但关键区别在于：挖矿ASIC主要靠计算，不太依赖IO；而AI训练与大模型推理既要高算力也要大量内存与带宽，且LLM对缓存的适应性差，导致对DRAM/HBM的持续高需求。评论还提到存在高吞吐量的专门推理芯片演示（例如可达数万tokens/s的系统），但内存与IO仍然是限制大模型扩展的核心瓶颈。",
+              "supportid": [
+                "47161866",
+                "47161882",
+                "47161991",
+                "47161962",
+                "47161992",
+                "47161961",
+                "47162361"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "BOM（Bill of Materials，物料清单）",
+              "explanation": "用于列示产品所含零部件、数量与成本的清单；有 sales BOM、manufacturing BOM、procurement BOM 等不同版本，口径不同会导致各项成本占比差异。"
+            },
+            {
+              "term": "DRAM（Dynamic Random-Access Memory，动态随机存取存储器）",
+              "explanation": "主流系统内存类型，用于短期数据存取；对数据中心与AI/LLM工作负载需求敏感，价格与产能变化对整个终端成本影响大。"
+            },
+            {
+              "term": "HBM（High Bandwidth Memory，高带宽内存）",
+              "explanation": "为加速器/GPU设计的堆叠式高速内存，带宽高但制造更复杂且成本昂贵，厂商在高性能产品上倾向投资HBM而非传统DDR DRAM。"
+            },
+            {
+              "term": "VRAM（Video RAM，显存）",
+              "explanation": "GPU用于图形渲染或模型推理的专用内存，显存容量限制直接影响游戏画质与大型模型在消费级硬件上的可用性。"
+            },
+            {
+              "term": "Fab/Foundry（晶圆厂/代工厂）",
+              "explanation": "负责半导体前段制造的工厂，建设与扩产需巨额资本、先进设备（如EUV光刻机）与多年准备，短期内难以快速扩大产能。"
+            },
+            {
+              "term": "OSAT（Outsourced Semiconductor Assembly and Test，封装测试外包）",
+              "explanation": "半导体后段的封装与测试服务，许多内存芯片的后端工作集中在东南亚等地区，影响整体供应链布局与成本。"
+            }
+          ],
+          "context": "报道基于一项数据点：RAM如今占HP台式/笔记本物料清单（BOM）约35%，引发关于内存价格飙升来源的讨论。评论把涨价主要归因于LLM与超大模型带来的DRAM需求激增，但也有人质疑“谁买走了内存”的具体说法并讨论了产能回升的可能性。讨论延伸到制造端（DRAM vs HBM、晶圆厂与OSAT、EUV设备与巨额capex）、地缘政治（中国厂商扩产与贸易壁垒）以及终端影响（笔电、手机、显卡、游戏和软件优化）。部分评论还指出“BOM口径不同会改变百分比”，以及个人级别的真实案例（如Rockchip 1GB模块价格从$3涨到$32）说明现状的即时痛点。",
+          "emoji": "💸",
+          "sarcastic_question": "要等AI泡沫破灭，才能买得起RAM吗？"
+        },
+        "classifications": {
+          "topics": [
+            7,
+            10
+          ],
+          "facets": [
+            10
+          ],
+          "tags": [
+            "RAM",
+            "HP",
+            "PCs",
+            "Bill of materials (BOM)",
+            "MacBook",
+            "Europe",
+            "Ars Technica"
+          ]
+        },
+        "classificationsUpdatedAt": 1772078196,
+        "aiSummary": {
+          "chinese_title": "RAM占HP PC BOM 35%：AI拉动DRAM短缺、价格与建厂争议",
+          "discussion_overview": [
+            {
+              "category": "软件与内存敏感性回归",
+              "summary": "部分评论认为内存涨价可能促使开发者重新重视内存优化，回到以往“内存有限需精简”的做法，尤其在嵌入式与资源受限设备中这种技能仍然至关重要。也有人指出性能优化长期以来就是关于命中缓存（cache），相对的计算与内存速度比已发生变化——把今天的cache视作过去的RAM，但LLM（大型语言模型）对缓存不友好，这限制了通用软件通过缓存缓解内存压力的效果。游戏开发者和嵌入式开发者更可能因硬件成本约束而强制优化，而部分认为多数高层抽象不会因此完全消失但会在关键领域复苏。",
+              "supportid": [
+                "47162021",
+                "47162334",
+                "47162361",
+                "47161688",
+                "47161588"
+              ]
+            },
+            {
+              "category": "AI/超大模型需求与‘谁买走了内存’的争议",
+              "summary": "评论中对“OpenAI买走40%全球RAM”这类说法存在争议：有人向ChatGPT求证后得到否认，认为这些数字是估计或夸张，但多数人承认LLM与超大模型确实对DRAM需求造成短期冲击。观点分歧在于这是否可持续：一派认为只要LLM热潮持续、且没有足够新产能加入，高价会长期存在；另一派认为OpenAI等公司现金流或竞争压力可能导致需求回落，价格在18–36个月内回落。也有评论指出制造产能投入巨大（如厂房与资本支出），长期看若厂商扩产（例如SK Hynix的大规模投资），价格终将回归但可能需数年。",
+              "supportid": [
+                "47162055",
+                "47161841",
+                "47162296",
+                "47162425",
+                "47162258"
+              ]
+            },
+            {
+              "category": "欧洲自建内存产能的可行性与障碍",
+              "summary": "有人建议欧洲投资RAM制造以实现供应链自给，但反对意见列出多重障碍：建设DRAM产线需要巨额资本、先进设备（如EUV光刻机）与长期周期，且很多后段封装/测试（OSAT）与IP都集中在亚洲。欧盟的环境与监管框架、较少的实操制造经验、教育与实务工程师短缺，以及在补贴与产业政策上的劣势，都使得短期内在欧洲建成竞争性DRAM产能非常困难。评论普遍认为若没有长期稳定的政府补贴或将其上升为国家安全项目，私人资本很难承担这类高风险长期投入。",
+              "supportid": [
+                "47161451",
+                "47161692",
+                "47162058",
+                "47161494",
+                "47161594",
+                "47162200"
+              ]
+            },
+            {
+              "category": "市场循环、竞争与中国厂商扩张",
+              "summary": "讨论中多次提到内存行业的周期性：价格暴涨后常通过扩产再次回落，有人预测这轮也会如此。中国制造商（如CXMT）正在扩产，且当韩国/Japan 厂商转向投资HBM等高端产品时，可能让中国厂商在传统DRAM/消费市场迅速抢占份额，但贸易壁垒与出口限制会影响它们的全球布局。评论里也提醒，这既是正常的产业竞争与扩张，也可能伴随地缘政治与贸易政策的干预，最终影响谁能以更低价格向全球市场供应电子产品。",
+              "supportid": [
+                "47162494",
+                "47162080",
+                "47162094",
+                "47162203",
+                "47162219"
+              ]
+            },
+            {
+              "category": "对消费者与游戏/终端产品的即时冲击",
+              "summary": "多数人感到直接影响：有人庆幸早期为笔记本加大内存（如24GB），也有开发者举例称某款Rockchip需要的外部1GB内存从$3涨到$32，直接摧毁了产品经济性。手机与笔记本厂商可能通过缩减其他配置、吞噬利润或提高售价来吸收成本，中端手机最易受挤压。显卡方面，评论提到自2016年GTX 1070以来消费级VRAM增长缓慢（例如RTX 5060仍为8GB），如果显存与RAM继续昂贵，游戏厂商与GPU厂商会被迫在优化与定价间做出抉择。",
+              "supportid": [
+                "47161240",
+                "47161553",
+                "47161383",
+                "47161440",
+                "47162398",
+                "47162178",
+                "47162243"
+              ]
+            },
+            {
+              "category": "BOM（物料清单）定义与会计口径的差异",
+              "summary": "有评论指出‘BOM’不是单一的货币发票，而是多种用途的物料清单——包含 sales BOM、manufacturing BOM、procurement BOM 等不同版本。RAM占BOM的比例依赖于所用的BOM口径：用于销售报价的BOM、用于生产的BOM或用于采购的BOM，百分比会有很大差异。因此媒体或报告引用“RAM占35%”时需要看具体口径，否则不同部门内部的BOM可能给出从接近0%到接近70%的截然不同数字。",
+              "supportid": [
+                "47161627",
+                "47161924"
+              ]
+            },
+            {
+              "category": "专用硬件、ASIC/TPU与内存瓶颈",
+              "summary": "有人质疑是否存在能替代大量RAM需求的“晶圆级AI主机”或ASIC阵列，讨论中确认确实有针对AI的专用加速器（如Google 的TPU，GPU在实践中也被视为AI领域的ASIC）。但关键区别在于：挖矿ASIC主要靠计算，不太依赖IO；而AI训练与大模型推理既要高算力也要大量内存与带宽，且LLM对缓存的适应性差，导致对DRAM/HBM的持续高需求。评论还提到存在高吞吐量的专门推理芯片演示（例如可达数万tokens/s的系统），但内存与IO仍然是限制大模型扩展的核心瓶颈。",
+              "supportid": [
+                "47161866",
+                "47161882",
+                "47161991",
+                "47161962",
+                "47161992",
+                "47161961",
+                "47162361"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "BOM（Bill of Materials，物料清单）",
+              "explanation": "用于列示产品所含零部件、数量与成本的清单；有 sales BOM、manufacturing BOM、procurement BOM 等不同版本，口径不同会导致各项成本占比差异。"
+            },
+            {
+              "term": "DRAM（Dynamic Random-Access Memory，动态随机存取存储器）",
+              "explanation": "主流系统内存类型，用于短期数据存取；对数据中心与AI/LLM工作负载需求敏感，价格与产能变化对整个终端成本影响大。"
+            },
+            {
+              "term": "HBM（High Bandwidth Memory，高带宽内存）",
+              "explanation": "为加速器/GPU设计的堆叠式高速内存，带宽高但制造更复杂且成本昂贵，厂商在高性能产品上倾向投资HBM而非传统DDR DRAM。"
+            },
+            {
+              "term": "VRAM（Video RAM，显存）",
+              "explanation": "GPU用于图形渲染或模型推理的专用内存，显存容量限制直接影响游戏画质与大型模型在消费级硬件上的可用性。"
+            },
+            {
+              "term": "Fab/Foundry（晶圆厂/代工厂）",
+              "explanation": "负责半导体前段制造的工厂，建设与扩产需巨额资本、先进设备（如EUV光刻机）与多年准备，短期内难以快速扩大产能。"
+            },
+            {
+              "term": "OSAT（Outsourced Semiconductor Assembly and Test，封装测试外包）",
+              "explanation": "半导体后段的封装与测试服务，许多内存芯片的后端工作集中在东南亚等地区，影响整体供应链布局与成本。"
+            }
+          ],
+          "context": "报道基于一项数据点：RAM如今占HP台式/笔记本物料清单（BOM）约35%，引发关于内存价格飙升来源的讨论。评论把涨价主要归因于LLM与超大模型带来的DRAM需求激增，但也有人质疑“谁买走了内存”的具体说法并讨论了产能回升的可能性。讨论延伸到制造端（DRAM vs HBM、晶圆厂与OSAT、EUV设备与巨额capex）、地缘政治（中国厂商扩产与贸易壁垒）以及终端影响（笔电、手机、显卡、游戏和软件优化）。部分评论还指出“BOM口径不同会改变百分比”，以及个人级别的真实案例（如Rockchip 1GB模块价格从$3涨到$32）说明现状的即时痛点。",
+          "emoji": "💸",
+          "sarcastic_question": "要等AI泡沫破灭，才能买得起RAM吗？"
+        }
+      }
+    },
     {
       "id": 47112299,
       "by": "cs702",
@@ -946,300 +1514,6 @@
           "context": "该讨论围绕一篇题为“Large-scale online deanonymization with LLM agents”的研究与其引发的社群反应展开。研究将现代 LLM 代理用于跨平台聚合语义线索与元数据来识别匿名用户，并把这类工作与 2008 年针对 Netflix Prize 数据集的去匿名研究（“Robust De-anonymization of Large Sparse Datasets”）进行了比较。实测包括把 Reddit 评论合成为电影评分与旧方法对比（论文 section 5）以及使用 Anthropic（一个 AI 研究机构）红acted 面试数据进行的识别测试（论文中报告 9/125 的识别结果），作者在附录里对 PII 做了大量删减并没有公开完整代码。评论从方法学（语义线索 vs. stylometry）、滥用场景（国家、企业、诈骗链）、可行的技术防护（本地改写、注入噪声）与平台/监管必要性等角度展开了广泛讨论。",
           "emoji": "🔍",
           "sarcastic_question": "现在应该把青春糗事交给模型备案吗？"
-        }
-      }
-    },
-    {
-      "id": 47161160,
-      "by": "jnord",
-      "title": "RAM now represents 35 percent of bill of materials for HP PCs",
-      "url": "https://arstechnica.com/gadgets/2026/02/ram-now-represents-35-percent-of-bill-of-materials-for-hp-pcs/",
-      "score": 161,
-      "detailUpdatedAt": 1772086396,
-      "createdAt": 1772074832,
-      "aiSummaryUpdatedAt": 1772087241,
-      "aisummary": {
-        "chinese_title": "RAM占HP PC BOM 35%：AI拉动DRAM短缺、价格与建厂争议",
-        "emoji": "💸",
-        "sarcastic_question": "要等AI泡沫破灭，才能买得起RAM吗？"
-      },
-      "classifications": {
-        "topics": [
-          7,
-          10
-        ],
-        "facets": [
-          10
-        ],
-        "tags": [
-          "RAM",
-          "HP",
-          "PCs",
-          "Bill of materials (BOM)",
-          "MacBook",
-          "Europe",
-          "Ars Technica"
-        ]
-      },
-      "classificationsUpdatedAt": 1772078196,
-      "aiSummary": {
-        "chinese_title": "RAM占HP PC BOM 35%：AI拉动DRAM短缺、价格与建厂争议",
-        "emoji": "💸",
-        "sarcastic_question": "要等AI泡沫破灭，才能买得起RAM吗？"
-      },
-      "detail": {
-        "id": 47161160,
-        "by": "jnord",
-        "title": "RAM now represents 35 percent of bill of materials for HP PCs",
-        "url": "https://arstechnica.com/gadgets/2026/02/ram-now-represents-35-percent-of-bill-of-materials-for-hp-pcs/",
-        "score": 161,
-        "detailUpdatedAt": 1772086396,
-        "createdAt": 1772074832,
-        "aiSummaryUpdatedAt": 1772087241,
-        "aisummary": {
-          "chinese_title": "RAM占HP PC BOM 35%：AI拉动DRAM短缺、价格与建厂争议",
-          "discussion_overview": [
-            {
-              "category": "软件与内存敏感性回归",
-              "summary": "部分评论认为内存涨价可能促使开发者重新重视内存优化，回到以往“内存有限需精简”的做法，尤其在嵌入式与资源受限设备中这种技能仍然至关重要。也有人指出性能优化长期以来就是关于命中缓存（cache），相对的计算与内存速度比已发生变化——把今天的cache视作过去的RAM，但LLM（大型语言模型）对缓存不友好，这限制了通用软件通过缓存缓解内存压力的效果。游戏开发者和嵌入式开发者更可能因硬件成本约束而强制优化，而部分认为多数高层抽象不会因此完全消失但会在关键领域复苏。",
-              "supportid": [
-                "47162021",
-                "47162334",
-                "47162361",
-                "47161688",
-                "47161588"
-              ]
-            },
-            {
-              "category": "AI/超大模型需求与‘谁买走了内存’的争议",
-              "summary": "评论中对“OpenAI买走40%全球RAM”这类说法存在争议：有人向ChatGPT求证后得到否认，认为这些数字是估计或夸张，但多数人承认LLM与超大模型确实对DRAM需求造成短期冲击。观点分歧在于这是否可持续：一派认为只要LLM热潮持续、且没有足够新产能加入，高价会长期存在；另一派认为OpenAI等公司现金流或竞争压力可能导致需求回落，价格在18–36个月内回落。也有评论指出制造产能投入巨大（如厂房与资本支出），长期看若厂商扩产（例如SK Hynix的大规模投资），价格终将回归但可能需数年。",
-              "supportid": [
-                "47162055",
-                "47161841",
-                "47162296",
-                "47162425",
-                "47162258"
-              ]
-            },
-            {
-              "category": "欧洲自建内存产能的可行性与障碍",
-              "summary": "有人建议欧洲投资RAM制造以实现供应链自给，但反对意见列出多重障碍：建设DRAM产线需要巨额资本、先进设备（如EUV光刻机）与长期周期，且很多后段封装/测试（OSAT）与IP都集中在亚洲。欧盟的环境与监管框架、较少的实操制造经验、教育与实务工程师短缺，以及在补贴与产业政策上的劣势，都使得短期内在欧洲建成竞争性DRAM产能非常困难。评论普遍认为若没有长期稳定的政府补贴或将其上升为国家安全项目，私人资本很难承担这类高风险长期投入。",
-              "supportid": [
-                "47161451",
-                "47161692",
-                "47162058",
-                "47161494",
-                "47161594",
-                "47162200"
-              ]
-            },
-            {
-              "category": "市场循环、竞争与中国厂商扩张",
-              "summary": "讨论中多次提到内存行业的周期性：价格暴涨后常通过扩产再次回落，有人预测这轮也会如此。中国制造商（如CXMT）正在扩产，且当韩国/Japan 厂商转向投资HBM等高端产品时，可能让中国厂商在传统DRAM/消费市场迅速抢占份额，但贸易壁垒与出口限制会影响它们的全球布局。评论里也提醒，这既是正常的产业竞争与扩张，也可能伴随地缘政治与贸易政策的干预，最终影响谁能以更低价格向全球市场供应电子产品。",
-              "supportid": [
-                "47162494",
-                "47162080",
-                "47162094",
-                "47162203",
-                "47162219"
-              ]
-            },
-            {
-              "category": "对消费者与游戏/终端产品的即时冲击",
-              "summary": "多数人感到直接影响：有人庆幸早期为笔记本加大内存（如24GB），也有开发者举例称某款Rockchip需要的外部1GB内存从$3涨到$32，直接摧毁了产品经济性。手机与笔记本厂商可能通过缩减其他配置、吞噬利润或提高售价来吸收成本，中端手机最易受挤压。显卡方面，评论提到自2016年GTX 1070以来消费级VRAM增长缓慢（例如RTX 5060仍为8GB），如果显存与RAM继续昂贵，游戏厂商与GPU厂商会被迫在优化与定价间做出抉择。",
-              "supportid": [
-                "47161240",
-                "47161553",
-                "47161383",
-                "47161440",
-                "47162398",
-                "47162178",
-                "47162243"
-              ]
-            },
-            {
-              "category": "BOM（物料清单）定义与会计口径的差异",
-              "summary": "有评论指出‘BOM’不是单一的货币发票，而是多种用途的物料清单——包含 sales BOM、manufacturing BOM、procurement BOM 等不同版本。RAM占BOM的比例依赖于所用的BOM口径：用于销售报价的BOM、用于生产的BOM或用于采购的BOM，百分比会有很大差异。因此媒体或报告引用“RAM占35%”时需要看具体口径，否则不同部门内部的BOM可能给出从接近0%到接近70%的截然不同数字。",
-              "supportid": [
-                "47161627",
-                "47161924"
-              ]
-            },
-            {
-              "category": "专用硬件、ASIC/TPU与内存瓶颈",
-              "summary": "有人质疑是否存在能替代大量RAM需求的“晶圆级AI主机”或ASIC阵列，讨论中确认确实有针对AI的专用加速器（如Google 的TPU，GPU在实践中也被视为AI领域的ASIC）。但关键区别在于：挖矿ASIC主要靠计算，不太依赖IO；而AI训练与大模型推理既要高算力也要大量内存与带宽，且LLM对缓存的适应性差，导致对DRAM/HBM的持续高需求。评论还提到存在高吞吐量的专门推理芯片演示（例如可达数万tokens/s的系统），但内存与IO仍然是限制大模型扩展的核心瓶颈。",
-              "supportid": [
-                "47161866",
-                "47161882",
-                "47161991",
-                "47161962",
-                "47161992",
-                "47161961",
-                "47162361"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "BOM（Bill of Materials，物料清单）",
-              "explanation": "用于列示产品所含零部件、数量与成本的清单；有 sales BOM、manufacturing BOM、procurement BOM 等不同版本，口径不同会导致各项成本占比差异。"
-            },
-            {
-              "term": "DRAM（Dynamic Random-Access Memory，动态随机存取存储器）",
-              "explanation": "主流系统内存类型，用于短期数据存取；对数据中心与AI/LLM工作负载需求敏感，价格与产能变化对整个终端成本影响大。"
-            },
-            {
-              "term": "HBM（High Bandwidth Memory，高带宽内存）",
-              "explanation": "为加速器/GPU设计的堆叠式高速内存，带宽高但制造更复杂且成本昂贵，厂商在高性能产品上倾向投资HBM而非传统DDR DRAM。"
-            },
-            {
-              "term": "VRAM（Video RAM，显存）",
-              "explanation": "GPU用于图形渲染或模型推理的专用内存，显存容量限制直接影响游戏画质与大型模型在消费级硬件上的可用性。"
-            },
-            {
-              "term": "Fab/Foundry（晶圆厂/代工厂）",
-              "explanation": "负责半导体前段制造的工厂，建设与扩产需巨额资本、先进设备（如EUV光刻机）与多年准备，短期内难以快速扩大产能。"
-            },
-            {
-              "term": "OSAT（Outsourced Semiconductor Assembly and Test，封装测试外包）",
-              "explanation": "半导体后段的封装与测试服务，许多内存芯片的后端工作集中在东南亚等地区，影响整体供应链布局与成本。"
-            }
-          ],
-          "context": "报道基于一项数据点：RAM如今占HP台式/笔记本物料清单（BOM）约35%，引发关于内存价格飙升来源的讨论。评论把涨价主要归因于LLM与超大模型带来的DRAM需求激增，但也有人质疑“谁买走了内存”的具体说法并讨论了产能回升的可能性。讨论延伸到制造端（DRAM vs HBM、晶圆厂与OSAT、EUV设备与巨额capex）、地缘政治（中国厂商扩产与贸易壁垒）以及终端影响（笔电、手机、显卡、游戏和软件优化）。部分评论还指出“BOM口径不同会改变百分比”，以及个人级别的真实案例（如Rockchip 1GB模块价格从$3涨到$32）说明现状的即时痛点。",
-          "emoji": "💸",
-          "sarcastic_question": "要等AI泡沫破灭，才能买得起RAM吗？"
-        },
-        "classifications": {
-          "topics": [
-            7,
-            10
-          ],
-          "facets": [
-            10
-          ],
-          "tags": [
-            "RAM",
-            "HP",
-            "PCs",
-            "Bill of materials (BOM)",
-            "MacBook",
-            "Europe",
-            "Ars Technica"
-          ]
-        },
-        "classificationsUpdatedAt": 1772078196,
-        "aiSummary": {
-          "chinese_title": "RAM占HP PC BOM 35%：AI拉动DRAM短缺、价格与建厂争议",
-          "discussion_overview": [
-            {
-              "category": "软件与内存敏感性回归",
-              "summary": "部分评论认为内存涨价可能促使开发者重新重视内存优化，回到以往“内存有限需精简”的做法，尤其在嵌入式与资源受限设备中这种技能仍然至关重要。也有人指出性能优化长期以来就是关于命中缓存（cache），相对的计算与内存速度比已发生变化——把今天的cache视作过去的RAM，但LLM（大型语言模型）对缓存不友好，这限制了通用软件通过缓存缓解内存压力的效果。游戏开发者和嵌入式开发者更可能因硬件成本约束而强制优化，而部分认为多数高层抽象不会因此完全消失但会在关键领域复苏。",
-              "supportid": [
-                "47162021",
-                "47162334",
-                "47162361",
-                "47161688",
-                "47161588"
-              ]
-            },
-            {
-              "category": "AI/超大模型需求与‘谁买走了内存’的争议",
-              "summary": "评论中对“OpenAI买走40%全球RAM”这类说法存在争议：有人向ChatGPT求证后得到否认，认为这些数字是估计或夸张，但多数人承认LLM与超大模型确实对DRAM需求造成短期冲击。观点分歧在于这是否可持续：一派认为只要LLM热潮持续、且没有足够新产能加入，高价会长期存在；另一派认为OpenAI等公司现金流或竞争压力可能导致需求回落，价格在18–36个月内回落。也有评论指出制造产能投入巨大（如厂房与资本支出），长期看若厂商扩产（例如SK Hynix的大规模投资），价格终将回归但可能需数年。",
-              "supportid": [
-                "47162055",
-                "47161841",
-                "47162296",
-                "47162425",
-                "47162258"
-              ]
-            },
-            {
-              "category": "欧洲自建内存产能的可行性与障碍",
-              "summary": "有人建议欧洲投资RAM制造以实现供应链自给，但反对意见列出多重障碍：建设DRAM产线需要巨额资本、先进设备（如EUV光刻机）与长期周期，且很多后段封装/测试（OSAT）与IP都集中在亚洲。欧盟的环境与监管框架、较少的实操制造经验、教育与实务工程师短缺，以及在补贴与产业政策上的劣势，都使得短期内在欧洲建成竞争性DRAM产能非常困难。评论普遍认为若没有长期稳定的政府补贴或将其上升为国家安全项目，私人资本很难承担这类高风险长期投入。",
-              "supportid": [
-                "47161451",
-                "47161692",
-                "47162058",
-                "47161494",
-                "47161594",
-                "47162200"
-              ]
-            },
-            {
-              "category": "市场循环、竞争与中国厂商扩张",
-              "summary": "讨论中多次提到内存行业的周期性：价格暴涨后常通过扩产再次回落，有人预测这轮也会如此。中国制造商（如CXMT）正在扩产，且当韩国/Japan 厂商转向投资HBM等高端产品时，可能让中国厂商在传统DRAM/消费市场迅速抢占份额，但贸易壁垒与出口限制会影响它们的全球布局。评论里也提醒，这既是正常的产业竞争与扩张，也可能伴随地缘政治与贸易政策的干预，最终影响谁能以更低价格向全球市场供应电子产品。",
-              "supportid": [
-                "47162494",
-                "47162080",
-                "47162094",
-                "47162203",
-                "47162219"
-              ]
-            },
-            {
-              "category": "对消费者与游戏/终端产品的即时冲击",
-              "summary": "多数人感到直接影响：有人庆幸早期为笔记本加大内存（如24GB），也有开发者举例称某款Rockchip需要的外部1GB内存从$3涨到$32，直接摧毁了产品经济性。手机与笔记本厂商可能通过缩减其他配置、吞噬利润或提高售价来吸收成本，中端手机最易受挤压。显卡方面，评论提到自2016年GTX 1070以来消费级VRAM增长缓慢（例如RTX 5060仍为8GB），如果显存与RAM继续昂贵，游戏厂商与GPU厂商会被迫在优化与定价间做出抉择。",
-              "supportid": [
-                "47161240",
-                "47161553",
-                "47161383",
-                "47161440",
-                "47162398",
-                "47162178",
-                "47162243"
-              ]
-            },
-            {
-              "category": "BOM（物料清单）定义与会计口径的差异",
-              "summary": "有评论指出‘BOM’不是单一的货币发票，而是多种用途的物料清单——包含 sales BOM、manufacturing BOM、procurement BOM 等不同版本。RAM占BOM的比例依赖于所用的BOM口径：用于销售报价的BOM、用于生产的BOM或用于采购的BOM，百分比会有很大差异。因此媒体或报告引用“RAM占35%”时需要看具体口径，否则不同部门内部的BOM可能给出从接近0%到接近70%的截然不同数字。",
-              "supportid": [
-                "47161627",
-                "47161924"
-              ]
-            },
-            {
-              "category": "专用硬件、ASIC/TPU与内存瓶颈",
-              "summary": "有人质疑是否存在能替代大量RAM需求的“晶圆级AI主机”或ASIC阵列，讨论中确认确实有针对AI的专用加速器（如Google 的TPU，GPU在实践中也被视为AI领域的ASIC）。但关键区别在于：挖矿ASIC主要靠计算，不太依赖IO；而AI训练与大模型推理既要高算力也要大量内存与带宽，且LLM对缓存的适应性差，导致对DRAM/HBM的持续高需求。评论还提到存在高吞吐量的专门推理芯片演示（例如可达数万tokens/s的系统），但内存与IO仍然是限制大模型扩展的核心瓶颈。",
-              "supportid": [
-                "47161866",
-                "47161882",
-                "47161991",
-                "47161962",
-                "47161992",
-                "47161961",
-                "47162361"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "BOM（Bill of Materials，物料清单）",
-              "explanation": "用于列示产品所含零部件、数量与成本的清单；有 sales BOM、manufacturing BOM、procurement BOM 等不同版本，口径不同会导致各项成本占比差异。"
-            },
-            {
-              "term": "DRAM（Dynamic Random-Access Memory，动态随机存取存储器）",
-              "explanation": "主流系统内存类型，用于短期数据存取；对数据中心与AI/LLM工作负载需求敏感，价格与产能变化对整个终端成本影响大。"
-            },
-            {
-              "term": "HBM（High Bandwidth Memory，高带宽内存）",
-              "explanation": "为加速器/GPU设计的堆叠式高速内存，带宽高但制造更复杂且成本昂贵，厂商在高性能产品上倾向投资HBM而非传统DDR DRAM。"
-            },
-            {
-              "term": "VRAM（Video RAM，显存）",
-              "explanation": "GPU用于图形渲染或模型推理的专用内存，显存容量限制直接影响游戏画质与大型模型在消费级硬件上的可用性。"
-            },
-            {
-              "term": "Fab/Foundry（晶圆厂/代工厂）",
-              "explanation": "负责半导体前段制造的工厂，建设与扩产需巨额资本、先进设备（如EUV光刻机）与多年准备，短期内难以快速扩大产能。"
-            },
-            {
-              "term": "OSAT（Outsourced Semiconductor Assembly and Test，封装测试外包）",
-              "explanation": "半导体后段的封装与测试服务，许多内存芯片的后端工作集中在东南亚等地区，影响整体供应链布局与成本。"
-            }
-          ],
-          "context": "报道基于一项数据点：RAM如今占HP台式/笔记本物料清单（BOM）约35%，引发关于内存价格飙升来源的讨论。评论把涨价主要归因于LLM与超大模型带来的DRAM需求激增，但也有人质疑“谁买走了内存”的具体说法并讨论了产能回升的可能性。讨论延伸到制造端（DRAM vs HBM、晶圆厂与OSAT、EUV设备与巨额capex）、地缘政治（中国厂商扩产与贸易壁垒）以及终端影响（笔电、手机、显卡、游戏和软件优化）。部分评论还指出“BOM口径不同会改变百分比”，以及个人级别的真实案例（如Rockchip 1GB模块价格从$3涨到$32）说明现状的即时痛点。",
-          "emoji": "💸",
-          "sarcastic_question": "要等AI泡沫破灭，才能买得起RAM吗？"
         }
       }
     },
@@ -3710,280 +3984,6 @@
           "context": "原文把亨德里克斯的舞台声音与器材链路（拾音器、踏板、放大器和演奏位置）作为一个系统来解释，提出反馈环路、失真踏板（如Fuzz Face）和持续装置共同塑造了他的标志性音色。评论区围绕两个主轴展开：一是艺术家是否应被贴上“系统工程师”的标签（讨论经验性试验 vs 形式化工程方法）；二是技术细节与史实核对，包括踏板接孔方向、图示与波形注释、以及替代的延音技术（Sustainiac、E‑Bow）。讨论还蔓延到与合成器、MPE控制器和DJ转盘等其他表达工具的可比性，以及文章风格是否显示了“LLM化”写作倾向。",
           "emoji": "🎸",
           "sarcastic_question": "把摇滚技巧叫系统工程，是开玩笑吗？"
-        }
-      }
-    },
-    {
-      "id": 47157398,
-      "by": "thellimist",
-      "title": "I made MCP cheaper in one command",
-      "url": "https://kanyilmaz.me/2026/02/23/cli-vs-mcp.html",
-      "score": 122,
-      "detailUpdatedAt": 1772070209,
-      "createdAt": 1772053232,
-      "aiSummaryUpdatedAt": 1772071042,
-      "aisummary": {
-        "chinese_title": "一命令将 MCP 转为 CLI：用 CLI 降低上下文膨胀与成本",
-        "emoji": "🔧",
-        "sarcastic_question": "改成CLI就能解决注意力和授权问题吗？"
-      },
-      "classifications": {
-        "topics": [
-          1,
-          4,
-          6
-        ],
-        "facets": [
-          5,
-          4
-        ],
-        "tags": [
-          "MCP",
-          "CLI",
-          "clihub",
-          "MCPorter",
-          "agents",
-          "LLM",
-          "GitHub"
-        ]
-      },
-      "classificationsUpdatedAt": 1772056896,
-      "aiSummary": {
-        "chinese_title": "一命令将 MCP 转为 CLI：用 CLI 降低上下文膨胀与成本",
-        "emoji": "🔧",
-        "sarcastic_question": "改成CLI就能解决注意力和授权问题吗？"
-      },
-      "detail": {
-        "id": 47157398,
-        "by": "thellimist",
-        "title": "I made MCP cheaper in one command",
-        "url": "https://kanyilmaz.me/2026/02/23/cli-vs-mcp.html",
-        "score": 122,
-        "detailUpdatedAt": 1772070209,
-        "createdAt": 1772053232,
-        "aiSummaryUpdatedAt": 1772071042,
-        "aisummary": {
-          "chinese_title": "一命令将 MCP 转为 CLI：用 CLI 降低上下文膨胀与成本",
-          "discussion_overview": [
-            {
-              "category": "MCP 导致的上下文/Token 膨胀问题",
-              "summary": "多条评论指出 MCP 常把完整工具目录以 JSON Schema 形式注入每次请求，导致上下文膨胀——有人统计 GitHub Copilot 插件约有 20 个工具，文章示例提到要加载 15540 tokens 的开销。工具调用会触发 agent 回环：调用后模型需把整个对话（包含历史）作为输入重发，评论中给出若会话有 100k tokens、10 次工具调用可能把输入推到 1–5M tokens 的量级。工具响应经常是大块 JSON dump，含 identifiers、URLs 等对 token 不友好的字段，而缓存命中率并不稳定（理想 90% 但实际有评论提到可低至 ~40%），因此单靠缓存难以彻底解决成本问题。",
-              "supportid": [
-                "47158526",
-                "47160671",
-                "47159632",
-                "47158078",
-                "47158042"
-              ]
-            },
-            {
-              "category": "把 MCP 转为 CLI 的工程实践与优势",
-              "summary": "很多人把把 MCP 转成 CLI 或用本地 CLI 作为工程实践视为立竿见影的降本方案：CLI 可以按需拉取并用 jq/tail 等工具逐块处理输出，避免把整个 schema 或大 JSON dump 丢进模型上下文。评论举出多个实现与项目示例（如 mcpshim 通过 unix socket 用 JSON 做本地桥接，CLIHUB 将 MCP 编译为自包含二进制），并提到 Playwright CLI vs Playwright MCP、mini-browser、Gemini 3 在 CLI 上表现更好等实测经验。CLI 还带来审计与权限边界优势（天然命令日志、易于白名单控制命令/flags/工作目录），同时允许模型通过管道组合多步命令提升准确性，但也存在 OAuth、运行时体积与打包依赖等工程挑战。",
-              "supportid": [
-                "47158257",
-                "47158451",
-                "47158660",
-                "47158640",
-                "47158761",
-                "47157979",
-                "47158031",
-                "47159188",
-                "47158546"
-              ]
-            },
-            {
-              "category": "工具发现与架构替代：Skills / Tool Search / 语义抽象",
-              "summary": "部分评论反驳“所有 MCP 都会把全部工具倾倒进上下文”的绝对说法，指出像 Claude Code 与 Anthropic 的 Tool Search 已实现按需检索工具（progressive disclosure），不必一次性注入完整目录。另有观点提出应将工具抽象提升为语义原语（例如 search/read/create），由服务投影这些语义并在执行时才拉取具体适配器，这样能压缩智能体需要导航的语义空间。也有人认为把 MCP 转 CLI 在某种程度上“重新发明 Skills”，强调现有的 Skills 规范与渐进披露能解决部分问题，但现实中许多 MCP 实现仍倾向于一次性导出冗长描述。",
-              "supportid": [
-                "47158757",
-                "47158844",
-                "47160341",
-                "47158497",
-                "47157889"
-              ]
-            },
-            {
-              "category": "工程实现的权衡：认证、守护进程、打包与历史记录",
-              "summary": "评论详细讨论了实现层面的权衡：OAuth 与持久会话（daemon）是把 MCP 生成成 CLI 时的主要障碍之一，不同项目在这方面有不同取舍。CLIHUB 被描述为把 MCP 编译成零依赖二进制、适合分发与 CI；mcpshim 则是本地 runtime 桥接、便于开发者；MCPorter 是功能更全但依赖较多的生成器。另有实务经验提示某些集成（例如需要状态的 Playwright）仍需守护进程或磁盘持久化，而记录工具调用历史以便审计/回放被认为是生产化部署的重要实践。",
-              "supportid": [
-                "47158451",
-                "47158202",
-                "47158237",
-                "47159556",
-                "47158557",
-                "47159188"
-              ]
-            },
-            {
-              "category": "长期方向与替代技术思路",
-              "summary": "多数评论认为 CLI 是有效的工程优化，但不是根本性长期解法；更理想的方向包括模型/平台改进注意力机制以扩展上下文而不显著增加推理成本，以及提供帐户级别的系统提示缓存并对其大幅降价。工程层面还能通过对工具调用做批处理/并行化来摊薄成本，或在执行时才按需拉取具体工具适配器以压缩语义空间。总体上，社区在短期内采用 CLI/桥接工具缓解成本与审计问题，但对是否应把整个生态围绕 CLI 重构仍有争议。",
-              "supportid": [
-                "47159878",
-                "47159632",
-                "47160341",
-                "47160422"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "MCP",
-              "explanation": "MCP（一个用于向 LLM/agent 暴露工具目录、参数 schema 和调用端点的协议，常以 JSON Schema 形式描述工具）"
-            },
-            {
-              "term": "CLI",
-              "explanation": "CLI（Command Line Interface，命令行界面）— 通过文本命令与程序交互的接口，便于管道化、逐块处理输出、产生日志并减少送入模型的上下文字节。"
-            },
-            {
-              "term": "Skills",
-              "explanation": "Skills（agent 的技能/能力抽象）— 把具体工具封装为可搜索/按需调用的能力接口，通常用于实现渐进披露以避免一次性注入全部工具描述。"
-            },
-            {
-              "term": "Tool Search",
-              "explanation": "Tool Search（Anthropic 的工具检索/发现机制）— 允许模型按需搜索和选择工具，而非把完整工具目录以 JSON dump 形式放入每次请求上下文。"
-            },
-            {
-              "term": "mcpshim",
-              "explanation": "mcpshim（开源项目）— 本地 runtime 桥接/代理，通过 unix socket 与 MCP 服务用简单 JSON 通信，把 MCP 暴露为轻量本地接口，便于用 shell 客户端调用。"
-            },
-            {
-              "term": "CLIHUB",
-              "explanation": "CLIHUB（项目/工具）— 将 MCP servers 编译成可移植、自包含的零依赖二进制，适用于分发、CI 或无法运行守护进程的环境。"
-            },
-            {
-              "term": "MCPorter",
-              "explanation": "MCPorter（TypeScript 项目）— 把 MCP 转为 CLI 的生成器，功能丰富（包括守护进程支持、SDK、自动配置发现），但依赖较多。"
-            },
-            {
-              "term": "progressive disclosure",
-              "explanation": "progressive disclosure（逐步披露）— 按需将工具描述或参数拉入上下文的策略，以减少一次性注入大量 schema 并控制模型的注意力消耗。"
-            }
-          ],
-          "context": "这次讨论基于把 MCP（用于向 LLM/agent 暴露工具和 schema 的协议）通过工具或一条命令转为 CLI，从而减少模型上下文中的冗余 tokens。评论中提出 MCP 常把整个工具目录以 JSON Schema 注入请求、工具调用又会触发对话回环，导致输入 token 成本成倍增长；社区用具体数值（如 15540 tokens、会话 100k tokens 导致 1–5M 输入）来说明问题。为应对这个痛点，出现了多种工程方案和开源项目：mcpshim（本地桥接）、CLIHUB（编译成二进制）、MCPorter（生成器）、CMCP（聚合器）等，同时也讨论了 Cloudflare 的 Code Mode MCP 和 Anthropic 的 Tool Search/Claude Code 等按需发现机制。评论还权衡了 OAuth/守护进程/包体积、审计日志与长期改进（如更好的 attention、系统提示缓存）等因素。",
-          "emoji": "🔧",
-          "sarcastic_question": "改成CLI就能解决注意力和授权问题吗？"
-        },
-        "classifications": {
-          "topics": [
-            1,
-            4,
-            6
-          ],
-          "facets": [
-            5,
-            4
-          ],
-          "tags": [
-            "MCP",
-            "CLI",
-            "clihub",
-            "MCPorter",
-            "agents",
-            "LLM",
-            "GitHub"
-          ]
-        },
-        "classificationsUpdatedAt": 1772056896,
-        "aiSummary": {
-          "chinese_title": "一命令将 MCP 转为 CLI：用 CLI 降低上下文膨胀与成本",
-          "discussion_overview": [
-            {
-              "category": "MCP 导致的上下文/Token 膨胀问题",
-              "summary": "多条评论指出 MCP 常把完整工具目录以 JSON Schema 形式注入每次请求，导致上下文膨胀——有人统计 GitHub Copilot 插件约有 20 个工具，文章示例提到要加载 15540 tokens 的开销。工具调用会触发 agent 回环：调用后模型需把整个对话（包含历史）作为输入重发，评论中给出若会话有 100k tokens、10 次工具调用可能把输入推到 1–5M tokens 的量级。工具响应经常是大块 JSON dump，含 identifiers、URLs 等对 token 不友好的字段，而缓存命中率并不稳定（理想 90% 但实际有评论提到可低至 ~40%），因此单靠缓存难以彻底解决成本问题。",
-              "supportid": [
-                "47158526",
-                "47160671",
-                "47159632",
-                "47158078",
-                "47158042"
-              ]
-            },
-            {
-              "category": "把 MCP 转为 CLI 的工程实践与优势",
-              "summary": "很多人把把 MCP 转成 CLI 或用本地 CLI 作为工程实践视为立竿见影的降本方案：CLI 可以按需拉取并用 jq/tail 等工具逐块处理输出，避免把整个 schema 或大 JSON dump 丢进模型上下文。评论举出多个实现与项目示例（如 mcpshim 通过 unix socket 用 JSON 做本地桥接，CLIHUB 将 MCP 编译为自包含二进制），并提到 Playwright CLI vs Playwright MCP、mini-browser、Gemini 3 在 CLI 上表现更好等实测经验。CLI 还带来审计与权限边界优势（天然命令日志、易于白名单控制命令/flags/工作目录），同时允许模型通过管道组合多步命令提升准确性，但也存在 OAuth、运行时体积与打包依赖等工程挑战。",
-              "supportid": [
-                "47158257",
-                "47158451",
-                "47158660",
-                "47158640",
-                "47158761",
-                "47157979",
-                "47158031",
-                "47159188",
-                "47158546"
-              ]
-            },
-            {
-              "category": "工具发现与架构替代：Skills / Tool Search / 语义抽象",
-              "summary": "部分评论反驳“所有 MCP 都会把全部工具倾倒进上下文”的绝对说法，指出像 Claude Code 与 Anthropic 的 Tool Search 已实现按需检索工具（progressive disclosure），不必一次性注入完整目录。另有观点提出应将工具抽象提升为语义原语（例如 search/read/create），由服务投影这些语义并在执行时才拉取具体适配器，这样能压缩智能体需要导航的语义空间。也有人认为把 MCP 转 CLI 在某种程度上“重新发明 Skills”，强调现有的 Skills 规范与渐进披露能解决部分问题，但现实中许多 MCP 实现仍倾向于一次性导出冗长描述。",
-              "supportid": [
-                "47158757",
-                "47158844",
-                "47160341",
-                "47158497",
-                "47157889"
-              ]
-            },
-            {
-              "category": "工程实现的权衡：认证、守护进程、打包与历史记录",
-              "summary": "评论详细讨论了实现层面的权衡：OAuth 与持久会话（daemon）是把 MCP 生成成 CLI 时的主要障碍之一，不同项目在这方面有不同取舍。CLIHUB 被描述为把 MCP 编译成零依赖二进制、适合分发与 CI；mcpshim 则是本地 runtime 桥接、便于开发者；MCPorter 是功能更全但依赖较多的生成器。另有实务经验提示某些集成（例如需要状态的 Playwright）仍需守护进程或磁盘持久化，而记录工具调用历史以便审计/回放被认为是生产化部署的重要实践。",
-              "supportid": [
-                "47158451",
-                "47158202",
-                "47158237",
-                "47159556",
-                "47158557",
-                "47159188"
-              ]
-            },
-            {
-              "category": "长期方向与替代技术思路",
-              "summary": "多数评论认为 CLI 是有效的工程优化，但不是根本性长期解法；更理想的方向包括模型/平台改进注意力机制以扩展上下文而不显著增加推理成本，以及提供帐户级别的系统提示缓存并对其大幅降价。工程层面还能通过对工具调用做批处理/并行化来摊薄成本，或在执行时才按需拉取具体工具适配器以压缩语义空间。总体上，社区在短期内采用 CLI/桥接工具缓解成本与审计问题，但对是否应把整个生态围绕 CLI 重构仍有争议。",
-              "supportid": [
-                "47159878",
-                "47159632",
-                "47160341",
-                "47160422"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "MCP",
-              "explanation": "MCP（一个用于向 LLM/agent 暴露工具目录、参数 schema 和调用端点的协议，常以 JSON Schema 形式描述工具）"
-            },
-            {
-              "term": "CLI",
-              "explanation": "CLI（Command Line Interface，命令行界面）— 通过文本命令与程序交互的接口，便于管道化、逐块处理输出、产生日志并减少送入模型的上下文字节。"
-            },
-            {
-              "term": "Skills",
-              "explanation": "Skills（agent 的技能/能力抽象）— 把具体工具封装为可搜索/按需调用的能力接口，通常用于实现渐进披露以避免一次性注入全部工具描述。"
-            },
-            {
-              "term": "Tool Search",
-              "explanation": "Tool Search（Anthropic 的工具检索/发现机制）— 允许模型按需搜索和选择工具，而非把完整工具目录以 JSON dump 形式放入每次请求上下文。"
-            },
-            {
-              "term": "mcpshim",
-              "explanation": "mcpshim（开源项目）— 本地 runtime 桥接/代理，通过 unix socket 与 MCP 服务用简单 JSON 通信，把 MCP 暴露为轻量本地接口，便于用 shell 客户端调用。"
-            },
-            {
-              "term": "CLIHUB",
-              "explanation": "CLIHUB（项目/工具）— 将 MCP servers 编译成可移植、自包含的零依赖二进制，适用于分发、CI 或无法运行守护进程的环境。"
-            },
-            {
-              "term": "MCPorter",
-              "explanation": "MCPorter（TypeScript 项目）— 把 MCP 转为 CLI 的生成器，功能丰富（包括守护进程支持、SDK、自动配置发现），但依赖较多。"
-            },
-            {
-              "term": "progressive disclosure",
-              "explanation": "progressive disclosure（逐步披露）— 按需将工具描述或参数拉入上下文的策略，以减少一次性注入大量 schema 并控制模型的注意力消耗。"
-            }
-          ],
-          "context": "这次讨论基于把 MCP（用于向 LLM/agent 暴露工具和 schema 的协议）通过工具或一条命令转为 CLI，从而减少模型上下文中的冗余 tokens。评论中提出 MCP 常把整个工具目录以 JSON Schema 注入请求、工具调用又会触发对话回环，导致输入 token 成本成倍增长；社区用具体数值（如 15540 tokens、会话 100k tokens 导致 1–5M 输入）来说明问题。为应对这个痛点，出现了多种工程方案和开源项目：mcpshim（本地桥接）、CLIHUB（编译成二进制）、MCPorter（生成器）、CMCP（聚合器）等，同时也讨论了 Cloudflare 的 Code Mode MCP 和 Anthropic 的 Tool Search/Claude Code 等按需发现机制。评论还权衡了 OAuth/守护进程/包体积、审计日志与长期改进（如更好的 attention、系统提示缓存）等因素。",
-          "emoji": "🔧",
-          "sarcastic_question": "改成CLI就能解决注意力和授权问题吗？"
         }
       }
     },
