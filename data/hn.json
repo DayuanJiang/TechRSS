@@ -1,6 +1,1148 @@
 {
-  "updatedAt": "2026-02-28T07:32:13.768Z",
+  "updatedAt": "2026-02-28T08:36:04.511Z",
   "items": [
+    {
+      "id": 47184049,
+      "by": "shayonj",
+      "title": "Let's discuss sandbox isolation",
+      "url": "https://www.shayon.dev/post/2026/52/lets-discuss-sandbox-isolation/",
+      "score": 134,
+      "detailUpdatedAt": 1772266400,
+      "createdAt": 1772222407,
+      "aiSummaryUpdatedAt": 1772266918,
+      "aisummary": {
+        "chinese_title": "AI 代理沙箱隔离：WASM 可行性、容器/微VM 权衡与凭证网络防护",
+        "emoji": "🛡️",
+        "sarcastic_question": "你真的相信任何单层沙箱不会有漏洞吗？"
+      },
+      "classifications": {
+        "topics": [
+          3,
+          6,
+          1
+        ],
+        "facets": [
+          9,
+          5
+        ],
+        "tags": [
+          "sandboxing",
+          "WebAssembly",
+          "Wasmer",
+          "Docker",
+          "Python",
+          "Claude Code",
+          "Anthropic"
+        ]
+      },
+      "classificationsUpdatedAt": 1772229345,
+      "aiSummary": {
+        "chinese_title": "AI 代理沙箱隔离：WASM 可行性、容器/微VM 权衡与凭证网络防护",
+        "emoji": "🛡️",
+        "sarcastic_question": "你真的相信任何单层沙箱不会有漏洞吗？"
+      },
+      "detail": {
+        "id": 47184049,
+        "by": "shayonj",
+        "title": "Let's discuss sandbox isolation",
+        "url": "https://www.shayon.dev/post/2026/52/lets-discuss-sandbox-isolation/",
+        "score": 134,
+        "detailUpdatedAt": 1772266400,
+        "createdAt": 1772222407,
+        "aiSummaryUpdatedAt": 1772266918,
+        "aisummary": {
+          "chinese_title": "AI 代理沙箱隔离：WASM 可行性、容器/微VM 权衡与凭证网络防护",
+          "discussion_overview": [
+            {
+              "category": "WASM 可行性与局限",
+              "summary": "多位评论者指出 WebAssembly（WASM）已经可以承载被编译到 wasm 的解释器和运行时实例，例如 Pyodide、CPython 的 WASI 构建、QuickJS / MicroQuickJS，以及在服务器端运行 Python 的 Wasmer（能够支持 gevent、SQLAlchemy 和本地模块）。实操经验表明，运行非编译语言的关键在于把对应解释器或运行时编译为 WASM 或使用能承载该运行时的引擎，因此并非“直接丢脚本就能跑”。WASM 的模块化合同（如 qip 的做法）可以天然限制 fs/net/time 等能力，适合已知依赖的小工具流水线，但多条评论警告侧信道风险：投机执行（speculative execution）或同一进程内的多实例可能泄露内存，因此通常建议把 WASM 运行时放在独立进程或更强的隔离层。结论是 WASM 在特定、可预见依赖的 agent 场景非常有吸引力，但不是对任意语言和任意代码的通用“即插即用”解法。",
+              "supportid": [
+                "47185105",
+                "47185357",
+                "47191339",
+                "47188273",
+                "47185569",
+                "47185396",
+                "47186265"
+              ]
+            },
+            {
+              "category": "容器、微VM 与 gVisor 的权衡",
+              "summary": "多数人仍然把容器或微VM作为首选隔离手段：实践中常用 Docker / Podman 等容器，且 Docker 的沙箱化实现已经向 microVM 模式演进以降低主机暴露面。gVisor 被描述为在用户态用 Go 重实现 Linux 子集，从而把宿主内核暴露的接口减小，且可以结合 KVM 使用；这种设计在资源管理和宿主可见性上有便利，但与微VM相比在隔离模型、性能和每实例开销上存在权衡。也有人坚持完整 VM（如 KVM/QEMU 或 QubesOS）的硬件强隔离是必需的，但也有观点认为 gVisor 与 microVM 在实际隔离能力上差距未必极大，重点在于“尽量窄化接口并补足网络/凭证控制”。",
+              "supportid": [
+                "47185250",
+                "47185703",
+                "47189104",
+                "47186611",
+                "47190747",
+                "47188815",
+                "47188877"
+              ]
+            },
+            {
+              "category": "实战工具与工程实践",
+              "summary": "评论里充斥着具体工具与工程化做法：macOS 上有 Sandvault（通过独立非特权用户 + sandbox-exec 限制），有人用 nsjail、Kiln-AI/Kilntainers（多后端：Docker/Podman/Modal/E2B/WASM）、SmolVM、vibebin、multitui 等方案；也有团队用 KVM/QEMU 建立可复用的 VM 项目并用脚本同步代码与启动 agent。工程实践的共识是采取最小挂载（只挂载工作区和缓存）、默认断网（--network none）并为特例命令显式放行、以及用 per-skill hooks 或工作流系统（例如 AWW）在宿主侧强制检查和限制操作。另有部分用户选择把执行托管给云端产品（例如 Claude Code），把沙箱责任外包给服务方以降低本地运维风险。",
+              "supportid": [
+                "47185250",
+                "47192131",
+                "47186611",
+                "47190409",
+                "47186422",
+                "47188652",
+                "47186265",
+                "47191269",
+                "47185703",
+                "47189104",
+                "47185452"
+              ]
+            },
+            {
+              "category": "网络与凭证隔离比仅靠计算隔离更关键",
+              "summary": "多位评论者强调：即便有良好计算隔离，若代理能任意联网或获取凭证，数据外泄与滥用仍不可控。建议做法包括将所有出站流量通过代理并用策略引擎审计、对出站目标使用 nftables 或固定域名白名单（例如 cagent 项目）、以及在代理环境内先传入 mock tokens 或把请求代理化，只有在策略通过后才替换真实凭证。虽然有人指出 deno 等平台已开始实现部分能力，但总体共识是必须把凭证隔离、请求审计和网络出站控制作为沙箱设计的一等要素，而不是仅靠 namespace/cgroups/seccomp 来自信处置风险。",
+              "supportid": [
+                "47190376",
+                "47190486",
+                "47190588",
+                "47186196",
+                "47185874",
+                "47185965",
+                "47186040"
+              ]
+            },
+            {
+              "category": "安全边界与表述争议",
+              "summary": "评论中有对文章论述方式的批评：一方面将 namespaces/cgroups/seccomp 说成不是“安全边界”以强调内核漏洞风险，另一方面又推荐 gVisor 等额外层，批评者质疑这是否回避了“如果 gVisor 自身有漏洞怎么办”的问题。支持方则指出不同方案的本质是暴露面和复杂度的权衡——gVisor 通过更小的代码面和更窄的接口降低被利用概率，但并非绝对安全。相关讨论扩展到内核规模（整体内核代码很大但实际运行的子集更小）以及投机执行带来的侧信道问题，进一步说明“没有完美沙箱，只能减小风险面”。",
+              "supportid": [
+                "47188877",
+                "47188909",
+                "47187214",
+                "47185569"
+              ]
+            },
+            {
+              "category": "替代架构与未来方向",
+              "summary": "除了容器/VM/wasm 的现实选项，评论还讨论了若干替代或未来方向：QubesOS（基于 Xen 的桌面隔离）被认为从设计上更安全但使用门槛高；unikernel/libOS、V8 isolates（如 Cloudflare Workers 的隔离模型）和 GPU 沙箱被提为可研究的路径。有人呼吁更窄、更可证明的内核/系统接口（类似 RISC 式的 syscall 精简）以从根本上降低暴露面；游戏领域的从业者则期待 WASM 成为现代 modding 的运行时，以替代历史上基于 Lua 的嵌入式脚本方案。总体上既有实务工具的演进，也有对更小可信计算基（smaller TCB）设计的长远讨论。",
+              "supportid": [
+                "47185616",
+                "47185720",
+                "47189439",
+                "47186988",
+                "47190747",
+                "47186865"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "WebAssembly (WASM)",
+              "explanation": "一种便携的、受限权限的字节码格式，最初用于浏览器，现在有服务器端运行时（如 Wasmer、Pyodide、QuickJS 编译版）可执行 wasm 模块。WASM 适合模块化、能力受限的处理流水线，但要运行解释型语言通常需要把解释器/运行时编译到 wasm 或用支持该运行时的引擎。"
+            },
+            {
+              "term": "Wasmer",
+              "explanation": "一个通用的 WebAssembly 运行时，可在服务端或边缘运行 wasm 模块；社区示例显示可以用它承载 Python 运行时并支持 gevent、SQLAlchemy 与本地扩展。"
+            },
+            {
+              "term": "gVisor",
+              "explanation": "Google 开发的用户态“微内核”式沙箱，使用 Go 重实现 Linux 的一部分 syscall 接口以缩小宿主暴露面，可与 KVM 协同工作，位于传统容器与 VM 之间的折衷方案。"
+            },
+            {
+              "term": "microVM",
+              "explanation": "轻量级虚拟机（例如 Firecracker 等思想），提供硬件级隔离但比完整 VM 更低的启动与资源开销，常被用于把容器工作负载包在更强的硬件隔离里。"
+            },
+            {
+              "term": "namespaces / cgroups / seccomp",
+              "explanation": "Linux 的隔离与限制原语：namespaces 隔离进程视图（PID、网络等），cgroups 控制资源配额，seccomp 用于系统调用过滤。它们能显著降低风险但不是绝对安全边界（内核漏洞仍可被利用）。"
+            },
+            {
+              "term": "speculative execution（投机执行）",
+              "explanation": "CPU 的性能优化机制可能引发侧信道（例如 Spectre 类攻击），导致同一进程或同一物理核上的不同实例泄露内存数据，要求在设计隔离时考虑进程/硬件级分离和缓解措施。"
+            },
+            {
+              "term": "QubesOS",
+              "explanation": "一个以安全隔离为核心的桌面操作系统，基于 Xen hypervisor 把应用与服务放到独立 VM（qube）中以实现强隔离，但日常使用有一定学习成本。"
+            },
+            {
+              "term": "nftables",
+              "explanation": "Linux 下的包过滤/防火墙框架，可用于实现基于域名或 IP 的出站白名单策略，评论里有项目（cagent）用它来限制代理的外联目标。"
+            }
+          ],
+          "context": "讨论围绕如何为 AI 编码代理（agentic coding）提供可接受的沙箱隔离展开，文章对比了 kernel 原语（namespaces/cgroups/seccomp）、容器、gVisor、微VM、完整 VM 以及 WASM 等多种方案。评论者多来自工程实操层面，分享了 Sandvault、nsjail、KVM/QEMU、Docker/微VM、Kiln-AI/Kilntainers、Wasmer、Pyodide、qip 等工具和实践经验，强调默认断网、最小挂载与 per-skill 行为检查。讨论的核心不是找“绝对安全”的单一方案，而是权衡可用性、性能与攻击面（包括投机执行侧信道）、并把网络出口与凭证管理作为关键要素来设计整体防护。许多建议倾向于分层防护：计算隔离＋严格的出站/凭证代理与审计，以降低实战风险。",
+          "emoji": "🛡️",
+          "sarcastic_question": "你真的相信任何单层沙箱不会有漏洞吗？"
+        },
+        "classifications": {
+          "topics": [
+            3,
+            6,
+            1
+          ],
+          "facets": [
+            9,
+            5
+          ],
+          "tags": [
+            "sandboxing",
+            "WebAssembly",
+            "Wasmer",
+            "Docker",
+            "Python",
+            "Claude Code",
+            "Anthropic"
+          ]
+        },
+        "classificationsUpdatedAt": 1772229345,
+        "aiSummary": {
+          "chinese_title": "AI 代理沙箱隔离：WASM 可行性、容器/微VM 权衡与凭证网络防护",
+          "discussion_overview": [
+            {
+              "category": "WASM 可行性与局限",
+              "summary": "多位评论者指出 WebAssembly（WASM）已经可以承载被编译到 wasm 的解释器和运行时实例，例如 Pyodide、CPython 的 WASI 构建、QuickJS / MicroQuickJS，以及在服务器端运行 Python 的 Wasmer（能够支持 gevent、SQLAlchemy 和本地模块）。实操经验表明，运行非编译语言的关键在于把对应解释器或运行时编译为 WASM 或使用能承载该运行时的引擎，因此并非“直接丢脚本就能跑”。WASM 的模块化合同（如 qip 的做法）可以天然限制 fs/net/time 等能力，适合已知依赖的小工具流水线，但多条评论警告侧信道风险：投机执行（speculative execution）或同一进程内的多实例可能泄露内存，因此通常建议把 WASM 运行时放在独立进程或更强的隔离层。结论是 WASM 在特定、可预见依赖的 agent 场景非常有吸引力，但不是对任意语言和任意代码的通用“即插即用”解法。",
+              "supportid": [
+                "47185105",
+                "47185357",
+                "47191339",
+                "47188273",
+                "47185569",
+                "47185396",
+                "47186265"
+              ]
+            },
+            {
+              "category": "容器、微VM 与 gVisor 的权衡",
+              "summary": "多数人仍然把容器或微VM作为首选隔离手段：实践中常用 Docker / Podman 等容器，且 Docker 的沙箱化实现已经向 microVM 模式演进以降低主机暴露面。gVisor 被描述为在用户态用 Go 重实现 Linux 子集，从而把宿主内核暴露的接口减小，且可以结合 KVM 使用；这种设计在资源管理和宿主可见性上有便利，但与微VM相比在隔离模型、性能和每实例开销上存在权衡。也有人坚持完整 VM（如 KVM/QEMU 或 QubesOS）的硬件强隔离是必需的，但也有观点认为 gVisor 与 microVM 在实际隔离能力上差距未必极大，重点在于“尽量窄化接口并补足网络/凭证控制”。",
+              "supportid": [
+                "47185250",
+                "47185703",
+                "47189104",
+                "47186611",
+                "47190747",
+                "47188815",
+                "47188877"
+              ]
+            },
+            {
+              "category": "实战工具与工程实践",
+              "summary": "评论里充斥着具体工具与工程化做法：macOS 上有 Sandvault（通过独立非特权用户 + sandbox-exec 限制），有人用 nsjail、Kiln-AI/Kilntainers（多后端：Docker/Podman/Modal/E2B/WASM）、SmolVM、vibebin、multitui 等方案；也有团队用 KVM/QEMU 建立可复用的 VM 项目并用脚本同步代码与启动 agent。工程实践的共识是采取最小挂载（只挂载工作区和缓存）、默认断网（--network none）并为特例命令显式放行、以及用 per-skill hooks 或工作流系统（例如 AWW）在宿主侧强制检查和限制操作。另有部分用户选择把执行托管给云端产品（例如 Claude Code），把沙箱责任外包给服务方以降低本地运维风险。",
+              "supportid": [
+                "47185250",
+                "47192131",
+                "47186611",
+                "47190409",
+                "47186422",
+                "47188652",
+                "47186265",
+                "47191269",
+                "47185703",
+                "47189104",
+                "47185452"
+              ]
+            },
+            {
+              "category": "网络与凭证隔离比仅靠计算隔离更关键",
+              "summary": "多位评论者强调：即便有良好计算隔离，若代理能任意联网或获取凭证，数据外泄与滥用仍不可控。建议做法包括将所有出站流量通过代理并用策略引擎审计、对出站目标使用 nftables 或固定域名白名单（例如 cagent 项目）、以及在代理环境内先传入 mock tokens 或把请求代理化，只有在策略通过后才替换真实凭证。虽然有人指出 deno 等平台已开始实现部分能力，但总体共识是必须把凭证隔离、请求审计和网络出站控制作为沙箱设计的一等要素，而不是仅靠 namespace/cgroups/seccomp 来自信处置风险。",
+              "supportid": [
+                "47190376",
+                "47190486",
+                "47190588",
+                "47186196",
+                "47185874",
+                "47185965",
+                "47186040"
+              ]
+            },
+            {
+              "category": "安全边界与表述争议",
+              "summary": "评论中有对文章论述方式的批评：一方面将 namespaces/cgroups/seccomp 说成不是“安全边界”以强调内核漏洞风险，另一方面又推荐 gVisor 等额外层，批评者质疑这是否回避了“如果 gVisor 自身有漏洞怎么办”的问题。支持方则指出不同方案的本质是暴露面和复杂度的权衡——gVisor 通过更小的代码面和更窄的接口降低被利用概率，但并非绝对安全。相关讨论扩展到内核规模（整体内核代码很大但实际运行的子集更小）以及投机执行带来的侧信道问题，进一步说明“没有完美沙箱，只能减小风险面”。",
+              "supportid": [
+                "47188877",
+                "47188909",
+                "47187214",
+                "47185569"
+              ]
+            },
+            {
+              "category": "替代架构与未来方向",
+              "summary": "除了容器/VM/wasm 的现实选项，评论还讨论了若干替代或未来方向：QubesOS（基于 Xen 的桌面隔离）被认为从设计上更安全但使用门槛高；unikernel/libOS、V8 isolates（如 Cloudflare Workers 的隔离模型）和 GPU 沙箱被提为可研究的路径。有人呼吁更窄、更可证明的内核/系统接口（类似 RISC 式的 syscall 精简）以从根本上降低暴露面；游戏领域的从业者则期待 WASM 成为现代 modding 的运行时，以替代历史上基于 Lua 的嵌入式脚本方案。总体上既有实务工具的演进，也有对更小可信计算基（smaller TCB）设计的长远讨论。",
+              "supportid": [
+                "47185616",
+                "47185720",
+                "47189439",
+                "47186988",
+                "47190747",
+                "47186865"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "WebAssembly (WASM)",
+              "explanation": "一种便携的、受限权限的字节码格式，最初用于浏览器，现在有服务器端运行时（如 Wasmer、Pyodide、QuickJS 编译版）可执行 wasm 模块。WASM 适合模块化、能力受限的处理流水线，但要运行解释型语言通常需要把解释器/运行时编译到 wasm 或用支持该运行时的引擎。"
+            },
+            {
+              "term": "Wasmer",
+              "explanation": "一个通用的 WebAssembly 运行时，可在服务端或边缘运行 wasm 模块；社区示例显示可以用它承载 Python 运行时并支持 gevent、SQLAlchemy 与本地扩展。"
+            },
+            {
+              "term": "gVisor",
+              "explanation": "Google 开发的用户态“微内核”式沙箱，使用 Go 重实现 Linux 的一部分 syscall 接口以缩小宿主暴露面，可与 KVM 协同工作，位于传统容器与 VM 之间的折衷方案。"
+            },
+            {
+              "term": "microVM",
+              "explanation": "轻量级虚拟机（例如 Firecracker 等思想），提供硬件级隔离但比完整 VM 更低的启动与资源开销，常被用于把容器工作负载包在更强的硬件隔离里。"
+            },
+            {
+              "term": "namespaces / cgroups / seccomp",
+              "explanation": "Linux 的隔离与限制原语：namespaces 隔离进程视图（PID、网络等），cgroups 控制资源配额，seccomp 用于系统调用过滤。它们能显著降低风险但不是绝对安全边界（内核漏洞仍可被利用）。"
+            },
+            {
+              "term": "speculative execution（投机执行）",
+              "explanation": "CPU 的性能优化机制可能引发侧信道（例如 Spectre 类攻击），导致同一进程或同一物理核上的不同实例泄露内存数据，要求在设计隔离时考虑进程/硬件级分离和缓解措施。"
+            },
+            {
+              "term": "QubesOS",
+              "explanation": "一个以安全隔离为核心的桌面操作系统，基于 Xen hypervisor 把应用与服务放到独立 VM（qube）中以实现强隔离，但日常使用有一定学习成本。"
+            },
+            {
+              "term": "nftables",
+              "explanation": "Linux 下的包过滤/防火墙框架，可用于实现基于域名或 IP 的出站白名单策略，评论里有项目（cagent）用它来限制代理的外联目标。"
+            }
+          ],
+          "context": "讨论围绕如何为 AI 编码代理（agentic coding）提供可接受的沙箱隔离展开，文章对比了 kernel 原语（namespaces/cgroups/seccomp）、容器、gVisor、微VM、完整 VM 以及 WASM 等多种方案。评论者多来自工程实操层面，分享了 Sandvault、nsjail、KVM/QEMU、Docker/微VM、Kiln-AI/Kilntainers、Wasmer、Pyodide、qip 等工具和实践经验，强调默认断网、最小挂载与 per-skill 行为检查。讨论的核心不是找“绝对安全”的单一方案，而是权衡可用性、性能与攻击面（包括投机执行侧信道）、并把网络出口与凭证管理作为关键要素来设计整体防护。许多建议倾向于分层防护：计算隔离＋严格的出站/凭证代理与审计，以降低实战风险。",
+          "emoji": "🛡️",
+          "sarcastic_question": "你真的相信任何单层沙箱不会有漏洞吗？"
+        }
+      }
+    },
+    {
+      "id": 47170030,
+      "by": "ks2048",
+      "title": "Smallest transformer that can add two 10-digit numbers",
+      "url": "https://github.com/anadim/AdderBoard",
+      "score": 136,
+      "detailUpdatedAt": 1772264596,
+      "createdAt": 1772238605,
+      "aiSummaryUpdatedAt": 1772266585,
+      "aisummary": {
+        "chinese_title": "最小Transformer实现两10位数相加：36手写参 vs 311训练参，泛化与实用性争论",
+        "emoji": "🧮",
+        "sarcastic_question": "用能耗巨大的模型算加法，是在做科研还是表演？"
+      },
+      "classifications": {
+        "topics": [
+          1,
+          4
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "transformer",
+          "AdderBoard",
+          "addition",
+          "params",
+          "weights",
+          "matmul",
+          "LLM",
+          "anadim",
+          "GitHub"
+        ]
+      },
+      "classificationsUpdatedAt": 1772245545,
+      "aiSummary": {
+        "chinese_title": "最小Transformer实现两10位数相加：36手写参 vs 311训练参，泛化与实用性争论",
+        "emoji": "🧮",
+        "sarcastic_question": "用能耗巨大的模型算加法，是在做科研还是表演？"
+      },
+      "detail": {
+        "id": 47170030,
+        "by": "ks2048",
+        "title": "Smallest transformer that can add two 10-digit numbers",
+        "url": "https://github.com/anadim/AdderBoard",
+        "score": 136,
+        "detailUpdatedAt": 1772264596,
+        "createdAt": 1772238605,
+        "aiSummaryUpdatedAt": 1772266585,
+        "aisummary": {
+          "chinese_title": "最小Transformer实现两10位数相加：36手写参 vs 311训练参，泛化与实用性争论",
+          "discussion_overview": [
+            {
+              "category": "手工编码与训练得到的参数差异",
+              "summary": "讨论集中在极端精简的手工设计权重与通过训练得到的更大参数解之间的差异。有人展示了目前手写最高分解法只用36个参数，并指出输入embedding处表面上有一个14x5矩阵，但大部分为零且可等价为稀疏的14参数表示；另有人声称有28参数的实现草稿。对比之下，训练得到的可工作的模型约为311个参数，评论指出36参数版本需要float64精度，这暗示该极简解未必易于通过gradient descent（梯度下降）找到。评论还强调手工权重通常直接实现已知算法（如carry-propagation），而训练过程倾向于分布式表示，二者位于参数空间不同区域。",
+              "supportid": [
+                "47189502",
+                "47191051",
+                "47191916",
+                "47188770",
+                "47188802",
+                "47189547",
+                "47189207"
+              ]
+            },
+            {
+              "category": "泛化、验证与测试集的可行性",
+              "summary": "评论对“对两10位数做held-out测试集”的意义与可验证性展开质疑与技术讨论：输入空间超过64位，穷举验证不可行，因此比赛采用固定子集并保密以保证公平。小模型可能可被形式化验证，但训练的模型在分布外输入上会产生荒谬输出——例如，一个311参数的高分模型在输入“12345678900 + 1”时给出“96913456789”这样的错误输出，说明泛化并不可靠。有人认为展示模型能在未见示例上计算说明并非单纯记忆，但也有反驳称通过参数调整或训练修改实现同样效果未必证明真泛化。总体讨论涉及可验证性、形式证明的可行性与用例公平性。",
+              "supportid": [
+                "47191170",
+                "47191821",
+                "47191323",
+                "47191664",
+                "47190053",
+                "47190528"
+              ]
+            },
+            {
+              "category": "架构、tokenization与加法实现机制",
+              "summary": "多条评论从架构角度分析加法的难点：十位数相加需保持约20位的工作状态以传递进位（carry chain），这是一种本质上的顺序性约束，因此评论认为深度（depth）对进位传播比宽度（attention head count/width）更重要。tokenization决定了问题的难度——transformer看到的是token而非原始数值，若以数字字符为token，网络必须在表示层外实现“数值”操作；有评论指出在恰当的数值表示下单次matmul（矩阵乘法, matmul）即可实现加法，但transformer的通用tokenization让事情更复杂。讨论还涉及attention模式如何编码位置/进位信息以及不同层次的表示如何影响泛化。",
+              "supportid": [
+                "47190660",
+                "47189115",
+                "47191261",
+                "47188514",
+                "47189908",
+                "47189946"
+              ]
+            },
+            {
+              "category": "把固定算子（hand-coded子网）嵌入LLM的可行性与风险",
+              "summary": "有人建议将单一用途且固定权重的加法子网络在预训练前插入大型LLM以提供原语能力，但评论指出这有多重工程与理论障碍。该子网必须是frozen或对梯度有抗性，否则pre-training期间的梯度会破坏或重写它；它还需早期被网络发现并能与模型原生表示接口，评论提出实验证明法：在不同层散布多份冻结子网并加入合成加法样本以促使被利用。风险在于即便插入成功，pre-training可能将此结构改造为其它用途或让其失效，因此需要大量实验与调优。",
+              "supportid": [
+                "47189214",
+                "47191153"
+              ]
+            },
+            {
+              "category": "实用性、工具调用与能耗争议",
+              "summary": "有人直言用CPU的add指令或让LLM进行tool calling去做数学运算更可靠且能源更低，指出硬件指令集可以100%确定地完成此类任务。反方认为tool calling带来接口/延迟开销，而且将加法做成transformer-native电路能在单次forward pass内产生原生表示、支持prefill与autoregressive生成，因而在LLM内部可能更廉价。另有评论批评把高能耗的现代模型用来做基础算术浪费资源，但也有回应认为该类竞赛旨在提升效率、是学术/好玩的探索而非生产部署，并有人嘲讽这种“用大枪打小鸟”的做法。",
+              "supportid": [
+                "47189742",
+                "47191088",
+                "47189565",
+                "47189836",
+                "47190093",
+                "47191040",
+                "47191026"
+              ]
+            },
+            {
+              "category": "对机器学习理论、可设计性与未来影响的讨论",
+              "summary": "评论延伸出关于人类手工设计与自动学习之间的哲学和技术讨论：有观点猜测若有足够多的聪明工程师手动构建LLM，可能得到比训练模型更小或更高效的系统，但也有人认为多义(polysemantic)表示和参数间相互作用会导致规模律呈次线性变化。另有讨论提出快速跃迁（fast takeoff）假设的类比：更聪明的模型可能替代训练过程、设计出比自己更好的网络，但评论普遍认为收益会递减。此外有人提出研究问题：如何构造既能用极少参数表示算法又能被gradient descent学到的架构，以及最小参数数目在可学习性与表示能力之间的权衡。",
+              "supportid": [
+                "47189759",
+                "47190001",
+                "47189207",
+                "47188802",
+                "47189547"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "transformer",
+              "explanation": "一种以自注意力（attention）为核心的序列模型，用于处理token序列（如文本或数字字符），包含embedding、attention层和前馈层等结构，评论中讨论其如何在token级别实现加法电路。"
+            },
+            {
+              "term": "tokenization",
+              "explanation": "将原始输入（字符串或数字文本）切分为模型可处理的离散token的过程；切分策略会显著影响表示方式和模型是否容易实现诸如进位传播之类的算术操作。"
+            },
+            {
+              "term": "matmul（矩阵乘法）",
+              "explanation": "神经网络中主要的线性运算，一次合适的matmul可以在恰当表示下执行加法，但transformer的输入表示和token化通常使得问题不能简单地用单次matmul解决。"
+            },
+            {
+              "term": "carry propagation（进位传播）",
+              "explanation": "十进制多位加法中从低位向高位传递进位的序列性过程，评论指出这对transformer是顺序性负担，可能更依赖模型深度来实现跨位状态保持。"
+            },
+            {
+              "term": "gradient descent（梯度下降）",
+              "explanation": "通过计算损失相对于参数的梯度并更新参数以训练模型的优化算法，评论讨论其能否在参数空间找到像36参数那样稀疏且精确的解。"
+            },
+            {
+              "term": "frozen subnetwork（冻结子网络）",
+              "explanation": "事先手工设计并在训练过程中保持权重不变的子模块，理论上可把特定算法（如加法）注入更大模型，但必须能与模型原生表示接口并抵抗训练梯度破坏。"
+            },
+            {
+              "term": "tool calling（工具调用）",
+              "explanation": "让LLM在推理时调用外部工具或函数（如计算器或CPU指令）以获得确定性结果的机制，讨论聚焦其延迟/接口成本与将算子内置于模型之间的权衡。"
+            }
+          ],
+          "context": "这是一个针对“用最小参数的transformer实现两个10位数相加”问题的技术竞赛/排行榜讨论，帖子作者发布了手写权重的博客（目前手写最高为36参数），还有训练得到的可运行实现约311参数。评论围绕参数如何计数（例如embedding是否也算参数、稀疏矩阵等）、手工方案能否被gradient descent找到、模型在超出训练位数时的泛化能力，以及是否应把算术作为LLM内部电路或通过tool calling外部解决。讨论还涉及架构细节（如carry propagation的顺序性、attention head vs depth的权衡）、把固定算子嵌入pre-training（预训练）过程的可行性与能耗/实用性的伦理与工程权衡。",
+          "emoji": "🧮",
+          "sarcastic_question": "用能耗巨大的模型算加法，是在做科研还是表演？"
+        },
+        "classifications": {
+          "topics": [
+            1,
+            4
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "transformer",
+            "AdderBoard",
+            "addition",
+            "params",
+            "weights",
+            "matmul",
+            "LLM",
+            "anadim",
+            "GitHub"
+          ]
+        },
+        "classificationsUpdatedAt": 1772245545,
+        "aiSummary": {
+          "chinese_title": "最小Transformer实现两10位数相加：36手写参 vs 311训练参，泛化与实用性争论",
+          "discussion_overview": [
+            {
+              "category": "手工编码与训练得到的参数差异",
+              "summary": "讨论集中在极端精简的手工设计权重与通过训练得到的更大参数解之间的差异。有人展示了目前手写最高分解法只用36个参数，并指出输入embedding处表面上有一个14x5矩阵，但大部分为零且可等价为稀疏的14参数表示；另有人声称有28参数的实现草稿。对比之下，训练得到的可工作的模型约为311个参数，评论指出36参数版本需要float64精度，这暗示该极简解未必易于通过gradient descent（梯度下降）找到。评论还强调手工权重通常直接实现已知算法（如carry-propagation），而训练过程倾向于分布式表示，二者位于参数空间不同区域。",
+              "supportid": [
+                "47189502",
+                "47191051",
+                "47191916",
+                "47188770",
+                "47188802",
+                "47189547",
+                "47189207"
+              ]
+            },
+            {
+              "category": "泛化、验证与测试集的可行性",
+              "summary": "评论对“对两10位数做held-out测试集”的意义与可验证性展开质疑与技术讨论：输入空间超过64位，穷举验证不可行，因此比赛采用固定子集并保密以保证公平。小模型可能可被形式化验证，但训练的模型在分布外输入上会产生荒谬输出——例如，一个311参数的高分模型在输入“12345678900 + 1”时给出“96913456789”这样的错误输出，说明泛化并不可靠。有人认为展示模型能在未见示例上计算说明并非单纯记忆，但也有反驳称通过参数调整或训练修改实现同样效果未必证明真泛化。总体讨论涉及可验证性、形式证明的可行性与用例公平性。",
+              "supportid": [
+                "47191170",
+                "47191821",
+                "47191323",
+                "47191664",
+                "47190053",
+                "47190528"
+              ]
+            },
+            {
+              "category": "架构、tokenization与加法实现机制",
+              "summary": "多条评论从架构角度分析加法的难点：十位数相加需保持约20位的工作状态以传递进位（carry chain），这是一种本质上的顺序性约束，因此评论认为深度（depth）对进位传播比宽度（attention head count/width）更重要。tokenization决定了问题的难度——transformer看到的是token而非原始数值，若以数字字符为token，网络必须在表示层外实现“数值”操作；有评论指出在恰当的数值表示下单次matmul（矩阵乘法, matmul）即可实现加法，但transformer的通用tokenization让事情更复杂。讨论还涉及attention模式如何编码位置/进位信息以及不同层次的表示如何影响泛化。",
+              "supportid": [
+                "47190660",
+                "47189115",
+                "47191261",
+                "47188514",
+                "47189908",
+                "47189946"
+              ]
+            },
+            {
+              "category": "把固定算子（hand-coded子网）嵌入LLM的可行性与风险",
+              "summary": "有人建议将单一用途且固定权重的加法子网络在预训练前插入大型LLM以提供原语能力，但评论指出这有多重工程与理论障碍。该子网必须是frozen或对梯度有抗性，否则pre-training期间的梯度会破坏或重写它；它还需早期被网络发现并能与模型原生表示接口，评论提出实验证明法：在不同层散布多份冻结子网并加入合成加法样本以促使被利用。风险在于即便插入成功，pre-training可能将此结构改造为其它用途或让其失效，因此需要大量实验与调优。",
+              "supportid": [
+                "47189214",
+                "47191153"
+              ]
+            },
+            {
+              "category": "实用性、工具调用与能耗争议",
+              "summary": "有人直言用CPU的add指令或让LLM进行tool calling去做数学运算更可靠且能源更低，指出硬件指令集可以100%确定地完成此类任务。反方认为tool calling带来接口/延迟开销，而且将加法做成transformer-native电路能在单次forward pass内产生原生表示、支持prefill与autoregressive生成，因而在LLM内部可能更廉价。另有评论批评把高能耗的现代模型用来做基础算术浪费资源，但也有回应认为该类竞赛旨在提升效率、是学术/好玩的探索而非生产部署，并有人嘲讽这种“用大枪打小鸟”的做法。",
+              "supportid": [
+                "47189742",
+                "47191088",
+                "47189565",
+                "47189836",
+                "47190093",
+                "47191040",
+                "47191026"
+              ]
+            },
+            {
+              "category": "对机器学习理论、可设计性与未来影响的讨论",
+              "summary": "评论延伸出关于人类手工设计与自动学习之间的哲学和技术讨论：有观点猜测若有足够多的聪明工程师手动构建LLM，可能得到比训练模型更小或更高效的系统，但也有人认为多义(polysemantic)表示和参数间相互作用会导致规模律呈次线性变化。另有讨论提出快速跃迁（fast takeoff）假设的类比：更聪明的模型可能替代训练过程、设计出比自己更好的网络，但评论普遍认为收益会递减。此外有人提出研究问题：如何构造既能用极少参数表示算法又能被gradient descent学到的架构，以及最小参数数目在可学习性与表示能力之间的权衡。",
+              "supportid": [
+                "47189759",
+                "47190001",
+                "47189207",
+                "47188802",
+                "47189547"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "transformer",
+              "explanation": "一种以自注意力（attention）为核心的序列模型，用于处理token序列（如文本或数字字符），包含embedding、attention层和前馈层等结构，评论中讨论其如何在token级别实现加法电路。"
+            },
+            {
+              "term": "tokenization",
+              "explanation": "将原始输入（字符串或数字文本）切分为模型可处理的离散token的过程；切分策略会显著影响表示方式和模型是否容易实现诸如进位传播之类的算术操作。"
+            },
+            {
+              "term": "matmul（矩阵乘法）",
+              "explanation": "神经网络中主要的线性运算，一次合适的matmul可以在恰当表示下执行加法，但transformer的输入表示和token化通常使得问题不能简单地用单次matmul解决。"
+            },
+            {
+              "term": "carry propagation（进位传播）",
+              "explanation": "十进制多位加法中从低位向高位传递进位的序列性过程，评论指出这对transformer是顺序性负担，可能更依赖模型深度来实现跨位状态保持。"
+            },
+            {
+              "term": "gradient descent（梯度下降）",
+              "explanation": "通过计算损失相对于参数的梯度并更新参数以训练模型的优化算法，评论讨论其能否在参数空间找到像36参数那样稀疏且精确的解。"
+            },
+            {
+              "term": "frozen subnetwork（冻结子网络）",
+              "explanation": "事先手工设计并在训练过程中保持权重不变的子模块，理论上可把特定算法（如加法）注入更大模型，但必须能与模型原生表示接口并抵抗训练梯度破坏。"
+            },
+            {
+              "term": "tool calling（工具调用）",
+              "explanation": "让LLM在推理时调用外部工具或函数（如计算器或CPU指令）以获得确定性结果的机制，讨论聚焦其延迟/接口成本与将算子内置于模型之间的权衡。"
+            }
+          ],
+          "context": "这是一个针对“用最小参数的transformer实现两个10位数相加”问题的技术竞赛/排行榜讨论，帖子作者发布了手写权重的博客（目前手写最高为36参数），还有训练得到的可运行实现约311参数。评论围绕参数如何计数（例如embedding是否也算参数、稀疏矩阵等）、手工方案能否被gradient descent找到、模型在超出训练位数时的泛化能力，以及是否应把算术作为LLM内部电路或通过tool calling外部解决。讨论还涉及架构细节（如carry propagation的顺序性、attention head vs depth的权衡）、把固定算子嵌入pre-training（预训练）过程的可行性与能耗/实用性的伦理与工程权衡。",
+          "emoji": "🧮",
+          "sarcastic_question": "用能耗巨大的模型算加法，是在做科研还是表演？"
+        }
+      }
+    },
+    {
+      "id": 47189650,
+      "by": "eoskx",
+      "title": "OpenAI agrees with Dept. of War to deploy models in their classified network",
+      "url": "https://twitter.com/sama/status/2027578652477821175",
+      "score": 469,
+      "detailUpdatedAt": 1772264593,
+      "createdAt": 1772250018,
+      "aiSummaryUpdatedAt": 1772266316,
+      "aisummary": {
+        "chinese_title": "OpenAI与“Dept. of War”达成机密部署协议，宣称同意红线却遭广泛质疑",
+        "emoji": "😡",
+        "sarcastic_question": "签了同样条款却帮政府抓竞争对手，你还买单吗？"
+      },
+      "classifications": {
+        "topics": [
+          1,
+          9,
+          3
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "OpenAI",
+          "Sam Altman",
+          "Department of War (DoW)",
+          "Anthropic",
+          "domestic mass surveillance",
+          "autonomous weapon systems",
+          "FDEs",
+          "ChatGPT",
+          "Trump"
+        ]
+      },
+      "classificationsUpdatedAt": 1772251557,
+      "aiSummary": {
+        "chinese_title": "OpenAI与“Dept. of War”达成机密部署协议，宣称同意红线却遭广泛质疑",
+        "emoji": "😡",
+        "sarcastic_question": "签了同样条款却帮政府抓竞争对手，你还买单吗？"
+      },
+      "detail": {
+        "id": 47189650,
+        "by": "eoskx",
+        "title": "OpenAI agrees with Dept. of War to deploy models in their classified network",
+        "url": "https://twitter.com/sama/status/2027578652477821175",
+        "score": 289,
+        "detailUpdatedAt": 1772257392,
+        "createdAt": 1772250018,
+        "aiSummaryUpdatedAt": 1772258470,
+        "aisummary": {
+          "chinese_title": "OpenAI与“Dept. of War”达成机密部署协议，社区质疑红线含糊与机会主义",
+          "discussion_overview": [
+            {
+              "category": "法律定义下的“合法使用”与条款模糊",
+              "summary": "许多评论指出 OpenAI 把“禁止国内大规模监控”和“人类对武力负责”等红线交给政府定义，合同以“lawful use/法律与政策依据”作为保护，转移了谁判断违约的问题。有人引用政府官员在 X 上的表述，强调合同是以现行法律和政策为参照而非私企可执行的 TOS，从而把最终解释权交给行政机构。反对者提醒法学史例子（例如煽动性备忘录、后续立法或司法解释）说明“合法”并不等于“道德”或“不可滥用”。评论中还质疑这是可执行的合同条款还是仅仅的政治表态，要求公布合同文本以证实说法。",
+              "supportid": [
+                "47190420",
+                "47190871",
+                "47190163",
+                "47190211",
+                "47189970"
+              ]
+            },
+            {
+              "category": "“人类责任”与“人类在环”的实质差别",
+              "summary": "评论者把 OpenAI 承诺的“human responsibility（人类对使用武力负责）”与 Anthropic 主张的“human-in-the-loop（人类在环/人类做最终决策）”区分开来，认为前者语义更宽、易被政府形式化为“总统签字/人类同意”的幌子。具体担忧是“人类责任”可以在操作上被解释为远端负责人签发命令，从而仍允许高度自动化的武器或监控系统运行。多条评论举例说这类措辞常被当作法律或政策上的空洞豁免，无法真正阻止模型被用于致命或大规模监控场景。",
+              "supportid": [
+                "47190970",
+                "47190110",
+                "47190736",
+                "47190962"
+              ]
+            },
+            {
+              "category": "对 Altman / OpenAI 的机会主义与政治经济关系怀疑",
+              "summary": "大量评论把这笔交易解读为机会主义：指责 Sam Altman 与公司为保持融资与市场地位妥协原则，有评论援引联合创始人与政治捐款、Oracle/云服务等利益关联来说明政治与商业动机。有人提出政府可能在谈判中以政策或采购手段偏袒某些供应商（指向 Brockman 的捐款、Oracle 云合约等），并称 OpenAI 可能早有密切情报/政府合作以保生存与估值。总体情绪是对公司诚信的系统性不信任，认为此次决定会损害 OpenAI 的品牌与员工信任。",
+              "supportid": [
+                "47190137",
+                "47190125",
+                "47190220",
+                "47189970",
+                "47190306"
+              ]
+            },
+            {
+              "category": "抵制与用钱包投票的呼吁与争论",
+              "summary": "很多用户在评论里宣布已取消订阅、删除账户并转向 Anthropic 的 Claude 或其他模型，认为用钱投票是直接回应公司伦理背弃的方式。支持者认为大规模开发者/技术社区弃用会改变“vibes”和行业决策者的选择，从而影响融资与市场份额；反对者则认为个人取消对巨额风险投资和政府采购影响甚微，只有配合媒体放大和集体行动才有效。评论中既有具体行动报告（卸载、删档、退订），也有关于此类抵制是否真的能改变公司行为的理性争论。",
+              "supportid": [
+                "47190140",
+                "47190671",
+                "47190595",
+                "47190427",
+                "47190263",
+                "47190338"
+              ]
+            },
+            {
+              "category": "Anthropic 与五角大楼冲突的事实与误读",
+              "summary": "有人引用媒体（WaPo）报道说五角大楼曾在会议上以拦截洲际弹道导弹为例询问 Anthropic 能否用 Claude 协助拦截，Pentagon 对 Anthropic 的回答感到不满，这被视为冲突的导火索。讨论聚焦在 Anthropic 是否把问题理解为“权限/授权”而非“能力”，以及 Anthropic 是否因此坚持更可执行的私企红线而被施压或打压。评论者一方面认为 Anthropic 立场更为严格，另一方面也有人怀疑 Anthropic 的公开反应与内部沟通存在误解。",
+              "supportid": [
+                "47190799",
+                "47190063",
+                "47189862",
+                "47190351",
+                "47190211"
+              ]
+            },
+            {
+              "category": "对官方说辞与媒体/合同证据要求的怀疑",
+              "summary": "多个评论警告不要把政府官员或公司推文视为中性事实，认为目前流传的说法可能是“内宣/政治话术”，呼吁等待可验证的合同文本或独立媒体披露。有人指出即便合同提到某些原则，也可能只是表述性语言而非可追究的法律义务；另有评论提醒官员与相关方都有造势的动机，公众应该保持怀疑并要求透明。总体上存在强烈的证据主义态度：在没有公开文本前，官方表态难以安抚怀疑者。",
+              "supportid": [
+                "47190856",
+                "47190478",
+                "47190163",
+                "47190423"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "human-in-the-loop（人类在环）",
+              "explanation": "一种安全原则，要求在高风险决策（尤其涉武力或致命后果）中保留人类监督和最终决策权，以防止 AI 自动化完成致命操作。评论中把它与更模糊的“human responsibility”作对比。"
+            },
+            {
+              "term": "We Will Not Be Divided（员工公开信）",
+              "explanation": "OpenAI 员工签署的一封公开信或誓言（评论中提及），代表员工对公司伦理与政府合作问题的立场，许多评论以此质疑签名者今后能否继续在公司任职。"
+            },
+            {
+              "term": "red lines / guardrails（红线/安全条款）",
+              "explanation": "指合同或政策中明确禁止的用途，如‘禁止国内大规模监控’与‘禁止用于自治武器系统’等；争议在于这些红线是写入可强制执行的条款，还是仅作为参考性表述。"
+            },
+            {
+              "term": "DPA（Defense Production Act，国防生产法）",
+              "explanation": "美国一部可在国家紧急状态时优先或指令私人企业生产与提供资源的法律。评论中提到 DPA 被用作政府向 Anthropic 施压的潜在工具。"
+            }
+          ],
+          "context": "OpenAI 宣称与所谓的“Department of War”（评论者对美国国防部的讽称）达成在其机密网络中部署模型的协议，并声称合同包括对“国内大规模监控”的禁止和对“使用武力的人类责任”条款。此前 Anthropic（以安全为卖点的 AI 公司）与五角大楼就类似红线发生公开冲突，媒体报道还提到一次关于用 Claude 协助拦截洲际弹道导弹的会谈引发争议。讨论的核心在于谁来解释与执行这些红线——私企以可执行的 TOS 约束，还是把判断权交给政府的“合法使用”标准——以及这项协议是否为真实的可执行合同或只是政治性表态。社区反应包括大规模的道德谴责、退订/迁移呼声以及对公司与政府潜在利益交换（如云服务合同、捐款）的怀疑。",
+          "emoji": "😡",
+          "sarcastic_question": "签了所谓『红线』就能阻止杀手机器人运用吗？"
+        },
+        "classifications": {
+          "topics": [
+            1,
+            9,
+            3
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "OpenAI",
+            "Sam Altman",
+            "Department of War (DoW)",
+            "Anthropic",
+            "domestic mass surveillance",
+            "autonomous weapon systems",
+            "FDEs",
+            "ChatGPT",
+            "Trump"
+          ]
+        },
+        "classificationsUpdatedAt": 1772251557,
+        "aiSummary": {
+          "chinese_title": "OpenAI与“Dept. of War”达成机密部署协议，社区质疑红线含糊与机会主义",
+          "discussion_overview": [
+            {
+              "category": "法律定义下的“合法使用”与条款模糊",
+              "summary": "许多评论指出 OpenAI 把“禁止国内大规模监控”和“人类对武力负责”等红线交给政府定义，合同以“lawful use/法律与政策依据”作为保护，转移了谁判断违约的问题。有人引用政府官员在 X 上的表述，强调合同是以现行法律和政策为参照而非私企可执行的 TOS，从而把最终解释权交给行政机构。反对者提醒法学史例子（例如煽动性备忘录、后续立法或司法解释）说明“合法”并不等于“道德”或“不可滥用”。评论中还质疑这是可执行的合同条款还是仅仅的政治表态，要求公布合同文本以证实说法。",
+              "supportid": [
+                "47190420",
+                "47190871",
+                "47190163",
+                "47190211",
+                "47189970"
+              ]
+            },
+            {
+              "category": "“人类责任”与“人类在环”的实质差别",
+              "summary": "评论者把 OpenAI 承诺的“human responsibility（人类对使用武力负责）”与 Anthropic 主张的“human-in-the-loop（人类在环/人类做最终决策）”区分开来，认为前者语义更宽、易被政府形式化为“总统签字/人类同意”的幌子。具体担忧是“人类责任”可以在操作上被解释为远端负责人签发命令，从而仍允许高度自动化的武器或监控系统运行。多条评论举例说这类措辞常被当作法律或政策上的空洞豁免，无法真正阻止模型被用于致命或大规模监控场景。",
+              "supportid": [
+                "47190970",
+                "47190110",
+                "47190736",
+                "47190962"
+              ]
+            },
+            {
+              "category": "对 Altman / OpenAI 的机会主义与政治经济关系怀疑",
+              "summary": "大量评论把这笔交易解读为机会主义：指责 Sam Altman 与公司为保持融资与市场地位妥协原则，有评论援引联合创始人与政治捐款、Oracle/云服务等利益关联来说明政治与商业动机。有人提出政府可能在谈判中以政策或采购手段偏袒某些供应商（指向 Brockman 的捐款、Oracle 云合约等），并称 OpenAI 可能早有密切情报/政府合作以保生存与估值。总体情绪是对公司诚信的系统性不信任，认为此次决定会损害 OpenAI 的品牌与员工信任。",
+              "supportid": [
+                "47190137",
+                "47190125",
+                "47190220",
+                "47189970",
+                "47190306"
+              ]
+            },
+            {
+              "category": "抵制与用钱包投票的呼吁与争论",
+              "summary": "很多用户在评论里宣布已取消订阅、删除账户并转向 Anthropic 的 Claude 或其他模型，认为用钱投票是直接回应公司伦理背弃的方式。支持者认为大规模开发者/技术社区弃用会改变“vibes”和行业决策者的选择，从而影响融资与市场份额；反对者则认为个人取消对巨额风险投资和政府采购影响甚微，只有配合媒体放大和集体行动才有效。评论中既有具体行动报告（卸载、删档、退订），也有关于此类抵制是否真的能改变公司行为的理性争论。",
+              "supportid": [
+                "47190140",
+                "47190671",
+                "47190595",
+                "47190427",
+                "47190263",
+                "47190338"
+              ]
+            },
+            {
+              "category": "Anthropic 与五角大楼冲突的事实与误读",
+              "summary": "有人引用媒体（WaPo）报道说五角大楼曾在会议上以拦截洲际弹道导弹为例询问 Anthropic 能否用 Claude 协助拦截，Pentagon 对 Anthropic 的回答感到不满，这被视为冲突的导火索。讨论聚焦在 Anthropic 是否把问题理解为“权限/授权”而非“能力”，以及 Anthropic 是否因此坚持更可执行的私企红线而被施压或打压。评论者一方面认为 Anthropic 立场更为严格，另一方面也有人怀疑 Anthropic 的公开反应与内部沟通存在误解。",
+              "supportid": [
+                "47190799",
+                "47190063",
+                "47189862",
+                "47190351",
+                "47190211"
+              ]
+            },
+            {
+              "category": "对官方说辞与媒体/合同证据要求的怀疑",
+              "summary": "多个评论警告不要把政府官员或公司推文视为中性事实，认为目前流传的说法可能是“内宣/政治话术”，呼吁等待可验证的合同文本或独立媒体披露。有人指出即便合同提到某些原则，也可能只是表述性语言而非可追究的法律义务；另有评论提醒官员与相关方都有造势的动机，公众应该保持怀疑并要求透明。总体上存在强烈的证据主义态度：在没有公开文本前，官方表态难以安抚怀疑者。",
+              "supportid": [
+                "47190856",
+                "47190478",
+                "47190163",
+                "47190423"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "human-in-the-loop（人类在环）",
+              "explanation": "一种安全原则，要求在高风险决策（尤其涉武力或致命后果）中保留人类监督和最终决策权，以防止 AI 自动化完成致命操作。评论中把它与更模糊的“human responsibility”作对比。"
+            },
+            {
+              "term": "We Will Not Be Divided（员工公开信）",
+              "explanation": "OpenAI 员工签署的一封公开信或誓言（评论中提及），代表员工对公司伦理与政府合作问题的立场，许多评论以此质疑签名者今后能否继续在公司任职。"
+            },
+            {
+              "term": "red lines / guardrails（红线/安全条款）",
+              "explanation": "指合同或政策中明确禁止的用途，如‘禁止国内大规模监控’与‘禁止用于自治武器系统’等；争议在于这些红线是写入可强制执行的条款，还是仅作为参考性表述。"
+            },
+            {
+              "term": "DPA（Defense Production Act，国防生产法）",
+              "explanation": "美国一部可在国家紧急状态时优先或指令私人企业生产与提供资源的法律。评论中提到 DPA 被用作政府向 Anthropic 施压的潜在工具。"
+            }
+          ],
+          "context": "OpenAI 宣称与所谓的“Department of War”（评论者对美国国防部的讽称）达成在其机密网络中部署模型的协议，并声称合同包括对“国内大规模监控”的禁止和对“使用武力的人类责任”条款。此前 Anthropic（以安全为卖点的 AI 公司）与五角大楼就类似红线发生公开冲突，媒体报道还提到一次关于用 Claude 协助拦截洲际弹道导弹的会谈引发争议。讨论的核心在于谁来解释与执行这些红线——私企以可执行的 TOS 约束，还是把判断权交给政府的“合法使用”标准——以及这项协议是否为真实的可执行合同或只是政治性表态。社区反应包括大规模的道德谴责、退订/迁移呼声以及对公司与政府潜在利益交换（如云服务合同、捐款）的怀疑。",
+          "emoji": "😡",
+          "sarcastic_question": "签了所谓『红线』就能阻止杀手机器人运用吗？"
+        }
+      }
+    },
+    {
+      "id": 47182483,
+      "by": "voxadam",
+      "title": "NASA announces major overhaul of Artemis program amid safety concerns, delays",
+      "url": "https://www.cbsnews.com/news/nasa-artemis-moon-program-overhaul/",
+      "score": 244,
+      "detailUpdatedAt": 1772262796,
+      "createdAt": 1772214024,
+      "aiSummaryUpdatedAt": 1772263906,
+      "aisummary": {
+        "chinese_title": "NASA 大改 Artemis：因安全与延误调整发射节奏，SLS 成本与国会政治对抗 SpaceX 迭代路线",
+        "emoji": "😬",
+        "sarcastic_question": "难道要把宇航员当NASA的活体试验品吗？"
+      },
+      "classifications": {
+        "topics": [
+          8,
+          9,
+          10
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "NASA",
+          "Artemis",
+          "SpaceX",
+          "Starship",
+          "Apollo",
+          "Boeing",
+          "Orion",
+          "Congress",
+          "CBS News",
+          "Isaacman"
+        ]
+      },
+      "classificationsUpdatedAt": 1772216771,
+      "aiSummary": {
+        "chinese_title": "NASA 大改 Artemis：因安全与延误调整发射节奏，SLS 成本与国会政治对抗 SpaceX 迭代路线",
+        "emoji": "😬",
+        "sarcastic_question": "难道要把宇航员当NASA的活体试验品吗？"
+      },
+      "detail": {
+        "id": 47182483,
+        "by": "voxadam",
+        "title": "NASA announces major overhaul of Artemis program amid safety concerns, delays",
+        "url": "https://www.cbsnews.com/news/nasa-artemis-moon-program-overhaul/",
+        "score": 143,
+        "detailUpdatedAt": 1772230383,
+        "createdAt": 1772214024,
+        "aiSummaryUpdatedAt": 1772231193,
+        "aisummary": {
+          "chinese_title": "NASA大改Artemis：安全忧虑、成本与SLS/Starship之争",
+          "discussion_overview": [
+            {
+              "category": "开发哲学对比：迭代试错 vs 完美首飞",
+              "summary": "评论围绕NASA的保守“首飞尽量完美”策略与SpaceX的快速迭代、允许失败的开发方式激烈辩论。支持快速迭代者举出Falcon 9 Block 5极高的实战成功率（评论中提到约550/551次）和Starship通过多次试飞快速修复制造与流程问题的案例；反对者强调载人任务不能把火箭爆炸当作研发成本，公众与国会对税款与人员安全的敏感性使NASA难以照搬私企的宽松容错。还有中间观点主张在无人测试阶段可更激进地试验，但在载人阶段必须保持严格认证与逐步验证以避免可预测的灾难性后果。",
+              "supportid": [
+                "47183335",
+                "47185403",
+                "47184868",
+                "47183951",
+                "47183585",
+                "47183851",
+                "47184074"
+              ]
+            },
+            {
+              "category": "预算、政治与承包商影响",
+              "summary": "评论多次把Artemis的延迟与高成本归因于政治驱动、承包链条和采购模式：一条评论引用Artemis累计约920亿美元（$92B）的开销，而有评论称Starship迄今开发成本低于10亿美元（该数字有争议）。国会指定沿用航天飞机遗留的RS‑25发动机、成本加成（cost‑plus）合同和为维持就业的“分散制造/均摊预算”做法被指令性地推高了成本并拉长进度。部分评论提醒私人承包并非万无一失（例如Boeing/Starliner问题被反复提及），并警告政治光环与总统时间点压力会扭曲技术优先级和安全决策。",
+              "supportid": [
+                "47183335",
+                "47183586",
+                "47184139",
+                "47185841",
+                "47185450",
+                "47183574"
+              ]
+            },
+            {
+              "category": "SLS 与 Starship 的技术与可行性争论",
+              "summary": "技术争议集中在SLS一次发射可把Orion送入月球轨道的“单次直达”能力与Starship依靠低轨多次加注（in‑orbit refueling）实现登月的“多次补给”路径之间。支持SLS的人指出SLS已完成绕月飞行并携带真实有效载荷，而反对者反驳其单次发射成本极高（评论提到数十亿美元/次的估算）且受限于RS‑25库存。支持Starship者强调Super Heavy可回收、生产成本低且多次试飞可快速修复问题，但批评者指出Starship尚未完成对等的月球任务验证，轨道加注需要多个飞行回合，增加操作复杂性与时序风险。",
+              "supportid": [
+                "47183935",
+                "47184083",
+                "47185918",
+                "47184039",
+                "47185953",
+                "47185178"
+              ]
+            },
+            {
+              "category": "载人安全忧虑与认证流程争议",
+              "summary": "多条评论对即将的载人近月/绕月飞行表达严重担忧，理由包括承包商质量（如对Boeing/Starliner的怀疑）、政治压力可能迫使压缩测试以及跳过传统的无人认证流程。有人明确指出NASA的文化来源于“不能杀人”的原则，Apollo 1、Challenger、Columbia等事故促成了严格的载人认证，因此载人阶段必须更为保守。另有评论警告当前行政与预算环境降低了机构决策独立性，若为政治成就而提前推进载人飞行，可能在任务中出现可避免的风险。",
+              "supportid": [
+                "47183102",
+                "47186029",
+                "47183285",
+                "47186090",
+                "47183951",
+                "47183617"
+              ]
+            },
+            {
+              "category": "支持分阶段验证与更高发射节奏的改革思路",
+              "summary": "对NASA宣布的改革，一部分评论表示支持把Artemis III改为近地轨道对接/登月器测试、提高SLS发射频率以积累经验的思路，并称这类似阿波罗时期的分阶段验证（如Apollo 9/10）。支持者认为更频繁的发射能通过实战检验提高可靠性，并且将登月任务拆成更多里程碑以降低一次性失败代价。反对或谨慎的评论提醒SLS/RS‑25的产能限制和承包商制造节奏可能无法支撑理想中的“每10个月一发”的高频率。",
+              "supportid": [
+                "47184092",
+                "47182797",
+                "47184189",
+                "47183155",
+                "47186071"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "SLS (Space Launch System)",
+              "explanation": "NASA为Artemis开发的重型运载火箭，源自航天飞机技术路线，设计用于把Orion送往月球附近但单次发射成本极高。"
+            },
+            {
+              "term": "RS-25",
+              "explanation": "原航天飞机主发动机（SSME），被用于SLS；现有库存有限（评论提到约16台剩余），生产恢复慢，限制发射节奏。"
+            },
+            {
+              "term": "Starship",
+              "explanation": "SpaceX正在研制的完全可重复使用超重型运载系统，采用快速迭代试飞策略并计划通过在轨加注实现月球/火星任务，尚未完成全部功能验证。"
+            },
+            {
+              "term": "Super Heavy",
+              "explanation": "Starship的第一级助推器，目标可回收并重复使用，评论中将其回收能力视为可能显著降低长期发射总成本的关键。"
+            },
+            {
+              "term": "Orion",
+              "explanation": "NASA的深空载人飞船，用于将宇航员送至近月轨道并返回地球；Artemis I为其无人绕月试验飞行。"
+            },
+            {
+              "term": "HLS (Human Landing System)",
+              "explanation": "NASA为Artemis采购的登月着陆器类别，SpaceX、Blue Origin等厂商开发各自着陆器以将宇航员从轨道送至月面。"
+            },
+            {
+              "term": "LEO (Low Earth Orbit)",
+              "explanation": "低地球轨道，讨论中常用于指在地球轨道进行的加注/对接测试与作为Starship在轨加注的作业位置。"
+            },
+            {
+              "term": "orbital refueling / cryogenic fuel transfer",
+              "explanation": "在轨对液态（低温）推进剂进行转移以为深空任务加注燃料，是SpaceX月球方案中的关键但技术与操作复杂性高。"
+            },
+            {
+              "term": "cost-plus contract / 成本加成合同",
+              "explanation": "一种政府采购模式，承包商按实际成本报销并获固定利润，评论中被指可能降低成本约束、助长项目膨胀与低效率。"
+            }
+          ],
+          "context": "NASA宣布对Artemis（NASA的载人月球返航计划）进行重大改组，源于多项安全担忧、承包商延误以及对按期登月目标的压力。Artemis传统架构以SLS（Space Launch System）火箭与Orion载人舱为核心，登月着陆器（HLS）由外部承包商提供；评论讨论了SLS已有的绕月试飞与Starship（SpaceX）的快速迭代试验之间的对比。评论者基于成本估算、RS‑25发动机库存限制、国会指令与政治时间点压力展开争论，并就是否应采用更频繁发射／分阶段验证的思路提出赞成与反对意见。讨论还反复把载人安全、承包商可靠性（如Boeing/Starliner）与监管/认证流程放在首位来衡量改革的合理性。",
+          "emoji": "😬",
+          "sarcastic_question": "真的要通过不断爆炸才能证明能载人吗？"
+        },
+        "classifications": {
+          "topics": [
+            8,
+            9,
+            10
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "NASA",
+            "Artemis",
+            "SpaceX",
+            "Starship",
+            "Apollo",
+            "Boeing",
+            "Orion",
+            "Congress",
+            "CBS News",
+            "Isaacman"
+          ]
+        },
+        "classificationsUpdatedAt": 1772216771,
+        "aiSummary": {
+          "chinese_title": "NASA大改Artemis：安全忧虑、成本与SLS/Starship之争",
+          "discussion_overview": [
+            {
+              "category": "开发哲学对比：迭代试错 vs 完美首飞",
+              "summary": "评论围绕NASA的保守“首飞尽量完美”策略与SpaceX的快速迭代、允许失败的开发方式激烈辩论。支持快速迭代者举出Falcon 9 Block 5极高的实战成功率（评论中提到约550/551次）和Starship通过多次试飞快速修复制造与流程问题的案例；反对者强调载人任务不能把火箭爆炸当作研发成本，公众与国会对税款与人员安全的敏感性使NASA难以照搬私企的宽松容错。还有中间观点主张在无人测试阶段可更激进地试验，但在载人阶段必须保持严格认证与逐步验证以避免可预测的灾难性后果。",
+              "supportid": [
+                "47183335",
+                "47185403",
+                "47184868",
+                "47183951",
+                "47183585",
+                "47183851",
+                "47184074"
+              ]
+            },
+            {
+              "category": "预算、政治与承包商影响",
+              "summary": "评论多次把Artemis的延迟与高成本归因于政治驱动、承包链条和采购模式：一条评论引用Artemis累计约920亿美元（$92B）的开销，而有评论称Starship迄今开发成本低于10亿美元（该数字有争议）。国会指定沿用航天飞机遗留的RS‑25发动机、成本加成（cost‑plus）合同和为维持就业的“分散制造/均摊预算”做法被指令性地推高了成本并拉长进度。部分评论提醒私人承包并非万无一失（例如Boeing/Starliner问题被反复提及），并警告政治光环与总统时间点压力会扭曲技术优先级和安全决策。",
+              "supportid": [
+                "47183335",
+                "47183586",
+                "47184139",
+                "47185841",
+                "47185450",
+                "47183574"
+              ]
+            },
+            {
+              "category": "SLS 与 Starship 的技术与可行性争论",
+              "summary": "技术争议集中在SLS一次发射可把Orion送入月球轨道的“单次直达”能力与Starship依靠低轨多次加注（in‑orbit refueling）实现登月的“多次补给”路径之间。支持SLS的人指出SLS已完成绕月飞行并携带真实有效载荷，而反对者反驳其单次发射成本极高（评论提到数十亿美元/次的估算）且受限于RS‑25库存。支持Starship者强调Super Heavy可回收、生产成本低且多次试飞可快速修复问题，但批评者指出Starship尚未完成对等的月球任务验证，轨道加注需要多个飞行回合，增加操作复杂性与时序风险。",
+              "supportid": [
+                "47183935",
+                "47184083",
+                "47185918",
+                "47184039",
+                "47185953",
+                "47185178"
+              ]
+            },
+            {
+              "category": "载人安全忧虑与认证流程争议",
+              "summary": "多条评论对即将的载人近月/绕月飞行表达严重担忧，理由包括承包商质量（如对Boeing/Starliner的怀疑）、政治压力可能迫使压缩测试以及跳过传统的无人认证流程。有人明确指出NASA的文化来源于“不能杀人”的原则，Apollo 1、Challenger、Columbia等事故促成了严格的载人认证，因此载人阶段必须更为保守。另有评论警告当前行政与预算环境降低了机构决策独立性，若为政治成就而提前推进载人飞行，可能在任务中出现可避免的风险。",
+              "supportid": [
+                "47183102",
+                "47186029",
+                "47183285",
+                "47186090",
+                "47183951",
+                "47183617"
+              ]
+            },
+            {
+              "category": "支持分阶段验证与更高发射节奏的改革思路",
+              "summary": "对NASA宣布的改革，一部分评论表示支持把Artemis III改为近地轨道对接/登月器测试、提高SLS发射频率以积累经验的思路，并称这类似阿波罗时期的分阶段验证（如Apollo 9/10）。支持者认为更频繁的发射能通过实战检验提高可靠性，并且将登月任务拆成更多里程碑以降低一次性失败代价。反对或谨慎的评论提醒SLS/RS‑25的产能限制和承包商制造节奏可能无法支撑理想中的“每10个月一发”的高频率。",
+              "supportid": [
+                "47184092",
+                "47182797",
+                "47184189",
+                "47183155",
+                "47186071"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "SLS (Space Launch System)",
+              "explanation": "NASA为Artemis开发的重型运载火箭，源自航天飞机技术路线，设计用于把Orion送往月球附近但单次发射成本极高。"
+            },
+            {
+              "term": "RS-25",
+              "explanation": "原航天飞机主发动机（SSME），被用于SLS；现有库存有限（评论提到约16台剩余），生产恢复慢，限制发射节奏。"
+            },
+            {
+              "term": "Starship",
+              "explanation": "SpaceX正在研制的完全可重复使用超重型运载系统，采用快速迭代试飞策略并计划通过在轨加注实现月球/火星任务，尚未完成全部功能验证。"
+            },
+            {
+              "term": "Super Heavy",
+              "explanation": "Starship的第一级助推器，目标可回收并重复使用，评论中将其回收能力视为可能显著降低长期发射总成本的关键。"
+            },
+            {
+              "term": "Orion",
+              "explanation": "NASA的深空载人飞船，用于将宇航员送至近月轨道并返回地球；Artemis I为其无人绕月试验飞行。"
+            },
+            {
+              "term": "HLS (Human Landing System)",
+              "explanation": "NASA为Artemis采购的登月着陆器类别，SpaceX、Blue Origin等厂商开发各自着陆器以将宇航员从轨道送至月面。"
+            },
+            {
+              "term": "LEO (Low Earth Orbit)",
+              "explanation": "低地球轨道，讨论中常用于指在地球轨道进行的加注/对接测试与作为Starship在轨加注的作业位置。"
+            },
+            {
+              "term": "orbital refueling / cryogenic fuel transfer",
+              "explanation": "在轨对液态（低温）推进剂进行转移以为深空任务加注燃料，是SpaceX月球方案中的关键但技术与操作复杂性高。"
+            },
+            {
+              "term": "cost-plus contract / 成本加成合同",
+              "explanation": "一种政府采购模式，承包商按实际成本报销并获固定利润，评论中被指可能降低成本约束、助长项目膨胀与低效率。"
+            }
+          ],
+          "context": "NASA宣布对Artemis（NASA的载人月球返航计划）进行重大改组，源于多项安全担忧、承包商延误以及对按期登月目标的压力。Artemis传统架构以SLS（Space Launch System）火箭与Orion载人舱为核心，登月着陆器（HLS）由外部承包商提供；评论讨论了SLS已有的绕月试飞与Starship（SpaceX）的快速迭代试验之间的对比。评论者基于成本估算、RS‑25发动机库存限制、国会指令与政治时间点压力展开争论，并就是否应采用更频繁发射／分阶段验证的思路提出赞成与反对意见。讨论还反复把载人安全、承包商可靠性（如Boeing/Starliner）与监管/认证流程放在首位来衡量改革的合理性。",
+          "emoji": "😬",
+          "sarcastic_question": "真的要通过不断爆炸才能证明能载人吗？"
+        }
+      }
+    },
     {
       "id": 47186677,
       "by": "jacobedawson",
@@ -504,262 +1646,6 @@
           "context": "总统在 Truth Social（其个人社交平台）公开指示所有联邦机构停止使用 Anthropic（开发 Claude 模型的 AI 公司），并以公司拒绝将模型用于 mass domestic surveillance（大规模国内监控）与 fully autonomous weapons（完全自主武器）为由发动攻势。国防部（DoD）与 Anthropic 围绕合同条款展开谈判，政府方面部分官员将其标为 supply chain risk（供应链风险），引发业内与公众对行政权力、国家安全需求与 AI 安全伦理之间冲突的争论。评论把焦点放在总统行政权限是否合法、企业在监控与武器用途上的道德边界、以及用户对数据与隐私的担忧，同时对 OpenAI/Sam Altman 的不同表态和替代模型（如 Grok）表现出高度关注。",
           "emoji": "⚠️",
           "sarcastic_question": "总统凭一条推文就能把企业赶出政府系统吗？"
-        }
-      }
-    },
-    {
-      "id": 47189650,
-      "by": "eoskx",
-      "title": "OpenAI agrees with Dept. of War to deploy models in their classified network",
-      "url": "https://twitter.com/sama/status/2027578652477821175",
-      "score": 289,
-      "detailUpdatedAt": 1772257392,
-      "createdAt": 1772250018,
-      "aiSummaryUpdatedAt": 1772258470,
-      "aisummary": {
-        "chinese_title": "OpenAI与“Dept. of War”达成机密部署协议，社区质疑红线含糊与机会主义",
-        "emoji": "😡",
-        "sarcastic_question": "签了所谓『红线』就能阻止杀手机器人运用吗？"
-      },
-      "classifications": {
-        "topics": [
-          1,
-          9,
-          3
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "OpenAI",
-          "Sam Altman",
-          "Department of War (DoW)",
-          "Anthropic",
-          "domestic mass surveillance",
-          "autonomous weapon systems",
-          "FDEs",
-          "ChatGPT",
-          "Trump"
-        ]
-      },
-      "classificationsUpdatedAt": 1772251557,
-      "aiSummary": {
-        "chinese_title": "OpenAI与“Dept. of War”达成机密部署协议，社区质疑红线含糊与机会主义",
-        "emoji": "😡",
-        "sarcastic_question": "签了所谓『红线』就能阻止杀手机器人运用吗？"
-      },
-      "detail": {
-        "id": 47189650,
-        "by": "eoskx",
-        "title": "OpenAI agrees with Dept. of War to deploy models in their classified network",
-        "url": "https://twitter.com/sama/status/2027578652477821175",
-        "score": 289,
-        "detailUpdatedAt": 1772257392,
-        "createdAt": 1772250018,
-        "aiSummaryUpdatedAt": 1772258470,
-        "aisummary": {
-          "chinese_title": "OpenAI与“Dept. of War”达成机密部署协议，社区质疑红线含糊与机会主义",
-          "discussion_overview": [
-            {
-              "category": "法律定义下的“合法使用”与条款模糊",
-              "summary": "许多评论指出 OpenAI 把“禁止国内大规模监控”和“人类对武力负责”等红线交给政府定义，合同以“lawful use/法律与政策依据”作为保护，转移了谁判断违约的问题。有人引用政府官员在 X 上的表述，强调合同是以现行法律和政策为参照而非私企可执行的 TOS，从而把最终解释权交给行政机构。反对者提醒法学史例子（例如煽动性备忘录、后续立法或司法解释）说明“合法”并不等于“道德”或“不可滥用”。评论中还质疑这是可执行的合同条款还是仅仅的政治表态，要求公布合同文本以证实说法。",
-              "supportid": [
-                "47190420",
-                "47190871",
-                "47190163",
-                "47190211",
-                "47189970"
-              ]
-            },
-            {
-              "category": "“人类责任”与“人类在环”的实质差别",
-              "summary": "评论者把 OpenAI 承诺的“human responsibility（人类对使用武力负责）”与 Anthropic 主张的“human-in-the-loop（人类在环/人类做最终决策）”区分开来，认为前者语义更宽、易被政府形式化为“总统签字/人类同意”的幌子。具体担忧是“人类责任”可以在操作上被解释为远端负责人签发命令，从而仍允许高度自动化的武器或监控系统运行。多条评论举例说这类措辞常被当作法律或政策上的空洞豁免，无法真正阻止模型被用于致命或大规模监控场景。",
-              "supportid": [
-                "47190970",
-                "47190110",
-                "47190736",
-                "47190962"
-              ]
-            },
-            {
-              "category": "对 Altman / OpenAI 的机会主义与政治经济关系怀疑",
-              "summary": "大量评论把这笔交易解读为机会主义：指责 Sam Altman 与公司为保持融资与市场地位妥协原则，有评论援引联合创始人与政治捐款、Oracle/云服务等利益关联来说明政治与商业动机。有人提出政府可能在谈判中以政策或采购手段偏袒某些供应商（指向 Brockman 的捐款、Oracle 云合约等），并称 OpenAI 可能早有密切情报/政府合作以保生存与估值。总体情绪是对公司诚信的系统性不信任，认为此次决定会损害 OpenAI 的品牌与员工信任。",
-              "supportid": [
-                "47190137",
-                "47190125",
-                "47190220",
-                "47189970",
-                "47190306"
-              ]
-            },
-            {
-              "category": "抵制与用钱包投票的呼吁与争论",
-              "summary": "很多用户在评论里宣布已取消订阅、删除账户并转向 Anthropic 的 Claude 或其他模型，认为用钱投票是直接回应公司伦理背弃的方式。支持者认为大规模开发者/技术社区弃用会改变“vibes”和行业决策者的选择，从而影响融资与市场份额；反对者则认为个人取消对巨额风险投资和政府采购影响甚微，只有配合媒体放大和集体行动才有效。评论中既有具体行动报告（卸载、删档、退订），也有关于此类抵制是否真的能改变公司行为的理性争论。",
-              "supportid": [
-                "47190140",
-                "47190671",
-                "47190595",
-                "47190427",
-                "47190263",
-                "47190338"
-              ]
-            },
-            {
-              "category": "Anthropic 与五角大楼冲突的事实与误读",
-              "summary": "有人引用媒体（WaPo）报道说五角大楼曾在会议上以拦截洲际弹道导弹为例询问 Anthropic 能否用 Claude 协助拦截，Pentagon 对 Anthropic 的回答感到不满，这被视为冲突的导火索。讨论聚焦在 Anthropic 是否把问题理解为“权限/授权”而非“能力”，以及 Anthropic 是否因此坚持更可执行的私企红线而被施压或打压。评论者一方面认为 Anthropic 立场更为严格，另一方面也有人怀疑 Anthropic 的公开反应与内部沟通存在误解。",
-              "supportid": [
-                "47190799",
-                "47190063",
-                "47189862",
-                "47190351",
-                "47190211"
-              ]
-            },
-            {
-              "category": "对官方说辞与媒体/合同证据要求的怀疑",
-              "summary": "多个评论警告不要把政府官员或公司推文视为中性事实，认为目前流传的说法可能是“内宣/政治话术”，呼吁等待可验证的合同文本或独立媒体披露。有人指出即便合同提到某些原则，也可能只是表述性语言而非可追究的法律义务；另有评论提醒官员与相关方都有造势的动机，公众应该保持怀疑并要求透明。总体上存在强烈的证据主义态度：在没有公开文本前，官方表态难以安抚怀疑者。",
-              "supportid": [
-                "47190856",
-                "47190478",
-                "47190163",
-                "47190423"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "human-in-the-loop（人类在环）",
-              "explanation": "一种安全原则，要求在高风险决策（尤其涉武力或致命后果）中保留人类监督和最终决策权，以防止 AI 自动化完成致命操作。评论中把它与更模糊的“human responsibility”作对比。"
-            },
-            {
-              "term": "We Will Not Be Divided（员工公开信）",
-              "explanation": "OpenAI 员工签署的一封公开信或誓言（评论中提及），代表员工对公司伦理与政府合作问题的立场，许多评论以此质疑签名者今后能否继续在公司任职。"
-            },
-            {
-              "term": "red lines / guardrails（红线/安全条款）",
-              "explanation": "指合同或政策中明确禁止的用途，如‘禁止国内大规模监控’与‘禁止用于自治武器系统’等；争议在于这些红线是写入可强制执行的条款，还是仅作为参考性表述。"
-            },
-            {
-              "term": "DPA（Defense Production Act，国防生产法）",
-              "explanation": "美国一部可在国家紧急状态时优先或指令私人企业生产与提供资源的法律。评论中提到 DPA 被用作政府向 Anthropic 施压的潜在工具。"
-            }
-          ],
-          "context": "OpenAI 宣称与所谓的“Department of War”（评论者对美国国防部的讽称）达成在其机密网络中部署模型的协议，并声称合同包括对“国内大规模监控”的禁止和对“使用武力的人类责任”条款。此前 Anthropic（以安全为卖点的 AI 公司）与五角大楼就类似红线发生公开冲突，媒体报道还提到一次关于用 Claude 协助拦截洲际弹道导弹的会谈引发争议。讨论的核心在于谁来解释与执行这些红线——私企以可执行的 TOS 约束，还是把判断权交给政府的“合法使用”标准——以及这项协议是否为真实的可执行合同或只是政治性表态。社区反应包括大规模的道德谴责、退订/迁移呼声以及对公司与政府潜在利益交换（如云服务合同、捐款）的怀疑。",
-          "emoji": "😡",
-          "sarcastic_question": "签了所谓『红线』就能阻止杀手机器人运用吗？"
-        },
-        "classifications": {
-          "topics": [
-            1,
-            9,
-            3
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "OpenAI",
-            "Sam Altman",
-            "Department of War (DoW)",
-            "Anthropic",
-            "domestic mass surveillance",
-            "autonomous weapon systems",
-            "FDEs",
-            "ChatGPT",
-            "Trump"
-          ]
-        },
-        "classificationsUpdatedAt": 1772251557,
-        "aiSummary": {
-          "chinese_title": "OpenAI与“Dept. of War”达成机密部署协议，社区质疑红线含糊与机会主义",
-          "discussion_overview": [
-            {
-              "category": "法律定义下的“合法使用”与条款模糊",
-              "summary": "许多评论指出 OpenAI 把“禁止国内大规模监控”和“人类对武力负责”等红线交给政府定义，合同以“lawful use/法律与政策依据”作为保护，转移了谁判断违约的问题。有人引用政府官员在 X 上的表述，强调合同是以现行法律和政策为参照而非私企可执行的 TOS，从而把最终解释权交给行政机构。反对者提醒法学史例子（例如煽动性备忘录、后续立法或司法解释）说明“合法”并不等于“道德”或“不可滥用”。评论中还质疑这是可执行的合同条款还是仅仅的政治表态，要求公布合同文本以证实说法。",
-              "supportid": [
-                "47190420",
-                "47190871",
-                "47190163",
-                "47190211",
-                "47189970"
-              ]
-            },
-            {
-              "category": "“人类责任”与“人类在环”的实质差别",
-              "summary": "评论者把 OpenAI 承诺的“human responsibility（人类对使用武力负责）”与 Anthropic 主张的“human-in-the-loop（人类在环/人类做最终决策）”区分开来，认为前者语义更宽、易被政府形式化为“总统签字/人类同意”的幌子。具体担忧是“人类责任”可以在操作上被解释为远端负责人签发命令，从而仍允许高度自动化的武器或监控系统运行。多条评论举例说这类措辞常被当作法律或政策上的空洞豁免，无法真正阻止模型被用于致命或大规模监控场景。",
-              "supportid": [
-                "47190970",
-                "47190110",
-                "47190736",
-                "47190962"
-              ]
-            },
-            {
-              "category": "对 Altman / OpenAI 的机会主义与政治经济关系怀疑",
-              "summary": "大量评论把这笔交易解读为机会主义：指责 Sam Altman 与公司为保持融资与市场地位妥协原则，有评论援引联合创始人与政治捐款、Oracle/云服务等利益关联来说明政治与商业动机。有人提出政府可能在谈判中以政策或采购手段偏袒某些供应商（指向 Brockman 的捐款、Oracle 云合约等），并称 OpenAI 可能早有密切情报/政府合作以保生存与估值。总体情绪是对公司诚信的系统性不信任，认为此次决定会损害 OpenAI 的品牌与员工信任。",
-              "supportid": [
-                "47190137",
-                "47190125",
-                "47190220",
-                "47189970",
-                "47190306"
-              ]
-            },
-            {
-              "category": "抵制与用钱包投票的呼吁与争论",
-              "summary": "很多用户在评论里宣布已取消订阅、删除账户并转向 Anthropic 的 Claude 或其他模型，认为用钱投票是直接回应公司伦理背弃的方式。支持者认为大规模开发者/技术社区弃用会改变“vibes”和行业决策者的选择，从而影响融资与市场份额；反对者则认为个人取消对巨额风险投资和政府采购影响甚微，只有配合媒体放大和集体行动才有效。评论中既有具体行动报告（卸载、删档、退订），也有关于此类抵制是否真的能改变公司行为的理性争论。",
-              "supportid": [
-                "47190140",
-                "47190671",
-                "47190595",
-                "47190427",
-                "47190263",
-                "47190338"
-              ]
-            },
-            {
-              "category": "Anthropic 与五角大楼冲突的事实与误读",
-              "summary": "有人引用媒体（WaPo）报道说五角大楼曾在会议上以拦截洲际弹道导弹为例询问 Anthropic 能否用 Claude 协助拦截，Pentagon 对 Anthropic 的回答感到不满，这被视为冲突的导火索。讨论聚焦在 Anthropic 是否把问题理解为“权限/授权”而非“能力”，以及 Anthropic 是否因此坚持更可执行的私企红线而被施压或打压。评论者一方面认为 Anthropic 立场更为严格，另一方面也有人怀疑 Anthropic 的公开反应与内部沟通存在误解。",
-              "supportid": [
-                "47190799",
-                "47190063",
-                "47189862",
-                "47190351",
-                "47190211"
-              ]
-            },
-            {
-              "category": "对官方说辞与媒体/合同证据要求的怀疑",
-              "summary": "多个评论警告不要把政府官员或公司推文视为中性事实，认为目前流传的说法可能是“内宣/政治话术”，呼吁等待可验证的合同文本或独立媒体披露。有人指出即便合同提到某些原则，也可能只是表述性语言而非可追究的法律义务；另有评论提醒官员与相关方都有造势的动机，公众应该保持怀疑并要求透明。总体上存在强烈的证据主义态度：在没有公开文本前，官方表态难以安抚怀疑者。",
-              "supportid": [
-                "47190856",
-                "47190478",
-                "47190163",
-                "47190423"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "human-in-the-loop（人类在环）",
-              "explanation": "一种安全原则，要求在高风险决策（尤其涉武力或致命后果）中保留人类监督和最终决策权，以防止 AI 自动化完成致命操作。评论中把它与更模糊的“human responsibility”作对比。"
-            },
-            {
-              "term": "We Will Not Be Divided（员工公开信）",
-              "explanation": "OpenAI 员工签署的一封公开信或誓言（评论中提及），代表员工对公司伦理与政府合作问题的立场，许多评论以此质疑签名者今后能否继续在公司任职。"
-            },
-            {
-              "term": "red lines / guardrails（红线/安全条款）",
-              "explanation": "指合同或政策中明确禁止的用途，如‘禁止国内大规模监控’与‘禁止用于自治武器系统’等；争议在于这些红线是写入可强制执行的条款，还是仅作为参考性表述。"
-            },
-            {
-              "term": "DPA（Defense Production Act，国防生产法）",
-              "explanation": "美国一部可在国家紧急状态时优先或指令私人企业生产与提供资源的法律。评论中提到 DPA 被用作政府向 Anthropic 施压的潜在工具。"
-            }
-          ],
-          "context": "OpenAI 宣称与所谓的“Department of War”（评论者对美国国防部的讽称）达成在其机密网络中部署模型的协议，并声称合同包括对“国内大规模监控”的禁止和对“使用武力的人类责任”条款。此前 Anthropic（以安全为卖点的 AI 公司）与五角大楼就类似红线发生公开冲突，媒体报道还提到一次关于用 Claude 协助拦截洲际弹道导弹的会谈引发争议。讨论的核心在于谁来解释与执行这些红线——私企以可执行的 TOS 约束，还是把判断权交给政府的“合法使用”标准——以及这项协议是否为真实的可执行合同或只是政治性表态。社区反应包括大规模的道德谴责、退订/迁移呼声以及对公司与政府潜在利益交换（如云服务合同、捐款）的怀疑。",
-          "emoji": "😡",
-          "sarcastic_question": "签了所谓『红线』就能阻止杀手机器人运用吗？"
         }
       }
     },
@@ -3964,294 +4850,6 @@
           "context": "原文是作者自述“停止使用 Google（包括搜索和 Gmail）后生活有所改善”，并提到改用 Brave、DuckDuckGo、以及更谨慎的邮箱注册策略。评论围绕三条主线展开：搜索体验替代（DuckDuckGo、Brave、Kagi 的优劣与索引来源争议）、邮箱与数字卫生的真实原因（Proton、Fastmail、自托管的可靠性与风险）、以及资助模式（广告、订阅或公共资助）与 AI 效用的权衡。讨论中频繁提到的实体和项目需加以说明：DuckDuckGo（隐私导向搜索引擎）、Kagi（付费无广告搜索服务）、Proton（隐私为主的邮件服务）、Fastmail（付费邮箱服务）、Gemini（Google 的大模型/AI 产品）、searxng（开源元搜索引擎）。",
           "emoji": "🤔",
           "sarcastic_question": "换个邮箱和搜索引擎就能彻底改善你的人生吗？"
-        }
-      }
-    },
-    {
-      "id": 47182483,
-      "by": "voxadam",
-      "title": "NASA announces major overhaul of Artemis program amid safety concerns, delays",
-      "url": "https://www.cbsnews.com/news/nasa-artemis-moon-program-overhaul/",
-      "score": 143,
-      "detailUpdatedAt": 1772230383,
-      "createdAt": 1772214024,
-      "aiSummaryUpdatedAt": 1772231193,
-      "aisummary": {
-        "chinese_title": "NASA大改Artemis：安全忧虑、成本与SLS/Starship之争",
-        "emoji": "😬",
-        "sarcastic_question": "真的要通过不断爆炸才能证明能载人吗？"
-      },
-      "classifications": {
-        "topics": [
-          8,
-          9,
-          10
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "NASA",
-          "Artemis",
-          "SpaceX",
-          "Starship",
-          "Apollo",
-          "Boeing",
-          "Orion",
-          "Congress",
-          "CBS News",
-          "Isaacman"
-        ]
-      },
-      "classificationsUpdatedAt": 1772216771,
-      "aiSummary": {
-        "chinese_title": "NASA大改Artemis：安全忧虑、成本与SLS/Starship之争",
-        "emoji": "😬",
-        "sarcastic_question": "真的要通过不断爆炸才能证明能载人吗？"
-      },
-      "detail": {
-        "id": 47182483,
-        "by": "voxadam",
-        "title": "NASA announces major overhaul of Artemis program amid safety concerns, delays",
-        "url": "https://www.cbsnews.com/news/nasa-artemis-moon-program-overhaul/",
-        "score": 143,
-        "detailUpdatedAt": 1772230383,
-        "createdAt": 1772214024,
-        "aiSummaryUpdatedAt": 1772231193,
-        "aisummary": {
-          "chinese_title": "NASA大改Artemis：安全忧虑、成本与SLS/Starship之争",
-          "discussion_overview": [
-            {
-              "category": "开发哲学对比：迭代试错 vs 完美首飞",
-              "summary": "评论围绕NASA的保守“首飞尽量完美”策略与SpaceX的快速迭代、允许失败的开发方式激烈辩论。支持快速迭代者举出Falcon 9 Block 5极高的实战成功率（评论中提到约550/551次）和Starship通过多次试飞快速修复制造与流程问题的案例；反对者强调载人任务不能把火箭爆炸当作研发成本，公众与国会对税款与人员安全的敏感性使NASA难以照搬私企的宽松容错。还有中间观点主张在无人测试阶段可更激进地试验，但在载人阶段必须保持严格认证与逐步验证以避免可预测的灾难性后果。",
-              "supportid": [
-                "47183335",
-                "47185403",
-                "47184868",
-                "47183951",
-                "47183585",
-                "47183851",
-                "47184074"
-              ]
-            },
-            {
-              "category": "预算、政治与承包商影响",
-              "summary": "评论多次把Artemis的延迟与高成本归因于政治驱动、承包链条和采购模式：一条评论引用Artemis累计约920亿美元（$92B）的开销，而有评论称Starship迄今开发成本低于10亿美元（该数字有争议）。国会指定沿用航天飞机遗留的RS‑25发动机、成本加成（cost‑plus）合同和为维持就业的“分散制造/均摊预算”做法被指令性地推高了成本并拉长进度。部分评论提醒私人承包并非万无一失（例如Boeing/Starliner问题被反复提及），并警告政治光环与总统时间点压力会扭曲技术优先级和安全决策。",
-              "supportid": [
-                "47183335",
-                "47183586",
-                "47184139",
-                "47185841",
-                "47185450",
-                "47183574"
-              ]
-            },
-            {
-              "category": "SLS 与 Starship 的技术与可行性争论",
-              "summary": "技术争议集中在SLS一次发射可把Orion送入月球轨道的“单次直达”能力与Starship依靠低轨多次加注（in‑orbit refueling）实现登月的“多次补给”路径之间。支持SLS的人指出SLS已完成绕月飞行并携带真实有效载荷，而反对者反驳其单次发射成本极高（评论提到数十亿美元/次的估算）且受限于RS‑25库存。支持Starship者强调Super Heavy可回收、生产成本低且多次试飞可快速修复问题，但批评者指出Starship尚未完成对等的月球任务验证，轨道加注需要多个飞行回合，增加操作复杂性与时序风险。",
-              "supportid": [
-                "47183935",
-                "47184083",
-                "47185918",
-                "47184039",
-                "47185953",
-                "47185178"
-              ]
-            },
-            {
-              "category": "载人安全忧虑与认证流程争议",
-              "summary": "多条评论对即将的载人近月/绕月飞行表达严重担忧，理由包括承包商质量（如对Boeing/Starliner的怀疑）、政治压力可能迫使压缩测试以及跳过传统的无人认证流程。有人明确指出NASA的文化来源于“不能杀人”的原则，Apollo 1、Challenger、Columbia等事故促成了严格的载人认证，因此载人阶段必须更为保守。另有评论警告当前行政与预算环境降低了机构决策独立性，若为政治成就而提前推进载人飞行，可能在任务中出现可避免的风险。",
-              "supportid": [
-                "47183102",
-                "47186029",
-                "47183285",
-                "47186090",
-                "47183951",
-                "47183617"
-              ]
-            },
-            {
-              "category": "支持分阶段验证与更高发射节奏的改革思路",
-              "summary": "对NASA宣布的改革，一部分评论表示支持把Artemis III改为近地轨道对接/登月器测试、提高SLS发射频率以积累经验的思路，并称这类似阿波罗时期的分阶段验证（如Apollo 9/10）。支持者认为更频繁的发射能通过实战检验提高可靠性，并且将登月任务拆成更多里程碑以降低一次性失败代价。反对或谨慎的评论提醒SLS/RS‑25的产能限制和承包商制造节奏可能无法支撑理想中的“每10个月一发”的高频率。",
-              "supportid": [
-                "47184092",
-                "47182797",
-                "47184189",
-                "47183155",
-                "47186071"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "SLS (Space Launch System)",
-              "explanation": "NASA为Artemis开发的重型运载火箭，源自航天飞机技术路线，设计用于把Orion送往月球附近但单次发射成本极高。"
-            },
-            {
-              "term": "RS-25",
-              "explanation": "原航天飞机主发动机（SSME），被用于SLS；现有库存有限（评论提到约16台剩余），生产恢复慢，限制发射节奏。"
-            },
-            {
-              "term": "Starship",
-              "explanation": "SpaceX正在研制的完全可重复使用超重型运载系统，采用快速迭代试飞策略并计划通过在轨加注实现月球/火星任务，尚未完成全部功能验证。"
-            },
-            {
-              "term": "Super Heavy",
-              "explanation": "Starship的第一级助推器，目标可回收并重复使用，评论中将其回收能力视为可能显著降低长期发射总成本的关键。"
-            },
-            {
-              "term": "Orion",
-              "explanation": "NASA的深空载人飞船，用于将宇航员送至近月轨道并返回地球；Artemis I为其无人绕月试验飞行。"
-            },
-            {
-              "term": "HLS (Human Landing System)",
-              "explanation": "NASA为Artemis采购的登月着陆器类别，SpaceX、Blue Origin等厂商开发各自着陆器以将宇航员从轨道送至月面。"
-            },
-            {
-              "term": "LEO (Low Earth Orbit)",
-              "explanation": "低地球轨道，讨论中常用于指在地球轨道进行的加注/对接测试与作为Starship在轨加注的作业位置。"
-            },
-            {
-              "term": "orbital refueling / cryogenic fuel transfer",
-              "explanation": "在轨对液态（低温）推进剂进行转移以为深空任务加注燃料，是SpaceX月球方案中的关键但技术与操作复杂性高。"
-            },
-            {
-              "term": "cost-plus contract / 成本加成合同",
-              "explanation": "一种政府采购模式，承包商按实际成本报销并获固定利润，评论中被指可能降低成本约束、助长项目膨胀与低效率。"
-            }
-          ],
-          "context": "NASA宣布对Artemis（NASA的载人月球返航计划）进行重大改组，源于多项安全担忧、承包商延误以及对按期登月目标的压力。Artemis传统架构以SLS（Space Launch System）火箭与Orion载人舱为核心，登月着陆器（HLS）由外部承包商提供；评论讨论了SLS已有的绕月试飞与Starship（SpaceX）的快速迭代试验之间的对比。评论者基于成本估算、RS‑25发动机库存限制、国会指令与政治时间点压力展开争论，并就是否应采用更频繁发射／分阶段验证的思路提出赞成与反对意见。讨论还反复把载人安全、承包商可靠性（如Boeing/Starliner）与监管/认证流程放在首位来衡量改革的合理性。",
-          "emoji": "😬",
-          "sarcastic_question": "真的要通过不断爆炸才能证明能载人吗？"
-        },
-        "classifications": {
-          "topics": [
-            8,
-            9,
-            10
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "NASA",
-            "Artemis",
-            "SpaceX",
-            "Starship",
-            "Apollo",
-            "Boeing",
-            "Orion",
-            "Congress",
-            "CBS News",
-            "Isaacman"
-          ]
-        },
-        "classificationsUpdatedAt": 1772216771,
-        "aiSummary": {
-          "chinese_title": "NASA大改Artemis：安全忧虑、成本与SLS/Starship之争",
-          "discussion_overview": [
-            {
-              "category": "开发哲学对比：迭代试错 vs 完美首飞",
-              "summary": "评论围绕NASA的保守“首飞尽量完美”策略与SpaceX的快速迭代、允许失败的开发方式激烈辩论。支持快速迭代者举出Falcon 9 Block 5极高的实战成功率（评论中提到约550/551次）和Starship通过多次试飞快速修复制造与流程问题的案例；反对者强调载人任务不能把火箭爆炸当作研发成本，公众与国会对税款与人员安全的敏感性使NASA难以照搬私企的宽松容错。还有中间观点主张在无人测试阶段可更激进地试验，但在载人阶段必须保持严格认证与逐步验证以避免可预测的灾难性后果。",
-              "supportid": [
-                "47183335",
-                "47185403",
-                "47184868",
-                "47183951",
-                "47183585",
-                "47183851",
-                "47184074"
-              ]
-            },
-            {
-              "category": "预算、政治与承包商影响",
-              "summary": "评论多次把Artemis的延迟与高成本归因于政治驱动、承包链条和采购模式：一条评论引用Artemis累计约920亿美元（$92B）的开销，而有评论称Starship迄今开发成本低于10亿美元（该数字有争议）。国会指定沿用航天飞机遗留的RS‑25发动机、成本加成（cost‑plus）合同和为维持就业的“分散制造/均摊预算”做法被指令性地推高了成本并拉长进度。部分评论提醒私人承包并非万无一失（例如Boeing/Starliner问题被反复提及），并警告政治光环与总统时间点压力会扭曲技术优先级和安全决策。",
-              "supportid": [
-                "47183335",
-                "47183586",
-                "47184139",
-                "47185841",
-                "47185450",
-                "47183574"
-              ]
-            },
-            {
-              "category": "SLS 与 Starship 的技术与可行性争论",
-              "summary": "技术争议集中在SLS一次发射可把Orion送入月球轨道的“单次直达”能力与Starship依靠低轨多次加注（in‑orbit refueling）实现登月的“多次补给”路径之间。支持SLS的人指出SLS已完成绕月飞行并携带真实有效载荷，而反对者反驳其单次发射成本极高（评论提到数十亿美元/次的估算）且受限于RS‑25库存。支持Starship者强调Super Heavy可回收、生产成本低且多次试飞可快速修复问题，但批评者指出Starship尚未完成对等的月球任务验证，轨道加注需要多个飞行回合，增加操作复杂性与时序风险。",
-              "supportid": [
-                "47183935",
-                "47184083",
-                "47185918",
-                "47184039",
-                "47185953",
-                "47185178"
-              ]
-            },
-            {
-              "category": "载人安全忧虑与认证流程争议",
-              "summary": "多条评论对即将的载人近月/绕月飞行表达严重担忧，理由包括承包商质量（如对Boeing/Starliner的怀疑）、政治压力可能迫使压缩测试以及跳过传统的无人认证流程。有人明确指出NASA的文化来源于“不能杀人”的原则，Apollo 1、Challenger、Columbia等事故促成了严格的载人认证，因此载人阶段必须更为保守。另有评论警告当前行政与预算环境降低了机构决策独立性，若为政治成就而提前推进载人飞行，可能在任务中出现可避免的风险。",
-              "supportid": [
-                "47183102",
-                "47186029",
-                "47183285",
-                "47186090",
-                "47183951",
-                "47183617"
-              ]
-            },
-            {
-              "category": "支持分阶段验证与更高发射节奏的改革思路",
-              "summary": "对NASA宣布的改革，一部分评论表示支持把Artemis III改为近地轨道对接/登月器测试、提高SLS发射频率以积累经验的思路，并称这类似阿波罗时期的分阶段验证（如Apollo 9/10）。支持者认为更频繁的发射能通过实战检验提高可靠性，并且将登月任务拆成更多里程碑以降低一次性失败代价。反对或谨慎的评论提醒SLS/RS‑25的产能限制和承包商制造节奏可能无法支撑理想中的“每10个月一发”的高频率。",
-              "supportid": [
-                "47184092",
-                "47182797",
-                "47184189",
-                "47183155",
-                "47186071"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "SLS (Space Launch System)",
-              "explanation": "NASA为Artemis开发的重型运载火箭，源自航天飞机技术路线，设计用于把Orion送往月球附近但单次发射成本极高。"
-            },
-            {
-              "term": "RS-25",
-              "explanation": "原航天飞机主发动机（SSME），被用于SLS；现有库存有限（评论提到约16台剩余），生产恢复慢，限制发射节奏。"
-            },
-            {
-              "term": "Starship",
-              "explanation": "SpaceX正在研制的完全可重复使用超重型运载系统，采用快速迭代试飞策略并计划通过在轨加注实现月球/火星任务，尚未完成全部功能验证。"
-            },
-            {
-              "term": "Super Heavy",
-              "explanation": "Starship的第一级助推器，目标可回收并重复使用，评论中将其回收能力视为可能显著降低长期发射总成本的关键。"
-            },
-            {
-              "term": "Orion",
-              "explanation": "NASA的深空载人飞船，用于将宇航员送至近月轨道并返回地球；Artemis I为其无人绕月试验飞行。"
-            },
-            {
-              "term": "HLS (Human Landing System)",
-              "explanation": "NASA为Artemis采购的登月着陆器类别，SpaceX、Blue Origin等厂商开发各自着陆器以将宇航员从轨道送至月面。"
-            },
-            {
-              "term": "LEO (Low Earth Orbit)",
-              "explanation": "低地球轨道，讨论中常用于指在地球轨道进行的加注/对接测试与作为Starship在轨加注的作业位置。"
-            },
-            {
-              "term": "orbital refueling / cryogenic fuel transfer",
-              "explanation": "在轨对液态（低温）推进剂进行转移以为深空任务加注燃料，是SpaceX月球方案中的关键但技术与操作复杂性高。"
-            },
-            {
-              "term": "cost-plus contract / 成本加成合同",
-              "explanation": "一种政府采购模式，承包商按实际成本报销并获固定利润，评论中被指可能降低成本约束、助长项目膨胀与低效率。"
-            }
-          ],
-          "context": "NASA宣布对Artemis（NASA的载人月球返航计划）进行重大改组，源于多项安全担忧、承包商延误以及对按期登月目标的压力。Artemis传统架构以SLS（Space Launch System）火箭与Orion载人舱为核心，登月着陆器（HLS）由外部承包商提供；评论讨论了SLS已有的绕月试飞与Starship（SpaceX）的快速迭代试验之间的对比。评论者基于成本估算、RS‑25发动机库存限制、国会指令与政治时间点压力展开争论，并就是否应采用更频繁发射／分阶段验证的思路提出赞成与反对意见。讨论还反复把载人安全、承包商可靠性（如Boeing/Starliner）与监管/认证流程放在首位来衡量改革的合理性。",
-          "emoji": "😬",
-          "sarcastic_question": "真的要通过不断爆炸才能证明能载人吗？"
         }
       }
     },
@@ -12806,472 +13404,6 @@
           "context": "微软在近期把 Markdown 渲染（包含嵌套列表等）和 Copilot 整合进 Windows 11 的 Notepad（Windows 的极简文本编辑器），此举触发广泛讨论。几周前披露的 CVE-2026-20841（Notepad RCE）——攻击者可利用 Markdown 中的恶意链接触发远程代码执行——把这次功能改动放大为安全议题。评论基于 Notepad 作为“去格式化、可预测文本工具”的历史定位，质疑把富渲染/AI 功能内嵌入系统工具的必要性，并讨论卸载新版、用 LTSC/ edit.exe 或第三方编辑器作为替代的可行性与风险。讨论同时涉及 Notepad++ 的供应链攻击、行尾/编码兼容性问题，以及微软产品管理与 QA 文化的长期担忧。",
           "emoji": "🤦",
           "sarcastic_question": "把Notepad变成Copilot+Markdown，这是谁批准的？"
-        }
-      }
-    },
-    {
-      "id": 47112299,
-      "by": "cs702",
-      "title": "Artist who \"paints\" portraits on glass by hitting it with a hammer",
-      "url": "https://simonbergerart.com",
-      "score": 232,
-      "detailUpdatedAt": 1772129644,
-      "createdAt": 1772068232,
-      "aiSummaryUpdatedAt": 1772130192,
-      "aisummary": {
-        "chinese_title": "用锤子击碎玻璃“画”肖像——技法惊艳但被指题材平淡",
-        "emoji": "🔨",
-        "sarcastic_question": "只要会用锤子打碎玻璃，就能卖高价当艺术家吗？"
-      },
-      "classifications": {
-        "topics": [],
-        "facets": [
-          12
-        ],
-        "tags": [
-          "Simon Berger",
-          "simonbergerart.com",
-          "glass art",
-          "glass",
-          "hammer",
-          "portraits",
-          "art"
-        ]
-      },
-      "classificationsUpdatedAt": 1772070958,
-      "aiSummary": {
-        "chinese_title": "用锤子击碎玻璃“画”肖像——技法惊艳但被指题材平淡",
-        "emoji": "🔨",
-        "sarcastic_question": "只要会用锤子打碎玻璃，就能卖高价当艺术家吗？"
-      },
-      "detail": {
-        "id": 47112299,
-        "by": "cs702",
-        "title": "Artist who \"paints\" portraits on glass by hitting it with a hammer",
-        "url": "https://simonbergerart.com",
-        "score": 130,
-        "detailUpdatedAt": 1772091798,
-        "createdAt": 1772068232,
-        "aiSummaryUpdatedAt": 1772092445,
-        "aisummary": {
-          "chinese_title": "锤击玻璃“绘”人像：新奇技法与艺术价值争议",
-          "discussion_overview": [
-            {
-              "category": "技法新奇但成品被指套路／旅游化",
-              "summary": "部分评论认可用锤子砸玻璃的技法很酷，但批评作者的成品多为近景写实、表情平淡的人像，给人旅游景点或纪念品化的既视感。有人指出观众的 pareidolia（在随机纹理中辨认出人脸的倾向）会放大作品的可读性，从而让看起来重复的肖像更容易被接受。另有评论直言成品“像被损坏的玻璃”，缺乏生命力或新意，认为技术本身并不必然带来深刻内容。整体论点是：技巧吸引眼球，但并不能自动等同于有力的艺术表达。",
-              "supportid": [
-                "47161056",
-                "47161299",
-                "47162092",
-                "47162990",
-                "47162813"
-              ]
-            },
-            {
-              "category": "技巧与内容之争：噱头还是核心？",
-              "summary": "另一组评论把讨论拉到“技巧（how）”与“图像/内容（what）”的权重上，提出二轴模型并认为“好看的图像”通常比“酷的技法”更重要。有人用比喻说明制作过程和最终作品并非总是等价，警告单凭新奇技法容易掉入噱头陷阱；但也有人反驳称破碎玻璃的纹理在完成品上就能明显看出制作方法，不像某些媒介容易被误认。评论中还提到长期在特定约束内钻研会带来独特性，强调熟练度和构思对艺术长期价值的作用。",
-              "supportid": [
-                "47161295",
-                "47161795",
-                "47162845",
-                "47162195",
-                "47161937"
-              ]
-            },
-            {
-              "category": "街头／urban art语境与市场认可",
-              "summary": "支持者从街头/urban art语境为作者辩护，指出该艺术家在本地画廊（评论提到的 Aurum Gallery）与街头圈内有曝光，且该场景常见“高技艺配通俗题材”的做法以维持生计并与大众对接。有人举作品标题或主题为例（如“glass ceiling breaker”，以及纪念贝鲁特爆炸受难者的作品），认为材料与手法可承载政治或记忆意义，而非纯粹噱头。还有评论把这种手工创新视为在大量AI内容中一股清新之风，认为展示实际工艺值得在社区讨论。",
-              "supportid": [
-                "47162666",
-                "47160542",
-                "47124070",
-                "47160683",
-                "47160508"
-              ]
-            },
-            {
-              "category": "概念艺术类比与版权/机器产出讨论",
-              "summary": "评论把该方法与概念艺术史上的类似做法相比较，提到 Walead Beshty（把玻璃方块交由 FedEx 运输以让物流过程造成破坏的作品）和 Warhol 的 oxidation paintings，说明“让破坏或随机性成为创作手段”并非新鲜现象。这一脉络又引出法律与AI的类比：有人援引美国版权局（US Copyright Office）关于 AI 生成图像是否可著作权的争议，质疑如果艺术家无法完全预见每次玻璃破裂的细节，作品是否会被认定为机械输出从而影响著作权。该组观点把作品的随机性、作者的可控性与原创性判定联系起来，提出艺术性与法律认定的交叉问题。",
-              "supportid": [
-                "47124229",
-                "47162702",
-                "47162689",
-                "47160542"
-              ]
-            },
-            {
-              "category": "是否适合在 Hacker News 出现与标题／落地页质疑",
-              "summary": "关于话题是否适合出现在 Hacker News 也引发争议：批评者认为标题有 clickbait 痕迹、内容像 Reddit/Facebook 式轻内容甚至落地页未展示关键素材，觉得与 HN 主流技术讨论不符。支持者援引 HN 准则表示“good hackers would find interesting”，认为新奇手法或创意 hack（把破碎当媒介）具有讨论价值，并且在 AI 话题泛滥时显得新鲜。讨论因此既涉及内容本身，也涉及社区对主题相关性、标题质量和页面呈现的期望差异。总体情绪在欢迎与质疑之间摇摆。",
-              "supportid": [
-                "47160619",
-                "47162994",
-                "47161054",
-                "47160692",
-                "47161037",
-                "47160683"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "pareidolia",
-              "explanation": "一种认知现象，人们在随机或模糊的视觉纹理中辨认出有意义的图案（尤其是人脸），会让观察破碎玻璃时更容易“看见”肖像。"
-            }
-          ],
-          "context": "这条讨论源于一篇介绍一位用锤子敲击玻璃以产生裂纹并利用光影构成肖像的报道。评论围绕技法的新颖性、成品是否流于旅游纪念品、以及此类做法在街头/urban art圈和画廊（例如评论中提到的 Aurum Gallery——一家已关闭的画廊）里的接受度展开。有人把该做法与概念艺术案例比较，如 Walead Beshty（通过 FedEx 运输玻璃方块让运输过程造成破坏的作品）和 Warhol 的 oxidation paintings（沃霍尔通过化学氧化创造图像的作品），并以美国版权局（US Copyright Office）对 AI 生成图像著作权的争议为切入点讨论随机性与版权归属。讨论还涉及 HN 是否适合刊登此类非技术但创意性的内容、以及标题和落地页的呈现质量。",
-          "emoji": "🤔",
-          "sarcastic_question": "用锤子砸玻璃做肖像，是艺术还是旅游商品？"
-        },
-        "classifications": {
-          "topics": [],
-          "facets": [
-            12
-          ],
-          "tags": [
-            "Simon Berger",
-            "simonbergerart.com",
-            "glass art",
-            "glass",
-            "hammer",
-            "portraits",
-            "art"
-          ]
-        },
-        "classificationsUpdatedAt": 1772070958,
-        "aiSummary": {
-          "chinese_title": "锤击玻璃“绘”人像：新奇技法与艺术价值争议",
-          "discussion_overview": [
-            {
-              "category": "技法新奇但成品被指套路／旅游化",
-              "summary": "部分评论认可用锤子砸玻璃的技法很酷，但批评作者的成品多为近景写实、表情平淡的人像，给人旅游景点或纪念品化的既视感。有人指出观众的 pareidolia（在随机纹理中辨认出人脸的倾向）会放大作品的可读性，从而让看起来重复的肖像更容易被接受。另有评论直言成品“像被损坏的玻璃”，缺乏生命力或新意，认为技术本身并不必然带来深刻内容。整体论点是：技巧吸引眼球，但并不能自动等同于有力的艺术表达。",
-              "supportid": [
-                "47161056",
-                "47161299",
-                "47162092",
-                "47162990",
-                "47162813"
-              ]
-            },
-            {
-              "category": "技巧与内容之争：噱头还是核心？",
-              "summary": "另一组评论把讨论拉到“技巧（how）”与“图像/内容（what）”的权重上，提出二轴模型并认为“好看的图像”通常比“酷的技法”更重要。有人用比喻说明制作过程和最终作品并非总是等价，警告单凭新奇技法容易掉入噱头陷阱；但也有人反驳称破碎玻璃的纹理在完成品上就能明显看出制作方法，不像某些媒介容易被误认。评论中还提到长期在特定约束内钻研会带来独特性，强调熟练度和构思对艺术长期价值的作用。",
-              "supportid": [
-                "47161295",
-                "47161795",
-                "47162845",
-                "47162195",
-                "47161937"
-              ]
-            },
-            {
-              "category": "街头／urban art语境与市场认可",
-              "summary": "支持者从街头/urban art语境为作者辩护，指出该艺术家在本地画廊（评论提到的 Aurum Gallery）与街头圈内有曝光，且该场景常见“高技艺配通俗题材”的做法以维持生计并与大众对接。有人举作品标题或主题为例（如“glass ceiling breaker”，以及纪念贝鲁特爆炸受难者的作品），认为材料与手法可承载政治或记忆意义，而非纯粹噱头。还有评论把这种手工创新视为在大量AI内容中一股清新之风，认为展示实际工艺值得在社区讨论。",
-              "supportid": [
-                "47162666",
-                "47160542",
-                "47124070",
-                "47160683",
-                "47160508"
-              ]
-            },
-            {
-              "category": "概念艺术类比与版权/机器产出讨论",
-              "summary": "评论把该方法与概念艺术史上的类似做法相比较，提到 Walead Beshty（把玻璃方块交由 FedEx 运输以让物流过程造成破坏的作品）和 Warhol 的 oxidation paintings，说明“让破坏或随机性成为创作手段”并非新鲜现象。这一脉络又引出法律与AI的类比：有人援引美国版权局（US Copyright Office）关于 AI 生成图像是否可著作权的争议，质疑如果艺术家无法完全预见每次玻璃破裂的细节，作品是否会被认定为机械输出从而影响著作权。该组观点把作品的随机性、作者的可控性与原创性判定联系起来，提出艺术性与法律认定的交叉问题。",
-              "supportid": [
-                "47124229",
-                "47162702",
-                "47162689",
-                "47160542"
-              ]
-            },
-            {
-              "category": "是否适合在 Hacker News 出现与标题／落地页质疑",
-              "summary": "关于话题是否适合出现在 Hacker News 也引发争议：批评者认为标题有 clickbait 痕迹、内容像 Reddit/Facebook 式轻内容甚至落地页未展示关键素材，觉得与 HN 主流技术讨论不符。支持者援引 HN 准则表示“good hackers would find interesting”，认为新奇手法或创意 hack（把破碎当媒介）具有讨论价值，并且在 AI 话题泛滥时显得新鲜。讨论因此既涉及内容本身，也涉及社区对主题相关性、标题质量和页面呈现的期望差异。总体情绪在欢迎与质疑之间摇摆。",
-              "supportid": [
-                "47160619",
-                "47162994",
-                "47161054",
-                "47160692",
-                "47161037",
-                "47160683"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "pareidolia",
-              "explanation": "一种认知现象，人们在随机或模糊的视觉纹理中辨认出有意义的图案（尤其是人脸），会让观察破碎玻璃时更容易“看见”肖像。"
-            }
-          ],
-          "context": "这条讨论源于一篇介绍一位用锤子敲击玻璃以产生裂纹并利用光影构成肖像的报道。评论围绕技法的新颖性、成品是否流于旅游纪念品、以及此类做法在街头/urban art圈和画廊（例如评论中提到的 Aurum Gallery——一家已关闭的画廊）里的接受度展开。有人把该做法与概念艺术案例比较，如 Walead Beshty（通过 FedEx 运输玻璃方块让运输过程造成破坏的作品）和 Warhol 的 oxidation paintings（沃霍尔通过化学氧化创造图像的作品），并以美国版权局（US Copyright Office）对 AI 生成图像著作权的争议为切入点讨论随机性与版权归属。讨论还涉及 HN 是否适合刊登此类非技术但创意性的内容、以及标题和落地页的呈现质量。",
-          "emoji": "🤔",
-          "sarcastic_question": "用锤子砸玻璃做肖像，是艺术还是旅游商品？"
-        }
-      }
-    },
-    {
-      "id": 47159430,
-      "by": "pie_flavor",
-      "title": "Banned in California",
-      "url": "https://www.bannedincalifornia.org/",
-      "score": 393,
-      "detailUpdatedAt": 1772127841,
-      "createdAt": 1772062230,
-      "aiSummaryUpdatedAt": 1772129263,
-      "aisummary": {
-        "chinese_title": "“Banned in California”争议：环保监管、许可僵局与污染外包",
-        "emoji": "⚖️",
-        "sarcastic_question": "难道就把污染外包给穷国换便宜货吗？"
-      },
-      "classifications": {
-        "topics": [
-          9,
-          10,
-          7
-        ],
-        "facets": [
-          9
-        ],
-        "tags": [
-          "Banned in California",
-          "California",
-          "manufacturing",
-          "permitting",
-          "semiconductors",
-          "oil refineries",
-          "asbestos",
-          "clean air"
-        ]
-      },
-      "classificationsUpdatedAt": 1772063769,
-      "aiSummary": {
-        "chinese_title": "“Banned in California”争议：环保监管、许可僵局与污染外包",
-        "emoji": "⚖️",
-        "sarcastic_question": "难道就把污染外包给穷国换便宜货吗？"
-      },
-      "detail": {
-        "id": 47159430,
-        "by": "pie_flavor",
-        "title": "Banned in California",
-        "url": "https://www.bannedincalifornia.org/",
-        "score": 172,
-        "detailUpdatedAt": 1772104397,
-        "createdAt": 1772062230,
-        "aiSummaryUpdatedAt": 1772104910,
-        "aisummary": {
-          "chinese_title": "声称“加州禁令”：夸大指控、许可阻碍与污染外包的争论",
-          "discussion_overview": [
-            {
-              "category": "网站夸大与证据不足",
-              "summary": "许多评论指出该网站把“没人新建”或“难以取得许可”的现象等同于“被禁止”，但页面很少引用具体法规、化学品或条文来支持其结论。反驳者列举了近年的半导体项目（如 Applied Materials 的 EPIC facility、Bosch 在 Roseville 的扩展、Infinera 被称为“new fab”的项目）和区域性案例，说明并非绝对无法在加州建厂。页面还把地区性限制（例如 Bay Area AQMD 的严格审批）泛化为全州禁令，且创建者被指出有经营利益并在社媒上发表反管制言论，这使得论述被怀疑带有偏见或情绪化煽动。评论普遍要求网站应链接到具体法规与许可案例，而不是笼统贴“BANNED”标签来博眼球。",
-              "supportid": [
-                "47159897",
-                "47159957",
-                "47159789",
-                "47159823",
-                "47159654",
-                "47159750",
-                "47159874"
-              ]
-            },
-            {
-              "category": "许可与诉讼成本阻碍新建制造",
-              "summary": "另一类评论认为真正的障碍并非法律文本上的绝对禁令，而是复杂、耗时且昂贵的许可程序与潜在诉讼：有人提到拿到正规许可常常需要18个月到数年，项目启动后要面临长期法律纠纷与地方反对。高昂的合规、土地与人工成本把在地生产的可行性拉低，使企业更倾向将生产外包到监管宽松或成本更低的州/国家。讨论中也出现制度性替代建议，例如减少前置审批而更多依赖事后随机检查和民事诉讼（law+econ 思路），以期在速度与合规间寻求折衷。",
-              "supportid": [
-                "47159713",
-                "47161112",
-                "47160002",
-                "47159769",
-                "47159627",
-                "47159661"
-              ]
-            },
-            {
-              "category": "严格监管的环境与健康正当性",
-              "summary": "支持严格许可的评论强调加州有明确的历史与地理理由：湾区地形易于囤积污染物，州内存在大量 Superfund 场址，评论列举了土壤和地下水被 trichloroethylene、1,1,1‑trichloroethane、Freon 113 等污染的具体例子。关于汽车喷漆，评论指出 VOCs（挥发性有机化合物）在居民区邻近的大规模工业喷涂会加剧儿童哮喘和公共健康负担；即便半导体使用密闭流程并回收有毒气体（arsine、phosphine），历史遗留污染和大型工业的外部性仍是严格许可的主要动力。很多人认为保护空气与水的公共健康外部性高于短期恢复高污染产业的经济收益。",
-              "supportid": [
-                "47161287",
-                "47159601",
-                "47159778",
-                "47161167",
-                "47159696"
-              ]
-            },
-            {
-              "category": "“Grandfathered in”与既得利益/准入壁垒",
-              "summary": "评论反复提到“grandfathered in”（既有设施豁免）是理解争议的关键：老牌工厂在旧许可下延续运营，而新进入者要满足现代更严格的标准，导致准入壁垒与不对称利益。有人把这与住房市场类比，指出老玩家凭历史许可获得不对称的经济收益，新竞争者因更高合规门槛被阻挡，从而产生类似垄断或租金化的效果。批评观点认为网站把这种结构性不对称直接描述为“加州全面禁令”，在逻辑上存在夸张与误导。",
-              "supportid": [
-                "47164378",
-                "47159789",
-                "47159986",
-                "47159935"
-              ]
-            },
-            {
-              "category": "污染外包与道德两难（NIMBY vs 全球不平等）",
-              "summary": "大量讨论集中在道德层面：有人指出加州通过高标准保护本地环境，但同时大量消费来自监管更宽松地区生产的商品，这等于把污染外包给别州或发展中国家。支持迁移产业的观点主张把污染性产业放在愿意接纳的地区（如某些德州地区或国外），以换取地方就业；反对者指出这制造全球不平等、将污染负担转嫁给弱势地区，并呼吁用财富和技术在本地发展更清洁的制造工艺以兼顾产业安全与环境。讨论因此既涉及经济效率，也涉及伦理与战略自主的权衡。",
-              "supportid": [
-                "47159747",
-                "47159625",
-                "47159648",
-                "47159709",
-                "47159817"
-              ]
-            },
-            {
-              "category": "作者动机与政治倾向的怀疑（游说/astroturf）",
-              "summary": "部分评论怀疑该网站具有商业或政治动机：评论指出创建者是电磁炉公司CEO，且在社媒上表明反监管立场，另有评论质疑此类内容在 HN 受众中易被快速放大并可能具有 astroturf 或游说色彩。有人认为即便作者有私利，许可成本和产业外流仍是值得讨论的公共议题，但站点本身的断言式、缺乏可验证引用的表达方式削弱了其信誉并更易被当作情绪化宣传。呼吁以可验证法规、具体案例和跨地区可比的数据来替代情绪化的“BANNED”标签。",
-              "supportid": [
-                "47159750",
-                "47159695",
-                "47159928",
-                "47159664"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "grandfathered in（既有豁免）",
-              "explanation": "指既有设施在新法规实施后继续按原许可运行，而新进入者必须满足后来更严格的标准；这种豁免会造成准入不对称与既得利益保护。"
-            },
-            {
-              "term": "VOCs（volatile organic compounds，挥发性有机化合物）",
-              "explanation": "常见于油漆与溶剂的挥发性化合物，会参与臭氧生成并对呼吸系统有害，是汽车喷漆等行业受限的主要原因之一。"
-            },
-            {
-              "term": "Superfund（美国EPA的有害废物清理计划）",
-              "explanation": "由美国 EPA 管理的国家优先清理名单，用以识别并治理严重污染的工业遗留场地，常作为衡量地区历史污染、公共健康风险的重要资料。"
-            },
-            {
-              "term": "Bay Area AQMD（Bay Area Air Quality Management District）",
-              "explanation": "旧金山湾区的区域性空气质量监管机构，负责排放许可与地方性空气污染管控；评论中有人指出网站将其局部限制泛化为全州禁令。"
-            },
-            {
-              "term": "semiconductor fab（半导体晶圆厂 / 晶圆厂）",
-              "explanation": "用于生产集成电路的工厂，需洁净室和使用诸如 arsine、phosphine 等有毒气体及化学蚀刻流程，因此在污染与许可上有高标准与复杂的废弃物处理要求。"
-            }
-          ],
-          "context": "原帖指向一个声称“某些产业在加州被禁止或几乎无法新建”的网站，引发大量评论质疑其真实性与论证方法。网站创建者被指出为某电磁炉公司CEO并在社媒上表达反监管立场，评论围绕两条主线争论：一是网站是否夸大、混淆地区性与全州性规定并缺乏法规引用；二是加州严格许可的正当性，涉及湾区地形、Superfund 遗留污染、VOCs 对公共健康的影响，以及制造业外包带来的伦理与国家安全问题。讨论同时提到许可时长（有评论指出可达18个月或更久）、诉讼风险、土地与劳动力成本等现实因素，并出现诸如 law+econ 式的替代执法建议。总体上，这是一场关于证据、公共健康与产业政策取舍的复杂讨论。",
-          "emoji": "🏭",
-          "sarcastic_question": "那你是建议把制造污染都搬去别州还是国外？"
-        },
-        "classifications": {
-          "topics": [
-            9,
-            10,
-            7
-          ],
-          "facets": [
-            9
-          ],
-          "tags": [
-            "Banned in California",
-            "California",
-            "manufacturing",
-            "permitting",
-            "semiconductors",
-            "oil refineries",
-            "asbestos",
-            "clean air"
-          ]
-        },
-        "classificationsUpdatedAt": 1772063769,
-        "aiSummary": {
-          "chinese_title": "声称“加州禁令”：夸大指控、许可阻碍与污染外包的争论",
-          "discussion_overview": [
-            {
-              "category": "网站夸大与证据不足",
-              "summary": "许多评论指出该网站把“没人新建”或“难以取得许可”的现象等同于“被禁止”，但页面很少引用具体法规、化学品或条文来支持其结论。反驳者列举了近年的半导体项目（如 Applied Materials 的 EPIC facility、Bosch 在 Roseville 的扩展、Infinera 被称为“new fab”的项目）和区域性案例，说明并非绝对无法在加州建厂。页面还把地区性限制（例如 Bay Area AQMD 的严格审批）泛化为全州禁令，且创建者被指出有经营利益并在社媒上发表反管制言论，这使得论述被怀疑带有偏见或情绪化煽动。评论普遍要求网站应链接到具体法规与许可案例，而不是笼统贴“BANNED”标签来博眼球。",
-              "supportid": [
-                "47159897",
-                "47159957",
-                "47159789",
-                "47159823",
-                "47159654",
-                "47159750",
-                "47159874"
-              ]
-            },
-            {
-              "category": "许可与诉讼成本阻碍新建制造",
-              "summary": "另一类评论认为真正的障碍并非法律文本上的绝对禁令，而是复杂、耗时且昂贵的许可程序与潜在诉讼：有人提到拿到正规许可常常需要18个月到数年，项目启动后要面临长期法律纠纷与地方反对。高昂的合规、土地与人工成本把在地生产的可行性拉低，使企业更倾向将生产外包到监管宽松或成本更低的州/国家。讨论中也出现制度性替代建议，例如减少前置审批而更多依赖事后随机检查和民事诉讼（law+econ 思路），以期在速度与合规间寻求折衷。",
-              "supportid": [
-                "47159713",
-                "47161112",
-                "47160002",
-                "47159769",
-                "47159627",
-                "47159661"
-              ]
-            },
-            {
-              "category": "严格监管的环境与健康正当性",
-              "summary": "支持严格许可的评论强调加州有明确的历史与地理理由：湾区地形易于囤积污染物，州内存在大量 Superfund 场址，评论列举了土壤和地下水被 trichloroethylene、1,1,1‑trichloroethane、Freon 113 等污染的具体例子。关于汽车喷漆，评论指出 VOCs（挥发性有机化合物）在居民区邻近的大规模工业喷涂会加剧儿童哮喘和公共健康负担；即便半导体使用密闭流程并回收有毒气体（arsine、phosphine），历史遗留污染和大型工业的外部性仍是严格许可的主要动力。很多人认为保护空气与水的公共健康外部性高于短期恢复高污染产业的经济收益。",
-              "supportid": [
-                "47161287",
-                "47159601",
-                "47159778",
-                "47161167",
-                "47159696"
-              ]
-            },
-            {
-              "category": "“Grandfathered in”与既得利益/准入壁垒",
-              "summary": "评论反复提到“grandfathered in”（既有设施豁免）是理解争议的关键：老牌工厂在旧许可下延续运营，而新进入者要满足现代更严格的标准，导致准入壁垒与不对称利益。有人把这与住房市场类比，指出老玩家凭历史许可获得不对称的经济收益，新竞争者因更高合规门槛被阻挡，从而产生类似垄断或租金化的效果。批评观点认为网站把这种结构性不对称直接描述为“加州全面禁令”，在逻辑上存在夸张与误导。",
-              "supportid": [
-                "47164378",
-                "47159789",
-                "47159986",
-                "47159935"
-              ]
-            },
-            {
-              "category": "污染外包与道德两难（NIMBY vs 全球不平等）",
-              "summary": "大量讨论集中在道德层面：有人指出加州通过高标准保护本地环境，但同时大量消费来自监管更宽松地区生产的商品，这等于把污染外包给别州或发展中国家。支持迁移产业的观点主张把污染性产业放在愿意接纳的地区（如某些德州地区或国外），以换取地方就业；反对者指出这制造全球不平等、将污染负担转嫁给弱势地区，并呼吁用财富和技术在本地发展更清洁的制造工艺以兼顾产业安全与环境。讨论因此既涉及经济效率，也涉及伦理与战略自主的权衡。",
-              "supportid": [
-                "47159747",
-                "47159625",
-                "47159648",
-                "47159709",
-                "47159817"
-              ]
-            },
-            {
-              "category": "作者动机与政治倾向的怀疑（游说/astroturf）",
-              "summary": "部分评论怀疑该网站具有商业或政治动机：评论指出创建者是电磁炉公司CEO，且在社媒上表明反监管立场，另有评论质疑此类内容在 HN 受众中易被快速放大并可能具有 astroturf 或游说色彩。有人认为即便作者有私利，许可成本和产业外流仍是值得讨论的公共议题，但站点本身的断言式、缺乏可验证引用的表达方式削弱了其信誉并更易被当作情绪化宣传。呼吁以可验证法规、具体案例和跨地区可比的数据来替代情绪化的“BANNED”标签。",
-              "supportid": [
-                "47159750",
-                "47159695",
-                "47159928",
-                "47159664"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "grandfathered in（既有豁免）",
-              "explanation": "指既有设施在新法规实施后继续按原许可运行，而新进入者必须满足后来更严格的标准；这种豁免会造成准入不对称与既得利益保护。"
-            },
-            {
-              "term": "VOCs（volatile organic compounds，挥发性有机化合物）",
-              "explanation": "常见于油漆与溶剂的挥发性化合物，会参与臭氧生成并对呼吸系统有害，是汽车喷漆等行业受限的主要原因之一。"
-            },
-            {
-              "term": "Superfund（美国EPA的有害废物清理计划）",
-              "explanation": "由美国 EPA 管理的国家优先清理名单，用以识别并治理严重污染的工业遗留场地，常作为衡量地区历史污染、公共健康风险的重要资料。"
-            },
-            {
-              "term": "Bay Area AQMD（Bay Area Air Quality Management District）",
-              "explanation": "旧金山湾区的区域性空气质量监管机构，负责排放许可与地方性空气污染管控；评论中有人指出网站将其局部限制泛化为全州禁令。"
-            },
-            {
-              "term": "semiconductor fab（半导体晶圆厂 / 晶圆厂）",
-              "explanation": "用于生产集成电路的工厂，需洁净室和使用诸如 arsine、phosphine 等有毒气体及化学蚀刻流程，因此在污染与许可上有高标准与复杂的废弃物处理要求。"
-            }
-          ],
-          "context": "原帖指向一个声称“某些产业在加州被禁止或几乎无法新建”的网站，引发大量评论质疑其真实性与论证方法。网站创建者被指出为某电磁炉公司CEO并在社媒上表达反监管立场，评论围绕两条主线争论：一是网站是否夸大、混淆地区性与全州性规定并缺乏法规引用；二是加州严格许可的正当性，涉及湾区地形、Superfund 遗留污染、VOCs 对公共健康的影响，以及制造业外包带来的伦理与国家安全问题。讨论同时提到许可时长（有评论指出可达18个月或更久）、诉讼风险、土地与劳动力成本等现实因素，并出现诸如 law+econ 式的替代执法建议。总体上，这是一场关于证据、公共健康与产业政策取舍的复杂讨论。",
-          "emoji": "🏭",
-          "sarcastic_question": "那你是建议把制造污染都搬去别州还是国外？"
         }
       }
     }
