@@ -10,7 +10,6 @@ const MAX_CONCURRENT = 10;
 const articleResultSchema = z.object({
   depth: z.number(),
   novelty: z.number(),
-  breadth: z.number(),
   category: z.string(),
   keywords: z.array(z.string()),
   titleZh: z.string(),
@@ -24,7 +23,7 @@ function buildPrompt(article: { title: string; content: string; sourceName: stri
 
   return `你是一个技术内容策展人，正在为一份面向 AI 和软件工程从业者的每日精选摘要筛选文章。文章来源主要是独立技术博客，话题以 AI/LLM、安全和系统工程为主。你的目标是帮读者筛出真正值得阅读的内容，评分区分度至关重要。
 
-请对以下文章进行三个维度的评分（1-10 整数），分配分类标签，提取关键词，并生成中文标题和摘要。
+请对以下文章进行两个维度的评分（1-10 整数），分配分类标签，提取关键词，并生成中文标题和摘要。
 
 ---
 
@@ -66,20 +65,6 @@ function buildPrompt(article: { title: string; content: string; sourceName: stri
 
 评分：8-10 首次披露/原创研究/独特视角 | 5-7 有新角度但话题非全新 | 3-4 又一篇同质内容 | 1-2 纯转述
 
-### 3. 广度 (breadth) - 对技术从业者群体的覆盖面
-
-高分信号：
-- 主流模型的重大更新（GPT/Claude/Gemini 新版本、重大能力变化）
-- 影响多语言/多框架的安全漏洞或范式转变
-- AI 对软件工程实践的结构性影响（如 agentic coding 改变开发流程）
-
-低分信号：
-- 仅适用于某个特定模型的 fine-tuning 技巧
-- 某个小众框架的使用心得
-- 纯个人经历、周记、月度总结
-
-评分：8-10 全行业关注 | 5-7 跨多个领域有参考价值 | 3-4 仅特定领域 | 1-2 极小众
-
 ## 分类标签（选最主要的一个）
 - ai-ml: AI、机器学习、LLM、深度学习、prompt engineering、AI 应用
 - security: 安全、隐私、漏洞、加密
@@ -91,18 +76,18 @@ function buildPrompt(article: { title: string; content: string; sourceName: stri
 
 ## 校准示例
 
-| 文章类型 | depth | novelty | breadth | 理由 |
-|---------|-------|---------|---------|------|
-| 新模型首发评测（含 eval 对比和推理成本）| 9 | 9 | 9 | 有一手 benchmark + 首次评测 + 全行业关注 |
-| "我用 Claude Code 重写了整个项目"实战复盘 | 8 | 7 | 8 | 一手经验 + 具体数据，对所有开发者有参考 |
-| 又一篇 "如何搭建 RAG pipeline" 教程 | 4 | 2 | 4 | 技术准确但无新意，教程类文章泛滥 |
-| "AI 将取代程序员" 的泛泛观点文 | 2 | 2 | 6 | 无数据无论据，但话题本身广度大 |
-| 挑战 scaling laws 的深度分析（含实验数据）| 8 | 9 | 8 | 逆主流 + 有实验支撑 + 影响 AI 方向认知 |
-| 某 LLM 的 fine-tuning 参数调优经验 | 7 | 5 | 3 | 有技术深度但极其小众 |
-| 重大 CVE 首次披露（含 PoC）| 8 | 10 | 10 | 首次披露 + 所有人都需关注 |
-| 个人周记/月度回顾 | 2 | 2 | 2 | 无深度、无新意、受众极窄 |
-| 带生产数据的架构迁移复盘 | 9 | 8 | 7 | 一手经验 + 罕见真实案例 |
-| "XX 发布 v2.0" 新闻简讯 | 2 | 5 | 6 | 无分析纯公告，但版本本身有新意 |
+| 文章类型 | depth | novelty | 理由 |
+|---------|-------|---------|------|
+| 新模型首发评测（含 eval 对比和推理成本）| 9 | 9 | 有一手 benchmark + 首次评测 |
+| "我用 Claude Code 重写了整个项目"实战复盘 | 8 | 7 | 一手经验 + 具体数据 |
+| 又一篇 "如何搭建 RAG pipeline" 教程 | 4 | 2 | 技术准确但无新意，教程类文章泛滥 |
+| "AI 将取代程序员" 的泛泛观点文 | 2 | 2 | 无数据无论据 |
+| 挑战 scaling laws 的深度分析（含实验数据）| 8 | 9 | 逆主流 + 有实验支撑 |
+| 某 LLM 的 fine-tuning 参数调优经验 | 7 | 5 | 有技术深度 |
+| 重大 CVE 首次披露（含 PoC）| 8 | 10 | 首次披露 |
+| 个人周记/月度回顾 | 2 | 2 | 无深度、无新意 |
+| 带生产数据的架构迁移复盘 | 9 | 8 | 一手经验 + 罕见真实案例 |
+| "XX 发布 v2.0" 新闻简讯 | 2 | 5 | 无分析纯公告，但版本本身有新意 |
 
 ## 关键词
 提取 2-4 个英文关键词，专有名词保持原样，其余小写。如 "Claude", "RAG", "inference", "performance"。
@@ -129,7 +114,7 @@ function buildPrompt(article: { title: string; content: string; sourceName: stri
 
 让读者不点原文就能获取核心信息。用中文撰写。
 
-⚠️ 字数要求（必须严格遵守）：先根据你自己的评分计算平均分 (depth+novelty+breadth)/3：
+⚠️ 字数要求（必须严格遵守）：先根据你自己的评分计算平均分 (depth+novelty)/2：
 - 平均分 >= 6 的文章写 500 字左右摘要
 - 平均分 > 3 且 < 6 的文章写 80-120 字摘要
 - 平均分 <= 3 的文章不写摘要，summary 字段留空字符串
@@ -234,7 +219,6 @@ export async function processArticles(articles: Article[]): Promise<Map<number, 
             ...output,
             depth: clamp(output.depth),
             novelty: clamp(output.novelty),
-            breadth: clamp(output.breadth),
             category: validCategories.has(output.category) ? output.category : 'other',
             keywords: output.keywords.slice(0, 4),
           });

@@ -1,5 +1,7 @@
 import type { Browser } from 'playwright';
 import TurndownService from 'turndown';
+import { Readability } from '@mozilla/readability';
+import { parseHTML } from 'linkedom';
 
 const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced' });
 
@@ -27,6 +29,16 @@ export async function fetchWithPlaywright(url: string): Promise<string | null> {
     try {
       await page.goto(url, { timeout: 15_000, waitUntil: 'domcontentloaded' });
       const html = await page.content();
+      // Try Readability first to extract article body
+      try {
+        const { document } = parseHTML(html);
+        const reader = new Readability(document, { charThreshold: 100 });
+        const article = reader.parse();
+        if (article?.content) {
+          const md = turndown.turndown(article.content);
+          if (md && md.length > 100) return md;
+        }
+      } catch { /* fall through to raw turndown */ }
       return turndown.turndown(html);
     } finally {
       await page.close();

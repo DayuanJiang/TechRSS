@@ -2,6 +2,8 @@ import { writeFile, readFile, readdir, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import TurndownService from 'turndown';
+import { Readability } from '@mozilla/readability';
+import { parseHTML } from 'linkedom';
 import { RSS_FEEDS } from '../src/lib/feeds';
 import { fetchAllFeeds } from '../src/lib/rss';
 import { processArticles, summarizeArticle } from '../src/lib/ai';
@@ -49,6 +51,22 @@ async function loadTodayData(today: string): Promise<{ articles: any[] } | null>
   }
 }
 
+/** Extract article body from HTML using Readability, convert to markdown */
+function extractArticle(html: string, url: string): string | null {
+  try {
+    const { document } = parseHTML(html);
+    const reader = new Readability(document, { charThreshold: 100 });
+    const article = reader.parse();
+    if (article?.content) {
+      const md = turndown.turndown(article.content);
+      if (md && md.length > 100) return md;
+    }
+  } catch { /* fall through */ }
+  // Fallback: raw turndown (some pages don't work with Readability)
+  const md = turndown.turndown(html);
+  return md && md.length > 200 ? md : null;
+}
+
 /** Fetch full article content from URL, convert HTML to markdown. Falls back to Playwright. */
 async function fetchArticleContent(url: string): Promise<string | null> {
   // Try plain fetch first (fast)
@@ -62,8 +80,8 @@ async function fetchArticleContent(url: string): Promise<string | null> {
     clearTimeout(timeout);
     if (response.ok) {
       const html = await response.text();
-      const md = turndown.turndown(html);
-      if (md && md.length > 200) return md;
+      const result = extractArticle(html, url);
+      if (result) return result;
     }
   } catch { /* fall through to Playwright */ }
 
@@ -155,11 +173,15 @@ async function main() {
     retryResults.forEach((v, retryIdx) => { results.set(failedIndices[retryIdx], v); });
   }
 
-  // Generate detailed article summaries (same as HN logic)
+  // Generate detailed article summaries only for high-scoring articles (avg >= 6)
   const ARTICLE_CONCURRENCY = 5;
   const articleSummaries = new Map<number, string>();
-  const needArticleSummary = deduped.map((a, i) => ({ article: a, index: i })).filter(({ article }) => article.content && article.content.length >= 200);
-  console.log(`[digest] Generating article summaries for ${needArticleSummary.length} articles...`);
+  const needArticleSummary = deduped.map((a, i) => ({ article: a, index: i })).filter(({ article, index }) => {
+    const r = results.get(index);
+    if (!r || !article.content || article.content.length < 200) return false;
+    return (r.depth + r.novelty) / 2 >= 6;
+  });
+  console.log(`[digest] Generating article summaries for ${needArticleSummary.length} high-scoring articles...`);
   for (let i = 0; i < needArticleSummary.length; i += ARTICLE_CONCURRENCY) {
     const batch = needArticleSummary.slice(i, i + ARTICLE_CONCURRENCY);
     await Promise.all(batch.map(async ({ article, index }) => {
@@ -172,7 +194,7 @@ async function main() {
   const newArticles = deduped.map((article, index) => {
     const r = results.get(index);
     if (!r) return null;
-    const score = r.depth + r.novelty + r.breadth;
+    const score = r.depth + r.novelty;
     return {
       title: article.title,
       title_zh: r.titleZh || article.title,
@@ -183,7 +205,6 @@ async function main() {
       score,
       depth: r.depth,
       novelty: r.novelty,
-      breadth: r.breadth,
       category: r.category,
       keywords: r.keywords,
     };

@@ -28,7 +28,6 @@ export interface ArticleRow {
   score: number;
   depth: number;
   novelty: number;
-  breadth: number;
   category: string;
   keywords: string[];
   rank: number;
