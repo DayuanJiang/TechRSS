@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 86,
   "total_articles": 2450,
-  "filtered_articles": 23,
+  "filtered_articles": 22,
   "articles": [
     {
       "title": "★ Apple Exclaves and the Secure Design of the MacBook Neo’s On-Screen Camera Indicator",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "Windows stack limit checking retrospective: x86-32 also known as i386, second try",
+      "title_zh": "Windows x86-32 栈检查函数重构避免返回地址预测失步",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260317-00/?p=112144",
+      "pub_date": "2026-03-17T14:00:00.000Z",
+      "summary": "## 一句话总结\n为了修复 x86-32 上 `_chkstk` 函数导致 CPU 返回地址预测器失灵的性能问题，新版代码改用 `ret` 指令模拟函数返回，但这导致它与 Intel CET 的影子栈技术彻底不兼容。\n\n### 旧代码的顽疾：破坏了 CPU 的“直觉”\n之前我们聊过 Windows 在 x86-32（也就是 i386）架构下的栈检查函数 `_chkstk`，它这些年一直在变。这次更新的核心目标很明确：解决性能问题。旧代码最大的坑在于，它通过直接修改栈指针（ESP）并跳转回调用者来分配栈空间。这听起来没问题，但 CPU 内部的返回地址预测器会因此“懵圈”。因为这不是标准的 `call/ret` 配对，预测器没法正确工作，导致分支预测失败，进而拖慢程序运行速度。\n\n### 核心思路：用“假返回”骗过预测器\n新版的代码做了一个非常巧妙的设计：它不再直接跳转回调用者，而是把调用者的返回地址复制到栈顶，然后执行一条 `ret` 指令。说白了，就是伪造了一次标准的函数返回流程。这样做的好处显而易见，CPU 的返回地址预测器看到 `ret`，就能顺理成章地利用历史记录进行预测，从而避免了之前那种“非主流”跳转带来的性能损耗。\n\n### 算法细节：既要探测边界，又要防止溢出\n代码逻辑其实很严谨。首先，它把期望的栈指针值和当前值做减法，计算出需要移动的距离。这里有个细节：如果计算结果发生下溢（比如分配的栈空间大得离谱），代码会用 `sbb` 和 `not` 指令把结果钳制在零，防止出错。接着，它把当前的栈指针对齐到页边界，然后进入一个循环（`check` 和 `cs20`），通过 `test [eax], eax` 逐页试探内存，确保栈空间真正分配好了，避免触发访问违规。\n\n### 兼容性妥协：为了 ABI 只能多分配 4 字节\n既然用了 `ret` 指令，它就会自动把栈指针（ESP）加 4 字节（弹出返回地址）。为了抵消这个副作用，代码在计算分配大小时，故意多分配了 4 字节。更有意思的是，这个改动完全兼容旧的 ABI。编译器不需要做任何修改，新旧版本的代码也能混在一起链接。虽然这个函数依然保留了“返回时调整栈指针”的怪异约定，但既然已经是 ABI 的一部分，大家也就只能照单全收了。\n\n### 无法避免的遗憾：与 Intel CET 影子栈说再见\n但凡事都有代价。这个“假返回”的设计虽然骗过了预测器，却骗不过 Intel CET（Control-flow Enforcement Technology）的影子栈。影子栈要求 `ret` 指令的目标地址必须由对应的 `call` 指令放入，而 `_chkstk` 这里是手动复制上去的，属于“非法操作”。这意味着，只要开了影子栈保护，这个函数就没法用了。为了性能牺牲了安全性支持，这确实是个让人无奈的权衡。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "x86-32",
+        "stack overflow",
+        "CET",
+        "shadow stack"
+      ],
+      "rank": 4
+    },
+    {
       "title": "‘The Last Quiet Thing’",
       "title_zh": "数字时代的物品：从产品到关系",
       "link": "https://www.terrygodier.com/the-last-quiet-thing",
@@ -79,7 +98,7 @@
         "user experience",
         "product design"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Your Startup Is Probably Dead On Arrival",
@@ -98,7 +117,7 @@
         "MVP",
         "sunk cost"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Introducing Mistral Small 4",
@@ -117,7 +136,7 @@
         "Lean 4",
         "reasoning"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Coding agents for data analysis",
@@ -136,7 +155,7 @@
         "data analysis",
         "Datasette"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Cleaning old GPG RPM keys that your Fedora install is keeping around",
@@ -155,7 +174,7 @@
         "Fedora",
         "DNF"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Toshiba’s Soviet nuclear submarine scandal",
@@ -174,7 +193,7 @@
         "submarine",
         "Cold War"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Tone row operations",
@@ -193,7 +212,7 @@
         "inversion",
         "retrograde"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Esqueleto Tutorial",
@@ -212,7 +231,7 @@
         "type safety",
         "SQL"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Apple Introduces AirPods Max 2",
@@ -230,7 +249,7 @@
         "H2",
         "Apple Intelligence"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "The Loyalty Oath Crusade",
@@ -248,7 +267,7 @@
         "culture",
         "speak up"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "Quoting Guilherme Rambo",
@@ -266,7 +285,7 @@
         "camera indicator",
         "MacBook Neo"
       ],
-      "rank": 14
+      "rank": 15
     },
     {
       "title": "Quoting A member of Anthropic’s alignment-science team",
@@ -285,7 +304,7 @@
         "misalignment",
         "AI safety"
       ],
-      "rank": 15
+      "rank": 16
     },
     {
       "title": "Use subagents and custom agents in Codex",
@@ -304,7 +323,7 @@
         "custom agents",
         "TOML"
       ],
-      "rank": 16
+      "rank": 17
     },
     {
       "title": "Samsung Discontinues Its Galaxy Z TriFold After Just Three Months",
@@ -322,7 +341,7 @@
         "Galaxy Z TriFold",
         "foldable phone"
       ],
-      "rank": 17
+      "rank": 18
     },
     {
       "title": "Powers don’t clear fractions",
@@ -340,7 +359,7 @@
         "decimal",
         "proof"
       ],
-      "rank": 18
+      "rank": 19
     },
     {
       "title": "Updates OpenTK: alerts voor antwoorden op kamervragen, betere kamerstukdossiers en meer!",
@@ -359,7 +378,7 @@
         "search",
         "alerts"
       ],
-      "rank": 19
+      "rank": 20
     },
     {
       "title": "Weekly Update 495",
@@ -377,7 +396,7 @@
         "serverless",
         "architecture"
       ],
-      "rank": 20
+      "rank": 21
     },
     {
       "title": "Hedley Davis has died",
@@ -395,7 +414,7 @@
         "Amiga",
         "Xbox 360"
       ],
-      "rank": 21
+      "rank": 22
     },
     {
       "title": "[Sponsor] Mux — Video API for Developers",
@@ -413,7 +432,7 @@
         "video API",
         "storyboard"
       ],
-      "rank": 22
+      "rank": 23
     },
     {
       "title": "Help I'm being persecuted",
@@ -431,7 +450,7 @@
         "cancel culture",
         "opinion"
       ],
-      "rank": 23
+      "rank": 24
     },
     {
       "title": "[Sponsor] Mux — Video API for Developers",
@@ -449,7 +468,7 @@
         "api",
         "mux"
       ],
-      "rank": 24
+      "rank": 25
     },
     {
       "title": "Lil Finder Guy Wallpapers",
@@ -467,7 +486,7 @@
         "macOS",
         "Finder"
       ],
-      "rank": 25
+      "rank": 26
     }
   ]
 }
