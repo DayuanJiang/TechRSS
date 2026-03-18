@@ -1,9 +1,9 @@
 {
   "date": "2026-03-18",
   "total_feeds": 92,
-  "success_feeds": 86,
-  "total_articles": 2451,
-  "filtered_articles": 19,
+  "success_feeds": 85,
+  "total_articles": 2525,
+  "filtered_articles": 20,
   "articles": [
     {
       "title": "Why Are We Still Doing This?",
@@ -63,6 +63,44 @@
       "rank": 3
     },
     {
+      "title": "Wayland has good reasons to put the window manager in the display server",
+      "title_zh": "Wayland 为何将窗口管理器嵌入显示服务器",
+      "link": "https://utcc.utoronto.ca/~cks/space/blog/unix/WaylandAndBuiltinWindowManagers",
+      "pub_date": "2026-03-18T02:26:51.000Z",
+      "summary": "## 一句话总结\nWayland 把窗口管理器塞进显示服务器，不是为了偷懒，而是为了解决 X11 架构下输入事件分发与窗口管理分离导致的延迟、竞态条件和功能受限问题。\n\n### 把窗口管理器塞进显示服务器，其实是为了解决输入流的“时序焦虑”\n最近有文章讨论把 Wayland Compositor 和窗口管理器拆分，认为这并非解决 X11 问题的必要手段，甚至猜测当初合并只是为了“省事”。但作者认为，这种看法忽略了 X11 长期以来的痛点。Wayland 的设计者大多是 X11 的老手，他们选择合并架构并非因为阻力最小，而是因为 X11 的分离架构在处理输入事件时存在根深蒂固的缺陷。核心问题在于：事件处理和窗口管理是深度纠缠的，一旦分开，系统就会陷入“谁来决定下一个事件给谁”的混乱中。\n\n### 输入事件不是孤立的，它们必须依赖窗口管理的实时决策\n想象一下这个操作序列：鼠标先在窗口 A 上打字，然后移到窗口 B 上继续打字，接着在原地点击鼠标，最后再打字。在这个过程中，窗口管理器必须深度参与每一个事件的去向判断。特别是第三步的点击事件，到底该发给谁，完全取决于当前哪个窗口应该获得焦点。如果窗口管理器和事件处理模块是分离的，那么每次状态变更都需要跨进程通信。这要么引入同步阻塞导致延迟，要么让窗口管理器和用户的快速操作进入“竞态赛跑”，最终导致你的按键被发到了错误的窗口里。\n\n### 合并架构让窗口管理器拥有了“零延迟”的上帝视角\n把窗口管理器嵌入显示服务器，是解决上述问题最简单粗暴也最有效的办法。这样做的好处是，窗口管理器能以零延迟看到所有事件，并随心所欲地拦截或修改它们，而客户端应用对此毫无感知，也不需要关心。这种设计允许窗口管理器利用极其局部的上下文信息来做决策。比如，你可以设定一套快捷键专门针对浏览器窗口，而同样的按键在其他窗口则直接透传给应用。这种精细化的控制在分离架构下很难实现得既高效又无副作用。\n\n### X11 的补丁机制不仅复杂，还限制了窗口管理器的想象力\nX11 其实也有一堆机制试图让窗口管理器管理焦点、拦截按键，但这套系统既复杂又不完美，甚至对普通程序接收到的 X 事件产生奇怪的副作用。历史上，很多程序在面对像 fvwm 这样强大的窗口管理器拦截操作时，表现得并不优雅。更糟糕的是，X11 的机制还限制了功能的上限。最著名的例子就是鼠标滚轮事件：在 X11 里，滚轮事件永远只能发给鼠标指针下的那个窗口，即使你的窗口管理器设置成了“点击窗口才能聚焦”，滚轮事件也不受控制。而在 Wayland 里，因为窗口管理器就在服务器内部，它可以把任何事件——包括滚轮——发给它想发的任何地方，没有这种历史包袱。",
+      "source_name": "utcc.utoronto.ca/~cks",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Wayland",
+        "window manager",
+        "X11",
+        "input handling"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "Tighter bounds on alternating series remainder",
+      "title_zh": "交错级数余项的更紧边界",
+      "link": "https://www.johndcook.com/blog/2026/03/17/alternating-series-remainder/",
+      "pub_date": "2026-03-18T02:50:12.000Z",
+      "summary": "## 一句话总结\n如果交错级数的项及其高阶差分都单调收敛，我们就能把教科书里粗糙的误差上限，收紧成一个包含高阶修正项的精确区间。\n\n### 教科书里的误差估算其实很“糙”\n做数值计算时，交错级数是个好东西，因为它的误差估算特别简单。教科书告诉我们：只要级数项 $a_i$ 单调递减趋于零，截断误差 $|R_n|$ 的绝对值一定小于被丢掉的第一项 $a_{n+1}$。这个结论虽然经典，但说实话，它给的是一个“最坏情况”的边界。在实际工程里，我们往往需要更紧致的 bounds 来减少不必要的迭代次数，单纯靠 $a_{n+1}$ 来卡位，有时候会显得过于保守，甚至浪费算力。\n\n### 从单调性里挖掘更多信息\n那怎么办？作者 Mark B. Villarino 提出的思路其实很直观：既然 $a_i$ 本身有规律，那它的变化率是不是也有规律？如果我们不仅假设 $a_i$ 单调趋于零，还假设它的一阶差分 $\\Delta a_i = a_i - a_{i+1}$ 也单调趋于零，情况就不一样了。这时候，误差不再是简单地小于 $a_{n+1}$，而是被夹在了一个更窄的区间里：$\\frac{a_{n+1}}{2} \\leq |R_n| \\leq \\frac{a_n}{2}$。你看，误差范围一下子缩小了一半，这对精度要求高的场景来说非常有吸引力。\n\n### 把这个逻辑推广到高阶差分\n有意思的地方在于，这个逻辑是可以递推的。如果 $a_i$ 的二阶差分 $\\Delta^2 a_i$ 甚至更高阶的差分都保持单调收敛，我们就能把误差边界收得更紧。文章给出了一个通用的公式：只要直到 $k$ 阶差分都满足单调收敛条件，误差的上下界就可以表示为一系列修正项的累加。下界加上这些修正项，上界减去这些修正项，原本宽泛的边界就被一步步“挤压”到了真实的误差值附近。\n\n### 核心思路是利用级数的“平滑度”\n说白了，这套方法的核心在于利用了函数的“平滑度”。如果一个级数的项收敛得非常平稳（即高阶差分也单调），说明它的尾部行为非常规整，我们就有信心预测得更准。公式里的那些 $\\frac{\\Delta^k a_{n+1}}{2^{k+1}}$ 项，本质上就是对原始粗糙估算的微调。阶数 $k$ 越高，微调的颗粒度越细，最终得到的 bounds 也就越逼近真实的截断误差。\n\n### 什么时候值得用这套方法？\n当然，天下没有免费的午餐。要计算高阶差分，本身也是需要开销的，而且并不是所有级数都满足这么严格的单调性条件。但在处理那些收敛速度慢、计算成本昂贵的交错级数时，比如某些特殊的数学物理函数计算，Villarino 的方法能让你用更少的项达到同样的精度。如果你正在做数值库的开发，或者对误差极其敏感，这篇 2018 年发表在 *American Mathematical Monthly* 上的文章绝对值得细读。",
+      "source_name": "johndcook.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "alternating series",
+        "numerical computing",
+        "error bounds",
+        "convergence"
+      ],
+      "rank": 5
+    },
+    {
       "title": "Pluralistic: William Gibson vs Margaret Thatcher (17 Mar 2026)",
       "title_zh": "技术的政治属性可被重新塑造",
       "link": "https://pluralistic.net/2026/03/17/technopolitics/",
@@ -79,7 +117,7 @@
         "Margaret Thatcher",
         "Unix"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "GPT-5.4 mini and GPT-5.4 nano, which can describe 76,000 photos for $52",
@@ -98,7 +136,7 @@
         "image description",
         "reasoning effort"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "You Might Debate It — If You Could See It",
@@ -117,7 +155,7 @@
         "opacity",
         "agentic"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Quoting Tim Schilling",
@@ -136,7 +174,7 @@
         "Django",
         "community"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "★ Squashing",
@@ -154,7 +192,7 @@
         "Apple",
         "media criticism"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Fox Sports to Broadcast U.S.-Venezuela World Baseball Classic Final in Immersive 3D — But Not on Vision Pro",
@@ -172,7 +210,7 @@
         "broadcast",
         "sports"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "My homelab will be down for at least 20 days",
@@ -189,7 +227,7 @@
         "homelab",
         "outage"
       ],
-      "rank": 10
+      "rank": 12
     }
   ]
 }
