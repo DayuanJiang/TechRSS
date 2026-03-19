@@ -1,9 +1,9 @@
 {
   "date": "2026-03-19",
   "total_feeds": 92,
-  "success_feeds": 86,
-  "total_articles": 2451,
-  "filtered_articles": 14,
+  "success_feeds": 85,
+  "total_articles": 2423,
+  "filtered_articles": 16,
   "articles": [
     {
       "title": "Snowflake Cortex AI Escapes Sandbox and Executes Malware",
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "The Fragmented World of Dependency Policy",
+      "title_zh": "依赖策略配置的碎片化困局",
+      "link": "https://nesbitt.io/2026/03/19/the-fragmented-world-of-dependency-policy.html",
+      "pub_date": "2026-03-19T10:00:00.000Z",
+      "summary": "### 一句话总结\n依赖管理策略领域目前处于“巴别塔”状态，四十多种工具各自为政发明了互不兼容的配置格式，迫切需要一种基于现有标准（如 SPDX、PURL、OSV）的通用策略语言来填补 SBOM 描述与合规性判定之间的空白。\n\n---\n\n### 想要统一策略，却发现遍地都是方言\n作者原本想给自己的 GitHub Actions 工具 `git-pkgs/actions` 加点策略功能，顺便为 Forgejo 的依赖图功能设计一套通用的策略层。他的目标很明确：找一种现成的格式，让这两个工具能共用一套配置。结果一查才发现，市面上大约有四十种做自动化依赖策略决策的工具，**每一个都发明了自己的格式**。这不仅仅是多写几个配置文件的问题，而是整个生态缺乏统一语言，导致工具之间无法互通，维护成本极高。\n\n### 表达同一个意思，竟然有七种写法\n先看最基础的许可证策略。比如“这个项目不能用 GPL-3.0”这个简单的需求，`cargo-deny` 用 `deny.toml` 里的 `allow` 和 `deny` 数组；`LicenseFinder` 用 YAML 文件里的 `permitted_licenses`；GitHub 的 action 用 `allow-licenses` 参数；Python 的 `liccheck` 用 `authorized_licenses`。光是“允许”这个词，就有 allowed、permitted、authorized、whitelisted 四种叫法；“拒绝”也有 denied、banned、restricted 等多种变体。这种词汇上的分裂，让跨工具的策略迁移几乎成了不可能完成的任务。\n\n### 漏洞忽略规则更是重灾区\n漏洞处理的情况更糟。如果你想忽略某个特定的 CVE，Snyk 要你写 `.snyk` 文件（YAML），Trivy 要你写 `.trivyignore`，Grype 要 `.grype.yaml`，OSV-Scanner 要 `osv-scanner.toml`。虽然它们都支持“忽略 ID + 原因 + 过期时间”这种逻辑，但因为文件格式和字段结构完全不同，**如果你在 CI 里同时跑这几个扫描器，就得维护好几份互不同步的忽略列表**。这完全违背了 DRY 原则，一旦漏改一个文件，构建可能就会莫名其妙失败。\n\n### 无论是禁用包还是配置文件，格式都五花八门\n再看包禁用功能，Maven 在 `pom.xml` 里写 XML 插件配置，npm/Yarn/pnpm 虽然都用 `package.json`，但字段名和语法却各不相同，Composer 用 `conflict` 字段，NuGet 用 XML。作者统计了一份完整的清单，发现这四十多种工具涵盖了 TOML、YAML（至少十种不同 schema）、JSON、XML、Kotlin 脚本、Rego、INI 甚至 CLI 参数字符串。有些工具甚至根本没有文件配置，只能用 Web UI 操作，这让自动化合规检查彻底断了后路。\n\n### OPA 虽强，但更像是汇编语言而非标准\n这时候你可能会想到 Open Policy Agent (OPA) 和 Conftest，毕竟 Rego 语言理论上能统一处理这些逻辑。但作者指出了一个很现实的问题：OPA 更像是策略领域的“汇编语言”。它虽然提供了执行引擎，但没告诉你“策略应该长什么样”。目前没有共享的 Rego 库来处理“拒绝许可证”或“忽略 CVE”这类通用操作，**每个组织都得从零开始写自己的规则**，结果这些规则依然无法在不同组织间移植。甚至像 ORT 这种工具直接用 Kotlin 脚本写策略，这等于把配置文件变成了需要审计的代码，复杂度又上了一个台阶。\n\n### 标准只管描述，不管决策\n现有的供应链标准其实挺完善：PURL 管包身份，SPDX 和 CycloneDX 管物料清单，OSV 管漏洞记录。但它们都只解决了“描述现状”的问题，**唯独缺了“如何决策”的标准**。特别是随着欧盟《网络弹性法案》（CRA）合规期限（2026-2027）的临近，企业不仅需要 SBOM 来列出组件，更需要机器可读的策略来自动判定合规性。目前的标准管线里，SBOM 负责描述，VEX 负责漏洞状态，但中间连接两者的“策略规则”环节是空白的。\n\n### 我们缺的是一个能闭环的标准格式\n作者认为，既然大家都在重复造轮子，不如总结出一个通用的标准。这个格式不需要重新发明基础数据，而是复用 SPDX（许可证）、PURL（包名）、OSV（漏洞 ID）和 CVSS（严重程度）这些现有标准。它的核心作用是补齐逻辑链：输入 SBOM 和漏洞库，输出“接受”或“拒绝”的决策。如果能统一这套格式，无论是 Trivy、Grype 还是 GitHub 的工具，都能读懂同一份策略文件，开发者再也不用为了维护多套互不兼容的配置而头疼了。",
+      "source_name": "nesbitt.io",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "dependency policy",
+        "SBOM",
+        "CRA",
+        "OPA"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Git Remote Helpers",
       "title_zh": "Git Remote Helpers 生态全景与实现指南",
       "link": "https://nesbitt.io/2026/03/18/git-remote-helpers.html",
@@ -60,7 +79,7 @@
         "Software Heritage",
         "protocol"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Windows stack limit checking retrospective: Alpha AXP",
@@ -79,7 +98,26 @@
         "stack checking",
         "Windows NT"
       ],
-      "rank": 4
+      "rank": 5
+    },
+    {
+      "title": "Consensus Board Game",
+      "title_zh": "用二维投票游戏解释 Paxos 共识",
+      "link": "https://matklad.github.io/2026/03/19/consensus-board-game.html",
+      "pub_date": "2026-03-19T00:00:00.000Z",
+      "summary": "## 一句话总结\n这篇文章通过一个“无限棋盘”的视觉模型，把 Paxos 共识算法的核心逻辑简化为：只要保证每一轮的新提案不与左侧已达成多数的决策冲突，就能在全局上达成一致。\n\n### 单一投票的困境：死锁与单点故障\n想象一个由 5 个成员组成的委员会，试图决定车棚的颜色。最直观的方法是少数服从多数，只要拿到 3 票，颜色就定下来了。但现实很骨感，投票很容易陷入僵局，比如 2 票红、2 票蓝，剩下的关键一票如果投了绿色，整个决策就卡住了。为了解决这个问题，你可能会指定一个领导者（比如 R0）来拍板，其他人只负责附和。但这又引入了新问题：万一领导者挂了，整个系统就彻底瘫痪了。我们需要一种既能打破僵局，又能容忍单点故障的机制。\n\n### 引入无限棋盘：用空间换容错\n这里有个巧妙的设计：既然指定一个领导者不可靠，那我们就让所有人轮流当领导者。我们可以把时间看作一个无限延伸的横轴，每个成员轮流作为某一轮的 Leader。这就形成了一个二维棋盘：横轴代表不同的轮次，纵轴代表不同的成员。在这个棋盘上，每一列就是一轮独立的投票。如果某一列的 Leader 挂了，这一列可能会卡住，但没关系，只要大多数成员活着，总有一列能成功达成多数决。这种设计把“等待 Leader 恢复”变成了“尝试下一轮”，极大地提高了系统的可用性。\n\n### 全局一致性的难题：如何避免分裂\n现在的棋盘虽然解决了可用性，但带来了安全性问题。因为各列是独立进行的，完全可能出现这种情况：第一列选了红色，第三列选了蓝色。虽然各自都达成了多数决，但整个委员会却得出了两个矛盾的结论。为了解决这个问题，我们必须定下一个死规矩：任何两列如果都达成了多数决，它们的颜色必须一致。换句话说，一旦某个颜色在某一列胜出，它就锁死了整个棋盘的未来走向。这个约束听起来很严苛，但它是实现共识的基石。\n\n### 核心逻辑：只看左边，不看右边\n那作为当前的 Leader，我该怎么选颜色才能不违反规则呢？棋盘是无限向右延伸的，你不可能预知未来。但这里有个数学上的捷径：如果你假设所有人都在遵守规则，那么你只需要关注“左边”已经发生的事情。如果你选了红色并达成多数，未来右边的人如果选了绿色，那是他们违反了规则，不是你的责任。你的责任仅仅是确保你的选择不与左边任何已经达成或可能达成的多数决冲突。这把一个无限维度的未来预测问题，简化为了一个有限的历史追溯问题。\n\n### 冲突检测机制：用“弃权票”封锁过去\n当你作为 Leader 准备做决定时，你看到左边有些列已经填了一些颜色，有些还没结束。你怎么确定左边的列不会在未来反超你？办法是“封锁”。你可以召集一个多数派（比如 R0, R2, R3），要求他们承诺不在左边的列里再投票了。在棋盘上，我们用黑色的“X”表示这种弃权承诺。一旦左边列里的可用票数被限制在少数以下，它们就永远不可能达成多数决了。这样一来，那些列就被彻底“杀死”了，不再对现在的决策构成威胁。\n\n### 最终决策：跟随最右侧的已知承诺\n封锁了左边所有可能的干扰后，你该怎么在剩下的颜色里选？答案很简单：选离你最近的那一列（也就是你紧邻的左边那一列）里出现的颜色。为什么？因为那一列的 Leader 在做决定时，也执行了同样的逻辑，封锁了它的左边。既然他敢选那个颜色，就说明那个颜色在他的视角下是安全的。你继承这个选择，就相当于继承了一个已经被验证过的安全状态。通过这种层层递进的“右侧继承”，共识算法就在这个二维棋盘上优雅地运转起来了。",
+      "source_name": "matklad.github.io",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Paxos",
+        "consensus",
+        "distributed systems",
+        "visualization"
+      ],
+      "rank": 6
     },
     {
       "title": "A lesser-known characterization of the gamma function",
@@ -98,7 +136,7 @@
         "Bohr-Mollerup theorem",
         "complex analysis"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "★ ‘Your Frustration Is the Product’",
@@ -117,7 +155,7 @@
         "UX",
         "dark patterns"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Meta Is Dropping VR Support From Horizon Worlds",
@@ -135,7 +173,25 @@
         "Horizon Worlds",
         "VR"
       ],
-      "rank": 7
+      "rank": 9
+    },
+    {
+      "title": "Magnavox Odyssey 2: 1978-1984",
+      "title_zh": "Magnavox Odyssey 2：被遗忘的第二代游戏主机",
+      "link": "https://dfarq.homeip.net/magnavox-odyssey-2-overlooked-game-console/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=magnavox-odyssey-2-overlooked-game-console",
+      "pub_date": "2026-03-19T11:00:40.000Z",
+      "summary": "",
+      "source_name": "dfarq.homeip.net",
+      "score": 6,
+      "depth": 3,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "retro gaming",
+        "Magnavox Odyssey 2",
+        "game console history"
+      ],
+      "rank": 10
     },
     {
       "title": "The Talk Show: ‘The Pogue Feature’",
@@ -153,7 +209,7 @@
         "Apple",
         "book"
       ],
-      "rank": 8
+      "rank": 11
     },
     {
       "title": "On becoming a day person",
@@ -171,7 +227,7 @@
         "productivity",
         "lifestyle"
       ],
-      "rank": 9
+      "rank": 12
     },
     {
       "title": "David Zaslav Set to Receive Up to $887 Million if Paramount Acquisition of Warner Bros Closes",
@@ -189,7 +245,7 @@
         "executive compensation",
         "Warner Bros"
       ],
-      "rank": 10
+      "rank": 13
     },
     {
       "title": "How to Identify Your Apple Keyboard Layout by Country or Region",
@@ -208,7 +264,25 @@
         "ISO",
         "layout"
       ],
-      "rank": 11
+      "rank": 14
+    },
+    {
+      "title": "Jony Ive on Redesigning the Christie’s Rostrum",
+      "title_zh": "Jony Ive 谈佳士得讲台重设计",
+      "link": "https://www.youtube.com/watch?v=HLXDxx06_EM",
+      "pub_date": "2026-03-18T21:25:50.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "other",
+      "keywords": [
+        "Jony Ive",
+        "design",
+        "Christie's"
+      ],
+      "rank": 15
     }
   ]
 }
