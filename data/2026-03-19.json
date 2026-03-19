@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 86,
   "total_articles": 2451,
-  "filtered_articles": 17,
+  "filtered_articles": 16,
   "articles": [
     {
       "title": "Snowflake Cortex AI Escapes Sandbox and Executes Malware",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Autoresearching Apple's \"LLM in a Flash\" to run Qwen 397B locally",
+      "title_zh": "在 48GB Mac 上运行 397B Qwen 模型",
+      "link": "https://simonwillison.net/2026/Mar/18/llm-in-a-flash/#atom-everything",
+      "pub_date": "2026-03-18T23:56:46.000Z",
+      "summary": "# 一句话总结\n通过复现 Apple 的 \"LLM in a Flash\" 技术并利用 MoE 模型的特性，开发者成功在仅有 48GB 内存的 MacBook Pro M3 Max 上，以 5.5 tokens/s 的速度流畅运行了参数量高达 397B 的 Qwen 模型。\n\n### 硬件瓶颈倒逼出的极致内存优化\n要在本地跑 Qwen3.5-397B-A17B 这种巨无霸模型，硬件限制是第一道坎。这个模型光是在磁盘上就占用了 209GB，即便量化后也有 120GB，远超 48GB MacBook Pro M3 Max 的物理内存上限。但有意思的地方在于，这是一个 Mixture-of-Experts (MoE) 架构的模型。这意味着它不需要每次都激活全部参数，处理每个 token 时只需要调用模型权重的一个子集。这个特性为突破内存限制提供了理论基础：既然不需要同时加载所有参数，那能不能只把当前需要的“专家”加载到内存里？\n\n### Apple 论文指路：把 SSD 当作内存扩展池\n为了解决“内存装不下”的问题，Dan Woods 把目光投向了 Apple 2023 年的一篇论文《LLM in a flash》。这篇论文的核心思路其实很简单：既然 DRAM 不够用，那就把模型参数存放在 Flash 存储里，按需调入 DRAM。但这不仅仅是简单的“缺啥补啥”，论文提出了一个推理成本模型，专门针对 Flash 存储的特性做了优化。具体来说，它通过两个关键手段来提升效率：一是尽量减少从 Flash 传输的数据量，二是尽可能读取更大、更连续的数据块。说白了，就是要把磁盘 I/O 的开销压到最低。\n\n### 让 AI 自己写代码跑 90 次实验\n有了理论指导，接下来的工程实现依然繁琐。这里有个巧妙的设计：Dan 没有自己手搓所有代码，而是采用了 Andrej Karpathy 的“autoresearch pattern”。他把 Apple 的论文喂给 Claude Code，让 AI 自动生成 MLX Objective-C 和 Metal 代码。Claude 在这个过程中充当了超级研究员，自动运行了 90 次实验来寻找最优解。最终生成的代码不仅实现了论文里的优化思路，还产出了一份主要由 Claude Opus 4.6 撰写的完整 PDF 论文，整个过程非常自动化。\n\n### 混合精度策略：关键部分绝不手软\n为了进一步压缩体积，模型采用了激进的量化策略。所有的专家权重都被量化到了 2-bit，这极大地节省了存储空间。但核心思路在于“抓大放小”：对于 embedding table 和 routing matrices 等非专家部分，代码保留了原始精度。这部分数据虽然只有 5.5GB，但在模型运行期间会常驻内存。这样做的好处很明显，常驻部分保证了模型的基础骨架不变形，而按需流式加载的 2-bit 专家则负责具体的推理任务，在性能和体积之间找到了平衡点。\n\n### 激进参数调整下的速度与质量权衡\n最终的效果相当惊人，模型在 M3 Max 上跑出了 5.5+ tokens/second 的速度。为了达成这个目标，除了量化，Dan 还调整了 MoE 的激活策略。Qwen 3.5 默认每个 token 激活 10 个专家，但这个设置将其减少到了 4 个。根据实验反馈，质量下降的临界点出现在 3 个专家时，所以 4 个是一个兼顾速度和效果的折中方案。不过，关于输出质量的具体影响目前还存在争议。Claude 声称在这些评估中 2-bit 和 4-bit 的输出质量“无法区分”，但文中也坦承具体的评估描述比较单薄，这一点还需要开发者们自行验证。",
+      "source_name": "simonwillison.net",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "ai-ml",
+      "keywords": [
+        "MoE",
+        "LLM in a Flash",
+        "Qwen",
+        "inference"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Git Remote Helpers",
       "title_zh": "Git Remote Helpers 生态全景与实现指南",
       "link": "https://nesbitt.io/2026/03/18/git-remote-helpers.html",
@@ -41,7 +60,7 @@
         "Software Heritage",
         "protocol"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Windows stack limit checking retrospective: Alpha AXP",
@@ -60,7 +79,26 @@
         "stack checking",
         "Windows NT"
       ],
-      "rank": 3
+      "rank": 4
+    },
+    {
+      "title": "A lesser-known characterization of the gamma function",
+      "title_zh": "Gamma 函数的 Wielandt 刻画定理",
+      "link": "https://www.johndcook.com/blog/2026/03/18/wielandt/",
+      "pub_date": "2026-03-19T01:21:53.000Z",
+      "summary": "Gamma 函数是阶乘函数到复平面的标准推广，Bohr-Mollerup 定理是最常见的刻画方式，要求函数在正实轴上满足递推关系、归一化条件和对数凸性。Wielandt 提出了另一种刻画：若函数在右半平面全纯，满足相同的递推关系和归一化条件，且在复平面带形区域 {z: 1 ≤ Re z ≤ 2} 上有界，则该函数必为 Gamma 函数。从 Gamma 函数的积分定义可推导出 |Γ(z)| ≤ |Γ(Re z)|，因此在带形区域上的界等于实区间 [1, 2] 上的界，即 1。Wielandt 定理将实数域的对数凸性条件替换为复平面上的有界性条件，为理解 Gamma 函数的唯一性提供了不同于 Bohr-Mollerup 的视角。",
+      "source_name": "johndcook.com",
+      "score": 11,
+      "depth": 6,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "gamma function",
+        "Wielandt theorem",
+        "Bohr-Mollerup theorem",
+        "complex analysis"
+      ],
+      "rank": 5
     },
     {
       "title": "★ ‘Your Frustration Is the Product’",
@@ -79,7 +117,7 @@
         "UX",
         "dark patterns"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Meta Is Dropping VR Support From Horizon Worlds",
@@ -97,7 +135,7 @@
         "Horizon Worlds",
         "VR"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "The Talk Show: ‘The Pogue Feature’",
@@ -115,7 +153,7 @@
         "Apple",
         "book"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "David Zaslav Set to Receive Up to $887 Million if Paramount Acquisition of Warner Bros Closes",
@@ -133,7 +171,7 @@
         "executive compensation",
         "Warner Bros"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "How to Identify Your Apple Keyboard Layout by Country or Region",
@@ -152,7 +190,7 @@
         "ISO",
         "layout"
       ],
-      "rank": 8
+      "rank": 10
     }
   ]
 }
