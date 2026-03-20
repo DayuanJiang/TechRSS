@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Package Manager Mirroring",
+      "title_zh": "15 个包管理生态系统的镜像工具与协议全景",
+      "link": "https://nesbitt.io/2026/03/20/package-manager-mirroring.html",
+      "pub_date": "2026-03-20T10:00:00.000Z",
+      "summary": "## 一句话总结\n这篇文章横评了主流编程语言的包管理镜像机制，核心发现是：虽然底层协议从 rsync 演进到了 HTTP API，但“元数据完整性验证”和“增量同步效率”依然是区分一个生态系统成熟度的关键分水岭。\n\n### 镜像工具的终极形态：Debian 的两阶段同步\n在所有生态系统中，Debian 的 apt/deb 无疑是镜像机制最成熟的标杆。它的核心设计在于“先文件后元数据”的两阶段 rsync 策略，这有效防止了客户端看到“有引用但无文件”的不一致状态。工具链上，官方的 ftpsync 支持上游触发同步，debmirror 则引入了 pdiffs（增量补丁）来减少元数据传输，而 aptly 更是引入了快照模型，允许运维人员原子性地切换发布版本。这一切都建立在严格的 GPG 签名机制之上：`Release` 文件签名确保了内容可信，这意味着你根本不需要信任镜像服务器本身，只要验证签名通过即可。\n\n### RPM 的元数据索引与 Metalink 的巧妙设计\nRPM 生态（Fedora, RHEL）的镜像逻辑则围绕 `repomd.xml` 展开，它作为根索引记录了所有元数据文件的校验和。与 Debian 不同，RPM 客户端广泛使用 Metalink（RFC 5854）协议。这招很聪明：Metalink 文件一次性把多个镜像源地址和文件校验和都发给客户端，让客户端自己选择最近的源并在失败时自动重试，无需额外请求。在企业级工具 Foreman/Katello（基于 Pulp）中，还引入了按需下载策略——只同步元数据，等客户端真正请求包文件时才回源拉取，这对节省存储空间非常有效。\n\n### CPAN 的“时间级联”协议与 rsync 的极致利用\nCPAN 的镜像方案可能是最“硬核”的，它在 rsync 之上设计了一套非常巧妙的时间级联协议。上游会发布 `RECENT-1h.yaml` 到 `RECENT-1Y.yaml` 等一系列文件，镜像客户端先读取时间跨度最小的文件进行同步，只有当时间覆盖不到时才回退到更长的文件。因为新条目总是追加在列表前面，文件主体在两次同步间几乎不变，这让 rsync 的增量算法效率极高。为了防止上游搞砸排序导致数据不一致，他们还设计了一个 `dirtymark` 机制，一旦标记变动，所有下游镜像必须丢弃缓存重头再来。\n\n### 从流式复制到分页 API：npm 镜像的阵痛\nnpm 的镜像历史是一个典型的“架构演进导致工具阵痛”的案例。早期 npm 基于 CouchDB，原生的 `_changes` feed 让镜像工具能像数据库复制一样轻松地通过流式接口同步所有变更。但随着后端迁移到 PostgreSQL 并为了性能砍掉了 CouchDB 兼容层，GitHub 在 2025 年强制废弃了流式 API，转而使用分页 JSON API。这次迁移非常粗暴，导致了序列号断层、大量 503 错误以及分页逻辑失效，成千上万的包在同步流中莫名消失。这给所有依赖旧版“跟随者模式”的镜像工具敲响了丧钟。\n\n### 静态文件与 Git 仓库：PyPI 与 Rust 的轻量级路径\nPython 和 Rust 选择了更轻量的路径。PyPI 的 PEP 381 协议（由 bandersnatch 实现）本质上就是抓取静态的 HTML/JSON 索引页面，每个链接都带有 SHA256 哈希，不需要复杂的数据库同步，甚至不需要运行专门的注册表软件，存成静态文件用 Nginx 直接发就行。Rust 的 crates.io 更进一步，它的索引直接就是一个 Git 仓库，Panamax 工具只需 `git pull` 就能拿到所有包的版本和依赖信息，然后再按需下载 `.crate` 文件。这两种方案都把“元数据管理”的复杂性交给了版本控制系统或静态文件服务器，极大降低了镜像门槛。\n\n### Docker 与 OCI：内容寻址带来的天然一致性\n容器生态的镜像机制完全不同，它基于 OCI Distribution Specification，核心是“内容寻址存储”。所有内容都按 SHA256 摘要存储，这意味着校验和不是额外的验证步骤，而是寻址方式本身。Harbor 等工具利用这一点，可以在不同镜像间高效地复制数据，并且能把 Cosign 或 Notation 的签名文件作为普通 OCI Artifact 伴随镜像一起复制。这种设计让镜像的完整性验证变得透明且自动化，不需要像传统包管理那样去维护单独的签名数据库。\n\n### 通用工具的取舍：Pulp 的全能与缓存代理的局限\n最后聊聊通用工具。像 Nexus 和 Artifactory 这种大多是“拉取缓存”，即被动等待客户端请求才去下载并缓存，真正的主动同步往往要付费。Pulp 是个例外，它通过插件支持 RPM, Python, Container 等多种格式，并且允许配置 `immediate`（立即下载所有包）或 `on_demand`（仅下载元数据）等策略。配合 `mirror_complete` 策略，Pulp 能做到比特级的完美镜像，而不仅仅是缓存代理。对于开发者来说，选择工具时最需要看重的不是支持多少种格式，而是它是否支持你所在生态的特定元数据验证和增量同步机制。",
+      "source_name": "nesbitt.io",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "mirroring",
+        "package manager",
+        "rsync",
+        "OCI"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Google’s New Sideloading Restrictions for Android Include a 24-Hour Waiting Period",
       "title_zh": "Android 侧载引入 24 小时强制等待期",
       "link": "https://www.androidauthority.com/google-android-sideloading-unverified-apps-new-rules-3650343/",
@@ -41,7 +60,7 @@
         "developer verification",
         "scam prevention"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Windows stack limit checking retrospective: amd64, also known as x86-64",
@@ -60,7 +79,7 @@
         "chkstk",
         "CET"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Thoughts on OpenAI acquiring Astral and uv/ruff/ty",
@@ -79,7 +98,7 @@
         "uv",
         "Codex"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Members Only: How do we define our own flourishing?",
@@ -98,7 +117,26 @@
         "civilisation",
         "energy"
       ],
-      "rank": 5
+      "rank": 6
+    },
+    {
+      "title": "EnshittifAIcation",
+      "title_zh": "AI 客服的自信与无能：三个真实案例",
+      "link": "https://it-notes.dragas.net/2026/03/20/enshittifaication/",
+      "pub_date": "2026-03-20T11:00:00.000Z",
+      "summary": "作者记录了三起 AI 客服引发的技术故障案例：某电商平台要求禁用 HTTP/2，其 AI 客服无视技术解释，提供错误的 Apache 配置指南，并威胁暂停服务；合作伙伴因防火墙 geo-blocking 无法访问，AI 客服反复要求白名单 User-Agent，完全不理解防火墙在握手前丢弃连接的原理；营销咨询公司用 AI 评估服务器负载，建议从 128GB RAM 迁移到 8GB VPS，声称当前资源不足。作者指出 AI 是随机机器而非专家，不会根据反馈更新认知，企业用 AI 替代资深员工且不提供申诉渠道，导致巨大时间浪费和可靠性侵蚀。",
+      "source_name": "it-notes.dragas.net",
+      "score": 9,
+      "depth": 4,
+      "novelty": 5,
+      "category": "opinion",
+      "keywords": [
+        "AI support",
+        "HTTP/2",
+        "geo-blocking",
+        "server migration"
+      ],
+      "rank": 7
     },
     {
       "title": "One problem with (Python) docstrings is that they're local",
@@ -117,7 +155,7 @@
         "documentation",
         "Django"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Hacker News Discussion on Shubham Bose’s ‘The 49MB Web Page’",
@@ -136,7 +174,7 @@
         "JavaScript",
         "tracking"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "★ AppleScript: ‘Save MarsEdit Document to Text File’",
@@ -155,7 +193,7 @@
         "FastScripts",
         "automation"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "StopTheMadness Pro and StopTheScript Extensions for Safari",
@@ -173,7 +211,7 @@
         "browser extension",
         "StopTheMadness"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "SQLAlchemy 2 In Practice - Chapter 1 - Database Setup",
@@ -192,7 +230,7 @@
         "setup",
         "Docker"
       ],
-      "rank": 10
+      "rank": 12
     },
     {
       "title": "The Day Mark Simonson Discovered Type Design",
@@ -211,7 +249,7 @@
         "ITC",
         "Uncial Sans"
       ],
-      "rank": 11
+      "rank": 13
     },
     {
       "title": "‘Everyone but Trump Understands What He’s Done’",
@@ -229,7 +267,7 @@
         "NATO",
         "Trump"
       ],
-      "rank": 12
+      "rank": 14
     },
     {
       "title": "Actual Headline in the Actual New York Times: ‘Trump Jokes About Pearl Harbor in Meeting With Japan’s Leader’",
@@ -246,7 +284,7 @@
         "NYT",
         "politics"
       ],
-      "rank": 13
+      "rank": 15
     }
   ]
 }
