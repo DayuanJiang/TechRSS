@@ -2,8 +2,8 @@
   "date": "2026-03-21",
   "total_feeds": 92,
   "success_feeds": 86,
-  "total_articles": 2452,
-  "filtered_articles": 19,
+  "total_articles": 2551,
+  "filtered_articles": 21,
   "articles": [
     {
       "title": "Terence Tao – Kepler, Newton, and the true nature of mathematical discovery",
@@ -63,6 +63,44 @@
       "rank": 3
     },
     {
+      "title": "DMARC DNS record inheritance and DMARC alignment requirements",
+      "title_zh": "DMARC 策略继承与 DKIM 对齐的陷阱",
+      "link": "https://utcc.utoronto.ca/~cks/space/blog/spam/DMARCAlignmentAndInheritance",
+      "pub_date": "2026-03-20T02:56:30.000Z",
+      "summary": "# 一句话总结\nDMARC 的子域名策略继承有个隐蔽的坑：虽然你可以用 `sp=none` 放宽子域名的策略，但控制签名对齐方式的 `adkim` 参数没有子域名版本，导致一旦在根域名设置了严格对齐，所有未独立配置 DMARC 的子域名都会被迫\"被严格\"，进而可能被收件方拒收。\n\n---\n\n### DMARC 的查询逻辑其实很死板\nDMARC 的核心判断依据是邮件头里的 'From:' 域名。接收方在验证时，DNS 查询的路径非常固定，只有两个选择：要么查 'From:' 域名本身，要么查该域名的组织顶级域。举个例子，如果发件人是 'someone@breaking.news.example.org'，接收方会先查 `_dmarc.breaking.news.example.org`，如果没有，就去查 `_dmarc.example.org`。这里要注意的是，中间的层级比如 `_dmarc.news.example.org` 是完全不会被查询的，这种设计决定了我们配置策略时必须非常小心。\n\n### 策略继承给了我们一种虚假的安全感\nDMARC 允许一种\"策略继承\"机制，这让很多人误以为能一劳永逸。比如，你可以在 `_dmarc.example.org` 这条记录里设置 `p=reject; sp=none`。这看起来很完美：它告诉接收方，发给 'user@example.org' 的邮件如果验证失败就拒收，但对于 'user@news.example.org' 这样的子域名，因为设置了 `sp=none`，相当于说\"我不关心，别管它\"。很多管理员以为只要设置了 `sp=none`，那些没有自己 DMARC 记录的子域名（比如 'local-account@host.dept.example.org'）就安全了，不用再操心 DKIM 或 SPF 的配置。\n\n### 但问题出在 DKIM 的\"对齐\"机制上\n这种想法在现在的邮件环境下其实挺危险的。现在的邮件系统不仅仅看你有没有 DMARC 策略，它们非常在意 DKIM 和 SPF 的验证结果。这里的关键概念叫\"对齐\"（Alignment）。宽松对齐（Relaxed）下，'From: flash@eng.news.example.org' 只要被 'example.org' 下的任意域名（比如 'eng.example.org'）签名就能通过；但在严格对齐（Strict）下，签名域名必须和 'From' 域名完全一致，也就是必须由 'eng.news.example.org' 签名才行。\n\n### 致命的坑：adkim 参数没有子域名版本\n核心的坑就在这儿：对齐模式不是由策略 `p=` 或 `sp=` 控制的，而是由一个独立的参数 `adkim=` 决定的。DMARC 规范里并没有类似 `sadkim=` 这种专门针对子域名的参数。这意味着，如果你在 `_dmarc.example.org` 里设置了 `adkim=s`（严格对齐），这个设置会无条件覆盖所有没有独立 DMARC 记录的子域名。哪怕你设置了 `sp=none`，只要根域名开了严格对齐，那些子域名发出的邮件也会被要求必须严格匹配签名。\n\n### 结果就是：sp=none 救不了被拒收的命运\n这会导致什么后果呢？即便你的组织策略写着 `sp=none`，外面的邮件系统看到你的子域名邮件签名对不上（因为被迫变成了严格模式），可能会直接拒收，或者大幅增加垃圾邮件评分。在它们看来，你的邮件从\"DKIM 签名正确\"变成了\"DKIM 签名不匹配\"。这完全违背了管理员设置 `sp=none` 想要\"放过子域名\"的初衷。\n\n### 唯一的解法：必须为每个子域名单独配置\n那怎么办？没办法，只能老老实实地干活。任何出现在 'From:' 字段里的主机名或域名，都必须拥有自己独立的 DMARC DNS TXT 记录。如果你需要严格对齐，就在该子域名的记录里显式设置 `adkim=s`；如果需要宽松对齐，虽然默认就是宽松，但为了清晰起见（也为了覆盖根域名的设置），最好显式写上 `adkim=r`（顺便把 `aspf=r` 也写上）。这样做不仅是为了让邮件通过验证，也是为了给未来的维护者留个清晰的注释：这里的不同对齐策略是故意的，不是配错了。",
+      "source_name": "utcc.utoronto.ca/~cks",
+      "score": 12,
+      "depth": 6,
+      "novelty": 6,
+      "category": "security",
+      "keywords": [
+        "DMARC",
+        "DKIM",
+        "alignment",
+        "DNS"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "Windows stack limit checking retrospective: arm64, also known as AArch64",
+      "title_zh": "Windows arm64 栈限制检查实现细节",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260320-00/?p=112154",
+      "pub_date": "2026-03-20T14:00:00.000Z",
+      "summary": "# 一句话总结\nWindows 在 arm64 上通过“按页向下读取”的方式探测栈空间，并用“段”而非“字节”作为参数单位，巧妙平衡了指令编码限制与 1MB 默认栈大小的需求。\n\n### 栈检查的两种形态：纯 arm64 与复杂的 Arm64EC\narm64 上的栈检查其实分两种，一种是给纯 arm64 进程用的简单版，另一种是给 Arm64EC 用的复杂版。Arm64EC 之所以复杂，是因为它得先判断代码当前跑在原生 arm64 栈还是模拟栈上，这步逻辑其实挺枯燥的。所以作者把重点放在了那个简单版本上，这才是大多数开发者会遇到的场景。这个简单版本的核心逻辑非常直观，就是确保你要用的栈空间是合法的。\n\n### 用“段”做参数是为了突破指令编码的长度限制\n函数入口的参数 `x15` 很有意思，它不是字节数，而是“段数”，也就是字节数除以 16。为什么要多此一举？因为 arm64 的栈必须保持 16 字节对齐，除以 16 肯定没余数。更重要的是，用 `movz` 指令加载一个常数时，如果单位是字节，最大只能表示 `0xFFF0`（约 64KB）。但如果单位是段，这个范围能扩大到 `0x0FFF0` 个段，也就是接近 1MB。这刚好能覆盖 Windows 默认的 1MB 栈大小，这个设计非常精妙。\n\n### 核心逻辑：按页对齐后的循环探测\n具体的 `chkstk` 实现逻辑其实不难。首先算出新的栈指针位置，如果发生下溢就钳位到 0。接着，把当前的 `sp` 和目标 `sp` 都向下对齐到页边界。如果两者在同一页，那就说明不用探测，直接返回。如果不在同一页，就进入循环：每次把指针减去一页，然后执行 `ldr` 读取操作。这个读取就是所谓的“探测”，目的是确保该页内存已经提交。一直循环到目标页为止。\n\n### 为什么探测操作是读而不是写\n你可能注意到了，这里的探测操作是 `ldr`（读），而不是写。这跟 x86-32 或 PowerPC 不一样，它们用的是写操作。作者最后给了一个总结表，列出了各个架构的差异。这里有个关键点：如果探测操作是写，那么“短路优化”就是必须的，否则可能会意外修改数据。但既然 arm64 用的是读，就不存在这个问题，逻辑也就更纯粹一些。\n\n### 汇编器的小把戏：处理过大的立即数\n代码里有个细节容易被忽略，就是 `PAGE_SIZE` 这个常量。在 arm64 指令里，12 位的立即数根本放不下一个完整的页大小（通常是 4096）。那怎么办？汇编器在这里耍了个小聪明。它把指令重写成了 `sub x17, x17, #PAGE_SIZE/4096, lsl #12`。也就是先把数值除以 4096，再左移 12 位。这样就能用一个小的立即数表示出完整的页大小，开发者写代码时完全不用操心这个底层细节。\n\n### 跨架构的栈检查策略大比拼\n最后，作者把所有架构的栈检查策略放在了一张表里。你会发现，只有 x86-32 会在返回前调整栈指针，其他架构包括 arm64 都不会。而且，除了 x86-32，其他架构都能在运行时检测栈的位置。arm64 的特点在于：它用段做单位，用读做探测，且不做短路处理。这张表其实很有价值，能让你一眼看懂不同架构设计哲学的微妙差异。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "arm64",
+        "stack",
+        "chkstk",
+        "AArch64"
+      ],
+      "rank": 5
+    },
+    {
       "title": "Google Search Is Now Using AI to Rewrite Headlines",
       "title_zh": "Google 搜索开始用 AI 重写新闻标题",
       "link": "https://www.theverge.com/tech/896490/google-replace-news-headlines-in-search-canary-coal-mine-experiment?view_token=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjI0Q05IV0dlS3EiLCJwIjoiL3RlY2gvODk2NDkwL2dvb2dsZS1yZXBsYWNlLW5ld3MtaGVhZGxpbmVzLWluLXNlYXJjaC1jYW5hcnktY29hbC1taW5lLWV4cGVyaW1lbnQiLCJleHAiOjE3NzQ0NzIwOTAsImlhdCI6MTc3NDA0MDA5MH0.3exwHWG6qdR5YeFLjzS1qvUy3tgfASQhbFZDTbHrkKE&utm_medium=gift-link",
@@ -79,7 +117,7 @@
         "news",
         "The Verge"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Quiche Browser",
@@ -98,7 +136,7 @@
         "customization",
         "iOS"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Bluesky Raised $100M a Year Ago but for Some Reason Only Disclosed It Now",
@@ -116,7 +154,7 @@
         "AT Protocol",
         "funding"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Embedded regex flags",
@@ -134,7 +172,7 @@
         "Python",
         "embedded modifiers"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Re: People Are Not Friction",
@@ -152,7 +190,7 @@
         "collaboration",
         "teamwork"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Perhaps Bluesky’s Revelation of an 11-Month Ago $100 Million Investment Was, in Fact, an Act of Transparency",
@@ -170,7 +208,7 @@
         "funding",
         "transparency"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "Quoting Kimi.ai @Kimi_Moonshot",
@@ -189,7 +227,7 @@
         "Composer 2",
         "FireworksAI"
       ],
-      "rank": 10
+      "rank": 12
     }
   ]
 }
