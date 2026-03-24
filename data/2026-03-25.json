@@ -2,8 +2,8 @@
   "date": "2026-03-25",
   "total_feeds": 92,
   "success_feeds": 86,
-  "total_articles": 2553,
-  "filtered_articles": 27,
+  "total_articles": 2454,
+  "filtered_articles": 24,
   "articles": [
     {
       "title": "Malicious litellm_init.pth in litellm 1.82.8 — credential stealer",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "Writing an LLM from scratch, part 32g -- Interventions: weight tying",
+      "title_zh": "Weight tying 在 163M 模型上的实验失败",
+      "link": "https://www.gilesthomas.com/2026/03/llm-from-scratch-32g-interventions-weight-tying",
+      "pub_date": "2026-03-24T23:55:00.000Z",
+      "summary": "## 一句话总结\n在 163M 参数的小模型上尝试 Weight Tying（权重绑定），虽然减少了近 1/4 的参数，但因初始化策略冲突导致训练初期 Loss 爆表，最终测试集 Loss 反而比基准差了 5.4%，证实了这一“老派”技术在当前设置下确实是个负优化。\n\n---\n\n### 权重绑定：听起来很美的“免费午餐”\nWeight Tying 的核心思路其实很简单：既然输入层把 Token ID 映射到 Embedding 空间，输出层又要把这个空间映射回概率分布，那这两个矩阵能不能共用？具体来说，就是把输出层的权重矩阵 $W_{out}$ 设为输入层 Embedding 矩阵 $W_{emb}$ 的转置。这在理论上是成立的，因为它们本质上都是在做“词空间”和“向量空间”之间的投影。这么做的诱惑力很大——参数量直接减少，模型变小，理论上训练也该更快。但 Sebastian Raschka 在书里提到这会让模型变差，现代 LLM 也基本不用了。作者这次偏要试一试，毕竟他之前的实验发现 QKV bias 这种老技术反而有用，万一这次也行呢？\n\n### 代码改动只有两行，但坑在别处\n落实到 PyTorch 代码里，实现 Weight Tying 简直令人难以置信地简单。`nn.Embedding` 和 `nn.Linear` 的权重形状天然就是兼容的（一个是 $d_{vocab} \\times d_{emb}$，一个是 $d_{emb} \\times d_{vocab}$），只需要在 `__init__` 末尾加一行 `self.out_head.weight = self.tok_emb.weight` 就搞定了。不过，这里有个隐藏的坑：Safetensors 库不喜欢这种内存共享的权重，直接保存会报错。解决办法是把 `save_file(model.state_dict())` 换成 `save_model(model)`，这样就能正确处理共享权重，且兼容旧的 checkpoint 文件。\n\n### 参数少了 1/4，训练策略怎么定？\n改完代码，最直观的变化是参数量。原本 163M 的模型，绑定后直接降到了 124M，足足少了 38,597,376 个参数（正好是 $50,257 \\times 768$），缩减幅度接近 25%。这时候面临一个选择：是保持 Chinchilla 最优比例（即参数少了，训练 Token 也跟着减少），还是保持训练 Token 总数不变？作者的选择很果断：保持 Token 数不变。理由很硬核——Chinchilla 只是个启发式规则，如果参数少了数据也少，那模型肯定更弱；只有数据量不变，才能看出减少参数到底有没有带来真正的效率提升。\n\n### 初始化冲突：导致 Loss 爆表的元凶\n训练一开始，图表就给了个下马威：Loss 直接飙到了 460，而正常起步只有 11 左右。这可不是普通的震荡，这是模型在“一本正经地胡说八道”——它对错误的预测极其自信。原因在于 PyTorch 的默认初始化策略：`nn.Embedding` 用的是标准正态分布 $N(0,1)$，数值通常在 -1 到 1 之间；而 `nn.Linear` 用的是均匀分布，范围是 $(-\\frac{1}{\\sqrt{in\\_features}}, \\frac{1}{\\sqrt{in\\_features}})$，也就是 $(-0.036, 0.036)$。当把 Embedding 的大数值（比如 3 或 4）强行塞给 Linear 层时，输出的 Logits 会变得巨大，导致 Softmax 概率分布极度尖锐。好在模型恢复能力不错，第二个 checkpoint 后 Loss 就降到了 8 左右，最终收敛曲线还算平滑。\n\n### 结果很残酷：速度没快多少，效果还变差了\n跑完整个训练流程，结果令人失望。时间上，只比基准快了 180 秒（约 1.5%），这说明减少那点参数对计算速度的提升微乎其微。效果上更是惨淡：最终测试集 Loss 为 3.874，而基准模型是 3.692。在作者的所有干预实验对比中，这是表现最差的一次。虽然 GPT-2 原版确实用了 Weight Tying，但在这个基于 Raschka 代码、训练时间较短的小模型上，它不仅没能复刻“老技术”的奇迹，反而成了拖后腿的存在。结论很明确：在这个场景下，Weight Tying 确实是个负优化。",
+      "source_name": "gilesthomas.com",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "ai-ml",
+      "keywords": [
+        "weight tying",
+        "GPT-2",
+        "training",
+        "loss"
+      ],
+      "rank": 4
+    },
+    {
       "title": "From Mendeleev to Fourier",
       "title_zh": "从 Mendeleev 到 Fourier 的多项式界限",
       "link": "https://www.johndcook.com/blog/2026/03/24/from-mendeleev-to-fourier/",
@@ -79,7 +98,7 @@
         "Bernstein",
         "inequality"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Choose Boring Technology and Innovative Practices",
@@ -98,7 +117,7 @@
         "TCR",
         "maintenance"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Code as a Tool of Process",
@@ -117,7 +136,26 @@
         "process",
         "thinking"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "★ What to Do About Those Menu Item Icons in MacOS 26 Tahoe",
+      "title_zh": "macOS Tahoe 菜单图标隐藏方案实测",
+      "link": "https://daringfireball.net/2026/03/what_to_do_about_those_menu_item_icons_in_macos_26_tahoe",
+      "pub_date": "2026-03-24T19:36:58.000Z",
+      "summary": "macOS 26 Tahoe 可通过 defaults write -g NSMenuEnableActionImages -bool NO 隐藏菜单图标，但各系统应用支持程度不一。Finder、Notes、Photos 等 AppKit 应用基本遵守，Safari 仅隐藏少量图标，Messages、Maps 等 Catalyst/UIKit 应用几乎完全忽略。第三方应用如 NetNewsWire 7 和 Rogue Amoeba 套件已主动移除菜单图标。作者建议 Apple 应在系统设置中暴露此开关，并仅在真正提升清晰度的菜单项（如图片旋转命令）保留图标，避免视觉噪音降低图标的有效性。",
+      "source_name": "daringfireball.net",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "macOS",
+        "Tahoe",
+        "menu icons",
+        "defaults"
+      ],
+      "rank": 8
     }
   ]
 }
