@@ -1,9 +1,9 @@
 {
   "date": "2026-03-25",
   "total_feeds": 92,
-  "success_feeds": 86,
-  "total_articles": 2454,
-  "filtered_articles": 27,
+  "success_feeds": 85,
+  "total_articles": 2429,
+  "filtered_articles": 25,
   "articles": [
     {
       "title": "Malicious litellm_init.pth in litellm 1.82.8 — credential stealer",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "Auto mode for Claude Code",
+      "title_zh": "Claude Code 新增 auto mode 权限模式",
+      "link": "https://simonwillison.net/2026/Mar/24/auto-mode-for-claude-code/#atom-everything",
+      "pub_date": "2026-03-24T23:57:33.000Z",
+      "summary": "# 一句话总结\nClaude Code 推出了用 AI 模型（Claude Sonnet 4.6）充当“守门员”的 Auto mode，试图通过复杂的规则分类器来替代繁琐的手动授权，但作者认为这种非确定性的 AI 防护远不如底层的系统级沙箱来得可靠。\n\n---\n\n### 终于不用再疯狂点“允许”了\n用过 Claude Code 的开发者都知道，让 AI 帮你改代码时，最烦人的不是它写不出代码，而是它每执行一步都要停下来等你授权。为了省事，很多人可能会动用 `--dangerously-skip-permissions` 这种“自杀式”参数，但这显然不安全。Anthropic 现在给出的新解法是“Auto mode”。说白了，就是让 Claude 自己帮你做决定，它在后台充当一个智能代理，替你批准那些看起来安全的操作，只在真正有风险的时候才停下来问你。这听起来是个折中的好主意，既想保效率，又想保安全。\n\n### 用 AI 来监管 AI，这设计有点意思\n那这个“Auto mode” 到底是怎么判断安全的呢？这里有个巧妙的设计：它不是直接用正在帮你写代码的那个主模型来判断，而是专门起了一个独立的“分类器模型”。文档里写得很清楚，这个分类器跑的是 Claude Sonnet 4.6，哪怕你主对话用的是 Opus 或别的模型。在每一个命令真正执行前，这个 Sonnet 4.6 都会介入，审查整个对话上下文，看看这个操作是否符合你的意图，有没有越权，或者是不是被恶意代码诱导执行的。这种“裁判员”和“运动员”分离的架构，在逻辑上确实能减少很多主模型“幻觉”带来的风险。\n\n### 默认规则清单里藏着不少实战经验\n光有模型还不够，Anthropic 还给这套系统配了一套非常详尽的默认规则，你可以通过 `claude auto-mode defaults` 命令把 JSON 配置拉出来看。这些规则分得很细，比如在“允许列表”里，它允许 Agent 删除当前项目目录下的本地文件，或者执行 `pip install -r requirements.txt`。但这里有个关键细节：它只允许安装 manifest 文件里已经声明过的依赖。如果你让 Agent 随意执行 `pip install foo` 这种指定包名的命令，就会被拦截，因为这涉及到了 typosquatting（抢注包名）和供应链攻击的风险。这说明 Anthropic 把真实开发环境里的坑都踩过一遍了。\n\n### 有些红线是绝对不能碰的\n除了允许做什么，规则里更关键的是明确禁止什么。比如“软拒绝”列表里，直接 `git push --force` 到远程、或者直接推送到 main/master 分支是绝对不行的，强制要求走 Pull Request 流程。还有，从外部下载代码并直接执行（比如经典的 `curl | bash`）也被列入了黑名单。更有意思的是，它对“本地”的定义很严格：如果你在对话里刚 clone 了一个外部仓库，然后去执行里面的代码，哪怕文件已经在本地磁盘上了，也会被视为不可信。因为它认为“本地”仅限于你 session 启动时的那个原始仓库，这种对“信任边界”的界定相当精准。\n\n### AI 防护终究绕不过“非确定性”的坑\n虽然这套规则看起来很严密，但作者对此持保留态度。核心问题在于，这套防护机制依然依赖于 AI 模型的判断，而 AI 本质上是非确定性的。文档自己也承认了，如果用户意图模糊，或者环境上下文不足，分类器可能会放行一些高风险操作。这就好比让一个偶尔会犯迷糊的保安来看门，哪怕他手里拿着最详细的守则，你也不敢把身家性命全交给他。特别是考虑到最近 LiteLLM 那种通过依赖包发起的攻击，如果 `requirements.txt` 里的依赖本身没写死版本号，这套 Auto mode 其实也防不住供应链攻击。\n\n### 真正的安全还得靠硬核沙箱\n所以，作者的观点很明确：这种基于 Prompt 和 AI 模型的软防护，虽然能挡住一部分低级错误，但绝对不能当成最后一道防线。对于 Coding Agent 这种拥有高权限的工具，真正值得信赖的还是那种确定性的、系统级的 Sandbox。比如严格限制文件系统的访问范围、切断不必要的网络连接，用底层机制把 Agent 关在笼子里，而不是指望它自己读懂规则并乖乖遵守。毕竟，在安全这件事上，代码层面的限制永远比模型层面的“自觉”要靠谱得多。",
+      "source_name": "simonwillison.net",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "tools",
+      "keywords": [
+        "Claude Code",
+        "auto mode",
+        "permissions",
+        "sandbox"
+      ],
+      "rank": 4
+    },
+    {
       "title": "Writing an LLM from scratch, part 32g -- Interventions: weight tying",
       "title_zh": "Weight tying 在 163M 模型上的实验失败",
       "link": "https://www.gilesthomas.com/2026/03/llm-from-scratch-32g-interventions-weight-tying",
@@ -79,7 +98,7 @@
         "training",
         "loss"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Windows 95 defenses against installers that overwrite a file with an older version",
@@ -98,7 +117,7 @@
         "version management",
         "backward compatibility"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Package Managers Need to Cool Down",
@@ -116,7 +135,7 @@
         "supply chain security",
         "package managers"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "From Mendeleev to Fourier",
@@ -135,7 +154,7 @@
         "Bernstein",
         "inequality"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Choose Boring Technology and Innovative Practices",
@@ -154,7 +173,7 @@
         "TCR",
         "maintenance"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Code as a Tool of Process",
@@ -173,7 +192,26 @@
         "process",
         "thinking"
       ],
-      "rank": 9
+      "rank": 10
+    },
+    {
+      "title": "Claude Can Now Take Control of Your Mac",
+      "title_zh": "Claude 新增 macOS 计算机控制能力",
+      "link": "https://claude.com/blog/dispatch-and-computer-use",
+      "pub_date": "2026-03-25T01:09:10.000Z",
+      "summary": "Claude 新增计算机控制能力，可在 macOS 上直接操作鼠标、键盘和屏幕完成任务。系统优先使用服务连接器（如 Slack、Google Calendar），无连接器时通过屏幕导航操作，每次访问新应用前需用户明确授权。内置安全机制可扫描 prompt injection 等威胁，用户可随时停止操作。该功能目前仅限 Claude Pro 和 Max 订阅者使用，处于研究预览阶段，仅支持 macOS，建议从可信应用开始，避免处理敏感数据。",
+      "source_name": "daringfireball.net",
+      "score": 10,
+      "depth": 3,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "Claude",
+        "computer use",
+        "macOS",
+        "Dispatch"
+      ],
+      "rank": 11
     },
     {
       "title": "★ What to Do About Those Menu Item Icons in MacOS 26 Tahoe",
@@ -192,7 +230,25 @@
         "menu icons",
         "defaults"
       ],
-      "rank": 10
+      "rank": 12
+    },
+    {
+      "title": "WSJ: ‘OpenAI Plans Launch of Desktop “Superapp”’",
+      "title_zh": "OpenAI 计划推出桌面版超级应用",
+      "link": "https://www.wsj.com/tech/openai-plans-launch-of-desktop-superapp-to-refocus-simplify-user-experience-9e19931d?st=25wiu1",
+      "pub_date": "2026-03-25T01:00:49.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 7,
+      "depth": 2,
+      "novelty": 5,
+      "category": "ai-ml",
+      "keywords": [
+        "OpenAI",
+        "desktop app",
+        "superapp"
+      ],
+      "rank": 13
     },
     {
       "title": "Following Google’s Lead With Pixel Phones, Samsung Announces AirDrop Support With Galaxy S26 Phones",
@@ -210,7 +266,26 @@
         "Quick Share",
         "Galaxy S26"
       ],
-      "rank": 11
+      "rank": 14
+    },
+    {
+      "title": "iOS 26.4",
+      "title_zh": "iOS 26.4 新功能汇总",
+      "link": "https://www.macrumors.com/guide/ios-26-4-features/",
+      "pub_date": "2026-03-25T00:40:01.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "tools",
+      "keywords": [
+        "iOS 26.4",
+        "Apple Music",
+        "CarPlay",
+        "security"
+      ],
+      "rank": 15
     },
     {
       "title": "Quoting Christopher Mims",
@@ -228,7 +303,24 @@
         "computer control",
         "opinion"
       ],
-      "rank": 12
+      "rank": 16
+    },
+    {
+      "title": "OpenAI Is Closing Sora",
+      "title_zh": "OpenAI 关闭 Sora",
+      "link": "https://x.com/soraofficialapp/status/2036546752535470382",
+      "pub_date": "2026-03-25T00:49:07.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "ai-ml",
+      "keywords": [
+        "Sora",
+        "OpenAI"
+      ],
+      "rank": 17
     }
   ]
 }
