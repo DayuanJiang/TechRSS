@@ -1,9 +1,9 @@
 {
   "date": "2026-03-25",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2401,
-  "filtered_articles": 23,
+  "success_feeds": 86,
+  "total_articles": 2454,
+  "filtered_articles": 19,
   "articles": [
     {
       "title": "Malicious litellm_init.pth in litellm 1.82.8 — credential stealer",
@@ -101,6 +101,25 @@
       "rank": 5
     },
     {
+      "title": "How can I change a dialog box’s message loop to do a Msg­Wait­For­Multiple­Objects instead of Get­Message?",
+      "title_zh": "利用 WM_ENTERIDLE 接管对话框消息循环",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260325-00/?p=112165",
+      "pub_date": "2026-03-25T14:00:00.000Z",
+      "summary": "## 一句话总结\n想在不重写整个消息循环的前提下，给标准模态对话框增加 `MsgWaitForMultipleObjects` 的内核对象等待能力？利用 `WM_ENTERIDLE` 消息作为钩子，在对话框空闲时“劫持”等待逻辑即可。\n\n### 标准对话框的盲区：只管消息，不管句柄\n有个客户问了个很经典的问题：怎么把对话框的消息循环从 `GetMessage` 换成 `MsgWaitForMultipleObjects`？说白了，就是想在弹窗等待用户操作的同时，也能监听某个内核 Handle（比如定时器或事件）。但 Windows 自带的模态对话框（Modal Dialog）很“死板”，它的内部消息循环只负责收发消息，完全不管你有什么内核句柄要等。这就像你雇了个只看短信的秘书，电话响了他也听不见。\n\n### 自己写循环？最大的坑是不知道对话框什么时候关\n最直接的思路是把模态对话框改成无模态（Modeless），然后自己写消息循环。但这方案有个致命伤：你没法确切知道对话框过程函数（Dialog Procedure）内部什么时候调用了 `EndDialog`。如果是你自己写的对话框还好办，加个 Flag 就行；但如果你调用的是系统通用对话框（比如文件打开窗口），你根本改不了它的内部逻辑。一旦对话框关了，你的自定义循环还在傻等，这就尴尬了。\n\n### WM_ENTERIDLE：系统留给你的后门\n那怎么办？既然不能从内部改，那就从外部“劫持”。这里有个巧妙的设计：当对话框处理完手头所有消息，准备进入阻塞等待状态时，它会给父窗口发一个 `WM_ENTERIDLE` 消息。这就像对话框在说：“我现在没事干了，准备睡觉了，你有啥要交代的吗？”通常我们用它来做空闲时的后台任务（比如拼写检查），但它的真正威力在于——你可以接管它接下来的等待行为。\n\n### 接管等待逻辑：用 MsgWaitForMultipleObjects 替代睡眠\n一旦收到 `WM_ENTERIDLE`，我们就可以不让对话框直接去睡，而是自己跑一个 `MsgWaitForMultipleObjects` 循环。在这个循环里，我们同时监听那个 Handle 和消息队列（`QS_ALLINPUT`）。如果是 Handle 触发了（比如定时器到了），我们就干自己的事；如果是消息来了，我们就通过 `PeekMessage` 确认一下，然后把控制权还给对话框。这样既没破坏对话框的原有逻辑，又插入了我们的等待机制。\n\n### 代码实战：让文件打开对话框每两秒响一声\n为了演示这个技巧，作者写了个例子：按下空格键弹出一个通用的“打开文件”对话框，同时创建一个每 2 秒触发一次的 Waitable Timer。在 `WM_ENTERIDLE` 的处理函数 `OnEnterIdle` 里，我们用 `MsgWaitForMultipleObjects` 等待这个 Timer。如果 `WAIT_OBJECT_0` 触发了，就调用 `MessageBeep`；如果检测到有消息进队列（`WAIT_OBJECT_0 + 1`），就退出函数，让对话框去处理该消息。结果就是：对话框正常工作，但背景里每隔两秒响一声，互不干扰。\n\n### 代码里的那个“诡计”\n虽然代码跑通了，但作者最后卖了个关子，说这里其实藏着一个坑（Trick）。如果你仔细看代码逻辑，可能会发现某些边界情况的处理并不像表面看起来那么简单。至于这个坑具体是什么，那就是下一篇文章要讲的故事了。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Windows",
+        "dialog box",
+        "message loop",
+        "MsgWaitForMultipleObjects"
+      ],
+      "rank": 6
+    },
+    {
       "title": "Writing an LLM from scratch, part 32g -- Interventions: weight tying",
       "title_zh": "Weight tying 在 163M 模型上的实验失败",
       "link": "https://www.gilesthomas.com/2026/03/llm-from-scratch-32g-interventions-weight-tying",
@@ -117,7 +136,7 @@
         "training",
         "loss"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Windows 95 defenses against installers that overwrite a file with an older version",
@@ -136,7 +155,7 @@
         "version management",
         "backward compatibility"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Package Managers Need to Cool Down",
@@ -154,7 +173,7 @@
         "supply chain security",
         "package managers"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "From Mendeleev to Fourier",
@@ -173,7 +192,7 @@
         "Bernstein",
         "inequality"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Choose Boring Technology and Innovative Practices",
@@ -192,7 +211,7 @@
         "TCR",
         "maintenance"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Code as a Tool of Process",
@@ -211,7 +230,7 @@
         "process",
         "thinking"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Claude Can Now Take Control of Your Mac",
@@ -230,7 +249,7 @@
         "macOS",
         "Dispatch"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "The Top 10 Biggest Conspiracies in Open Source",
@@ -249,7 +268,7 @@
         "satire",
         "xz"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "★ What to Do About Those Menu Item Icons in MacOS 26 Tahoe",
@@ -268,7 +287,7 @@
         "menu icons",
         "defaults"
       ],
-      "rank": 14
+      "rank": 15
     },
     {
       "title": "WSJ: ‘OpenAI Plans Launch of Desktop “Superapp”’",
@@ -286,7 +305,7 @@
         "desktop app",
         "superapp"
       ],
-      "rank": 15
+      "rank": 16
     },
     {
       "title": "Following Google’s Lead With Pixel Phones, Samsung Announces AirDrop Support With Galaxy S26 Phones",
@@ -304,7 +323,7 @@
         "Quick Share",
         "Galaxy S26"
       ],
-      "rank": 16
+      "rank": 17
     },
     {
       "title": "iOS 26.4",
@@ -323,7 +342,7 @@
         "CarPlay",
         "security"
       ],
-      "rank": 17
+      "rank": 18
     },
     {
       "title": "Steve Ballmer, Microsoft executive and NBA owner",
@@ -342,7 +361,7 @@
         "NBA",
         "Clippers"
       ],
-      "rank": 18
+      "rank": 19
     },
     {
       "title": "Quoting Christopher Mims",
@@ -360,7 +379,7 @@
         "computer control",
         "opinion"
       ],
-      "rank": 19
+      "rank": 20
     },
     {
       "title": "OpenAI Is Closing Sora",
@@ -377,7 +396,7 @@
         "Sora",
         "OpenAI"
       ],
-      "rank": 20
+      "rank": 21
     }
   ]
 }
