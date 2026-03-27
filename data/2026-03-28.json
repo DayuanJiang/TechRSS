@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 86,
   "total_articles": 2556,
-  "filtered_articles": 20,
+  "filtered_articles": 19,
   "articles": [
     {
       "title": "Premium: How Much Of The AI Bubble Is Real?",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Using Perfetto in ZJIT",
+      "title_zh": "用 Perfetto 可视化追踪 ZJIT 的 side-exit",
+      "link": "https://bernsteinbear.com/blog/zjit-perfetto/?utm_source=rss",
+      "pub_date": "2026-03-27T00:00:00.000Z",
+      "summary": "## 一句话总结\nZJIT 团队通过引入 Perfetto 可视化工具，将枯燥的统计数据转化为直观的时间线视图，成功定位了导致 JIT 频繁退出的 Shape Guard 失效热点。\n\n### JIT 的第一铁律：千万别退出去\nJIT 编译器的性能核心其实就一条铁律：死守在编译代码里别出来。一旦控制流从编译代码跳回解释器——也就是所谓的 \"side-exit\" 或 \"deopt\"——性能就会断崖式下跌。虽然在一个调优良好的系统里，这种事应该很少发生，但 ZJIT 目前还处于开发早期，退出的次数比预期的要多得多。团队现在的首要任务，就是想尽办法减少这些退出的发生。\n\n### 统计数据很全，但缺乏直觉\n为了追踪优化进度，ZJIT 提供了 `--zjit-stats` 标志，能在进程退出时打印一份详尽的“坏事清单”。这里面有 side-exit、C 函数调用、慢路径 helper 调用等等，应有尽有。比如在 Lobsters benchmark 中，统计显示发生了超过 1200 万次 side-exit，其中 `guard_type_failure` 和 `guard_shape_failure` 占了大头。虽然这些计数器能快速反映性能趋势，但它们有个致命缺陷：无法建立直观感受。你知道总数很高，但不知道这些事件发生在哪里，也不知道它们是集中在启动阶段还是平稳运行期。\n\n### 从数字到视图：引入 Perfetto\n要回答“这些退出到底发生在哪”，光有计数器是不够的，我们需要堆栈信息，甚至需要知道事件发生的具体时间点。这时候 Perfetto 就派上用场了。它是一个强大的系统级跟踪和分析工具，不仅能生成可视化的时间线，还提供了 Web UI 和 SQL 查询接口。通过 `--zjit-trace-exits` 参数，ZJIT 可以把运行时的 trace 数据导出给 Perfetto 进行可视化分析。\n\n### 一眼看出问题：紫色的混乱\n打开 Perfetto 的 trace 界面，你会看到左侧有一排箭头，右侧则是一片混乱的紫色条带。那些箭头代表“瞬时”事件，在这里就是每一次 side-exit。当你把鼠标悬停在箭头上，它会告诉你退出的具体原因；点击它，底部面板甚至能显示完整的堆栈跟踪。虽然这能逐个查看问题，但面对成千上万的事件，光靠肉眼盯着一团乱麻是看不过来的。\n\n### 用 SQL 挖掘真正的热点\n好在 Perfetto 内置了 SQL 接口，这让分析变得异常强大。作者写了一个简单的 SQL 查询，把 `slice` 表里的 side-exit 事件和 `args` 表里的堆栈信息关联起来，按出现次数排序。结果一目了然：`ActiveModel::AttributeRegistration::ClassMethods#attribute_types` 这一个方法就触发了 5000 多次 `GuardShape` 失败。这直接暴露了当前 ZJIT 的一个设计缺陷：它在猜测对象形状后没有重新评估机制。找到了这个最大的“出血点”，优化方向也就清晰了。\n\n### 实现细节：从 JSON 到二进制 FXT\n在实现层面，把数据导出给 Perfetto 并不难。最初作者尝试了 Chromium Trace JSON 格式，虽然实现简单，但因为 side-exit 太多，几秒钟的 benchmark 就能生成 8GB 的 trace 文件，这显然没法用。为了解决这个问题，团队转而使用了更紧凑的二进制格式——Fuchsia trace format (FXT)。FXT 不仅体积小，还支持字符串去重。切换到 FXT 后，同样的 benchmark 生成的 trace 文件直接从 8GB 缩水到了 100MB。此外，他们还加了一个采样参数 `--zjit-trace-exits-sample-rate`，通过只记录每 K 次退出中的一次，进一步控制了数据量。\n\n### 可视化是为了问出更好的问题\nPerfetto 的强大之处在于它能帮你把数据变成直觉。除了 side-exit，你还可以用它来追踪方法编译耗时、生成代码大小、GC 事件甚至内存分配。文章最后强调，可视化的核心价值不在于画出漂亮的图，而在于让你能更轻松地提出正确的问题。一旦数据格式对了，那些隐藏在代码深处的性能瓶颈就无处遁形了。",
+      "source_name": "bernsteinbear.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "Perfetto",
+        "ZJIT",
+        "JIT",
+        "profiling"
+      ],
+      "rank": 2
+    },
+    {
       "title": "“Good Taste” Is Just Experience",
       "title_zh": "“品味”只是经验的别名",
       "link": "https://terriblesoftware.org/2026/03/27/good-taste-is-just-experience/",
@@ -41,7 +60,7 @@
         "senior engineer",
         "pattern recognition"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "An Intention Upgrade",
@@ -60,7 +79,7 @@
         "upgradeability",
         "power users"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "An AI Odyssey, Part 3: Lost Needle in the Haystack",
@@ -79,7 +98,7 @@
         "usability",
         "e-commerce"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "This Week on The Analog Antiquarian",
@@ -96,7 +115,7 @@
         "blog",
         "weekly"
       ],
-      "rank": 5
+      "rank": 6
     }
   ]
 }
