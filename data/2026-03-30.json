@@ -1,9 +1,9 @@
 {
   "date": "2026-03-30",
   "total_feeds": 92,
-  "success_feeds": 86,
-  "total_articles": 2556,
-  "filtered_articles": 9,
+  "success_feeds": 85,
+  "total_articles": 2531,
+  "filtered_articles": 13,
   "articles": [
     {
       "title": "The rise and fall of IBM's 4 Pi aerospace computers: an illustrated history",
@@ -25,6 +25,44 @@
       "rank": 1
     },
     {
+      "title": "Pretext",
+      "title_zh": "Pretext：不触碰 DOM 的文本高度计算库",
+      "link": "https://simonwillison.net/2026/Mar/29/pretext/#atom-everything",
+      "pub_date": "2026-03-29T20:08:45.000Z",
+      "summary": "## 一句话总结\nPretext 通过将文本测量拆分为“离线准备”和“纯计算布局”两个阶段，在不触碰 DOM 的情况下实现了极速的文本高度计算。\n\n### 老办法的致命瓶颈：为了量身高，必须先“生下来”\n在浏览器里算一段文字的高度，通常的做法简单粗暴：先把文字塞进 DOM 里渲染出来，再去测量它的尺寸。这听起来没问题，但实际操作中代价极高。因为一旦涉及 DOM 操作，就会触发浏览器的重排，这在性能敏感的场景下简直是灾难。尤其是当你需要频繁响应窗口大小变化，或者做复杂的动态排版时，这种“渲染再测量”的同步逻辑会让页面卡顿。所以，核心矛盾在于：我们只想知道文字占多高，却被迫为了这个数字去执行最昂贵的渲染步骤。\n\n### 核心思路：把“测量”和“排版”彻底分开\nPretext 的解法是把整个流程拆解成 `prepare()` 和 `layout()` 两个独立的函数。这种分离非常巧妙，因为它把昂贵的操作和廉价的操作隔离开了。`prepare()` 只需要运行一次，它负责把输入的文本拆分成片段。这里的“片段”不仅仅是单词，还包括软连字符、非拉丁字符序列甚至 Emoji。拆分完成后，它会利用离屏 Canvas 测量这些片段的宽度，并把结果缓存起来。这一步虽然涉及测量，但因为只做一次且不操作 DOM，开销完全可控。\n\n### 模拟浏览器的换行逻辑，纯靠数学计算\n有了缓存好的片段宽度，剩下的 `layout()` 就变成了纯粹的数学游戏。这个函数可以在任何指定的宽度下，模拟浏览器的自动换行逻辑。它不需要渲染任何东西，只是根据之前测量的片段宽度，像拼积木一样计算单词如何排列、何时换行。因为不涉及 DOM，这个函数执行极快，你可以随意调用它来测试不同宽度下的布局效果。说白了，就是用 JS 重写了一遍浏览器的排版算法，把原本由 C++ 在渲染层做的事，搬到了 JS 的计算层。\n\n### 极致的测试：用《了不起的盖茨比》验证准确性\n这种模拟算法最大的风险是算不准，毕竟浏览器原生的排版逻辑非常复杂。为了解决这个问题，Pretext 的测试方式相当硬核。早期的测试直接渲染了整本《了不起的盖茨比》，在多个浏览器中运行，将估算的高度与实际 DOM 测量结果进行比对。后来，作者又在 `corpora/` 文件夹中加入了泰语、中文、韩文、日文、阿拉伯文等长篇公共领域文档。这意味着它不仅处理了英文的空格换行，还覆盖了各种复杂语言的排版规则，确保了算法的普适性和精确度。\n\n### 性能提升带来的新可能\n当计算高度不再是一个昂贵的操作，很多以前不敢想的文本渲染效果就变得可行了。比如 demo 中展示的动态布局，文字可以随着容器宽度的变化流畅地重新排列，而不会因为频繁的 DOM 测量导致掉帧。对于有经验的开发者来说，Pretext 的价值不在于它是一个新库，而在于它证明了通过合理的架构设计，我们可以绕过浏览器的渲染限制，在前端实现高性能的排版计算。",
+      "source_name": "simonwillison.net",
+      "score": 15,
+      "depth": 7,
+      "novelty": 8,
+      "category": "tools",
+      "keywords": [
+        "Pretext",
+        "text layout",
+        "DOM",
+        "performance"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "WorkOS",
+      "title_zh": "WorkOS CLI：一条命令集成 AuthKit",
+      "link": "https://workos.com/docs/authkit/cli-installer?utm_source=daringfireball&utm_medium=newsletter&utm_campaign=q12026",
+      "pub_date": "2026-03-29T20:18:38.000Z",
+      "summary": "WorkOS CLI 发布，核心功能是 AI Installer——一条命令即可完成 AuthKit 集成。安装器自动检测框架（支持 Next.js、React、SvelteKit、Node/Express、Python/Django、Ruby/Rails、Go、PHP、.NET、Kotlin、Elixir 等 13 种技术栈），处理 SDK 安装、路由创建、中间件配置、环境变量写入和构建验证。CLI 使用受限权限的 AI agent 本地分析项目结构，仅能执行包安装、构建、类型检查和格式化命令，无法运行任意 shell 命令。安装完成后可通过 git diff 审查所有变更。CLI 还提供资源管理（CRUD 操作）、声明式环境配置（YAML seed 文件）、多环境切换和调试命令。另一项功能是为 AI 编码代理注入 WorkOS 知识，支持 Claude Code、Codex、Cursor、Goose 等代理，使其理解 AuthKit API 和集成模式，无需人工解释即可生成正确代码。",
+      "source_name": "daringfireball.net",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "tools",
+      "keywords": [
+        "WorkOS",
+        "AuthKit",
+        "CLI",
+        "AI installer"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Python Vulnerability Lookup",
       "title_zh": "Python 漏洞查询工具",
       "link": "https://simonwillison.net/2026/Mar/29/python-vulnerability-lookup/#atom-everything",
@@ -40,7 +78,7 @@
         "vulnerability",
         "lookup"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "The Talk Show: ‘You’re Going to Have the Niggles’",
@@ -59,7 +97,42 @@
         "MacBook Neo",
         "podcast"
       ],
-      "rank": 3
+      "rank": 5
+    },
+    {
+      "title": "The Verge: ‘Rank the Best Apple Products From the Last 50 Years’",
+      "title_zh": "The Verge 发起 Apple 50 年产品投票",
+      "link": "https://www.theverge.com/cs/tech/900477/apple-50-anniversary-rank-products",
+      "pub_date": "2026-03-29T20:11:49.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Apple",
+        "ranking",
+        "ELO"
+      ],
+      "rank": 6
+    },
+    {
+      "title": "Pretext — Under the Hood",
+      "title_zh": "Simon Willison 的月度赞助招募",
+      "link": "https://simonwillison.net/2026/Mar/29/pretext-explainer/#atom-everything",
+      "pub_date": "2026-03-29T19:59:28.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "other",
+      "keywords": [
+        "sponsorship",
+        "newsletter"
+      ],
+      "rank": 7
     }
   ]
 }
