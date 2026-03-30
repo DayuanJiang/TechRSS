@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 86,
   "total_articles": 2556,
-  "filtered_articles": 11,
+  "filtered_articles": 13,
   "articles": [
     {
       "title": "telecheck and tyms past",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "Git Diff Drivers",
+      "title_zh": "Git diff driver 机制与 textconv 实践",
+      "link": "https://nesbitt.io/2026/03/30/git-diff-drivers.html",
+      "pub_date": "2026-03-30T10:00:00.000Z",
+      "summary": "## 一句话总结\nGit 的 diff driver 机制能把任意文件（如二进制、lockfile）转换成可读文本进行对比，虽然本地配置强大，但出于安全原因，主流代码托管平台至今仍未支持这一功能。\n\n### 作者的初衷：让 lockfile 的 diff 不再是噪音\n一切始于作者维护的 `git-pkgs` 项目。这个工具本来就能解析 29 种 lockfile 格式，作者发现只要把它接入 Git 的 `textconv` 机制，就能把 `git diff` 看到的几百行解析器噪音，变成几行清晰的依赖变更。这让他开始深入研究 Git 的 diff driver 系统。有意思的是，Git 内置了 28 种语言驱动，但很多 GUI 客户端和代码托管平台居然都没用上。\n\n### 被忽视的内置语言驱动\nGit 其实早就内置了针对 Rust、Go、Kotlin 等 28 种语言的 diff driver，定义在 `userdiff.c` 里。这些驱动主要做两件事：通过 `xfuncname` 正则提取函数名作为 diff 的上下文标题，以及通过 `wordRegex` 控制 `--word-diff` 的分词逻辑。只要在 `.gitattributes` 里配置 `*.rs diff=rust`，原本可能只显示 `@@ end` 的 hunk header，就会变成 `@@ def process_payment`。虽然 GitHub 的 Linguist 库也用了同样的名字做语言检测，但 GitHub 的 Web 端 diff 并没有真正利用这些驱动来优化显示。\n\n### textconv：把二进制变成可读文本\n除了内置驱动，Git 还支持三种自定义配置，其中最实用的是 `textconv`。它的核心思路很简单：你指定一个命令，Git 在 diff 前先把文件内容喂给这个命令，然后对命令输出的文本做 diff。比如配置 `exiftool`，你就能看到图片元数据的变更而不是一堆乱码。配合 `cachetextconv`，Git 还会把转换结果缓存起来，避免 `git log -p` 时重复执行转换命令。不过要注意，这是单向的，你没法把这个转换后的文本当 patch 用，因为原始二进制信息丢了。\n\n### 社区已经造出了各种轮子\n基于这个机制，社区已经造出了很多针对特定格式的 driver。有人用 `plutil` 把苹果的 plist 转成 XML，有人用 `unity2text` 让 Unity 的 YAML 场景文件可读，还有人用 `git-sqlite` 直接把数据库 dump 成 SQL 来 diff。特别是针对 Jupyter Notebook 的 `nbdime`，它能忽略输出 cell，只对比代码结构。这些工具让原本不可读或极其冗余的文件变更，瞬间变得清晰明了。\n\n### 依然存在的痛点：Xcode 与 Protobuf\n尽管工具很多，但有些痛点还没解决。比如 Xcode 的 `.pbxproj` 文件，全是 UUID 且保存时顺序会变，虽然有 merge driver，但没人写 textconv。还有 Godot 的场景文件、OpenAPI 规范、Protobuf 描述符以及字体文件，虽然都有现成的转换工具，但都还没人把它们封装成现成的 Git diff driver。这其实是个机会，只要写个简单的配置脚本，就能极大提升这些文件的 diff 体验。\n\n### 配置的割裂：本地好用，团队难推\n这里有个尴尬的设计缺陷：`.gitattributes` 可以提交到仓库，但 `[diff]` 配置必须存在每个开发者的本地 `.git/config` 里。这意味着你没法通过 `git clone` 一键把 diff driver 配置分发下去。每个团队成员都得自己装工具、改配置。这种“声明式配置”的缺失，也是导致 diff driver 难以普及的重要原因之一。\n\n### 为什么 GitHub 和 GitLab 都不支持？\n你可能会问，既然这么好用，为什么 GitHub、GitLab 甚至 Sublime Merge 都不支持？核心原因是安全。`textconv` 本质上是允许执行任意代码，如果在 Web 端自动触发，只要有人点开恶意 PR 的文件，服务器就中招了。CI 敢跑是因为那是显式操作且有信任边界，但 diff 渲染是隐式的。GitHub 目前的方案是绕过 Git 配置，自己在服务器端硬编码渲染逻辑（比如 3D 模型查看器），虽然牺牲了灵活性，但换来了绝对的安全和更好的交互体验。",
+      "source_name": "nesbitt.io",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "tools",
+      "keywords": [
+        "git",
+        "textconv",
+        "diff driver",
+        "lockfile"
+      ],
+      "rank": 4
+    },
+    {
       "title": "WorkOS",
       "title_zh": "WorkOS CLI：一条命令集成 AuthKit",
       "link": "https://workos.com/docs/authkit/cli-installer?utm_source=daringfireball&utm_medium=newsletter&utm_campaign=q12026",
@@ -79,7 +98,7 @@
         "CLI",
         "AI installer"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Notes on going solo: celebrating 6 years of Studio Self",
@@ -98,7 +117,26 @@
         "agency model",
         "taste"
       ],
-      "rank": 5
+      "rank": 6
+    },
+    {
+      "title": "Small note about AI 'GPUs'",
+      "title_zh": "AI GPU 无法处理图形",
+      "link": "https://xeiaso.net/notes/2026/ai-gpus-cant-process-graphics/",
+      "pub_date": "2026-03-30T00:00:00.000Z",
+      "summary": "大多数企业级 AI GPU 实际上不具备图形处理能力。为了在单芯片上最大化计算密度，这些设备移除了视频输出和图形处理功能，只能用于 CUDA 操作的 AI 推理、训练或其他非游戏场景。想在 AI 泡沫破裂后低价收购服务器 GPU 用于游戏的想法并不可行。",
+      "source_name": "xeiaso.net",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "GPU",
+        "CUDA",
+        "AI inference",
+        "enterprise hardware"
+      ],
+      "rank": 7
     },
     {
       "title": "Python Vulnerability Lookup",
@@ -116,7 +154,7 @@
         "vulnerability",
         "lookup"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "The Talk Show: ‘You’re Going to Have the Niggles’",
@@ -135,7 +173,7 @@
         "MacBook Neo",
         "podcast"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Version History: ‘The Macintosh’",
@@ -153,7 +191,7 @@
         "history",
         "podcast"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "How old our servers are (as of 2026)",
@@ -171,7 +209,26 @@
         "hardware",
         "lifecycle"
       ],
-      "rank": 9
+      "rank": 11
+    },
+    {
+      "title": "What happened to Procomm Plus",
+      "title_zh": "Procomm Plus 终端软件兴衰史",
+      "link": "https://dfarq.homeip.net/what-happened-to-procomm-plus/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=what-happened-to-procomm-plus",
+      "pub_date": "2026-03-30T11:00:15.000Z",
+      "summary": "",
+      "source_name": "dfarq.homeip.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "terminal emulator",
+        "Procomm Plus",
+        "BBS",
+        "retro computing"
+      ],
+      "rank": 12
     },
     {
       "title": "The Verge: ‘Rank the Best Apple Products From the Last 50 Years’",
@@ -189,7 +246,7 @@
         "ranking",
         "ELO"
       ],
-      "rank": 10
+      "rank": 13
     },
     {
       "title": "Pretext — Under the Hood",
@@ -206,7 +263,7 @@
         "sponsorship",
         "newsletter"
       ],
-      "rank": 11
+      "rank": 14
     }
   ]
 }
