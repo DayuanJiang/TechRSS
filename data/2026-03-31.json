@@ -1,9 +1,9 @@
 {
   "date": "2026-03-31",
   "total_feeds": 92,
-  "success_feeds": 86,
-  "total_articles": 2557,
-  "filtered_articles": 20,
+  "success_feeds": 85,
+  "total_articles": 2532,
+  "filtered_articles": 21,
   "articles": [
     {
       "title": "‘The Brand Age’",
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "HIBP Mega Update: Passkeys, k-Anonymity Searches, Massive Speed Enhancements and a Bulk Domain Verification API",
+      "title_zh": "HIBP 新增 Passkeys、k-anonymity 搜索和批量域名验证",
+      "link": "https://www.troyhunt.com/passkeys-k-anonymity-searches-massive-speed-enhancements-bulk-domain-verification-api/",
+      "pub_date": "2026-03-30T18:42:30.000Z",
+      "summary": "## 一句话总结\nHIBP 通过重构订阅体系、引入 k-anonymity 隐私搜索、优化 API 限流策略以及将鉴权逻辑异步化，实现了面向企业级服务（MSP）的功能升级与全球访问速度的飞跃。\n\n---\n\n### 从“副业”到“企业级”：订阅体系的大重构\nHIBP 早已不是 Troy Hunt 的简单业余项目，它现在每天处理数亿次密码搜索，甚至一半的财富 500 强企业都在用它监控数据泄露。面对这种量级的用户分化，原本单一的“Pwned”订阅计划显得越来越臃肿——从 Pwned 1 到 Pwned Ultra，各种功能堆砌在一起，既不清晰也不好用。为了解决这个问题，作者将订阅计划彻底重构成了四个清晰的层级：Core（基础版）、Pro（专业版，面向大组织）、High RPM（高并发版，旧 Ultra）和 Enterprise（企业定制版）。这次调整的核心逻辑很明确：把功能按场景分层，特别是为了满足那些需要监控大量域名的企业客户，把新能力集中到了 Pro 计划中。\n\n### 解锁 MSP 场景：打破“第三方服务”的禁忌\n在这次更新中，一个看似不起眼但影响深远的改动是服务条款的修订。以前，HIBP 明确禁止将服务用于“第三方利益”，这意味着托管服务提供商（MSP）无法合法地帮客户监控域名。现在，条款变成了“除非你购买了允许这样做的付费服务”，这直接为 MSP 敞开了大门。这不仅仅是改几个字，而是为了配合后续的一系列自动化功能，让 MSP 能够将 HIBP 无缝集成到他们给客户提供的安全服务里，而不是作为一个独立的、受限的工具存在。\n\n### 告别手动验证：DNS 与邮件的自动化流程\n对于大企业来说，以前验证域名控制权的过程简直是噩梦：必须在 Web 界面上一个个手动添加，再一个个等 DNS 传播，既繁琐又容易出错。这次更新推出了两个自动化 API 来解决这个问题。如果你控制 DNS，可以通过 API 生成 TXT 记录 token，自动调用 DNS 提供商的 API 添加，再回调 HIBP 验证，全程脚本化。如果你不控制 DNS（比如你是 MSP），可以用新的邮件验证 API：向预定义的别名发送验证邮件，客户点击链接即可完成验证。这两个改进把原本需要人工介入的“脏活”，变成了机器可以批量处理的标准化流程。\n\n### 根域名权限：一次验证，子域名全通\n这是一个用户呼声极高（User Voice 上有 154 票）的痛点。以前，像 `example.com` 这样的主域名验证后，并不能代表 `apac.example.com` 或 `emea.example.com` 这些子域名也受控，导致大企业必须为每个子域名重复验证。现在，Pro 计划的用户只需要验证 apex domain（根域名），系统就会自动信任该域名下的所有子域名。这个设计非常符合直觉，也极大减少了大型企业在多区域、多子域名环境下的管理负担，是典型的“小改动，大体验提升”。\n\n### 隐私与性能的平衡：把 k-anonymity 引入邮箱搜索\nHIBP 的密码搜索早就用了 k-anonymity 模式（只传哈希前 5 位），但邮箱搜索一直还是直接传完整地址，这让注重隐私的企业很纠结。现在，Pro 和 High RPM 用户可以使用基于 SHA-1 的 k-anonymity 邮箱搜索了。具体做法是：客户端对邮箱做 SHA-1 哈希，只把前 6 个字符发给 HIBP，服务器返回所有匹配这前缀的哈希后缀和泄露网站列表，客户端再在本地匹配完整的哈希值。这样 HIBP 服务器端就完全不知道你查了哪个邮箱，既保护了隐私，又复用了现有的成熟架构，目前该接口每月已能支撑 180 亿次请求。\n\n### 限流策略的“去平滑化”：让配额用得更直观\n以前，如果你买了 10 RPM（每分钟 10 次）的 API Key，HIBP 会强制把请求间隔“平滑”到每 6 秒一次。这虽然保护了服务器，但经常让开发者误解：以为只要一分钟内不超过 10 次就行，结果一秒发 6 个请求就触发 429 报错。现在，得益于 Cloudflare 的边缘缓存能力，HIBP 彻底移除了这个平滑限制。现在的逻辑是：只要在 60 秒的滑动窗口内不超过 10 次就行，你可以瞬间把 10 次请求打完，然后等待下一分钟。这种“去平滑化”处理，让限流逻辑更符合开发者的直觉，也减少了不必要的支持工单。\n\n### 极致的性能优化：把鉴权变成“异步背景任务”\n最后，这次更新最硬核的技术点在于 API 响应速度的优化。以前，为了验证 API Key 和限流，每个请求都必须回源到美国西部的 Azure API Management（APIM）检查通过后，才能返回 Cloudflare 边缘节点的缓存数据。这意味着即使数据就在用户身边，光鉴权就要绕地球半圈。现在的巧妙设计是：先直接返回缓存数据给用户（极速响应），同时异步地去 APIM 做鉴权和计费。如果超限了，就拦截后续请求。这种“先斩后奏”的异步处理，让 Time to First Byte（TTFB）大幅下降，真正实现了全球范围内的极速搜索。",
+      "source_name": "troyhunt.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "security",
+      "keywords": [
+        "k-anonymity",
+        "passkeys",
+        "domain verification",
+        "API"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Pluralistic: Market participation is exhausting (30 Mar 2026)",
       "title_zh": "市场参与为何让人精疲力竭",
       "link": "https://pluralistic.net/2026/03/30/players-of-games/",
@@ -60,7 +79,26 @@
         "caveat emptor",
         "Club Med theory"
       ],
-      "rank": 3
+      "rank": 4
+    },
+    {
+      "title": "A question about the maximimum number of values in a registry key raises questions about the question",
+      "title_zh": "误用 SharedDLLs 导致注册表膨胀",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260330-00/?p=112175",
+      "pub_date": "2026-03-30T14:00:00.000Z",
+      "summary": "客户在单个注册表键中存储超过 25 万个值导致问题，原因是他们将安装包中所有文件（包括文本文件、GIF、XML 等）都标记为 msidbComponentAttributesSharedDllRefCount，导致 HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\SharedDLLs 键仅键名就超过 30MB。这是对 SharedDLLs 机制的误用：该机制仅用于多个产品共享同一目录下的 DLL（如 system32 或 Common Files），而该客户的产品采用 side-by-side 安装，实际上不存在共享文件。SharedDLLs 注册表机制诞生于 Windows 95，通过引用计数解决 DLL 卸载时机问题，但无法解决 DLL 版本冲突问题。现代程序通过减少共享 DLL 依赖、使用 MSIX 等打包系统来避免版本升级导致的兼容性问题。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 9,
+      "depth": 5,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "registry",
+        "SharedDLLs",
+        "Windows",
+        "installer"
+      ],
+      "rank": 5
     },
     {
       "title": "Macs of Unusual Size",
@@ -77,7 +115,7 @@
         "access",
         "blocked"
       ],
-      "rank": 4
+      "rank": 6
     }
   ]
 }
