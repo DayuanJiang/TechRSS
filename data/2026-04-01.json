@@ -1,9 +1,9 @@
 {
   "date": "2026-04-01",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2535,
-  "filtered_articles": 32,
+  "success_feeds": 86,
+  "total_articles": 2560,
+  "filtered_articles": 33,
   "articles": [
     {
       "title": "The Subprime AI Crisis Is Here",
@@ -120,6 +120,25 @@
       "rank": 6
     },
     {
+      "title": "Random File Format",
+      "title_zh": "一种本质脆弱的随机文件格式设计",
+      "link": "https://shkspr.mobi/blog/2026/04/random-file-format/",
+      "pub_date": "2026-04-01T11:34:57.000Z",
+      "summary": "# 一句话总结\n这篇文章提出了一种名为 RFF（Random File Format）的文件格式构想，通过打乱数据块顺序并依赖链式指针跳转，让文件在下载不完整时彻底无法读取，以此实现一种\"内在的脆弱性\"。\n\n---\n\n### 从 Napster 时代的遗憾说起\n早在 Napster 时代，下载不完整是个大麻烦。那时候，你千辛万苦\"搞\"到的音乐文件，往往因为下载中断缺了最后几秒。更糟糕的是，像 MP4 这种视频格式，如果文件末尾的 `moov` atom 丢了，播放器直接拒绝打开。作者当时就在想：能不能设计一种文件格式，只要文件没下全，就绝对读不出来？注意，这里不是指加个 checksum 校验一下错误，而是要从文件结构的物理布局上，让它对残缺\"过敏\"。\n\n### 核心思路：把文件变成一个迷宫\n作者翻出了当年的笔记，发现当年的自己其实设计了一套挺精妙的逻辑。说白了，就是把文件变成一个只能倒着走的单链表。文件末尾放一个 32 位的指针，指向第一个信息块的位置。每个信息块先描述后面数据块的长度，数据块结束后，又跟着一个指针指向下一个信息块。文件开头可以是随机数据，数据块之间也可以塞随机垃圾。这样一来，如果你只下载了 99%，大概率连第一个数据块都找不到，或者读到一半指针断了，整个文件就废了。\n\n### 具体的读写逻辑\n为了讲清楚这个机制，作者举了个例子。假设文件末尾的指针指向位置 5。你跳过去，读取数据块长度是 1，读完数据后，又发现一个指针指向位置 1。你再跳到位置 1，发现数据块长度是 2，读完数据后，指针又指向位置 5……这种设计保证了只有拿到完整的文件，拥有完整的指针链，才能把数据按正确顺序拼出来。只要中间断了任何一个环节，或者缺了最后那个入口指针，文件就是一堆乱码。\n\n### 这种设计的代价是什么？\n当然，这种\"任性\"的格式是有代价的。最直接的就是文件体积膨胀。如果数据块大小不固定，加上为了混淆视听而填充的随机数据，文件可能会变得很大。而且，如果数据块大小是固定的，也没加随机填充，那攻击者还是有机会通过分析文件结构，把大部分数据恢复出来。另外，32 位的指针限制了文件大小只能在 4GB 以内，虽然换成 64 位能解决，但那会儿可能觉得没必要。\n\n### 还有一些潜在的安全隐患\n除了体积问题，这种格式还有点\"自毁\"倾向。比如，如果文件被篡改，指针可能会形成一个死循环，读的时候就会陷入无限跳转。而且，对于文本文件这种结构化很强的数据，即便顺序乱了，人类还是能读懂大半。作者还提到，或许应该在文件头或尾加一个 magic number，好让程序识别这是 RFF 格式，不然谁知道这堆乱码是干嘛的。\n\n### 用 Python 实现了一个简单的原型\n为了验证这个二十年前的想法，作者用 Python 写了个简单的编码器和解码器。编码器读取文件（比如 `test.jpg`），切成 1024 字节的块，打乱顺序，然后写入新文件。每个块前面写长度，后面写指向下一块位置的指针，文件最后 4 字节写入第一块的入口地址。解码器就更简单了：读最后 4 字节，跳过去，读长度，读数据，再读下一块指针，循环往复，直到遇到结束标记 `4294967295`。\n\n### 现在看来，这更像是个思维游戏\n作者承认，这段代码写得很 trivial，甚至有点 bug，很多参数都是硬编码的。但他还是把一张 Maria Sibylla Merian 的图片和《罗密欧与朱丽叶》的文本做成了 RFF 格式放出来，供大家解闷。从实用角度看，这种格式效率低、风险高，但在那个 P2P 刚刚兴起的年代，这种试图通过改变文件结构来对抗不完整下载的思路，确实挺有意思的。",
+      "source_name": "shkspr.mobi",
+      "score": 12,
+      "depth": 5,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "file format",
+        "pointer chain",
+        "data integrity",
+        "Python"
+      ],
+      "rank": 7
+    },
+    {
       "title": "RAM Is the New Bearer Bond",
       "title_zh": "AI 繁荣引发的全球 RAM 短缺危机",
       "link": "https://www.theatlantic.com/technology/2026/03/laptop-electronics-ram-ai-tax/686628/",
@@ -136,7 +155,7 @@
         "memory pricing",
         "supply chain"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "GopherTree",
@@ -155,7 +174,7 @@
         "client",
         "directory tree"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "llm-all-models-async 0.1",
@@ -174,7 +193,7 @@
         "plugin",
         "thread pool"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Before you check if an update caused your problem, check that it wasn’t a problem before the update",
@@ -193,7 +212,7 @@
         "system reboot",
         "root cause"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "datasette-enrichments-llm 0.2a0",
@@ -212,7 +231,7 @@
         "plugin",
         "configuration"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Business Insider Profiles Fidji Simo, OpenAI’s ‘CEO of Applications’",
@@ -231,7 +250,7 @@
         "monetization",
         "leadership"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "The Entire Internet Is a UGC Reaction Video Now",
@@ -250,7 +269,7 @@
         "authenticity",
         "content mill"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "Mini-review: David Pogue's Apple: The First 50 Years",
@@ -268,7 +287,7 @@
         "book review",
         "computing history"
       ],
-      "rank": 14
+      "rank": 15
     },
     {
       "title": "Wayne’s World",
@@ -286,7 +305,26 @@
         "Apple",
         "interview"
       ],
-      "rank": 15
+      "rank": 16
+    },
+    {
+      "title": "How Tandy bought Radio Shack",
+      "title_zh": "Tandy 30万美元收购并拯救 Radio Shack",
+      "link": "https://dfarq.homeip.net/how-tandy-bought-radio-shack/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=how-tandy-bought-radio-shack",
+      "pub_date": "2026-04-01T11:00:30.000Z",
+      "summary": "1963年，Charles Tandy以30万美元收购了濒临破产的Radio Shack。这家拥有9家门店的连锁店当时每月亏损20万美元，主要原因是过度赊销和库存管理失控。Tandy上任后立即关闭大型门店，改为开设2500平方英尺的小型租赁店铺，将SKU从3万个削减至2400个，取消赊销改为现金交易，并大力发展自有品牌。到1978年Tandy去世时，Radio Shack已扩张至约7000家门店，成为美国电子产品零售巨头。",
+      "source_name": "dfarq.homeip.net",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "Radio Shack",
+        "Tandy",
+        "retail",
+        "business turnaround"
+      ],
+      "rank": 17
     },
     {
       "title": "Quoting Soohoon Choi",
@@ -304,7 +342,7 @@
         "economic incentives",
         "AI models"
       ],
-      "rank": 16
+      "rank": 18
     },
     {
       "title": "datasette-extract 0.3a0",
@@ -322,7 +360,25 @@
         "LLM",
         "data enrichment"
       ],
-      "rank": 17
+      "rank": 19
+    },
+    {
+      "title": "Pluralistic: Trumpismo vs minilateralism (01 Apr 2026)",
+      "title_zh": "特朗普主义与多边主义的地缘政治评论",
+      "link": "https://pluralistic.net/2026/04/01/minilateralism/",
+      "pub_date": "2026-04-01T10:59:24.000Z",
+      "summary": "",
+      "source_name": "pluralistic.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "opinion",
+      "keywords": [
+        "geopolitics",
+        "trade",
+        "digital sovereignty"
+      ],
+      "rank": 20
     },
     {
       "title": "My ramblings are available over gopher",
@@ -340,7 +396,7 @@
         "protocol",
         "retro"
       ],
-      "rank": 18
+      "rank": 21
     },
     {
       "title": "datasette-llm 0.1a4",
@@ -358,7 +414,7 @@
         "LLM",
         "release"
       ],
-      "rank": 19
+      "rank": 22
     },
     {
       "title": "llm 0.30",
@@ -376,7 +432,7 @@
         "plugin",
         "CLI"
       ],
-      "rank": 20
+      "rank": 23
     },
     {
       "title": "llm-echo 0.4",
@@ -394,7 +450,7 @@
         "debug",
         "tokens"
       ],
-      "rank": 21
+      "rank": 24
     },
     {
       "title": "llm-echo 0.3",
@@ -411,7 +467,7 @@
         "llm-echo",
         "release"
       ],
-      "rank": 22
+      "rank": 25
     },
     {
       "title": "Notes from March 2026",
@@ -429,7 +485,7 @@
         "monthly",
         "links"
       ],
-      "rank": 23
+      "rank": 26
     },
     {
       "title": "Summary of reading: January - March 2026",
@@ -446,7 +502,7 @@
         "books",
         "reading"
       ],
-      "rank": 24
+      "rank": 27
     },
     {
       "title": "datasette-llm-usage 0.2a0",
@@ -464,7 +520,7 @@
         "LLM",
         "logging"
       ],
-      "rank": 25
+      "rank": 28
     },
     {
       "title": "datasette-llm 0.1a5",
@@ -482,7 +538,26 @@
         "plugin",
         "LLM integration"
       ],
-      "rank": 26
+      "rank": 29
+    },
+    {
+      "title": "How Mark Cuban became rich",
+      "title_zh": "Mark Cuban 57 亿美元出售 Broadcast.com",
+      "link": "https://dfarq.homeip.net/how-mark-cuban-became-rich/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=how-mark-cuban-became-rich",
+      "pub_date": "2026-04-01T11:00:04.000Z",
+      "summary": "",
+      "source_name": "dfarq.homeip.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "broadcast.com",
+        "Mark Cuban",
+        "Yahoo",
+        "acquisition"
+      ],
+      "rank": 30
     },
     {
       "title": "Jensen Huang Doesn’t Smell Anything",
@@ -500,7 +575,7 @@
         "Trump",
         "Nvidia"
       ],
-      "rank": 27
+      "rank": 31
     },
     {
       "title": "Defending Privacy, Daily",
@@ -518,7 +593,7 @@
         "privacy",
         "advocacy"
       ],
-      "rank": 28
+      "rank": 32
     },
     {
       "title": "Updating Ubuntu packages that you have local changes for with dgit",
@@ -536,7 +611,7 @@
         "Ubuntu",
         "packages"
       ],
-      "rank": 29
+      "rank": 33
     }
   ]
 }
