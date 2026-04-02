@@ -1,10 +1,48 @@
 {
   "date": "2026-04-03",
   "total_feeds": 92,
-  "success_feeds": 86,
-  "total_articles": 2560,
-  "filtered_articles": 28,
+  "success_feeds": 85,
+  "total_articles": 2551,
+  "filtered_articles": 30,
   "articles": [
+    {
+      "title": "Axios, Super Popular NPM Package, Was Compromised in Attack on the Module’s Maintainer",
+      "title_zh": "axios 供应链攻击：跨平台 RAT 植入",
+      "link": "https://www.stepsecurity.io/blog/axios-compromised-on-npm-malicious-versions-drop-remote-access-trojan",
+      "pub_date": "2026-04-02T18:42:39.000Z",
+      "summary": "### 一句话总结\n这是一次教科书级别的供应链攻击：黑客盗号发布恶意版本，通过植入一个从未被代码引用的“幽灵依赖”执行后门，并利用版本号伪装和自毁技术让取证变得极其困难。\n\n### 盗号只是开始，绕过 CI/CD 才是狠活\n这次攻击的起点是黑客攻破了 axios 核心维护者 `jasonsaayman` 的 npm 账号。但有意思的地方在于，黑客并没有走常规的 GitHub Actions CI/CD 流程，而是直接用盗取的长期 Token 手动发布了 `axios@1.14.1` 和 `axios@0.30.4`。这导致了一个非常明显的 forensic 信号：正常的 axios 版本都有 OIDC Trusted Publisher 绑定，而这两个恶意版本不仅没有 OIDC，甚至连对应的 Git commit hash 都没有。说白了，黑客为了抢时间，直接绕过了项目的标准发布管道，但这也在元数据里留下了指纹。\n\n### 恶意代码不在 axios 里，而在“幽灵依赖”中\n最让人后背发凉的设计是，axios 的源代码里一行恶意代码都没有。黑客仅仅是修改了 `package.json`，植入了一个叫 `plain-crypto-js@4.2.1` 的依赖。这个包在 axios 的 86 个源文件中从未被 `import` 或 `require`，它存在的唯一理由就是触发 `postinstall` 脚本。这种“幽灵依赖”极难被发现，因为开发者审查代码时只会看 axios 本身，很难注意到多出来的这个看似无害的加密库。\n\n### 提前 18 小时“养号”，为了骗过扫描器\n黑客的耐心令人咋舌。在发布恶意 axios 版本的 18 小时前，他们就先发布了一个干净的 `plain-crypto-js@4.2.0`。这个版本完全克隆了合法的 `crypto-js` 源码，没有任何恶意脚本，目的就是为了给这个包建立“发布历史”，避免被安全工具标记为“刚注册的新号”。等到时机成熟，黑客才发布 `4.2.1` 版本，唯一的改动就是在 `package.json` 里加了一个 `\"postinstall\": \"node setup.js\"`。这招“明修栈道，暗度陈仓”玩得非常溜。\n\n### 完美的“作案后清理”：版本号回滚与文件自毁\n一旦 `npm install` 执行，`setup.js` 这个 4KB 的混淆代码就会下载针对 macOS、Windows 和 Linux 的第二阶段载荷，并连接 C2 服务器。更绝的是，它在执行完后会删除自己，并把预先准备好的 `package.md` 重命名为 `package.json`。这个新的 `package.json` 声称版本是 `4.2.0`（而不是恶意的 `4.2.1`）。如果你事后运行 `npm list`，会看到一个干净的 `4.2.0` 版本，从而误以为系统安全。这种版本号欺骗加上文件自毁，给应急响应造成了巨大的干扰。\n\n### 39 分钟内的双线出击，只为最大化杀伤\n黑客在战术执行上极其精准。他们在 39 分钟内连续发布了针对 1.x 和 0.x 两个分支的恶意版本，确保覆盖尽可能多的用户群体。从 StepSecurity 的监测数据来看，恶意包在安装后的两秒内就开始回连 C2 域名 `sfrclak.com:8000`，速度之快让很多 CI 环境甚至还没跑完流程就已经“中招”。好在像 Backstage 这样的项目因为使用了 Harden-Runner 这种网络监控工具，及时发现了异常的出站连接，才让这次攻击暴露在阳光下。\n\n### 如何判断自己是否中招？\n既然 `npm list` 可能会骗你，那怎么检测？核心思路其实很简单：只要你的 `node_modules` 里出现了 `plain-crypto-js` 这个目录，那就是中招了。因为合法的 axios 从来都不依赖这个包。另外，检查 npm registry 元数据也是个办法，如果发现某个版本是由 `jasonsaayman` 直接发布且没有 OIDC 绑定，那绝对是恶意版本。这次事件再次提醒我们，对于这种头部依赖，仅仅审查源代码是不够的，必须监控安装时的行为和依赖树的变动。",
+      "source_name": "daringfireball.net",
+      "score": 19,
+      "depth": 9,
+      "novelty": 10,
+      "category": "security",
+      "keywords": [
+        "axios",
+        "supply chain",
+        "RAT",
+        "npm"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Gemma 4: Byte for byte, the most capable open models",
+      "title_zh": "Gemma 4：四款 Apache 2.0 视觉推理模型",
+      "link": "https://simonwillison.net/2026/Apr/2/gemma-4/#atom-everything",
+      "pub_date": "2026-04-02T18:28:54.000Z",
+      "summary": "## 一句话总结\nGemma 4 通过引入 Per-Layer Embeddings (PLE) 技术和 MoE 架构，在极小的参数体积下实现了惊人的视觉推理能力，把“小模型也能干大事”卷到了新高度。\n\n### 小模型也能有“大智慧”，关键在怎么算\n现在的 AI 圈子有个大趋势，就是不再盲目追求参数量，而是拼“单位参数的智商”。Google 这次发布的 Gemma 4 就是这个思路的典型代表，主打一个“Byte for byte”的极致性价比。他们一口气扔出了四个模型：2B、4B、31B，还有一个 26B 的 MoE（Mixture-of-Experts）版本。这四个模型全都支持视觉能力，而且全部采用 Apache 2.0 开源协议，这对开发者来说绝对是个好消息。Google 官方甚至直接用了“unprecedented level of intelligence-per-parameter”这种词，可见他们对参数效率有多自信。\n\n### 所谓的“E2B”，其实是个巧妙的数学游戏\n有意思的是，Google 把那两个小模型命名为 E2B 和 E4B，这个“E”代表的是“Effective”（有效参数）。这背后的技术叫 Per-Layer Embeddings (PLE)，专门为了解决端侧部署的效率问题。说白了，以前模型为了提升能力，往往得硬着头皮加层数或者加参数，导致体积膨胀。PLE 的思路很巧妙：它给每个 decoder layer 都配了一个专属的小 embedding 表。这些表虽然占了不少存储空间（总参数量其实不小），但在推理时只做快速查找，不参与繁重的计算。所以，虽然模型文件看着大，但实际跑起来消耗的计算资源（有效参数）却非常小。\n\n### 本地实测：小模型跑得欢，大模型有点翻车\n作者直接上手用 LM Studio 跑了这几个模型的 GGUF 版本，结果有点喜忧参半。好消息是，E2B（4.41GB）、E4B（6.33GB）和 26B-A4B（17.99GB）在本地跑得都很顺滑。坏消息是，那个 31B（19.89GB）的模型似乎有点问题，不管输入什么提示词，它都只会死循环地输出 `\"---\\n\"`。这说明虽然 Google 宣传得很猛，但刚发布的模型在量化兼容性或者具体实现上可能还踩了坑。不过，对于想在笔记本上跑推理的开发者来说，那几个能跑的小模型已经足够有吸引力了。\n\n### 画鹈鹕测试：参数越大，画面越离谱\n为了测试模型的视觉推理能力，作者搞了个经典的“鹈鹕骑自行车”SVG 生成测试。结果非常符合直觉：参数越小，画得越抽象。E2B 模型画出来的基本就是一堆几何色块的堆砌，完全看不出是个鸟。到了 E4B，虽然能看出两个轮子和一个灰色的冲浪板（大概是车身），但鹈鹕还是个半圆加蓝点的一团糟。这种“抽象派”画风在小模型上似乎很难避免，毕竟它的“脑容量”就摆在那。\n\n### 26B MoE 模型：在笔记本上画出了神作\n真正的惊喜来自那个 26B-A4B 的 MoE 模型。虽然它只有 17.99GB，但画出来的效果却有了质的飞跃。鹈鹕有了标志性的大三角嘴和弯曲的脖子，甚至能看出它正坐在自行车上。虽然车架还是有点歪歪扭扭，但整体结构是对的。作者甚至遇到了一个 SVG 语法错误，修复后得到了他见过的“笔记本上生成的最好的鹈鹕”。这充分证明了 MoE 架构在激活参数效率上的优势，用更少的计算量换来了更接近大模型的表现。\n\n### API 里的 31B：补全了最后的拼图\n既然本地 31B 跑不起来，作者就通过 Google AI Studio 调用了 API 来测试。这次 31B 模型表现得很稳健，画出的鹈鹕很生动，自行车的大部分零件也都对上了。虽然遗憾地少了车架的前半部分，但整体动态感很强，甚至还有“运动模糊”的线条。这说明只要环境配置得当，最大的模型确实能提供最强的细节还原能力。对于不需要本地部署、只追求效果的场景，直接上大模型 API 依然是稳妥的选择。",
+      "source_name": "simonwillison.net",
+      "score": 13,
+      "depth": 5,
+      "novelty": 8,
+      "category": "ai-ml",
+      "keywords": [
+        "Gemma 4",
+        "vision LLM",
+        "Per-Layer Embeddings",
+        "Mixture-of-Experts"
+      ],
+      "rank": 2
+    },
     {
       "title": "The Blandness of Systematic Rules vs. The Delight of Localized Sensitivity",
       "title_zh": "系统性规则与本地化设计的权衡",
@@ -22,7 +60,44 @@
         "scale",
         "design trade-offs"
       ],
-      "rank": 1
+      "rank": 3
+    },
+    {
+      "title": "llm-gemini 0.30",
+      "title_zh": "llm-gemini 0.30 新增 Gemini 3.1 和 Gemma 4 支持",
+      "link": "https://simonwillison.net/2026/Apr/2/llm-gemini/#atom-everything",
+      "pub_date": "2026-04-02T18:25:08.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 7,
+      "depth": 2,
+      "novelty": 5,
+      "category": "tools",
+      "keywords": [
+        "Gemini",
+        "Gemma",
+        "llm-gemini"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "Spring 2026 Pebble App Contest + SDK Updates",
+      "title_zh": "Pebble 举办 2026 春季应用开发竞赛",
+      "link": "https://repebble.com/blog/spring-2026-pebble-app-contest",
+      "pub_date": "2026-04-02T00:00:00.000Z",
+      "summary": "",
+      "source_name": "ericmigi.com",
+      "score": 6,
+      "depth": 2,
+      "novelty": 4,
+      "category": "tools",
+      "keywords": [
+        "Pebble",
+        "SDK",
+        "contest",
+        "Alloy"
+      ],
+      "rank": 5
     },
     {
       "title": "Jason Snell on Covering Apple for 33 Years",
@@ -41,7 +116,24 @@
         "journalism",
         "career"
       ],
-      "rank": 2
+      "rank": 6
+    },
+    {
+      "title": "‘No, We’re Not Stupid. Our Dads Just Got Us Crummy Computers.’",
+      "title_zh": "无法访问的 Reddit 链接",
+      "link": "https://www.reddit.com/r/VintageApple/comments/bq4ucw/mcintosh_jr_vintage_apple_parody/",
+      "pub_date": "2026-04-02T18:12:11.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "other",
+      "keywords": [
+        "Reddit",
+        "blocked"
+      ],
+      "rank": 7
     }
   ]
 }
