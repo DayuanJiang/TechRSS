@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 86,
   "total_articles": 2561,
-  "filtered_articles": 21,
+  "filtered_articles": 22,
   "articles": [
     {
       "title": "Premium: AI Isn't Too Big To Fail",
@@ -63,6 +63,44 @@
       "rank": 3
     },
     {
+      "title": "Writing an LLM from scratch, part 32h -- Interventions: full fat float32",
+      "title_zh": "禁用 AMP 对 GPT-2 训练质量的影响",
+      "link": "https://www.gilesthomas.com/2026/04/llm-from-scratch-32h-interventions-full-fat-float32",
+      "pub_date": "2026-04-03T23:50:00.000Z",
+      "summary": "## 一句话总结\n为了追求极致的模型精度，作者尝试关掉 PyTorch 的 AMP 和 TF32 优化，结果发现训练成本翻了三倍、耗时加倍，但换来的 Test Loss 改善微乎其微（仅 0.013），结论是 AMP 几乎是免费的午餐。\n\n### 之前的优化虽然快，但总觉得有代价\n作者在之前的训练中用了两个常见的提速手段：把矩阵乘法精度从 \"highest\" 降到 \"high\"（即使用 TF32），以及开启 PyTorch 的自动混合精度（AMP）。这招确实管用，训练吞吐量从 12,599 tps 飙升到了 19,921 tps，还顺便增大了 batch size。但直觉告诉他，天下没有免费的午餐，用 16-bit 计算（FP16）肯定会在精度上有所牺牲。为了验证这个猜想，他决定反其道而行之：关掉所有优化，回归最纯粹的 \"full fat float32\"。\n\n### 关掉 AMP 后，必须自己处理非有限梯度\n关掉优化在代码层面不难，主要是去掉 `torch.amp.autocast` 和 `set_float32_matmul_precision` 的调用。但有个棘手的问题：AMP 自带的 `GradScaler` 不仅能缩放梯度，还会自动跳过包含 `inf` 或 `NaN` 的梯度更新。一旦没了这个安全网，直接 `optimizer.step()` 可能会把模型带沟里去。作者起初想用 `clip_grad_norm_` 的报错机制来检测，但觉得通过解析异常信息来判断太不优雅，最终改成了显式遍历参数检查：如果发现任何非有限梯度，就跳过这一步的更新。\n\n### 显存不够用，只能半夜抢更贵的机器\n关掉低精度计算后，显存占用直线上升。原本在 8x A100 40GB 上能跑的 microbatch size 12，现在根本塞不进去。为了控制变量（不改变 batch size），作者被迫租用更贵的 8x A100 80GB 机器。这机器不仅单价贵（$16.48/hour vs $11.84/hour），还很难抢。他专门写了个脚本轮询 Lambda 的 API，终于在凌晨 3:25 抢到了实例。训练过程也极其漫长，预估耗时 8 小时，吞吐量暴跌到 111,535 tps（虽然这个数字看起来大，但这是 8 卡的总和，折算下来效率很低）。\n\n### 花了三倍的钱，只换来微乎其微的提升\n最终，这次训练耗时 8 小时 7 分钟，花费超过 $135。相比之下，之前的 baseline 只要 3 小时 24 分钟，成本约 $42。这可是三倍的代价。结果呢？Test Loss 从 3.692 降到了 3.679，仅改善了 0.013。在作者尝试过的所有干预手段中，这个收益是最小的，甚至小到可能只是随机噪声。虽然模型补全文本的能力看起来还行，但考虑到投入产出比，这显然是一次失败的实验。\n\n### 结论：AMP 是巨大的胜利，别轻易放弃\n这次实验证明了一个朴素的真理：AMP 带来的精度损失（如果有的话）完全可以忽略不计。作者算了一笔账，如果用同样的时间和成本，在开启 AMP 的情况下训练更多的 tokens 或者多跑一个 epoch，模型效果绝对会比现在好。对于资源有限的开发者来说，AMP 不仅能大幅提升训练速度，还能降低显存门槛，是实实在在的\"银弹\"。既然所有单项干预都测完了，下一步作者打算研究如何把这些优化手段组合起来，并排除随机噪声的干扰。",
+      "source_name": "gilesthomas.com",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "ai-ml",
+      "keywords": [
+        "AMP",
+        "float32",
+        "GPT-2",
+        "training"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "Loading... [13 kB]",
+      "title_zh": "TCP 慢启动与 13 KB 的下载卡顿",
+      "link": "https://maurycyz.com/misc/13kb/",
+      "pub_date": "2026-04-03T00:00:00.000Z",
+      "summary": "作者在测试 Gopher 客户端时发现所有下载都在 13 KB 处卡顿，这个现象源于 TCP 的慢启动机制。TCP 连接初始拥塞窗口设为 10 个数据包，每个包约 1368 字节，因此第一个往返时间（RTT）内只能接收约 13.2 KB 数据。随后每个 RTT 窗口大小翻倍，第二个 RTT 累计约 40 KB，第三个约 92 KB。当检测到丢包时，窗口减半进入拥塞避免阶段；如果是超时而非重复 ACK 触发，窗口会重置为 1 并重新慢启动。这意味着即使在高带宽连接上，初始传输速度也受 RTT 限制。对 Web 开发而言，首屏渲染所需的关键 CSS 和 JavaScript 应该内联在前 13 KB 内，因为这是用户在第一个 RTT 能获得的全部数据。HTTP 头部、TLS 握手会占用部分空间，而压缩可以节省空间，但 13 KB 这个基准仍然具有实际参考价值。",
+      "source_name": "maurycyz.com",
+      "score": 11,
+      "depth": 6,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "TCP",
+        "slow start",
+        "congestion control",
+        "network"
+      ],
+      "rank": 5
+    },
+    {
       "title": "How can I use Read­Directory­ChangesW to know when someone is copying a file out of the directory?",
       "title_zh": "ReadDirectoryChangesW 无法检测文件复制",
       "link": "https://devblogs.microsoft.com/oldnewthing/20260403-00/?p=112202",
@@ -79,7 +117,7 @@
         "file system",
         "data classification"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Quoting Greg Kroah-Hartman",
@@ -98,7 +136,7 @@
         "Linux kernel",
         "open source"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Quoting Daniel Stenberg",
@@ -117,7 +155,7 @@
         "security",
         "open source"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Apple Releases iOS 18 Security Updates for iOS 26 Holdouts",
@@ -136,7 +174,7 @@
         "security updates",
         "vulnerability"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Roman moon, Greek moon",
@@ -155,7 +193,7 @@
         "periapsis",
         "apoapsis"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Apple Still Has Jessica Chastain’s ‘The Savant’ on Ice, Seven Months After It Was Set to Debut",
@@ -172,7 +210,7 @@
         "Apple TV",
         "Apple Arcade"
       ],
-      "rank": 9
+      "rank": 11
     }
   ]
 }
