@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 86,
   "total_articles": 2563,
-  "filtered_articles": 19,
+  "filtered_articles": 20,
   "articles": [
     {
       "title": "Michael Nielsen – How science actually progresses",
@@ -101,6 +101,25 @@
       "rank": 5
     },
     {
+      "title": "SQLite WAL Mode Across Docker Containers Sharing a Volume",
+      "title_zh": "SQLite WAL 模式在 Docker 容器间共享卷验证",
+      "link": "https://simonwillison.net/2026/Apr/7/sqlite-wal-docker-containers/#atom-everything",
+      "pub_date": "2026-04-07T15:41:00.000Z",
+      "summary": "## 一句话总结\n只要 Docker 容器跑在同一宿主机上，共享同一个卷，SQLite 的 WAL 模式就能完美协作，根本不用担心共享内存的问题。\n\n### 缘起：Hacker News 上的技术争论\n事情的起因是 Hacker News 上的一场讨论。有人提出了一个很实际的问题：如果两个 SQLite 进程跑在独立的 Docker 容器里，但它们共享同一个 Volume，会不会因为 WAL 模式的共享内存机制而“打架”？毕竟，SQLite 的 WAL 模式严重依赖 `-shm` 和 `-wal` 文件来管理并发。大家担心的是，容器隔离会不会破坏这种文件层面的协作，导致数据损坏或者锁冲突。为了搞清楚这个“玄学”问题，Simon W 做了一组非常扎实的实验。\n\n### 实验环境：Docker Desktop 与命名卷\n实验的环境选在了 Docker Desktop for macOS 上，这其实是个挺关键的选择，因为 macOS 的文件系统映射机制和 Linux 原生不太一样。作者创建了一个 named volume，然后把它挂载到了两个不同的容器中。这种设置模拟了生产环境中常见的微服务架构：多个服务实例需要读写同一个数据库文件。核心的测试逻辑很简单：一个容器负责写数据，另一个容器负责实时读数据，看看到底会发生什么。\n\n### 核心机制：共享内核带来的红利\n结果证明，大家的担心是多余的。这里有个巧妙的设计：虽然容器在逻辑上是隔离的，但只要它们跑在同一个宿主机上，底层的内核和文件系统其实是共享的。说白了就是，SQLite 依赖的共享内存文件（`.db-shm`）在两个容器眼里，指向的是同一个物理资源。这意味着，WAL 模式所需的锁机制和内存映射，在容器之间依然有效。容器并没有把这种文件级的共享给“切断”，反而像是在同一个操作系统里的不同进程一样顺畅。\n\n### 实测表现：毫秒级的数据同步\n为了验证这一点，作者监控了 `.db-shm` 文件的变化。当容器 A 写入数据时，容器 B 几乎是瞬间就能感知到数据库的更新。这种实时传播证明了文件系统层面的通知机制（如 inotify）在共享 Volume 的场景下依然工作正常。并没有出现因为隔离导致的延迟或数据不一致。实验结果显示，两个容器就像在同一个宿主机上直接运行两个进程一样，能够通过标准的 POSIX 文件锁进行协调。\n\n### 结论：大胆用，放心跑\n所以，结论很明确：在单宿主机、共享 Volume 的前提下，SQLite WAL 模式在 Docker 容器间是完全可靠的。你不需要为了 SQLite 去搞复杂的网络挂载或者特殊的 IPC 机制。这个发现对于想用 SQLite 替代重型数据库的轻量级架构来说，绝对是个好消息。它意味着你可以利用 Docker 的便捷性，同时保留 SQLite 在并发读写上的高性能优势。",
+      "source_name": "simonwillison.net",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "SQLite",
+        "WAL",
+        "Docker",
+        "shared memory"
+      ],
+      "rank": 6
+    },
+    {
       "title": "Om Malik and Ben Thompson on OpenAI Buying TBPN",
       "title_zh": "OpenAI 收购 TBPN：构建 AI 时代的舆论工具",
       "link": "https://om.co/2026/04/02/openai-masters-of-agitprop-2-0/",
@@ -117,7 +136,26 @@
         "media strategy",
         "IPO"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "GLM-5.1: Towards Long-Horizon Tasks",
+      "title_zh": "GLM-5.1 模型测试：主动修复 SVG 动画 bug",
+      "link": "https://simonwillison.net/2026/Apr/7/glm-51/#atom-everything",
+      "pub_date": "2026-04-07T21:25:14.000Z",
+      "summary": "Z.ai 发布 754B 参数的 GLM-5.1 模型，采用 MIT 许可证开放权重。作者通过 OpenRouter 测试模型生成 SVG 鹈鹕骑自行车的任务，模型主动输出了包含 SVG 和 CSS 动画的完整 HTML 页面。首次生成的动画存在定位问题，鹈鹕元素飞出屏幕，作者反馈后模型准确诊断出 CSS transform 与 SVG transform 属性冲突的原因，并提供了使用 animateTransform 的修复方案，最终生成带有喙部摆动细节的完整动画。",
+      "source_name": "simonwillison.net",
+      "score": 9,
+      "depth": 3,
+      "novelty": 6,
+      "category": "ai-ml",
+      "keywords": [
+        "GLM-5.1",
+        "SVG",
+        "animation",
+        "debugging"
+      ],
+      "rank": 8
     },
     {
       "title": "Were there any Windows 3.1 programs that were so incompatible with Windows 95 that there was no point trying to patch them?",
@@ -136,7 +174,7 @@
         "Windows 3.1",
         "handles"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "The Data Drop: Every iPhone",
@@ -154,7 +192,7 @@
         "data visualization",
         "Apple"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Flighty Airports Meltdown Map",
@@ -172,7 +210,7 @@
         "airports",
         "delays"
       ],
-      "rank": 9
+      "rank": 11
     }
   ]
 }
