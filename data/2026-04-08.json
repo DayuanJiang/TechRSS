@@ -1,9 +1,9 @@
 {
   "date": "2026-04-08",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2543,
-  "filtered_articles": 17,
+  "success_feeds": 86,
+  "total_articles": 2563,
+  "filtered_articles": 18,
   "articles": [
     {
       "title": "Michael Nielsen – How science actually progresses",
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "Writing an LLM from scratch, part 32i -- Interventions: what is in the noise?",
+      "title_zh": "LLM 训练中的噪声与干预效果分析",
+      "link": "https://www.gilesthomas.com/2026/04/llm-from-scratch-32i-interventions-what-is-in-the-noise",
+      "pub_date": "2026-04-07T21:00:00.000Z",
+      "summary": "### 一句话总结\n这篇文章通过一系列控制变量实验发现，我们在调优 LLM 时看到的许多微小性能提升，很可能只是初始权重随机性带来的“噪声”，而非算法改进的真实效果。\n\n### 调优的尽头可能是玄学\n作者之前训练了一个 163M 参数的 GPT-2 风格模型，虽然参数量比原版 GPT-2 Small 多，但 Loss 却高达 3.944，远超原版的 3.500。为了缩小差距，他在 8x A100 上做了一堆“干预实验”，比如加 Gradient Clipping、去 Dropout、调 Weight Decay、甚至关掉 AMP 用纯 float32 训练。结果看起来很美好：大部分操作都降低了 Loss，其中 Learning Rate Scheduling 效果最好，把 Loss 降到了 3.602。但问题来了，这些改进其实都很微小，比如 Gradient Clipping 只降了 0.014，这会不会只是训练过程中的随机波动？为了搞清楚这些提升到底是“真金白银”还是“统计噪声”，作者决定深挖一下随机性对训练的影响。\n\n### 惊人的复现性：比特级一致\n首先得确认实验环境是否可控。作者在之前的微调项目里发现，光设 `random.seed(42)` 是不够的，还得把 `cudnn.deterministic` 和 `use_deterministic_algorithms` 都打开。但在这次 LLM 训练里，他只用了最简单的 seed 设置。为了验证这行不行，他在不同机器上、隔了一个月重新跑了一遍 Baseline。结果令人震惊：两次训练的最终 Loss 精确到了小数点后 6 位（3.691526），连模型权重的二进制文件都完全一致。这说明只要 seed 不变，训练过程就是完全确定的，之前的那些干预实验确实是在公平的起跑线上比较。\n\n### 换个 Seed，效果吊打调优\n既然环境是确定的，那如果换个随机种子会怎样？作者把 seed 从 42 改成 22，其他配置完全不动。结果 Loss 变成了 3.673453，比 Baseline 降低了 0.018。更有意思的是，这个“只换个种子”带来的提升，竟然比 Gradient Clipping（0.014）和去 AMP（0.013）的效果都要好。他又试了个 seed 67，Loss 进一步降到了 3.653593，比 Baseline 整整好了 0.038。这个成绩已经能打败加 Attention Bias 的效果了，仅次于 Learning Rate Scheduling。这让人不禁怀疑：我们费尽心机做的架构调整，难道还不如随机初始化一张权重表来得实在？\n\n### 噪声的边界：大部分调优可能无效\n作者算了一下这三个不同 seed 模型的标准差（SD），大约是 0.015。这意味着，如果假设 Loss 服从正态分布，那么大约 68% 的训练结果会落在均值上下 0.015 的范围内。回头看之前的调优结果：除了 Learning Rate Scheduling 降低了 0.09 这种“巨幅”提升外，其他像去 Dropout、改 Weight Decay 等操作带来的收益，基本都在这 1 个标准差的范围内波动。换句话说，这些所谓的“优化”，很可能只是因为我们恰好抽到了一个比较好的初始权重，而不是算法本身有多高明。\n\n### 随机性的真正来源：初始权重大于训练过程\n这就引出了一个核心问题：训练中的随机性到底来自哪里？作者分析，主要有两个源头：一是模型初始化时的权重，二是训练循环中的随机操作（比如 Dropout）。为了区分这两者，他设计了一个巧妙的实验思路：用同一个 seed 初始化模型，但在训练过程中引入随机性（比如不固定 Dropout 的 mask）；反之，用不同 seed 初始化，但保证训练过程完全确定。虽然文章在这里截断了，但前文的伏笔已经给出了答案——不同 seed（不同初始权重）带来的 Loss 差异高达 0.038，而之前固定 seed 的复现实验证明了训练过程本身的随机性其实极小。这告诉我们一个扎心的事实：在 LLM 训练这种高维优化问题里，起跑线（初始权重）可能比你怎么跑（训练技巧）更决定最终成绩。",
+      "source_name": "gilesthomas.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "GPT-2",
+        "training",
+        "random seed",
+        "interventions"
+      ],
+      "rank": 3
+    },
+    {
       "title": "The Building Block Economy",
       "title_zh": "从主应用到构建块：软件开发的范式转变",
       "link": "https://mitchellh.com/writing/building-block-economy",
@@ -60,7 +79,7 @@
         "open source",
         "software ecosystem"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Om Malik and Ben Thompson on OpenAI Buying TBPN",
@@ -79,7 +98,26 @@
         "media strategy",
         "IPO"
       ],
-      "rank": 4
+      "rank": 5
+    },
+    {
+      "title": "Were there any Windows 3.1 programs that were so incompatible with Windows 95 that there was no point trying to patch them?",
+      "title_zh": "Windows 3.1 程序无法迁移到 Windows 95 的原因",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260407-00/?p=112213",
+      "pub_date": "2026-04-07T14:00:00.000Z",
+      "summary": "",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "engineering",
+      "keywords": [
+        "Windows 95",
+        "compatibility",
+        "Windows 3.1",
+        "handles"
+      ],
+      "rank": 6
     },
     {
       "title": "The Data Drop: Every iPhone",
@@ -97,7 +135,7 @@
         "data visualization",
         "Apple"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Flighty Airports Meltdown Map",
@@ -115,7 +153,7 @@
         "airports",
         "delays"
       ],
-      "rank": 6
+      "rank": 8
     }
   ]
 }
