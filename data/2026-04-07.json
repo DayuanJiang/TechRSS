@@ -1,9 +1,9 @@
 {
   "date": "2026-04-07",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2537,
-  "filtered_articles": 18,
+  "success_feeds": 86,
+  "total_articles": 2562,
+  "filtered_articles": 17,
   "articles": [
     {
       "title": "Anthropic Accidentally Leaked the Entire Claude Code CLI Source Code",
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "Who Built This?",
+      "title_zh": "各语言生态的 VCS 版本标记现状",
+      "link": "https://nesbitt.io/2026/04/07/who-built-this.html",
+      "pub_date": "2026-04-07T10:00:00.000Z",
+      "summary": "## 一句话总结\n生产环境排查最怕不知道跑的是哪个版本，Go 默认内置了版本信息，而其他语言生态要么得手动折腾，要么完全靠猜，这事儿其实该有个统一标准。\n\n### Go 的“出厂设置”值得全行业抄作业\nMichael Stapelberg 上周写文章夸了 Go 的一个设计：从 Go 1.18 开始，只要是从 git checkout 编译出来的二进制文件，编译器会自动把 commit hash、时间戳和 dirty flag 塞进去。你既可以用 `go version -m` 在命令行看，也能在代码里调用 `runtime/debug.ReadBuildInfo()` 读出来。这招太实用了，直接解决了“生产环境跑的到底是哪个 commit”这个千古难题。可惜的是，Go 这种“默认开启”的做法在编程界属于异类，其他语言生态大多还得靠开发者自己动手丰衣足食。\n\n### 编译型语言：Rust 和 .NET 的“手动挡”操作\nRust 的 Cargo 至今还在争论要不要内置这个功能，目前的标准解法是写个 `build.rs`，配合 `vergen` 或 `shadow-rs` 这种库，把 git 信息变成编译时的环境变量。这虽然能拿到 SHA 和时间戳，但得你自己写代码通过 `--version` 暴露出来，而且没法像 Go 那样直接从外部二进制文件里查。.NET 的 SourceLink 走得更近一点，它把 commit SHA 嵌进了 `AssemblyInformationalVersion`，配合调试器还能自动拉源码。虽然也得手动配置，但工具链比较成熟，加个包引用就能搞定，比 Rust 省事不少。\n\n### Java 和 Swift：一个靠框架，一个靠缘分\nJava 这边主要靠 `git-commit-id-maven-plugin` 这种插件，把信息写进 `git.properties` 或者 JAR 包的 MANIFEST 文件里。Spring Boot 更是贴心，它的 Actuator `/info` 端点能直接读这些元数据，所以很多 Spring 应用其实都有这功能，只是开发者没意识到。Swift 就比较惨了，Swift Package Manager 完全没这机制，唯一的办法是用第三方插件在编译时调 git 命令。明明 SwiftPM 构建时就在 clone 仓库，随手就能把元数据带上，但它偏偏就是不做，属实浪费天赋。\n\n### 解释型语言：Composer 是唯一的“优等生”\n到了 Python、Node 和 PHP 这边，因为没有编译过程，“打标”意味着能不能在运行时查到安装包的来源。PHP 的 Composer 做得最好，它的 `InstalledVersions` 类能直接返回每个包安装时的 git commit SHA，而且不管是源码安装还是 dist 安装都支持。Python 的 `importlib.metadata` 只能给你个版本号，除非你用 `setuptools-scm` 在构建时把 hash 烤进去。npm、Yarn 和 RubyGems 也差不多，基本都只暴露版本号，至于这个版本对应哪个 commit，大部分情况下是查不到的。\n\n### 系统包管理器：Arch Linux 的“骚操作”\n系统级包管理器里，Arch Linux 的 pacman 有个很有意思的设计。对于 `-git` 结尾的包，它会在版本号里直接编码 commit 信息，比如 `1.0.3.r12.ga1b2c3d`，这样你查版本的时候其实就看到了 commit。相比之下，dpkg 和 RPM 虽然有预留字段，但基本没人用，Nix 更是为了可复现性直接把 `.git` 目录删了，导致 Michael Stapelberg 专门写了个补丁来解决这个问题。Homebrew 和 Flatpak 也都只记录下载地址的 hash，源代码的 commit SHA 早就丢光了。\n\n### 容器与归档：标签有了，但别高兴太早\nDocker 和 OCI 镜像规范其实预留了 `org.opencontainers.image.revision` 这种标签来存 commit hash，GitHub Actions 也能自动填上。但这里有个坑：镜像的标签只记录构建镜像时的 commit，如果镜像里的 Go 二进制文件本身没带版本信息，那你还是不知道应用代码到底是哪个版本。Git 的 `git archive` 命令支持在 tarball 里嵌入 commit hash，GitHub 等平台也支持，但这玩意儿会破坏可复现性。因为缩写的 hash 长度可能变，导致同一个 URL 下载的 tarball 内容不一样，这对于讲究 checksum 的包管理器来说简直是灾难。\n\n### 终极解法：Sigstore 和未来的“时光机”\n既然把信息塞进包里这么难，那不如从注册表层面解决。Sigstore 提供的“可信发布”机制，让 npm 和 PyPI 这样的注册表在发布包时，通过 OIDC 记录下是哪个 commit、哪个工作流构建了这个包。这样虽然包本身没带信息，但你可以通过注册表查到它的“出身”。Software Heritage 甚至想做反向查询：给你一段代码，告诉你它属于哪个历史 commit。如果这些元数据能普及，以后像 `git-pkgs` 这种工具就能直接带你跳转到当前安装版本对应的源码 commit，调试和升级依赖就再也不用抓瞎了。",
+      "source_name": "nesbitt.io",
+      "score": 14,
+      "depth": 7,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "VCS stamping",
+        "Go",
+        "Rust",
+        "Composer"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Pluralistic: Switzerland's Goldilocks fiber (07 Apr 2026)",
       "title_zh": "瑞士光纤的中间道路",
       "link": "https://pluralistic.net/2026/04/07/swisscom/",
@@ -60,7 +79,7 @@
         "Swisscom",
         "open access"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "All you need is Tofolli gates",
@@ -79,7 +98,7 @@
         "Landauer's principle",
         "NAND gate"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "The Hacker News tarpit",
@@ -98,7 +117,7 @@
         "community",
         "vibe coding"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Learning to read C++ compiler errors: Illegal use of -> when there is no -> in sight",
@@ -117,7 +136,7 @@
         "macro",
         "preprocessor"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Readership maths skills",
@@ -136,7 +155,7 @@
         "readership",
         "calculus"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Prototyping with LLMs",
@@ -155,7 +174,7 @@
         "sketching",
         "design process"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "[Sponsor] Zed, a Font Superfamily",
@@ -174,7 +193,7 @@
         "typography",
         "accessibility"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Wondering about the typical retry times for email today",
@@ -192,7 +211,7 @@
         "retry",
         "sysadmin"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Actually, people love to work hard",
@@ -211,7 +230,7 @@
         "management",
         "culture"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Weekly Update 498",
@@ -228,7 +247,7 @@
         "weekly update",
         "invoicing"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "Little Finder Guy Stars in Nine New Apple TikTok and YouTube Videos",
@@ -246,7 +265,7 @@
         "marketing",
         "MacBook Neo"
       ],
-      "rank": 13
+      "rank": 14
     }
   ]
 }
