@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 86,
   "total_articles": 2563,
-  "filtered_articles": 19,
+  "filtered_articles": 20,
   "articles": [
     {
       "title": "Michael Nielsen – How science actually progresses",
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "Package Security Problems for AI Agents",
+      "title_zh": "AI Agent 的包管理安全七类攻击向量",
+      "link": "https://nesbitt.io/2026/04/08/package-security-problems-for-ai-agents.html",
+      "pub_date": "2026-04-08T10:00:00.000Z",
+      "summary": "# 一句话总结\nAI Agent 把传统的软件包供应链攻击放大了：因为它们能自动安装、执行并传播恶意代码，且拥有比人类开发者更高的权限和更少的审查，导致攻击速度和破坏力呈指数级上升。\n\n---\n\n### 拼写错误变成了致命的自动后门\nTyposquatting（包名抢注）是老生常谈的安全问题，但在 AI Agent 时代变得格外致命。以前开发者安装包时，看到名字不对可能会起疑心，但 Agent 是程序化解析包名的，它没有这种直觉。攻击者只要注册一个和热门包差一个字符的恶意 MCP 服务器，Agent 在动态发现和安装工具时，就会直接把它当成正版拉下来。更糟糕的是，LLM 生成代码时有时会产生幻觉，编造出不存在的包名，攻击者只要抢先在 PyPI 或 npm 上注册这些名字，就能精准截获 Agent 的流量。这不仅仅是名字混淆，因为 Agent 的工具注册表处理命名空间冲突的方式很粗暴，一个叫 `report` 的恶意包可能会排在合法的 `report_finance` 前面，导致敏感数据被错误路由。\n\n### 信任链的源头被污染了\nMCP 服务器、Agent 技能和插件依然分发在 npm、PyPI 这些传统注册表上，这意味着它们继承了所有旧有的信任问题。一旦注册表维护者账号失陷，或者上传了被篡改的清单文件，Agent 的编排系统会无条件信任这些来源。文章提到了一个真实的案例：一个冒充 Postmark 邮件服务的恶意 MCP 服务器被发布在 npm 上，它在后台悄悄把所有邮件抄送给攻击者，而安装它的 Agent 毫无察觉。甚至像 A2A 这种新的 Agent 发现服务，本质上就是新的包注册表，攻击者可以用克隆的 Schema 注册一个假节点，拦截合法 Agent 之间的协调流量。Agent Card（`/.well-known/agent.json`）这种元数据文件也成了攻击向量，攻击者可以在里面夸大自己的能力，诱导主机把敏感请求路由到受控端点。\n\n### 元数据变成了可执行的攻击指令\n传统安全工具通常把包的元数据（如 README、Manifest）当成静态数据来检查，但 Agent 会把它们当成指令来解读。这是一个非常危险的转变。攻击者可以在 MCP 服务器的发布元数据中嵌入隐藏指令，一旦被 Agent 加载，这些指令就会被当作可信的指导方针执行。有演示案例表明，恶意工具包在描述符中藏了命令，诱导助手在调用时泄露私有仓库数据。甚至包的 README 文件如果被 RAG 系统处理，里面也可以藏有恶意的指令 Payload，悄悄诱导 Agent 滥用连接的工具或把数据发往外部。这种攻击之所以隐蔽，是因为传统的安全扫描根本不会去检查 README 里有没有藏“指令”。\n\n### 动态依赖解析打破了安全防线\n依赖解析和 Lockfile 锁定是供应链安全的基石，但 Agent 的“自愈”和“自动修复”功能正在拆这堵墙。Agent 在执行“修复构建”任务时，经常会在临时沙箱里重新生成 Lockfile，从不固定的依赖规范中解析最新版本。这很容易拉到一个被植入后门的次版本更新，而这个版本原本并不在开发者的 Lockfile 里。更危险的是，在自动依赖更新或“Vibe-coding”过程中，Agent 会运行未经审核的 `npm install` 或 `pip install`。一个拥有自动批准工具权限的编码 Agent，可能会被操纵去安装一个人类绝不会选的版本，甚至是一个全新的依赖包，在安装时就运行恶意代码。\n\n### 安装脚本的杀伤力被无限放大\nInstall scripts（如 npm 的 `postinstall`）一直是恶意包的主要载体，OpenSSF 甚至有专门的项目来检测这种模式。Agent 让这个问题变得更糟，因为它们运行安装命令时的权限比开发者大得多，而且根本没人盯着终端输出。开发者运行 `npm install` 时，可能会瞥见一个可疑的 `postinstall` 脚本，但 Agent 在执行“修复构建”或“打补丁”任务时，是完全盲目的。在自动依赖更新期间，任何带有恶意安装脚本的包都会在人类反应过来之前，以 Agent 的完整权限执行。攻击面和传统的恶意软件一模一样，但因为没人盯着，从安装到被检测的时间窗口被大大拉长了。\n\n### 凭证泄露的半径呈指数级扩张\n恶意包窃取凭证是 npm 和 PyPI 上的老套路了，但 Agent 把爆炸半径扩大了无数倍。Agent 环境里通常存放着比普通开发环境多得多的凭证，而且它安装包时根本没有人审。文章提到了 `nx/debug` 这个被投毒的 npm 包，它被编码 Agent 自动安装后，植入了一个隐藏后门，窃取了 SSH 密钥和 API Token。这种破坏力之所以大，是因为没有人工审查环节，一个恶意包的发布瞬间就变成了全链路的供应链入侵，传播速度远超传统的事故响应流程。当 Agent 安装 MCP 服务器或插件时，它实际上是把环境变量、API 密钥和文件系统路径的访问权都拱手交给了对方。\n\n### 级联故障让错误在瞬间失控\n2016 年的 `left-pad` 事件让我们见识了单个包失效的威力，但在 Agent 系统里，依赖图不仅包含代码包，还包含 MCP 服务器、插件和对等 Agent，传播速度更是快得惊人。一个被编排 Agent 拉取的恶意包会自动传播给所有连接的下游 Agent。在传统开发中，开发者可能会发现构建失败并锁定版本，但拥有自动安装权限的 Agent 会继续运行，所有依赖编排器输出的下游 Agent 都会继承这个被污染的依赖。当两个或多个 Agent 互相依赖输出时，还会形成反馈循环，放大初始错误：Agent A 安装了坏包产出错误数据，Agent B 拿到数据做出错误决策，错误在每个循环中不断累积，直到系统在大规模生产垃圾。\n\n### 重复造轮子带来了重复的安全漏洞\nAgent 编码平台（如 OpenClaw）正在为技能、插件和扩展构建自己的打包系统，结果它们把传统包管理器花了数年才修补的漏洞又重新造了一遍。OpenClaw 自 2026 年 2 月以来已经累积了 238 个 CVE，这简直是教科书级别的“重蹈覆辙”。恶意技能包利用路径遍历序列，在安装时把文件写到预期目录之外；插件包名里的 `..` 可以直接逃出扩展目录；甚至 Hook 模块路径可以动态 `import` 任意代码。这些问题——路径遍历、不受信输入、自动加载——都是老古董了，但 Agent 平台把它们重新实现了一遍。唯一的区别是，以前的 Bug 可能会潜伏几小时或几天，因为人类会审查安装、发现构建失败；而 Agent 压缩了这个时间线，在人类还没反应过来之前，就已经解析、安装、执行并传播了恶意代码。",
+      "source_name": "nesbitt.io",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "MCP",
+        "supply chain",
+        "OWASP",
+        "typosquatting"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Writing an LLM from scratch, part 32i -- Interventions: what is in the noise?",
       "title_zh": "LLM 训练中的噪声与干预效果分析",
       "link": "https://www.gilesthomas.com/2026/04/llm-from-scratch-32i-interventions-what-is-in-the-noise",
@@ -60,7 +79,7 @@
         "random seed",
         "interventions"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Anthropic's Project Glasswing - restricting Claude Mythos to security researchers - sounds necessary to me",
@@ -79,7 +98,7 @@
         "Project Glasswing",
         "AI security"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "The Building Block Economy",
@@ -98,7 +117,7 @@
         "open source",
         "software ecosystem"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "SQLite WAL Mode Across Docker Containers Sharing a Volume",
@@ -117,7 +136,7 @@
         "Docker",
         "shared memory"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "The day you get cut out of the economy",
@@ -136,7 +155,7 @@
         "vertical integration",
         "economic collapse"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Om Malik and Ben Thompson on OpenAI Buying TBPN",
@@ -155,7 +174,7 @@
         "media strategy",
         "IPO"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "GLM-5.1: Towards Long-Horizon Tasks",
@@ -174,7 +193,7 @@
         "animation",
         "debugging"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "★ OpenAI Announces $122 Billion Additional ‘Committed Capital’, and Announces Their ‘Superapp’ Plan for the Future",
@@ -193,7 +212,7 @@
         "superapp",
         "business model"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Were there any Windows 3.1 programs that were so incompatible with Windows 95 that there was no point trying to patch them?",
@@ -212,7 +231,7 @@
         "Windows 3.1",
         "handles"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Mario and Earendil",
@@ -231,7 +250,7 @@
         "coding agents",
         "Earendil"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "The Data Drop: Every iPhone",
@@ -249,7 +268,7 @@
         "data visualization",
         "Apple"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "Sam Altman, in a Video Released by OpenAI, Apparently Thinks AGI Is Going to Hit Society Like a Once-a-Century Pandemic",
@@ -267,7 +286,7 @@
         "Sam Altman",
         "OpenAI"
       ],
-      "rank": 14
+      "rank": 15
     },
     {
       "title": "Pork & Puppetry",
@@ -286,7 +305,26 @@
         "parody",
         "content-creation"
       ],
-      "rank": 15
+      "rank": 16
+    },
+    {
+      "title": "Atari ST introduced April 8, 1985",
+      "title_zh": "Atari ST：1985 年的复古计算机回顾",
+      "link": "https://dfarq.homeip.net/atari-st-introduced-april-8-1985/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=atari-st-introduced-april-8-1985",
+      "pub_date": "2026-04-08T11:00:12.000Z",
+      "summary": "",
+      "source_name": "dfarq.homeip.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Atari ST",
+        "retro computing",
+        "MIDI",
+        "history"
+      ],
+      "rank": 17
     },
     {
       "title": "Solar Eclipse From the Far Side of the Moon",
@@ -305,7 +343,7 @@
         "solar eclipse",
         "astronomy"
       ],
-      "rank": 16
+      "rank": 18
     },
     {
       "title": "Flighty Airports Meltdown Map",
@@ -323,7 +361,7 @@
         "airports",
         "delays"
       ],
-      "rank": 17
+      "rank": 19
     },
     {
       "title": "Users and session classes in Systemd v258 and later (and a gotcha)",
@@ -341,7 +379,7 @@
         "sessions",
         "users"
       ],
-      "rank": 18
+      "rank": 20
     }
   ]
 }
