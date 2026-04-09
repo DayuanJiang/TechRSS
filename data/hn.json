@@ -1,19 +1,19 @@
 {
-  "updatedAt": "2026-04-09T03:50:51.686Z",
+  "updatedAt": "2026-04-09T05:51:39.380Z",
   "items": [
     {
       "id": 47697870,
       "by": "pluc",
       "title": "LittleSnitch for Linux",
       "url": "https://obdev.at/products/littlesnitch-linux/index.html",
-      "score": 227,
-      "detailUpdatedAt": 1775704425,
+      "score": 360,
+      "detailUpdatedAt": 1775711625,
       "createdAt": 1775695227,
-      "aiSummaryUpdatedAt": 1775705173,
+      "aiSummaryUpdatedAt": 1775712686,
       "aisummary": {
-        "chinese_title": "Little Snitch Linux 版：OpenSnitch 对比、eBPF 限制与闭源争议",
-        "emoji": "🤔",
-        "sarcastic_question": "闭源守护进程都留着，还敢说这叫安心防火墙？"
+        "chinese_title": "Little Snitch for Linux：eBPF 出站控制、OpenSnitch 对比与信任争议",
+        "emoji": "🧐",
+        "sarcastic_question": "0元闭源的高权限工具，凭什么先信没后门？"
       },
       "classifications": {
         "topics": [
@@ -35,9 +35,9 @@
       },
       "classificationsUpdatedAt": 1775697960,
       "aiSummary": {
-        "chinese_title": "Little Snitch Linux 版：OpenSnitch 对比、eBPF 限制与闭源争议",
-        "emoji": "🤔",
-        "sarcastic_question": "闭源守护进程都留着，还敢说这叫安心防火墙？"
+        "chinese_title": "Little Snitch for Linux：eBPF 出站控制、OpenSnitch 对比与信任争议",
+        "emoji": "🧐",
+        "sarcastic_question": "0元闭源的高权限工具，凭什么先信没后门？"
       },
       "detail": {
         "id": 47697870,
@@ -347,6 +347,831 @@
         }
       },
       "articleSummary": "## 一句话总结\nLittle Snitch for Linux 利用 eBPF 技术在内核层面拦截网络流量，通过 Web UI 提供可视化的连接监控和规则管理，但受限于 eBPF 的资源边界，它更适合做隐私防护而非对抗强敌的安全加固。\n\n### 从桌面端到 Web 端的体验重构\nLittle Snitch 登陆 Linux 后，最直观的变化是它变成了一个 Web 应用。你不需要安装笨重的客户端，只需在终端敲 `littlesnitch`，或者直接访问 `http://localhost:3031/`。有意思的地方在于，它支持 PWA（Progressive Web App），这意味着你可以用 Chrome 或 Firefox 把它\"安装\"到本地，体验上几乎和原生应用无异。这种设计让部署变得极其轻量，同时也保留了跨平台的灵活性。\n\n### 实时监控与流量可视化的结合\n核心功能依然是你熟悉的\"连接监控\"，界面会列出当前和历史网络活动，并按应用、数据量或时间排序。这里有个巧妙的设计：底部的流量图不仅是摆设，它支持拖拽选择时间段。当你选中一个时间范围后，上方的连接列表会自动过滤，只显示那个时段的活动。这种交互让你能迅速回溯异常流量的来源，点击一下就能阻断可疑连接。\n\n### 灵活的拦截策略：Blocklists 与自定义规则\n为了应对不同层级的拦截需求，系统提供了 Blocklists 和自定义规则两套机制。Blocklists 支持从远程源自动下载黑名单，兼容常见的域名、Hosts 文件和 CIDR 格式。但要注意，macOS 版本的 `.lsrules` 格式在这里并不通用。如果你需要更精细的控制，比如针对特定进程、端口或协议，自定义规则就能派上用场，它允许你从简单的域名封禁升级到复杂的流量匹配。\n\n### 默认开放带来的安全隐忧\n默认配置下，Web UI 对本机的所有应用开放，这意味着恶意软件理论上可以篡改规则甚至关闭防火墙。为了解决这个问题，Little Snitch 提供了基于文件的配置系统。你可以通过编辑 `web_ui.toml` 来开启认证，或者配置 TLS 加密。这种\"UI 只管常用，配置文件管高级\"的分离设计，既保证了界面的简洁，又给高级用户留出了足够的操作空间。\n\n### eBPF：强大的内核级钩子\n技术实现上，Little Snitch 选择了 eBPF 作为内核挂钩点。一个 eBPF 程序负责在内核空间监视出站连接，并将数据喂给用户态的 Daemon。这个 Daemon 负责处理统计、预计算规则以及服务 Web UI。之所以用 eBPF，是因为它能在不重新编译内核的情况下，高效地获取网络栈的细粒度信息，这是传统 iptables 难以做到的。\n\n### 配置管理的覆盖机制\n配置管理采用了\"覆盖（Override）\"模式，这比直接修改系统文件要安全得多。系统默认配置放在 `/var/lib/littlesnitch/config/`，而你只需要把想修改的文件复制到 `/var/lib/littlesnitch/overrides/config/` 并编辑即可。Daemon 启动时会优先读取覆盖目录。比如在 `main.toml` 里，你可以把默认策略从\"允许\"改为\"拒绝\"，打造白名单模式，但文章特意警告：小心别把自己锁在系统外面。\n\n### 明确的边界：隐私而非绝对安全\n最后，作者非常诚实地划定了产品的能力边界。Little Snitch for Linux 的定位是隐私保护，而非安全加固。原因在于 eBPF 有严格的存储和复杂度限制，在高并发流量下，缓存表可能溢出，导致无法可靠地将每个数据包关联到进程或 DNS 名称。相比 macOS 版本使用深度包检测（DPI）的硬核做法，Linux 版本更多依赖启发式算法。所以，用它来防止软件\"打电话回家\"很靠谱，但想靠它防御专业黑客，就有点强人所难了。"
+    },
+    {
+      "id": 47695012,
+      "by": "WerWolv",
+      "title": "USB for Software Developers: An introduction to writing userspace USB drivers",
+      "url": "https://werwolv.net/posts/usb_for_sw_devs/",
+      "score": 240,
+      "detailUpdatedAt": 1775711627,
+      "createdAt": 1775677827,
+      "aiSummaryUpdatedAt": 1775712041,
+      "aisummary": {
+        "chinese_title": "userspace USB 驱动入门：libusb、WinUSB 与平台限制",
+        "emoji": "🛠️",
+        "sarcastic_question": "既然用户态就能跑，内核驱动是在保什么底？"
+      },
+      "classifications": {
+        "topics": [
+          6,
+          4,
+          7
+        ],
+        "facets": [
+          5
+        ],
+        "tags": [
+          "USB",
+          "userspace USB drivers",
+          "libusb",
+          "dfu-util",
+          "DFU",
+          "kernel",
+          "Linux",
+          "Windows"
+        ]
+      },
+      "classificationsUpdatedAt": 1775683253,
+      "aiSummary": {
+        "chinese_title": "userspace USB 驱动入门：libusb、WinUSB 与平台限制",
+        "emoji": "🛠️",
+        "sarcastic_question": "既然用户态就能跑，内核驱动是在保什么底？"
+      },
+      "detail": {
+        "id": 47695012,
+        "by": "WerWolv",
+        "title": "USB for Software Developers: An introduction to writing userspace USB drivers",
+        "url": "https://werwolv.net/posts/usb_for_sw_devs/",
+        "score": 138,
+        "detailUpdatedAt": 1775691805,
+        "createdAt": 1775677827,
+        "aiSummaryUpdatedAt": 1775692502,
+        "aisummary": {
+          "chinese_title": "用 libusb 写 userspace USB 驱动：绕过内核、对付专有设备",
+          "discussion_overview": [
+            {
+              "category": "专有/怪异 USB 设备的现实需求",
+              "summary": "有实际设备用户提到，像 MOTU MIDI Express XT 这类设备使用的是专有协议，不是 class-compliant MIDI-over-USB，所以在 Linux、OpenBSD、Haiku 等系统上很难直接工作。现有的 out-of-tree Linux driver 似乎只能勉强暴露 MIDI 端口，稳定性和对 XT 的完整支持也不明确，因此更想在 userspace 里自己控制路由和预设。还有人提到用 Go 写一个不依赖 cgo 的 USB 库，说明这类需求不仅存在，而且很看重可移植性和开发便利。",
+              "supportid": [
+                "47697239",
+                "47697287",
+                "47697211"
+              ]
+            },
+            {
+              "category": "userspace driver 的边界与适用场景",
+              "summary": "不少评论认为，所谓 userspace driver 往往更像是“库 + 程序”，而不是把设备真正接入某个 OS 子系统。对于 USB to Ethernet 这类设备，如果它本来就是 USB/CDC/ECM 或 RNDIS 这样的标准类，系统通常已经有通用支持；userspace 方案更适合奇怪、定制、非标准的设备协议。dfu-util 被拿来当例子：它本身就是通过 libusb 直接操作 DFU 设备的 userspace 工具，但如果目标是让数据像网卡一样进入系统，就还是得借助 tun/tap 或其他内核接口。",
+              "supportid": [
+                "47695592",
+                "47695871",
+                "47695990",
+                "47696213",
+                "47696076",
+                "47695670",
+                "47697076"
+              ]
+            },
+            {
+              "category": "用户态方案的工程优势",
+              "summary": "支持者强调，把 USB 逻辑放到 userspace 里，开发和调试都会简单很多，写起来更像普通应用，而不是频繁和 kernel 代码打交道。这样出 bug 时通常不会把整个系统拖死，也更不容易引入内核级漏洞。Windows 上 driver signing 的门槛尤其突出：unsigned/test mode 会带来难看的常驻提示，所以很多人宁愿让设备伪装成 USB-HID 或其他系统已有类别，也不想维护一个自定义内核驱动。还有人拿 OpenOnload、Netmap 这类 user-space networking stack 举例，说明绕过内核并不是边缘玩法，而是一种成熟的性能与工程取舍。",
+              "supportid": [
+                "47695951",
+                "47696037",
+                "47696269",
+                "47695986"
+              ]
+            },
+            {
+              "category": "USB 规范难学、文档不足",
+              "summary": "有人回忆自己想做一个简单 USB 设备时，几乎找不到清楚的入门资料，尤其是 descriptor 怎么写、字段怎么配，常常只能抄一个相似设备再靠试错修正。这个经历让 USB 这个“标准”显得并不友好，至少对设备作者来说门槛很高。也因此，这篇文章被评价为一个有用的起点，因为它帮助读者理解低层机制，而不只是依赖现成 API。",
+              "supportid": [
+                "47697548",
+                "47697265"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "libusb",
+              "explanation": "一个跨平台的 userspace USB 访问库，允许程序直接和 USB 设备通信，而不必写内核驱动。"
+            },
+            {
+              "term": "DFU",
+              "explanation": "Device Firmware Upgrade，USB 固件升级模式/协议，常用于刷写或维护设备固件。"
+            },
+            {
+              "term": "USB/CDC/ECM",
+              "explanation": "USB 的标准通信/以太网类；如果设备实现得标准，操作系统往往能自动识别成网络接口。"
+            },
+            {
+              "term": "RNDIS",
+              "explanation": "微软定义的 USB 网络协议，常见于手机共享网络和一些 USB 网卡设备。"
+            },
+            {
+              "term": "tun/tap",
+              "explanation": "Linux 等系统里的虚拟网络接口，常用于把 userspace 数据包接入内核网络栈。"
+            }
+          ],
+          "context": "这篇文章讨论的是如何用 libusb（一个跨平台 USB 访问库）在 userspace 里直接和 USB 设备通信，而不是写 Linux kernel module 之类的内核驱动。评论把它放到一个很现实的背景里：很多设备要么用专有协议，要么只实现了部分标准类，所以现成系统驱动无法满足自定义路由、固件维护或跨平台需求。对于网络类设备，如果能遵循 USB/CDC/ECM（USB 的标准以太网类）或 RNDIS（微软的 USB 网络协议），通常就能直接被操作系统识别；但一旦需要把数据接入系统的网络栈，还是得借助 tun/tap（虚拟网络接口）或内核接口。Windows 上的 driver signing（驱动签名）门槛也被反复提到，说明 userspace 方案除了技术上更易调试，也常是部署上的现实折中。",
+          "emoji": "🛠️",
+          "sarcastic_question": "设备不肯说标准话，难道就该让用户吞驱动？"
+        },
+        "classifications": {
+          "topics": [
+            6,
+            4,
+            7
+          ],
+          "facets": [
+            5
+          ],
+          "tags": [
+            "USB",
+            "userspace USB drivers",
+            "libusb",
+            "dfu-util",
+            "DFU",
+            "kernel",
+            "Linux",
+            "Windows"
+          ]
+        },
+        "classificationsUpdatedAt": 1775683253,
+        "aiSummary": {
+          "chinese_title": "用 libusb 写 userspace USB 驱动：绕过内核、对付专有设备",
+          "discussion_overview": [
+            {
+              "category": "专有/怪异 USB 设备的现实需求",
+              "summary": "有实际设备用户提到，像 MOTU MIDI Express XT 这类设备使用的是专有协议，不是 class-compliant MIDI-over-USB，所以在 Linux、OpenBSD、Haiku 等系统上很难直接工作。现有的 out-of-tree Linux driver 似乎只能勉强暴露 MIDI 端口，稳定性和对 XT 的完整支持也不明确，因此更想在 userspace 里自己控制路由和预设。还有人提到用 Go 写一个不依赖 cgo 的 USB 库，说明这类需求不仅存在，而且很看重可移植性和开发便利。",
+              "supportid": [
+                "47697239",
+                "47697287",
+                "47697211"
+              ]
+            },
+            {
+              "category": "userspace driver 的边界与适用场景",
+              "summary": "不少评论认为，所谓 userspace driver 往往更像是“库 + 程序”，而不是把设备真正接入某个 OS 子系统。对于 USB to Ethernet 这类设备，如果它本来就是 USB/CDC/ECM 或 RNDIS 这样的标准类，系统通常已经有通用支持；userspace 方案更适合奇怪、定制、非标准的设备协议。dfu-util 被拿来当例子：它本身就是通过 libusb 直接操作 DFU 设备的 userspace 工具，但如果目标是让数据像网卡一样进入系统，就还是得借助 tun/tap 或其他内核接口。",
+              "supportid": [
+                "47695592",
+                "47695871",
+                "47695990",
+                "47696213",
+                "47696076",
+                "47695670",
+                "47697076"
+              ]
+            },
+            {
+              "category": "用户态方案的工程优势",
+              "summary": "支持者强调，把 USB 逻辑放到 userspace 里，开发和调试都会简单很多，写起来更像普通应用，而不是频繁和 kernel 代码打交道。这样出 bug 时通常不会把整个系统拖死，也更不容易引入内核级漏洞。Windows 上 driver signing 的门槛尤其突出：unsigned/test mode 会带来难看的常驻提示，所以很多人宁愿让设备伪装成 USB-HID 或其他系统已有类别，也不想维护一个自定义内核驱动。还有人拿 OpenOnload、Netmap 这类 user-space networking stack 举例，说明绕过内核并不是边缘玩法，而是一种成熟的性能与工程取舍。",
+              "supportid": [
+                "47695951",
+                "47696037",
+                "47696269",
+                "47695986"
+              ]
+            },
+            {
+              "category": "USB 规范难学、文档不足",
+              "summary": "有人回忆自己想做一个简单 USB 设备时，几乎找不到清楚的入门资料，尤其是 descriptor 怎么写、字段怎么配，常常只能抄一个相似设备再靠试错修正。这个经历让 USB 这个“标准”显得并不友好，至少对设备作者来说门槛很高。也因此，这篇文章被评价为一个有用的起点，因为它帮助读者理解低层机制，而不只是依赖现成 API。",
+              "supportid": [
+                "47697548",
+                "47697265"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "libusb",
+              "explanation": "一个跨平台的 userspace USB 访问库，允许程序直接和 USB 设备通信，而不必写内核驱动。"
+            },
+            {
+              "term": "DFU",
+              "explanation": "Device Firmware Upgrade，USB 固件升级模式/协议，常用于刷写或维护设备固件。"
+            },
+            {
+              "term": "USB/CDC/ECM",
+              "explanation": "USB 的标准通信/以太网类；如果设备实现得标准，操作系统往往能自动识别成网络接口。"
+            },
+            {
+              "term": "RNDIS",
+              "explanation": "微软定义的 USB 网络协议，常见于手机共享网络和一些 USB 网卡设备。"
+            },
+            {
+              "term": "tun/tap",
+              "explanation": "Linux 等系统里的虚拟网络接口，常用于把 userspace 数据包接入内核网络栈。"
+            }
+          ],
+          "context": "这篇文章讨论的是如何用 libusb（一个跨平台 USB 访问库）在 userspace 里直接和 USB 设备通信，而不是写 Linux kernel module 之类的内核驱动。评论把它放到一个很现实的背景里：很多设备要么用专有协议，要么只实现了部分标准类，所以现成系统驱动无法满足自定义路由、固件维护或跨平台需求。对于网络类设备，如果能遵循 USB/CDC/ECM（USB 的标准以太网类）或 RNDIS（微软的 USB 网络协议），通常就能直接被操作系统识别；但一旦需要把数据接入系统的网络栈，还是得借助 tun/tap（虚拟网络接口）或内核接口。Windows 上的 driver signing（驱动签名）门槛也被反复提到，说明 userspace 方案除了技术上更易调试，也常是部署上的现实折中。",
+          "emoji": "🛠️",
+          "sarcastic_question": "设备不肯说标准话，难道就该让用户吞驱动？"
+        }
+      },
+      "articleSummary": "抱歉，我无法直接分析这篇文章。\n\n目前你提供的文本内容是网站的安全验证页面（\"Performing security verification\"），而不是关于 USB 驱动开发的技术文章正文。\n\n为了帮你写出符合要求的技术解读，请提供文章的**正文内容**或**原文链接**。一旦拿到内容，我会立刻按照你的风格要求，把这篇关于 userspace USB drivers 的文章讲清楚。"
+    },
+    {
+      "id": 47696035,
+      "by": "CharlesW",
+      "title": "John Deere to pay $99M in right-to-repair settlement",
+      "url": "https://www.thedrive.com/news/john-deere-to-pay-99-million-in-monumental-right-to-repair-settlement",
+      "score": 229,
+      "detailUpdatedAt": 1775709832,
+      "createdAt": 1775692227,
+      "aiSummaryUpdatedAt": 1775710275,
+      "aisummary": {
+        "chinese_title": "John Deere 99M和解：农机维修权争议未了",
+        "emoji": "😡",
+        "sarcastic_question": "赔99M就能继续锁死维修权吗？"
+      },
+      "classifications": {
+        "topics": [
+          9,
+          10,
+          7
+        ],
+        "facets": [
+          8
+        ],
+        "tags": [
+          "John Deere",
+          "right-to-repair",
+          "$99M",
+          "MoU (2023)",
+          "firmware",
+          "tractors"
+        ]
+      },
+      "classificationsUpdatedAt": 1775692917,
+      "aiSummary": {
+        "chinese_title": "John Deere 99M和解：农机维修权争议未了",
+        "emoji": "😡",
+        "sarcastic_question": "赔99M就能继续锁死维修权吗？"
+      },
+      "detail": {
+        "id": 47696035,
+        "by": "CharlesW",
+        "title": "John Deere to pay $99M in right-to-repair settlement",
+        "url": "https://www.thedrive.com/news/john-deere-to-pay-99-million-in-monumental-right-to-repair-settlement",
+        "score": 124,
+        "detailUpdatedAt": 1775692345,
+        "createdAt": 1775692227,
+        "aiSummaryUpdatedAt": 1775692809,
+        "aisummary": {
+          "chinese_title": "John Deere 右修和解赔 9900 万，开放 10 年维修工具",
+          "discussion_overview": [
+            {
+              "category": "和解被视为修理权进展",
+              "summary": "不少评论把这次和解看成 right-to-repair 的实质推进，而不只是一次付钱了事。核心变化是 Deere 要在 10 年内提供用于维护、诊断和修理的 digital tools，这被认为比过去只能靠破解设备软件更进一步。有人还提到 2023 年 Deere 与 American Farm Bureau 的 MoU 已经释放出妥协信号，因此这次和解更像把先前的行业让步变成了可执行安排。也有评论把早前的 firmware 破解和 GPL 争议视为额外压力来源。",
+              "supportid": [
+                "47696096",
+                "47697616",
+                "47696669"
+              ]
+            },
+            {
+              "category": "罚金太轻、缺乏威慑",
+              "summary": "另一组评论集中批评 9900 万美元对 Deere 这种巨头来说太轻，几乎只是做生意成本。有人认为如果企业明知故犯却只付这点钱，就会继续重复同样做法，因此需要更高的 punitive fine。讨论里还直接指向 lobbying 和政治系统问题，认为只有更强的立法和更独立的执法才可能改变这种局面。也有人用“还要再加一个零”来表达处罚力度远远不够。",
+              "supportid": [
+                "47696735",
+                "47697267",
+                "47697339"
+              ]
+            },
+            {
+              "category": "股价上涨不代表问题解决",
+              "summary": "关于股价上涨的讨论认为，市场并不把这类和解看得像用户那样严重。有人指出 Deere 只是和解，并没有承认 wrongdoing，所以本质上只是花小钱换继续维持现状。也有人说市场早已把 2023 年 MoU 和相关预期计价进去，因此短期股价反应更像噪音而不是惊喜。还有评论提醒，真正的风险在未来：如果 10 年后再来一次 OTA update，控制权可能又回到厂商手里。",
+              "supportid": [
+                "47696607",
+                "47697396",
+                "47696898",
+                "47696683",
+                "47696785",
+                "47697606",
+                "47696638",
+                "47696675",
+                "47697442",
+                "47697109"
+              ]
+            },
+            {
+              "category": "Deere 的产品设计被指反消费者",
+              "summary": "很多人把 Deere 描述成极端 user-hostile 的公司，理由是它在硬件和软件上都故意制造维修障碍。最典型的例子是割草机的 fuel gauge：电池是嵌在 epoxy 里的 CR2032，六个月左右就没电，拆开也不会恢复，而且一旦断开还会导致整机无法启动，替换件则要价 60 美元。评论还提到农机长期依赖 proprietary parts，并把 DPF、SCR、ECU 这类排放和控制系统当成限制用户的借口。有人甚至认为 planned obsolescence 已经接近 fraud。",
+              "supportid": [
+                "47696929",
+                "47697054",
+                "47697106",
+                "47697602",
+                "47697122"
+              ]
+            },
+            {
+              "category": "买不买 Deere 的现实争论",
+              "summary": "也有一部分讨论转向“那就别买”是否现实。支持者认为买大件农机前应该先做 research，Deere 早有坏名声，市场上也不是完全没有竞争。反对者则指出，农业设备往往要看本地维修网点、保修处理和供应链，真要把收割机或 mower 运到外州去修，成本和时间都很高。更麻烦的是，很多维修可用性问题不是新车评测能看出来的，而是几年后才会暴露，因此单靠消费者自我保护并不充分。",
+              "supportid": [
+                "47697007",
+                "47697047",
+                "47697126",
+                "47697459",
+                "47697648",
+                "47697196",
+                "47697341"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "right-to-repair",
+              "explanation": "维修权，指用户或第三方能获取诊断资料、零件和工具，自行或委托维修设备。"
+            },
+            {
+              "term": "Service Advisor",
+              "explanation": "John Deere 的维修诊断软件/服务工具，常被视为进入维修与故障排查的关键入口。"
+            },
+            {
+              "term": "ECU",
+              "explanation": "Electronic Control Unit，电子控制单元；用于管理发动机、排放和其他子系统。"
+            },
+            {
+              "term": "DPF",
+              "explanation": "Diesel Particulate Filter，柴油颗粒过滤器；用于捕捉柴油排放中的颗粒物。"
+            },
+            {
+              "term": "SCR",
+              "explanation": "Selective Catalytic Reduction，选择性催化还原；一种柴油尾气后处理技术，常配合尿素降低 NOx。"
+            },
+            {
+              "term": "GPL obligations",
+              "explanation": "GPL 开源许可证义务；若使用 GPL 代码，通常需要满足源码公开等许可要求。"
+            }
+          ],
+          "context": "John Deere（美国大型农业机械制造商）长期因 right-to-repair 争议被批评：农民和独立维修商常被挡在诊断软件、零件供应和固件控制之外。此次 9900 万美元和解据称要求 Deere 在 10 年内提供用于维护、诊断和修理的 digital tools，这比过去只能靠破解设备软件或使用非官方工具修车要进一步。评论里还提到 2023 年 Deere 与 American Farm Bureau（美国农场主组织）签过 MoU（谅解备忘录），说明和解并非毫无征兆，而是此前妥协的延续。讨论的核心背景是现代农机大量依赖 ECU（电子控制单元）、DPF（柴油颗粒过滤器）和 SCR（选择性催化还原）等系统，修理成本高、停机损失大，因而维修权问题格外敏感。",
+          "emoji": "⚖️",
+          "sarcastic_question": "赔 9900 万就把维修权还回来了？"
+        },
+        "classifications": {
+          "topics": [
+            9,
+            10,
+            7
+          ],
+          "facets": [
+            8
+          ],
+          "tags": [
+            "John Deere",
+            "right-to-repair",
+            "$99M",
+            "MoU (2023)",
+            "firmware",
+            "tractors"
+          ]
+        },
+        "classificationsUpdatedAt": 1775692917,
+        "aiSummary": {
+          "chinese_title": "John Deere 右修和解赔 9900 万，开放 10 年维修工具",
+          "discussion_overview": [
+            {
+              "category": "和解被视为修理权进展",
+              "summary": "不少评论把这次和解看成 right-to-repair 的实质推进，而不只是一次付钱了事。核心变化是 Deere 要在 10 年内提供用于维护、诊断和修理的 digital tools，这被认为比过去只能靠破解设备软件更进一步。有人还提到 2023 年 Deere 与 American Farm Bureau 的 MoU 已经释放出妥协信号，因此这次和解更像把先前的行业让步变成了可执行安排。也有评论把早前的 firmware 破解和 GPL 争议视为额外压力来源。",
+              "supportid": [
+                "47696096",
+                "47697616",
+                "47696669"
+              ]
+            },
+            {
+              "category": "罚金太轻、缺乏威慑",
+              "summary": "另一组评论集中批评 9900 万美元对 Deere 这种巨头来说太轻，几乎只是做生意成本。有人认为如果企业明知故犯却只付这点钱，就会继续重复同样做法，因此需要更高的 punitive fine。讨论里还直接指向 lobbying 和政治系统问题，认为只有更强的立法和更独立的执法才可能改变这种局面。也有人用“还要再加一个零”来表达处罚力度远远不够。",
+              "supportid": [
+                "47696735",
+                "47697267",
+                "47697339"
+              ]
+            },
+            {
+              "category": "股价上涨不代表问题解决",
+              "summary": "关于股价上涨的讨论认为，市场并不把这类和解看得像用户那样严重。有人指出 Deere 只是和解，并没有承认 wrongdoing，所以本质上只是花小钱换继续维持现状。也有人说市场早已把 2023 年 MoU 和相关预期计价进去，因此短期股价反应更像噪音而不是惊喜。还有评论提醒，真正的风险在未来：如果 10 年后再来一次 OTA update，控制权可能又回到厂商手里。",
+              "supportid": [
+                "47696607",
+                "47697396",
+                "47696898",
+                "47696683",
+                "47696785",
+                "47697606",
+                "47696638",
+                "47696675",
+                "47697442",
+                "47697109"
+              ]
+            },
+            {
+              "category": "Deere 的产品设计被指反消费者",
+              "summary": "很多人把 Deere 描述成极端 user-hostile 的公司，理由是它在硬件和软件上都故意制造维修障碍。最典型的例子是割草机的 fuel gauge：电池是嵌在 epoxy 里的 CR2032，六个月左右就没电，拆开也不会恢复，而且一旦断开还会导致整机无法启动，替换件则要价 60 美元。评论还提到农机长期依赖 proprietary parts，并把 DPF、SCR、ECU 这类排放和控制系统当成限制用户的借口。有人甚至认为 planned obsolescence 已经接近 fraud。",
+              "supportid": [
+                "47696929",
+                "47697054",
+                "47697106",
+                "47697602",
+                "47697122"
+              ]
+            },
+            {
+              "category": "买不买 Deere 的现实争论",
+              "summary": "也有一部分讨论转向“那就别买”是否现实。支持者认为买大件农机前应该先做 research，Deere 早有坏名声，市场上也不是完全没有竞争。反对者则指出，农业设备往往要看本地维修网点、保修处理和供应链，真要把收割机或 mower 运到外州去修，成本和时间都很高。更麻烦的是，很多维修可用性问题不是新车评测能看出来的，而是几年后才会暴露，因此单靠消费者自我保护并不充分。",
+              "supportid": [
+                "47697007",
+                "47697047",
+                "47697126",
+                "47697459",
+                "47697648",
+                "47697196",
+                "47697341"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "right-to-repair",
+              "explanation": "维修权，指用户或第三方能获取诊断资料、零件和工具，自行或委托维修设备。"
+            },
+            {
+              "term": "Service Advisor",
+              "explanation": "John Deere 的维修诊断软件/服务工具，常被视为进入维修与故障排查的关键入口。"
+            },
+            {
+              "term": "ECU",
+              "explanation": "Electronic Control Unit，电子控制单元；用于管理发动机、排放和其他子系统。"
+            },
+            {
+              "term": "DPF",
+              "explanation": "Diesel Particulate Filter，柴油颗粒过滤器；用于捕捉柴油排放中的颗粒物。"
+            },
+            {
+              "term": "SCR",
+              "explanation": "Selective Catalytic Reduction，选择性催化还原；一种柴油尾气后处理技术，常配合尿素降低 NOx。"
+            },
+            {
+              "term": "GPL obligations",
+              "explanation": "GPL 开源许可证义务；若使用 GPL 代码，通常需要满足源码公开等许可要求。"
+            }
+          ],
+          "context": "John Deere（美国大型农业机械制造商）长期因 right-to-repair 争议被批评：农民和独立维修商常被挡在诊断软件、零件供应和固件控制之外。此次 9900 万美元和解据称要求 Deere 在 10 年内提供用于维护、诊断和修理的 digital tools，这比过去只能靠破解设备软件或使用非官方工具修车要进一步。评论里还提到 2023 年 Deere 与 American Farm Bureau（美国农场主组织）签过 MoU（谅解备忘录），说明和解并非毫无征兆，而是此前妥协的延续。讨论的核心背景是现代农机大量依赖 ECU（电子控制单元）、DPF（柴油颗粒过滤器）和 SCR（选择性催化还原）等系统，修理成本高、停机损失大，因而维修权问题格外敏感。",
+          "emoji": "⚖️",
+          "sarcastic_question": "赔 9900 万就把维修权还回来了？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nJohn Deere 同意赔偿 9900 万美元并提供未来 10 年的维修工具，标志着农民在争取设备维修权的长期斗争中取得了里程碑式的胜利。\n\n### 农民终于拿到了“超额付费”的退款\n这场持续多年的拉锯战终于有了结果，John Deere 虽然嘴上不承认自己有错，但身体很诚实。他们同意向一个集体诉讼基金支付 9900 万美元，专门赔偿那些在 2018 年 1 月以来被迫向官方授权经销商支付高昂维修费的农场和个人。这可不是小数目，根据法庭文件显示，原告最终能拿回的赔偿金比例在 26% 到 53% 之间。要知道，通常这类集体诉讼的赔偿比例只有 5% 到 15%，这次赔付力度之大，侧面说明了问题的严重性。\n\n### 核心突破：终于要开放维修工具了\n但这笔钱其实还不是重点，真正的技术突破在于协议中的另一项条款。John Deere 承诺在未来 10 年内，为拖拉机、收割机等设备提供“维护、诊断和维修所需的数字工具”。这事儿非常关键，因为以前农民为了修机器，甚至不得不去黑进自己设备的软件。虽然 2023 年 John Deere 签过一份谅解备忘录，允许第三方在保护知识产权的前提下进行维修，但这次的和解显然是更进了一步，具有法律约束力。\n\n### 被逼出来的“复古”市场\n为什么农民对维修权限这么执着？说白了就是因为官方维修太难、太贵，导致市场出现了很魔幻的反应。由于新机器维修困难，二手设备的价格直接飙升，甚至翻倍。有意思的是，农民宁愿花 6 万美元去买一台 40 年前的老古董，也不愿意碰新机器。逻辑很简单：老机器结构简单、好修，能最大程度减少停工时间，这才是农业生产中的硬指标。\n\n### 官方垄断带来的副作用\n这种“维修难”的局面，其实直接导致了 John Deere 销售端的连锁反应。因为大家都怕买回去修不起，所以只能疯狂追捧旧设备，把老机器的价格炒到了离谱的高度。这反过来又打击了新设备的销售，形成了一个恶性循环。这次赔偿和开放工具，某种程度上也是为了挽回这种因为服务垄断而失控的市场局面。\n\n### 这事儿还没完，FTC 还在盯着\n虽然这次和解看起来是个大结局，但 John Deere 还没完全脱身。法官虽然大概率会批准这个和解协议，但公司还面临着来自美国联邦贸易委员会（FTC）的另一起诉讼。政府机构指控他们通过锁定维修流程造成了实质性伤害。这意味着，除了赔偿农民，John Deere 还得应对来自监管层面的更严厉审查。\n\n### 整个科技行业的风向标\n千万别觉得这只是农业圈的事儿，这场“维修权”之争的影响范围远超拖拉机行业。汽车行业甚至家电行业都在盯着这个案子看。现在的制造商越来越倾向于在售出产品后依然保持控制权，而任何针对 John Deere 的正式裁决，都可能成为其他行业的判例。在这个厂商试图收紧控制权的时代，这次和解无疑是一个具有标志性意义的转折点。"
+    },
+    {
+      "id": 47686549,
+      "by": "super256",
+      "title": "Veracrypt Project Update",
+      "url": "https://sourceforge.net/p/veracrypt/discussion/general/thread/9620d7a4b3/",
+      "score": 1168,
+      "detailUpdatedAt": 1775708034,
+      "createdAt": 1775636428,
+      "aiSummaryUpdatedAt": 1775708479,
+      "aisummary": {
+        "chinese_title": "微软封禁开发者账号，VeraCrypt/WireGuard Windows 签名受阻",
+        "emoji": "😡",
+        "sarcastic_question": "连给自己软件签名，也要微软先批条子吗？"
+      },
+      "classifications": {
+        "topics": [
+          3,
+          6,
+          9
+        ],
+        "facets": [
+          8
+        ],
+        "tags": [
+          "VeraCrypt",
+          "SourceForge",
+          "Microsoft",
+          "Windows",
+          "code signing",
+          "developer certificate",
+          "certificate revocation",
+          "AI"
+        ]
+      },
+      "classificationsUpdatedAt": 1775640368,
+      "aiSummary": {
+        "chinese_title": "微软封禁开发者账号，VeraCrypt/WireGuard Windows 签名受阻",
+        "emoji": "😡",
+        "sarcastic_question": "连给自己软件签名，也要微软先批条子吗？"
+      },
+      "detail": {
+        "id": 47686549,
+        "by": "super256",
+        "title": "Veracrypt Project Update",
+        "url": "https://sourceforge.net/p/veracrypt/discussion/general/thread/9620d7a4b3/",
+        "score": 361,
+        "detailUpdatedAt": 1775646839,
+        "createdAt": 1775636428,
+        "aiSummaryUpdatedAt": 1775647557,
+        "aisummary": {
+          "chinese_title": "VeraCrypt维护者证书遭吊销，Windows驱动发布受阻",
+          "discussion_overview": [
+            {
+              "category": "证书吊销导致发布卡死",
+              "summary": "评论的核心焦点是：Microsoft 账号或代码签名证书一旦被挂起，VeraCrypt、WireGuard 这类项目的 Windows 发布就可能直接中断。有人强调这不仅是“发不了新版本”这么简单，若出现紧急漏洞修复，维护者会被平台彻底卡住。尤其涉及 kernel driver 时，问题会被放大成单点故障：一个开发者、一个账号、一个平台就能决定整个项目的可用性。",
+              "supportid": [
+                "47687884",
+                "47687908",
+                "47686971",
+                "47687207",
+                "47688041",
+                "47687906",
+                "47688280",
+                "47688443"
+              ]
+            },
+            {
+              "category": "微软被视为在控制隐私/加密工具",
+              "summary": "一部分评论把这件事解读为 Microsoft 对加密、隐私和独立网络工具的敌意，认为 BitLocker 和账号体系更符合它的控制边界。更激进的说法把问题上升到国家机构影响，提到 PRISM、FISA court，以及微软安全圈与情报机构之间的亲近关系。虽然有些回复用玩笑化语气包装，但背后的怀疑很直接：只要软件让用户更难被监控，它就可能更容易碰到平台阻力。",
+              "supportid": [
+                "47687917",
+                "47688075",
+                "47688541",
+                "47688269",
+                "47688450",
+                "47688323"
+              ]
+            },
+            {
+              "category": "更像风控误判与大公司惯性",
+              "summary": "另一派认为，这更可能是自动安全系统把“受欢迎但看起来可疑”的应用误判了，而不是有明确的针对性动作。评论里多次提到大型组织的审批、申诉和人工介入都很慢，规则变化也常常不透明，导致开发者只能被动等待。即便最后恢复，也不代表系统可靠，只说明项目够大、舆论够强，才有人愿意处理。",
+              "supportid": [
+                "47688055",
+                "47688261",
+                "47687635",
+                "47687491",
+                "47688306"
+              ]
+            },
+            {
+              "category": "Windows签名机制本身有缺陷",
+              "summary": "不少评论把问题归因到 Windows 的软件和驱动签名体系：普通程序还能靠警告运行，但 kernel driver 一旦碰上签名强制，就会被 Driver Signature Enforcement、Secure Boot 等机制卡住。有人提到关闭这些限制后还会出现明显的 Test Mode 水印，说明这套流程本身就不是为了让开发者自由发布而设计的。也有人指出，签名更多只是一个信号，不等于真实可信，因为泄露证书、恶意驱动和作弊驱动都证明“签过名”并不等于“安全”。",
+              "supportid": [
+                "47686971",
+                "47687795",
+                "47687939",
+                "47688352",
+                "47687633",
+                "47687325",
+                "47687346",
+                "47687480",
+                "47688173",
+                "47688031",
+                "47687991",
+                "47688136",
+                "47687469",
+                "47688118",
+                "47688530",
+                "47688336"
+              ]
+            },
+            {
+              "category": "靠媒体、联盟和监管施压",
+              "summary": "有评论建议借助 ArsTechnica 之类的技术媒体曝光，因为很多大公司只有在舆论压上来时才会真正找人工处理问题。也有人主张让 WireGuard、VeraCrypt、LibreOffice 这类项目形成联盟，把各自遇到的平台阻力合并成更大的公共议题。更强硬的观点则认为这已经接近 Microsoft 滥用其 Windows 平台和准垄断地位，单靠个案申诉很难解决。",
+              "supportid": [
+                "47687036",
+                "47687368",
+                "47688455",
+                "47687960",
+                "47688052",
+                "47688320"
+              ]
+            },
+            {
+              "category": "转向Linux/BSD、SourceForge与旧平台阴影",
+              "summary": "不少人把这次事件当成又一次离开 Windows 的理由，认为 Linux 和 BSD 才是仍相对开放的系统，用户至少更容易掌控自己的软件来源。也有人提醒，开放生态并不等于没有压力：年龄验证、Microsoft 继续签 Linux boot loader shim，以及桌面 Linux 对普通用户仍不够友好，都说明“开放”只是程度不同。与此同时，SourceForge 因历史上的 adware 捆绑被继续嫌弃，VeraCrypt 仍在那里分发也让人不安，而 GitHub（微软旗下）则被认为可能带来更糟的依赖关系。",
+              "supportid": [
+                "47687291",
+                "47687681",
+                "47688067",
+                "47688054",
+                "47687977",
+                "47688072",
+                "47688119",
+                "47688520",
+                "47687510",
+                "47687982",
+                "47688368",
+                "47687859",
+                "47688296",
+                "47688313",
+                "47688435",
+                "47687914"
+              ]
+            },
+            {
+              "category": "TrueCrypt旧谜团仍未解开",
+              "summary": "讨论又回到 VeraCrypt 的前身 TrueCrypt：它突然停止维护、发布只用于解密旧盘的版本、官网被移除，还刻意阻止 Archive.org 收录，这些细节一直让人觉得不寻常。虽然有人把原因归到开发者 Paul Le Roux 被捕的传闻，但这并没有被充分证实；而且后来的公开审计也没有找到明显后门，所以真正原因至今仍然只是猜测。另一些人把它和 Lavabit 的关站相提并论，认为更像是宁愿停掉也不屈服。",
+              "supportid": [
+                "47688354",
+                "47688572",
+                "47688494",
+                "47688590",
+                "47688560",
+                "47687619"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "代码签名证书",
+              "explanation": "用于证明软件发行者身份的证书，常见于 Windows 软件和驱动签名；一旦被吊销，发布和更新可能受阻。"
+            },
+            {
+              "term": "kernel driver（内核驱动）",
+              "explanation": "运行在内核态的驱动程序，权限高、风险大，因此在 Windows 上通常受到更严格的签名限制。"
+            },
+            {
+              "term": "Driver Signature Enforcement（驱动签名强制）",
+              "explanation": "Windows 用来限制未签名或不合规驱动加载的机制，关闭它通常需要特殊启动方式。"
+            },
+            {
+              "term": "Secure Boot（安全启动）",
+              "explanation": "固件级启动验证机制，用来阻止未授权代码进入启动链，常与驱动签名限制一起出现。"
+            },
+            {
+              "term": "BitLocker",
+              "explanation": "Windows 内置的磁盘加密工具，评论中被拿来作为微软更可控的替代方案。"
+            },
+            {
+              "term": "SourceForge",
+              "explanation": "老牌开源软件托管/下载站，评论中提到其历史上的 adware 捆绑和现在的争议。"
+            },
+            {
+              "term": "TrueCrypt",
+              "explanation": "VeraCrypt 的前身，曾突然停止维护并留下大量关于退出原因的猜测。"
+            }
+          ],
+          "context": "VeraCrypt 是一个开源磁盘加密工具，也是 TrueCrypt 的后继分支，很多 Windows 用户依赖它来做全盘加密或隐藏卷。这里讨论的关键点不是单纯的软件本身，而是 Windows 发行链条：发布签名、代码证书、kernel driver 签名都可能被 Microsoft 掌控。评论还联想到 WireGuard、LibreOffice 等项目曾遇到的平台阻碍，说明独立开发者在封闭生态里很容易被账号和审核流程卡住。SourceForge、GitHub（微软旗下）以及 Linux/BSD 的开放性也被拿来比较，用来讨论软件到底该由谁来决定能否被用户安装和更新。",
+          "emoji": "😡",
+          "sarcastic_question": "微软连开发者都封了，还谈什么安全发布呢？"
+        },
+        "classifications": {
+          "topics": [
+            3,
+            6,
+            9
+          ],
+          "facets": [
+            8
+          ],
+          "tags": [
+            "VeraCrypt",
+            "SourceForge",
+            "Microsoft",
+            "Windows",
+            "code signing",
+            "developer certificate",
+            "certificate revocation",
+            "AI"
+          ]
+        },
+        "classificationsUpdatedAt": 1775640368,
+        "aiSummary": {
+          "chinese_title": "VeraCrypt维护者证书遭吊销，Windows驱动发布受阻",
+          "discussion_overview": [
+            {
+              "category": "证书吊销导致发布卡死",
+              "summary": "评论的核心焦点是：Microsoft 账号或代码签名证书一旦被挂起，VeraCrypt、WireGuard 这类项目的 Windows 发布就可能直接中断。有人强调这不仅是“发不了新版本”这么简单，若出现紧急漏洞修复，维护者会被平台彻底卡住。尤其涉及 kernel driver 时，问题会被放大成单点故障：一个开发者、一个账号、一个平台就能决定整个项目的可用性。",
+              "supportid": [
+                "47687884",
+                "47687908",
+                "47686971",
+                "47687207",
+                "47688041",
+                "47687906",
+                "47688280",
+                "47688443"
+              ]
+            },
+            {
+              "category": "微软被视为在控制隐私/加密工具",
+              "summary": "一部分评论把这件事解读为 Microsoft 对加密、隐私和独立网络工具的敌意，认为 BitLocker 和账号体系更符合它的控制边界。更激进的说法把问题上升到国家机构影响，提到 PRISM、FISA court，以及微软安全圈与情报机构之间的亲近关系。虽然有些回复用玩笑化语气包装，但背后的怀疑很直接：只要软件让用户更难被监控，它就可能更容易碰到平台阻力。",
+              "supportid": [
+                "47687917",
+                "47688075",
+                "47688541",
+                "47688269",
+                "47688450",
+                "47688323"
+              ]
+            },
+            {
+              "category": "更像风控误判与大公司惯性",
+              "summary": "另一派认为，这更可能是自动安全系统把“受欢迎但看起来可疑”的应用误判了，而不是有明确的针对性动作。评论里多次提到大型组织的审批、申诉和人工介入都很慢，规则变化也常常不透明，导致开发者只能被动等待。即便最后恢复，也不代表系统可靠，只说明项目够大、舆论够强，才有人愿意处理。",
+              "supportid": [
+                "47688055",
+                "47688261",
+                "47687635",
+                "47687491",
+                "47688306"
+              ]
+            },
+            {
+              "category": "Windows签名机制本身有缺陷",
+              "summary": "不少评论把问题归因到 Windows 的软件和驱动签名体系：普通程序还能靠警告运行，但 kernel driver 一旦碰上签名强制，就会被 Driver Signature Enforcement、Secure Boot 等机制卡住。有人提到关闭这些限制后还会出现明显的 Test Mode 水印，说明这套流程本身就不是为了让开发者自由发布而设计的。也有人指出，签名更多只是一个信号，不等于真实可信，因为泄露证书、恶意驱动和作弊驱动都证明“签过名”并不等于“安全”。",
+              "supportid": [
+                "47686971",
+                "47687795",
+                "47687939",
+                "47688352",
+                "47687633",
+                "47687325",
+                "47687346",
+                "47687480",
+                "47688173",
+                "47688031",
+                "47687991",
+                "47688136",
+                "47687469",
+                "47688118",
+                "47688530",
+                "47688336"
+              ]
+            },
+            {
+              "category": "靠媒体、联盟和监管施压",
+              "summary": "有评论建议借助 ArsTechnica 之类的技术媒体曝光，因为很多大公司只有在舆论压上来时才会真正找人工处理问题。也有人主张让 WireGuard、VeraCrypt、LibreOffice 这类项目形成联盟，把各自遇到的平台阻力合并成更大的公共议题。更强硬的观点则认为这已经接近 Microsoft 滥用其 Windows 平台和准垄断地位，单靠个案申诉很难解决。",
+              "supportid": [
+                "47687036",
+                "47687368",
+                "47688455",
+                "47687960",
+                "47688052",
+                "47688320"
+              ]
+            },
+            {
+              "category": "转向Linux/BSD、SourceForge与旧平台阴影",
+              "summary": "不少人把这次事件当成又一次离开 Windows 的理由，认为 Linux 和 BSD 才是仍相对开放的系统，用户至少更容易掌控自己的软件来源。也有人提醒，开放生态并不等于没有压力：年龄验证、Microsoft 继续签 Linux boot loader shim，以及桌面 Linux 对普通用户仍不够友好，都说明“开放”只是程度不同。与此同时，SourceForge 因历史上的 adware 捆绑被继续嫌弃，VeraCrypt 仍在那里分发也让人不安，而 GitHub（微软旗下）则被认为可能带来更糟的依赖关系。",
+              "supportid": [
+                "47687291",
+                "47687681",
+                "47688067",
+                "47688054",
+                "47687977",
+                "47688072",
+                "47688119",
+                "47688520",
+                "47687510",
+                "47687982",
+                "47688368",
+                "47687859",
+                "47688296",
+                "47688313",
+                "47688435",
+                "47687914"
+              ]
+            },
+            {
+              "category": "TrueCrypt旧谜团仍未解开",
+              "summary": "讨论又回到 VeraCrypt 的前身 TrueCrypt：它突然停止维护、发布只用于解密旧盘的版本、官网被移除，还刻意阻止 Archive.org 收录，这些细节一直让人觉得不寻常。虽然有人把原因归到开发者 Paul Le Roux 被捕的传闻，但这并没有被充分证实；而且后来的公开审计也没有找到明显后门，所以真正原因至今仍然只是猜测。另一些人把它和 Lavabit 的关站相提并论，认为更像是宁愿停掉也不屈服。",
+              "supportid": [
+                "47688354",
+                "47688572",
+                "47688494",
+                "47688590",
+                "47688560",
+                "47687619"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "代码签名证书",
+              "explanation": "用于证明软件发行者身份的证书，常见于 Windows 软件和驱动签名；一旦被吊销，发布和更新可能受阻。"
+            },
+            {
+              "term": "kernel driver（内核驱动）",
+              "explanation": "运行在内核态的驱动程序，权限高、风险大，因此在 Windows 上通常受到更严格的签名限制。"
+            },
+            {
+              "term": "Driver Signature Enforcement（驱动签名强制）",
+              "explanation": "Windows 用来限制未签名或不合规驱动加载的机制，关闭它通常需要特殊启动方式。"
+            },
+            {
+              "term": "Secure Boot（安全启动）",
+              "explanation": "固件级启动验证机制，用来阻止未授权代码进入启动链，常与驱动签名限制一起出现。"
+            },
+            {
+              "term": "BitLocker",
+              "explanation": "Windows 内置的磁盘加密工具，评论中被拿来作为微软更可控的替代方案。"
+            },
+            {
+              "term": "SourceForge",
+              "explanation": "老牌开源软件托管/下载站，评论中提到其历史上的 adware 捆绑和现在的争议。"
+            },
+            {
+              "term": "TrueCrypt",
+              "explanation": "VeraCrypt 的前身，曾突然停止维护并留下大量关于退出原因的猜测。"
+            }
+          ],
+          "context": "VeraCrypt 是一个开源磁盘加密工具，也是 TrueCrypt 的后继分支，很多 Windows 用户依赖它来做全盘加密或隐藏卷。这里讨论的关键点不是单纯的软件本身，而是 Windows 发行链条：发布签名、代码证书、kernel driver 签名都可能被 Microsoft 掌控。评论还联想到 WireGuard、LibreOffice 等项目曾遇到的平台阻碍，说明独立开发者在封闭生态里很容易被账号和审核流程卡住。SourceForge、GitHub（微软旗下）以及 Linux/BSD 的开放性也被拿来比较，用来讨论软件到底该由谁来决定能否被用户安装和更新。",
+          "emoji": "😡",
+          "sarcastic_question": "微软连开发者都封了，还谈什么安全发布呢？"
+        }
+      },
+      "articleSummary": "### 一句话总结\n这篇文章并非技术更新，而是一个标准的 Cloudflare 安全拦截页面，提示你的访问触发了防护规则。\n\n### 这不是你要找的 Veracrypt 更新日志\n乍一看标题像是个正经的项目进展汇报，但点进去你会发现内容完全不对劲。这篇文章里没有任何关于 Veracrypt 加密算法、Bug 修复或者新版本发布的细节。说白了，这就是个“误会”，你看到的并不是开发团队写的代码更新，而是网站安全系统抛出的一张错误页。\n\n### 触发拦截的幕后黑手是 Cloudflare\n页面内容明确指出，这个网站正在使用 Cloudflare 的安全服务来防御在线攻击。你刚才的操作——可能是点击链接、提交表单或者仅仅是访问——被系统判定为具有风险。这通常是因为你的请求里包含了某些敏感关键词、SQL 命令，或者是格式异常的数据，触发了预设的防护规则。\n\n### 系统在保护谁，又在拦截谁\n有意思的地方在于，这种拦截通常是“宁可错杀一千，不可放过一个”的防御策略。对于网站所有者来说，这是为了防止数据库被注入或服务器被 DDoS 攻击。但对于普通用户而言，这就意味着哪怕你是善意访问，只要行为模式稍微像一点机器人或攻击者，就会被挡在门外。\n\n### 想要看内容，得先证明“我是人”\n那怎么办？文章给出的解决方案非常直接：联系网站管理员。你需要发邮件给站长，说明你在做什么时被拦截了。关键是要把页面底部的 Cloudflare Ray ID 发给他们，这串字符是追踪请求的唯一标识，能帮管理员在日志里找到你的访问记录并解除误封。\n\n### 开发者视角的启示\n虽然这只是个报错页，但也提醒我们在做爬虫或自动化测试时要小心。很多看似普通的 HTTP 请求，因为缺少 Header 或参数格式不对，都会撞上这类 WAF（Web 应用防火墙）。下次遇到 403 或 1020 错误，别急着怀疑代码写错，先看看是不是触发了安全规则。"
     },
     {
       "id": 47693679,
@@ -2508,472 +3333,6 @@
         }
       },
       "articleSummary": "## 一句话总结\nMeta 推出的 Muse Spark 通过重构预训练栈和引入多智能体推理，实现了比上一代模型高出一个数量级的计算效率，并在测试时推理阶段展现了\"思维压缩\"这一关键特性。\n\n### 用多智能体并行推理来对抗硬核难题\nMuse Spark 这次最显眼的招数是推出了 \"Contemplating mode\"。说白了，这就是让多个 Agent 并行思考，而不是单打独斗。这种设计让它能直接对标 Gemini Deep Think 和 GPT Pro 这类前沿模型的极端推理模式。效果也很硬核：在 Humanity’s Last Exam 上拿到了 58% 的分数，在 FrontierScience Research 上拿到了 38%。这证明了通过多智能体编排，在不牺牲太多响应速度的前提下，确实能显著提升解决复杂任务的能力。\n\n### 预训练栈的底层重构：效率提升十倍\n为了支撑后续的 Scaling，Meta 花了九个月时间把预训练栈从底到上重构了一遍。这包括模型架构、优化器和数据配方的全面升级。他们通过拟合 Scaling Law 发现，新栈带来的效率提升非常惊人：要达到同样的性能水平，Muse Spark 所需的算力比上一代 Llama 4 Maverick 少了超过一个数量级。这意味着他们现在能用更少的计算资源，榨取出更高的模型能力，为未来的超大模型打下了更经济的基础。\n\n### 让 RL 变得可预测且稳定\n大规模强化学习（RL）通常以不稳定著称，但 Muse Spark 的新栈声称解决了这个问题。从数据来看，随着 RL 计算步数的增加，模型在训练集上的 pass@1 和 pass@16 都呈现对数线性增长。这表明 RL 不仅提升了模型的可靠性，还没有牺牲推理的多样性。更重要的是，这种提升在未见过的测试集上也得到了验证，说明收益是真实可泛化的，而不是单纯死记硬背了训练数据。\n\n### 测试时推理的\"思维压缩\"现象\n最有意思的地方在于测试时推理的处理策略。为了让模型\"想\"得更聪明但不说废话，他们在 RL 训练中加入了对\"思考时间\"的惩罚。这导致了一个有趣的相变现象：模型先是通过延长思考时间来提升表现，随后为了优化 token 使用，学会了\"思维压缩\"——用更少的推理步骤解决问题。压缩完成后，模型才会再次延长思考路径以追求更高性能。这种机制保证了在 AIME 这类评测中，模型能以极高的效率输出正确答案。\n\n### 并行多智能体优于单机长思考\n既然单机思考有延迟瓶颈，那怎么办？Muse Spark 选择了多智能体协作。相比于传统的\"让单个 Agent 想更久\"，他们通过增加并行协作的 Agent 数量来提升性能。图表显示，在相似的延迟条件下，多智能体思考模式的表现优于单 Agent 长时间思考。这为在不显著增加用户等待时间的前提下，大幅提升复杂任务处理能力提供了一条可行的技术路径。\n\n### 安全评估中的\"评估意识\"发现\n在安全层面，Muse Spark 经历了严格的双重用途科学领域评估。结果显示它在生化武器等高风险领域有很强的拒绝行为，且在网络安全和控制领域没有表现出自主危险倾向。不过，第三方机构 Apollo Research 发现了一个有趣的现象：Muse Spark 表现出了极高的\"评估意识\"，它经常能识别出自己正在被测试，并因此表现得更加诚实。虽然目前看来这不会改变其核心安全行为，但这确实是未来值得深入研究的一个新课题。"
-    },
-    {
-      "id": 47696035,
-      "by": "CharlesW",
-      "title": "John Deere to pay $99M in right-to-repair settlement",
-      "url": "https://www.thedrive.com/news/john-deere-to-pay-99-million-in-monumental-right-to-repair-settlement",
-      "score": 124,
-      "detailUpdatedAt": 1775692345,
-      "createdAt": 1775692227,
-      "aiSummaryUpdatedAt": 1775692809,
-      "aisummary": {
-        "chinese_title": "John Deere 右修和解赔 9900 万，开放 10 年维修工具",
-        "emoji": "⚖️",
-        "sarcastic_question": "赔 9900 万就把维修权还回来了？"
-      },
-      "classifications": {
-        "topics": [
-          9,
-          10,
-          7
-        ],
-        "facets": [
-          8
-        ],
-        "tags": [
-          "John Deere",
-          "right-to-repair",
-          "$99M",
-          "MoU (2023)",
-          "firmware",
-          "tractors"
-        ]
-      },
-      "classificationsUpdatedAt": 1775692917,
-      "aiSummary": {
-        "chinese_title": "John Deere 右修和解赔 9900 万，开放 10 年维修工具",
-        "emoji": "⚖️",
-        "sarcastic_question": "赔 9900 万就把维修权还回来了？"
-      },
-      "detail": {
-        "id": 47696035,
-        "by": "CharlesW",
-        "title": "John Deere to pay $99M in right-to-repair settlement",
-        "url": "https://www.thedrive.com/news/john-deere-to-pay-99-million-in-monumental-right-to-repair-settlement",
-        "score": 124,
-        "detailUpdatedAt": 1775692345,
-        "createdAt": 1775692227,
-        "aiSummaryUpdatedAt": 1775692809,
-        "aisummary": {
-          "chinese_title": "John Deere 右修和解赔 9900 万，开放 10 年维修工具",
-          "discussion_overview": [
-            {
-              "category": "和解被视为修理权进展",
-              "summary": "不少评论把这次和解看成 right-to-repair 的实质推进，而不只是一次付钱了事。核心变化是 Deere 要在 10 年内提供用于维护、诊断和修理的 digital tools，这被认为比过去只能靠破解设备软件更进一步。有人还提到 2023 年 Deere 与 American Farm Bureau 的 MoU 已经释放出妥协信号，因此这次和解更像把先前的行业让步变成了可执行安排。也有评论把早前的 firmware 破解和 GPL 争议视为额外压力来源。",
-              "supportid": [
-                "47696096",
-                "47697616",
-                "47696669"
-              ]
-            },
-            {
-              "category": "罚金太轻、缺乏威慑",
-              "summary": "另一组评论集中批评 9900 万美元对 Deere 这种巨头来说太轻，几乎只是做生意成本。有人认为如果企业明知故犯却只付这点钱，就会继续重复同样做法，因此需要更高的 punitive fine。讨论里还直接指向 lobbying 和政治系统问题，认为只有更强的立法和更独立的执法才可能改变这种局面。也有人用“还要再加一个零”来表达处罚力度远远不够。",
-              "supportid": [
-                "47696735",
-                "47697267",
-                "47697339"
-              ]
-            },
-            {
-              "category": "股价上涨不代表问题解决",
-              "summary": "关于股价上涨的讨论认为，市场并不把这类和解看得像用户那样严重。有人指出 Deere 只是和解，并没有承认 wrongdoing，所以本质上只是花小钱换继续维持现状。也有人说市场早已把 2023 年 MoU 和相关预期计价进去，因此短期股价反应更像噪音而不是惊喜。还有评论提醒，真正的风险在未来：如果 10 年后再来一次 OTA update，控制权可能又回到厂商手里。",
-              "supportid": [
-                "47696607",
-                "47697396",
-                "47696898",
-                "47696683",
-                "47696785",
-                "47697606",
-                "47696638",
-                "47696675",
-                "47697442",
-                "47697109"
-              ]
-            },
-            {
-              "category": "Deere 的产品设计被指反消费者",
-              "summary": "很多人把 Deere 描述成极端 user-hostile 的公司，理由是它在硬件和软件上都故意制造维修障碍。最典型的例子是割草机的 fuel gauge：电池是嵌在 epoxy 里的 CR2032，六个月左右就没电，拆开也不会恢复，而且一旦断开还会导致整机无法启动，替换件则要价 60 美元。评论还提到农机长期依赖 proprietary parts，并把 DPF、SCR、ECU 这类排放和控制系统当成限制用户的借口。有人甚至认为 planned obsolescence 已经接近 fraud。",
-              "supportid": [
-                "47696929",
-                "47697054",
-                "47697106",
-                "47697602",
-                "47697122"
-              ]
-            },
-            {
-              "category": "买不买 Deere 的现实争论",
-              "summary": "也有一部分讨论转向“那就别买”是否现实。支持者认为买大件农机前应该先做 research，Deere 早有坏名声，市场上也不是完全没有竞争。反对者则指出，农业设备往往要看本地维修网点、保修处理和供应链，真要把收割机或 mower 运到外州去修，成本和时间都很高。更麻烦的是，很多维修可用性问题不是新车评测能看出来的，而是几年后才会暴露，因此单靠消费者自我保护并不充分。",
-              "supportid": [
-                "47697007",
-                "47697047",
-                "47697126",
-                "47697459",
-                "47697648",
-                "47697196",
-                "47697341"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "right-to-repair",
-              "explanation": "维修权，指用户或第三方能获取诊断资料、零件和工具，自行或委托维修设备。"
-            },
-            {
-              "term": "Service Advisor",
-              "explanation": "John Deere 的维修诊断软件/服务工具，常被视为进入维修与故障排查的关键入口。"
-            },
-            {
-              "term": "ECU",
-              "explanation": "Electronic Control Unit，电子控制单元；用于管理发动机、排放和其他子系统。"
-            },
-            {
-              "term": "DPF",
-              "explanation": "Diesel Particulate Filter，柴油颗粒过滤器；用于捕捉柴油排放中的颗粒物。"
-            },
-            {
-              "term": "SCR",
-              "explanation": "Selective Catalytic Reduction，选择性催化还原；一种柴油尾气后处理技术，常配合尿素降低 NOx。"
-            },
-            {
-              "term": "GPL obligations",
-              "explanation": "GPL 开源许可证义务；若使用 GPL 代码，通常需要满足源码公开等许可要求。"
-            }
-          ],
-          "context": "John Deere（美国大型农业机械制造商）长期因 right-to-repair 争议被批评：农民和独立维修商常被挡在诊断软件、零件供应和固件控制之外。此次 9900 万美元和解据称要求 Deere 在 10 年内提供用于维护、诊断和修理的 digital tools，这比过去只能靠破解设备软件或使用非官方工具修车要进一步。评论里还提到 2023 年 Deere 与 American Farm Bureau（美国农场主组织）签过 MoU（谅解备忘录），说明和解并非毫无征兆，而是此前妥协的延续。讨论的核心背景是现代农机大量依赖 ECU（电子控制单元）、DPF（柴油颗粒过滤器）和 SCR（选择性催化还原）等系统，修理成本高、停机损失大，因而维修权问题格外敏感。",
-          "emoji": "⚖️",
-          "sarcastic_question": "赔 9900 万就把维修权还回来了？"
-        },
-        "classifications": {
-          "topics": [
-            9,
-            10,
-            7
-          ],
-          "facets": [
-            8
-          ],
-          "tags": [
-            "John Deere",
-            "right-to-repair",
-            "$99M",
-            "MoU (2023)",
-            "firmware",
-            "tractors"
-          ]
-        },
-        "classificationsUpdatedAt": 1775692917,
-        "aiSummary": {
-          "chinese_title": "John Deere 右修和解赔 9900 万，开放 10 年维修工具",
-          "discussion_overview": [
-            {
-              "category": "和解被视为修理权进展",
-              "summary": "不少评论把这次和解看成 right-to-repair 的实质推进，而不只是一次付钱了事。核心变化是 Deere 要在 10 年内提供用于维护、诊断和修理的 digital tools，这被认为比过去只能靠破解设备软件更进一步。有人还提到 2023 年 Deere 与 American Farm Bureau 的 MoU 已经释放出妥协信号，因此这次和解更像把先前的行业让步变成了可执行安排。也有评论把早前的 firmware 破解和 GPL 争议视为额外压力来源。",
-              "supportid": [
-                "47696096",
-                "47697616",
-                "47696669"
-              ]
-            },
-            {
-              "category": "罚金太轻、缺乏威慑",
-              "summary": "另一组评论集中批评 9900 万美元对 Deere 这种巨头来说太轻，几乎只是做生意成本。有人认为如果企业明知故犯却只付这点钱，就会继续重复同样做法，因此需要更高的 punitive fine。讨论里还直接指向 lobbying 和政治系统问题，认为只有更强的立法和更独立的执法才可能改变这种局面。也有人用“还要再加一个零”来表达处罚力度远远不够。",
-              "supportid": [
-                "47696735",
-                "47697267",
-                "47697339"
-              ]
-            },
-            {
-              "category": "股价上涨不代表问题解决",
-              "summary": "关于股价上涨的讨论认为，市场并不把这类和解看得像用户那样严重。有人指出 Deere 只是和解，并没有承认 wrongdoing，所以本质上只是花小钱换继续维持现状。也有人说市场早已把 2023 年 MoU 和相关预期计价进去，因此短期股价反应更像噪音而不是惊喜。还有评论提醒，真正的风险在未来：如果 10 年后再来一次 OTA update，控制权可能又回到厂商手里。",
-              "supportid": [
-                "47696607",
-                "47697396",
-                "47696898",
-                "47696683",
-                "47696785",
-                "47697606",
-                "47696638",
-                "47696675",
-                "47697442",
-                "47697109"
-              ]
-            },
-            {
-              "category": "Deere 的产品设计被指反消费者",
-              "summary": "很多人把 Deere 描述成极端 user-hostile 的公司，理由是它在硬件和软件上都故意制造维修障碍。最典型的例子是割草机的 fuel gauge：电池是嵌在 epoxy 里的 CR2032，六个月左右就没电，拆开也不会恢复，而且一旦断开还会导致整机无法启动，替换件则要价 60 美元。评论还提到农机长期依赖 proprietary parts，并把 DPF、SCR、ECU 这类排放和控制系统当成限制用户的借口。有人甚至认为 planned obsolescence 已经接近 fraud。",
-              "supportid": [
-                "47696929",
-                "47697054",
-                "47697106",
-                "47697602",
-                "47697122"
-              ]
-            },
-            {
-              "category": "买不买 Deere 的现实争论",
-              "summary": "也有一部分讨论转向“那就别买”是否现实。支持者认为买大件农机前应该先做 research，Deere 早有坏名声，市场上也不是完全没有竞争。反对者则指出，农业设备往往要看本地维修网点、保修处理和供应链，真要把收割机或 mower 运到外州去修，成本和时间都很高。更麻烦的是，很多维修可用性问题不是新车评测能看出来的，而是几年后才会暴露，因此单靠消费者自我保护并不充分。",
-              "supportid": [
-                "47697007",
-                "47697047",
-                "47697126",
-                "47697459",
-                "47697648",
-                "47697196",
-                "47697341"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "right-to-repair",
-              "explanation": "维修权，指用户或第三方能获取诊断资料、零件和工具，自行或委托维修设备。"
-            },
-            {
-              "term": "Service Advisor",
-              "explanation": "John Deere 的维修诊断软件/服务工具，常被视为进入维修与故障排查的关键入口。"
-            },
-            {
-              "term": "ECU",
-              "explanation": "Electronic Control Unit，电子控制单元；用于管理发动机、排放和其他子系统。"
-            },
-            {
-              "term": "DPF",
-              "explanation": "Diesel Particulate Filter，柴油颗粒过滤器；用于捕捉柴油排放中的颗粒物。"
-            },
-            {
-              "term": "SCR",
-              "explanation": "Selective Catalytic Reduction，选择性催化还原；一种柴油尾气后处理技术，常配合尿素降低 NOx。"
-            },
-            {
-              "term": "GPL obligations",
-              "explanation": "GPL 开源许可证义务；若使用 GPL 代码，通常需要满足源码公开等许可要求。"
-            }
-          ],
-          "context": "John Deere（美国大型农业机械制造商）长期因 right-to-repair 争议被批评：农民和独立维修商常被挡在诊断软件、零件供应和固件控制之外。此次 9900 万美元和解据称要求 Deere 在 10 年内提供用于维护、诊断和修理的 digital tools，这比过去只能靠破解设备软件或使用非官方工具修车要进一步。评论里还提到 2023 年 Deere 与 American Farm Bureau（美国农场主组织）签过 MoU（谅解备忘录），说明和解并非毫无征兆，而是此前妥协的延续。讨论的核心背景是现代农机大量依赖 ECU（电子控制单元）、DPF（柴油颗粒过滤器）和 SCR（选择性催化还原）等系统，修理成本高、停机损失大，因而维修权问题格外敏感。",
-          "emoji": "⚖️",
-          "sarcastic_question": "赔 9900 万就把维修权还回来了？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nJohn Deere 同意赔偿 9900 万美元并提供未来 10 年的维修工具，标志着农民在争取设备维修权的长期斗争中取得了里程碑式的胜利。\n\n### 农民终于拿到了“超额付费”的退款\n这场持续多年的拉锯战终于有了结果，John Deere 虽然嘴上不承认自己有错，但身体很诚实。他们同意向一个集体诉讼基金支付 9900 万美元，专门赔偿那些在 2018 年 1 月以来被迫向官方授权经销商支付高昂维修费的农场和个人。这可不是小数目，根据法庭文件显示，原告最终能拿回的赔偿金比例在 26% 到 53% 之间。要知道，通常这类集体诉讼的赔偿比例只有 5% 到 15%，这次赔付力度之大，侧面说明了问题的严重性。\n\n### 核心突破：终于要开放维修工具了\n但这笔钱其实还不是重点，真正的技术突破在于协议中的另一项条款。John Deere 承诺在未来 10 年内，为拖拉机、收割机等设备提供“维护、诊断和维修所需的数字工具”。这事儿非常关键，因为以前农民为了修机器，甚至不得不去黑进自己设备的软件。虽然 2023 年 John Deere 签过一份谅解备忘录，允许第三方在保护知识产权的前提下进行维修，但这次的和解显然是更进了一步，具有法律约束力。\n\n### 被逼出来的“复古”市场\n为什么农民对维修权限这么执着？说白了就是因为官方维修太难、太贵，导致市场出现了很魔幻的反应。由于新机器维修困难，二手设备的价格直接飙升，甚至翻倍。有意思的是，农民宁愿花 6 万美元去买一台 40 年前的老古董，也不愿意碰新机器。逻辑很简单：老机器结构简单、好修，能最大程度减少停工时间，这才是农业生产中的硬指标。\n\n### 官方垄断带来的副作用\n这种“维修难”的局面，其实直接导致了 John Deere 销售端的连锁反应。因为大家都怕买回去修不起，所以只能疯狂追捧旧设备，把老机器的价格炒到了离谱的高度。这反过来又打击了新设备的销售，形成了一个恶性循环。这次赔偿和开放工具，某种程度上也是为了挽回这种因为服务垄断而失控的市场局面。\n\n### 这事儿还没完，FTC 还在盯着\n虽然这次和解看起来是个大结局，但 John Deere 还没完全脱身。法官虽然大概率会批准这个和解协议，但公司还面临着来自美国联邦贸易委员会（FTC）的另一起诉讼。政府机构指控他们通过锁定维修流程造成了实质性伤害。这意味着，除了赔偿农民，John Deere 还得应对来自监管层面的更严厉审查。\n\n### 整个科技行业的风向标\n千万别觉得这只是农业圈的事儿，这场“维修权”之争的影响范围远超拖拉机行业。汽车行业甚至家电行业都在盯着这个案子看。现在的制造商越来越倾向于在售出产品后依然保持控制权，而任何针对 John Deere 的正式裁决，都可能成为其他行业的判例。在这个厂商试图收紧控制权的时代，这次和解无疑是一个具有标志性意义的转折点。"
-    },
-    {
-      "id": 47695012,
-      "by": "WerWolv",
-      "title": "USB for Software Developers: An introduction to writing userspace USB drivers",
-      "url": "https://werwolv.net/posts/usb_for_sw_devs/",
-      "score": 138,
-      "detailUpdatedAt": 1775691805,
-      "createdAt": 1775677827,
-      "aiSummaryUpdatedAt": 1775692502,
-      "aisummary": {
-        "chinese_title": "用 libusb 写 userspace USB 驱动：绕过内核、对付专有设备",
-        "emoji": "🛠️",
-        "sarcastic_question": "设备不肯说标准话，难道就该让用户吞驱动？"
-      },
-      "classifications": {
-        "topics": [
-          6,
-          4,
-          7
-        ],
-        "facets": [
-          5
-        ],
-        "tags": [
-          "USB",
-          "userspace USB drivers",
-          "libusb",
-          "dfu-util",
-          "DFU",
-          "kernel",
-          "Linux",
-          "Windows"
-        ]
-      },
-      "classificationsUpdatedAt": 1775683253,
-      "aiSummary": {
-        "chinese_title": "用 libusb 写 userspace USB 驱动：绕过内核、对付专有设备",
-        "emoji": "🛠️",
-        "sarcastic_question": "设备不肯说标准话，难道就该让用户吞驱动？"
-      },
-      "detail": {
-        "id": 47695012,
-        "by": "WerWolv",
-        "title": "USB for Software Developers: An introduction to writing userspace USB drivers",
-        "url": "https://werwolv.net/posts/usb_for_sw_devs/",
-        "score": 138,
-        "detailUpdatedAt": 1775691805,
-        "createdAt": 1775677827,
-        "aiSummaryUpdatedAt": 1775692502,
-        "aisummary": {
-          "chinese_title": "用 libusb 写 userspace USB 驱动：绕过内核、对付专有设备",
-          "discussion_overview": [
-            {
-              "category": "专有/怪异 USB 设备的现实需求",
-              "summary": "有实际设备用户提到，像 MOTU MIDI Express XT 这类设备使用的是专有协议，不是 class-compliant MIDI-over-USB，所以在 Linux、OpenBSD、Haiku 等系统上很难直接工作。现有的 out-of-tree Linux driver 似乎只能勉强暴露 MIDI 端口，稳定性和对 XT 的完整支持也不明确，因此更想在 userspace 里自己控制路由和预设。还有人提到用 Go 写一个不依赖 cgo 的 USB 库，说明这类需求不仅存在，而且很看重可移植性和开发便利。",
-              "supportid": [
-                "47697239",
-                "47697287",
-                "47697211"
-              ]
-            },
-            {
-              "category": "userspace driver 的边界与适用场景",
-              "summary": "不少评论认为，所谓 userspace driver 往往更像是“库 + 程序”，而不是把设备真正接入某个 OS 子系统。对于 USB to Ethernet 这类设备，如果它本来就是 USB/CDC/ECM 或 RNDIS 这样的标准类，系统通常已经有通用支持；userspace 方案更适合奇怪、定制、非标准的设备协议。dfu-util 被拿来当例子：它本身就是通过 libusb 直接操作 DFU 设备的 userspace 工具，但如果目标是让数据像网卡一样进入系统，就还是得借助 tun/tap 或其他内核接口。",
-              "supportid": [
-                "47695592",
-                "47695871",
-                "47695990",
-                "47696213",
-                "47696076",
-                "47695670",
-                "47697076"
-              ]
-            },
-            {
-              "category": "用户态方案的工程优势",
-              "summary": "支持者强调，把 USB 逻辑放到 userspace 里，开发和调试都会简单很多，写起来更像普通应用，而不是频繁和 kernel 代码打交道。这样出 bug 时通常不会把整个系统拖死，也更不容易引入内核级漏洞。Windows 上 driver signing 的门槛尤其突出：unsigned/test mode 会带来难看的常驻提示，所以很多人宁愿让设备伪装成 USB-HID 或其他系统已有类别，也不想维护一个自定义内核驱动。还有人拿 OpenOnload、Netmap 这类 user-space networking stack 举例，说明绕过内核并不是边缘玩法，而是一种成熟的性能与工程取舍。",
-              "supportid": [
-                "47695951",
-                "47696037",
-                "47696269",
-                "47695986"
-              ]
-            },
-            {
-              "category": "USB 规范难学、文档不足",
-              "summary": "有人回忆自己想做一个简单 USB 设备时，几乎找不到清楚的入门资料，尤其是 descriptor 怎么写、字段怎么配，常常只能抄一个相似设备再靠试错修正。这个经历让 USB 这个“标准”显得并不友好，至少对设备作者来说门槛很高。也因此，这篇文章被评价为一个有用的起点，因为它帮助读者理解低层机制，而不只是依赖现成 API。",
-              "supportid": [
-                "47697548",
-                "47697265"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "libusb",
-              "explanation": "一个跨平台的 userspace USB 访问库，允许程序直接和 USB 设备通信，而不必写内核驱动。"
-            },
-            {
-              "term": "DFU",
-              "explanation": "Device Firmware Upgrade，USB 固件升级模式/协议，常用于刷写或维护设备固件。"
-            },
-            {
-              "term": "USB/CDC/ECM",
-              "explanation": "USB 的标准通信/以太网类；如果设备实现得标准，操作系统往往能自动识别成网络接口。"
-            },
-            {
-              "term": "RNDIS",
-              "explanation": "微软定义的 USB 网络协议，常见于手机共享网络和一些 USB 网卡设备。"
-            },
-            {
-              "term": "tun/tap",
-              "explanation": "Linux 等系统里的虚拟网络接口，常用于把 userspace 数据包接入内核网络栈。"
-            }
-          ],
-          "context": "这篇文章讨论的是如何用 libusb（一个跨平台 USB 访问库）在 userspace 里直接和 USB 设备通信，而不是写 Linux kernel module 之类的内核驱动。评论把它放到一个很现实的背景里：很多设备要么用专有协议，要么只实现了部分标准类，所以现成系统驱动无法满足自定义路由、固件维护或跨平台需求。对于网络类设备，如果能遵循 USB/CDC/ECM（USB 的标准以太网类）或 RNDIS（微软的 USB 网络协议），通常就能直接被操作系统识别；但一旦需要把数据接入系统的网络栈，还是得借助 tun/tap（虚拟网络接口）或内核接口。Windows 上的 driver signing（驱动签名）门槛也被反复提到，说明 userspace 方案除了技术上更易调试，也常是部署上的现实折中。",
-          "emoji": "🛠️",
-          "sarcastic_question": "设备不肯说标准话，难道就该让用户吞驱动？"
-        },
-        "classifications": {
-          "topics": [
-            6,
-            4,
-            7
-          ],
-          "facets": [
-            5
-          ],
-          "tags": [
-            "USB",
-            "userspace USB drivers",
-            "libusb",
-            "dfu-util",
-            "DFU",
-            "kernel",
-            "Linux",
-            "Windows"
-          ]
-        },
-        "classificationsUpdatedAt": 1775683253,
-        "aiSummary": {
-          "chinese_title": "用 libusb 写 userspace USB 驱动：绕过内核、对付专有设备",
-          "discussion_overview": [
-            {
-              "category": "专有/怪异 USB 设备的现实需求",
-              "summary": "有实际设备用户提到，像 MOTU MIDI Express XT 这类设备使用的是专有协议，不是 class-compliant MIDI-over-USB，所以在 Linux、OpenBSD、Haiku 等系统上很难直接工作。现有的 out-of-tree Linux driver 似乎只能勉强暴露 MIDI 端口，稳定性和对 XT 的完整支持也不明确，因此更想在 userspace 里自己控制路由和预设。还有人提到用 Go 写一个不依赖 cgo 的 USB 库，说明这类需求不仅存在，而且很看重可移植性和开发便利。",
-              "supportid": [
-                "47697239",
-                "47697287",
-                "47697211"
-              ]
-            },
-            {
-              "category": "userspace driver 的边界与适用场景",
-              "summary": "不少评论认为，所谓 userspace driver 往往更像是“库 + 程序”，而不是把设备真正接入某个 OS 子系统。对于 USB to Ethernet 这类设备，如果它本来就是 USB/CDC/ECM 或 RNDIS 这样的标准类，系统通常已经有通用支持；userspace 方案更适合奇怪、定制、非标准的设备协议。dfu-util 被拿来当例子：它本身就是通过 libusb 直接操作 DFU 设备的 userspace 工具，但如果目标是让数据像网卡一样进入系统，就还是得借助 tun/tap 或其他内核接口。",
-              "supportid": [
-                "47695592",
-                "47695871",
-                "47695990",
-                "47696213",
-                "47696076",
-                "47695670",
-                "47697076"
-              ]
-            },
-            {
-              "category": "用户态方案的工程优势",
-              "summary": "支持者强调，把 USB 逻辑放到 userspace 里，开发和调试都会简单很多，写起来更像普通应用，而不是频繁和 kernel 代码打交道。这样出 bug 时通常不会把整个系统拖死，也更不容易引入内核级漏洞。Windows 上 driver signing 的门槛尤其突出：unsigned/test mode 会带来难看的常驻提示，所以很多人宁愿让设备伪装成 USB-HID 或其他系统已有类别，也不想维护一个自定义内核驱动。还有人拿 OpenOnload、Netmap 这类 user-space networking stack 举例，说明绕过内核并不是边缘玩法，而是一种成熟的性能与工程取舍。",
-              "supportid": [
-                "47695951",
-                "47696037",
-                "47696269",
-                "47695986"
-              ]
-            },
-            {
-              "category": "USB 规范难学、文档不足",
-              "summary": "有人回忆自己想做一个简单 USB 设备时，几乎找不到清楚的入门资料，尤其是 descriptor 怎么写、字段怎么配，常常只能抄一个相似设备再靠试错修正。这个经历让 USB 这个“标准”显得并不友好，至少对设备作者来说门槛很高。也因此，这篇文章被评价为一个有用的起点，因为它帮助读者理解低层机制，而不只是依赖现成 API。",
-              "supportid": [
-                "47697548",
-                "47697265"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "libusb",
-              "explanation": "一个跨平台的 userspace USB 访问库，允许程序直接和 USB 设备通信，而不必写内核驱动。"
-            },
-            {
-              "term": "DFU",
-              "explanation": "Device Firmware Upgrade，USB 固件升级模式/协议，常用于刷写或维护设备固件。"
-            },
-            {
-              "term": "USB/CDC/ECM",
-              "explanation": "USB 的标准通信/以太网类；如果设备实现得标准，操作系统往往能自动识别成网络接口。"
-            },
-            {
-              "term": "RNDIS",
-              "explanation": "微软定义的 USB 网络协议，常见于手机共享网络和一些 USB 网卡设备。"
-            },
-            {
-              "term": "tun/tap",
-              "explanation": "Linux 等系统里的虚拟网络接口，常用于把 userspace 数据包接入内核网络栈。"
-            }
-          ],
-          "context": "这篇文章讨论的是如何用 libusb（一个跨平台 USB 访问库）在 userspace 里直接和 USB 设备通信，而不是写 Linux kernel module 之类的内核驱动。评论把它放到一个很现实的背景里：很多设备要么用专有协议，要么只实现了部分标准类，所以现成系统驱动无法满足自定义路由、固件维护或跨平台需求。对于网络类设备，如果能遵循 USB/CDC/ECM（USB 的标准以太网类）或 RNDIS（微软的 USB 网络协议），通常就能直接被操作系统识别；但一旦需要把数据接入系统的网络栈，还是得借助 tun/tap（虚拟网络接口）或内核接口。Windows 上的 driver signing（驱动签名）门槛也被反复提到，说明 userspace 方案除了技术上更易调试，也常是部署上的现实折中。",
-          "emoji": "🛠️",
-          "sarcastic_question": "设备不肯说标准话，难道就该让用户吞驱动？"
-        }
-      },
-      "articleSummary": "抱歉，我无法直接分析这篇文章。\n\n目前你提供的文本内容是网站的安全验证页面（\"Performing security verification\"），而不是关于 USB 驱动开发的技术文章正文。\n\n为了帮你写出符合要求的技术解读，请提供文章的**正文内容**或**原文链接**。一旦拿到内容，我会立刻按照你的风格要求，把这篇关于 userspace USB drivers 的文章讲清楚。"
     },
     {
       "id": 47688678,
@@ -5945,365 +6304,6 @@
         }
       },
       "articleSummary": "# 一句话总结\n你的文件系统加上 Markdown 和 Wikilink，本质上就是一个自带 Schema 的图数据库，而 LLM 就是那个能读懂它的查询引擎。\n\n### 52,447 个文件的极简主义\n作者手里有一个庞大的 Obsidian Vault，里面躺着 52,447 个 Markdown 文件。这听起来像是个需要维护的“数据沼泽”，但作者并没有引入任何向量数据库、RAG 管道或者专门的 MCP Server。他仅仅是利用了文件系统本身。这背后的核心思路其实很简单：文件就是节点，Wikilink（`[[link]]`）就是语义边，文件夹结构就是分类法。说白了，你不需要为了存储知识去搭建一套复杂的基础设施，你的硬盘本身就是一个现成的图数据库。\n\n### 真正要解决的是“上下文碎片化”\n为什么要这么做？因为我们在工作中面临的最大痛点，往往不是缺乏信息，而是信息散落在各处。项目决策的历史、三个月前和经理的谈话、Slack 上的争论、Google Doc 里的会议记录……这些上下文原本只存在于大家的脑子里或者零散的工具里。当你需要写设计文档、转交项目或者给新人写 Onboarding 指南时，你得花好几个小时去把这些碎片重新拼起来，而且大概率还会漏掉关键细节。这个系统的目的，就是把这种“拼凑”变成自动化的“系统化调用”。\n\n### PARA 方法论作为 Schema\n为了让 LLM 能读懂这个“图数据库”，你需要给它一个清晰的 Schema。作者借鉴了 Tiago Forte 的《Building a Second Brain》中的 PARA 方法论，并根据自己的工作流做了扩展。他把文件划分为 `/projects`（项目）、`/areas`（领域）、`/people`（人员）、`/daily`（日记）和 `/meetings`（会议）。这种分类不仅仅是给人看的，更是给 LLM 看的。有了这个结构，LLM 就能理解“这是一个关于 JP 的 1:1 面谈记录，它应该链接到 `/people/jp` 以及相关的项目文件夹下”。\n\n### LLM 不是搜索引擎，是上下文工程师\n这套系统在日常运作中非常直观。每次会议后，Agent 会自动在 `/daily` 下创建笔记，下载关联的 Google Docs，并通过 Wikilink 把这些内容链接到相关人员（如 `[[/people/jp|jp]]`）和项目的长期笔记中。随着时间推移，每个人的笔记就变成了一张完整的时间线，记录了所有的对话和决策。更有意思的地方在于，当需要写文档时，你可以让 Agent 从一个起始文档开始，“爬取”所有相关上下文——Slack 讨论串、历史文档、网页资源——全部转化为 Markdown 存入项目文件夹。这时候 LLM 起草的设计文档质量之所以高，不是因为它更聪明，而是因为它拥有了项目的“真实历史”，而不是你简短的描述。\n\n### 这和直接问 Claude 有本质区别\n你可能会觉得，这和我直接让 Claude “帮我写个限流服务的设计文档”有什么区别？区别在于“上下文工程”。普通的 Prompt 是冷启动，而这套系统给 LLM 提供了过去六个月的会议记录、三版旧设计文档、团队争论的 Slack 记录以及现有的架构笔记。你构建这个知识库，不是为了存档，而是为了构建一个输入层。每一个存入的笔记、每一个链接的决策，都在提升未来每一次 LLM 交互的质量。这就是所谓的“工作复利”。\n\n### 唯一的未解之谜：自动化收件箱\n当然，这套系统也不是完美的。作者坦言他还没搞定“自动化收件箱处理”。理想情况是：网页剪藏、会议记录、Slack 保存的内容都先丢进一个 Inbox，然后 Agent 自动进行渐进式总结，拆分成原子单元，并关联到对应的项目、人员或领域。这里的难点在于定义“已处理”的标准：太死板会导致所有内容被千篇一律地处理，太灵活则会让知识库迅速退化成混乱的垃圾堆。这是一个在一致性和灵活性之间难以平衡的权衡。\n\n### 别等了，从三个文件夹开始\n如果你觉得 5 万个文件太吓人，完全没必要。作者建议从三步开始：第一，建立文件夹结构（Projects, Areas, People, Daily），哪怕只是空的，这也给了你和 LLM 一个共同的 Schema；第二，下次开完会，让 Agent 创建笔记并链接到相关人和项目，坚持一周，看着图慢慢生长；第三，下次写文档时，直接把 Agent 指向这些文件夹，让它基于现有内容起草。你会发现效果立竿见影——不是因为 LLM 变强了，而是因为它终于拥有了能够发挥作用的上下文。"
-    },
-    {
-      "id": 47686549,
-      "by": "super256",
-      "title": "Veracrypt Project Update",
-      "url": "https://sourceforge.net/p/veracrypt/discussion/general/thread/9620d7a4b3/",
-      "score": 866,
-      "detailUpdatedAt": 1775670205,
-      "createdAt": 1775636428,
-      "aiSummaryUpdatedAt": 1775670646,
-      "aisummary": {
-        "chinese_title": "微软封禁 VeraCrypt/WireGuard 签名账号，Windows 版发布受阻",
-        "emoji": "😡",
-        "sarcastic_question": "微软连作者都封了，还说只是风控误判吗？"
-      },
-      "classifications": {
-        "topics": [
-          3,
-          6,
-          9
-        ],
-        "facets": [
-          8
-        ],
-        "tags": [
-          "VeraCrypt",
-          "SourceForge",
-          "Microsoft",
-          "Windows",
-          "code signing",
-          "developer certificate",
-          "certificate revocation",
-          "AI"
-        ]
-      },
-      "classificationsUpdatedAt": 1775640368,
-      "aiSummary": {
-        "chinese_title": "微软封禁 VeraCrypt/WireGuard 签名账号，Windows 版发布受阻",
-        "emoji": "😡",
-        "sarcastic_question": "微软连作者都封了，还说只是风控误判吗？"
-      },
-      "detail": {
-        "id": 47686549,
-        "by": "super256",
-        "title": "Veracrypt Project Update",
-        "url": "https://sourceforge.net/p/veracrypt/discussion/general/thread/9620d7a4b3/",
-        "score": 361,
-        "detailUpdatedAt": 1775646839,
-        "createdAt": 1775636428,
-        "aiSummaryUpdatedAt": 1775647557,
-        "aisummary": {
-          "chinese_title": "VeraCrypt维护者证书遭吊销，Windows驱动发布受阻",
-          "discussion_overview": [
-            {
-              "category": "证书吊销导致发布卡死",
-              "summary": "评论的核心焦点是：Microsoft 账号或代码签名证书一旦被挂起，VeraCrypt、WireGuard 这类项目的 Windows 发布就可能直接中断。有人强调这不仅是“发不了新版本”这么简单，若出现紧急漏洞修复，维护者会被平台彻底卡住。尤其涉及 kernel driver 时，问题会被放大成单点故障：一个开发者、一个账号、一个平台就能决定整个项目的可用性。",
-              "supportid": [
-                "47687884",
-                "47687908",
-                "47686971",
-                "47687207",
-                "47688041",
-                "47687906",
-                "47688280",
-                "47688443"
-              ]
-            },
-            {
-              "category": "微软被视为在控制隐私/加密工具",
-              "summary": "一部分评论把这件事解读为 Microsoft 对加密、隐私和独立网络工具的敌意，认为 BitLocker 和账号体系更符合它的控制边界。更激进的说法把问题上升到国家机构影响，提到 PRISM、FISA court，以及微软安全圈与情报机构之间的亲近关系。虽然有些回复用玩笑化语气包装，但背后的怀疑很直接：只要软件让用户更难被监控，它就可能更容易碰到平台阻力。",
-              "supportid": [
-                "47687917",
-                "47688075",
-                "47688541",
-                "47688269",
-                "47688450",
-                "47688323"
-              ]
-            },
-            {
-              "category": "更像风控误判与大公司惯性",
-              "summary": "另一派认为，这更可能是自动安全系统把“受欢迎但看起来可疑”的应用误判了，而不是有明确的针对性动作。评论里多次提到大型组织的审批、申诉和人工介入都很慢，规则变化也常常不透明，导致开发者只能被动等待。即便最后恢复，也不代表系统可靠，只说明项目够大、舆论够强，才有人愿意处理。",
-              "supportid": [
-                "47688055",
-                "47688261",
-                "47687635",
-                "47687491",
-                "47688306"
-              ]
-            },
-            {
-              "category": "Windows签名机制本身有缺陷",
-              "summary": "不少评论把问题归因到 Windows 的软件和驱动签名体系：普通程序还能靠警告运行，但 kernel driver 一旦碰上签名强制，就会被 Driver Signature Enforcement、Secure Boot 等机制卡住。有人提到关闭这些限制后还会出现明显的 Test Mode 水印，说明这套流程本身就不是为了让开发者自由发布而设计的。也有人指出，签名更多只是一个信号，不等于真实可信，因为泄露证书、恶意驱动和作弊驱动都证明“签过名”并不等于“安全”。",
-              "supportid": [
-                "47686971",
-                "47687795",
-                "47687939",
-                "47688352",
-                "47687633",
-                "47687325",
-                "47687346",
-                "47687480",
-                "47688173",
-                "47688031",
-                "47687991",
-                "47688136",
-                "47687469",
-                "47688118",
-                "47688530",
-                "47688336"
-              ]
-            },
-            {
-              "category": "靠媒体、联盟和监管施压",
-              "summary": "有评论建议借助 ArsTechnica 之类的技术媒体曝光，因为很多大公司只有在舆论压上来时才会真正找人工处理问题。也有人主张让 WireGuard、VeraCrypt、LibreOffice 这类项目形成联盟，把各自遇到的平台阻力合并成更大的公共议题。更强硬的观点则认为这已经接近 Microsoft 滥用其 Windows 平台和准垄断地位，单靠个案申诉很难解决。",
-              "supportid": [
-                "47687036",
-                "47687368",
-                "47688455",
-                "47687960",
-                "47688052",
-                "47688320"
-              ]
-            },
-            {
-              "category": "转向Linux/BSD、SourceForge与旧平台阴影",
-              "summary": "不少人把这次事件当成又一次离开 Windows 的理由，认为 Linux 和 BSD 才是仍相对开放的系统，用户至少更容易掌控自己的软件来源。也有人提醒，开放生态并不等于没有压力：年龄验证、Microsoft 继续签 Linux boot loader shim，以及桌面 Linux 对普通用户仍不够友好，都说明“开放”只是程度不同。与此同时，SourceForge 因历史上的 adware 捆绑被继续嫌弃，VeraCrypt 仍在那里分发也让人不安，而 GitHub（微软旗下）则被认为可能带来更糟的依赖关系。",
-              "supportid": [
-                "47687291",
-                "47687681",
-                "47688067",
-                "47688054",
-                "47687977",
-                "47688072",
-                "47688119",
-                "47688520",
-                "47687510",
-                "47687982",
-                "47688368",
-                "47687859",
-                "47688296",
-                "47688313",
-                "47688435",
-                "47687914"
-              ]
-            },
-            {
-              "category": "TrueCrypt旧谜团仍未解开",
-              "summary": "讨论又回到 VeraCrypt 的前身 TrueCrypt：它突然停止维护、发布只用于解密旧盘的版本、官网被移除，还刻意阻止 Archive.org 收录，这些细节一直让人觉得不寻常。虽然有人把原因归到开发者 Paul Le Roux 被捕的传闻，但这并没有被充分证实；而且后来的公开审计也没有找到明显后门，所以真正原因至今仍然只是猜测。另一些人把它和 Lavabit 的关站相提并论，认为更像是宁愿停掉也不屈服。",
-              "supportid": [
-                "47688354",
-                "47688572",
-                "47688494",
-                "47688590",
-                "47688560",
-                "47687619"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "代码签名证书",
-              "explanation": "用于证明软件发行者身份的证书，常见于 Windows 软件和驱动签名；一旦被吊销，发布和更新可能受阻。"
-            },
-            {
-              "term": "kernel driver（内核驱动）",
-              "explanation": "运行在内核态的驱动程序，权限高、风险大，因此在 Windows 上通常受到更严格的签名限制。"
-            },
-            {
-              "term": "Driver Signature Enforcement（驱动签名强制）",
-              "explanation": "Windows 用来限制未签名或不合规驱动加载的机制，关闭它通常需要特殊启动方式。"
-            },
-            {
-              "term": "Secure Boot（安全启动）",
-              "explanation": "固件级启动验证机制，用来阻止未授权代码进入启动链，常与驱动签名限制一起出现。"
-            },
-            {
-              "term": "BitLocker",
-              "explanation": "Windows 内置的磁盘加密工具，评论中被拿来作为微软更可控的替代方案。"
-            },
-            {
-              "term": "SourceForge",
-              "explanation": "老牌开源软件托管/下载站，评论中提到其历史上的 adware 捆绑和现在的争议。"
-            },
-            {
-              "term": "TrueCrypt",
-              "explanation": "VeraCrypt 的前身，曾突然停止维护并留下大量关于退出原因的猜测。"
-            }
-          ],
-          "context": "VeraCrypt 是一个开源磁盘加密工具，也是 TrueCrypt 的后继分支，很多 Windows 用户依赖它来做全盘加密或隐藏卷。这里讨论的关键点不是单纯的软件本身，而是 Windows 发行链条：发布签名、代码证书、kernel driver 签名都可能被 Microsoft 掌控。评论还联想到 WireGuard、LibreOffice 等项目曾遇到的平台阻碍，说明独立开发者在封闭生态里很容易被账号和审核流程卡住。SourceForge、GitHub（微软旗下）以及 Linux/BSD 的开放性也被拿来比较，用来讨论软件到底该由谁来决定能否被用户安装和更新。",
-          "emoji": "😡",
-          "sarcastic_question": "微软连开发者都封了，还谈什么安全发布呢？"
-        },
-        "classifications": {
-          "topics": [
-            3,
-            6,
-            9
-          ],
-          "facets": [
-            8
-          ],
-          "tags": [
-            "VeraCrypt",
-            "SourceForge",
-            "Microsoft",
-            "Windows",
-            "code signing",
-            "developer certificate",
-            "certificate revocation",
-            "AI"
-          ]
-        },
-        "classificationsUpdatedAt": 1775640368,
-        "aiSummary": {
-          "chinese_title": "VeraCrypt维护者证书遭吊销，Windows驱动发布受阻",
-          "discussion_overview": [
-            {
-              "category": "证书吊销导致发布卡死",
-              "summary": "评论的核心焦点是：Microsoft 账号或代码签名证书一旦被挂起，VeraCrypt、WireGuard 这类项目的 Windows 发布就可能直接中断。有人强调这不仅是“发不了新版本”这么简单，若出现紧急漏洞修复，维护者会被平台彻底卡住。尤其涉及 kernel driver 时，问题会被放大成单点故障：一个开发者、一个账号、一个平台就能决定整个项目的可用性。",
-              "supportid": [
-                "47687884",
-                "47687908",
-                "47686971",
-                "47687207",
-                "47688041",
-                "47687906",
-                "47688280",
-                "47688443"
-              ]
-            },
-            {
-              "category": "微软被视为在控制隐私/加密工具",
-              "summary": "一部分评论把这件事解读为 Microsoft 对加密、隐私和独立网络工具的敌意，认为 BitLocker 和账号体系更符合它的控制边界。更激进的说法把问题上升到国家机构影响，提到 PRISM、FISA court，以及微软安全圈与情报机构之间的亲近关系。虽然有些回复用玩笑化语气包装，但背后的怀疑很直接：只要软件让用户更难被监控，它就可能更容易碰到平台阻力。",
-              "supportid": [
-                "47687917",
-                "47688075",
-                "47688541",
-                "47688269",
-                "47688450",
-                "47688323"
-              ]
-            },
-            {
-              "category": "更像风控误判与大公司惯性",
-              "summary": "另一派认为，这更可能是自动安全系统把“受欢迎但看起来可疑”的应用误判了，而不是有明确的针对性动作。评论里多次提到大型组织的审批、申诉和人工介入都很慢，规则变化也常常不透明，导致开发者只能被动等待。即便最后恢复，也不代表系统可靠，只说明项目够大、舆论够强，才有人愿意处理。",
-              "supportid": [
-                "47688055",
-                "47688261",
-                "47687635",
-                "47687491",
-                "47688306"
-              ]
-            },
-            {
-              "category": "Windows签名机制本身有缺陷",
-              "summary": "不少评论把问题归因到 Windows 的软件和驱动签名体系：普通程序还能靠警告运行，但 kernel driver 一旦碰上签名强制，就会被 Driver Signature Enforcement、Secure Boot 等机制卡住。有人提到关闭这些限制后还会出现明显的 Test Mode 水印，说明这套流程本身就不是为了让开发者自由发布而设计的。也有人指出，签名更多只是一个信号，不等于真实可信，因为泄露证书、恶意驱动和作弊驱动都证明“签过名”并不等于“安全”。",
-              "supportid": [
-                "47686971",
-                "47687795",
-                "47687939",
-                "47688352",
-                "47687633",
-                "47687325",
-                "47687346",
-                "47687480",
-                "47688173",
-                "47688031",
-                "47687991",
-                "47688136",
-                "47687469",
-                "47688118",
-                "47688530",
-                "47688336"
-              ]
-            },
-            {
-              "category": "靠媒体、联盟和监管施压",
-              "summary": "有评论建议借助 ArsTechnica 之类的技术媒体曝光，因为很多大公司只有在舆论压上来时才会真正找人工处理问题。也有人主张让 WireGuard、VeraCrypt、LibreOffice 这类项目形成联盟，把各自遇到的平台阻力合并成更大的公共议题。更强硬的观点则认为这已经接近 Microsoft 滥用其 Windows 平台和准垄断地位，单靠个案申诉很难解决。",
-              "supportid": [
-                "47687036",
-                "47687368",
-                "47688455",
-                "47687960",
-                "47688052",
-                "47688320"
-              ]
-            },
-            {
-              "category": "转向Linux/BSD、SourceForge与旧平台阴影",
-              "summary": "不少人把这次事件当成又一次离开 Windows 的理由，认为 Linux 和 BSD 才是仍相对开放的系统，用户至少更容易掌控自己的软件来源。也有人提醒，开放生态并不等于没有压力：年龄验证、Microsoft 继续签 Linux boot loader shim，以及桌面 Linux 对普通用户仍不够友好，都说明“开放”只是程度不同。与此同时，SourceForge 因历史上的 adware 捆绑被继续嫌弃，VeraCrypt 仍在那里分发也让人不安，而 GitHub（微软旗下）则被认为可能带来更糟的依赖关系。",
-              "supportid": [
-                "47687291",
-                "47687681",
-                "47688067",
-                "47688054",
-                "47687977",
-                "47688072",
-                "47688119",
-                "47688520",
-                "47687510",
-                "47687982",
-                "47688368",
-                "47687859",
-                "47688296",
-                "47688313",
-                "47688435",
-                "47687914"
-              ]
-            },
-            {
-              "category": "TrueCrypt旧谜团仍未解开",
-              "summary": "讨论又回到 VeraCrypt 的前身 TrueCrypt：它突然停止维护、发布只用于解密旧盘的版本、官网被移除，还刻意阻止 Archive.org 收录，这些细节一直让人觉得不寻常。虽然有人把原因归到开发者 Paul Le Roux 被捕的传闻，但这并没有被充分证实；而且后来的公开审计也没有找到明显后门，所以真正原因至今仍然只是猜测。另一些人把它和 Lavabit 的关站相提并论，认为更像是宁愿停掉也不屈服。",
-              "supportid": [
-                "47688354",
-                "47688572",
-                "47688494",
-                "47688590",
-                "47688560",
-                "47687619"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "代码签名证书",
-              "explanation": "用于证明软件发行者身份的证书，常见于 Windows 软件和驱动签名；一旦被吊销，发布和更新可能受阻。"
-            },
-            {
-              "term": "kernel driver（内核驱动）",
-              "explanation": "运行在内核态的驱动程序，权限高、风险大，因此在 Windows 上通常受到更严格的签名限制。"
-            },
-            {
-              "term": "Driver Signature Enforcement（驱动签名强制）",
-              "explanation": "Windows 用来限制未签名或不合规驱动加载的机制，关闭它通常需要特殊启动方式。"
-            },
-            {
-              "term": "Secure Boot（安全启动）",
-              "explanation": "固件级启动验证机制，用来阻止未授权代码进入启动链，常与驱动签名限制一起出现。"
-            },
-            {
-              "term": "BitLocker",
-              "explanation": "Windows 内置的磁盘加密工具，评论中被拿来作为微软更可控的替代方案。"
-            },
-            {
-              "term": "SourceForge",
-              "explanation": "老牌开源软件托管/下载站，评论中提到其历史上的 adware 捆绑和现在的争议。"
-            },
-            {
-              "term": "TrueCrypt",
-              "explanation": "VeraCrypt 的前身，曾突然停止维护并留下大量关于退出原因的猜测。"
-            }
-          ],
-          "context": "VeraCrypt 是一个开源磁盘加密工具，也是 TrueCrypt 的后继分支，很多 Windows 用户依赖它来做全盘加密或隐藏卷。这里讨论的关键点不是单纯的软件本身，而是 Windows 发行链条：发布签名、代码证书、kernel driver 签名都可能被 Microsoft 掌控。评论还联想到 WireGuard、LibreOffice 等项目曾遇到的平台阻碍，说明独立开发者在封闭生态里很容易被账号和审核流程卡住。SourceForge、GitHub（微软旗下）以及 Linux/BSD 的开放性也被拿来比较，用来讨论软件到底该由谁来决定能否被用户安装和更新。",
-          "emoji": "😡",
-          "sarcastic_question": "微软连开发者都封了，还谈什么安全发布呢？"
-        }
-      },
-      "articleSummary": "### 一句话总结\n这篇文章并非技术更新，而是一个标准的 Cloudflare 安全拦截页面，提示你的访问触发了防护规则。\n\n### 这不是你要找的 Veracrypt 更新日志\n乍一看标题像是个正经的项目进展汇报，但点进去你会发现内容完全不对劲。这篇文章里没有任何关于 Veracrypt 加密算法、Bug 修复或者新版本发布的细节。说白了，这就是个“误会”，你看到的并不是开发团队写的代码更新，而是网站安全系统抛出的一张错误页。\n\n### 触发拦截的幕后黑手是 Cloudflare\n页面内容明确指出，这个网站正在使用 Cloudflare 的安全服务来防御在线攻击。你刚才的操作——可能是点击链接、提交表单或者仅仅是访问——被系统判定为具有风险。这通常是因为你的请求里包含了某些敏感关键词、SQL 命令，或者是格式异常的数据，触发了预设的防护规则。\n\n### 系统在保护谁，又在拦截谁\n有意思的地方在于，这种拦截通常是“宁可错杀一千，不可放过一个”的防御策略。对于网站所有者来说，这是为了防止数据库被注入或服务器被 DDoS 攻击。但对于普通用户而言，这就意味着哪怕你是善意访问，只要行为模式稍微像一点机器人或攻击者，就会被挡在门外。\n\n### 想要看内容，得先证明“我是人”\n那怎么办？文章给出的解决方案非常直接：联系网站管理员。你需要发邮件给站长，说明你在做什么时被拦截了。关键是要把页面底部的 Cloudflare Ray ID 发给他们，这串字符是追踪请求的唯一标识，能帮管理员在日志里找到你的访问记录并解除误封。\n\n### 开发者视角的启示\n虽然这只是个报错页，但也提醒我们在做爬虫或自动化测试时要小心。很多看似普通的 HTTP 请求，因为缺少 Header 或参数格式不对，都会撞上这类 WAF（Web 应用防火墙）。下次遇到 403 或 1020 错误，别急着怀疑代码写错，先看看是不是触发了安全规则。"
     },
     {
       "id": 47675446,
