@@ -1,10 +1,29 @@
 {
   "date": "2026-04-10",
   "total_feeds": 92,
-  "success_feeds": 86,
-  "total_articles": 2564,
-  "filtered_articles": 19,
+  "success_feeds": 85,
+  "total_articles": 2539,
+  "filtered_articles": 20,
   "articles": [
+    {
+      "title": "Writing an LLM from scratch, part 32j -- Interventions: trying to train a better model in the cloud",
+      "title_zh": "从零训练 LLM：云端训练干预实验",
+      "link": "https://www.gilesthomas.com/2026/04/llm-from-scratch-32j-interventions-trying-to-train-a-better-model-in-the-cloud",
+      "pub_date": "2026-04-09T20:00:00.000Z",
+      "summary": "## 一句话总结\n作者通过在云端叠加测试多种训练干预手段，成功将自研 163M 参数 GPT-2 模型的测试集 Loss 从 3.944 降至 3.577，逼近原版 GPT-2 的 3.500 水平，并发现“移除 Dropout + 梯度裁剪 + 调度学习率 + 调整 Weight Decay”是最佳组合。\n\n---\n\n### 从单点优化到组合拳：如何逼近 GPT-2 的性能基准\n作者之前在本地 RTX 3090 上训练的 163M 参数 GPT-2 模型，测试集 Loss 卡在了 3.944，而原版 GPT-2 权重在同样数据集上能达到 3.500。为了缩小这 0.444 的差距，作者把训练搬到了云端，先通过单变量测试筛选出了一些有效的干预手段。现在的问题是：这些单独看起来有效的手段，组合在一起会发生什么？是效果叠加，还是相互抵消？作者没有选择穷举所有组合（那太烧钱了），而是设计了一套精巧的实验流程来寻找最优解。\n\n### 筛选有效手段：排除噪音与负优化\n在之前的单变量测试中，并不是所有改动都是正向的。比如“权重共享”和“Cerebras 风格的 Weight Decay”就被证明是负优化，直接排除。虽然“全精度 Float32”训练有一点点提升，但考虑到时间和金钱成本，性价比太低也被砍掉。最终，作者锁定了五个看起来有潜力的候选方案：梯度裁剪、QKV Bias、调整 Weight Decay（从 0.1 改为 0.01）、移除 Dropout，以及使用带预热和余弦衰减的调度学习率。\n\n### 干预手段之间的化学反应：独立还是耦合？\n把这些手段一股脑堆上去并不一定行得通，因为它们之间可能存在耦合。比如，Weight Decay 和学习率在标准梯度下降中就有很强的交互作用，之前的测试都是基于固定的学习率得出的结论，现在同时改动可能会有风险。此外，作者还担心随机性带来的噪音，比如梯度裁剪的效果可能就在噪音范围内，而 QKV Bias 会显著改变初始权重分布，这让它的效果显得不那么纯粹。基于这些考量，作者决定分步进行实验。\n\n### 第一次尝试：除了 QKV Bias 全部上阵\n第一轮训练，作者把除了 QKV Bias 以外的四个手段全加上了：梯度裁剪设为 3.5，Weight Decay 改为 0.01，移除 Dropout，学习率调整为 0.0014 并配合余弦衰减。训练过程很顺利，最终训练集 Loss 降到了 3.557。在测试集上跑了一下，结果是 3.577761。这是目前为止最好的成绩，虽然还没追上原版 GPT-2，但方向显然是对的。\n\n### 引入 QKV Bias：反而拖了后腿\n为了验证 QKV Bias 的作用，作者开启了第二轮训练，在上一轮的基础上加上了 QKV Bias。从图表上看，这轮训练的梯度范数在中间阶段出现了更多需要裁剪的尖峰，最终训练集 Loss 也略高一点，为 3.584。测试结果印证了直觉：测试集 Loss 为 3.604342。这比第一轮差，说明 QKV Bias 在这个组合中不仅没帮忙，反而起了反作用，或者至少是不必要的。\n\n### 回调 Weight Decay：寻找正则化的平衡点\n既然加了 QKV Bias 效果不好，作者决定把它去掉。同时，他对那个非常规的 Weight Decay 值（0.01）也不太放心，毕竟现在的标准通常是 0.1。于是第三轮训练保留了“移除 Dropout、梯度裁剪、调度学习率”，但把 Weight Decay 调回了 0.1。这轮训练的 Loss 曲线波动明显变大了，作者认为这是因为更强的正则化让模型对数据分布的变化更敏感。最终测试集 Loss 为 3.590266，介于前两次之间，证明了 0.01 的 Weight Decay 确实是更优的选择。\n\n### 最终结论：最佳配置与性能提升\n经过三轮云上训练，结果已经很清晰了。最佳方案是第一轮的配置：梯度裁剪、移除 Dropout、调度学习率，以及将 Weight Decay 设为 0.01。这个组合将测试集 Loss 从基准的 3.691526（云端基准）进一步拉低到了 3.577761。虽然距离原版 GPT-2 的 3.500 还有一段距离，但这已经是一个相当显著的提升，而且证明了通过合理的干预组合，确实能从零开始训练出一个更优秀的模型。",
+      "source_name": "gilesthomas.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "GPT-2",
+        "training",
+        "weight decay",
+        "learning rate"
+      ],
+      "rank": 1
+    },
     {
       "title": "How do you add or remove a handle from an active Wait­For­Multiple­Objects?",
       "title_zh": "WaitForMultipleObjects 动态增删句柄的方案",
@@ -22,7 +41,7 @@
         "Windows",
         "concurrency"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Fewer Computers, Fewer Problems: Going Local With Builds & Deployments",
@@ -41,7 +60,7 @@
         "Netlify",
         "build process"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Random hexagon fractal",
@@ -60,7 +79,7 @@
         "chaos game",
         "triangle center"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Lickspittle of the Week: Todd Blanche",
@@ -77,7 +96,7 @@
         "politics",
         "quote"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "The Great Pyramid of Giza and the Speed of Light",
@@ -95,7 +114,7 @@
         "speed of light",
         "pyramid"
       ],
-      "rank": 5
+      "rank": 6
     }
   ]
 }
