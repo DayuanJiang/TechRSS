@@ -1,0 +1,47 @@
+{
+  "date": "2026-04-10",
+  "total_feeds": 92,
+  "success_feeds": 85,
+  "total_articles": 2539,
+  "filtered_articles": 16,
+  "articles": [
+    {
+      "title": "How do you add or remove a handle from an active Wait­For­Multiple­Objects?",
+      "title_zh": "WaitForMultipleObjects 动态增删句柄的方案",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260409-00/?p=112220",
+      "pub_date": "2026-04-09T14:00:00.000Z",
+      "summary": "## 一句话总结\n通过维护“期望列表”并用 `DuplicateHandle` 制作快照，配合一个专用的“变更事件”，实现了在不中断等待的情况下动态更新 `WaitForMultipleObjects` 的监听列表。\n\n---\n\n### 消息队列行不通，得换个思路\n上次我们聊了 `MsgWaitForMultipleObjects`，因为它能响应消息，所以发个自定义消息就能把线程叫醒并更新列表。但 `WaitForMultipleObjects` 没这功能，它就是个铁憨憨，死等直到有信号。那怎么办？既然不能发消息，我们就得伪造一个“信号”。核心思路其实很简单：引入一个额外的 Event，专门用来表示“列表变了”。把这个 Event 也塞进等待列表里，只要有人想修改列表，就触发这个 Event，等待线程自然就会醒过来。\n\n### 双列表设计：把“想要”和“正在”分开\n直接在等待线程里操作列表太危险，容易死锁或者竞态。这里有个巧妙的设计：维护两个列表。一个是 `desiredHandles`（期望列表），记录你想要监听哪些句柄；另一个是等待线程实际使用的快照。任何想修改列表的线程，只管去改 `desiredHandles`，改完后触发那个“变更 Event”。等待线程醒来后，发现是变更 Event 触发了，就把 `desiredHandles` 完整地拷贝一份，作为下一轮等待的依据。这样读写互不干扰，逻辑非常清晰。\n\n### 为什么必须用 DuplicateHandle？\n这里有个极易踩坑的细节：拷贝句柄不能简单地赋值。因为别的线程可能会在修改 `desiredHandles` 时把某个句柄关掉（CloseHandle）。如果等待线程手里拿的是原始句柄的引用，那就等着崩溃吧。所以代码里用 `DuplicateHandle` 把句柄复制了一份。复制品有独立的生命周期，即使原始句柄被关了，也不影响正在进行的等待操作。这是保证线程安全的关键一步。\n\n### 等待线程的主循环逻辑\n等待线程的逻辑其实就是一个死循环。每次循环开始，它先加锁，把 `desiredHandles` 里的所有句柄（包括那个特殊的“变更 Event”）都 `Duplicate` 一份到本地数组 `handles` 里。然后调用 `WaitForMultipleObjects` 进入等待。如果醒来的索引是最后一个（也就是那个变更 Event），说明列表变了，那就 `continue` 进入下一轮循环重新拷贝。如果是其他索引，就执行对应的回调函数。这种设计把“配置更新”和“事件处理”完美解耦了。\n\n### 性能优化：没变就不动\n上面的逻辑有个小瑕疵：每次醒来都重新拷贝列表，哪怕列表根本没变。作者做了一个简单的优化：加了个 `update` 标志位。只有当“变更 Event”触发时，才把 `update` 设为 `true`，下一轮循环才会去重新拷贝句柄。如果是因为普通业务句柄触发而醒来的，`update` 保持 `false`，直接复用上次的 `handles` 数组。这减少了大量不必要的系统调用和内存操作，特别是在高频触发的场景下很有用。\n\n### 异步更新带来的副作用\n这个方案虽然优雅，但并不是完美的。因为它本质上是“异步”的。当你调用 `change_handle_list` 删除一个句柄并清理相关资源时，等待线程可能正忙着处理上一个回调，还没来得及更新列表。这就导致了一个尴尬的局面：你以为已经告诉它停止监听了，但它可能还会在下一秒收到那个已删除句柄的信号，并尝试调用回调。这时候回调里访问的资源可能已经被你释放了，程序直接崩。下一篇我们看看怎么把这种异步改成同步，彻底解决这个问题。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "WaitForMultipleObjects",
+        "DuplicateHandle",
+        "Windows",
+        "concurrency"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Fewer Computers, Fewer Problems: Going Local With Builds & Deployments",
+      "title_zh": "从 Netlify 迁回本地构建部署",
+      "link": "https://blog.jim-nielsen.com/2026/fewer-computers-fewer-problems/",
+      "pub_date": "2026-04-09T19:00:00.000Z",
+      "summary": "作者将个人笔记网站从 Netlify 远程构建迁移到本地构建部署。原架构依赖 Dropbox API 和 Netlify 服务器，构建时间长达 5-6 分钟且经常出现不可预测的失败。新方案关闭 Netlify 构建，改为本地从文件夹读取 markdown 内容，通过 `npm run deploy` 命令执行 `git pull && npm ci && netlify deploy --build --prod`，并配置 macOS 快捷键一键触发。虽然失去了从移动设备编辑和部署的能力，但消除了跨机器环境差异导致的调试问题，实现了 \"works on my machine\" 即可部署的确定性。",
+      "source_name": "blog.jim-nielsen.com",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "local-first",
+        "deployment",
+        "Netlify",
+        "build process"
+      ],
+      "rank": 2
+    }
+  ]
+}
