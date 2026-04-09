@@ -1,10 +1,29 @@
 {
   "date": "2026-04-09",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2539,
-  "filtered_articles": 14,
+  "success_feeds": 86,
+  "total_articles": 2564,
+  "filtered_articles": 16,
   "articles": [
+    {
+      "title": "Package Security Defenses for AI Agents",
+      "title_zh": "AI 编程代理的包安全防御策略",
+      "link": "https://nesbitt.io/2026/04/09/package-security-defenses-for-ai-agents.html",
+      "pub_date": "2026-04-09T10:00:00.000Z",
+      "summary": "## 一句话总结\nAI Agent 继承了传统软件供应链的所有安全漏洞，但因为执行速度太快且缺乏判断力，我们必须通过“默认拒绝安装脚本”、“依赖冷却期”和“严格沙箱”等手段，把 Agent 的操作权限关进笼子，防止一次幻觉引发连锁灾难。\n\n### Agent 不仅是开发者，更是超级传播者\nAI Agent 面临的包安全问题其实并不新鲜，像 typosquatting（抢注相似包名）、投毒仓库、lockfile 篡改这些老手段依然有效。但核心区别在于速度和规模：人类审查依赖需要时间，而 Agent 可以在几秒钟内解析、安装并传播恶意代码。这就导致了一个尴尬的局面：LLM 根本无法可靠区分哪些包是安全的，哪些是恶意的。既然我们无法教会 Agent “火眼金睛”，那就必须通过架构设计来限制它的破坏力，把安全防御的重任从“识别”转移到“隔离”上。\n\n### 默认关闭安装脚本，别让 Agent 轻易“点火”\n最直接的防御手段就是默认禁用 install scripts。npm 的 `postinstall` 脚本是恶意包最常见的攻击向量，但 Agent 没能力判断脚本里的代码是合法构建逻辑还是窃取密钥的后门。Bun 已经默认不运行依赖的生命周期脚本，这是一个很好的开端。Agent 平台应该默认设置 `--ignore-scripts`，除非用户明确 opt-in。说白了，就是宁可功能跑不起来，也不能让 Agent 随便执行未知代码。这种摩擦感对人类来说是负担，但对 Agent 来说完全可接受，甚至能避免很多灾难。\n\n### 给依赖安装加个“冷却期”\n新发布的包版本往往是最危险的，因为恶意包通常在上传几天内就会被发现并下架。作者建议引入“依赖冷却期”，比如 24-72 小时内禁止 Agent 安装最新发布的版本。这能让社区和自动化工具先当“小白鼠”，Agent 只安装那些存活下来的版本。虽然 npm 的 provenance（来源证明）能帮上忙，但单靠它还不够。这个机制可以在注册中心层、解析器层或者 AI 平台层强制执行，目的是让 Agent 错过恶意包的“爆发期”。\n\n### 沙箱隔离与权限最小化\nAgent 安装包的环境必须严格隔离，下载阶段之后就应该切断网络访问，更不能接触宿主机的 SSH keys、环境变量或凭证。可以用 Linux 的 Landlock 或者容器化沙箱来实现。更有意思的是权限设计：一个只改 README 的 Agent 根本不需要 `npm install` 权限。平台应该支持任务级别的权限配置，而不是给所有 Agent 一把通用的“万能钥匙”。甚至 MCP server 的描述、插件 manifest 这些元数据，都要视为不可信输入，在喂给 LLM 之前先做清洗和结构化处理。\n\n### 监控异常行为，哪怕是失败的尝试\n不仅要监控 Agent 成功安装了什么，还要监控它“想”安装什么。如果 Agent 试图安装一个不存在的包，这很可能是 LLM 产生了幻觉，生成了一个虚假的包名。攻击者会利用这些“slopsquatting”机会，迅速抢注这些包名。所以，记录失败的解析请求实际上是一个早期的预警系统。此外，如果 Agent 在修 CSS bug 时突然要装 `crypto-utils`，或者解析的版本和 lockfile 不一致，系统应该立即暂停并报警，这就像生产环境监控异常出网连接一样重要。\n\n### 把依赖解析器当成安全边界来设计\n对于平台设计者来说，依赖解析器不仅仅是个工具，它是一个安全边界。每次 Agent 跑 `npm install`，本质上都是在做一个信任决策。必须把“安装阶段”和“执行阶段”彻底分开，安装时验证 allowlist 和 lockfile，执行时在沙箱里跑。不要给 Agent 继承开发者的 shell 环境，那样它就拿到了所有的云凭证和 API Token。应该给它临时的、短期的、仅限当前任务的凭证。要假设 Agent 迟早会被诱导安装恶意包，设计的目标是确保这次攻击只能毁掉一个沙箱任务，而无法横向移动或窃取凭证。\n\n### 别忘了给依赖“体检”和“善后”\nAgent 擅长加依赖，但不擅长维护依赖。人类开发者还能偶尔看到 Dependabot 的 PR 或者听说某个包暴雷了，但 Agent 没有这种“八卦渠道”。如果平台允许 Agent 加依赖，就必须建立机制持续监控这些依赖的状态。一旦依赖被标记为废弃、含有漏洞或者被下架，平台必须有能力通知用户或自动处理。依赖的审计 trail 也非常关键，当出事时，你要能回答是哪个 Agent、在什么时间、为了什么任务装了这个包，这就像需要可复现的构建一样重要。",
+      "source_name": "nesbitt.io",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "AI agents",
+        "package security",
+        "supply chain",
+        "sandboxing"
+      ],
+      "rank": 1
+    },
     {
       "title": "Meta's new model is Muse Spark, and meta.ai chat has some interesting tools",
       "title_zh": "Meta Muse Spark 工具生态深度探索",
@@ -22,7 +41,7 @@
         "visual grounding",
         "code interpreter"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Rapport digitale autonomie binnen de energie-intensieve industrie voor Energy Innovation Nl",
@@ -41,7 +60,26 @@
         "digital autonomy",
         "energy industry"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "You can absolutely have an RSS dependent website in 2026",
+      "title_zh": "2026 年仍可依赖 RSS 的独立博客实践",
+      "link": "https://matduggan.com/you-can-absolutely-have-an-rss-dependent-website-in-2026/",
+      "pub_date": "2026-04-09T10:28:58.000Z",
+      "summary": "## 一句话总结\n在 2026 年，你完全可以放弃邮件订阅列表，仅靠 RSS 构建一个有真实读者群且零数据隐私负担的独立网站。\n\n---\n\n### 拒绝邮件列表的真正理由：不想当数据的保姆\n作者一开始就决定不做邮件订阅，原因很现实：没钱。作为一个没有广告、没有赞助、也没有变现策略的个人博客，一旦订阅人数上来，发送邮件的成本就是一笔实打实的账单。但这还不是重点，核心原因在于他对“持有用户数据”这件事感到深深的焦虑。说白了，管理一个存满他人邮箱地址的数据库，就像帮别人照顾一只患有慢性病的猫，压力巨大且容不得半点闪失。他不想半夜还要担心用户是否在这个小网站上复用了银行密码，也不想承担数据泄露的责任。他的安全策略非常简单粗暴：只要我不持有数据，数据就不可能从我这里泄露。\n\n### \"RSS 已死\"是伪命题，那是幸存者偏差\n当作者把这个“只做 RSS，不做邮件”的想法告诉同行时，换来的只有礼貌而尴尬的嘲笑。在很多人眼里，放弃邮件列表就像试图用纸质地图横穿美国一样荒谬，大家普遍认为 RSS 已经死了，邮件列表才是独立网站的唯一出路。但作者并不买账，他不需要为了变现去 A/B 测试邮件标题，也不需要在表格里为了打开率焦虑。他的目标很单纯：能不能在没有邮件列表的情况下，让真实的人类找到并阅读这个网站？为了验证这个想法，他拿出了服务器的 Nginx access.log 数据。\n\n### 数据不会撒谎：RSS 流量撑起了半壁江山\n日志统计结果非常打脸。在经过过滤的 49,089 次请求中，RSS/Feed 流量达到了 24,750 次，占比高达 50.42%。相比之下，直接访问首页的流量只有 3.12%。需要注意的是，这些日志只统计了穿透 Cloudflare 缓存到达源服务器的请求，实际的真实流量肯定更高。这意味着，大约有一半的读者是主动把 RSS 阅读器指向了他的网站，并真诚地表示“请告诉我这家伙又发了什么疯”。剩下的流量则主要来自外部的直接链接跳转。\n\n### 生态稳定且真实，这才是你的核心受众\n深入分析 RSS 流量的 User-Agent 后，作者发现生态非常健康。除了那些像查快递一样疯狂轮询的奇怪 AI 机器人外，绝大多数请求都来自那些老牌的、甚至拥有维基百科词条的 RSS 阅读器。从时间分布来看，请求曲线非常平滑，符合人类在一天中不同时段查看阅读器的习惯，而不是某个僵尸网络每 30 秒钟发起的一次性攻击。作者得出的结论是：RSS 生态并没有死，它只是非常稳定。使用 RSS 的人不是追逐热点的尝鲜者，而是那些至今还在使用浏览器书签栏的硬核用户。\n\n### 结语：只要内容好，他们自然会来\n所以，如果你想在 2026 年运营一个依赖 RSS 的网站，答案绝对是肯定的。你不需要那些烦人的弹窗去诱导订阅，也不需要维护复杂的订阅系统。只要你把 RSS 做好，确保它在 NetNewsWire 这类主流阅读器里表现正常，你就能慢慢积累起一群真正想读你文字的读者。没有邮箱数据库的负担，没有密码泄露的风险，只有纯粹的内容和那些愿意阅读它的人。",
+      "source_name": "matduggan.com",
+      "score": 12,
+      "depth": 6,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "RSS",
+        "analytics",
+        "privacy",
+        "nginx"
+      ],
+      "rank": 4
     },
     {
       "title": "How do you add or remove a handle from an active Msg­Wait­For­Multiple­Objects?",
@@ -60,7 +98,26 @@
         "handle management",
         "message loop"
       ],
-      "rank": 3
+      "rank": 5
+    },
+    {
+      "title": "Pluralistic: Cindy Cohn's \"Privacy's Defender\" (09 Apr 2026)",
+      "title_zh": "EFF 执行总监 Cohn 回忆录",
+      "link": "https://pluralistic.net/2026/04/09/bernstein-2/",
+      "pub_date": "2026-04-09T10:50:56.000Z",
+      "summary": "Cindy Cohn 的回忆录《Privacy's Defender》记录了她在 EFF 27 年的数字权利斗争历程。书中详细回顾了 Bernstein 案——Cohn 通过将计算机代码定义为受第一修正案保护的表达性言论，成功推翻了美国政府对加密技术的出口禁令，使平民获得合法使用加密的权利。这一判决成为计算历史上最重要的里程碑之一。Cohn 的战略眼光同样体现在 9/11 后对抗政府以反恐为名推行的大规模监控体系，以及在 Mark Klein 和 Edward Snowden 泄密后与 NSA 等情报机构的法律交锋。书中将这些数字权利斗争与她在尼日利亚代表 Chevron 死亡 squad 屠杀幸存者的人权诉讼联系起来，揭示了技术权利与基本人权的深层关联。Cohn 将在几个月后从 EFF 执行董事职位退休，这本回忆录既是对她职业生涯的总结，也是对 21 世纪定义性技术与人权战役的深度记录。",
+      "source_name": "pluralistic.net",
+      "score": 11,
+      "depth": 6,
+      "novelty": 5,
+      "category": "security",
+      "keywords": [
+        "EFF",
+        "encryption",
+        "Bernstein case",
+        "privacy"
+      ],
+      "rank": 6
     },
     {
       "title": "Root prime gap",
@@ -78,7 +135,7 @@
         "prime gap",
         "Bertrand-Chebyshev"
       ],
-      "rank": 4
+      "rank": 7
     },
     {
       "title": "A Three- and a Four- Body Problem",
@@ -97,7 +154,7 @@
         "Artemis",
         "Apollo 12"
       ],
-      "rank": 5
+      "rank": 8
     },
     {
       "title": "Hong Kong Disneyland Speedrun Guide",
@@ -115,7 +172,7 @@
         "speedrun",
         "guide"
       ],
-      "rank": 6
+      "rank": 9
     },
     {
       "title": "Systemd v258's 'systemctl -v restart' and its limitations",
@@ -133,7 +190,7 @@
         "systemctl",
         "restart"
       ],
-      "rank": 7
+      "rank": 10
     }
   ]
 }
