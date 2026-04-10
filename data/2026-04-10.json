@@ -1,8 +1,8 @@
 {
   "date": "2026-04-10",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2539,
+  "success_feeds": 86,
+  "total_articles": 2564,
   "filtered_articles": 23,
   "articles": [
     {
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "Package Registries and Pagination",
+      "title_zh": "包管理器注册表 API 的分页缺失问题",
+      "link": "https://nesbitt.io/2026/04/10/package-registries-and-pagination.html",
+      "pub_date": "2026-04-10T10:00:00.000Z",
+      "summary": "## 一句话总结\n主流包管理仓库（如 npm、PyPI）因十年前设计的 API 缺乏分页机制，导致现在为了解析依赖关系，必须下载包含大量无用元数据的超大 JSON 文件，而 Go 和 RubyGems 通过\"只返回版本号\"的极简设计巧妙避开了这个坑。\n\n### 历史包袱：十年前的 API 设计没想到包会有几千个版本\n现在的包管理 API 大多诞生于 2010 到 2015 年，那时一个包通常只有几十个版本，设计者觉得\"一次返回所有数据\"完全没问题。但随着生态爆发式增长，这个设计成了巨大的性能瓶颈。比如 npm 的 API 设计于 2010 年，当时只有几百个包；PyPI 的 Simple API 根基甚至能追溯到 2003 年。这些 API 格式基本没变过，但单包的版本数已经从几十个涨到了几千个，数据量翻了几个数量级。\n\n### 现状惨状：为了装个包，得先下载 37MB 的 README\n最典型的例子就是 npm，`registry.npmjs.org/vite` 一次请求会返回 725 个版本的完整元数据，原始 JSON 大小高达 37MB（虽然 gzip 压缩后传输是 4.4MB，但客户端仍需解析 37MB）。为什么这么大？因为每个版本都塞进了完整的 README（最大 64KB）、依赖列表、维护者信息、完整的 `package.json` 甚至 CouchDB 的修订元数据。`typescript` 有 3,758 个版本，元数据 15MB；就连 `express` 这种老牌包也有 800KB。这些响应里没有任何分页头，没有 `Link`，也没有 `X-Total-Count`，就是硬生生的一坨数据。\n\n### 修修补补：npm 的\"瘦身\"方案还是不够彻底\nnpm 其实也意识到问题了，提供了一个 `Accept: application/vnd.npm.install-v1+json` 头来获取精简元数据，能把 `vite` 从 37MB 降到 2MB。但这个方案有两个硬伤：首先，它依然不分页，数据量还会随版本线性增长；其次，为了瘦身，它把发布时间戳（`publish_time`）给删了。这导致需要实现\"依赖冷却期\"（dependency cooldown）的工具无法使用精简格式，被迫回头去下载那个 37MB 的完整文件。\n\n### 硬性天花板：当元数据超过 100MB，发布就会失败\n这种设计最终会撞上物理墙。Renovate 项目就遇到了这个尴尬的坑：当他们的包版本达到 10,451 个时，元数据超过了 100MB，`npm publish` 直接报错 `E406 Not Acceptable`，提示\"包元数据过大\"。唯一的解决办法是去 unpublish 旧版本，但这又会导致依赖旧版本的 Docker 镜像构建失败。PyPI、Packagist、RubyGems 等主流仓库情况类似，全都是一次性返回所有版本，没人做分页。\n\n### 正面教材：Go 和 Maven 证明了\"少即是多\"\n有意思的是，并不是所有人都这么笨。Go 的 module proxy 在 2019 年设计时就吸取了教训，它的 `/@v/list` 接口只返回纯文本的版本号列表，每行一个。哪怕 `aws-sdk-go` 有 1,865 个版本，响应也只有 16KB。Maven 的 `maven-metadata.xml` 也是同理，`spring-core` 只要 12KB。核心思路很简单：解析依赖只需要版本号，不需要 README 和维护者信息，把这两者拆开，响应体就能保持极小。\n\n### 另辟蹊径：NuGet 和 Docker Hub 坚持了分页\n当然，也有坚持传统分页路线的。NuGet 在 2015 年重构 V3 API 时就引入了服务端分页，每页 64 个版本。小包直接内联返回，大包（比如 `Microsoft.Extensions.DependencyInjection` 的 159 个版本）则返回分页指针让客户端分别拉取。Docker Hub 也是每页 100 个标签。crates.io 虽然在 API 里预留了 `next_page` 字段，但目前还没大到触发第二页。\n\n### 核心矛盾：为了追求 CDN 缓存极致，牺牲了带宽\n那为什么大家都不愿意分页？核心原因在于性能权衡。包管理器解析依赖时通常需要\"看到\"所有版本才能计算约束，如果分页，每解析一个依赖就要发十次 HTTP 请求，安装速度会慢到无法接受。所以早期的设计选择了\"一个包一个 URL，一次响应，CDN 边缘缓存\"的策略。这在版本数很少时是最优解，但现在看来，这是用带宽换时间。\n\n### 终极解法：把\"解析数据\"和\"浏览数据\"彻底分开\n真正的解决方案其实是 RubyGems 的 Compact Index、Cargo 的 sparse index 和 Go 的做法。它们把响应压缩到只包含解析器必需的依赖元数据，做成静态文件，利用 HTTP Range Requests 和 CDN 处理。RubyGems 通过这种方式把依赖数据从 202MB 压到了 2.7MB。反观 npm，`npm install vite` 时，仅仅为了确定哪个版本满足 `^6.0.0`，就得解析 37MB 的 README 和 CouchDB 历史，这比它指向的 522KB tarball 还要大 8 倍，显然是设计出了问题。",
+      "source_name": "nesbitt.io",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "package registry",
+        "pagination",
+        "npm",
+        "PyPI"
+      ],
+      "rank": 3
+    },
+    {
       "title": "watgo - a WebAssembly Toolkit for Go",
       "title_zh": "watgo：纯 Go 实现的 WebAssembly 工具包",
       "link": "https://eli.thegreenplace.net/2026/watgo-a-webassembly-toolkit-for-go/",
@@ -60,7 +79,7 @@
         "Go",
         "wasmir"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "How do you add or remove a handle from an active Wait­For­Multiple­Objects?",
@@ -79,7 +98,7 @@
         "Windows",
         "concurrency"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Fewer Computers, Fewer Problems: Going Local With Builds & Deployments",
@@ -98,7 +117,7 @@
         "Netlify",
         "build process"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Y2K 2.0: The AI security reckoning",
@@ -117,7 +136,26 @@
         "open source",
         "security"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "Pluralistic: Canny Valley and Creative Commons (10 Apr 2026)",
+      "title_zh": "Canny Valley 拼贴画集通过 CC 筹款重新发售",
+      "link": "https://pluralistic.net/2026/04/10/canny-valley/",
+      "pub_date": "2026-04-10T09:57:16.000Z",
+      "summary": "Cory Doctorow 宣布限量版拼贴画集 Canny Valley 通过 Creative Commons 25 周年筹款活动重新发售。该书收录 80 幅使用 CC 授权和公有领域素材创作的数字拼贴画，由 Bruce Sterling 撰写序言，在 Pasadena 家族印刷厂 Typecraft 印制。全书仅印 500 册，100 册已通过 Kickstarter 售出，25 册作者自留，剩余 375 册作为对 CC 捐赠者的感谢礼物。Doctorow 自 2003 年起就是 CC 的支持者，其首部小说 Down and Out in the Magic Kingdom 是第一部采用 CC 授权出版的书籍。CC 许可证跨越 45 个以上法律体系，目前已有数十亿作品采用 CC 授权，包括全部 Wikipedia。Sterling 在序言中将 Doctorow 的拼贴艺术与达达主义传统对比，认为这些作品是对硅谷权力结构的政治分析和视觉记录。",
+      "source_name": "pluralistic.net",
+      "score": 8,
+      "depth": 4,
+      "novelty": 4,
+      "category": "opinion",
+      "keywords": [
+        "Creative Commons",
+        "collage",
+        "Cory Doctorow",
+        "Bruce Sterling"
+      ],
+      "rank": 8
     },
     {
       "title": "asgi-gzip 0.3",
@@ -136,7 +174,7 @@
         "gzip",
         "Starlette"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Why I quit \"The Strive\"",
@@ -155,7 +193,7 @@
         "hustle culture",
         "work-life balance"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Adobe Diddles With Your /etc/hosts File",
@@ -173,7 +211,7 @@
         "hosts file",
         "privacy"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "Random hexagon fractal",
@@ -192,7 +230,7 @@
         "chaos game",
         "triangle center"
       ],
-      "rank": 10
+      "rank": 12
     },
     {
       "title": "What Are You Trying to Say?",
@@ -210,7 +248,7 @@
         "writing",
         "clarity"
       ],
-      "rank": 11
+      "rank": 13
     },
     {
       "title": "GitHub Repo Size",
@@ -228,7 +266,7 @@
         "API",
         "repo size"
       ],
-      "rank": 12
+      "rank": 14
     },
     {
       "title": "The Solitaire Shuffle",
@@ -246,7 +284,7 @@
         "history",
         "games"
       ],
-      "rank": 13
+      "rank": 15
     },
     {
       "title": "Lickspittle of the Week: Todd Blanche",
@@ -263,7 +301,7 @@
         "politics",
         "quote"
       ],
-      "rank": 14
+      "rank": 16
     },
     {
       "title": "The Great Pyramid of Giza and the Speed of Light",
@@ -281,7 +319,7 @@
         "speed of light",
         "pyramid"
       ],
-      "rank": 15
+      "rank": 17
     },
     {
       "title": "Some quick notes to myself on nftables 'symbolic variables'",
@@ -299,7 +337,7 @@
         "linux",
         "networking"
       ],
-      "rank": 16
+      "rank": 18
     }
   ]
 }
