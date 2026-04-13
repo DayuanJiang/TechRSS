@@ -1,10 +1,29 @@
 {
   "date": "2026-04-14",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2542,
-  "filtered_articles": 20,
+  "success_feeds": 86,
+  "total_articles": 2567,
+  "filtered_articles": 23,
   "articles": [
+    {
+      "title": "[Sponsor] WorkOS FGA: The Authorization Layer for AI Agents",
+      "title_zh": "AI 代理的授权层：从 RBAC 到 FGA",
+      "link": "https://workos.com/blog/agents-need-authorization-not-just-authentication?utm_source=daringfireball&utm_medium=newsletter&utm_campaign=q22026",
+      "pub_date": "2026-04-13T21:18:07.000Z",
+      "summary": "## 一句话总结\nAI 代理的安全危机不在于身份认证，而在于授权控制；解决之道是用 FGA（细粒度授权）将 RBAC 扩展到资源层级，从而在避免“上帝模式”的同时实现精准的权限交集计算。\n\n---\n\n### 架构变迁总是先打破现有的权限模型\n每一次架构升级，都会暴露旧有权限模型的短板。多租户 SaaS 搞定了文件系统权限，微服务干掉了单体会话管理，现在轮到 AI 代理来颠覆我们过去十年标准化的授权模式了。现在的 Agent 已经在企业内部跑起来了，它们总结文档、分流工单、管理云资源。但尴尬的是，它们大多还在用人类那一套认证方式——OAuth token、session cookie 或者服务账号密钥。这导致它们要么继承了用户的全部权限，要么拥有了超越任何单个用户的超级特权，这显然是个巨大的隐患。\n\n### “困惑副手”问题：权限交集的缺失\n为了理解这种架构风险，我们可以看看经典的“困惑副手”问题。简单说，就是一个拥有权限的程序被低权限用户诱导，滥用了它的权限。举个例子，平台工程团队部署了一个“集群调试 Agent”，它拥有 `secrets:read` 权限。当一个没有生产环境访问权限的开发者，让 Agent 对比生产和预发布环境的变量时，Agent 依言执行，结果把生产环境的 API Key 泄露到了公共 Slack 频道。这里没有配置错误，Agent 在它的权限内行事，开发者也在自己的权限内行事。系统崩塌的原因在于，它没有检查两者权限的交集，导致 Agent 绕过了本该限制开发者的 IAM 控制。\n\n### Agent 既不是用户，也不是服务账号\n现在的身份行业正在纠结 Agent 到底该放在 IAM 堆栈的哪个位置。微软推出了 Entra Agent ID，NIST 发布了相关概念论文，IETF 也在标准化 SCIM 里的 `/Agents` 资源。大家达成的共识是：Agent 是一个独特的身份类别，需要专门的基础设施。但目前行业焦点还在“认证”上，也就是证明它是谁；真正的工程难题其实是“授权”，也就是它能干什么。传统的服务账号是确定性的，CI/CD runner 的权限范围写死就不怎么变。但 Agent 不一样，它们不仅自己产生意图，而且权限范围是非确定性的——你无法在设计时预测它明天需要读哪个仓库、写哪个分支。\n\n### 静态 RBAC 在 Agent 面前面临组合爆炸\n既然需要限制范围，那能不能给每个 Agent 创建一个特定的 Role？比如建一个 `Billing_Agent` 角色？问题在于传统 RBAC 是“扁平”的，它把 Subject 映射到 Role，再把 Role 映射到全局权限。这对人类有效，因为人类权限通常对应职位，既稳定又宽泛。但 Agent 的权限对应的是“任务”，既短暂又具体。你不想让 Agent 成为“仓库编辑者”，你想让它“只能编辑 API 仓库的 feature-xyz 分支”。如果用扁平 RBAC 表达这个，你就得为资源和权限的每种排列组合创建一个唯一角色。在企业成千上万个仓库和 ephemeral 分支的场景下，这会导致组合爆炸，管理静态角色的摩擦力会直接抵消 Agent 带来的效率红利。\n\n### FGA 的核心思路：给 RBAC 加上层级结构\n这就是 Fine-Grained Authorization (FGA) 登场的时候了。它不是要推翻你熟悉的 RBAC 概念，而是给它加上“层级”这个维度。核心思路其实很简单：保留角色（Editor、Viewer）的 mental model，但把它们挂载到图结构的具体节点上，而不是根节点。比如，你把 Agent 的 Editor 权限挂在 `Branch: feature-xyz` 这个节点上。这样，Agent 就拥有垂直继承权，能自动访问该分支下的所有文件和操作；同时，它没有横向移动能力，不能访问 `Branch: staging`，也不能向上访问 `Repository: API`。在这个模型里，Agent 在需要的地方拥有全力，在其他地方则是零权限。\n\n### 只同步结构，不同步数据：如何保持高性能\n引入集中式授权服务，大家最担心的是状态同步的开销。如果你的应用管理着数百万个资产，难道要把每一个都镜像到 FGA 图里？其实不需要。你只需要同步“结构层级”，而不是“资产数据”。把 FGA 想象成权限的骨架，你只需要注册那些定义访问边界的高级容器，比如 Organization、Workspace、Projects。至于具体的文件或图片这些高流量的资产数据，留在你主应用库里就行。当 Agent 请求访问某个具体资产时，应用逻辑先找出它属于哪个容器（比如 `Folder: Q3-Financials`），然后问 FGA：`check(subject=Agent, role=viewer, resource=Folder:Q3-Financials)`。通过检查父容器而不是单个资产，你既能把授权图维持得很小，保持亚 50ms 的延迟，又能避免海量数据同步带来的“双写”一致性问题。\n\n### 解决 OBO 模式：动态计算权限交集\n对于代表用户操作的 Agent，比如 Claude Code，目标是防止“困惑副手”问题。FGA 通过计算权限的“交集”来解决这个问题。你可以定义一个策略，要求用户和 Agent 都必须有权限，请求才能被放行。当 MCP 服务器收到一个 `read_file` 调用时，它会实时去查 FGA 图。如果 Agent 没权限，直接返回 403。这把授权检查从静态的角色查找变成了动态验证。而且，随着 MCP 协议支持 Rich Authorization Requests (RFC 9396)，Agent 会传结构化的意图对象。但 RAR 只是数据格式，不懂 `/backend` 属于 Team A 这种关系。FGA 正好填补了这个逻辑层的空白，它作为决策引擎，去验证 RAR 信封是否符合组织的实际权限图。\n\n### 解决自主模式：用层级约束锁死“上帝模式”\n对于自主运行的 Agent，比如安全机器人，目标是防止“上帝模式”。在标准的 `client_credentials` 流程里，拿到的 token 通常权限很大。为了让计费 Agent 读发票，你往往得给它 `Files.Read.All`，结果它连员工合同和专利草案都能读了。FGA 在这里充当约束层。身份提供商负责证明它是“Billing Bot”，但应用层面会问 FGA：Billing Bot 能读 `file:executive_comp.pdf` 吗？FGA 检查发现它在 `Project:Finance` 节点有 Viewer 角色，但在 `Project:HR` 没有，于是拒绝访问。在这个模型里，Agent 自己就是主体，直接在需要的资源上获得角色。当 Agent 被废弃，你只需移除它在特定节点上的角色分配，整个子树的访问权瞬间消失。",
+      "source_name": "daringfireball.net",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "AI agents",
+        "authorization",
+        "FGA",
+        "RBAC"
+      ],
+      "rank": 1
+    },
     {
       "title": "Exploring the new `servo` crate",
       "title_zh": "Servo 发布 v0.1.0 可嵌入 Rust crate",
@@ -22,7 +41,7 @@
         "WebAssembly",
         "html5ever"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Common Package Specification",
@@ -41,7 +60,7 @@
         "pkg-config",
         "purl"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Finding a duplicated item in an array of N integers in the range 1 to N − 1",
@@ -60,7 +79,7 @@
         "duplicate detection",
         "linked list"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "MacOS Tip: Enable the Zoom ‘Peek’ Gesture",
@@ -79,7 +98,45 @@
         "peek gesture",
         "accessibility"
       ],
-      "rank": 4
+      "rank": 5
+    },
+    {
+      "title": "Quoting Steve Yegge",
+      "title_zh": "Google 的 AI 采用现状与行业无异",
+      "link": "https://simonwillison.net/2026/Apr/13/steve-yegge/#atom-everything",
+      "pub_date": "2026-04-13T20:59:45.000Z",
+      "summary": "Google 工程组织的 AI 采用曲线与行业平均水平一致：20% 为代理式 AI 高级用户，20% 完全拒绝，60% 仍停留在 Cursor 或类似聊天工具层面。过去 18 个月全行业招聘冻结导致人才流动停滞，外部人员无法向 Google 传递其落后程度的信息。",
+      "source_name": "simonwillison.net",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "opinion",
+      "keywords": [
+        "Google",
+        "AI adoption",
+        "agentic AI",
+        "Cursor"
+      ],
+      "rank": 6
+    },
+    {
+      "title": "Tahoe Nitpick of the Day: ‘Reduce Transparency’ Makes Layers Harder to See, Not Easier",
+      "title_zh": "Mac OS Tahoe 的无障碍设计缺陷",
+      "link": "https://mastodon.social/@tuomas_h/116397694769738857",
+      "pub_date": "2026-04-13T20:56:15.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "accessibility",
+        "macOS",
+        "UI",
+        "transparency"
+      ],
+      "rank": 7
     },
     {
       "title": "FT: ‘Meta Builds AI Version of Mark Zuckerberg to Interact With Staff’",
@@ -97,7 +154,7 @@
         "AI",
         "Zuckerberg"
       ],
-      "rank": 5
+      "rank": 8
     },
     {
       "title": "Marcin Wichary Visits the Large Scale Systems Museum",
@@ -115,7 +172,7 @@
         "photography",
         "systems"
       ],
-      "rank": 6
+      "rank": 9
     },
     {
       "title": "John Martellaro, RIP",
@@ -133,7 +190,7 @@
         "John Martellaro",
         "The Mac Observer"
       ],
-      "rank": 7
+      "rank": 10
     }
   ]
 }
