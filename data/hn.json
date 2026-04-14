@@ -1,6 +1,245 @@
 {
-  "updatedAt": "2026-04-14T17:00:50.039Z",
+  "updatedAt": "2026-04-14T17:39:00.888Z",
   "items": [
+    {
+      "id": 47761997,
+      "by": "citguru",
+      "title": "Distributed DuckDB Instance",
+      "url": "https://github.com/citguru/openduck",
+      "score": 129,
+      "detailUpdatedAt": 1776186797,
+      "createdAt": 1776150032,
+      "aiSummaryUpdatedAt": 1776187213,
+      "aisummary": {
+        "chinese_title": "OpenDuck 复刻 MotherDuck：分布式 DuckDB 与混合执行",
+        "emoji": "🤨",
+        "sarcastic_question": "都叫分布式了，怎么还先卡独占锁？"
+      },
+      "classifications": {
+        "topics": [
+          6,
+          4
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "DuckDB",
+          "OpenDuck",
+          "MotherDuck",
+          "DuckLake",
+          "Query federation",
+          "Raft",
+          "Postgres",
+          "Parquet",
+          "SQLite"
+        ]
+      },
+      "classificationsUpdatedAt": 1776162951,
+      "aiSummary": {
+        "chinese_title": "OpenDuck 复刻 MotherDuck：分布式 DuckDB 与混合执行",
+        "emoji": "🤨",
+        "sarcastic_question": "都叫分布式了，怎么还先卡独占锁？"
+      },
+      "detail": {
+        "id": 47761997,
+        "by": "citguru",
+        "title": "Distributed DuckDB Instance",
+        "url": "https://github.com/citguru/openduck",
+        "score": 129,
+        "detailUpdatedAt": 1776186797,
+        "createdAt": 1776150032,
+        "aiSummaryUpdatedAt": 1776187213,
+        "aisummary": {
+          "chinese_title": "OpenDuck 复刻 MotherDuck：分布式 DuckDB 与混合执行",
+          "discussion_overview": [
+            {
+              "category": "差分存储与列式/追加写的碎片问题",
+              "summary": "评论首先在讨论 differential storage 是否会像 B+tree 一样产生严重碎片化。有人担心层与层之间的页面会非常分散，导致一次查询要触发大量随机 IO，延迟受缓存影响很大。回应指出列式存储通常压缩得更好，单个 rowgroup 能容纳很多记录，写入也往往是整表替换或大块追加，而读取则更多依赖 full scan 和 predicate pushdown，而不是沿索引乱跳。另有人补充 ClickHouse 这类系统靠 append-only parts 避免了同一行分散在多层的问题。",
+              "supportid": [
+                "47764413",
+                "47765168",
+                "47767155",
+                "47763970",
+                "47761998"
+              ]
+            },
+            {
+              "category": "DuckDB 独占锁与并发读写",
+              "summary": "很多评论聚焦 DuckDB 文件模式下的并发限制：一个进程以 write mode 打开后，其他进程既不能写也不能读，CLI 或 DBeaver 之类工具都会被锁住。有人把这和 SQLite 的线程安全并发体验作对比，认为 DuckDB 在这一点上明显更不像传统数据库。回应里提到 DuckLake 可以通过共享 Postgres catalog 支持读写并发、schema evolution 和 versioning，但一旦回到 DuckDB 自己的 compute，exclusive locking 的问题又会出现。也有人给出最朴素的建议：如果只是偶尔分析或聚合日志，直接把数据写成 Parquet 放到 S3，再用 DuckDB 读就够了。",
+              "supportid": [
+                "47762437",
+                "47762638",
+                "47764262",
+                "47766644",
+                "47764825",
+                "47766152",
+                "47762709"
+              ]
+            },
+            {
+              "category": "DuckDB 的定位越来越像分析平台而不只是文件数据库",
+              "summary": "一条主线是担心 DuckDB 的生态越来越复杂：它既像 SQLite 一样是一个文件数据库，又像 Polars 一样承担分析引擎角色，还要支持 Parquet、JSON、HTTPFS、UI，外加 DuckLake、MotherDuck 等相邻产品。反驳意见认为核心 DuckDB 仍然保持轻量、可移植、无依赖，复杂功能主要被 extension 隔离在外部，官方甚至在推动更稳定的 C extension API 来控制边界。用户也指出 `SELECT * FROM my_df` 这类 Python 里的便利语法，以及直接查询远程 Parquet 文件的能力，会让 DuckDB 看起来更像数据帧 + SQL 的混合体，而不是传统意义上的单体数据库。",
+              "supportid": [
+                "47762217",
+                "47763588",
+                "47764241",
+                "47765437"
+              ]
+            },
+            {
+              "category": "分布式架构分歧：复制、联邦查询与替代引擎",
+              "summary": "另一组评论在比较不同的分布式实现路线。有人分享自己用 OpenRaft 把 DuckDB 做成全量复制集群：每个节点都有完整副本，写入经 Raft 共识，读取走本地，从而获得强一致和零网络读延迟。与此相比，OpenDuck 更像 query federation：gateway 把查询拆成 local/remote 两段，只让中间结果过网；因此它更适合跨机器数据集，而不是纯粹的强一致复制。也有人问这种东西会不会取代 Spark 或 ClickHouse，并建议关注 DataFusion / datafusion-federation 这类查询执行项目。",
+              "supportid": [
+                "47763145",
+                "47766189",
+                "47763616"
+              ]
+            },
+            {
+              "category": "对 AI/‘vibe coded’ 原型的怀疑",
+              "summary": "不少评论对项目本身持明显怀疑态度，认为代码像是一次性 AI 生成的 SaaS 复刻，不足以称为可投入生产的实现。有人直接说这类 Show HN 项目太多，已经变成了 `vibe coded cloud chasing slop`，看不到真实的数据面价值。甚至有评论把问题延伸到发言风格本身，批评 LLM 风格的复制粘贴内容破坏讨论质量。整体情绪不是技术争论，而是对演示型项目可信度的厌倦。",
+              "supportid": [
+                "47763224",
+                "47763859",
+                "47763847",
+                "47766939"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "differential storage",
+              "explanation": "把更新写成不可变的增量层，而不是原地修改同一份数据；便于并发、版本和回滚。"
+            },
+            {
+              "term": "hybrid query execution",
+              "explanation": "一条查询同时在本地和远程执行，执行计划被拆成多个局部段，只传输必要的中间结果。"
+            },
+            {
+              "term": "DuckLake",
+              "explanation": "面向 DuckDB 的 lakehouse 格式，用 shared catalog 管理 Parquet 数据、版本和并发访问。"
+            },
+            {
+              "term": "snapshot isolation",
+              "explanation": "读操作看到的是某个稳定快照，写入不会破坏已开始查询的一致性。"
+            },
+            {
+              "term": "Parquet",
+              "explanation": "一种列式文件格式，适合压缩、分区扫描和数据湖存储，DuckDB 和 DuckLake 都频繁围绕它讨论。"
+            }
+          ],
+          "context": "这场讨论围绕 OpenDuck（一个试图复刻 MotherDuck 的实验项目）展开，它把 DuckDB（嵌入式分析型数据库）原本的单文件引擎改造成支持 differential storage 和 hybrid query execution 的系统。DuckDB 本身更常见的是单写者文件模式，因此多进程并发、锁竞争和元数据协调都会成为焦点。评论里不断提到 DuckLake（面向 Parquet 数据湖的湖仓格式）、PostgreSQL catalog（用于协调元数据的关系数据库）和 Raft（分布式一致性协议），说明大家在比较“单机嵌入式数据库”和“分布式湖仓/复制集群”两条路线。另一条线则是用 ClickHouse（列式分析数据库）、Spark（分布式数据处理引擎）和 DataFusion（Apache 的查询执行引擎）来对比它在分析负载中的定位。",
+          "emoji": "🤨",
+          "sarcastic_question": "都叫分布式了，怎么还先卡独占锁？"
+        },
+        "classifications": {
+          "topics": [
+            6,
+            4
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "DuckDB",
+            "OpenDuck",
+            "MotherDuck",
+            "DuckLake",
+            "Query federation",
+            "Raft",
+            "Postgres",
+            "Parquet",
+            "SQLite"
+          ]
+        },
+        "classificationsUpdatedAt": 1776162951,
+        "aiSummary": {
+          "chinese_title": "OpenDuck 复刻 MotherDuck：分布式 DuckDB 与混合执行",
+          "discussion_overview": [
+            {
+              "category": "差分存储与列式/追加写的碎片问题",
+              "summary": "评论首先在讨论 differential storage 是否会像 B+tree 一样产生严重碎片化。有人担心层与层之间的页面会非常分散，导致一次查询要触发大量随机 IO，延迟受缓存影响很大。回应指出列式存储通常压缩得更好，单个 rowgroup 能容纳很多记录，写入也往往是整表替换或大块追加，而读取则更多依赖 full scan 和 predicate pushdown，而不是沿索引乱跳。另有人补充 ClickHouse 这类系统靠 append-only parts 避免了同一行分散在多层的问题。",
+              "supportid": [
+                "47764413",
+                "47765168",
+                "47767155",
+                "47763970",
+                "47761998"
+              ]
+            },
+            {
+              "category": "DuckDB 独占锁与并发读写",
+              "summary": "很多评论聚焦 DuckDB 文件模式下的并发限制：一个进程以 write mode 打开后，其他进程既不能写也不能读，CLI 或 DBeaver 之类工具都会被锁住。有人把这和 SQLite 的线程安全并发体验作对比，认为 DuckDB 在这一点上明显更不像传统数据库。回应里提到 DuckLake 可以通过共享 Postgres catalog 支持读写并发、schema evolution 和 versioning，但一旦回到 DuckDB 自己的 compute，exclusive locking 的问题又会出现。也有人给出最朴素的建议：如果只是偶尔分析或聚合日志，直接把数据写成 Parquet 放到 S3，再用 DuckDB 读就够了。",
+              "supportid": [
+                "47762437",
+                "47762638",
+                "47764262",
+                "47766644",
+                "47764825",
+                "47766152",
+                "47762709"
+              ]
+            },
+            {
+              "category": "DuckDB 的定位越来越像分析平台而不只是文件数据库",
+              "summary": "一条主线是担心 DuckDB 的生态越来越复杂：它既像 SQLite 一样是一个文件数据库，又像 Polars 一样承担分析引擎角色，还要支持 Parquet、JSON、HTTPFS、UI，外加 DuckLake、MotherDuck 等相邻产品。反驳意见认为核心 DuckDB 仍然保持轻量、可移植、无依赖，复杂功能主要被 extension 隔离在外部，官方甚至在推动更稳定的 C extension API 来控制边界。用户也指出 `SELECT * FROM my_df` 这类 Python 里的便利语法，以及直接查询远程 Parquet 文件的能力，会让 DuckDB 看起来更像数据帧 + SQL 的混合体，而不是传统意义上的单体数据库。",
+              "supportid": [
+                "47762217",
+                "47763588",
+                "47764241",
+                "47765437"
+              ]
+            },
+            {
+              "category": "分布式架构分歧：复制、联邦查询与替代引擎",
+              "summary": "另一组评论在比较不同的分布式实现路线。有人分享自己用 OpenRaft 把 DuckDB 做成全量复制集群：每个节点都有完整副本，写入经 Raft 共识，读取走本地，从而获得强一致和零网络读延迟。与此相比，OpenDuck 更像 query federation：gateway 把查询拆成 local/remote 两段，只让中间结果过网；因此它更适合跨机器数据集，而不是纯粹的强一致复制。也有人问这种东西会不会取代 Spark 或 ClickHouse，并建议关注 DataFusion / datafusion-federation 这类查询执行项目。",
+              "supportid": [
+                "47763145",
+                "47766189",
+                "47763616"
+              ]
+            },
+            {
+              "category": "对 AI/‘vibe coded’ 原型的怀疑",
+              "summary": "不少评论对项目本身持明显怀疑态度，认为代码像是一次性 AI 生成的 SaaS 复刻，不足以称为可投入生产的实现。有人直接说这类 Show HN 项目太多，已经变成了 `vibe coded cloud chasing slop`，看不到真实的数据面价值。甚至有评论把问题延伸到发言风格本身，批评 LLM 风格的复制粘贴内容破坏讨论质量。整体情绪不是技术争论，而是对演示型项目可信度的厌倦。",
+              "supportid": [
+                "47763224",
+                "47763859",
+                "47763847",
+                "47766939"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "differential storage",
+              "explanation": "把更新写成不可变的增量层，而不是原地修改同一份数据；便于并发、版本和回滚。"
+            },
+            {
+              "term": "hybrid query execution",
+              "explanation": "一条查询同时在本地和远程执行，执行计划被拆成多个局部段，只传输必要的中间结果。"
+            },
+            {
+              "term": "DuckLake",
+              "explanation": "面向 DuckDB 的 lakehouse 格式，用 shared catalog 管理 Parquet 数据、版本和并发访问。"
+            },
+            {
+              "term": "snapshot isolation",
+              "explanation": "读操作看到的是某个稳定快照，写入不会破坏已开始查询的一致性。"
+            },
+            {
+              "term": "Parquet",
+              "explanation": "一种列式文件格式，适合压缩、分区扫描和数据湖存储，DuckDB 和 DuckLake 都频繁围绕它讨论。"
+            }
+          ],
+          "context": "这场讨论围绕 OpenDuck（一个试图复刻 MotherDuck 的实验项目）展开，它把 DuckDB（嵌入式分析型数据库）原本的单文件引擎改造成支持 differential storage 和 hybrid query execution 的系统。DuckDB 本身更常见的是单写者文件模式，因此多进程并发、锁竞争和元数据协调都会成为焦点。评论里不断提到 DuckLake（面向 Parquet 数据湖的湖仓格式）、PostgreSQL catalog（用于协调元数据的关系数据库）和 Raft（分布式一致性协议），说明大家在比较“单机嵌入式数据库”和“分布式湖仓/复制集群”两条路线。另一条线则是用 ClickHouse（列式分析数据库）、Spark（分布式数据处理引擎）和 DataFusion（Apache 的查询执行引擎）来对比它在分析负载中的定位。",
+          "emoji": "🤨",
+          "sarcastic_question": "都叫分布式了，怎么还先卡独占锁？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nOpenDuck 开源了 MotherDuck 的核心架构——通过差分存储、混合执行和原生 Catalog 接口，让 DuckDB 在保持本地体验的同时，拥有了透明、可扩展的云端分布式能力。\n\n### 把 MotherDuck 的架构搬回家，还得是开源的\nMotherDuck 证明了 DuckDB 上云的体验可以丝般顺滑，一句 `ATTACH` 就能让远程表像本地表一样参与查询，但这套架构是闭源的。OpenDuck 的目标很直接：把这套被验证过的先进架构——差分存储、混合执行和透明的远程数据库——完全开源。它不是简单的复制，而是用开放的协议、开放的后端和开放的扩展，把这些理念变成任何人都能跑、能改、能集成的通用方案。\n\n### 存储层：用“不可变层”解决并发读写难题\nDuckDB 习惯读写普通文件，但在云端这就成了瓶颈。OpenDuck 借鉴了差分存储的设计，把数据持久化为对象存储上不可变的密封层，元数据则放在 PostgreSQL 里。DuckDB 看到的依然是个普通文件，但底层实际上是“单写多读”的快照模式。这么做的好处是既保证了数据的一致性读取，又让存储层具备了云原生的扩展性，不用再担心本地文件锁的问题。\n\n### 混合执行：把查询拆成“本地”和“远程”两半\n最有意思的地方在于它的混合执行能力。一个 SQL 查询不需要全部发到远程跑，Gateway 会把执行计划拆开，给每个算子打上 `LOCAL` 或 `REMOTE` 的标签，并在边界处插入“桥梁”算子。比如 JOIN 大表时，本地扫小表，远程扫大表，只有中间结果会通过网络传输。这种设计既利用了远程的算力，又避免了海量数据搬家的开销，是性能优化的关键。\n\n### 协议极简：两个 RPC 搞定一切\n为了不把用户绑定在特定实现上，OpenDuck 的协议设计得非常克制。它在 `execution.proto` 里只定义了两个 RPC：一个执行查询，一个用 Arrow IPC 流式回传结果。因为协议足够简单，只要你的服务能讲 gRPC 并返回 Arrow，就能充当后端。你可以用项目自带的 Rust Gateway，也可以换成自己的实现，甚至接入完全不同的执行引擎，客户端完全无感。\n\n### 深度集成：远程表就是“一等公民”\n很多数据库做远程集成，顶多算是个外部数据包装器（FDW），但 OpenDuck 是直接实现了 DuckDB 的 `StorageExtension` 和 `Catalog` 接口。这意味着远程表在 DuckDB 优化器眼里和本地表没区别，能原生参与 JOIN、CTE 和各种优化规则。这种深度集成让开发者不用改 SQL 语法，也不用关心数据在哪，查询优化器会自动决定怎么跑最省事。\n\n### 架构分工明确：Gateway 负责调度，Worker 负责干活\n整个系统的架构逻辑很清晰：客户端 DuckDB 负责生成计划，Rust 写的 Gateway 负责鉴权、路由和拆分计划，底层的 Worker（也是嵌入式 DuckDB）负责真正干活。Gateway 还能处理背压，防止下游被压垮。这种拆分让系统既灵活又健壮，你想加 Worker 就加，想换路由逻辑也只需改 Gateway，互不干扰。\n\n### 不是 MotherDuck 的克隆，是理念的继承\n虽然 OpenDuck 借鉴了 MotherDuck 的思想，但它绝不是 wire-compatible 的克隆版。MotherDuck 是商业服务，协议私有；OpenDuck 是自托管方案，协议开放。对比 Arrow Flight SQL 这种通用协议，OpenDuck 范围更窄但更深：它不追求兼容所有数据库，而是专门为 DuckDB 优化，让优化器能感知远程表的存在，从而实现更深层的查询下推和性能提升。"
+    },
     {
       "id": 47718284,
       "by": "mpweiher",
@@ -15135,371 +15374,6 @@
           "sarcastic_question": "Safari都卡成PPT了，还叫Happy Map？"
         }
       }
-    },
-    {
-      "id": 47743628,
-      "by": "gpm",
-      "title": "The Peril of Laziness Lost",
-      "url": "https://bcantrill.dtrace.org/2026/04/12/the-peril-of-laziness-lost/",
-      "score": 360,
-      "detailUpdatedAt": 1776057217,
-      "createdAt": 1776024638,
-      "aiSummaryUpdatedAt": 1776057648,
-      "aisummary": {
-        "chinese_title": "AI 编程失去懒惰：测试膨胀、抽象失控、LOC 失真",
-        "emoji": "🤨",
-        "sarcastic_question": "AI 一夜刷十万行，质量也顺便起飞了？"
-      },
-      "classifications": {
-        "topics": [
-          4,
-          1,
-          12
-        ],
-        "facets": [
-          9
-        ],
-        "tags": [
-          "LLMs",
-          "Bryan Cantrill",
-          "DTrace",
-          "abstraction",
-          "WET"
-        ]
-      },
-      "classificationsUpdatedAt": 1776028878,
-      "aiSummary": {
-        "chinese_title": "AI 编程失去懒惰：测试膨胀、抽象失控、LOC 失真",
-        "emoji": "🤨",
-        "sarcastic_question": "AI 一夜刷十万行，质量也顺便起飞了？"
-      },
-      "detail": {
-        "id": 47743628,
-        "by": "gpm",
-        "title": "The Peril of Laziness Lost",
-        "url": "https://bcantrill.dtrace.org/2026/04/12/the-peril-of-laziness-lost/",
-        "score": 256,
-        "detailUpdatedAt": 1776037410,
-        "createdAt": 1776024638,
-        "aiSummaryUpdatedAt": 1776037852,
-        "aisummary": {
-          "chinese_title": "LLM时代的“懒惰”失守：测试、抽象与LOC争论",
-          "discussion_overview": [
-            {
-              "category": "LLM/vibe coding 产出过量但测试失真",
-              "summary": "评论集中指出，LLM 很擅长把东西“写很多”，却不擅长判断哪些测试真的有意义。有人在 CFD 场景里看到 vibe coded 模拟器总爱挑 lid-driven cavity 这类教材级案例，却回避更贴近真实用途的验证，也几乎不做 verification（比如检查 order of accuracy）。另一些人提到 LLM 会顺手生成单页 Web App、臃肿的 spec.md，或者一堆 grep、`assert(1==1)` 之类的空洞测试。要想让它产出可用结果，往往得自己看 `git diff`、持续 babysit，并用正向例子而不是“不要做什么”去约束它。",
-              "supportid": [
-                "47744628",
-                "47745560",
-                "47745089",
-                "47745382",
-                "47745306",
-                "47745565",
-                "47744393",
-                "47745136",
-                "47744816",
-                "47745139",
-                "47744523",
-                "47744734",
-                "47745280",
-                "47744601"
-              ]
-            },
-            {
-              "category": "WET/Rule of three：先重复，再抽象",
-              "summary": "另一条主线是在反驳过早抽象，认为 WET（Write Everything Twice）比死守 DRY 更实用。许多人赞成“第三次再考虑抽象”，因为第一次和第二次往往只是帮助你理解问题，过早封装反而容易把问题包进更复杂的层次。有人强调，真正有价值的抽象确实能改变 OS、RDBMS、cloud orchestration 这类系统，但大多数业务代码并不值得一开始就平台化。Fred Brooks 的 second-system effect 也被拿来提醒：第二版最容易因为“想做得更好”而膨胀成过度设计。",
-              "supportid": [
-                "47744113",
-                "47744184",
-                "47744821",
-                "47744731",
-                "47745201",
-                "47745254",
-                "47745367",
-                "47745307",
-                "47744430",
-                "47745220",
-                "47745264",
-                "47745104"
-              ]
-            },
-            {
-              "category": "LOC 崇拜不是价值衡量",
-              "summary": "不少评论认为，把代码行数当成绩单是典型的指标错位。真正该看的不是 LOC，而是净价值：包括维护、理解、部署、secuirty、法律风险，以及错误代码带来的下游代价。有人直接把 Garry Tan（YC CEO）的发言解读成 AI 广告，而不是生产力展示；也有人说根本没必要读完那 200k LOC，光看目标就知道方向不对。Horizon IT scandal（英国邮局会计系统丑闻）和 THERAC-25（经典医疗软件事故）被拿来说明：软件质量差不只是“代码丑”，而是可能真实伤人。",
-              "supportid": [
-                "47744356",
-                "47744389",
-                "47744721",
-                "47744618",
-                "47744780",
-                "47745088",
-                "47744527",
-                "47744453",
-                "47744482",
-                "47744761",
-                "47744998",
-                "47745272",
-                "47745499",
-                "47745345",
-                "47744906"
-              ]
-            },
-            {
-              "category": "懒惰作为过滤器，但需要纪律",
-              "summary": "有些人认同“懒惰”是好软件的重要正则器，因为它会逼你先理解问题，再决定要不要写。也有人担心这会变成自我安慰：今天没产出也能说成“懒惰有价值”，最后只是合理化低效。围绕 LLM 的焦虑是，它们没有摩擦感，会很自然地堆出 500 行本可用 20 行解决的东西，而且往往没有明确的停止条件。于是更现实的做法变成：把纪律放回人身上，持续审查、要求简化，并让工具服从你的判断而不是反过来。",
-              "supportid": [
-                "47744490",
-                "47745562",
-                "47745280",
-                "47744393",
-                "47744734",
-                "47745178",
-                "47745472",
-                "47744601",
-                "47745713"
-              ]
-            },
-            {
-              "category": "工艺被商品化的焦虑",
-              "summary": "还有一条情绪很强的线，是把这篇文章读成对“hard-earned craft”被 LLM 商品化的反应。有人拿手写 HTML 对比 React，认为底层知识并没有失效，只是价值重心上移了；也有人觉得这正说明某些长期积累的技能正在被压价。对 Perl 和 Larry Wall 的“cult”语气也有人反感，但仍承认核心观点成立：好软件本来就要时间打磨。整体上，这类评论不是简单反 AI，而是担心工具让 craft 变成廉价产物。",
-              "supportid": [
-                "47744382",
-                "47744412",
-                "47744429",
-                "47745106",
-                "47745199",
-                "47744751",
-                "47744794",
-                "47744925",
-                "47745596",
-                "47745713",
-                "47743934"
-              ]
-            },
-            {
-              "category": "别把人分成几种桶",
-              "summary": "Hammerstein 那句把军官分成聪明、勤奋、愚蠢、懒惰四类的引语，引发了对“分类人”的明显反感。有人喜欢“聪明又懒惰的人最适合领导”的说法，但更多人觉得这种打分方式很冒犯，也忽略了现实工作中的复杂性。评论强调，普通劳动、官僚流程、客服和收银等岗位常常是在处理自动化系统无法覆盖的边角情况，社会运转靠的正是这些看似平凡的人。这个分支最后落到一个更温和的结论：人不需要卓越才有价值。",
-              "supportid": [
-                "47744561",
-                "47744659",
-                "47744859",
-                "47744934",
-                "47745271",
-                "47745448",
-                "47744975",
-                "47745270",
-                "47745024",
-                "47744879"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "vibe coding",
-              "explanation": "用 LLM/agent 快速拼代码的开发方式，通常更重速度和产出，较少强调理解与约束。"
-            },
-            {
-              "term": "LOC（Lines of Code）",
-              "explanation": "代码行数；常被拿来炫耀开发速度，但几乎不能直接代表质量或真实价值。"
-            },
-            {
-              "term": "WET（Write Everything Twice）",
-              "explanation": "先容忍重复，等同类代码第三次出现时再考虑抽象。"
-            },
-            {
-              "term": "DRY（Don't Repeat Yourself）",
-              "explanation": "避免重复代码的原则；这场讨论里有人认为它有时会导致过早抽象。"
-            },
-            {
-              "term": "Rule of three",
-              "explanation": "经验法则：某个模式重复到第三次，再考虑提炼成抽象。"
-            },
-            {
-              "term": "second-system effect",
-              "explanation": "第二系统效应：第二版常因想“补全一切”而变得更复杂、更臃肿。"
-            },
-            {
-              "term": "verification / validation",
-              "explanation": "verification 检查实现是否正确；validation 检查模型或结果是否符合实验、需求或现实。"
-            },
-            {
-              "term": "leaky abstraction",
-              "explanation": "抽象层并不能完全隐藏底层细节，反而会留下让人头疼的新复杂度。"
-            }
-          ],
-          "context": "这篇讨论围绕“laziness”在软件里的正反两面展开，背景里常被提到的是 Larry Wall（Perl 作者）和他在 Programming Perl（1991 年经典书）里对“懒惰”的经典辩护。评论者把这套老观点放到 LLM 和 vibe coding 时代重新审视：当工具把写代码、写测试、写文档都变得太容易时，原本能逼人思考的摩擦是否正在消失。Garry Tan（YC 创业孵化器 CEO）晒出大量 LOC 的帖子成了争议引爆点，大家借此讨论“产出量”和“价值”到底是不是一回事。另一些评论则借 CFD（computational fluid dynamics，计算流体力学）里的 verification/validation 区分，说明自动生成测试很容易挑到教材里好看但不相关的案例。",
-          "emoji": "🤨",
-          "sarcastic_question": "200k LOC 也顺手把质量刷出来了？"
-        },
-        "classifications": {
-          "topics": [
-            4,
-            1,
-            12
-          ],
-          "facets": [
-            9
-          ],
-          "tags": [
-            "LLMs",
-            "Bryan Cantrill",
-            "DTrace",
-            "abstraction",
-            "WET"
-          ]
-        },
-        "classificationsUpdatedAt": 1776028878,
-        "aiSummary": {
-          "chinese_title": "LLM时代的“懒惰”失守：测试、抽象与LOC争论",
-          "discussion_overview": [
-            {
-              "category": "LLM/vibe coding 产出过量但测试失真",
-              "summary": "评论集中指出，LLM 很擅长把东西“写很多”，却不擅长判断哪些测试真的有意义。有人在 CFD 场景里看到 vibe coded 模拟器总爱挑 lid-driven cavity 这类教材级案例，却回避更贴近真实用途的验证，也几乎不做 verification（比如检查 order of accuracy）。另一些人提到 LLM 会顺手生成单页 Web App、臃肿的 spec.md，或者一堆 grep、`assert(1==1)` 之类的空洞测试。要想让它产出可用结果，往往得自己看 `git diff`、持续 babysit，并用正向例子而不是“不要做什么”去约束它。",
-              "supportid": [
-                "47744628",
-                "47745560",
-                "47745089",
-                "47745382",
-                "47745306",
-                "47745565",
-                "47744393",
-                "47745136",
-                "47744816",
-                "47745139",
-                "47744523",
-                "47744734",
-                "47745280",
-                "47744601"
-              ]
-            },
-            {
-              "category": "WET/Rule of three：先重复，再抽象",
-              "summary": "另一条主线是在反驳过早抽象，认为 WET（Write Everything Twice）比死守 DRY 更实用。许多人赞成“第三次再考虑抽象”，因为第一次和第二次往往只是帮助你理解问题，过早封装反而容易把问题包进更复杂的层次。有人强调，真正有价值的抽象确实能改变 OS、RDBMS、cloud orchestration 这类系统，但大多数业务代码并不值得一开始就平台化。Fred Brooks 的 second-system effect 也被拿来提醒：第二版最容易因为“想做得更好”而膨胀成过度设计。",
-              "supportid": [
-                "47744113",
-                "47744184",
-                "47744821",
-                "47744731",
-                "47745201",
-                "47745254",
-                "47745367",
-                "47745307",
-                "47744430",
-                "47745220",
-                "47745264",
-                "47745104"
-              ]
-            },
-            {
-              "category": "LOC 崇拜不是价值衡量",
-              "summary": "不少评论认为，把代码行数当成绩单是典型的指标错位。真正该看的不是 LOC，而是净价值：包括维护、理解、部署、secuirty、法律风险，以及错误代码带来的下游代价。有人直接把 Garry Tan（YC CEO）的发言解读成 AI 广告，而不是生产力展示；也有人说根本没必要读完那 200k LOC，光看目标就知道方向不对。Horizon IT scandal（英国邮局会计系统丑闻）和 THERAC-25（经典医疗软件事故）被拿来说明：软件质量差不只是“代码丑”，而是可能真实伤人。",
-              "supportid": [
-                "47744356",
-                "47744389",
-                "47744721",
-                "47744618",
-                "47744780",
-                "47745088",
-                "47744527",
-                "47744453",
-                "47744482",
-                "47744761",
-                "47744998",
-                "47745272",
-                "47745499",
-                "47745345",
-                "47744906"
-              ]
-            },
-            {
-              "category": "懒惰作为过滤器，但需要纪律",
-              "summary": "有些人认同“懒惰”是好软件的重要正则器，因为它会逼你先理解问题，再决定要不要写。也有人担心这会变成自我安慰：今天没产出也能说成“懒惰有价值”，最后只是合理化低效。围绕 LLM 的焦虑是，它们没有摩擦感，会很自然地堆出 500 行本可用 20 行解决的东西，而且往往没有明确的停止条件。于是更现实的做法变成：把纪律放回人身上，持续审查、要求简化，并让工具服从你的判断而不是反过来。",
-              "supportid": [
-                "47744490",
-                "47745562",
-                "47745280",
-                "47744393",
-                "47744734",
-                "47745178",
-                "47745472",
-                "47744601",
-                "47745713"
-              ]
-            },
-            {
-              "category": "工艺被商品化的焦虑",
-              "summary": "还有一条情绪很强的线，是把这篇文章读成对“hard-earned craft”被 LLM 商品化的反应。有人拿手写 HTML 对比 React，认为底层知识并没有失效，只是价值重心上移了；也有人觉得这正说明某些长期积累的技能正在被压价。对 Perl 和 Larry Wall 的“cult”语气也有人反感，但仍承认核心观点成立：好软件本来就要时间打磨。整体上，这类评论不是简单反 AI，而是担心工具让 craft 变成廉价产物。",
-              "supportid": [
-                "47744382",
-                "47744412",
-                "47744429",
-                "47745106",
-                "47745199",
-                "47744751",
-                "47744794",
-                "47744925",
-                "47745596",
-                "47745713",
-                "47743934"
-              ]
-            },
-            {
-              "category": "别把人分成几种桶",
-              "summary": "Hammerstein 那句把军官分成聪明、勤奋、愚蠢、懒惰四类的引语，引发了对“分类人”的明显反感。有人喜欢“聪明又懒惰的人最适合领导”的说法，但更多人觉得这种打分方式很冒犯，也忽略了现实工作中的复杂性。评论强调，普通劳动、官僚流程、客服和收银等岗位常常是在处理自动化系统无法覆盖的边角情况，社会运转靠的正是这些看似平凡的人。这个分支最后落到一个更温和的结论：人不需要卓越才有价值。",
-              "supportid": [
-                "47744561",
-                "47744659",
-                "47744859",
-                "47744934",
-                "47745271",
-                "47745448",
-                "47744975",
-                "47745270",
-                "47745024",
-                "47744879"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "vibe coding",
-              "explanation": "用 LLM/agent 快速拼代码的开发方式，通常更重速度和产出，较少强调理解与约束。"
-            },
-            {
-              "term": "LOC（Lines of Code）",
-              "explanation": "代码行数；常被拿来炫耀开发速度，但几乎不能直接代表质量或真实价值。"
-            },
-            {
-              "term": "WET（Write Everything Twice）",
-              "explanation": "先容忍重复，等同类代码第三次出现时再考虑抽象。"
-            },
-            {
-              "term": "DRY（Don't Repeat Yourself）",
-              "explanation": "避免重复代码的原则；这场讨论里有人认为它有时会导致过早抽象。"
-            },
-            {
-              "term": "Rule of three",
-              "explanation": "经验法则：某个模式重复到第三次，再考虑提炼成抽象。"
-            },
-            {
-              "term": "second-system effect",
-              "explanation": "第二系统效应：第二版常因想“补全一切”而变得更复杂、更臃肿。"
-            },
-            {
-              "term": "verification / validation",
-              "explanation": "verification 检查实现是否正确；validation 检查模型或结果是否符合实验、需求或现实。"
-            },
-            {
-              "term": "leaky abstraction",
-              "explanation": "抽象层并不能完全隐藏底层细节，反而会留下让人头疼的新复杂度。"
-            }
-          ],
-          "context": "这篇讨论围绕“laziness”在软件里的正反两面展开，背景里常被提到的是 Larry Wall（Perl 作者）和他在 Programming Perl（1991 年经典书）里对“懒惰”的经典辩护。评论者把这套老观点放到 LLM 和 vibe coding 时代重新审视：当工具把写代码、写测试、写文档都变得太容易时，原本能逼人思考的摩擦是否正在消失。Garry Tan（YC 创业孵化器 CEO）晒出大量 LOC 的帖子成了争议引爆点，大家借此讨论“产出量”和“价值”到底是不是一回事。另一些评论则借 CFD（computational fluid dynamics，计算流体力学）里的 verification/validation 区分，说明自动生成测试很容易挑到教材里好看但不相关的案例。",
-          "emoji": "🤨",
-          "sarcastic_question": "200k LOC 也顺手把质量刷出来了？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nLLM 缺乏人类程序员因时间有限而被迫追求“懒惰”的约束，如果不加节制，它们只会制造庞大而臃肿的垃圾代码，而非优雅的抽象。\n\n---\n\n### 程序员的“懒惰”其实是一种美德\nLarry Wall 在经典的《Programming Perl》里提出了程序员的三大美德：懒惰、急躁和傲慢。其中，“懒惰”并不是真的想偷懒，而是一种为了省事而追求极致抽象的动力。说白了就是，我们愿意现在多费点脑子去设计好用的系统，是为了以后写代码时能更轻松。这种“懒惰”能迫我们把系统做得尽可能简单（但不能太简单），从而让后续的开发和维护变得像搭积木一样容易。这种美德不仅服务于当下的自己，也造福了后来接手代码的人。\n\n### 这种“懒惰”需要付出巨大的认知成本\n当然，想要这种高质量的“懒惰”并不容易，它往往需要我们在前期进行大量的脑力劳动。这就像所谓的“吊床驱动开发”，看似躺在那不动，其实脑子里正在疯狂推演各种方案。我们之所以愿意牺牲现在的时间，是因为在算一笔账：现在的投入能优化未来自己的时间。当这笔账算对了，抽象出来的系统就能极大地提升生产力，让更多人能更容易地参与到软件开发中来。\n\n### LLM 的出现打破了这种平衡\n但现在的环境变了，软件开发的人群扩大了，很多人并不认同这种传统的“懒惰”美德。更糟糕的是，现代工具带来的高生产力催生了一种虚假的勤奋文化，也就是所谓的“奋斗色情片”。这时候，LLM 就像是一剂强心针打在了这种文化上。对于推崇这种文化的人来说，LLM 简直就是类固醇，让他们能用更猛烈的势头去堆砌代码。\n\n### 一天写 3.7 万行代码？这根本不是好事\n这种风气的典型代表就是 Garry Tan，他甚至在网上炫耀自己用 LLM 达到了每天 **37,000 行代码** 的产出速度。但这显然违背了程序员的“懒惰”美德，就像用重量来评价文学作品一样荒谬。如果你去深挖他这么拼命造出来的东西，会发现里面简直是个大杂烩：包含了多个测试框架、一个 Hello World 级别的 Rails 应用、一个不知哪来的文本编辑器，甚至还有同一个 Logo 的八个不同版本。\n\n### LLM 天生缺乏对“简洁”的渴望\n这里的核心问题不在于这些具体的 Bug 能不能修，而在于 LLM 本质上缺乏“懒惰”这种美德。对 LLM 来说，生成代码几乎没有成本，它不需要为自己的未来时间负责，所以它会毫无心理负担地在一堆垃圾上继续堆砌更多垃圾。如果放任不管，LLM 只会让系统变得越来越庞大，而不是越来越好。人类之所以追求简洁，是因为我们的时间有限，无法承受复杂系统带来的认知负荷，但 LLM 没有这种约束。\n\n### 好的工程源于约束，而 LLM 没有约束\n最好的工程往往诞生于约束之中，而时间的约束迫使我们去控制系统的复杂度，去追求更简单的抽象。正如作者在演讲《The Complexity of Simplicity》中提到的，让系统变简单是一项艰巨的工程挑战。既然 LLM 既没有时间限制，也没有认知负荷的压力，我们就不能指望它们会自发地去追求这种简洁。指望 AI 自动把代码写好，是不现实的。\n\n### 把 LLM 当工具，别让它毁了你的架构\n当然，这并不是说 LLM 在软件工程中没有未来，它们依然是极其强大的工具。在 Oxide，他们制定了 LLM 使用指南，明确指出这只是工具。我们可以利用 LLM 来处理那些真正繁琐且无趣的工作，比如偿还技术债务，或者利用它来提升工程严谨性。但前提是，这一切必须服务于我们人类“懒惰”的美德——也就是为了构建一个更简单、更强大的系统，不仅为了自己，也为了未来的开发者。"
     }
   ]
 }
