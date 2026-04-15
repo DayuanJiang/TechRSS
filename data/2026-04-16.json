@@ -2,8 +2,8 @@
   "date": "2026-04-16",
   "total_feeds": 92,
   "success_feeds": 86,
-  "total_articles": 2567,
-  "filtered_articles": 29,
+  "total_articles": 2568,
+  "filtered_articles": 31,
   "articles": [
     {
       "title": "Jensen Huang – TPU competition, why we should sell chips to China, & Nvidia’s supply chain moat",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Simdutf Can Now Be Used Without libc++ or libc++abi",
+      "title_zh": "simdutf 移除 libc++ 依赖的工程实践",
+      "link": "https://mitchellh.com/writing/simdutf-no-libcxx",
+      "pub_date": "2026-04-15T00:00:00.000Z",
+      "summary": "## 一句话总结\n通过引入 `stl_compat.h` 抽象层、替换函数级静态变量并手动实现 `__cxa_pure_virtual` 等底层 shim，作者成功将高性能 UTF-8 库 simdutf 从 libc++ 和 libc++abi 的依赖中剥离，使其能在嵌入式和 freestanding 环境中运行。\n\n### 摆脱 libc++ 依赖，是为了更极致的移植性\n对于像 Ghostty 这样的终端模拟器来说，依赖越少越好。虽然 simdutf 性能强悍，但它作为最后一个依赖 libc++ 的组件，阻碍了项目彻底移除 C++ 标准库的计划。不依赖 libc++ 不仅能显著减小二进制体积，还能让库轻松移植到嵌入式、WebAssembly 或 freestanding 环境。核心思路其实很简单：既然 simdutf 本质上不需要那些繁重的标准库特性，那就把依赖切断，让底层开发者能更灵活地静态链接。\n\n### 隐形杀手 libc++abi：不 include 也会产生依赖\n剥离依赖的第一步是搞清楚对手是谁。`libc++` 提供的是 `std::vector` 这类看得见的容器，比较好处理；但 `libc++abi` 提供的是异常处理、RTTI 和虚函数表等 ABI 特性，它们非常狡猾。即使你不 include 任何头文件，只要用了函数内的静态变量（`static const`），编译器就会为了线程安全初始化悄悄插入对 `__cxa_guard_acquire` 的调用。这意味着你代码里没写 libc++abi，但编译后的二进制文件却强依赖它。\n\n### 用 stl_compat.h 做一层“翻译”，而不是重写代码\n为了移除 `libc++`，作者没有选择重写所有代码，而是设计了一个巧妙的 `stl_compat.h` 头文件作为兼容层。在正常模式下，它直接 alias 到标准库类型，零开销；在 `NO_LIBCXX` 模式下，它提供 simdutf 所需的最小化实现（比如手写一个 `std::pair`）。这样改动主要集中在类型替换上，把 `std::pair` 换成 `internal::pair`，既保留了 C++ 的编码习惯，又切断了与标准库的物理联系。虽然这导致暴露 `std::string` 的少数 API 发生了 ABI 破坏，但对于不使用 libc++ 的用户来说，这完全是可以接受的代价。\n\n### 对抗 libc++abi：把函数级静态变量变成翻译单元级\n解决 `libc++abi` 依赖是这次重构中最硬的骨头。作者写了一个脚本反编译目标文件，专门抓取 `__cxa_guard_*` 这类符号。最大的问题出在运行时分发层，原代码大量使用了函数内的静态变量来实现单例模式。解决办法很直接：在 `NO_LIBCXX` 模式下，把这些变量提升到翻译单元（Translation Unit）级别，变成全局静态变量。这样就不需要运行时的线程安全初始化 guard，从而绕过了对 libc++abi 的隐式调用。\n\n### 填补底层坑位：手动实现纯虚函数调用桩\n即便去掉了静态变量，C++ 的抽象类虚函数表里依然会引用 `__cxa_pure_virtual`，这是一个纯虚函数调用的错误处理符号，通常由 libc++abi 提供。为了不引入这个庞然大物，作者在 `NO_LIBCXX` 模式下提供了一个极简的本地实现，直接调用 `__builtin_trap()` 终止程序。为了保险起见，这个符号被标记为 `weak`，这样如果系统中真的链接了 libc++abi，系统版本会优先覆盖这个 shim。最后，作者还把检查脚本加入了 CI，确保未来不会有人误操作引入异常或 RTTI 相关的依赖。\n\n### 验证与提交：代码写完只是工作的一半\n作为对性能和正确性极度敏感的库，任何修改都必须经得起推敲。作者修改了测试套件，确保 `NO_LIBCXX` 模式和正常模式跑一样的测试用例，Benchmark 结果也完全一致。在 Ghostty 项目中实测后，确认 UTF-8 吞吐量没有损失，且彻底移除了对 C++ 运行时的依赖。更有意思的是，作者为了提交这个 PR，花了比写代码还多的时间去手动 Review 那些由 AI 辅助生成的 3000 行代码，并撰写了详尽的说明文档。这种对维护者时间的尊重，或许才是高质量开源协作的真正关键。",
+      "source_name": "mitchellh.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "simdutf",
+        "libc++",
+        "freestanding",
+        "ABI"
+      ],
+      "rank": 2
+    },
+    {
       "title": "An Arm Mainboard for the Framework Laptop",
       "title_zh": "Framework 笔记本搭载 Arm 主板实测",
       "link": "https://www.jeffgeerling.com/blog/2026/arm-mainboard-for-framework-laptop/",
@@ -41,7 +60,7 @@
         "Cix P1",
         "benchmark"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Gemini 3.1 Flash TTS",
@@ -60,7 +79,7 @@
         "prompt engineering",
         "audio generation"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Quoting Kyle Kingsbury",
@@ -78,7 +97,7 @@
         "ML systems",
         "AI ethics"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "A sufficiently comprehensive spec is not (necessarily) code",
@@ -97,7 +116,26 @@
         "program synthesis",
         "formal methods"
       ],
-      "rank": 5
+      "rank": 6
+    },
+    {
+      "title": "Why is there a long delay between a thread exiting and the Wait­For­Single­Object returning?",
+      "title_zh": "WaitForSingleObject 等待线程退出的延迟之谜",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260415-00/?p=112235",
+      "pub_date": "2026-04-15T14:00:00.000Z",
+      "summary": "客户报告 WaitForSingleObject 等待线程退出时出现超过一分钟的延迟。线程过程返回后，系统仍需向所有 DLL 发送 DLL_THREAD_DETACH 通知，这需要获取加载器锁。问题很可能出在某个 DLL 的 detach 代码中执行了耗时操作，或者线程被阻塞在等待加载器锁上。作者建议用调试器检查线程状态，定位是哪个 DLL 的 detach 代码卡住了。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 11,
+      "depth": 6,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "Windows",
+        "WaitForSingleObject",
+        "DLL_THREAD_DETACH",
+        "loader lock"
+      ],
+      "rank": 7
     },
     {
       "title": "Quoting John Gruber",
@@ -115,7 +153,7 @@
         "native apps",
         "developer motivation"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "★ David Pierce Tried a Bunch of Android Phones and Then Bought an iPhone Again",
@@ -134,7 +172,7 @@
         "App Store",
         "developer relations"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Speed is Not Conducive to Wisdom",
@@ -152,7 +190,7 @@
         "speed",
         "reflection"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "datasette-ports 0.3",
@@ -169,7 +207,7 @@
         "datasette",
         "datasette-ports"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "Gemini 3.1 Flash TTS",
@@ -186,7 +224,7 @@
         "Gemini",
         "TTS"
       ],
-      "rank": 10
+      "rank": 12
     }
   ]
 }
