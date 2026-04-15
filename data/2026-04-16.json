@@ -1,9 +1,9 @@
 {
   "date": "2026-04-16",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2543,
-  "filtered_articles": 29,
+  "success_feeds": 86,
+  "total_articles": 2568,
+  "filtered_articles": 28,
   "articles": [
     {
       "title": "Jensen Huang – TPU competition, why we should sell chips to China, & Nvidia’s supply chain moat",
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "Writing an LLM from scratch, part 32k -- Interventions: training a better model locally with gradient accumulation",
+      "title_zh": "用梯度累积在本地训练更优 LLM",
+      "link": "https://www.gilesthomas.com/2026/04/llm-from-scratch-32k-interventions-training-our-best-model-locally-gradient-accumulation",
+      "pub_date": "2026-04-15T20:00:00.000Z",
+      "summary": "## 一句话总结\n通过梯度累积和 DDP 的 `no_sync` 优化，作者成功在单卡 RTX 3090 上模拟了云端 8 卡 A100 的大 Batch Size 训练效果，证明了 Batch Size 对模型质量的提升远超各种微小的训练干预。\n\n### Batch Size 才是提升模型质量的关键\n作者之前在云端测试了各种模型干预手段，试图降低 Loss，结果发现一个有趣的现象：所有干预手段加起来的效果（Loss 降低 0.113765），还不到增加 Batch Size 带来收益（Loss 降低 0.252474）的一半。云端最优的 Batch Size 大约是 97，接近 8 张 A100 的极限。但问题是，作者本地只有一张 RTX 3090，显存只塞得下 Batch Size 为 6 的数据。如果直接用小 Batch Size 训练，模型质量肯定赶不上云端。这就引出了一个核心需求：如何在显存受限的情况下，获得大 Batch Size 的训练稳定性？答案就是梯度累积。\n\n### 梯度累积的核心逻辑与 Loss 缩放陷阱\n梯度累积的原理听起来很简单：不急着更新参数，而是连续跑几次前向和反向传播，把梯度累加起来，最后再统一更新一次 Optimizer。这样，有效 Batch Size 就等于“单次 Batch Size × 累积步数”。但实现时有个极易出错的细节：Loss 的计算。通常 PyTorch 的 CrossEntropyLoss 返回的是平均值，直接累加多次 backward 会导致梯度变成“总和”而非“平均值”，这相当于把学习率凭空扩大了 N 倍。解决办法也很粗暴：在 backward 之前，先把 Loss 除以累积步数。这样累加出来的梯度，在数学上就等价于大 Batch Size 产生的平均梯度。\n\n### 在 DDP 环境下重构数据加载逻辑\n理论清楚了，但在作者复杂的训练循环里落地并不容易。因为代码支持多卡 DDP 训练，数据是按 `world_size`（显卡数量）切分的。为了在本地模拟云端 8 卡、每卡 Batch 12（总 Batch 96）的效果，作者需要把本地 1 卡 Batch 6 累积 16 次。这意味着数据索引逻辑必须重写：原本的 `global_step` 现在代表一次 Optimizer 更新，内部包含一个 `accumulation_step` 循环。数据索引公式变成了 `train_ds[((global_step * accumulation_steps) + accumulation_step) * world_size + rank]`，确保数据流在逻辑上和云端训练保持一致。\n\n### 利用 no_sync 减少 DDP 通信开销\n代码跑通了，但还有个性能问题。在 DDP 模式下，每次 backward 都会自动同步所有显卡的梯度。如果我们在累积步数内频繁做这件事，通信开销会非常大。实际上，我们只需要在最后一次 backward 时同步梯度即可。PyTorch 的 `DistributedDataParallel` 提供了一个 `no_sync()` 上下文管理器。作者用了一个巧妙的写法：在非最后一次累积步时使用 `model.no_sync()`，最后一次则用 `nullcontext()`（空操作）。这样，梯度只在最后一步跨卡同步，大大节省了通信带宽。\n\n### 最终效果与本地新基线\n搞定这些细节后，作者并没有急着堆砌所有的云端优化技巧，而是先跑了一个“新基线”。这个基线只做一件事：用梯度累积把 Batch Size 对齐到云端水平。虽然牺牲了并行带来的速度优势（毕竟是在单卡上串行累积），但换来了和云端一致的梯度更新方向。这为后续在本地复现云端高质量模型打下了坚实的基础，也验证了“显存不够，算法来凑”的可行性。",
+      "source_name": "gilesthomas.com",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "ai-ml",
+      "keywords": [
+        "gradient accumulation",
+        "batch size",
+        "training",
+        "loss"
+      ],
+      "rank": 3
+    },
+    {
       "title": "An Arm Mainboard for the Framework Laptop",
       "title_zh": "Framework 笔记本搭载 Arm 主板实测",
       "link": "https://www.jeffgeerling.com/blog/2026/arm-mainboard-for-framework-laptop/",
@@ -60,7 +79,7 @@
         "Cix P1",
         "benchmark"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Gemini 3.1 Flash TTS",
@@ -79,7 +98,7 @@
         "prompt engineering",
         "audio generation"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Quoting Kyle Kingsbury",
@@ -97,7 +116,7 @@
         "ML systems",
         "AI ethics"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "A sufficiently comprehensive spec is not (necessarily) code",
@@ -116,7 +135,7 @@
         "program synthesis",
         "formal methods"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Why is there a long delay between a thread exiting and the Wait­For­Single­Object returning?",
@@ -135,7 +154,7 @@
         "DLL_THREAD_DETACH",
         "loader lock"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Lisa Melton: ‘Memories of Steve’ (and Memories of Safari’s Unique Page-Loading Indicator in Particular)",
@@ -154,7 +173,7 @@
         "Apple",
         "design review"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Quoting John Gruber",
@@ -172,7 +191,7 @@
         "native apps",
         "developer motivation"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "★ David Pierce Tried a Bunch of Android Phones and Then Bought an iPhone Again",
@@ -191,7 +210,7 @@
         "App Store",
         "developer relations"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Speed is Not Conducive to Wisdom",
@@ -209,7 +228,7 @@
         "speed",
         "reflection"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "datasette-ports 0.3",
@@ -226,7 +245,7 @@
         "datasette",
         "datasette-ports"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "Gemini 3.1 Flash TTS",
@@ -243,7 +262,7 @@
         "Gemini",
         "TTS"
       ],
-      "rank": 13
+      "rank": 14
     }
   ]
 }
