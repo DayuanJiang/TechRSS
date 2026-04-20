@@ -1,1 +1,104 @@
-null
+{
+  "date": "2026-04-21",
+  "total_feeds": 92,
+  "success_feeds": 86,
+  "total_articles": 2570,
+  "filtered_articles": 19,
+  "articles": [
+    {
+      "title": "256 Lines or Less: Test Case Minimization",
+      "title_zh": "256 行 Zig 实现的测试用例最小化",
+      "link": "https://matklad.github.io/2026/04/20/test-case-minimization.html",
+      "pub_date": "2026-04-20T00:00:00.000Z",
+      "summary": "## 一句话总结\n用一个“会耗尽”的伪随机数生成器（FRNG）来驱动测试，不仅能复现 Bug，还能通过二分查找熵值的方式，自动把触发 Bug 的最小测试用例找出来。\n\n### 256 行代码的“核武器”\n作者本来想写个共识算法，结果先写了个只有 256 行代码的 Property Based Testing (PBT) 库，反倒把自己算法里的深层逻辑漏洞给测出来了。这玩意儿虽然简陋，但“功重比”极高。核心思路其实很简单：它不依赖那些复杂的 PhD 级理论，而是基于一个叫 FRNG (Finite Random Number Generator) 的抽象。说白了，就是一个所有数字都预生成好、并且会用完的 PRNG。这种设计让测试变得完全确定性，因为输入就是一串固定的字节流。\n\n### FRNG：把随机数变成只读字节流\nFRNG 的实现非常直接，它只存一个原始字节切片 `entropy`。最基础的操作是 `bytes` 函数，直接从切片里切出指定长度的数据返回，如果不够了就报 `OutOfEntropy` 错误。基于这个，作者利用 Zig 强大的编译期特性，封装了 `array`、`int` 甚至 `weighted` 等高级接口。这里有个巧妙的设计：因为所有随机数都来自有限的熵池，测试的复杂度就直接由熵的大小决定了。熵用完了，测试自然就停，这为后续的“瘦身”埋下了伏笔。\n\n### 用“群组测试”模拟真实混沌\n有了 FRNG，就可以模拟分布式系统的混沌场景了。作者构建了一个 `World` 结构，里面包含副本和 FRNG。测试的核心是一个 `step` 函数，它利用 `weighted` 接口随机决定下一步是发请求、发消息还是崩溃节点。有意思的地方在于，连这些操作的权重本身也是随机生成的。这种“Swarm Testing”策略能探索出很多边缘路径。如果代码有逻辑漏洞，`World` 最终会触发断言崩溃；如果熵用完了还没崩，说明这组输入是安全的。\n\n### 核心亮点：二分查找最小复现路径\n到这里为止，看起来像个普通的随机测试工具。但 FRNG 的“有限”特性带来了一个巨大的好处：测试用例最小化。假设你用 16KB 的熵触发了一个 Bug，那能不能用更少的熵触发？因为 FRNG 是确定性的，只要给它更短的熵，它就会执行更短的步骤。作者的做法是：对熵的大小进行二分查找。如果 8KB 没触发 Bug，而 16KB 触发了，那就试 12KB。如此反复，直到找到触发 Bug 所需的最小熵值。\n\n### 为什么这比传统方法强？\n传统的测试用例最小化（像 Delta Debugging）通常需要在运行时对复杂的输入结构进行复杂的删减操作，既难写又慢。而 FRNG 的方案把“输入复杂度”直接映射成了“熵的大小”。你不需要去理解怎么删减一个具体的 JSON 或者网络包，只需要告诉 FRNG：“用更少的随机数再跑一次”。这种设计让最小化测试用例变得极其廉价且通用，任何能用随机生成的输入，都能自动获得最小化能力。",
+      "source_name": "matklad.github.io",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "property-based testing",
+        "Zig",
+        "test minimization",
+        "FRNG"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Exclusive: Microsoft To Shift GitHub Copilot Users To Token-Based Billing, Tighten Rate Limits",
+      "title_zh": "GitHub Copilot 转向 token 计费并收紧限制",
+      "link": "https://www.wheresyoured.at/news-microsoft-to-shift-github-copilot-users-to-token-based-billing-reduce-rate-limits-2/",
+      "pub_date": "2026-04-20T17:11:58.000Z",
+      "summary": "## 一句话总结\nGitHub Copilot 的“烧钱补贴”时代结束了，因为运营成本今年翻倍，微软正紧急转向按 Token 实际成本计费，并大幅收紧速率限制、削减低价套餐的模型权限。\n\n### 成本失控：运营成本半年翻倍，补贴模式玩不转了\n说白了，GitHub Copilot 之前一直在亏本赚吆喝。泄露的文件显示，自今年年初以来，Copilot 的周运营成本几乎翻了一倍。这背后的核心原因在于，微软像 Anthropic 和 OpenAI 一样，一直在巨额补贴用户的算力消耗。用户每个月付的固定订阅费，往往远低于他们实际消耗的 Token 成本。现在看来，这种“赔本赚用户”的策略已经难以为继，微软必须尽快止血。\n\n### 计费大转向：从“请求数”到“Token 量”，按实际成本收费\n为了解决成本问题，微软计划将计费模式从基于“请求数”彻底转向基于“Token 数”。现在的逻辑很简单：Pro 用户每月 300 次请求，Pro+ 用户 1500 次，不同模型消耗的“请求额度”不同。但未来，你要为你输入和输出的每一个 Token 买单。比如，Claude Opus 4.7 的输入成本是每百万 Token 5 美元，输出更是高达 25 美元。这意味着，你的账单将直接反映你消耗的底层算力，不再有模糊的“打包价”。\n\n### 紧急刹车：暂停个人与学生注册，严打滥用\n在计费系统完全切换之前，微软决定先踩一脚刹车。文件显示，微软打算暂时暂停个人付费版和学生版的注册。这显然是为了控制新用户涌入带来的额外成本压力。同时，微软还在试图“打击滥用”，这意味着那些试图薅羊毛或者非正常高频使用的账号，可能会面临更严格的审查。对于想尝鲜的新用户来说，门正在慢慢关上。\n\n### 模型降级：10 美元套餐将失去 Opus 模型权限\n对于现有的付费用户，尤其是每月 10 美元的 Copilot Pro 用户，坏消息是模型权限要缩水了。微软计划直接从 Pro 套餐中移除 Anthropic 的 Opus 系列模型。这其实很好理解：Opus 模型虽然强大，但推理成本极其昂贵。在固定收费模式下，让 10 美元用户无限使用昂贵的 Opus 模型，显然是一笔稳赔不赚的生意。想要用最好的模型，未来可能得掏更多的钱。\n\n### 隐形涨价：通过“请求倍率”收紧速率限制\n除了直接移除模型，微软还在通过调整“请求倍率”来变相收紧限制。以前，GPT-5.4 Mini 这种轻量级模型的倍率只有 0.33，相当于一次请求只算三分之一额度；而昂贵的 Claude Opus 4.6 Fast 倍率高达 30 倍。现在，随着新模型 Opus 4.7 的上线，其倍率高达 7.5 倍。虽然微软暂时提供了一些促销倍率，但这实际上意味着用户会更快地用完每月的额度。Redditors 已经算过账了，这本质上就是一次大幅度的隐性涨价。\n\n### 行业信号：AI 创业公司的“次贷危机”正在蔓延\n有意思的地方在于，这不仅仅是 GitHub Copilot 的个别调整，而是整个 AI 行业的一个缩影。从 Anthropic 到 OpenAI，再到现在的微软，大家都在从“补贴换规模”转向“追求盈利”。这标志着 AI 产品的“免费午餐”阶段正在结束。对于开发者而言，这意味着未来在选择 AI 编程助手时，不仅要看功能强弱，更要精打细算其背后的 Token 成本和性价比了。",
+      "source_name": "wheresyoured.at",
+      "score": 15,
+      "depth": 7,
+      "novelty": 8,
+      "category": "ai-ml",
+      "keywords": [
+        "GitHub Copilot",
+        "token-based billing",
+        "rate limits",
+        "Opus"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Pluralistic: Comrade Trump (20 Apr 2026)",
+      "title_zh": "特朗普如何意外加速全球能源转型",
+      "link": "https://pluralistic.net/2026/04/20/praxis/",
+      "pub_date": "2026-04-20T16:44:33.000Z",
+      "summary": "特朗普的关税政策导致中国太阳能板被倾销到巴基斯坦，使该国一夜之间实现太阳能化，国家电力公司因无人购买电网电力而濒临破产。巴基斯坦的嫁妆现在普遍包含四块太阳能板、逆变器和电池。这种逆转打破了发达国家先享用新技术、发展中国家只能捡拾残羹冷炙的常规秩序。能源短缺引发的配给制迫使印度餐厅改用电磁炉，澳大利亚居民抢购电动汽车，埃塞俄比亚全面禁止内燃机进口，转而采用每英里成本仅一美分的电动自行车。欧洲因俄乌战争加速能源转型，英国甚至批准了阳台太阳能安装，政府现在恳求民众多用电以消化过剩的可再生能源。特朗普破坏了保护美国科技出口的反规避法律，使各国得以摆脱对美国缺陷科技产品的依赖。他的政策无意中加速了全球从化石燃料向清洁技术的永久性单向迁移，清洁技术在成本、可靠性和清洁度上全面优于化石燃料，任何尝试过的人都会成为坚定的支持者。",
+      "source_name": "pluralistic.net",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "opinion",
+      "keywords": [
+        "energy transition",
+        "solar",
+        "cleantech",
+        "Trump"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "How did code handle 24-bit-per-pixel formats when using video cards with bank-switched memory?",
+      "title_zh": "24位像素在bank-switched显存的对齐处理",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260420-00/?p=112245",
+      "pub_date": "2026-04-20T14:00:00.000Z",
+      "summary": "24位像素格式在bank-switched显存下存在对齐问题：64KB不是3的倍数，像素访问可能跨越bank边界导致无限切换。解决方案是强制内存对齐，禁止跨bank的32位读取，跨边界的像素必须拆分为三个字节访问。整行像素操作时可通过填充字节实现32位对齐后批量读写，但单个像素访问必须逐字节处理。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 11,
+      "depth": 6,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "bank-switching",
+        "memory alignment",
+        "VFLATD",
+        "video driver"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "Apple’s Annual Environmental Progress Report",
+      "title_zh": "Apple 发布 2025 年度环境进展报告",
+      "link": "https://www.apple.com/newsroom/2026/04/apple-accelerates-progress-with-highest-ever-recycled-material-in-its-products/",
+      "pub_date": "2026-04-20T17:09:30.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "environmental",
+        "recycled materials",
+        "water conservation",
+        "sustainability"
+      ],
+      "rank": 5
+    }
+  ]
+}
