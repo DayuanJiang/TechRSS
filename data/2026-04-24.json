@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2558,
-  "filtered_articles": 18,
+  "filtered_articles": 19,
   "articles": [
     {
       "title": "Another crash caused by uninstaller code injection into Explorer",
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "Extract PDF text in your browser with LiteParse for the web",
+      "title_zh": "LiteParse 浏览器版：纯前端 PDF 解析",
+      "link": "https://simonwillison.net/2026/Apr/23/liteparse-for-the-web/#atom-everything",
+      "pub_date": "2026-04-23T21:54:24.000Z",
+      "summary": "## 一句话总结\n作者通过 Claude Code 将原本基于 Node.js 的 PDF 解析工具 LiteParse 移植到了浏览器端，利用 PDF.js 和 Tesseract.js 实现了完全本地化的空间文本解析与 OCR，并展示了“Vibe Coding”模式在构建低风险、高隐私工具上的潜力。\n\n### PDF 解析的痛点不是识别文字，而是还原阅读顺序\n市面上处理 PDF 的工具很多，但 LiteParse 解决了一个非常具体且棘手的问题：**空间文本解析**。PDF 本质上是一堆带有坐标信息的字符堆砌，并不像 HTML 那样有清晰的流式结构。这就导致传统的提取工具经常会把多栏排版的内容读得支离破碎。LiteParse 的核心思路是不依赖 AI 模型，而是通过一套精心设计的启发式算法来检测多栏布局，将文字按人类阅读的逻辑顺序重新组合。此外，它还支持“Visual Citations”，即在提取文本的同时保留边界框，这让 RAG（检索增强生成）应用在回答问题时能高亮引用原文区域，大大提升了答案的可信度。\n\n### 既然底层库都支持浏览器，为什么非要绑在 Node.js 上？\nLiteParse 原本是一个纯 CLI 工具，设计初衷是给 AI Agent 用的。作者在测试时发现，它底层依赖的 PDF.js 和 Tesseract.js 其实都有浏览器版本。这意味着，理论上没有任何技术障碍阻止它在浏览器里跑。唯一的原因只是：**还没人去实现它**。既然如此，为什么不把它变成一个 Web App 呢？这样用户就不需要把敏感文档上传到服务器，所有解析都在本地完成，既保护隐私又降低了部署成本。\n\n### 从手机上的灵光一闪，到笔记本上的“Plan.md”\n整个开发过程始于作者在手机上用 Claude 随手测试 LiteParse。确认可行性后，他切换到电脑端，使用 Claude Code 正式开工。这里有个很实用的工程习惯：**先写计划，再写代码**。作者没有直接让 AI 开始写，而是先让它生成一个 `plan.md`，详细列出实现步骤。当作者发现 AI 打算把“页面截图”功能延后到 v2 时，他直接修改了计划，强制要求在第一版就完成。这种“人机协作”的规划模式，既利用了 AI 的执行力，又保留了人类对产品愿景的把控。\n\n### 用 Playwright 做 Red/Green TDD，确保 AI 没在“偷懒”\n在 AI 写代码的过程中，最大的风险是它可能会“作弊”——比如把核心功能写成 TODO，或者忽略错误处理。为了防止这种情况，作者要求 AI 使用 Playwright 进行红绿测试驱动开发（TDD）。每实现一个功能，必须有对应的测试通过。此外，作者还特意要求 AI “small commits along the way”（小步提交）。这不仅方便代码审查，作者甚至有个直觉：**这种约束能让 AI 的思考过程更清晰，工作更有效**。在开发过程中，作者通过 `npx vite` 启动本地服务器，实时预览 AI 的产出，并通过截图反馈 UI 细节上的 Bug（比如 Firefox 下文件名过长的问题），迭代速度极快。\n\n### 兼容性是个大坑，Safari 总是那个例外\n开发过程并非一帆风顺，浏览器兼容性成了最大的拦路虎。项目在 Chrome 和 Firefox 上都跑得很顺，但在 Safari 上却一直报错 `undefined is not a function (near '...value of readableStream...')`。作者不得不多次介入，引导 AI 在 Playwright 中针对 Safari 进行调试。最终发现是 Safari 对某些 Stream API 的处理与其他浏览器不一致。修复这个问题花了不少精力，但也证明了在 AI 自动化开发中，**人类在处理边缘情况和环境差异时依然不可或缺**。\n\n### 59 分钟后，一个完全可用的 Web App 上线了\n从输入 `build it` 到最终完成，Claude Code 总共只花了 59 分钟。最后一步是部署，作者让 AI 配置了 GitHub Actions：只要代码推送到仓库，就会自动运行测试，测试通过后通过 Vite 构建，并直接部署到 GitHub Pages。整个流程全自动化，零成本。为了验证 AI 没有偷工减料，作者甚至动用了 GPT-5.5 来对比 Node.js 版本和 Web 版本的实现差异，确认逻辑一致后才放心发布。\n\n### 这种“Vibe Coding”到底靠不靠谱？\n作者一直强调他对“Vibe Coding”（氛围编程）的定义：**完全不看代码，只让 AI 写**。这个项目完全符合这个定义——作者甚至没看一眼写出来的 HTML 或 TypeScript。但他认为这个项目是“Vibe Coding”的一个绝佳案例，因为它的**爆炸半径极小**。作为一个纯静态的本地 Web 应用，它不涉及后端，不传输数据，即便有 Bug 也只是解析失败，不会造成安全漏洞。作者甚至觉得，如果让他自己手写，未必能在这么短时间内写出质量相当的初始版本。这种模式可能不适合构建复杂的银行系统，但对于快速验证想法和开发工具类应用，效率高得惊人。",
+      "source_name": "simonwillison.net",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "tools",
+      "keywords": [
+        "LiteParse",
+        "PDF parsing",
+        "browser",
+        "vibe coding"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Nilay Patel: ‘Beware Software Brain’",
       "title_zh": "AI 受众鸿沟：软件思维的致命盲区",
       "link": "https://www.theverge.com/podcast/917029/software-brain-ai-backlash-databases-automation",
@@ -60,7 +79,7 @@
         "public perception",
         "automation"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Approximation to solve an oblique triangle",
@@ -78,7 +97,7 @@
         "trigonometry",
         "numerical methods"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Microsoft Offers Voluntary Retirement to Long-Serving Employees",
@@ -96,7 +115,7 @@
         "rewards",
         "stock"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Trump’s Blog Has Somehow Lost $1.1 Billion",
@@ -115,7 +134,7 @@
         "Trump Media",
         "Bitcoin"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Microsoft Offers Voluntary Retirement to Long-Serving Employees",
@@ -133,7 +152,7 @@
         "retirement",
         "rewards"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Eight for Eight",
@@ -151,7 +170,7 @@
         "Chris Espinosa",
         "CEO"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Unauthorized Users in Discord Group Had Weekslong Access to Anthropic’s Supposedly-Super-Dangerous Claude Mythos Model",
@@ -168,7 +187,7 @@
         "Bloomberg",
         "rate limit"
       ],
-      "rank": 9
+      "rank": 10
     }
   ]
 }
