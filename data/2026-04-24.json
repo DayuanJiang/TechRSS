@@ -1,0 +1,46 @@
+{
+  "date": "2026-04-24",
+  "total_feeds": 92,
+  "success_feeds": 84,
+  "total_articles": 2501,
+  "filtered_articles": 16,
+  "articles": [
+    {
+      "title": "Another crash caused by uninstaller code injection into Explorer",
+      "title_zh": "卸载程序调用约定错误导致 Explorer 崩溃",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260423-00/?p=112261",
+      "pub_date": "2026-04-23T14:00:00.000Z",
+      "summary": "## 一句话总结\n一个卸载程序因为搞错了调用约定，在循环中不断\"吃掉\"自己的栈内存，最终导致栈指针覆盖了正在执行的代码，引发了一场被误认为是 Windows 系统级 Bug 的 Explorer 崩溃。\n\n### 32 位 Explorer 进程是最大的嫌疑人\n故事始于一次常规的调试会议，同事发现 Explorer 的崩溃率出现了神秘的飙升。作者拿到 dump 文件后，几乎一眼就锁定了罪魁祸首：一个有 bug 的卸载程序。判断依据非常硬核——崩溃发生在 64 位系统上的 32 位 Explorer 进程里。要知道，现代 Windows 系统中，32 位 Explorer 主要是为了兼容旧软件才存在的，它并不负责处理任务栏、桌面或文件资源管理器窗口。既然 32 位 Explorer 跑起来了，那几乎可以肯定，是有外部程序把它当成了\"苦力\"，注入代码在其中执行某些不可告人的操作。\n\n### 调用约定错配引发的\"隐形杀手\"\n出于好奇，作者深挖了一下这个卸载程序到底写了什么烂代码。结果发现，问题出在一个重试循环的逻辑里：代码尝试执行文件操作，如果失败就暂停一会儿再试。这听起来没问题，但致命的细节在于函数调用约定。代码本该使用 `__stdcall`（由被调用者清理栈），却错误地使用了 `__cdecl`（由调用者清理栈）。这意味着什么？每次调用 Windows 函数时，Windows 函数清理完参数后，调用代码又多此一举地清理了一次。这种\"双重清理\"导致每次循环，栈指针都会莫名其妙地向上移动，悄悄蚕食掉宝贵的栈空间。\n\n### 栈指针\"吃\"掉了自己的代码\n这个循环显然迭代了很多次，导致栈空间被彻底耗尽。最离谱的事情发生了：栈指针一路狂奔，竟然越过了数据区，直接\"长\"进了注入的代码段里。随着循环继续，栈数据开始无情地覆盖正在执行的指令。这就好比一个人在挖坑，挖着挖着把自己站立的地面给挖穿了。最终，程序执行到了一个无效指令——因为原本的代码已经被栈数据覆盖，根本不存在了。这种崩溃方式非常惨烈，留下了难以辨认的\"尸体\"。\n\n### 看起来像系统 Bug 的第三方事故\n由于崩溃现场太过诡异，大量的错误报告让 Windows 团队一度以为这是操作系统本身的 Bug。说白了，这就是一个典型的\"第三方程序作恶，微软背锅\"的案例。作者最后引用了他之前的观点：任何足够先进的卸载程序，都与恶意软件难以区分。这次事故再次印证了这一点，不当的代码注入不仅破坏了系统稳定性，还给调试工作带来了巨大的误导。对于开发者来说，这不仅是技术教训，更是对系统边界的一种警示。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "security",
+      "keywords": [
+        "Explorer",
+        "calling convention",
+        "stack overflow",
+        "code injection"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Approximation to solve an oblique triangle",
+      "title_zh": "斜三角形角度的无反三角函数近似解法",
+      "link": "https://www.johndcook.com/blog/2026/04/23/solve-an-oblique-triangle/",
+      "pub_date": "2026-04-23T15:56:02.000Z",
+      "summary": "对于任意斜三角形，已知三边 a、b、c 时，可用半周长 s = (a+b+c)/2 构造近似公式 A ≈ 6√[(s-b)(s-c)] / [2√(bc) + √(s(s-a))] 计算边 a 对应的角 A。该公式避免了反三角函数计算，仅需平方根运算。以边长为 6、7、12 的三角形为例，近似值为 0.36387538476776243 弧度，精确值为 0.36387760856668505 弧度，误差在 10^-6 量级，精度达小数点后五位。公式源自 Stelson 1949 年的论文，基于 2csc(x) + cot(x) 的幂级数展开推导。",
+      "source_name": "johndcook.com",
+      "score": 9,
+      "depth": 5,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "approximation",
+        "trigonometry",
+        "numerical methods"
+      ],
+      "rank": 2
+    }
+  ]
+}
