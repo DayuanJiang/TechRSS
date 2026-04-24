@@ -1,9 +1,9 @@
 {
   "date": "2026-04-24",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2533,
-  "filtered_articles": 20,
+  "success_feeds": 83,
+  "total_articles": 2513,
+  "filtered_articles": 21,
   "articles": [
     {
       "title": "Another crash caused by uninstaller code injection into Explorer",
@@ -25,6 +25,63 @@
       "rank": 1
     },
     {
+      "title": "Serving the For You feed",
+      "title_zh": "单机 SQLite 支撑 7 万用户的 Bluesky 推荐流",
+      "link": "https://simonwillison.net/2026/Apr/24/serving-the-for-you-feed/#atom-everything",
+      "pub_date": "2026-04-24T01:08:17.000Z",
+      "summary": "### 一句话总结\n一个开发者在客厅用单机 SQLite 和 Go 进程支撑了 7 万用户的推荐算法，证明了去中心化架构下个人也能低成本提供高性能服务。\n\n### 极客的客厅数据中心\nBluesky 最有意思的地方在于它允许任何人运行自定义的 Feed 算法，spacecowboy 开发的 \"For You Feed\" 就是其中的佼佼者，目前有约 70,000 名用户在使用。这篇 guest post 揭示了支撑这个服务的架构简直令人着迷：它不是运行在庞大的云原生集群上，而是在 spacecowboy 客厅里的一台 \"游戏 PC\" 上。这台机器的配置相当豪华，拥有 16 核 CPU、96GB 内存和 4TB 的 NVMe 存储。这种 \"家庭作坊\" 式的部署方式，直接挑战了我们对高并发服务必须依赖昂贵云基础设施的刻板印象。\n\n### SQLite 撑起半壁江山\n核心服务的实现出人意料地简单，本质上就是一个运行在 SQLite 上的 Go 进程。说白了就是利用单机高性能硬件，把复杂的分布式问题转化成了本地计算问题。推荐逻辑基于协同过滤思路：如果你喜欢了某条内容，系统会找出其他也喜欢这条内容的人，看看他们最近还在点赞什么。这种算法不需要复杂的深度学习模型，但需要极快的数据读取速度，而本地 NVMe 上的 SQLite 恰好能提供这种低延迟的访问。作者选择这种方案，是因为对于这种特定场景，过度设计反而会增加维护成本。\n\n### 毫不妥协的数据吞吐\n虽然架构简单，但在数据处理上却一点都不含糊。Go 服务器直接消费 Bluesky 的 Firehose（实时数据流），并将所有相关细节存入 SQLite 数据库。为了保证推荐的相关性，系统保留了最近 90 天的数据，这目前大约占用了 419GB 的存储空间。这里有个巧妙的设计：通过全量消费 Firehose 并在本地持久化，开发者拥有了完整的数据主权，不需要依赖任何第三方 API 的限制或速率限制。这种 \"自己存数据，自己算逻辑\" 的模式，正是去中心化协议的魅力所在。\n\n### 巧妙的公网流量伪装\n既然核心服务在客厅，那怎么处理公网访问呢？直接把家庭 IP 暴露在互联网上显然是不安全的。spacecowboy 的解决方案非常务实：在 OVH 上租用一台每月 7 美元的 VPS 作为反向代理。这台 VPS 负责处理所有的公网流量，然后通过 Tailscale 的加密隧道，把请求转发给客厅里的实体服务器。这样做的好处是既隐藏了真实服务器的位置，又利用了 VPS 的带宽来抗 DDoS 攻击，同时把繁重的计算任务留给了家里的高性能机器。\n\n### 惊人的性价比与扩展潜力\n最后算一笔账，整个系统的运营成本极低：每月电费 20 美元，VPS 7 美元，域名 3 美元，总计 30 美元。更有意思的是，spacecowboy 估算现有的这套系统其实潜力巨大。如果 Bluesky 的 100 万日活用户都切换到这个 Feed，并且使用他们目前找到的最廉价算法，这台客厅里的机器竟然也能扛得住。这个案例生动地说明了，在算法优化得当的情况下，硬件性能的边际效益是非常高的，并不总是需要无休止地堆砌服务器。",
+      "source_name": "simonwillison.net",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "SQLite",
+        "Bluesky",
+        "feed",
+        "architecture"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "russellromney/honker",
+      "title_zh": "honker：为 SQLite 带来 Postgres 风格的消息队列和流",
+      "link": "https://simonwillison.net/2026/Apr/24/honker/#atom-everything",
+      "pub_date": "2026-04-24T01:50:07.000Z",
+      "summary": "## 一句话总结\nHonker 是一个用 Rust 写的 SQLite 扩展，它通过轮询 WAL 文件实现了类似 Postgres NOTIFY/LISTEN 的语义，让你在单机环境下也能优雅地搞定事务性队列和持久化流。\n\n### SQLite 也能有 Kafka 的既视感\nSQLite 历来给人的印象是“单机、嵌入式、没那么多花活”，尤其是想做消息队列或流处理时，大家往往第一时间想到 Postgres 或 Kafka。但 Honker 这个项目的设计非常扎实，它硬是在 SQLite 上实现了类似 Kafka 的 durable streams 和通用的 job queue。你可以在 Python 里像操作 Kafka 一样去 publish 和 subscribe，代码写起来非常顺手，完全不需要引入额外的重型基础设施。\n\n### 核心难点在于如何保证事务一致性\n做消息队列最怕的是什么？是业务逻辑操作成功了，但消息没发出去；或者消息发出去了，数据库事务却回滚了。Honker 直接实现了 **Transactional Outbox Pattern**（事务性发件箱模式）。这意味着消息的入队是和你的业务事务绑定在一起的：只有当事务成功 commit，消息才会真正进入队列；如果事务失败，消息也会随之消失。这保证了“业务操作”和“消息通知”的原子性，彻底避免了数据不一致的尴尬。\n\n### 性能秘诀：盯着 WAL 文件看\n那怎么实现实时的通知呢？SQLite 本身没有 Postgres 那样的 LISTEN 机制。Honker 的做法很巧妙：它强制开启 WAL 模式，然后让 Worker 进程直接去轮询 `.db-wal` 文件。具体来说，就是每隔 1ms 调用一次 `stat` 系统调用来检查文件变化。这样做的好处是极其轻量，不需要为了检查有没有新消息就执行一轮完整的 SQL 查询，既省 CPU 又能拿到接近实时的响应速度。\n\n### 不仅仅是队列，还有 SQL 级别的控制\n除了封装好的 Python API，Honker 还往 SQLite 里注入了 20 多个自定义 SQL 函数。这意味着你甚至可以直接在 SQL 语句里手动触发通知，或者读取流数据。比如你可以用 `SELECT notify('orders', payload)` 来发消息，或者用 `honker_stream_read_since` 来按需读取历史数据。这种设计给了开发者很大的灵活性，不管是做简单的任务队列还是复杂的 Event Sourcing，都能在 SQL 层面找到对应的操作原语。",
+      "source_name": "simonwillison.net",
+      "score": 14,
+      "depth": 7,
+      "novelty": 7,
+      "category": "tools",
+      "keywords": [
+        "SQLite",
+        "message queue",
+        "transactional outbox",
+        "Rust"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "An update on recent Claude Code quality reports",
+      "title_zh": "Claude Code 质量问题复盘：harness 层的三个 bug",
+      "link": "https://simonwillison.net/2026/Apr/24/recent-claude-code-quality-reports/#atom-everything",
+      "pub_date": "2026-04-24T01:31:25.000Z",
+      "summary": "### 一句话总结\nClaude Code 近两个月质量下降并非模型本身的问题，而是其底层 Harness 中三个独立的工程 Bug 在“作祟”，其中最致命的一个 Bug 导致长时间闲置的会话在恢复后出现严重的记忆丢失。\n\n### 用户吐槽变多了，这次真不是错觉\n过去两个月，开发者社区里关于 Claude Code 质量下降的抱怨声量很大。起初大家可能以为这只是模型能力的波动，或者是某种心理作用。但事实证明，这些吐槽是有真实数据支撑的。Anthropic 的复盘报告显示，罪魁祸首并不是 Claude 模型本身，而是包裹在模型外层的“Harness”——也就是那些负责处理上下文、会话管理和工具调用的工程代码。说白了，模型脑子还是好使的，是负责传话的“中间人”出了岔子。\n\n### 闲置会话的“清理”逻辑翻车了\n最典型的一个案例发生在 3 月 26 日。为了优化用户体验，团队做了一个看似合理的改动：如果一个会话闲置超过一小时，系统会自动清理掉旧的“思考”内容，目的是降低用户恢复会话时的延迟。这个逻辑本身没问题，但实现上出现了一个严重的 Bug。这个清理操作本该只执行一次，结果代码写错了，导致在随后的每一轮对话中都会反复触发清理。这就让 Claude 看起来既健忘又啰嗦，因为它每说一句话就把之前的上下文给“忘”了一半。\n\n### 为什么这个 Bug 对资深开发者杀伤力最大\n这个 Bug 的隐蔽性在于，它专门针对“长时间闲置”的会话。对于普通用户可能影响不大，但对于像原文作者这样的资深开发者，这简直是灾难。作者坦言，他经常同时开启十几个 Claude Code 会话，并且经常让它们挂起一天甚至更久，然后再回来继续工作。他估计自己大部分的 Prompting 时间其实都花在了这些“陈旧”的会话里。结果就是，最核心的重度用户群体，恰恰是踩中这个 Bug 最频繁的人。\n\n### Agentic 系统的脆弱性往往在“胶水”层\n这篇文章给所有正在构建 Agentic 系统的开发者提了个醒。我们往往过度关注模型本身的非确定性，却忽略了工程实现的复杂性。Harness 层的 Bug 往往不像模型幻觉那么显眼，但它们会系统性地破坏用户体验。就像这次，一个简单的状态管理错误，就能让最顶尖的模型表现得像个傻瓜。如果你在搞类似的系统，建议仔细读读这份报告，因为这种“胶水层”的复杂性，往往比模型本身更难调优。",
+      "source_name": "simonwillison.net",
+      "score": 14,
+      "depth": 7,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "Claude Code",
+        "postmortem",
+        "agentic systems",
+        "harness"
+      ],
+      "rank": 4
+    },
+    {
       "title": "A pelican for GPT-5.5 via the semi-official Codex backdoor API",
       "title_zh": "通过 Codex 后门 API 调用 GPT-5.5",
       "link": "https://simonwillison.net/2026/Apr/23/gpt-5-5/#atom-everything",
@@ -41,7 +98,7 @@
         "API",
         "reverse engineering"
       ],
-      "rank": 2
+      "rank": 5
     },
     {
       "title": "Extract PDF text in your browser with LiteParse for the web",
@@ -60,7 +117,7 @@
         "browser",
         "vibe coding"
       ],
-      "rank": 3
+      "rank": 6
     },
     {
       "title": "Nilay Patel: ‘Beware Software Brain’",
@@ -79,7 +136,7 @@
         "public perception",
         "automation"
       ],
-      "rank": 4
+      "rank": 7
     },
     {
       "title": "Equity for Europeans",
@@ -98,7 +155,7 @@
         "finance",
         "Europe"
       ],
-      "rank": 5
+      "rank": 8
     },
     {
       "title": "Approximation to solve an oblique triangle",
@@ -116,7 +173,7 @@
         "trigonometry",
         "numerical methods"
       ],
-      "rank": 6
+      "rank": 9
     },
     {
       "title": "Microsoft Offers Voluntary Retirement to Long-Serving Employees",
@@ -134,7 +191,7 @@
         "rewards",
         "stock"
       ],
-      "rank": 7
+      "rank": 10
     },
     {
       "title": "Trump’s Blog Has Somehow Lost $1.1 Billion",
@@ -153,7 +210,7 @@
         "Trump Media",
         "Bitcoin"
       ],
-      "rank": 8
+      "rank": 11
     },
     {
       "title": "Microsoft Offers Voluntary Retirement to Long-Serving Employees",
@@ -171,7 +228,7 @@
         "retirement",
         "rewards"
       ],
-      "rank": 9
+      "rank": 12
     },
     {
       "title": "Eight for Eight",
@@ -189,7 +246,25 @@
         "Chris Espinosa",
         "CEO"
       ],
-      "rank": 10
+      "rank": 13
+    },
+    {
+      "title": "United Kingdom to Pass Smoking Ban Only for Those Who Are Not Yet Legal Adults",
+      "title_zh": "英国将实施仅限未成年人的吸烟禁令",
+      "link": "https://www.nytimes.com/2026/04/21/world/europe/uk-smoking-ban-2009.html?unlocked_article_code=1.dVA.f9yJ.YMVg9N8QOlio",
+      "pub_date": "2026-04-24T01:26:13.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "policy",
+        "smoking ban",
+        "UK"
+      ],
+      "rank": 14
     },
     {
       "title": "Unauthorized Users in Discord Group Had Weekslong Access to Anthropic’s Supposedly-Super-Dangerous Claude Mythos Model",
@@ -206,7 +281,7 @@
         "Bloomberg",
         "rate limit"
       ],
-      "rank": 11
+      "rank": 15
     }
   ]
 }
