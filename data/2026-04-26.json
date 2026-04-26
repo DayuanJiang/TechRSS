@@ -1,10 +1,29 @@
 {
   "date": "2026-04-26",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2533,
-  "filtered_articles": 9,
+  "success_feeds": 85,
+  "total_articles": 2558,
+  "filtered_articles": 6,
   "articles": [
+    {
+      "title": "How Bitwarden Encrypts and Decrypts Secrets",
+      "title_zh": "Bitwarden 加密机制深度解析",
+      "link": "https://blog.miguelgrinberg.com/post/how-bitwarden-encrypts-and-decrypts-secrets",
+      "pub_date": "2026-04-26T14:05:41.000Z",
+      "summary": "### 一句话总结\nBitwarden 的核心安全机制在于“双层加密”：先用 PBKDF2 从用户密码派生密钥来解密 Master Key，再用 Master Key 解密具体数据，且全程通过 AES-CBC 和 HMAC-SHA256 保证机密性与完整性。\n\n### 正文\n\n### 想要自建密码管理，先搞懂数据是怎么“锁”住的\n作者为了摆脱大厂依赖，打算自建 Bitwarden 的服务端 Vaultwarden。这个方案很有意思，因为它把数据存在标准的 SQLite 数据库里，理论上你可以直接把数据库拷贝下来在本地查询。但问题来了，数据库里的秘密全是加密的乱码，如果不搞清楚客户端的解密逻辑，这些数据对你来说就是一堆废纸。更有意思的是，官方 CLI 客户端刚爆出供应链攻击，这更坚定了作者自己写工具解密的决心。\n\n### 你的密码并不直接加密数据，它只负责解密“钥匙”\n很多人误以为自己的登录密码直接用来加密账号密码，其实 Bitwarden 的设计更巧妙。它采用了一个中间层：Master Key。真正的数据（密码、备注、附件等）都是用这个随机生成的 Master Key 加密的。你的登录密码只是用来加密这个 Master Key。这样一来，你改密码时只需要重新加密 Master Key，而不用重新加密库里成千上万条数据。客户端“解锁”保险库的过程，本质上就是用密码解密出 Master Key，然后把它暂存在内存里。\n\n### Master Key 其实是一分为二的 64 字节随机数\nMaster Key 的生成逻辑非常简单，就是 64 字节的随机数。但这里有个巧妙的设计：Bitwarden 把它对半切开。前 32 字节作为 `enc_key`，专门负责 AES 加密解密；后 32 字节作为 `mac_key`，专门负责计算 HMAC 签名。这种职责分离不仅符合加密最佳实践，还能确保数据在解密前先验证完整性，防止被篡改。\n\n### 解密数据前，先过 HMAC 这一关“验明正身”\n拿到加密数据后，第一步不是解密，而是验证。Bitwarden 存储的加密字符串格式是 `2.iv|ciphertext|mac`。这里的 `mac` 是用 `mac_key` 对 `iv` 和 `ciphertext` 计算 HMAC-SHA256 得到的签名。如果计算出的签名和存储的不一致，说明数据被篡改或损坏，直接报错。只有验证通过，才会用 `enc_key` 配合 AES-256-CBC 模式和 PKCS#7 填充进行解密。这种“先验后解”的机制能有效避免恶意数据攻击解密器。\n\n### 从密码到密钥，PBKDF2 的 60 万次迭代是关键\n既然 Master Key 也是加密存储的，那我们怎么拿到它？这就用到了 Key Derivation。Bitwarden 使用 PBKDF2-HMAC-SHA256 算法，以用户邮箱为 Salt，对密码进行 600,000 次迭代计算，生成一个 32 字节的临时密钥。这个巨大的迭代次数是故意的，它让暴力破解变得极其昂贵。虽然这会让正常的登录稍微慢一点点，但换来的安全性是指数级提升的。\n\n### 掌握了这套逻辑，你就能自己造轮子了\n搞懂了上面这些流程——从 PBKDF2 派生密钥，到 HMAC 验证完整性，再到 AES-CBC 解密——你其实就掌握了 Bitwarden 客户端的核心逻辑。作者在文中提供了完整的 Python 代码，演示了如何从加密的 Master Key 还原出原始数据。这意味着你不再依赖官方客户端，只要手里有数据库备份和记得密码，就能用几行代码把秘密“拿”回来，这对追求极致数据控制权的开发者来说，确实是个很实用的技能。",
+      "source_name": "miguelgrinberg.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "security",
+      "keywords": [
+        "Bitwarden",
+        "encryption",
+        "AES",
+        "PBKDF2"
+      ],
+      "rank": 1
+    },
     {
       "title": "Closed-form solution to the nonlinear pendulum equation",
       "title_zh": "非线性摆方程的 Jacobi 椭圆函数精确解",
@@ -22,7 +41,7 @@
         "SciPy",
         "elliptic integrals"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "The Satisfaction of a ChatGPT Plan",
@@ -41,7 +60,7 @@
         "psychology",
         "engagement"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "WHY ARE YOU LIKE THIS",
@@ -59,7 +78,7 @@
         "image generation",
         "prompt engineering"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Understanding the Ubuntu server installer initramfs",
@@ -77,7 +96,7 @@
         "initramfs",
         "installer"
       ],
-      "rank": 4
+      "rank": 5
     }
   ]
 }
