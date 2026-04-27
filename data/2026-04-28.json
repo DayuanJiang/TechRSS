@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2558,
-  "filtered_articles": 10,
+  "filtered_articles": 13,
   "articles": [
+    {
+      "title": "The stages of package installation",
+      "title_zh": "包管理器安装的六个阶段与边界泄漏",
+      "link": "https://nesbitt.io/2026/04/27/the-stages-of-package-installation.html",
+      "pub_date": "2026-04-27T10:00:00.000Z",
+      "summary": "## 一句话总结\n理想的包安装过程应被拆解为“获取元数据→解析依赖→下载文件→解压→构建→后置脚本”这六个界限分明的阶段，但现实中的主流工具为了性能或历史包袱，往往让网络访问和代码执行在错误的阶段乱窜，导致安全边界模糊。\n\n### 理想模型：把安装过程拆解为六个独立阶段\n假设我们要从零重写一个包管理器，最核心的设计原则就是要把 `install` 命令拆解成几个界限分明的阶段。每个阶段都要有明确的输入输出，这样我们才能清楚地知道哪一步需要网络，哪一步会跑第三方代码，哪一步只是纯数据处理。作者把整个过程分成了六步：首先是 Fetching metadata，从 Registry 拉取包名和版本列表；然后是 Resolving，根据约束算出具体的 `name@version`；接着是 Downloading，下载 tarball 或 wheel；之后是 Unpacking，把文件解压到磁盘；再然后是 Building，编译原生扩展；最后是 Post-install，跑一些生成配置或注册服务的钩子脚本。\n\n### 权限边界：前四步不该跑代码，后两步不该联网\n这种拆分最大的好处是权限边界非常清晰。阶段一和阶段三需要网络，但只处理数据；阶段二和阶段四既不需要网络也不执行代码，是纯函数；只有阶段五和阶段六才会执行包里的代码。按照这个模型，我们完全可以在阶段四之后画一条线，把后面的构建和脚本放进沙箱里运行，或者把管线切开，实现“先解析再下载”的离线安装模式，甚至轻松支持 Docker 构建中的缓存分层。理想很丰满，但这只是理论模型，现实中的包管理器几乎没有一个是完全照此实现的。\n\n### 现实打脸：为了解析依赖，往往被迫先执行代码\n最常崩塌的地方是解析阶段，因为解析器需要知道每个版本的依赖元数据，而这些数据往往不静态存在。比如在 pip 的历史上很长一段时间里，想知道一个 sdist 依赖什么，唯一的办法是把它下载下来、解压，然后运行里面的 `setup.py`。这可是个任意的 Python 程序，它能导入任何库、检查宿主机环境，甚至在运行时算出依赖列表。结果就是，阶段一到阶段五彻底混成一团乱麻，解析器为了算出最终方案，可能执行了几十个它最终会拒绝的版本的 `setup.py`。虽然 Python 后来引入了静态元数据和 wheels 来修补这个问题，但只要遇到老式的 sdist 包，冷启动安装依然会掉进这个坑里。\n\n### 网络乱窜：解析时还在联网，构建时又在下载\n即使元数据是静态的，很多工具为了性能也会把阶段一和阶段二交织在一起。npm 的解析器通常不会一次性拉取所有包的完整索引，而是在约束求解的过程中按需去查每个包的元数据，这意味着网络请求贯穿了整个解析过程。Go 更是把版本控制系统直接当成了 Registry，解析一个模块版本本质上就是去读 git tag 里的 `go.mod`，这把一个完整的 git 客户端塞进了本该只是“获取元数据”的阶段。反过来，构建和后置阶段也经常违规联网，比如 Cargo 的 `build.rs` 本该只是编译，但没人阻止它开个 socket 去下载预编译的二进制；npm 生态里大量包在 `postinstall` 脚本里从 GitHub 拉取预构建好的二进制文件，这些 URL 和 checksum 甚至都不在 lockfile 里。\n\n### 工具的困境：边界不清导致安全审计难做\n这种边界的模糊让上层工具非常难做。你想知道一次安装到底会访问哪些网络主机？或者它在没人看管之前会跑什么代码？在大多数生态里，这些问题都没有好答案。因为一个深层的 `postinstall` 可能会从 S3 拉东西，而解析器可能为了读 manifest 已经执行过代码了。SBOM 生成器、供应链扫描工具和沙箱包装器，最后都不得不从外部重新构建包管理器内部拒绝提供的那些阶段边界。虽然像 Nix 和 Guix 这样的系统通过强制沙箱和固定输出推导做得更好，但它们在处理语言生态的包时，往往也只是把那个混乱的包管理器关进了笼子里，并没有真正重构其内部逻辑。",
+      "source_name": "nesbitt.io",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "package manager",
+        "dependency resolution",
+        "postinstall",
+        "sandboxing"
+      ],
+      "rank": 1
+    },
     {
       "title": "Looking at consequences of passing too few register parameters to a C function on various architectures",
       "title_zh": "寄存器参数不足在 Itanium 上的特殊后果",
@@ -22,7 +41,63 @@
         "NaT",
         "register parameters"
       ],
-      "rank": 1
+      "rank": 2
+    },
+    {
+      "title": "Tracking the history of the now-deceased OpenAI Microsoft AGI clause",
+      "title_zh": "OpenAI 与微软 AGI 条款的历史追踪",
+      "link": "https://simonwillison.net/2026/Apr/27/now-deceased-agi-clause/#atom-everything",
+      "pub_date": "2026-04-27T18:38:17.000Z",
+      "summary": "OpenAI 与微软的合作协议中存在一条特殊条款：一旦实现 AGI，微软对 OpenAI 技术的商业 IP 权利将失效。2019 年 OpenAI 将 AGI 定义为",
+      "source_name": "simonwillison.net",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "ai-ml",
+      "keywords": [
+        "OpenAI",
+        "Microsoft",
+        "AGI",
+        "partnership"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "Speech translation in Google Meet is now rolling out to mobile devices",
+      "title_zh": "Google Meet 移动端上线实时语音翻译",
+      "link": "https://simonwillison.net/2026/Apr/27/speech-translation-in-google-meet-is-now-rolling-out-to-mobile-d/#atom-everything",
+      "pub_date": "2026-04-27T17:37:47.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 6,
+      "depth": 2,
+      "novelty": 4,
+      "category": "tools",
+      "keywords": [
+        "Google Meet",
+        "speech translation",
+        "real-time"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "Yours Truly on The Vergecast",
+      "title_zh": "John Gruber 谈 Apple CEO 继任",
+      "link": "https://www.theverge.com/podcast/917965/apple-ceo-cook-ternus-transition",
+      "pub_date": "2026-04-27T18:46:32.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Apple",
+        "Tim Cook",
+        "John Ternus",
+        "podcast"
+      ],
+      "rank": 5
     }
   ]
 }
