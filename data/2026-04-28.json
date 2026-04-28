@@ -1,10 +1,29 @@
 {
   "date": "2026-04-28",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2561,
-  "filtered_articles": 20,
+  "success_feeds": 84,
+  "total_articles": 2536,
+  "filtered_articles": 19,
   "articles": [
+    {
+      "title": "GitHub Actions is the weakest link",
+      "title_zh": "GitHub Actions 是供应链最薄弱环节",
+      "link": "https://nesbitt.io/2026/04/28/github-actions-is-the-weakest-link.html",
+      "pub_date": "2026-04-28T10:00:00.000Z",
+      "summary": "## 一句话总结\nGitHub Actions 的默认配置是为私有企业 CI 设计的，将其直接用于开源供应链极其危险，导致过去一年半发生了多起严重的安全事故，而平台方至今仍拒绝通过破坏兼容性来修复这些根本性的设计缺陷。\n\n### 供应链攻击的温床：看似正常的功能组合\n过去十八个月里，只要深挖开源供应链的安全事件，几乎最后都会指向一个 `.github/workflows` YAML 文件。从 Ultralytics 在 PyPI 投放挖矿程序，到 tj-actions 泄露 23,000 个仓库的密钥，再到 Trivy 短期内被攻陷两次，这些事件虽然受害者和载荷各不相同，但本质都是 GitHub Actions 的功能按文档正常工作，却被组合成了致命的武器。核心问题在于，这个平台把每个功能设计得都很便利，但拼在一起却极易被滥用；而且，它的默认选项是给私有仓库的企业 CI 工具用的，从未针对匿名 Fork 和路过式 PR（drive-by PR）重新审视过安全性。\n\n### 致命的触发器：pull_request_target 的陷阱\n最早的一环是 2024 年 11 月的 spotbugs 事件，问题出在 `pull_request_target` 这个触发器上。它的设计初衷是让仓库能给来自 Fork 的 PR 打标签，为了实现这个功能，它会在基础仓库的上下文中运行，拥有完整的密钥访问权限和写入令牌。如果你在这个触发器里 checkout 了 Fork 的 `head.sha`，实际上就是把代码执行权交给了攻击者。这正是 spotbugs 遭遇的：恶意 PR 窃取了维护者的 PAT（Personal Access Token），这个 token 又能访问 reviewdog，导致四个月后攻击者利用它发起了对 tj-actions 的攻击。GitHub 从 2021 年就在文档里警告过这种组合，但除了文档里的几行字，至今没有在产品层面设置任何防护栏。\n\n### 缓存投毒与标签劫击：信任边界的模糊化\n仅仅一个月后，Ultralytics 遭遇了同样的触发器，但攻击手段升级了。攻击者无法直接获取发布凭证，于是他们毒化了 GitHub Actions 的缓存条目。当合法的发布工作流稍后恢复这个缓存时，它在构建 wheel 的过程中执行了恶意载荷。这里的漏洞在于，缓存是根据分支共享的，`pull_request_target` 作为默认分支运行，但 UI 和 API 都不会告诉你这个缓存条目其实是由处理不受信任输入的任务写入的。而在 tj-actions 事件中，问题变成了 Action 版本的控制。Action 版本本质上是别人仓库里的 git refs，任何有写入权限的人都可以强制推送，而用户默认通过移动的标签（mutable tag）而非内容哈希来引用它们。攻击者推送了一个恶意提交并将 `v1` 标签移过去，下游 23,000 个仓库瞬间全部中招。\n\n### 模板注入与自动化攻击：只要有个输入框就能 RCE\n到了 2025 年 8 月的 s1ngularity 事件，攻击方式变得更加简单粗暴。nx 构建系统的仓库里有一个 `pull_request_target` 工作流，它直接把 PR 标题插入了 shell 步骤中。因为 `$` 模板语法在 shell 看到脚本之前就会展开，攻击者只要把 PR 标题改成命令替换，就能实现代码执行。由于触发器的关系，这段代码运行时拥有 npm 发布令牌。随后的恶意 nx 发布包在开发者机器上搜寻 AI 编程助手的凭证，并利用它们枚举和窃取私有仓库，导致一个 CI 工作流中未经过滤的字符串最终让五千多个私有仓库短暂公开。到了 2026 年，攻击者甚至不再一个个找漏洞，而是像 prt-scan 行动那样，自动化地针对 `pull_request_target` 配置错误的仓库发起数百个 PR，轮换账号并生成看似合理的代码差异，直到工作流被触发。\n\n### 为什么这些漏洞屡禁不止？\n把这些事件放在一起看，你会发现 GitHub Actions 的几个特性反复出现：运行不受信任事件却拥有完整密钥的触发器、未经引用就插入 shell 脚本的 `$` 展开、默认写入的 `GITHUB_TOKEN`、可变的 git refs 版本控制，以及静默跨越信任边界的缓存。严格来说，这些都不是 Bug，而且据我所知，它们一个都不会消失。虽然文档里多了一些警告，`pull_request_target` 也做了一些行为调整，比如总是从默认分支读取工作流文件，但最核心的修复——即不向从未接触过仓库的人触发的任务分发写入令牌和密钥——始终没有发生。这些工作流看起来和 GitHub 官方文档里的示例一模一样，也和其他成千上万个仓库没什么两样，维护者们并没有做错什么特别的事。\n\n### 寄希望于第三方工具的尴尬现状\n既然平台不修，开发者只能自救。像 `zizmor` 这样的静态分析工具就能检测出上述所有问题，比如 `dangerous-triggers`、`cache-poisoning`、`unpinned-uses` 等。在 elementary-data 事件中，攻击者只需在一个两天前的账号下留个评论，就能触发一个监听 `issue_comment` 的工作流，利用 `$` 展开注入恶意脚本，拿到默认的写入令牌，并在十分钟内发布恶意包。而这个问题早在攻击发生前三周就被 `zizmor` 标记为高危了。现在最好的防御措施竟然是引入一个主要由一个人维护的第三方 Linter，去捕获 GitHub 自己埋下的雷，这多少有点讽刺。虽然我强烈推荐使用 `zizmor`，但这恰恰说明了平台现状的尴尬。\n\n### 信任发布的悖论：把鸡蛋都放在了一个篮子里\n我之所以这么担心 GitHub Actions，而不是其他环节，是因为各大包管理仓库（PyPI, npm, RubyGems, crates.io）集体决定把赌注压在它身上。它们都采用了基于 OIDC 的可信发布，目的是把长期存在的 API Token 从仓库密钥中移除，这确实比把 `PYPI_API_TOKEN` 在仓库里放几年要好。但这也意味着，这些注册表的完整性保证现在大致等同于持有 `id-token: write` 权限的 GitHub Actions 工作流的安全性。我们花了十年时间用 lockfile、2FA、签名和审计日志来加固包管理器，结果通过 OIDC 连接后，我们把原本分散在数千个维护者凭证中的信任，集中到了一个没有任何这些安全属性的 CI 平台上。\n\n### GitHub 的回应与“破坏性变更”的必要性\n上个月 GitHub 终于发布了安全路线图，确实包含了一些真正的修复：比如锁定工作流文件以固定 Action 依赖的 SHA、策略控制以禁止 `pull_request_target`、针对特定工作流的密钥作用域以及托管运行器的出站防火墙。但让人沮丧的是，所有这些都是“可选加入”，而且都要等三到六个月的公开预览。那个最关键的 lockfile，在相关的 issue 被标记为“暂无计划”关闭三年后，才姗姗来迟。GitHub 员工在社区讨论中解释说，修改默认设置会破坏现有工作流，这确实没错，我也理解他们的难处。但我认为，破坏现有工作流恰恰是重点，因为出问题的正是这些现有工作流。\n\n### 必须打破的“向后兼容”\n数据显示，91% 使用第三方 Action 的 PyPI 包至少引用了一个可变标签，三分之二的包在至少一个工作流中没有设置 `permissions` 块。可选的安全功能只会被那些本来就关注安全的项目采用，而被那些合理假设平台默认设置是安全的“长尾”仓库所忽略。对于私有仓库，谨慎行事是有道理的，因为内部管道坏了主要伤害的是拥有者。但对于构建发布到公共注册表并被数百万人下载的工件的开源仓库，风险计算逻辑完全不同。为了安全，我愿意牺牲一些构建失败：把所有公开仓库的令牌默认改为只读、拒绝在 `run:` 步骤中展开 `github.event.*`、拒绝在 `pull_request_target` 任务中恢复缓存、要求请求 `id-token: write` 的工作流必须使用不可变引用。在 GitHub 愿意做出这些破坏性变更之前，请务必运行 zizmor，锁定你的 SHA，在每个工作流文件顶部设置 `permissions: {}`，并假设任何未经认证用户能在 PR 标题、分支名或评论中输入的内容，最终都会变成一段 shell 脚本。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "GitHub Actions",
+        "supply chain",
+        "CVE-2025-30066",
+        "zizmor"
+      ],
+      "rank": 1
+    },
     {
       "title": "The stages of package installation",
       "title_zh": "包管理器安装的六个阶段与边界泄漏",
@@ -22,7 +41,7 @@
         "postinstall",
         "sandboxing"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Introducing talkie: a 13B vintage language model from 1930",
@@ -41,7 +60,7 @@
         "out-of-copyright data",
         "historical text"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "microsoft/VibeVoice",
@@ -60,7 +79,7 @@
         "speaker diarization",
         "MLX"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Looking at consequences of passing too few register parameters to a C function on various architectures",
@@ -79,7 +98,7 @@
         "NaT",
         "register parameters"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "What's new in pip 26.1 - lockfiles and dependency cooldowns!",
@@ -98,7 +117,7 @@
         "dependency management",
         "Python"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Tracking the history of the now-deceased OpenAI Microsoft AGI clause",
@@ -117,7 +136,7 @@
         "AGI",
         "partnership"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "The Loop: everything has happened before, and everything will happen again",
@@ -136,7 +155,7 @@
         "bubbles",
         "human behavior"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Don't use localhost:3000, use your own custom domain",
@@ -155,7 +174,7 @@
         "reverse proxy",
         "hosts"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Speech translation in Google Meet is now rolling out to mobile devices",
@@ -173,7 +192,7 @@
         "speech translation",
         "real-time"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Pluralistic: Vicky Osterweil's \"The Extended Universe\" (28 Apr 2026)",
@@ -191,7 +210,7 @@
         "cultural criticism",
         "intellectual property"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "The easy way to switch my libvirt-based virtual machines to UEFI",
@@ -209,7 +228,7 @@
         "UEFI",
         "virtualization"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Yours Truly on The Vergecast",
@@ -228,7 +247,7 @@
         "John Ternus",
         "podcast"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "Weekly Update 501",
@@ -246,7 +265,7 @@
         "policy",
         "humor"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "Rec League",
@@ -264,7 +283,7 @@
         "collections",
         "recommendations"
       ],
-      "rank": 14
+      "rank": 15
     },
     {
       "title": "QuickQWERTY 1.2.2",
@@ -282,7 +301,7 @@
         "Codeberg",
         "bug fix"
       ],
-      "rank": 15
+      "rank": 16
     },
     {
       "title": "Sponsor The Talk Show",
@@ -299,7 +318,7 @@
         "sponsorship",
         "advertising"
       ],
-      "rank": 16
+      "rank": 17
     }
   ]
 }
