@@ -2,9 +2,28 @@
   "date": "2026-04-30",
   "total_feeds": 92,
   "success_feeds": 84,
-  "total_articles": 2535,
+  "total_articles": 2538,
   "filtered_articles": 17,
   "articles": [
+    {
+      "title": "Reiner Pope – The math behind how LLMs are trained and served",
+      "title_zh": "LLM 训练与推理的数学原理",
+      "link": "https://www.dwarkesh.com/p/reiner-pope",
+      "pub_date": "2026-04-29T17:07:03.000Z",
+      "summary": "### 一句话总结\n通过推导 Roofline 模型，Reiner Pope 揭示了 LLM 推理成本与延迟的核心矛盾：Batch Size 决定了你是受限于内存带宽还是计算性能，而 API 定价和架构选择本质上都是在寻找这个平衡点。\n\n### 从黑板上的公式看透 API 定价\nReiner Pope 没有直接讲架构，而是先在黑板上写下了两个核心变量：计算时间和内存读取时间。他用的方法叫 Roofline Analysis，说白了就是看你的模型到底是被芯片的算力拖累了，还是被显存带宽拖累了。对于像 Blackwell NVL72 这样的 72 GPU 集群，这种分析能精准预测性能。他强调，虽然我们无法精确计算每一毫秒，但通过“时间必须大于等于算力处理时间”和“时间必须大于等于内存读取时间”这两个不等式，就能推导出非常强的结论。这不仅是理论推导，更是理解为什么 Claude 和 Cursor 能推出“Fast Mode”的关键。\n\n### Batch Size 才是成本和速度的调节器\n为什么有的 API 收 6 倍钱却能给你 2.5 倍的速度？核心就在于 Batch Size（批处理大小）。Reiner 指出，如果你不把多个用户的请求打包处理，成本和效率可能会差上 1000 倍。在公式里，计算时间与 Batch Size 呈线性正比，因为要处理的参数多了；但内存读取时间里，权重读取是固定的，只有 KV Cache 的读取会随 Batch Size 增加。这意味着，当 Batch Size 很小时，你主要是在花时间把模型权重从显存里搬出来，这部分时间是“冤枉钱”，因为没怎么利用算力。Batch Size 越大，分摊到每个 Token 上的权重读取成本就越低，这就是“Fast Mode”能赚钱的物理基础。\n\n### KV Cache 是长上下文的隐形杀手\n这里有个巧妙的设计叫 KV Cache。在自回归推理中，生成新 Token 时需要关注之前所有的历史 Token，这些历史信息的中间状态就存在 KV Cache 里。Reiner 解释说，Attention 操作主要是在做内存读取，而不是矩阵乘法。这意味着，随着上下文长度增加，你需要读取的 KV Cache 数据量会暴涨。在 Roofline 模型里，这会导致内存读取时间的斜率变陡。当上下文足够长时，KV Cache 的读取时间甚至会超过计算时间，让模型从“计算受限”变成“内存受限”，这就是长文本推理又贵又慢的根本原因。\n\n### 寻找计算与内存的完美平衡点\n最有意思的地方在于那张“Batch Size vs 时间”的图表。计算时间是一条过原点的直线，而内存时间是一条有截距（权重读取）的直线。Reiner 指出，这两条线的交点就是“甜点区”。在这个点上，计算时间和内存时间相等，硬件利用率最高。如果 Batch Size 太小，你就被内存带宽卡死了；如果 Batch Size 太大，算力又成了瓶颈。对于 DeepSeek V3 这种 370 亿活跃参数的模型，这个平衡点尤为关键。一旦偏离这个区间，比如上下文长度翻倍导致 KV Cache 激增，你的 MFU（Model FLOPs Utilization）可能会直接腰斩，硬件资源有一半时间都在空转。\n\n### 推理架构的演进史就是一部摆脱内存限制史\nReiner 还提到了 Ilya Sutskever 的名言：“Pipeline is not wise”。为什么？因为流水线并行虽然能把模型层切分到不同 GPU 上，但它本质上并没有解决内存带宽的问题，反而引入了通信开销。现在的趋势是转向 MoE（混合专家模型）和更极致的 Tensor Parallelism。MoE 模型虽然总参数大（如 DeepSeek V3 的 7000 亿），但每次推理只激活一小部分（370 亿），这直接降低了计算时间和内存读取时间。这种架构选择不是为了炫技，而是为了在 Roofline 模型中尽量让计算和内存两条线重合，榨干每一滴硬件性能。",
+      "source_name": "dwarkesh.com",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "ai-ml",
+      "keywords": [
+        "inference",
+        "batch size",
+        "MoE",
+        "memory bandwidth"
+      ],
+      "rank": 1
+    },
     {
       "title": "‘Sordid and Small’",
       "title_zh": "Musk 诉 Altman 案件开庭",
@@ -22,7 +41,45 @@
         "Altman",
         "lawsuit"
       ],
-      "rank": 1
+      "rank": 2
+    },
+    {
+      "title": "Raspberry Pi Connect may control Windows soon",
+      "title_zh": "Raspberry Pi Connect 测试 Windows 远程控制",
+      "link": "https://www.jeffgeerling.com/blog/2026/raspberry-pi-connect-may-control-windows-soon/",
+      "pub_date": "2026-04-29T17:00:00.000Z",
+      "summary": "Raspberry Pi Connect 正在测试 Windows 客户端支持，基于 Go 语言和 WebRTC/VNC 标准实现。作者实测发现远程桌面存在鼠标偏移、会话冻结、4K 分辨率适配问题等 bug，Task Manager 等应用在前台时会导致远程会话挂起。远程 Shell 访问功能相对稳定，支持 Command Prompt、PowerShell 和 WSL 三种终端，但需在连接前预设默认 shell。Raspberry Pi Connect 采用免费个人版和企业版（每设备每月 0.5 美元）的商业模式，相比 RealVNC 可显著降低成本。该服务已支持 A/B 远程更新部署等基础 fleet 管理功能，若能修复现有 bug 并补充音频支持，有望成为边缘部署场景下远程访问产品的有力竞争者。",
+      "source_name": "jeffgeerling.com",
+      "score": 9,
+      "depth": 4,
+      "novelty": 5,
+      "category": "tools",
+      "keywords": [
+        "Raspberry Pi Connect",
+        "WebRTC",
+        "remote access",
+        "Windows"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "Multiple URLs in Git Remote",
+      "title_zh": "Git Remote 支持配置多个 URL",
+      "link": "https://susam.net/multiple-urls-in-git-remote.html",
+      "pub_date": "2026-04-29T00:00:00.000Z",
+      "summary": "Git remote 可以配置多个 URL，第一个 URL 用于 fetch，所有 URL 默认用于 push。使用 git remote set-url --add 可添加额外的 push URL，实现一次推送同步到多个仓库。配置 pushurl 后，push 仅发送到指定的 pushurl，fetch 仍从第一个 URL 获取。作者警告这种配置需谨慎使用，仅适用于从只读主仓库拉取、向镜像仓库推送等特定场景，否则可能导致本地分支与远程仓库状态不一致。",
+      "source_name": "susam.net",
+      "score": 9,
+      "depth": 5,
+      "novelty": 4,
+      "category": "tools",
+      "keywords": [
+        "Git",
+        "remote",
+        "pushurl",
+        "repository"
+      ],
+      "rank": 4
     },
     {
       "title": "‘Elon Musk Appeared More Petty Than Prepared’",
@@ -41,7 +98,7 @@
         "trial",
         "testimony"
       ],
-      "rank": 2
+      "rank": 5
     },
     {
       "title": "OpenAI Trial Starts With Two Very Different Tales of a Company’s Early Years",
@@ -60,7 +117,7 @@
         "Sam Altman",
         "trial"
       ],
-      "rank": 3
+      "rank": 6
     }
   ]
 }
