@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2563,
-  "filtered_articles": 18,
+  "filtered_articles": 19,
   "articles": [
     {
       "title": "Reiner Pope – The math behind how LLMs are trained and served",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "If I Could Make My Own GitHub",
+      "title_zh": "重新设计代码托管平台的九个方向",
+      "link": "https://matduggan.com/if-i-could-make-my-own-github/",
+      "pub_date": "2026-04-30T12:02:49.000Z",
+      "summary": "## 一句话总结\n现代代码托管平台（Forge）的设计理念仍停留在 Git 时代的“补丁邮件”思维，导致开发流程脱节、工具臃肿，我们需要一个基于现代存储和 LLM 协作模式、支持本地操作与分布式部署的下一代 Forge。\n\n---\n\n### Git 的设计初衷和现代开发早已脱节\n说白了，Git 是为 Linux 内核开发设计的，它假定开发者通过邮件发送补丁，维护者信任贡献者并手动合并。这种去中心化的高信任环境，允许你甚至用一台 2010 年的老笔记本，一周连一次网也能参与贡献。但现实是，绝大多数现代开发中，Git 仅仅是个从中心仓库拉取和推送代码的工具。真正的协作逻辑——Pull Request 的四眼原则、CI/CD 检查、身份验证——全都发生在外层的 Forge 上，而不是 Git 本身。这种“Git 只管传输，Forge 管一切”的割裂，是现在各种平台体验糟糕的根源。\n\n### 反馈回路太慢：别等代码 Push 了再报错\n现在的流程有个致命问题：事情发生的顺序不对。你肯定见过这种 PR：第一个 commit 是功能，后面跟着五六个 \"fix\"、\"actually fix\"，甚至还有深夜崩溃时提交的 \"asdfasdf\"。这说明开发者在本地写代码时是盲飞的，只有推送到远程后，CI 才告诉他错了。作者想要的方案是“强制预提交 Hook”，让开发者在 Push 之前就能把任务发给远程 Forge 跑测试。反馈应该在代码写完前给出，而不是在那一堆尴尬的 commit 之后。\n\n### PR 审核太死板，需要更灵活的中间态\n现在的 PR 审核太“布尔”了，要么 Approved，要么没过。但现实生活不是非黑即白的，“行吧，以后再改”也是一种合理的态度。Gerrit 的模式就更好，允许维护者给出“弱批准”或者标记稍后处理。此外，PR 的灵活性也不够，并不是每个改动都需要四只眼睛盯着看。在 LLM 时代，如果维护者提交且 LLM 评估是低风险改动，应该允许直接通过。别让资深工程师为了等一个四行代码的 \"LGTM\"，把全球 GDP 都浪费在等待上。\n\n### 堆叠 PR 应该是一等公民，而不是插件\nStacked PRs（堆叠 PR）在代码审查和理解变更上明显更好，但在现有平台里往往需要借助第三方工具才能勉强实现。作者认为，这必须是 VCS 和 Forge 的原生功能，而不是事后打补丁加上的插件。只有当堆叠 PR 成为工作流的核心，才能让大型项目的代码变更脉络变得清晰，而不是把所有东西混在一个巨大的 PR 里或者拆得七零八落。\n\n### 别做“瑞士军刀”，专注核心功能\n现在的 Forge 什么都想干：Issue 追踪、看板、Wiki，结果变成了臃肿的“全家桶”。这种“All-in-one”的工具最后都会变成垃圾，因为功能加起来容易，维护起来却是无底洞。作者的理想 Forge 应该专注核心：Issue 追踪可以要，Kanban 和 Wiki 就算了。标准化的托管单元也应该更小，不需要像 GitHub Enterprise 那样庞大的部署成本。他希望能把一堆树莓派连起来就是一个组织，虽然不知道具体怎么通信，但这应该是架构师考虑的事，而不是用户。\n\n### 本地仓库应该包含整个世界，或者按需获取\n现在的 `git clone` 太粗暴了，要么把整个历史拉下来，占用大量存储；要么只拉浅克隆，缺少上下文。作者想要一种更智能的协作：本地仓库不仅是代码，还应该能代表整个 Repo 的状态。我应该能在本地通过文件系统查看 Issues，甚至批准 PR。反过来，既然我必须在线工作，那就别让我一直为全量历史买单。平时只拉取极少的历史，一旦我需要回溯，再启动 Worker 去远程按需获取。别让我为了一个可能永远不会发生的“重建仓库”需求，每次都去 hammer 服务器。\n\n### Actions 必须可签名、可离线\nGitHub Actions 现在高度依赖网络，这很危险。作者认为 Actions 应该像依赖库一样管理：可以下载成 tarball 放进仓库里，并签名锁定。如果我说用 `latest`，系统应该像 Dependabot 那样开个 PR 来更新这个 tarball。这样，即使断网，我也能在本地通过同样的 VCS 运行这些关键的 CI 任务。毕竟，Actions 是基础设施的一部分，不应该被绑定在特定的在线服务上。\n\n### 现有工具只是碎片，我们需要真正的整合\n市面上当然有工具解决了上述部分问题，比如 JJ（Git 的替代品）或者 Gerrit 的某些特性。但作者想要的是一个把这些现代理念整合起来的完整方案：用 JJ 做 VCS，用对象存储做后端，支持浅克隆，甚至能抗住 LLM Bot 的疯狂请求。如果 GitHub 做得足够好，没人会想换掉它，就像没人会主动换掉 Heinz 番茄酱一样。但现在的单体 Forge 正在崩塌，而拥有资源的人都在造火箭，有品味的人都在忙生计，只剩下我们这些开发者在深夜对着 \"asdfasdf\" 的 commit 发呆。",
+      "source_name": "matduggan.com",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "forge",
+        "GitHub",
+        "PR workflow",
+        "JJ"
+      ],
+      "rank": 4
+    },
+    {
       "title": "Thoughts on WebAssembly as a stack machine",
       "title_zh": "WebAssembly 作为栈机器的思考",
       "link": "https://eli.thegreenplace.net/2026/thoughts-on-webassembly-as-a-stack-machine/",
@@ -79,7 +98,7 @@
         "wasmtime",
         "Forth"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "‘Sordid and Small’",
@@ -98,7 +117,7 @@
         "Altman",
         "lawsuit"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Raspberry Pi Connect may control Windows soon",
@@ -117,7 +136,7 @@
         "remote access",
         "Windows"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Multiple URLs in Git Remote",
@@ -136,7 +155,7 @@
         "pushurl",
         "repository"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Why are the Artemis II photos on Flickr?",
@@ -155,7 +174,7 @@
         "public domain",
         "NASA"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Why Commodore went bankrupt in 1994",
@@ -174,7 +193,7 @@
         "fab",
         "bankruptcy"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Have You Seen the New Excel?",
@@ -193,7 +212,26 @@
         "parody",
         "Copilot"
       ],
-      "rank": 10
+      "rank": 11
+    },
+    {
+      "title": "How an Oil Refinery Works",
+      "title_zh": "炼油厂的工作原理",
+      "link": "https://www.construction-physics.com/p/how-an-oil-refinery-works",
+      "pub_date": "2026-04-30T12:03:35.000Z",
+      "summary": "",
+      "source_name": "construction-physics.com",
+      "score": 6,
+      "depth": 4,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "oil refinery",
+        "distillation",
+        "cracking",
+        "petroleum"
+      ],
+      "rank": 12
     },
     {
       "title": "‘Elon Musk Appeared More Petty Than Prepared’",
@@ -212,7 +250,7 @@
         "trial",
         "testimony"
       ],
-      "rank": 11
+      "rank": 13
     },
     {
       "title": "OpenAI Trial Starts With Two Very Different Tales of a Company’s Early Years",
@@ -231,7 +269,7 @@
         "Sam Altman",
         "trial"
       ],
-      "rank": 12
+      "rank": 14
     },
     {
       "title": "Switching entirely to Corfu in my GNU Emacs configuration",
@@ -249,7 +287,7 @@
         "Corfu",
         "configuration"
       ],
-      "rank": 13
+      "rank": 15
     },
     {
       "title": "Oakland’s Airport Is Now Officially ‘Oakland San Francisco Bay Airport’",
@@ -267,7 +305,7 @@
         "naming",
         "settlement"
       ],
-      "rank": 14
+      "rank": 16
     },
     {
       "title": "llm 0.32a0",
@@ -285,7 +323,7 @@
         "release",
         "announcement"
       ],
-      "rank": 15
+      "rank": 17
     },
     {
       "title": "llm 0.32a1",
@@ -303,7 +341,7 @@
         "tool-calling",
         "bugfix"
       ],
-      "rank": 16
+      "rank": 18
     }
   ]
 }
