@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Patching and forking in package managers",
+      "title_zh": "语言包管理器的补丁与分支机制",
+      "link": "https://nesbitt.io/2026/05/01/patching-and-forking-in-package-managers.html",
+      "pub_date": "2026-05-01T10:00:00.000Z",
+      "summary": "## 一句话总结\n当上游依赖爆出漏洞却无人维护时，语言包管理器的设计缺陷让开发者陷入困境，而系统包管理器那种“打补丁”的思路，或许才是未来的解药。\n\n### 系统包管理器早就看透了这事儿\nDebian、RPM 这些系统级包管理器早就习惯了“自己动手丰衣足食”。它们的工具链默认假设维护者需要携带上游的 delta，比如用 `debian/patches/` 或者 spec 文件里的 `Patch0` 指令。说白了，发行版维护者就是代码的最后一道防线，工具设计就是为了方便他们打补丁。但语言包管理器（像 npm、Cargo、RubyGems）的设计哲学完全相反：Registry 版本是唯一的真理，用户只管选版本，没人应该去篡改里面的代码。这种设计在开源项目活跃时没问题，一旦上游作者跑路了，工具链就成了摆设。\n\n### 最常见的解法：把依赖指到你的 Fork 上\n既然官方版本没人修，那最直接的办法就是自己 Fork 一个修好，然后骗包管理器用你的版本。几乎所有主流工具都支持这招，比如 Rust 的 `[patch.crates-io]`，Go 的 `replace` 指令，或者 Bundler 的 `git: ` 选项。这招对直接依赖很有效，但如果是间接依赖（依赖的依赖）出问题，事情就麻烦了。你没法直接修改那个中间依赖的声明，只能把中间依赖也 Fork 一份，或者用更复杂的工具链去覆盖它。Go 的 `gohack` 这种工具就是为了简化这个流程，让你能快速把模块拉到本地修改并替换。\n\n### 真正的噩梦：被锁死的间接依赖\n更棘手的情况是“依赖地狱”。比如你想升级 `openssl` 修漏洞，结果发现 `web-push` 把版本锁死在 `~> 2.2`，而升级 `web-push` 又被其他几个几年没更新的包卡住了。这时候你需要的是“强制覆盖”能力。Cargo 的 `[patch]` 和 npm 的 `overrides` 就很聪明，它们能在整个依赖树中全局替换某个包，不管它藏在多深。Go 的 `replace` 也能做到，而且还没 semver 兼容性的限制。相比之下，Bundler 这种工具就比较死板，作者提议的 `force: true` 至今没被采纳，导致 Ruby 开发者为了修一个 CVE，可能得维护一堆毫无意义的 Fork。\n\n### 最轻量的方案：直接打补丁文件\n维护 Fork 太重了，其实很多时候你只需要改两行代码。这时候“打补丁”是最优雅的方案：保留原包名和版本号，只是在安装时自动把 diff 应用上去。pnpm、Yarn Berry 和 Bun 都原生支持这个工作流，`pnpm patch` 一把梭，生成 `.patch` 文件存项目里，以后每次 `install` 都会自动重打。对于不支持的 npm 和 Yarn Classic，社区有 `patch-package` 这种库来填补空白。这种做法的好处是上游一旦修好，你删掉补丁文件升级版本就行，没有任何历史包袱。\n\n### 终极替换：把 A 包伪装成 B 包\n有时候 Fork 太麻烦，或者你想用社区维护的替代品，这就涉及到了“包替换”。JavaScript 生态的 `npm:` 协议特别好用，能让你在 `package.json` 里声明：“虽然我要的是 `original-name`，但请给我安装 `@yourorg/forked-name`”。Composer 的 `replace` 和 Gradle 的 `dependencySubstitution` 也能干类似的事。这在原包彻底死掉（比如证书过期、作者失联）时特别有用，相当于在不修改下游依赖代码的情况下，悄悄换掉了底层实现。\n\n### 补丁虽好，但合规是个大坑\n看起来补丁和替换是救命稻草，但它们也有副作用。Fork 一个包意味着你要承担维护责任，GitHub 的 Dependabot、安全警报这些功能在 Fork 里默认都是关的，你得自己搭基础设施。打补丁看似轻量，但会导致“锁文件撒谎”：你记录的是版本 A，跑的却是代码 A+patch。这对生成 SBOM（软件物料清单）或者应对欧盟《网络弹性法案》这种合规要求来说是个灾难，因为审计工具看到的和你实际运行的代码对不上。Vendoring（把源码直接拷进仓库）虽然能绕过包管理器，但意味着你要全盘接管这个包的维护，代价也不小。随着 AI 扫描漏洞的速度越来越快，这种“死代码”的问题只会越来越多，语言包管理器或许该向系统包管理器学学了。",
+      "source_name": "nesbitt.io",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "package manager",
+        "patch",
+        "fork",
+        "CVE"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Approximating even functions by powers of cosine",
       "title_zh": "用余弦幂级数近似偶函数",
       "link": "https://www.johndcook.com/blog/2026/04/30/burmanns-theorem/",
@@ -41,7 +60,7 @@
         "cosine approximation",
         "series expansion"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Quoting Andrew Kelley",
@@ -60,7 +79,7 @@
         "agentic coding",
         "code review"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "We need RSS for sharing abundant vibe-coded apps",
@@ -79,7 +98,7 @@
         "Atom feed",
         "tools"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Codex CLI 0.128.0 adds /goal",
@@ -98,7 +117,7 @@
         "coding agent",
         "goal"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "★ On the Future of Apple’s Vision Platform",
@@ -117,7 +136,7 @@
         "spatial computing",
         "rumor"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "The Talk Show: ‘Food and Beverage Director’",
@@ -135,7 +154,7 @@
         "Tim Cook",
         "John Ternus"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Touch Typing Number Keys",
@@ -153,7 +172,7 @@
         "keyboard",
         "muscle memory"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Learning my lesson that Python virtual environments aren't always movable",
@@ -171,7 +190,7 @@
         "venv",
         "portability"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Apple Q2 2026 Results",
@@ -189,7 +208,7 @@
         "earnings",
         "Q2 2026"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Scientology ‘Speed Running’ Trend",
@@ -206,7 +225,7 @@
         "social media",
         "trend"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Our evaluation of OpenAI's GPT-5.5 cyber capabilities",
@@ -225,7 +244,7 @@
         "security",
         "OpenAI"
       ],
-      "rank": 12
+      "rank": 13
     }
   ]
 }
