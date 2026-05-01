@@ -3,8 +3,46 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2563,
-  "filtered_articles": 18,
+  "filtered_articles": 19,
   "articles": [
+    {
+      "title": "Developing a cross-process reader/writer lock with limited readers, part 4: Abandonment",
+      "title_zh": "跨进程读写锁的进程崩溃恢复方案",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260501-00/?p=112291",
+      "pub_date": "2026-05-01T14:00:00.000Z",
+      "summary": "## 一句话总结\n为了解决进程崩溃导致信号量“死锁”的问题，作者将底层同步原语从信号量换成了 Mutex，利用 Mutex 的“所有权”特性来检测并处理锁的遗弃。\n\n### 信号量的致命缺陷：没有“主人”\n之前我们用信号量构建了一个跨进程读写锁，但有个致命隐患：**Abandonment（遗弃）**。信号量是没有“所有者”概念的，如果一个进程拿到了信号量 token 后直接崩溃，这个 token 就永远消失了。对于我们的锁来说，这意味着最大读者数会永久减一，而写锁因为永远等不到最后一个 token 归还，将彻底无法获取。这显然是不可接受的。\n\n### 换用 Mutex：引入所有权概念\n那怎么办？我们需要一个能识别持有者死亡的同步对象，这就是 Mutex。Mutex 的核心特性是它有明确的“所有权”，如果持有 Mutex 的线程或进程终止，系统会自动将 Mutex 状态设为“已遗弃”。思路很直接：把信号量换成 Mutex。我们需要 `MAX_SHARED` 个 Mutex 来代表读锁的 token，再加一个 `sharedMutex` 来防止写锁饥饿。\n\n### 核心逻辑：抢一个还是抢全部\n架构调整后，锁的逻辑其实更清晰了。读锁申请时，只需要在 `MAX_SHARED` 个 token mutex 中抢到任意一个即可；写锁申请时，则必须一次性抢到所有的 token mutex。这里有个巧妙的设计：`WaitResultToIndex` 函数。它不仅处理正常的 `WAIT_OBJECT_0`，还处理 `WAIT_ABANDONED_0`。代码假定上层业务（比如文件操作）有能力处理数据不一致，所以把“遗弃”状态视为成功获取，直接返回索引。\n\n### 超时处理的细节：时间不能只算一次\n实现时有个容易踩坑的细节：超时计算。作者写了个 `TimeoutTracker` 类，核心思路是记录开始时间，每次调用 `WaitForSingleObject` 或 `WaitForMultipleObjects` 时，都用总超时时间减去已流逝时间。这比简单地每次传入固定 timeout 要精确得多，避免了累积误差导致总等待时间超出预期。\n\n### 代码实现：读写锁的最终形态\n最终代码非常紧凑。`AcquireShared` 先拿 `sharedMutex` 保护，然后 `WaitMultiple` 等待任意一个 token；`AcquireExclusive` 同样先拿保护锁，然后 `WaitMultiple` 等待所有 token（`bWaitAll = TRUE`）。释放逻辑也很直观：读锁释放对应的那个 mutex，写锁则循环释放所有 mutex。这套方案完美解决了崩溃导致的资源泄漏问题，同时保留了跨进程同步的能力。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "cross-process",
+        "reader/writer lock",
+        "mutex",
+        "abandonment"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "iNaturalist Sightings",
+      "title_zh": "用 Claude Code 在手机上构建观测数据聚合应用",
+      "link": "https://simonwillison.net/2026/May/1/inat-sightings/#atom-everything",
+      "pub_date": "2026-05-01T19:35:41.000Z",
+      "summary": "作者使用 Claude Code 在手机上完成了一个完整的全栈开发流程：首先编写了 inaturalist-clumper Python CLI 工具，通过 iNaturalist API 获取观测数据并按时间（2小时内）和距离（5km内）进行聚类；然后建立 Git scraping 仓库自动运行工具并将结果持久化到 clumps.json；最后通过单次 prompt 生成前端应用，从 GitHub 获取 JSON 数据，展示缩略图并支持点击查看大图模态框。整个开发过程在手机上完成，展示了 AI 辅助编程在移动端场景下的可行性。",
+      "source_name": "simonwillison.net",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Claude Code",
+        "Git scraping",
+        "mobile development",
+        "iNaturalist"
+      ],
+      "rank": 2
+    },
     {
       "title": "AI will create jobs",
       "title_zh": "AI 与移民：为何技术会创造更多工作",
@@ -22,7 +60,7 @@
         "jobs",
         "economics"
       ],
-      "rank": 1
+      "rank": 3
     }
   ]
 }
