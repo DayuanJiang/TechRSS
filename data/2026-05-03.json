@@ -1,1 +1,47 @@
-null
+{
+  "date": "2026-05-03",
+  "total_feeds": 92,
+  "success_feeds": 84,
+  "total_articles": 2538,
+  "filtered_articles": 12,
+  "articles": [
+    {
+      "title": "A GitHub for maintainers",
+      "title_zh": "面向维护者的 GitHub 应该长什么样",
+      "link": "https://nesbitt.io/2026/05/02/a-github-for-maintainers.html",
+      "pub_date": "2026-05-02T10:00:00.000Z",
+      "summary": "## 一句话总结\n未来的代码托管平台不应只盯着单仓库的开发体验，而应利用全局视角解决跨仓库的依赖治理、下游测试和生态协调问题。\n\n---\n\n### 开发者的痛点 vs 维护者的难题\nMat Duggan 最近列了一份理想的 GitHub 替代品清单，里面全是 Stacked PRs、pre-push feedback 这种提升开发者体验的功能。但作者指出，这些其实都是客户端问题，像 Jujutsu 这样的工具或者编辑器插件已经解决得很好了。真正需要 Forge（代码托管平台）解决的，是那些涉及多方协作、无法在本地完成的难题。说白了，维护者真正需要的不是更好的代码编辑器，而是搞清楚“谁依赖我”、“我依赖谁”以及“那个三年前 fork 的项目现在怎么样了”。GitHub 这几年几乎没碰过这些跨仓库的关系网络，而这恰恰是开源维护最头疼的地方。\n\n### 从 Fork 到依赖：关系模型该更新了\nGitHub 唯一深度建模的仓库关系是 Fork，这在 2008 年是主流用法。但在 2026 年，大家更多是通过在 manifest 文件里加一行来引用代码，Forge 却没有一个对应的对象来管理这种关系。现在它只知道依赖是用来生成 Dependabot PR 的，这远远不够。作者希望依赖关系能获得和 Fork 同等地位的一等公民待遇。因为只有 Forge 拥有全局的依赖图谱和算力，这是本地客户端无法替代的优势。\n\n### 下游测试：别等发布后才发现炸了\n当作者准备发布一个库的新版本时，他希望 Forge 能在跑完自己的测试后，自动拉取依赖该库的下游项目，跑一遍它们的测试套件。Rust 团队管这个叫 crater run，但这应该成为每个发布 PR 的一个按钮。现在的流程通常是：发布标签 -> 收到一千个愤怒的 issue -> 发现自己搞挂了下游。更糟糕的情况是用户直接锁死旧版本不再升级。Forge 是唯一能提前预警的地方，因为它既掌握依赖图又有计算资源。\n\n### 订阅机制：让变更通知真正触达\n如果作者计划在下个大版本删掉某个废弃函数，现在的做法是写没人看的 Changelog，或者发运行时警告——正如 Seth Larson 所说，这些警告通常根本传不到人那里。作者想要一个基于 lockfile 的订阅流：只要你的项目里用了这个包，就自动订阅消息。无论是“废弃函数预警”、“寻找维护者”，还是“仓库迁移”、“CVE 修复”，都能通过这个通道直达。这才是 2008 年 GitHub 首页宣称的“Social Coding”该有的样子：关注你实际运行的代码，而不是关注某个人。\n\n### 可视化 Fork 网络：别让用户自己去考古\n当一个项目停止维护时，社区通常会各自为战地打补丁或 fork。最终某个 fork 会火起来，但用户只能通过口耳相传或置顶 issue 慢慢发现。Forge 其实能看到这一切：它知道上游 18 个月没合并了，也知道哪三个 fork 有活跃的发布标签和 Star。作者建议把这些信息直接展示在原仓库页面上，并允许 fork 的维护者标记自己是“官方延续”。GitHub 那个从 2010 年就没变过的“意大利面条”网络图，早就该重构了。\n\n### 借鉴 npm 的功能：把数据还给维护者\n一旦 Forge 开始认真对待依赖，它就有点像包注册表的前端了。作者建议直接把之前 npmx 列表里的一些功能搬过来。比如，展示下游用户实际运行的版本分布，让维护者知道有多少人卡在三个大版本之前；提供浏览器内的版本 Diff 视图；展示解析后的依赖树，标出过时和有漏洞的传递依赖；以及社区维护的“替代品推荐”。这些数据能极大地帮助维护者做决策。\n\n### 更安全的 CI 默认设置和缓存\n作者还提了两个基础设施层面的改进。首先是 CI 的默认设置，现在的 GitHub Actions 默认是为企业私有仓库设计的，导致开源供应链事故频发。新 Forge 应该默认锁定 Action、隔离缓存，甚至禁止陌生人触发工作流。其次是 CI 的包缓存，现在每次 CI 都从 npm、PyPI 等公益 registry 重复下载同样的包。Forge 应该在 CI runner 里默认接入一个缓存代理（比如 git-pkgs/proxy），既能减轻公益基础设施的带宽压力，还能在外部 registry 挂了时保住构建。反正 Forge 有 lockfile，甚至能提前预热缓存。\n\n### 重新命名 \"Issues\"\n最后这点虽然和依赖图无关，但也挺有意思：作者建议把 \"Issues\" 改个名字。Feature request 不是问题，Question 也不是问题，把收到的所有东西都叫 \"Issue\"，在对话开始前就定下了一种对抗性的基调。这可能是导致热门项目维护氛围充满敌意的原因之一。改用中性的 \"Tickets\" 虽然无聊，但能降低火药味。",
+      "source_name": "nesbitt.io",
+      "score": 15,
+      "depth": 7,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "downstream testing",
+        "dependency graph",
+        "fork networks",
+        "CI security"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Sightings",
+      "title_zh": "用 Claude Code 在手机上开发观测记录同步功能",
+      "link": "https://simonwillison.net/2026/May/2/sightings/#atom-everything",
+      "pub_date": "2026-05-02T17:26:40.000Z",
+      "summary": "作者使用 Claude Code 在手机上开发了新功能，将 iNaturalist 上的野生动物观测记录同步到个人博客。该功能作为其 beats 内容分发系统的扩展，支持搜索、日期归档和首页展示。作者还回填了超过十年的历史观测数据，包括 2019 年在马达加斯加拍摄的狐猴照片。",
+      "source_name": "simonwillison.net",
+      "score": 8,
+      "depth": 4,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "Claude Code",
+        "iNaturalist",
+        "syndication",
+        "beats"
+      ],
+      "rank": 2
+    }
+  ]
+}
