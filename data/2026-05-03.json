@@ -1,8 +1,8 @@
 {
   "date": "2026-05-03",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2564,
+  "success_feeds": 84,
+  "total_articles": 2539,
   "filtered_articles": 8,
   "articles": [
     {
@@ -62,6 +62,25 @@
       "rank": 3
     },
     {
+      "title": "Minimal Viable Zig Error Contexts",
+      "title_zh": "Zig 错误上下文的极简实践",
+      "link": "https://matklad.github.io/2026/05/03/zig-error-context.html",
+      "pub_date": "2026-05-03T00:00:00.000Z",
+      "summary": "### 一句话总结\n在 Zig 中用 `errdefer` 配合 `key=value` 日志记录上下文，能在不破坏代码“快乐路径”的前提下，低成本地实现类似 Stack Trace 的错误追踪效果。\n\n### Zig 的错误处理很强，但错误报告还得靠自己\nZig 原生提供了强类型的 Error Union，用来做控制流的错误处理非常优雅。但是，怎么把错误“报告”给人看，语言本身没管，这事儿得开发者自己想办法。通常的推荐做法是搞一个 `Diagnostics` 对象传进去，但这在写脚本或小工具时太重了。大家图省事直接用 `try`，结果报错时只有冷冰冰的 `error.FileNotFound`，连哪个文件找不到都不知道，排查问题全靠猜。\n\n### 手动补全上下文？代码会变得很难看\n为了兼顾开发体验和报错信息，最直观的想法是在每个可能出错的地方手动补日志。比如 `catch` 住错误，打印一行 \"failed to open file...\"，然后再把错误抛出去。但这法子太笨了：不仅每处都要写，还得自己编报错文案，最要命的是把原本清晰的“快乐路径”逻辑淹没在了一堆错误处理代码里。对于有经验的开发者来说，这种为了报错牺牲可读性的 trade-off 显然不划算。\n\n### 用 errdefer 记录上下文，是个“够用”的妥协\n于是作者尝试了一个更“worse is better”的方案：直接用 `errdefer log.err(\"path={s}\", .{path})`。这招的巧妙之处在于，它只在错误发生时执行，平时完全没存在感。你不需要改动任何 `try`，也不需要写额外的 `catch` 逻辑，只要在函数开头声明一下关键变量就行。这样一旦出错，日志里就会先打印出 `path=./data.txt`，紧接着才是堆栈信息，问题瞬间就清楚了。\n\n### 这种方案最大的优势是“望远镜式”的上下文\n这种写法不仅代码量少，而且逻辑上非常干净。上下文是按作用域设置的，如果一个函数里对同一个文件进行了多次 IO 操作，你只需要写一次 `errdefer`。更有意思的是，这种上下文是“望远镜式”叠加的——调用栈里的每一层函数都可以用自己的 `errdefer` 添加上下文。等到错误冒泡到最顶层时，你拿到的不是一条干巴巴的错误码，而是一串完整的、层层嵌套的现场信息。\n\n### 唯一的硬伤：错误被处理时也会打印日志\n但这方案有个致命伤：它不管错误最终有没有被 `catch` 住，只要触发了 defer 就会打印日志。这在 Zig 0.16 尤其是个大问题，因为 IO 操作可能会返回 `Cancellation` 错误，而这种错误通常是预期内、需要被程序内部消化处理的，而不是拿来报错的。结果就是，程序明明正常处理了中断，控制台却被一堆“错误”日志刷屏了，这显然违背了初衷。\n\n### 理想的模型：快乐路径自带上下文，错误发生时才“显形”\n抛开这个硬伤不谈，作者觉得这种思路其实指明了一个方向：理想的错误管理，应该是“快乐路径”只负责声明当前操作的上下文，而只有当错误真正发生时，才把这些上下文“物化”成具体的日志。这比在每个错误发生点去手动装饰错误要自然得多。至于怎么在 Zig 里实现这种“既不误报、又能自动收集上下文”的机制，还得再琢磨琢磨语言特性。",
+      "source_name": "matklad.github.io",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Zig",
+        "error handling",
+        "errdefer",
+        "error context"
+      ],
+      "rank": 4
+    },
+    {
       "title": "callgraph analysis",
       "title_zh": "编写访问完整调用图的自定义 lint",
       "link": "https://jyn.dev/callgraph-analysis/",
@@ -78,7 +97,7 @@
         "Rust",
         "static analysis"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Sightings",
@@ -97,7 +116,7 @@
         "syndication",
         "beats"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "How backups work depends on the goals of the people setting them up",
@@ -115,7 +134,7 @@
         "sysadmin",
         "disaster recovery"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Vertically Aligning Roman Numerals in Code",
@@ -133,7 +152,7 @@
         "code formatting",
         "array_flip"
       ],
-      "rank": 7
+      "rank": 8
     }
   ]
 }
