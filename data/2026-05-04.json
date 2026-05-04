@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2547,
-  "filtered_articles": 14,
+  "filtered_articles": 15,
   "articles": [
     {
       "title": "29th August 2026: a scenario",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Package Manager CWEs",
+      "title_zh": "包管理器的十二种安全失败模式",
+      "link": "https://nesbitt.io/2026/05/04/package-manager-cwes.html",
+      "pub_date": "2026-05-04T10:00:00.000Z",
+      "summary": "## 一句话总结\n包管理器的安全漏洞其实高度重复，核心原因在于开发者总是重复犯“路径遍历、参数注入、校验失败默认通过”等十几个经典错误，而不是因为遇到了什么未知的高深攻击。\n\n### 历史总是惊人的重复，因为没人去读前人的 CVE\n作者翻遍了所有针对包管理器（客户端和注册中心）的公开 CVE 和安全公告，发现了一个很有意思的现象：同样的故障模式在不同的工具中反复出现，中间往往相隔好几年。这并不是因为攻击手段变高了，而是因为造轮子的人通常不知道前 18 个包管理器踩过什么坑。这篇文章的目的就是把这些反复出现的坑列出来，帮你避雷。不过要注意，CVE 数量多不代表风险就大，有些项目连个 ANSI 转义符都要发个 CVE，而那些真正危险的设计缺陷（比如安装脚本直接以用户权限运行）反而因为没有 CVE ID 而不在讨论范围内。\n\n### 路径遍历是二十年来最顽固的顽疾\nCWE-22（路径遍历）和 CWE-59（链接跟随）是数据集中出现频率最高的问题，而且整整持续了二十年。虽然 2018 年的 Zip Slip 研究让这个问题广为人知，但其实早在 2007 年就有类似漏洞，直到最近（比如 2026 年预测的 CVE）还在出现。问题的本质很简单：压缩包里包含 `../`，或者是指向提取目录外部的软链接，甚至是 Windows 风格的反斜杠，导致安装程序把文件写到了攻击者指定的任意位置。很多工具修了 `..` 却没修软链接，修了 tar 却忘了 zip，修了正斜杠又栽在反斜杠上，导致同一个工具在这个类别下有好几个 CVE。除了压缩包本身，manifest 里的 `bin` 字段、下载头的 `Content-Disposition`，甚至是图表名称，只要字符串最终变成了文件系统路径，都可能被利用。解决思路其实很粗暴：解压到临时目录，拒绝创建任何解析路径不在该目录下的文件，并且在检查前解析所有软链接。\n\n### 别把用户输入直接扔给 git 或编译器\nCWE-88（参数注入）是另一个重灾区。几乎每个包管理器都支持从 VCS URL 安装，也几乎每个都犯过把用户控制的字符串直接传给 `git clone` 或 `hg clone` 的错误，导致字符串被解释为选项而非参数。比如一个 ref 名写成 `--upload-pack=payload`，或者 URL 以 `-` 开头，就能实现注入。虽然修复方法很简单——用 `--` 分隔符并只传白名单选项——但这个 bug 总是死灰复燃，因为每个 VCS 后端通常是分开写的，git 驱动的教训三年后传不到 p4 驱动那里。类似的情况还有编译器标志注入，这在 Go 生态中尤为常见，因为 cgo 的机制允许包通过 `-fplugin=` 或任意 `LDFLAGS` 把参数传给 C 编译器。核心问题都是一样的：不可信的字符串到达了子进程，而子进程把其中一部分当成了指令。\n\n### 校验失败时，系统往往选择了最危险的“默认通过”\nCWE-345（数据真实性验证不足）和 CWE-347（签名验证不当）这类问题，核心在于“Fail Open”（失败时开放）。比如签名文件缺失导致验证被跳过，或者校验器报错却被系统视为成功。更有甚者，有的工具在写入缓存时检查了哈希，但在读取时却不检查；或者开启了依赖验证，结果某条代码路径绕过了它。典型的例子是 Debian 的一个解析器，在特定条件下让未签名的内容像签名过一样通过。早期的版本更简单，不用 TLS、不检查证书，或者跟随 HTTPS 到 HTTP 的重定向。虽然现在大部分修好了，但像 Rust 这种在 git index clone 上不做 SSH 主机密钥验证的漏洞依然存在。如果你要做校验，必须测试三种情况：签名缺失、签名格式错误、签名有效但内容不对，确保这三种情况都拒绝安装。\n\n### 凭证泄露往往发生在重定向和日志里\nCWE-522（保护不足的凭证）主要表现为凭证发错了地方。比如一个注册中心的 auth token 被发到了另一个注册中心，通常是通过重定向、镜像或者依赖托管在其他地方实现的。有的工具不管 Host 是什么，请求都带着 bearer token；有的工具跟随重定向并把凭证发给了新主机；还有的把仓库凭证发给了 chart 依赖指向的任意域名。另一半问题则是凭证泄露到了日志或发布的产物里，比如把密码嵌入 URL 写进构建日志，或者在 debug 级别打印签名口令，甚至是因为忽略了 workspace ignore 文件导致秘密被打进了发布的 tarball。正确的做法是像浏览器一样，把凭证绑定到源，并在跨源重定向时剥离，同时确保任何构建产物的测试都能验证 `.env` 不会被打包进去。\n\n### 依赖混淆的本质是源解析逻辑太“宽容”\nCWE-427（不受控的搜索路径元素）在解析器层面就表现为著名的“依赖混淆”家族。私有包名在公共注册中心也存在，解析器同时查询两者，而“最高版本获胜”的逻辑导致公共包被安装。或者 manifest 里的次要源被允许满足任何依赖，而不仅仅是它被添加时的那个。这个问题在 Alex Birsan 2021 年让它出名之前好几年就有 CVE 报告了。更恶心的变种是，requirements 文件注释里隐藏的 `--index-url` 把后续所有安装都重定向到了攻击者的索引。还有一种不太明显的版本是，当一个源出错或不可达时，解析器会“掉”到下一个配置的源，或者把非 release 的东西（比如长得像版本标签的分支名）当成了 release。每个依赖都应该只从一个源解析，并且这个源应该被钉死在 lockfile 里，如果源不可达，应该直接报错而不是尝试下一个。\n\n### 别在不可信目录里寻找配置文件\nCWE-426（不受信的搜索路径）和 CWE-427 的问题在于，包管理器在不可信目录（比如刚 clone 的代码、下载的 tarball）里运行时，会从该目录加载可执行文件、配置文件或搜索路径。有的工具会直接运行当前目录下的二进制文件，有的允许模块文件里的 `toolchain` 指令指向模块内部的二进制文件，甚至有工具直接把项目 `vendor/` 目录下的 PHP 文件加载到包管理器自己的进程中。这和“代码运行比你预期的早”这个问题重叠了。用户的心理模型通常是 `install` 才运行代码，而 `status`、`lock` 或 `audit` 不运行，CVE 往往就出现在这个心理模型出错的地方。\n\n### 共享文件系统是本地提权的温床\nCWE-377（不安全的临时文件）和 CWE-276（默认权限不正确）涉及共享文件系统位置。比如 `/tmp` 下的可预测路径、全局可写的缓存或安装目录，或者解压文件时保留了压缩包里的权限位而不是用户的 umask。本地用户可以在你之前放置文件，或者在你放置后修改它。系统包管理器因为以 root 运行，这方面历史更长：在“安装者创建文件”和“安装者设置权限”之间的时间窗口里，通过软链接或硬链接交换可以实现提权。同一个工具可能因为每次修复都不彻底，在十年里积累了好几个这类 CVE。解决方案是使用 `mkdtemp` 创建的每进程临时目录，在创建时而非之后设置权限，在系统包管理器端使用基于文件描述符的操作而非基于路径的操作，确保你检查的东西就是你修改的东西。\n\n### 解析元数据时，千万别用“不安全”的加载器\nCWE-502（不受信数据的反序列化）这类问题虽然数量不多，但严重性极高，因为仅靠元数据就能在用户同意安装前实现代码执行或文件泄露。比如 gemspec 是 YAML，如果加载器用的是 unsafe 变体，精心制作的 gem 就能在解析时执行代码，此时签名检查还没开始运行。XML 的双胞胎问题是 CWE-611（XML 外部实体引用），Java 生态的 manifest 是 XML，平台默认解析器会解析外部实体，POM 或 ivy.xml 里的 `<!DOCTYPE>` 就能读取解析机器上的本地文件。这两个问题都是因为解析器用了默认配置。解决方法很简单：用任何解析器的 safe-load 变体，如果是 XML，关掉 DTD 和外部实体。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "package manager",
+        "CVE",
+        "supply chain",
+        "vulnerability"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Quoting Anthropic",
       "title_zh": "Claude 谄媚行为研究：灵性与关系话题异常",
       "link": "https://simonwillison.net/2026/May/3/anthropic/#atom-everything",
@@ -41,7 +60,26 @@
         "alignment",
         "personal guidance"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "Pluralistic: Demand destruction vs fuel-superceding infrastructure (04 May 2026)",
+      "title_zh": "化石燃料与可再生能源的本质差异",
+      "link": "https://pluralistic.net/2026/05/04/hope-in-the-dark/",
+      "pub_date": "2026-05-04T09:39:28.000Z",
+      "summary": "化石燃料是燃料，需要每年持续开采和消耗；可再生能源是基础设施，一次建设可长期使用。全球每年消耗的化石燃料总量，是永久实现全球电气化所需材料总量的17倍。太阳能和风能在2025年首次超过煤炭成为全球主要能源来源，中国和印度在2025年能源消费增长的同时减少了化石燃料消耗。钠离子电池正在逐步替代锂离子电池，钠是地球上第六丰富的元素。美国首座太阳能电池板回收工厂能够回收99%的材料，并将20%效率的旧板转化为两块40%效率的新板。特朗普封锁霍尔木兹海峡的决策反而加速了全球需求破坏，推动各国向电气化替代品转型，包括电磁炉、阳台太阳能、电动自行车和电动汽车。54个国家绕过中美主导的联合国，签署了《化石燃料不扩散条约倡议》。",
+      "source_name": "pluralistic.net",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "opinion",
+      "keywords": [
+        "renewables",
+        "fossil fuels",
+        "energy transition",
+        "demand destruction"
+      ],
+      "rank": 4
     },
     {
       "title": "Reminder: You Can Stitch Together Lots of Little HTML Pages With Navigations For Interactions",
@@ -60,7 +98,7 @@
         "navigation",
         "JavaScript"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "Microsoft’s open sourcing of 86-DOS and what it means",
@@ -79,7 +117,26 @@
         "open source",
         "history"
       ],
-      "rank": 4
+      "rank": 6
+    },
+    {
+      "title": "How the Vectrex game console sunk a 124-year-old company",
+      "title_zh": "Vectrex 如何拖垮 124 年的 Milton Bradley",
+      "link": "https://dfarq.homeip.net/how-the-vectrex-game-console-sunk-a-124-year-old-company/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=how-the-vectrex-game-console-sunk-a-124-year-old-company",
+      "pub_date": "2026-05-04T11:00:08.000Z",
+      "summary": "Milton Bradley 在 1983 年以 3100 万美元的赌注收购了 General Consumer Electronics，试图通过独特的矢量图形游戏主机 Vectrex 转型电子游戏市场。Vectrex 采用内置 9 英寸矢量显示器，以线条而非像素绘制图形，在 1982 年假日季售出约 14.7 万台，被《Radio Electronics》称为“最值得击败的主机”。然而 Milton Bradley 在市场巅峰期入场，恰逢 1983 年北美电子游戏大崩溃，主机价格从 199 美元一路降至 99 美元仍无法挽救颓势。1983 年 Vectrex 亏损 1650 万美元，到 1984 年 2 月累计亏损达 3160 万美元，最终 Milton Bradley 被迫停产并清空库存，于 1984 年 5 月以 3.5 亿美元被 Hasbro 收购，结束了这家 124 年公司的独立历史。爱好者通过序列号分析估算 Vectrex 总销量在 50 万至 60 万台之间。",
+      "source_name": "dfarq.homeip.net",
+      "score": 9,
+      "depth": 5,
+      "novelty": 4,
+      "category": "other",
+      "keywords": [
+        "Vectrex",
+        "Milton Bradley",
+        "video game crash",
+        "vector graphics"
+      ],
+      "rank": 7
     },
     {
       "title": "Punk, or why I don’t stream anymore",
@@ -98,7 +155,7 @@
         "wireheading",
         "authenticity"
       ],
-      "rank": 5
+      "rank": 8
     },
     {
       "title": "From RSS to Atom",
@@ -117,7 +174,7 @@
         "UUID",
         "web feeds"
       ],
-      "rank": 6
+      "rank": 9
     },
     {
       "title": "The shape of a guitar pick",
@@ -135,7 +192,7 @@
         "geometry",
         "logarithmic equation"
       ],
-      "rank": 7
+      "rank": 10
     },
     {
       "title": "png-cmp: like cmp for PNGs",
@@ -154,7 +211,7 @@
         "png",
         "visual comparison"
       ],
-      "rank": 8
+      "rank": 11
     },
     {
       "title": "★ Crimes Against Decency Need as Much Cover-Up as Crimes Against the Law",
@@ -173,7 +230,7 @@
         "privacy",
         "human labeling"
       ],
-      "rank": 9
+      "rank": 12
     },
     {
       "title": "Some views on Eglot and lsp-mode in GNU Emacs",
@@ -192,7 +249,7 @@
         "lsp-mode",
         "LSP"
       ],
-      "rank": 10
+      "rank": 13
     },
     {
       "title": "‘2 Letters From Steve’",
@@ -210,7 +267,7 @@
         "iPad",
         "Apple"
       ],
-      "rank": 11
+      "rank": 14
     },
     {
       "title": "X, the Platform of Free Speech",
@@ -228,7 +285,7 @@
         "moderation",
         "censorship"
       ],
-      "rank": 12
+      "rank": 15
     },
     {
       "title": "QuickQWERTY 1.2.3",
@@ -246,7 +303,7 @@
         "bug fix",
         "release"
       ],
-      "rank": 13
+      "rank": 16
     }
   ]
 }
