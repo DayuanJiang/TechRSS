@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 84,
   "total_articles": 2519,
-  "filtered_articles": 30,
+  "filtered_articles": 29,
   "articles": [
+    {
+      "title": "Package Manager Threat Models",
+      "title_zh": "包管理器威胁模型：设计缺陷而非漏洞",
+      "link": "https://nesbitt.io/2026/05/05/package-manager-threat-models.html",
+      "pub_date": "2026-05-05T10:00:00.000Z",
+      "summary": "# 一句话总结\n真正的供应链风险不在于代码写得烂，而在于那些“按设计运行”的特性——比如安装时自动执行脚本、锁文件只校验版本不校验哈希、以及缺乏来源证明——这些才是绝大多数安全事故的根源。\n\n### 之前的漏洞只是冰山一角\n上一篇文章我们聊的是那些能通过 grep 找出来的 Bug，比如解压时的路径遍历或者参数注入。但现实很残酷：那些有名有姓的供应链大事故——event-stream、ua-parser-js、xz——其实都不是因为代码有 Bug，而是因为包管理器完美执行了它的设计逻辑。这篇文章不讲怎么修 Bug，而是要帮你梳理一套“威胁模型”的检查清单。说白了，就是别光盯着代码行数，得搞清楚你的工具在默认情况下到底赋予了包多大的权限。\n\n### 安装时执行代码是最大的雷区\n包管理器最核心的设计决策，就是 `install` 命令是否允许运行包里的代码。npm 的 `postinstall`、pip 的 `setup.py`、Cargo 的 `build.rs`，这些机制本来是为了编译 C 扩展等正当理由存在的，但也成了攻击者的后门。你得搞清楚：哪些生命周期钩子默认运行？是仅限直接依赖还是连间接依赖也跑？有没有开关能关掉？Go 和 Deno 之所以安全，就是因为他们一开始就选了“什么都不运行”这条路，把限制写进了基因里。\n\n### 别以为只读命令就是安全的\n很多开发者觉得 `install` 危险，但 `audit` 或 `lock` 这种只读命令肯定没事。这其实是个误区。Python 的 `setup.py` 本质上是个程序，为了拿版本号你可能就得先运行它；Gradle 的 `build.gradle` 也是同理。如果你的清单文件是可执行的程序而不是纯数据（如 JSON/TOML），那你对不可信代码库执行任何命令，本质上都是在裸奔。对于谨慎的用户来说，在某些工具里，除了不碰它，可能真的没有绝对安全的操作。\n\n### 锁文件到底锁住了什么\n锁文件的设计初衷决定了它的安全性。像 `go.sum` 或 `package-lock.json` 这种锁定了内容哈希的，能保证你下载的字节和之前完全一致；但像老版的 `yarn.lock` 如果只锁定名字和版本，那就只能祈祷 Registry 没被篡改了。Go 的 checksum database 是个很妙的思路，它把校验逻辑放在了客户端和 Registry 之外的第三方日志里，谁也没法偷偷改包。你还得确认你的 CI 流程里，用的是严格遵循锁文件的命令（如 `npm ci`），还是那个会偷偷更新锁文件的命令。\n\n### 多源解析时的依赖混淆\n当你的配置里既有私有 Registry 又有公共源时，解析器怎么选包？2021 年的“依赖混淆”研究已经展示了后果：如果解析器只看版本号不看来源，攻击者只要在公共源上发一个更高版本的内部包名，就能骗你下载恶意代码。pip 的 `--extra-index-url` 就因为把所有源视为等价而备受争议。你得搞清楚你的工具是“谁有选谁”，还是“先到先得”，或者是拒绝这种模糊性。\n\n### 命名空间与抢注风险\n大多数公共 Registry 都是“先到先得”，这意味着 `requests` 这个名字的安全，全靠 2011 年注册的那个人现在还是好人。这里有个很阴险的攻击面叫“复活劫持”：如果维护者删了包或者域名过期，攻击者能不能立即重新注册这个名字？如果 Registry 允许立即复用，那这就是个巨大的安全漏洞。此外，还有 Typosquatting（拼写抢注），Registry 在发布时有没有做相似度检测，还是完全放任？\n\n### 维护者更迭与信任传递\nxz 事件给所有人都上了一课：没有黑客攻击，只是正常添加了一个新的维护者，信任就悄无声息地转移了。包管理器解决不了社会工程学，但它决定了这种更迭的透明度。你需要知道：添加维护者需不需要现有成员确认？用户会不会收到通知？新维护者能不能立刻发布？更糟糕的是，如果维护者的邮箱域名过期了，攻击者只需注册该域名就能重置密码接管账户。这些“僵尸账户”往往是供应链攻击的突破口。\n\n### 版本不可变性与来源证明\n一旦 `foo 1.2.3` 发布了，它对应的字节永远不应该变。虽然现在主流 Registry 都支持不可变发布，但你得确认边缘情况：删掉的版本号能不能被重新注册？“yank” 是仅仅隐藏了还是彻底删除？更重要的是，现在的 Registry 上的 tarball 和 GitHub 上的源码之间，以前没有任何强关联。现在有了像 Sigstore 这样的 Provenance 机制，可以验证这个包到底是由哪个 CI 工作流产生的。但这玩意儿如果是可选的且只有 3% 的包在用，那安全价值就大打折扣了。\n\n### 凭证管理与事后响应\n最后，如果真的出事了，你的防御纵深在哪里？发布 Token 的权限范围设计得够不够细？是针对单个包还是通用的？有没有过期时间？如果 Token 泄露了，Registry 有没有接入 Secret Scanner 能自动撤销？在事后响应上，Registry 有没有异常检测（比如长期不动的包突然发版）？能不能标记某个版本为“恶意”并强制客户端拒绝安装？这些机制决定了你是能在 20 分钟内止损，还是三周后才发现被黑。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "package manager",
+        "supply chain",
+        "threat model",
+        "lockfile"
+      ],
+      "rank": 1
+    },
     {
       "title": "TRE Python binding — ReDoS robustness demo",
       "title_zh": "TRE 正则引擎抵御 ReDoS 攻击",
@@ -22,7 +41,7 @@
         "regex",
         "Python"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Redis Array Playground",
@@ -41,7 +60,7 @@
         "ARGREP",
         "WASM"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "AI didn't delete your database, you did",
@@ -60,7 +79,7 @@
         "accountability",
         "automation"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Adobe’s ‘Modern’ User Interface Is Just Webpages",
@@ -79,7 +98,7 @@
         "UI",
         "web technologies"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "App Store Search Ads and the Slippery Slope",
@@ -98,7 +117,7 @@
         "iOS",
         "downloads"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Quoting Andy Masley",
@@ -116,7 +135,7 @@
         "land use",
         "agriculture"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Granite 4.1 3B SVG Pelican Gallery",
@@ -135,7 +154,7 @@
         "SVG generation",
         "quantization"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "How do I inform Windows that I’m writing a binary file?",
@@ -154,7 +173,7 @@
         "C runtime",
         "MS-DOS ioctl"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "★ Y Combinator’s Stake in OpenAI",
@@ -173,7 +192,7 @@
         "Paul Graham",
         "equity"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Photoshop’s ‘Modern User Interface’ Sucks (and Doesn’t Feel Modern)",
@@ -192,7 +211,7 @@
         "focus",
         "interaction design"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Google Owns a Big Chunk of Anthropic",
@@ -210,7 +229,7 @@
         "Anthropic",
         "investment"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Outrage is letting someone else set the frame",
@@ -229,7 +248,7 @@
         "outrage",
         "social media"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "Quoting John Gruber",
@@ -247,7 +266,7 @@
         "Y Combinator",
         "valuation"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "Fizz Buzz Through Monoids",
@@ -265,7 +284,7 @@
         "Monoid",
         "Fizz Buzz"
       ],
-      "rank": 14
+      "rank": 15
     },
     {
       "title": "Anthropic Executive, One Year Ago: Fully AI Employees Are a Year Away",
@@ -284,7 +303,7 @@
         "AI agents",
         "security"
       ],
-      "rank": 15
+      "rank": 16
     },
     {
       "title": "April 2026 newsletter",
@@ -303,7 +322,7 @@
         "GPT-5.5",
         "Claude Mythos"
       ],
-      "rank": 16
+      "rank": 17
     },
     {
       "title": "Paul Thurrott Might Write a Book on Markdown",
@@ -321,7 +340,7 @@
         "writing",
         "word processors"
       ],
-      "rank": 17
+      "rank": 18
     },
     {
       "title": "Straightforward checklists don't fit every situation",
@@ -339,7 +358,7 @@
         "operations",
         "sysadmin"
       ],
-      "rank": 18
+      "rank": 19
     },
     {
       "title": "Chess Peace",
@@ -358,7 +377,7 @@
         "iOS",
         "game"
       ],
-      "rank": 19
+      "rank": 20
     },
     {
       "title": "‘Noir, Japan’s Hard-Boiled Bittersweet Answer to Oreos’",
@@ -376,7 +395,7 @@
         "Oreo",
         "Japan"
       ],
-      "rank": 20
+      "rank": 21
     },
     {
       "title": "[Sponsor] WorkOS: Ready to Sell to Enterprise? Your Product Is Ready, Your Auth Infrastructure Isn’t.",
@@ -395,7 +414,7 @@
         "enterprise auth",
         "WorkOS"
       ],
-      "rank": 21
+      "rank": 22
     }
   ]
 }
