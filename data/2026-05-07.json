@@ -82,6 +82,25 @@
       "rank": 4
     },
     {
+      "title": "SQLAlchemy 2 In Practice - Chapter 7: Asynchronous SQLAlchemy",
+      "title_zh": "SQLAlchemy 2 异步编程实践指南",
+      "link": "https://blog.miguelgrinberg.com/post/sqlalchemy-2-in-practice---chapter-7-asynchronous-sqlalchemy",
+      "pub_date": "2026-05-06T21:49:20.000Z",
+      "summary": "# 一句话总结\nSQLAlchemy 的异步化改造不仅是换个驱动，而是要彻底消灭“隐式查询”，通过显式加载策略和 `run_sync` 机制，让 ORM 乖乖适应 `asyncio` 的“函数染色”规则。\n\n### 异步化的真正门槛是“函数染色”\n为什么 SQLAlchemy 的异步化这么难？核心问题不在于代码怎么写，而在于 Python 异步编程中著名的“函数染色”问题。说白了就是：异步函数里不能跑阻塞的同步代码。这对 Web 应用的影响是全方位的，从 Web 服务器、路由逻辑，一直到底层的数据库驱动，必须全栈异步。如果中间有一层是同步的（比如默认的 lazy loader），整个并发模型就会崩塌。所以，要想用异步 SQLAlchemy，你不能只改几个函数，得把整个调用链都刷成“异步色”。\n\n### 换掉底座：从驱动到 Engine 的全面升级\n既然要全栈异步，第一步就是换底座。Python 自带的 `sqlite` 或者常用的 `psycopg2` 都是同步驱动，统统不能用。你得根据数据库类型选对应的异步驱动：SQLite 用 `aiosqlite`，MySQL 用 `aiomysql` 或 `asyncmy`，PostgreSQL 用 `asyncpg`。连接 URL 也要跟着变，比如 `postgresql+asyncpg://...`。在代码层面，原来的 `create_engine` 和 `sessionmaker` 也要换成 `create_async_engine` 和 `async_sessionmaker`。虽然接口长得差不多，但它们的方法现在都是 awaitable 的。\n\n### 关键配置：禁止 Commit 后的对象过期\n这里有个容易踩坑的细节。SQLAlchemy 默认有个行为：commit 之后对象会“过期”，下次访问属性时会自动触发查询刷新数据。这在同步模式下很方便，但在异步模式下是灾难，因为那个隐式查询是阻塞的。解决办法是在 `async_sessionmaker` 里设置 `expire_on_commit=False`。这样 commit 后对象不会过期，避免了隐式查询。当然副作用是对象数据可能变旧，所以作者建议要么用短生命周期 Session，要么手动用 `session.refresh()` 来更新数据。\n\n### 处理遗留的同步代码：run_sync 机制\n有意思的是，`MetaData` 这类定义数据库结构的对象并没有异步版本。像 `create_all()` 这种建表操作还是同步的，那怎么办？SQLAlchemy 提供了一个 `run_sync()` 方法。你可以在异步连接中调用它，把同步函数包装起来跑。比如 `await connection.run_sync(Model.metadata.create_all)`。这是一个很巧妙的设计，既避免了重写底层元数据逻辑，又保证了调用链的异步特性。\n\n### 彻底消灭隐式查询：重构 Relationship Loaders\n最头疼的部分来了。ORM 里最常用的 `lazy='select'`（默认懒加载）是异步的死敌，因为它会在你访问属性时偷偷查库。这在异步环境是不允许的。所以，所有的关系加载策略必须改。作者推荐了一套组合拳：“一对一”或“多对一”的关系用 `lazy='joined'`（配合 `innerjoin=True` 提升性能）；“一对多”的关系用 `lazy='selectin'`；本来就用 `write_only` 的不用动。如果你拿不准，甚至可以全局设成 `lazy='raise'`，让代码在试图懒加载时直接报错，强迫你显式处理。\n\n### 最终效果：全链路显式控制\n做完这一系列改造后，你的数据库交互就完全可控了。没有隐式的查询，没有阻塞的调用，所有的数据库操作都在 await 中显式进行。虽然配置起来比同步版本繁琐，尤其是要仔细梳理每个 `relationship()` 的加载策略，但这换来的是在高并发场景下的真正性能提升。对于 FastAPI 这类现代异步框架来说，这套改造是必不可少的。",
+      "source_name": "miguelgrinberg.com",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "SQLAlchemy",
+        "asyncio",
+        "database",
+        "async"
+      ],
+      "rank": 5
+    },
+    {
       "title": "Triangular analog of the squircle",
       "title_zh": "三角形的 squircle 类似物",
       "link": "https://www.johndcook.com/blog/2026/05/06/triangular-analog-of-the-squircle/",
@@ -98,7 +117,7 @@
         "geometry",
         "computer graphics"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Open weights are quietly closing up - and that's a problem",
@@ -117,7 +136,7 @@
         "LLM",
         "competition"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Asimov's three laws are merely a suggestion",
@@ -136,7 +155,7 @@
         "system prompt",
         "safety"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Unified config files",
@@ -155,7 +174,7 @@
         "bash",
         "Emacs"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "New Logic for Programmers (and the future of this newsletter)",
@@ -174,7 +193,7 @@
         "property-based testing",
         "Antithesis"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Adobe’s subscription model",
@@ -192,7 +211,7 @@
         "subscription",
         "SaaS"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Broadcast Booths Around Baseball Tip Their Caps to John Sterling",
@@ -210,7 +229,7 @@
         "John Sterling",
         "tribute"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Live blog: Code w/ Claude 2026",
@@ -228,7 +247,7 @@
         "live blog",
         "event"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "Luca Maestri Runs the Cafeteria",
@@ -246,7 +265,7 @@
         "executive",
         "leadership"
       ],
-      "rank": 13
+      "rank": 14
     }
   ]
 }
