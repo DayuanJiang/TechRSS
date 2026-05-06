@@ -1,9 +1,9 @@
 {
   "date": "2026-05-07",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2488,
-  "filtered_articles": 20,
+  "success_feeds": 84,
+  "total_articles": 2524,
+  "filtered_articles": 23,
   "articles": [
     {
       "title": "Am I Meant To Be Impressed?",
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "Why not have changes in API behavior depend on the SDK you link against?",
+      "title_zh": "为何 Windows API 不应基于 SDK 版本改变行为",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260506-00/?p=112303",
+      "pub_date": "2026-05-06T14:00:00.000Z",
+      "summary": "## 一句话总结\n基于链接的 SDK 版本来改变 API 行为在 Windows 这种复杂的模块化生态里根本行不通，因为调用链中的版本冲突、尾调用优化以及静态库的存在，都会导致系统无法准确判断“到底是谁在调用”。\n\n### 看似完美的“苹果式”解决方案\n之前我们讨论过 `CoInitializeSecurity` 的一个设计缺陷：它强制要求传入绝对安全描述符，尽管 Windows 内部很多函数生成的是自相对描述符，这逼着开发者不得不做繁琐的格式转换。有读者提了个建议，说这事儿其实很好办，学 Apple 那套就行了：让 API 的行为依赖于你链接的 SDK 版本。如果你链接的是新 SDK，函数就接受自相对描述符；如果是旧 SDK，就保持原来的严格检查。听起来很美好，既修复了问题，又保证了旧代码的兼容性。\n\n### 打破 Windows 的“向前兼容”铁律\n但这事儿在 Windows 上有个巨大的隐患：Windows SDK 历来是严格向前兼容的。你拿一个十年前的老程序，用最新的 SDK 重新编译，它跑起来应该跟原来一模一样。如果 API 行为开始随 SDK 版本变化，这种默契就被打破了。开发者升级 SDK 后，程序编译通过，但运行行为却悄悄变了，这种难以排查的 Bug 会是噩梦。更糟糕的是，这会让开发者产生一种错觉：为了获得新行为，我必须升级 SDK；但为了保持稳定，我又不敢升级，把 SDK 变成了一种奇怪的“行为开关”。\n\n### 调用链上的“罗生门”：到底听谁的？\n现实中的程序不是铁板一块，而是由主程序和各种 DLL 组成的。假设主程序链接了新 SDK，但它调用的某个 UI 框架 DLL 还是用旧 SDK 编译的。当这个 DLL 内部调用 `CoInitializeSecurity` 时，系统该听谁的？如果听主程序的，DLL 可能会因为它预期的严格检查失效而崩溃；如果听 DLL 的，主程序想用的新特性就被拦截了。在一个复杂的依赖树里，不同模块混用不同版本的 SDK 是常态，这种基于 SDK 版本的行为切换会让整个系统陷入逻辑混乱。\n\n### 技术上的硬伤：尾调用优化会骗人\n那能不能通过检查“返回地址”来判断是哪个 DLL 在调用？理论上可行，但编译器的“尾调用优化”（Tail Call Optimization）会直接让这招失效。如果编译器决定把函数调用优化成跳转指令，那么被调用的函数看到的返回地址，根本不是直接调用者的地址，而是“调用者的调用者”的地址。这意味着 `CoInitializeSecurity` 可能会错误地把行为归因给一个完全无关的上层模块，导致判断完全失准。\n\n### 包装函数和静态库让情况更糟\n就算没有尾调用优化，现实中的调用链也往往充满了“包装函数”。比如一个中间库只是简单透传参数给系统 API，如果你通过返回地址判定这个中间库的 SDK 版本，从而决定行为，那也是错的，因为真正发起请求、期望特定行为的是更上层的调用者。更别提静态库了，它们被编译进目标模块后，根本就没有独立的 DLL 身份，系统完全无法区分这段代码原本是基于哪个 SDK 版本编译的。\n\n### 只有单体程序才能享受这种“特权”\n说到底，这种“根据链接 SDK 改变行为”的机制，只有在程序是单体结构、不依赖外部库、也不做复杂优化的理想世界里才能跑通。但在 Windows 这种高度模块化、依赖关系复杂的生态里，这条路是走不通的。这也是为什么 Windows 更倾向于通过结构体中的 `cbSize` 字段来显式声明版本——这种方式不依赖于你链接了什么库，只取决于你传入了什么数据，这才是真正鲁棒的设计。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Windows API",
+        "SDK versioning",
+        "DLL",
+        "tail call optimization"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Open weights are quietly closing up - and that's a problem",
       "title_zh": "开源权重模型许可证收紧威胁 AI 竞争",
       "link": "https://martinalderson.com/posts/open-weights-are-quietly-closing-up/?utm_source=rss&utm_medium=rss&utm_campaign=feed",
@@ -60,7 +79,7 @@
         "LLM",
         "competition"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Asimov's three laws are merely a suggestion",
@@ -79,7 +98,45 @@
         "system prompt",
         "safety"
       ],
-      "rank": 4
+      "rank": 5
+    },
+    {
+      "title": "Unified config files",
+      "title_zh": "跨平台统一配置文件管理实践",
+      "link": "https://www.johndcook.com/blog/2026/05/06/unified-config-files/",
+      "pub_date": "2026-05-06T16:32:20.000Z",
+      "summary": "跨平台开发环境需要统一的配置文件管理策略。通过在 .bashrc 中 source 共享的 .bash_aliases 文件，可以在 Linux 和 macOS 之间复用别名配置。Emacs 的 init.el 使用 cond 表达式根据 system-type 进行 OS 分支，也可基于 hostname 进行机器级配置。虽然维护统一配置需要额外的分支逻辑，但能避免配置文件随时间漂移，保持跨机器的工作环境一致性。",
+      "source_name": "johndcook.com",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "engineering",
+      "keywords": [
+        "config files",
+        "cross-platform",
+        "bash",
+        "Emacs"
+      ],
+      "rank": 6
+    },
+    {
+      "title": "New Logic for Programmers (and the future of this newsletter)",
+      "title_zh": "Hillel Wayne 加入 Antithesis，Newsletter 调整方向",
+      "link": "https://buttondown.com/hillelwayne/archive/new-logic-for-programmers-and-the-future-of-this/",
+      "pub_date": "2026-05-06T17:03:46.000Z",
+      "summary": "作者宣布《Logic for Programmers》书籍已发布 0.14 版本，正在进行测试印刷，计划 6 月底前推出 1.0 正式版。同时宣布 8 月起将全职加入 Antithesis 担任开发者教育者，负责推广 property-based testing、fuzzing、fault injection 等技术。受此影响，Newsletter 内容将减少理论性主题，转向软件历史和冷门编程范式，发布频率可能从每周改为双周或每月。文章最后讨论了单调性概念：all 量词在添加元素时单调为假、移除元素时单调为真，这解释了为何 Python 中 all([]) 返回 True；时序逻辑中 always A 对系统行为单调为假，eventually A 单调为真。",
+      "source_name": "buttondown.com/hillelwayne",
+      "score": 6,
+      "depth": 3,
+      "novelty": 3,
+      "category": "opinion",
+      "keywords": [
+        "monotonicity",
+        "temporal logic",
+        "property-based testing",
+        "Antithesis"
+      ],
+      "rank": 7
     },
     {
       "title": "Adobe’s subscription model",
@@ -97,7 +154,7 @@
         "subscription",
         "SaaS"
       ],
-      "rank": 5
+      "rank": 8
     },
     {
       "title": "Live blog: Code w/ Claude 2026",
@@ -115,7 +172,7 @@
         "live blog",
         "event"
       ],
-      "rank": 6
+      "rank": 9
     }
   ]
 }
