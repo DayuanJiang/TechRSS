@@ -82,6 +82,43 @@
       "rank": 4
     },
     {
+      "title": "Pushing Local Models With Focus And Polish",
+      "title_zh": "本地模型推理的碎片化困境与深度打磨",
+      "link": "https://lucumr.pocoo.org/2026/5/8/local-models/",
+      "pub_date": "2026-05-08T00:00:00.000Z",
+      "summary": "## 一句话总结\n本地模型缺的不是能跑起来的代码，而是像 SaaS 产品一样经过深度打磨、零配置且体验连贯的“成品”，为此作者通过 `ds4.c` 和 `pi-ds4` 尝试“只选一个赢家”的垂直整合路线。\n\n### 能跑起来和体验好，中间差着十万八千里\n现在的本地模型生态有个很尴尬的现状：大家都在拼命优化底层，内核越来越快，量化方案越来越多，但最终落到开发者手里的体验却一塌糊涂。作者想解决的不是“能不能跑”，而是“能不能像用 OpenAI API 那样顺手”。他在文中举了个很具体的例子：Tool Parameter Streaming。很多本地推理引擎虽然支持文本流式输出，但在工具调用时却非要等整个参数生成完才吐出来。这在本地模型本来就慢的情况下，会让用户盯着屏幕怀疑是死机了还是卡住了，既没法提前打断，也看不到进度。这种细节上的粗糙，直接劝退了想用本地模型做 Coding Agent 的人。\n\n### 碎片化是体验的杀手\n除了细节缺失，更让人头疼的是本地栈的极度碎片化。你想跑个模型，得在 llama.cpp、Ollama、MLX 等一堆引擎里选，选完还得挑量化版本、配 Chat Template、调 Context Size。这一长串配置项里，只要有一个没对上（比如 Chat Template 渲染错了，或者 KV Cache 没适配好），模型性能就会大打折扣，甚至直接报错。这种“拼积木”式的方式，让用户根本分不清是模型本身不行，还是自己配置错了。结果就是，大家试了一次觉得不行就放弃了，没人能体验到模型真正的上限。\n\n### 别追新模型了，先打磨好一个\n作者认为现在的社区太浮躁，每周都有新模型发布，大家的注意力全在“让新模型能跑”上，而不是“把一个模型跑到极致”。这种追逐新奇的“Vibeslop”导致没有任何一个组合（模型+硬件+引擎）能积累足够的“临界质量”去解决深层的体验问题。他主张换个思路：像云服务商那样，只选一个模型、一条硬件路径、一套推理引擎，把它做成一个闭环产品。出了问题就是产品 Bug，不管是哪层栈的错都要修，而不是让用户自己去排查兼容性。\n\n### ds4.c：只做一件事，做到极致\n基于这个思路，作者看上了 Salvatore Sanfilippo（Redis 作者）写的 `ds4.c`。这是一个非常“窄”的项目：它只支持 DeepSeek V4 Flash 这一个模型，且只针对 128GB+ RAM 的 Mac。它不是通用的 GGUF 运行器，而是一个专门为这个模型定制的原生引擎，包含了 Metal 路径、模型加载、Prompt 渲染和 KV 处理。DeepSeek V4 Flash 之所以被选中，是因为它足够大（效果优于小模型）又足够稀疏（本地能跑），配合 Mac 的 Metal 架构能把 KV Cache 放到 SSD 上，非常适合 Coding Agent 的长上下文场景。\n\n### pi-ds4：把复杂性封装进黑盒\n为了让这个方案真正好用，作者开发了 `pi-ds4` 插件，把 `ds4.c` 直接嵌入到了他的 Coding Agent Pi 里。这完全是个“零配置”的体验：插件会自动编译启动 `ds4-server`，根据机器配置自动选量化版本，下载依赖，甚至在你不用时自动关掉服务。作者甚至故意不提供配置旋钮，因为他想强迫自己去搞清楚如何自动调优。这并不是在掩盖技术复杂性，而是把复杂性集中在一个地方统一优化，而不是把麻烦甩给用户。\n\n### 先让少数人用上最好的体验\n作者也承认，这个方案目前的门槛很高（需要顶配 Mac Studio），甚至 Apple 现在都因为缺货不卖这种高配机型了。但他觉得这没关系，重要的是验证一种模式：通过聚焦单一配置，把本地模型的体验打磨到接近云服务的水平。他希望这能成为一个“强制函数”，逼着社区去解决缓存、工具调用暴露等深层次问题。如果你正好有这台机器，可以试一下 `pi install https://github.com/mitsuhiko/pi-ds4`，看看本地模型到底能有多顺滑。",
+      "source_name": "lucumr.pocoo.org",
+      "score": 14,
+      "depth": 7,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "local inference",
+        "tool streaming",
+        "ds4.c",
+        "DeepSeek V4"
+      ],
+      "rank": 5
+    },
+    {
+      "title": "Steering Zig Fmt",
+      "title_zh": "zig fmt 的可导向格式化机制",
+      "link": "https://matklad.github.io/2026/05/08/steering-zig-fmt.html",
+      "pub_date": "2026-05-08T00:00:00.000Z",
+      "summary": "## 一句话总结\n`zig fmt` 的核心精髓在于“可引导性”：它不强制统一风格，而是通过检测代码中是否存在尾随逗号或换行符，来推断你想要的排版意图并自动补全。\n\n### 格式化工具不该是独裁者，而该是副驾驶\n作者开篇就抛出了一个很鲜明的观点：`zig fmt` 比他用过的 `rustfmt`、IntelliJ 或 `deno fmt` 都要好。好在哪里？好在它是“可引导的”。大多数格式化工具像独裁者，只有一种标准答案；而 `zig fmt` 像个聪明的副驾驶，它虽然也有多种排版方案，但具体选哪一种，取决于你代码里现有的样子。说白了，它不是在重写你的风格，而是在理解你的意图。\n\n### 一个逗号决定两种命运\n最直观的例子体现在函数调用的排版上。如果你把参数写在一行，或者虽然换行了但没有尾随逗号，`zig fmt` 就会判定你想“紧凑”，于是把参数压缩成一行。但如果你在最后一个参数后面加了个逗号，哪怕原本是一坨乱码，`zig fmt` 也会立刻明白你想“展开”，于是把每个参数单独占一行并对齐。这种设计让开发者拥有了控制权：你只需要决定“我要单行还是多行”，剩下的脏活累活交给工具。\n\n### 为什么这种“猜测”比强制更高效\n这背后的逻辑其实很简单：90% 优秀的代码格式化，其实源于合理的空行划分和中间变量的选择，这些是机器无法自动决策的“艺术”。既然如此，与其让格式化工具瞎猜或者强制统一，不如让它保留这些关键的选择权。在实际工作中，你只需要手动加几个逗号，按下格式化快捷键，代码就会瞬间变成你想要的样子。这种“人机协作”的模式，比纯粹的机器自动化要舒服得多。\n\n### 数组排版里的隐藏彩蛋\n更有意思的地方在于数组的排版，这里用到了一个更巧妙的机制。除了看尾随逗号，`zig fmt` 还会观察第一行的换行位置。比如你在第一行写了 3 个元素然后换行，`zig fmt` 就会推断你想要“每行 3 个元素”的列式布局，并自动把后面的元素按这个宽度对齐。这不仅仅是单行与多行的区别，而是真正理解了“列对齐”的视觉美感。\n\n### 用拼接运算符玩转排版\n最后，作者展示了一个高级技巧：利用 `++` 运算符来控制每行的元素数量。在传递命令行参数这种场景下，参数长短不一，强行对齐反而很难看。通过把基础参数和配置参数分开，再用 `++` 拼接，你可以灵活地控制每行显示几个键值对。这再次证明了 `zig fmt` 的强大之处：它不限制你的发挥，反而通过响应你的代码结构，帮你实现更复杂的排版需求。",
+      "source_name": "matklad.github.io",
+      "score": 12,
+      "depth": 5,
+      "novelty": 7,
+      "category": "tools",
+      "keywords": [
+        "zig fmt",
+        "formatter",
+        "code style"
+      ],
+      "rank": 6
+    },
+    {
       "title": "Notes on the xAI/Anthropic data center deal",
       "title_zh": "Anthropic 租用 xAI 争议数据中心",
       "link": "https://simonwillison.net/2026/May/7/xai-anthropic/#atom-everything",
@@ -98,7 +135,7 @@
         "data center",
         "infrastructure"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "When you upgrade your resource strings to Unicode, don’t forget to specify the L prefix",
@@ -117,7 +154,7 @@
         "L prefix",
         "escape sequences"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Smoothed polygons",
@@ -136,7 +173,7 @@
         "smoothing",
         "linear functions"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Maybe you shouldn't install new software for a bit",
@@ -155,7 +192,7 @@
         "supply chain",
         "copy.fail"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Notes on the Hantavirus Outbreak",
@@ -174,7 +211,7 @@
         "biosecurity",
         "R0"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "GitHub Repo Stats",
@@ -193,7 +230,7 @@
         "REST API",
         "browser tool"
       ],
-      "rank": 10
+      "rank": 12
     },
     {
       "title": "Prolost Watches 1.0",
@@ -212,7 +249,7 @@
         "vibe-coding",
         "iPhone app"
       ],
-      "rank": 11
+      "rank": 13
     },
     {
       "title": "Big Words",
@@ -230,7 +267,7 @@
         "tool",
         "slide"
       ],
-      "rank": 12
+      "rank": 14
     },
     {
       "title": "llm-gemini 0.31",
@@ -248,7 +285,7 @@
         "release",
         "Gemini"
       ],
-      "rank": 13
+      "rank": 15
     },
     {
       "title": "The Bold Ones Win",
@@ -267,7 +304,7 @@
         "business strategy",
         "GameStop"
       ],
-      "rank": 14
+      "rank": 16
     },
     {
       "title": "The Greatest Jump Cut in Cinematic History, Improved by Amazon Prime",
@@ -285,7 +322,7 @@
         "ads",
         "Kubrick"
       ],
-      "rank": 15
+      "rank": 17
     },
     {
       "title": "Detecting (or not) the use of -l and -c together in Bourne shells",
@@ -303,7 +340,7 @@
         "shell scripting",
         "Unix"
       ],
-      "rank": 16
+      "rank": 18
     }
   ]
 }
