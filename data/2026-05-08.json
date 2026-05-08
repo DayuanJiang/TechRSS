@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2549,
-  "filtered_articles": 19,
+  "filtered_articles": 18,
   "articles": [
     {
       "title": "Behind the Scenes Hardening Firefox with Claude Mythos Preview",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Weekend at Bernie’s",
+      "title_zh": "开源包维护状况的量化分析",
+      "link": "https://nesbitt.io/2026/05/08/weekend-at-bernies.html",
+      "pub_date": "2026-05-08T10:00:00.000Z",
+      "summary": "## 一句话总结\n开源生态中约 12% 的关键包已处于“死亡”状态，而 AI 辅助漏洞挖掘的普及，正让这些无人维护的代码瞬间从“无人问津”变成巨大的安全定时炸弹。\n\n### 僵尸代码的真正风险不是没人用，是没人修\n作者用电影《老板度假去》里的段子打了个比方：很多热门开源包现在的状态就像电影里那个被架着的老板——看着还活着，每周几百万下载，Issue 也有人提，其实“墨镜”后面已经没人了。这事儿以前大家不太在意，毕竟没人去深究。但现在不一样了，AI 辅助的安全扫描工具正在把“没人检查”变成一种巨大的风险。一旦这些包爆出漏洞，结局往往很尴尬：要么根本没人理睬， embargo 过期后直接发个 CVE 却没修复版本；要么有人写了修复合并进了 Git，但拥有发布权限的那个人早就失联了，导致补丁永远到不了用户的 `install` 命令里。\n\n### 语言生态的软肋：没有“下游打包商”兜底\nLinux 发行版处理这种事很有一套，它们有打包商，不等上游修就能自己打补丁分发。但语言级的包管理器（如 npm, RubyGems）没这个角色。注册表的所有权属于注册的那个人，如果他跑了，你就只能直面那个没打补丁的 tarball。虽然应用层面可以用 `patch` 或 `fork` 绕过，但这把成本转嫁给了每一个下游消费者，而不是在源头修复一次。更隐蔽的麻烦在于依赖传递：如果一个死掉的包锁死了某个依赖的版本范围，一旦那个依赖发新版修漏洞，解析器会因为死包的限制无法升级，导致整个下游树都被卡在漏洞版本上。\n\n### 如何定义“死亡”：不看提交日期，看有没有人应门\n单纯看最后一次提交时间来判定“废弃”太草率了，很多核心包就几十行代码，写完就不需要动了。作者真正想知道的是：如果你敲门，还会不会有人应？于是他从 `ecosyste.ms` 拿了 16 个包管理器的 8,606 个关键包，回溯了一年的提交、Issue、PR 以及发布权限。他把这些包分成了四类：Active（活跃）、Dormant（休眠，有维护迹象但没开发）、Dead（已死，有 Issue/PR 但没人理）、Unknown（未知，没动静也没人测）。Dead 的定义很严格，必须有“已读不回”的证据，而不是单纯的不活跃。\n\n### 数据背后的真相：12% 确认死亡，18.9% 处于薛定谔状态\n在 5,874 个关键仓库里，48.8% 活跃，20.2% 休眠，12.1% 确认死亡，18.9% 未知。12% 听起来不多，但这 713 个死掉的仓库支撑了约 2.9 亿个依赖关系（去重前），如果把休眠和未知的算进去，受影响的依赖数超过 10 亿。细分到生态，Go 的死亡率高达 20.2%（可能是因为模块代理掩盖了路径迁移的问题），npm 虽然只有 11.3%，但绝对数量巨大。最讽刺的是，依赖量最大的死代码往往是最小的工具库（比如 `fast-deep-equal`），代码少到几乎不会出错，但也正因为没人看，一旦出事就是全局灾难。\n\n### 注册表权限的“单点故障”\n在那 713 个死掉的仓库里，322 个在 GitHub 上被正式归档，剩下的 391 个就是典型的“Bernie”——没归档，甚至 Dependabot 还在提交 PR，但根本没人合并。过去一年里，有 321 个有人提 Issue，243 个有人提 PR 却零合并。更糟的是注册表侧的权限：1,414 个死掉或休眠的包只有一个账号有发布权。作者甚至更担心“休眠”组，因为那里有 156 个仓库全靠唯一一个活人撑着。这哥们现在正被 AI 生成的垃圾报告和路人的需求轰炸，只要他哪天不想干了或者去养羊了，这些包瞬间就会变成“死包”。\n\n### AI 正在改写游戏规则：从“没人看”到“被扫描”\n过去十年，这些死包之所以安全，纯粹是因为没人愿意花一下午去审计一个 2017 年写的 200 行字符串转义工具，“没人看”在某种程度上就是一种防御。但现在，把一个 tarball 扔给模型问“有什么毛病”的成本几乎为零。为了赏金或寻找立足点，正在用 AI 扫描代码的人越来越多，而且增长速度远超能处理这些报告的维护者数量。目前整个关键集合里已经有 110 个公告没有修复版本，这意味着 CVE 发了，但你没版本可升。对于死包来说，下一个公告就是死期。\n\n### 我们即将面临的“压力测试”\n那 18.9% 的“未知”包和 12.1% 的“死包”一样让人头疼，因为它们还没经历过“安全报告”这道测试。很快，就会有一大波人用 AI 对整个注册表进行这种压力测试，而且肯定会找出真问题。现在的尴尬在于：当一个没有维护者的包遭遇有效的 CVE，大多数注册表根本没有处理流程。它们假设会有人来认领包名，而不是仅仅为了发一个修复版。过去我们假设 lockfile 里的每个包都有维护者兜底，这在报告很少时行得通，但面对即将到来的 AI 扫描潮，这套假设已经彻底失效了。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "package management",
+        "security",
+        "abandoned packages",
+        "supply chain"
+      ],
+      "rank": 2
+    },
+    {
       "title": "How Long Do We Wait For New Inventions?",
       "title_zh": "用 AI 追溯 190 项发明的技术可能时间",
       "link": "https://www.construction-physics.com/p/how-long-do-we-wait-for-new-inventions",
@@ -41,7 +60,7 @@
         "technological progress",
         "historical analysis"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Canvas Breach Disrupts Schools & Colleges Nationwide",
@@ -60,7 +79,7 @@
         "data breach",
         "ransomware"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Notes on incidents",
@@ -79,7 +98,7 @@
         "system reliability",
         "Kubernetes"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Pushing Local Models With Focus And Polish",
@@ -98,7 +117,7 @@
         "ds4.c",
         "DeepSeek V4"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Steering Zig Fmt",
@@ -116,7 +135,7 @@
         "formatter",
         "code style"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Notes on the xAI/Anthropic data center deal",
@@ -135,7 +154,7 @@
         "data center",
         "infrastructure"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "When you upgrade your resource strings to Unicode, don’t forget to specify the L prefix",
@@ -154,7 +173,7 @@
         "L prefix",
         "escape sequences"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Smoothed polygons",
@@ -173,7 +192,7 @@
         "smoothing",
         "linear functions"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Maybe you shouldn't install new software for a bit",
@@ -192,7 +211,7 @@
         "supply chain",
         "copy.fail"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Notes on the Hantavirus Outbreak",
@@ -211,7 +230,7 @@
         "biosecurity",
         "R0"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "GitHub Repo Stats",
@@ -230,7 +249,7 @@
         "REST API",
         "browser tool"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "Prolost Watches 1.0",
@@ -249,7 +268,7 @@
         "vibe-coding",
         "iPhone app"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "Big Words",
@@ -267,7 +286,7 @@
         "tool",
         "slide"
       ],
-      "rank": 14
+      "rank": 15
     },
     {
       "title": "llm-gemini 0.31",
@@ -285,7 +304,7 @@
         "release",
         "Gemini"
       ],
-      "rank": 15
+      "rank": 16
     },
     {
       "title": "The Bold Ones Win",
@@ -304,7 +323,25 @@
         "business strategy",
         "GameStop"
       ],
-      "rank": 16
+      "rank": 17
+    },
+    {
+      "title": "Dell buys Alienware, May 8, 2006",
+      "title_zh": "Dell 2006 年收购 Alienware 回顾",
+      "link": "https://dfarq.homeip.net/dell-buys-alienware-may-8-2006/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=dell-buys-alienware-may-8-2006",
+      "pub_date": "2026-05-08T11:00:40.000Z",
+      "summary": "",
+      "source_name": "dfarq.homeip.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Dell",
+        "Alienware",
+        "acquisition"
+      ],
+      "rank": 18
     },
     {
       "title": "The Greatest Jump Cut in Cinematic History, Improved by Amazon Prime",
@@ -322,7 +359,7 @@
         "ads",
         "Kubrick"
       ],
-      "rank": 17
+      "rank": 19
     },
     {
       "title": "Detecting (or not) the use of -l and -c together in Bourne shells",
@@ -340,7 +377,7 @@
         "shell scripting",
         "Unix"
       ],
-      "rank": 18
+      "rank": 20
     }
   ]
 }
