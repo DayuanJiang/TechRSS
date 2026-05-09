@@ -1,9 +1,9 @@
 {
   "date": "2026-05-09",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2528,
-  "filtered_articles": 16,
+  "success_feeds": 85,
+  "total_articles": 2553,
+  "filtered_articles": 15,
   "articles": [
     {
       "title": "David Reich – Why the Bronze Age was an inflection point in human evolution",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "The Mismeasure of Open Source",
+      "title_zh": "开源项目关键性评估的系统性偏差",
+      "link": "https://nesbitt.io/2026/05/09/the-mismeasure-of-open-source.html",
+      "pub_date": "2026-05-09T10:00:00.000Z",
+      "summary": "## 一句话总结\n现有的开源项目评估模型之所以失效，是因为它们把“数据不可见”误判为“低价值”，并过度依赖 GitHub 和注册表 API 这种容易获取但充满噪音的指标，导致真正关键的基础设施项目被严重低估甚至直接忽略。\n\n### 缺失的数据被默认为零，这是最致命的盲区\n几乎所有评估模型都会犯一个根本性错误：把“没有数据”当成“数据为零”。Go 模块通过代理拉取不暴露下载量，C 库通过 apt、dnf 或静态链接分发也不上报数据，如果模型以“下载量前 N”作为筛选条件，这些生态在评分开始前就被直接过滤掉了。更荒谬的是，curl 这种每年实际安装量达 200 亿次的工具，仅因为被统计到的渠道少，在榜单上显示的年下载量只有一万。GitHub 上没有 Issue 可能是因为没人用，也可能是因为项目用 Bugzilla 或邮件列表在追踪；没有 `FUNDING.yml` 可能是没钱，也可能是维护者全都在 Red Hat 领工资。模型把这些“未知”统统填成“零”或者直接删掉行，导致那些不符合特定 Schema 的关键项目，和真正的一无是处的项目在仪表盘上看起来一模一样。\n\n### 为了凑数而用的指标，往往测的是噪音而非风险\n很多指标被选进模型，仅仅因为 API 容易返回它们，这就是典型的“路灯效应”。下载量是重灾区，npm 或 PyPI 给出的数字大部分是 CI 流水线重复安装产生的，根本无法反映真实用户数，更无法代表“如果挂了有多少人受影响”。GitHub Stars 严重偏向 Web 前端和开发者工具，像 ICU、libxml2 这种无处不在的基础库 Stars 只有几百，而且 Stars 还能直接花钱刷，研究显示 GitHub 上有 600 万个疑似假星。CVE 数量更是反向指标，OpenSSL 和 Linux内核 CVE 多是因为有人盯着审，而一个 2014 年后就没人看过的 C 解析器 CVE 为零，反而更危险。代码复杂度指标（如圈复杂度）只能计算静态分析能看到的分支，却无法理解一个简单的循环背后可能是一个复杂的虚拟机实现。\n\n### 跨生态比较就像拿苹果和橙子做加法\n不同生态系统的指标单位根本不同，放在一起比较毫无意义。npm 的“下载”主要是 CI 缓存未命中，Homebrew 是 macOS 开发者的可选 ping，Debian popcon 则是来自特定人群的报告，把它们加权求和算出一个精确的分数纯属自欺欺人。依赖计数也是同理，npm 生态流行微小的单用途包，一个字符串填充库可能有上万个依赖；而一个被静态链接进所有浏览器和数据库的 C 压缩库，依赖数可能只有几十个，因为 C 语言的依赖往往通过 `#include` 或源码复制体现，根本不在注册表的图谱里。即便在图谱内部，Rust 的 workspace 可能发布 40 个包，而同等规模的 Python 项目只发布 1 个，这会让 Rust 项目在图算法中看起来重要 40 倍，但这只是打包粒度的差异。\n\n### GitHub API 看不到真正的“地下基础设施”\n大多数模型严重依赖 GitHub API，但这恰恰漏掉了最需要关注的那部分老旧底层设施。PostgreSQL、SQLite、GnuPG、glibc 和 FFmpeg 的主开发都在邮件列表、自建 Git 或 Gerrit 上。有些项目有只读镜像，API 会返回镜像的 Stars 和提交图，但这和实际开发毫无关系，PR 发过去也是石沉大海。GitHub 的 `/contributors` 接口只统计能关联到 GitHub 账号的提交者，curl 实际上有 3600 多位贡献者，但 API 只能返回几百个，导致 Bus Factor（巴士系数）计算错误地显示该项目只有 1 人维护。OpenSSF Scorecard 也有类似问题，它检测的是 GitHub 功能（如 Branch Protection）而非安全属性，一个用自建 CI 和邮件列表评审的项目，得分反而比一个开启了默认 Actions 的模板仓库低。\n\n### 项目身份和资金来源的识别也是一团乱麻\n项目身份识别比想象中难得多，同一个代码在不同地方名字不一样。libcurl 在 Homebrew 叫 `curl`，在 Debian 叫 `libcurl4`，在 PyPI 叫 `pycurl`，在 crates.io 叫 `curl-sys`。模型如果不把这些统一起来，就会把同一个风险面拆成五个低分条目，资金和关注也被分散。反过来，LLVM、GCC 这种单体仓库产出几十个产物，模型要么只算一个忽略其他，要么把同一组维护者重复计数，甚至因为仓库太大计算超时直接把最关键的项目排除在外。资金评估更是只看得到表面，GitHub Sponsors 或 Open Collective 只是冰山一角，最常见的大厂（如 Red Hat、Google）直接给维护者发工资的模式，对爬虫来说是完全不可见的，导致有全职团队的项目被标记为“缺乏资金”。",
+      "source_name": "nesbitt.io",
+      "score": 18,
+      "depth": 9,
+      "novelty": 9,
+      "category": "engineering",
+      "keywords": [
+        "open source",
+        "criticality scoring",
+        "GitHub API",
+        "metrics"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Using Claude Code: The Unreasonable Effectiveness of HTML",
       "title_zh": "Claude Code 团队倡导用 HTML 替代 Markdown",
       "link": "https://simonwillison.net/2026/May/8/unreasonable-effectiveness-of-html/#atom-everything",
@@ -41,7 +60,7 @@
         "Markdown",
         "prompt engineering"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Quoting Luke Curley",
@@ -60,7 +79,7 @@
         "latency",
         "audio"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Developing more confidence when tracking renames via Read­Directory­ChangesW",
@@ -79,7 +98,7 @@
         "FILE_NOTIFY_EXTENDED_INFORMATION",
         "FileId"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "AI makes weak engineers less harmful",
@@ -98,7 +117,7 @@
         "LLM",
         "productivity"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "George Orwell's review of Russel's Power: A New Social Analysis",
@@ -117,7 +136,7 @@
         "power",
         "politics"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "I Will Not Add Query Strings to Your URLs",
@@ -136,7 +155,7 @@
         "tracking",
         "web"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Wander Console 0.6.0",
@@ -155,7 +174,7 @@
         "self-hosted",
         "decentralised"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "This Week on The Analog Antiquarian",
@@ -172,7 +191,7 @@
         "blog",
         "games"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Notes on using GNU Emacs' Tramp system in an unusual shell environment",
@@ -190,7 +209,7 @@
         "Tramp",
         "shell"
       ],
-      "rank": 10
+      "rank": 11
     }
   ]
 }
