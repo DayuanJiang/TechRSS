@@ -1,10 +1,29 @@
 {
   "date": "2026-05-11",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2553,
-  "filtered_articles": 13,
+  "success_feeds": 84,
+  "total_articles": 2529,
+  "filtered_articles": 15,
   "articles": [
+    {
+      "title": "proxy",
+      "title_zh": "支持 16 种包管理器的本地代理缓存",
+      "link": "https://nesbitt.io/2026/05/11/proxy.html",
+      "pub_date": "2026-05-11T10:00:00.000Z",
+      "summary": "## 一句话总结\n这是一个用 Go 写的单文件二进制工具，能伪装成 npm、PyPI、Cargo 等 16 种包注册表协议，通过重写元数据实现透明缓存与“冷却期”控制，既是本地开发的调试神器，也是轻量级的 Artifactory 替代品。\n\n### 从“不想骚扰上游”开始的单文件工具\n开发包管理工具时，调试往往意味着对 npm 或 PyPI 发起成千上万次请求。用 Mock 手写十六种协议太累，用 HTTP Fixture 容易过期，直接连真机又心疼流量。作者想要一个本地代理，既能像真注册表一样响应，又只从上游拉取一次数据。于是 `proxy` 诞生了：它是一个 Go 编译的单文件，支持 npm, PyPI, RubyGems, Cargo, Maven 等主流生态。启动后指向 `localhost:8080`，首次安装从上游拉取并存入本地，后续直接命中缓存。这里有个关键设计：它会重写 Metadata 里的 tarball URL，让下载请求指向代理自身，这是普通 HTTP 缓存做不到的。\n\n### 为什么它比 CI 自带的缓存更聪明\nGitHub Actions 等主流 CI 的缓存策略是基于文件系统的：把 `~/.npm` 打包，用 lockfile 的 hash 做 key。这有个大问题，只要 lockfile 变了一个包，或者矩阵构建换了 OS，整个缓存就失效了，导致重复下载。`proxy` 的聪明之处在于它工作在协议层，缓存 key 是包坐标（如 `lodash-4.17.21.tgz`）。不管你的 lockfile 怎么变，也不管你是 Linux 还是 macOS runner，只要包坐标一样，就能复用缓存。配合 S3 或 Postgres 做后端，还能在多个 CI runner 之间共享缓存，效率比文件级缓存高得多。\n\n### 用 SBOM 打造精准的离线镜像\n除了被动缓存，`proxy` 还支持主动预热。通过 `proxy mirror` 命令，你可以喂给它 PURLs、CycloneDX 或 SPDX 格式的 SBOM 文件。工具会解析这些清单，把里面列出的所有依赖提前拉到缓存里。这有什么用？对于断网环境（Air-gapped）的构建，或者在 CI 集群大规模启动前预热缓存，这个功能非常实用。它不是把整个互联网镜像下来，而是根据 SBOM 精确拉取当前项目真正需要的依赖树，既安全又高效。\n\n### 用“冷却期”防御供应链攻击\n这是作者最看重的一个功能。因为代理本身就在重写元数据，所以它顺手加了一个 `cooldown`（冷却）配置。你可以设置一个时间窗口（比如默认 3 天），让代理对外屏蔽掉所有发布时间小于这个阈值的包版本。原理很简单：绝大多数恶意包攻击都在发布后一两天内被发现。如果你的构建环境只能看到“冷却”了三天的包，那你天然就免疫了这些新发的恶意包。而且这个策略是在代理层统一实现的，哪怕包管理器本身不支持，也能通过 `proxy` 一键生效。\n\n### 一个只展示“你装了什么”的 Web UI\n`proxy` 自带了一个 Web 界面，你可以浏览缓存里的包、查看命中次数和包大小。更有意思的是，它内置了一个源码浏览器，能直接在网页上查看 tarball 里的文件内容，甚至对比两个版本的文件差异。这和 npm 官网那种展示全网几百万个包的思路不同，`proxy` 的 UI 只展示你实际安装过的包。它还复用了 `git-pkgs` 的代码，能展示 License、发布日期以及 OSV 安全公告。作者还在计划加入更多高级功能，比如安装体积的可视化分析。\n\n### 下一步：自动挡与更严格的策略\n目前的用法还需要手动配置环境变量，作者计划实现一个“Wrapper 模式”。你只需要运行 `proxy npm install express`，它会自动启动服务、配置好 `NPM_CONFIG_REGISTRY` 并执行命令。配合 shell alias，就能实现全局无感的代理缓存。此外，作者还打算引入更严格的依赖策略，比如许可证白名单、版本下限限制等。虽然目前缺乏统一的策略描述标准，但在代理层做统一管控显然比在每个包管理器里分别配置要省心得多。",
+      "source_name": "nesbitt.io",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "tools",
+      "keywords": [
+        "proxy",
+        "package registry",
+        "cooldown",
+        "supply chain"
+      ],
+      "rank": 1
+    },
     {
       "title": "Reverse engineering Mersenne Twister with Linear Algebra",
       "title_zh": "用线性代数逆向 Mersenne Twister",
@@ -22,7 +41,7 @@
         "GF(2)",
         "reverse engineering"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "The linear algebra of bit twiddling",
@@ -41,7 +60,7 @@
         "GF(2)",
         "Mersenne Twister"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Out With the JS, In With the HTML",
@@ -60,7 +79,45 @@
         "static site",
         "progressive enhancement"
       ],
-      "rank": 3
+      "rank": 4
+    },
+    {
+      "title": "Pluralistic: 2024 (apart from the obvious) (11 May 2026)",
+      "title_zh": "美国民主党 2024 年选举的政治失败",
+      "link": "https://pluralistic.net/2026/05/11/postmortem/",
+      "pub_date": "2026-05-11T09:43:59.000Z",
+      "summary": "",
+      "source_name": "pluralistic.net",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "opinion",
+      "keywords": [
+        "politics",
+        "election",
+        "Biden",
+        "Harris"
+      ],
+      "rank": 5
+    },
+    {
+      "title": "The Problem of Pedagogy in Advanced Mathematics",
+      "title_zh": "研究生数学教材证明的教学困境",
+      "link": "https://susam.net/advanced-mathematics-pedagogy.html",
+      "pub_date": "2026-05-11T00:00:00.000Z",
+      "summary": "研究生数学教材中的证明往往只是高层大纲，而非完整证明。作者与职业数学家合作发现，即使对专业人士而言，某些证明的中间步骤也晦涩难懂，将教材中 10 行论证展开成完整证明可能需要 10 页。这种教学方式导致学生需要付出巨大努力才能理解每一步骤，在时间压力下可能永远无法真正理解证明为何成立。一些大学提供补充笔记来扩展困难论证并添加注释，作者认为这是良好实践，并考虑为 s-arc transitivity of graphs、域扩展等主题撰写配套笔记。",
+      "source_name": "susam.net",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "other",
+      "keywords": [
+        "mathematics",
+        "pedagogy",
+        "textbooks",
+        "proofs"
+      ],
+      "rank": 6
     },
     {
       "title": "Quoting New York Times Editors’ Note",
@@ -78,7 +135,7 @@
         "journalism",
         "fact-checking"
       ],
-      "rank": 4
+      "rank": 7
     },
     {
       "title": "Moving from lsp-mode in GNU Emacs to Eglot",
@@ -96,7 +153,7 @@
         "Eglot",
         "lsp-mode"
       ],
-      "rank": 5
+      "rank": 8
     },
     {
       "title": "Fear is information.",
@@ -114,7 +171,7 @@
         "self-awareness",
         "psychology"
       ],
-      "rank": 6
+      "rank": 9
     },
     {
       "title": "Weekly Update 503",
@@ -132,7 +189,7 @@
         "ShinyHunters",
         "ransomware"
       ],
-      "rank": 7
+      "rank": 10
     },
     {
       "title": "Welcoming the Costa Rican Government to Have I Been Pwned",
@@ -151,7 +208,26 @@
         "data breach",
         "government"
       ],
-      "rank": 8
+      "rank": 11
+    },
+    {
+      "title": "Sony Betamax VCR: Born May 10, 1975",
+      "title_zh": "索尼 Betamax 录像机诞生 51 周年回顾",
+      "link": "https://dfarq.homeip.net/sony-betamax-vcr-born-may-10-1975/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=sony-betamax-vcr-born-may-10-1975",
+      "pub_date": "2026-05-11T11:00:26.000Z",
+      "summary": "",
+      "source_name": "dfarq.homeip.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Betamax",
+        "VCR",
+        "Sony",
+        "VHS"
+      ],
+      "rank": 12
     }
   ]
 }
