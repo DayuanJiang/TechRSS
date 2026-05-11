@@ -1,9 +1,9 @@
 {
   "date": "2026-05-12",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2526,
-  "filtered_articles": 18,
+  "success_feeds": 85,
+  "total_articles": 2554,
+  "filtered_articles": 19,
   "articles": [
     {
       "title": "Additional notes on controlling which handles are inherited by Create­Process",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Hosting a website on an AVR",
+      "title_zh": "在 8 位 AVR 微控制器上托管网站",
+      "link": "https://maurycyz.com/projects/mcusite/",
+      "pub_date": "2026-05-11T00:00:00.000Z",
+      "summary": "# 一句话总结\n在一个只有 8kB RAM 的 8 位单片机上跑网站，核心在于利用 SLIP 协议绕过硬件限制，并通过 Linux 代理解决公网 IP 问题。\n\n### 选对芯片是省钱的第一步\n作者这次的目标是在单片机上跑网站，但他没选经典的 Atmega328，而是看上了 AVR64DD32。这芯片只要 1 美元，性价比极高：24 MHz 主频，8 kB RAM，64 kB Flash。虽然还是 8 位架构，但内存空间比老款 Arduino 宽敞多了，算是个不错的\"服务器\"底座。硬件有了，接下来就是怎么联网的问题。\n\n### 以太网对单片机来说太快了\n最直观的想法是接以太网，但作者很快发现这行不通。即便是 10BASE-T 这种慢速标准，传输率也有 10 Mbps，加上 Manchester 编码，实际线速高达 20 Mbps。AVR 的外设和 IO 引脚最高只能跑到 12 MHz，根本跟不上这种速度。买专用以太网芯片能解决问题，但作者不想等快递，只能换个思路。\n\n### SLIP 协议让串口变网卡\n既然以太网搞不定，那就用串口。作者选用了 SLIP（Serial Line Internet Protocol），这是个非常古老的标准，以前常用于拨号上网。它的原理很简单：在数据包前后加 0xC0 标记，并对特殊字符进行转义。Linux 原生支持 SLIP，只需一条 `slattach` 命令，就能把 USB 转串口模块变成一个标准的网络接口。硬件上几乎不需要额外元件，直接用串口供电，一根线搞定连接。\n\n### 砍掉复杂特性才能跑得动\n有了网络连接，还得处理协议栈。IPv4 头部有 40 字节，好在现代系统都禁用了分片功能，作者只需简单交换源目地址并重置 TTL 就能生成响应头。TCP 就麻烦多了，需要维护连接状态和处理丢包重传，作者花了好几天写了个勉强能用的实现。至于 HTTP，他直接偷懒：不管请求什么，服务器永远返回同一个硬编码的页面。\n\n### 借用 VPS 的公网 IP 做代理\n网站跑通了，但怎么让外网访问？作者家里没有公网 IPv4，Starlink 也不好用。他在赫尔辛基有个 VPS，但物理拉线不现实。解决方案是用 WireGuard 把家里的 Linux 路由器和 VPS 连起来，组成虚拟局域网。为了不占用 VPS 的主 IP，他在 VPS 上配置了 Nginx 反向代理，把 `/mcu` 路径的请求转发给单片机。这样既不用暴露单片机脆弱的 TCP 栈，又能完美复用公网资源。",
+      "source_name": "maurycyz.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "AVR",
+        "microcontroller",
+        "SLIP",
+        "TCP/IP"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Learning on the Shop floor",
       "title_zh": "Shopify 的公开编码代理 River",
       "link": "https://simonwillison.net/2026/May/11/learning-on-the-shop-floor/#atom-everything",
@@ -41,7 +60,26 @@
         "River",
         "Lehrwerkstatt"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "Using LLM in the shebang line of a script",
+      "title_zh": "在脚本 shebang 行直接调用 LLM",
+      "link": "https://simonwillison.net/2026/May/11/llm-shebang/#atom-everything",
+      "pub_date": "2026-05-11T18:48:57.000Z",
+      "summary": "## 一句话总结\n通过在 Shebang 行中直接调用 `llm` 命令行工具，你可以把英文文本文件变成可执行的 AI 脚本，甚至支持工具调用和复杂模板。\n\n### 从 Hacker News 到可执行文本\n一切始于 Hacker News 上的一条评论：只要胆子够大，你甚至能给纯英文文本文件加上 Shebang。这听起来像是个玩笑，但 Simon Willison 看到了其中的潜力。他尝试用 `llm` 这个 CLI 工具来实现这个想法。核心思路其实很简单：利用 Shebang 的 `-S` 参数，把后续的指令直接传给解释器。这样，一个普通的文本描述瞬间就变成了一个可执行脚本。\n\n### 最简单的“提示词即脚本”\n最基础的用法简直令人发指地简单。你只需要在文件头写上 `#!/usr/bin/env -S llm -f`，然后在下面写你的 Prompt。这里的 `-f` 参数告诉 `llm` 从文件读取指令。当你运行这个脚本时，它会直接把文件内容发给大模型。比如，你可以写一句“生成一只鹈鹕骑自行车的 SVG”，运行后就能得到图片代码。这把自然语言编程的门槛降到了最低。\n\n### 不止是聊天，还能调用工具\n但光生成文本不够，脚本得能干活。有意思的地方在于，Shebang 里还能集成工具调用。通过 `-T` 参数指定工具（比如 `llm_time`），脚本就能获取实时数据。例子里的 Haiku 诗不仅押韵，还精确提到了当前时间。这说明这种脚本不再是单向的 Prompt，而是具备了与外部世界交互的能力，这是从玩具走向工具的关键一步。\n\n### 用 YAML 定义复杂的 Python 函数\n更硬核的玩法是直接在脚本里定义 YAML 模板。这里有个巧妙的设计：你可以在模板里声明 Python 函数，比如 `add` 和 `multiply`。Shebang 指向 `llm -t`，让工具解析这个 YAML。这样，模型在处理数学问题时，不会瞎猜，而是会调用你定义的 Python 函数来精确计算。这解决了大模型算术不稳定的痛点，把逻辑判断交给了代码。\n\n### 调试与实际运行效果\n这种脚本怎么跑呢？你可以像调用普通命令一样执行 `./calc.sh`，并把问题作为参数传进去。为了看清模型是怎么思考的，作者加了 `--td`（tools debug）参数。输出结果显示，模型先调用了 `multiply` 算出乘积，再调用 `add` 加上余数，最后给出了准确答案。这种“思考过程可见”的特性，对于调试复杂的 AI 脚本非常有帮助。\n\n### 从计算到 SQL 查询的扩展\n这个模式的潜力远不止做算术题。作者提到，还有更复杂的例子，比如通过定义工具连接 Datasette SQL API。这意味着你的脚本可以直接查询博客数据库，用自然语言提问并返回结构化数据。因为逻辑链是完整的：Shebang 启动 LLM，LLM 识别意图，调用 Python 函数，函数查询数据库，最后返回结果。这为构建轻量级的 AI 自动化脚本提供了一种非常优雅的方案。",
+      "source_name": "simonwillison.net",
+      "score": 12,
+      "depth": 5,
+      "novelty": 7,
+      "category": "tools",
+      "keywords": [
+        "LLM",
+        "shebang",
+        "tool calls",
+        "YAML template"
+      ],
+      "rank": 4
     },
     {
       "title": "Inverse shift",
@@ -60,7 +98,41 @@
         "linear algebra",
         "shift"
       ],
-      "rank": 3
+      "rank": 5
+    },
+    {
+      "title": "The New PowerMac",
+      "title_zh": "Kraft PowerMac 产品页面",
+      "link": "https://www.kraftheinz.com/kraft-mac-and-cheese/products/00021000086856-power-mac-original-flavor-mac-cheese-macaroni-and-cheese-dinner",
+      "pub_date": "2026-05-11T18:32:03.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "other",
+      "keywords": [
+        "product",
+        "page"
+      ],
+      "rank": 6
+    },
+    {
+      "title": "Tahoe’s UI Issues Have Nothing to Do With Display Technology, and Maybe, Just Maybe, We Should Stop Assuming Gurman Knows Anything About Apple’s Vision Hardware Roadmap",
+      "title_zh": "无法访问的付费墙页面",
+      "link": "https://www.bloomberg.com/news/newsletters/2026-05-10/apple-plans-macos-27-design-changes-latest-on-ios-27-visionos-safari-wwdc-26-mozuaz9m?accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzb3VyY2UiOiJTdWJzY3JpYmVyR2lmdGVkQXJ0aWNsZSIsImlhdCI6MTc3ODQyMTgwOSwiZXhwIjoxNzc5MDI2NjA5LCJhcnRpY2xlSWQiOiJURVRRVzFLR0NURkwwMCIsImJjb25uZWN0SWQiOiJDNEVEQ0FFMUZBMDU0MEJFQTI0QTlGMjExQzFFOTA4MCJ9.VPDmd_jJhdzOBKvj1AUZTernGpGdF1zR9kGgFIF-9Hw&leadSource=uverify%20wall",
+      "pub_date": "2026-05-11T17:55:47.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "other",
+      "keywords": [
+        "paywall",
+        "blocked"
+      ],
+      "rank": 7
     }
   ]
 }
