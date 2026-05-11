@@ -1,0 +1,66 @@
+{
+  "date": "2026-05-12",
+  "total_feeds": 92,
+  "success_feeds": 84,
+  "total_articles": 2526,
+  "filtered_articles": 18,
+  "articles": [
+    {
+      "title": "Additional notes on controlling which handles are inherited by Create­Process",
+      "title_zh": "Win32 句柄继承控制的辅助进程方案",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260511-00/?p=112313",
+      "pub_date": "2026-05-11T14:00:00.000Z",
+      "summary": "## 一句话总结\n通过创建一个“傀儡”辅助进程作为父进程，利用 `PROC_THREAD_ATTRIBUTE_PARENT_PROCESS` 和句柄复制技术，彻底解决了 Win32 中句柄继承的“全有或全无”难题。\n\n### 理想很丰满，现实却有个反向 Bug\n之前我们聊过用 `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` 来精确控制子进程继承哪些句柄，这看起来是个完美的方案。只要你在列表里指定了句柄 A，子进程就只继承 A，其他的都不要。但有个同事指出了这背后的隐患：为了让句柄能进这个列表，你必须先把句柄标记为“可继承”。这就埋了个雷——如果同进程里的另一个线程调用了 `CreateProcess`，虽然它没用那个高级特性，但只要它把 `bInheritHandles` 设为 `TRUE`，就会意外地把你的句柄也继承过去。说白了，为了精确控制继承，你反而让句柄暴露给了不精确的调用。\n\n### API 设计的遗憾：无法“临时起意”\n你可能会想，那能不能让 `PROC_THREAD_ATTRIBUTE_HANDLE_LIST` 强制包含那些“不可继承”的句柄呢？这样平时它们是安全的，只有显式指定时才会被继承。这确实是个很棒的设计思路，但遗憾的是，Windows API 并没有这么实现。一旦句柄被标记为不可继承，它就没资格进入那个显式列表。这种 API 的局限性迫使我们得绕个弯子，去寻找一种既能保持句柄默认不可继承，又能按需传递的机制。\n\n### 引入“傀儡”进程：它什么都不做，却至关重要\n既然不能改变主进程句柄的属性，那就换个思路：把需要继承的句柄放到另一个进程里去。作者提出的方案是创建一个辅助进程，它的代码逻辑简单到令人发指：就是死等主进程结束，然后自己退出。这个进程本身没有任何业务逻辑，它的价值不在于它“做了什么”，而在于我们对它“做了什么”。它就像一个安全的容器，专门用来存放那些需要被继承的句柄副本。\n\n### 借壳上市：把辅助进程伪装成父进程\n具体的操作流程非常巧妙。主进程里的组件创建句柄时，统统标记为“不可继承”，这样任何普通的 `CreateProcess` 调用都别想偷走它们。当真的需要创建子进程并传递特定句柄时，我们先用 `DuplicateHandle` 把这些句柄复制到辅助进程里，并在复制时标记为“可继承”。关键的一步来了：在调用 `CreateProcess` 时，使用 `PROC_THREAD_ATTRIBUTE_PARENT_PROCESS` 属性，把辅助进程指定为父进程。这样，子进程就会从辅助进程那里继承句柄列表，完全绕过了主进程的句柄表。\n\n### 多线程安全与善后：用完即焚\n这个方案还有一个额外的好处：它是线程安全的。因为所有操作都是针对辅助进程进行的，主进程里的多个线程可以同时利用这个辅助进程来创建子进程，互不干扰。任务完成后，主进程只需要再次调用 `DuplicateHandle`，带上 `DUPLICATE_CLOSE_SOURCE` 标志，把辅助进程里的那些句柄副本关掉即可。通过这种“借壳生蛋”的方式，我们既保证了主进程句柄的安全性，又实现了精确的继承控制。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Win32",
+        "handle inheritance",
+        "CreateProcess",
+        "PROC_THREAD_ATTRIBUTE_HANDLE_LIST"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Learning on the Shop floor",
+      "title_zh": "Shopify 的公开编码代理 River",
+      "link": "https://simonwillison.net/2026/May/11/learning-on-the-shop-floor/#atom-everything",
+      "pub_date": "2026-05-11T15:46:36.000Z",
+      "summary": "## 一句话总结\nShopify 的内部 AI 编程工具 River 强制所有交互在公开 Slack 频道进行，通过将工作过程完全透明化，打造了一个无需课程、靠“耳濡目染”即可学习的“教学车间”。\n\n### AI 助手拒绝私聊，强制工作透明化\nShopify 的 CEO Tobi Lütke 介绍了他们内部的 AI 编程工具 River，它有个很有意思的“怪癖”：不接受私信。如果你试图给 River 发私信，它会礼貌地拒绝，并要求你创建一个公开频道。Tobi 自己就在 `#tobi_river` 频道里和它协作，这种模式很快在公司内部流行开来。这不仅仅是一个工具使用规范，更是一种深思熟虑的文化设计。所有的对话、代码生成和调试过程都默认公开，意味着没有任何技术细节被隐藏在黑盒子里。\n\n### 从“单打独斗”到“百人围观”的协作模式\n这种公开性带来了意想不到的效果。在 Tobi 的频道里，经常有超过 100 人在“潜水”。这些人不是看客，他们会回复 Thread、补充背景信息，甚至帮忙做 Code Review。更有趣的是，他们会指出 Tobi 代码里的生疏之处，或者直接接过手来继续干。这打破了传统编程中“一个人对着屏幕苦思冥想”的孤独感。River 成为了协作的触发点，而不是替代者。它让解决问题变成了一个团队运动，而不是个人秀。\n\n### 德语里的“Lehrwerkstatt”：车间即课堂\nTobi 用了一个德语词 *Lehrwerkstatt* 来形容这种环境，字面意思是“教学车间”。核心思路其实很简单：整个工作现场就是教室。你不需要专门报班或者制定培训计划，只要站在离工作最近的地方，看着别人怎么干活，自然就学会了。Shopify 一直把“持续学习”作为核心价值观，而 River 把这个理想推向了极致。它让学习不再是一个需要刻意安排的动作，而是工作本身的副产品。\n\n### 渗透式学习：无需课程的知识传递\n这本质上是一种“渗透式学习”。传统的企业培训往往苦于课程跟不上实战，或者知识沉淀在文档里没人看。但在 River 的模式下，知识传递是实时的、基于真实场景的。你不需要去读枯燥的 Wiki，而是看着 CEO 和 AI 怎么一步步解决一个真实的 Bug。这种学习方式不需要 Manager 的监督，也不需要 Curriculum 的规划。它只要求一件事：把工作做到最大程度的可见。\n\n### 历史的回响：Midjourney 的成功先例\n这让人想起 Midjourney 早期的成功之道。它前几年的主要界面就是公开的 Discord 频道，强迫用户在公开场合分享 Prompt。因为文生图提示词非常玄学和敏感，这种被迫的公开反而让用户能互相偷师、快速迭代。Midjourney 的早期爆发，很大程度上归功于这种机制。Shopify 的 River 看起来是在用同样的逻辑解决编程领域的问题：通过公开协作，降低技术门槛，加速集体智慧的流动。",
+      "source_name": "simonwillison.net",
+      "score": 12,
+      "depth": 5,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "Shopify",
+        "coding agent",
+        "River",
+        "Lehrwerkstatt"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Inverse shift",
+      "title_zh": "位运算的线性代数：右移的伪逆是左移",
+      "link": "https://www.johndcook.com/blog/2026/05/11/inverse-shift/",
+      "pub_date": "2026-05-11T15:30:30.000Z",
+      "summary": "右移操作会丢失信息，因此对应的矩阵不可逆。通过 Moore-Penrose 伪逆可以找到右移矩阵的逆，结果正是左移矩阵。文章给出了 8 位右移 2 位的矩阵可视化，并说明伪逆在这种情况下就是矩阵的转置。证明伪逆无需直接计算，只需验证左移矩阵满足伪逆的四个 Moore-Penrose 条件即可。",
+      "source_name": "johndcook.com",
+      "score": 11,
+      "depth": 6,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "bit manipulation",
+        "pseudoinverse",
+        "linear algebra",
+        "shift"
+      ],
+      "rank": 3
+    }
+  ]
+}
