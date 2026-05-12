@@ -1,10 +1,48 @@
 {
   "date": "2026-05-12",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2554,
-  "filtered_articles": 24,
+  "success_feeds": 84,
+  "total_articles": 2526,
+  "filtered_articles": 25,
   "articles": [
+    {
+      "title": "Not a Security Issue",
+      "title_zh": "AI 扫描器如何通过安全策略文档降噪",
+      "link": "https://nesbitt.io/2026/05/12/not-a-security-issue.html",
+      "pub_date": "2026-05-12T10:00:00.000Z",
+      "summary": "## 一句话总结\n与其被动接收 AI 扫描器海量的误报，不如在 `SECURITY.md` 里写清楚“什么不算漏洞”，让扫描器在提交报告前就学会自我过滤。\n\n### AI 扫描器太吵了，但这次 curl 很安静\n作者用 AI 辅助扫描器检查了 curl 的代码库，这个项目已经被全球的 fuzzing 工具和审计师翻了个底朝天。按理说，这种“被翻烂”的项目很难再挖出什么新东西，但这次扫描结果却出奇地干净。原因不在于代码完美，而在于扫描器读取了 `docs/VULN-DISCLOSURE-POLICY.md`。它不仅找 bug，还对照项目政策自动把那些“虽然是真的 bug，但不算安全问题”的结果给降级了。这直接把噪音降到了最低，比那些没有明确政策的项目体验好太多。\n\n### 扫描器学会了“看人下菜碟”\n具体来说，扫描器把一类结果标记为“需修复，但非安全漏洞”。比如服务器触发的 NULL 指针解引用、微小的内存泄漏，或者那些需要攻击者能控制命令行才能触发的漏洞。工具发现这些问题后，会去比对 curl 公布的排除列表，然后自动把它们归为质量缺陷，而不是安全漏洞。这省去了人工筛选的巨大痛苦，相当于给扫描器装了一个“预过滤器”。\n\n### 一个会自我辩解的扫描器长什么样？\n文章举了个很具体的例子：扫描器发现 `tool_formparse.c` 在处理 `-F` 表单部分时，会递归遍历链表且没有深度限制。它生成了一个 15 万行的配置文件，成功触发了 ASan 的栈溢出。但扫描器并没有大惊小怪，因为它在总结里写道：“触发条件需要用户运行攻击者提供的配置或参数，根据政策予以排除”。另一个 LDAP 错误路径下的 `ber_free` 泄漏也被标记为“政策排除小泄漏”。这种能读懂上下文并自我驳回的能力，正是目前开发者最需要的。\n\n### 别只顾着抱怨，把规则喂给 AI\n过去几个月，大家都在讨论怎么处理涌入的 AI 安全报告，Daniel Stenberg 和 Seth Larson 等人都写过文章吐槽。这些讨论大多集中在“收到报告后怎么处理”，属于被动防御。但 curl 的这次测试给出了一个新思路：与其在收件箱里过滤，不如把帮助人工审查的文档直接喂给扫描器。现在的 Agentic 扫描器会像写代码的 Agent 一样，主动读取仓库里的 `SECURITY.md` 和 `CONTRIBUTING.md`。你控制不了谁来扫你的代码，但你可以控制它读到了什么。\n\n### 有效的排除列表得有“逻辑”\ncurl 的政策文件里有一个专门的章节叫“Not security issues”，列出了 16 种具体类别。比如“永不结束的传输”不算漏洞，因为应用本身就要处理连接挂起的情况；命令行注入也不算，因为攻击者能让你运行精心构造的 curl 命令时，他其实已经能让你运行 `sudo rm -rf /` 了。关键在于，每个类别都有一段“推理”。这不仅仅是给人类看的，更是为了让 AI 能举一反三，把规则应用到那些没被明确列出的边缘案例上。泛泛而谈的“DoS 不在范围内”没用，具体的逻辑才有用。\n\n### 行业里的好榜样其实不少\n这种做法并非 curl 独有。Node.js 在 `SECURITY.md` 里嵌入了完整的威胁模型，明确划定了信任边界，对 DoS 报告设置了极高的门槛。Django 的政策甚至给出了“无效报告”的代码示例，并明确要求不要附带 CVSS 评分——这简直就是在针对 LLM 的默认输出行为。Chrome 的安全 FAQ 则贡献了被引用最多的一条原则：物理本地攻击者如果已经能以你的身份运行代码，那就不在防御范围内。这些具体的描述，都是机器可以理解和执行的规则。\n\n### 维护者该怎么写这份文档？\n最基础的当然是有一个 `SECURITY.md`，并在 GitHub 开启私有漏洞报告。但进阶的做法是写一个“排除列表”。每条记录需要包含模式名称、明确的否定声明，以及足够的推理逻辑。在这之下，是一个简短的威胁模型，描述攻击者是谁、控制什么、项目要保护什么。实际上，大多数维护者会先写排除列表（因为痛点最明显），再补全威胁模型。CNCF 的自评模板是个不错的起点。\n\n### 还有一类特殊的噪音：文档不符\n作者还发现了一类值得特别声明的噪音：文档与行为不符。AI 扫描器很喜欢报“文档说 X，代码做 Y”，这确实是缺陷，但不一定是安全漏洞。如果文档承诺了某种安全保证（比如“函数会转义 HTML”）但代码没做到，那是漏洞；如果只是文档说“出错返回 null”但代码抛了异常，那通常只是普通 bug。在政策里明确区分这两者，能进一步过滤掉无效报告。虽然这挡不住那些完全不看文档的胡乱报告，但对于那些越来越智能、会先读仓库的扫描器来说，这招非常管用。",
+      "source_name": "nesbitt.io",
+      "score": 15,
+      "depth": 7,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "AI scanners",
+        "vulnerability disclosure",
+        "curl",
+        "threat model"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Hacking the lehmer64 RNG",
+      "title_zh": "lehmer64 随机数生成器的状态恢复攻击",
+      "link": "https://www.johndcook.com/blog/2026/05/12/hacking-the-lehmer64-rng/",
+      "pub_date": "2026-05-12T11:07:31.000Z",
+      "summary": "# 一句话总结\n破解 lehmer64 随机数生成器只需要三个输出值，利用线性代数算法就能瞬间反推出其内部状态，这比破解 Mersenne Twister 所需的 640 个值要简单得多。\n\n### 极简代码下的高性能陷阱\nlehmer64 这个生成器在开发者圈子里很有名，Daniel Lemire 曾认证它是“通过 Big Crush 测试中最快的传统 RNG”。它的实现简单到让人怀疑人生：核心就是一个 128 位整数的乘法，然后右移 64 位输出。这种极简架构带来了极致的性能，但也埋下了安全隐患——因为状态更新逻辑太线性，攻击者很容易找到数学规律。\n\n### 从 640 到 3 的降维打击\n作者之前破解 Mersenne Twister 时，需要收集 640 个输出值才能还原状态，但这次破解 lehmer64，只需要区区 3 个值。虽然所需数据量大幅减少，但背后的数学理论其实更复杂。简单来说，lehmer64 的状态转移是线性的，攻击者可以通过观察连续的三个输出，构建出方程组来反推内部状态。\n\n### 用线性代数“暴力”解密\n文章给出的 Python 破解代码看起来很魔幻，它并不需要暴力枚举，而是直接用三个浮点系数对三个输出值进行加权求和，算出中间变量 r、s、t。这本质上是在解一个线性方程组，利用了模运算的特性。通过这几个中间变量，再经过一次线性组合，就能直接算出那个神秘的 128 位内部状态。\n\n### 状态还原的“时间差”玄机\n这里有个非常容易踩坑的细节：当你把三个输出值喂给算法，算出来的状态既不是初始状态，也不是生成完三个数后的状态。验证结果显示，这个状态实际上是生成**第一个**数之后的瞬间状态。这个“时间差”提醒我们，在逆向工程时，必须精确对齐算法的执行步骤，否则得到的 state 就无法正确预测未来的随机数。\n\n### 顺手牵羊的破解成果\n有意思的是，这套破解算法其实是“捡漏”得来的。原作者的终极目标是破解更复杂的 PCG64 生成器，那需要耗费约 20,000 CPU 小时。lehmer64 只是他们研究过程中的一个“副产物”，结果发现用来对付它的方法非常高效。这也侧面说明，看似简单的线性乘法 RNG，在密码学安全上往往比复杂的非线性结构更脆弱。",
+      "source_name": "johndcook.com",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "security",
+      "keywords": [
+        "lehmer64",
+        "random number generator",
+        "state recovery",
+        "cryptanalysis"
+      ],
+      "rank": 2
+    },
     {
       "title": "Additional notes on controlling which handles are inherited by Create­Process",
       "title_zh": "Win32 句柄继承控制的辅助进程方案",
@@ -22,7 +60,7 @@
         "CreateProcess",
         "PROC_THREAD_ATTRIBUTE_HANDLE_LIST"
       ],
-      "rank": 1
+      "rank": 3
     },
     {
       "title": "Hosting a website on an AVR",
@@ -41,7 +79,7 @@
         "SLIP",
         "TCP/IP"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "Quoting James Shore",
@@ -59,7 +97,7 @@
         "maintenance costs",
         "technical debt"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "Regatta Starting Stations – Chi-squared Continued",
@@ -78,7 +116,7 @@
         "binomial distribution",
         "p-hacking"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Learning Software Architecture",
@@ -97,7 +135,7 @@
         "rust-analyzer",
         "incentive structure"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Learning on the Shop floor",
@@ -116,7 +154,7 @@
         "River",
         "Lehrwerkstatt"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Using LLM in the shebang line of a script",
@@ -135,7 +173,7 @@
         "tool calls",
         "YAML template"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Thinking Machines and interaction models",
@@ -154,7 +192,7 @@
         "real-time",
         "multimodal"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Inverse shift",
@@ -173,7 +211,7 @@
         "linear algebra",
         "shift"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "Pluralistic: A fascist paradigm (12 May 2026)",
@@ -192,7 +230,26 @@
         "fascism",
         "Donella Meadows"
       ],
-      "rank": 10
+      "rank": 12
+    },
+    {
+      "title": "Why the Wannacry outbreak was so bad",
+      "title_zh": "WannaCry 爆发背后的补丁管理困境",
+      "link": "https://dfarq.homeip.net/why-the-wannacry-outbreak-was-so-bad/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=why-the-wannacry-outbreak-was-so-bad",
+      "pub_date": "2026-05-12T11:00:06.000Z",
+      "summary": "WannaCry 利用 NSA 泄露的 Eternal Blue 漏洞（CVE-2017-0144）在 2017 年 5 月 12 日爆发，成为史上最严重的 Windows 勒索软件事件之一。攻击成功的关键在于可靠漏洞利用代码在补丁发布前就已存在，这与通常需要数周或数月才能出现成熟利用代码的规律不同。作者指出，企业补丁管理普遍存在严重问题：一名管理员需要负责 1 万到 10 万台系统，即使 98% 的补丁成功率仍意味着每月数百到数千台设备未打补丁，而实际成功率往往只有 65%。更糟糕的是，许多企业因业务旺季推迟补丁部署，且存在累积更新不重启导致补丁失效的问题。医疗等行业大量使用厂商仅认证 XP 的设备，补丁由供应商每季度或半年部署一次，甚至存在 Windows Server 2003、2000 等早已停止支持的系统。作者认为真正的问题不是为什么 WannaCry 如此严重，而是为什么类似灾难没有更频繁发生——这需要可靠漏洞利用和大规模有毒环境（过度权限、弱密码、缺乏加固）同时出现。这种组合每月都在小规模发生，但大规模爆发只是时间问题。",
+      "source_name": "dfarq.homeip.net",
+      "score": 11,
+      "depth": 6,
+      "novelty": 5,
+      "category": "security",
+      "keywords": [
+        "WannaCry",
+        "patch management",
+        "Eternal Blue",
+        "CVE-2017-0144"
+      ],
+      "rank": 13
     },
     {
       "title": "Your AI Use Is Breaking My Brain",
@@ -211,7 +268,7 @@
         "Dead Internet",
         "information pollution"
       ],
-      "rank": 11
+      "rank": 14
     },
     {
       "title": "Thoughts on GitLab's workforce reduction\" and \"structural and strategic decisions\"",
@@ -230,7 +287,7 @@
         "Jevons paradox",
         "organizational structure"
       ],
-      "rank": 12
+      "rank": 15
     },
     {
       "title": "Euler function",
@@ -249,7 +306,7 @@
         "matrix invertibility",
         "pentagonal number theorem"
       ],
-      "rank": 13
+      "rank": 16
     },
     {
       "title": "Position or Perish: The Narrative Blueprint",
@@ -268,7 +325,7 @@
         "messaging spine",
         "category"
       ],
-      "rank": 14
+      "rank": 17
     },
     {
       "title": "iOS 26.5 Includes Beta Support for End-to-End Encrypted RCS Messaging",
@@ -287,7 +344,26 @@
         "iOS",
         "iMessage"
       ],
-      "rank": 15
+      "rank": 18
+    },
+    {
+      "title": "Initialize and print 128-bit integers in C",
+      "title_zh": "C 语言中初始化和打印 128 位整数",
+      "link": "https://www.johndcook.com/blog/2026/05/12/c-128-bit-int/",
+      "pub_date": "2026-05-12T12:20:20.000Z",
+      "summary": "GCC 和 Clang 编译器无法直接解析 128 位整数字面量，直接初始化 __uint128_t x = 0x00112233445566778899aabbccddeeff 会报错。解决方案是定义宏 U128(hi, lo)，将高 64 位和低 64 位分别传入，通过位移和按位或运算组合成 128 位值。打印 128 位整数同样需要特殊处理，将值拆分为两个 uint64_t 分别输出。使用 inttypes.h 的 PRIx64 格式说明符可以确保代码在 GCC 和 Clang 下都能干净编译，避免类型不匹配警告。",
+      "source_name": "johndcook.com",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "engineering",
+      "keywords": [
+        "C",
+        "128-bit integer",
+        "GCC",
+        "Clang"
+      ],
+      "rank": 19
     },
     {
       "title": "Welcoming the Bangladesh Government to Have I Been Pwned",
@@ -306,7 +382,7 @@
         "data breach",
         "CIRT"
       ],
-      "rank": 16
+      "rank": 20
     },
     {
       "title": "iPhone Models Ranked 1st, 2nd, 3rd, and 6th in Counterpoint’s List of 10 Bestselling Phones Worldwide in Q1 2026",
@@ -325,7 +401,7 @@
         "sales",
         "Counterpoint"
       ],
-      "rank": 17
+      "rank": 21
     },
     {
       "title": "The New PowerMac",
@@ -342,7 +418,7 @@
         "product",
         "page"
       ],
-      "rank": 18
+      "rank": 22
     },
     {
       "title": "Tahoe’s UI Issues Have Nothing to Do With Display Technology, and Maybe, Just Maybe, We Should Stop Assuming Gurman Knows Anything About Apple’s Vision Hardware Roadmap",
@@ -359,7 +435,7 @@
         "paywall",
         "blocked"
       ],
-      "rank": 19
+      "rank": 23
     },
     {
       "title": "[Sponsor] Drata",
@@ -376,7 +452,7 @@
         "sponsor",
         "ad"
       ],
-      "rank": 20
+      "rank": 24
     },
     {
       "title": "A code (reformatting) conundrum in Python, and heuristics",
@@ -394,7 +470,7 @@
         "code formatting",
         "heuristics"
       ],
-      "rank": 21
+      "rank": 25
     }
   ]
 }
