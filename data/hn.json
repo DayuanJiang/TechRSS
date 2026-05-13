@@ -1,6 +1,1792 @@
 {
-  "updatedAt": "2026-05-13T07:53:24.723Z",
+  "updatedAt": "2026-05-13T10:35:22.456Z",
   "items": [
+    {
+      "id": 48117810,
+      "by": "matt_d",
+      "title": "Deterministic Fully-Static Whole-Binary Translation Without Heuristics",
+      "url": "https://arxiv.org/abs/2605.08419",
+      "score": 158,
+      "detailUpdatedAt": 1778663629,
+      "createdAt": 1778649056,
+      "aiSummaryUpdatedAt": 1778664662,
+      "aisummary": {
+        "chinese_title": "无启发式 x86-64→aarch64 全静态翻译：可签名但 .text 膨胀 50x",
+        "emoji": "🤔",
+        "sarcastic_question": "都全静态了，还想顺手跑 JIT？"
+      },
+      "classifications": {
+        "topics": [
+          6,
+          4
+        ],
+        "facets": [
+          6
+        ],
+        "tags": [
+          "binary translation",
+          "static binary translation",
+          "whole-binary translation",
+          "deterministic",
+          "Elevator",
+          "self-modifying code",
+          "JIT",
+          "x86_64"
+        ]
+      },
+      "classificationsUpdatedAt": 1778655090,
+      "aiSummary": {
+        "chinese_title": "无启发式 x86-64→aarch64 全静态翻译：可签名但 .text 膨胀 50x",
+        "emoji": "🤔",
+        "sarcastic_question": "都全静态了，还想顺手跑 JIT？"
+      },
+      "detail": {
+        "id": 48117810,
+        "by": "matt_d",
+        "title": "Deterministic Fully-Static Whole-Binary Translation Without Heuristics",
+        "url": "https://arxiv.org/abs/2605.08419",
+        "score": 158,
+        "detailUpdatedAt": 1778663629,
+        "createdAt": 1778649056,
+        "aiSummaryUpdatedAt": 1778664662,
+        "aisummary": {
+          "chinese_title": "无启发式 x86-64→aarch64 全静态翻译：可签名但 .text 膨胀 50x",
+          "discussion_overview": [
+            {
+              "category": "对 QEMU 的性能和架构比较",
+              "summary": "不少评论把它和 QEMU 的 user-mode JIT 对比，认为后者是一个很容易被专用方案超越的目标。原因在于这里的方案只做 x86→aarch64 和 user-mode，因此可以针对固定 ISA 组合做硬编码优化；而 QEMU 更像 guest→IR→host 的通用框架，兼容性强但很难吃到单一架构对的全部优化红利。有人还提到自己做过类似双向 JIT，感觉自研方案能落在 native 的 2x–5x 慢速区间，而 QEMU 可能会到 10x–50x。",
+              "supportid": [
+                "48118516",
+                "48118846"
+              ]
+            },
+            {
+              "category": "体积膨胀换来可签名、可认证",
+              "summary": "支持者认为 50x 的 .text 膨胀虽然夸张，但对完全确定性的静态翻译来说仍可能值得，因为它换来的是不依赖运行时代码生成、可直接签名和审计的二进制。评论特别强调航空、医疗等受监管行业里，运行的代码必须就是已认证的代码，这正是这类工具最实际的价值。也有人提醒，这种规模的扩张会造成 cache disaster，任何省掉 JIT 带来的性能收益都可能被代码体积吃掉。",
+              "supportid": [
+                "48118892",
+                "48118644",
+                "48119402",
+                "48119173"
+              ]
+            },
+            {
+              "category": "算法核心：把每个字节都当成潜在代码",
+              "summary": "讨论的技术核心是，x86 的变量长度指令和缺乏明确 code/data 分离，使静态判断某个字节到底是不是指令天然模糊。Elevator 的做法是把每个可执行字节偏移同时当成数据和潜在指令入口，构建 superset control-flow graph，再用嵌入的 lookup table 在运行时把 indirect jump、callback 等目标映射到翻译后的地址。评论里还拿手工机器码和 Rice's theorem 来提醒：只要把 adversarial code 算进去，静态翻译就不可能对所有情况都成立。还有人追问，如果系统会把走向异常终止的路径剪掉，那是不是任何可能崩溃的真实程序都会被误判。",
+              "supportid": [
+                "48118235",
+                "48118325",
+                "48118263",
+                "48118431",
+                "48118365",
+                "48118481",
+                "48118240",
+                "48119183",
+                "48119079"
+              ]
+            },
+            {
+              "category": "支持范围有限：不含 self-modifying/JIT/多线程",
+              "summary": "多条评论直接指出，这不是通用 binary translation，而是明确不支持 self-modifying code 和 JIT-generated code 的 fully static 方案，因此一旦程序在运行时写出新指令，就和设计目标冲突。还有人提到 paper 目前只支持 single-threaded binaries，并且不支持 exception handling、部分 x64 extensions。Slack on Asahi 之类的期待因此被否掉，因为 Slack 是基于 Electron（一个桌面应用框架）的应用，内部依赖 Chromium、Node 和 V8（Google 的 JavaScript 引擎），本身就离不开 JIT。",
+              "supportid": [
+                "48118362",
+                "48118379",
+                "48119049",
+                "48119214",
+                "48118473",
+                "48118437",
+                "48118481"
+              ]
+            },
+            {
+              "category": "和 Rosetta、Box64 的现实对比",
+              "summary": "也有人把它放到 Rosetta（Apple 的 x86_64→ARM 动态翻译层）和 Box64（一个面向 x86 Linux 程序的兼容层）这类更成熟的方案里比较，认为即便做到和 QEMU 接近，离 Rosetta 仍有明显差距。讨论里还提到 x86 的 TSO（Total Store Order，存储顺序一致性模型）与 ARM 的相关扩展，说明部分 x86 语义可以靠目标平台硬件特性更自然地模拟。整体上，这类比较的结论不是它要赢过所有方案，而是它更强调“能确定地工作”，而不是“尽可能快”。",
+              "supportid": [
+                "48118972",
+                "48119039",
+                "48119161",
+                "48119040"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "superset disassembly（超集反汇编）",
+              "explanation": "把每个可执行字节都同时当成潜在指令起点，生成所有可能解码的超集，再从中筛出可行路径。"
+            },
+            {
+              "term": "JIT（Just-In-Time compilation）",
+              "explanation": "运行时动态生成或翻译代码的技术，速度高但不适合需要静态认证的场景。"
+            },
+            {
+              "term": "self-modifying code（自修改代码）",
+              "explanation": "程序在运行时改写自己的指令内容，和 fully static 翻译目标天然冲突。"
+            },
+            {
+              "term": "TSO（Total Store Order）",
+              "explanation": "一种内存一致性模型，x86 以它著称，ARM 也有相关扩展可用于模拟类似语义。"
+            }
+          ],
+          "context": "Elevator 是一个把 x86-64 二进制静态翻译成 aarch64（ARM64）可执行文件的系统，目标是完全确定、无需启发式地把整个二进制重写成新平台代码。它采用 superset disassembly（超集反汇编）把每个可执行字节同时视作数据和潜在指令入口，再通过运行时 lookup table 处理间接跳转和 callback 这类静态分析难点。评论关注的重点不是“能不能翻译”本身，而是这种方法能否在不使用 JIT 的前提下，生成可签名、可审计、适合受监管行业使用的二进制。代价是代码体积会显著膨胀，而且对 self-modifying code、JIT、异常处理、多线程等场景支持有限。",
+          "emoji": "🤔",
+          "sarcastic_question": "都全静态了，还想顺手跑 JIT？"
+        },
+        "classifications": {
+          "topics": [
+            6,
+            4
+          ],
+          "facets": [
+            6
+          ],
+          "tags": [
+            "binary translation",
+            "static binary translation",
+            "whole-binary translation",
+            "deterministic",
+            "Elevator",
+            "self-modifying code",
+            "JIT",
+            "x86_64"
+          ]
+        },
+        "classificationsUpdatedAt": 1778655090,
+        "aiSummary": {
+          "chinese_title": "无启发式 x86-64→aarch64 全静态翻译：可签名但 .text 膨胀 50x",
+          "discussion_overview": [
+            {
+              "category": "对 QEMU 的性能和架构比较",
+              "summary": "不少评论把它和 QEMU 的 user-mode JIT 对比，认为后者是一个很容易被专用方案超越的目标。原因在于这里的方案只做 x86→aarch64 和 user-mode，因此可以针对固定 ISA 组合做硬编码优化；而 QEMU 更像 guest→IR→host 的通用框架，兼容性强但很难吃到单一架构对的全部优化红利。有人还提到自己做过类似双向 JIT，感觉自研方案能落在 native 的 2x–5x 慢速区间，而 QEMU 可能会到 10x–50x。",
+              "supportid": [
+                "48118516",
+                "48118846"
+              ]
+            },
+            {
+              "category": "体积膨胀换来可签名、可认证",
+              "summary": "支持者认为 50x 的 .text 膨胀虽然夸张，但对完全确定性的静态翻译来说仍可能值得，因为它换来的是不依赖运行时代码生成、可直接签名和审计的二进制。评论特别强调航空、医疗等受监管行业里，运行的代码必须就是已认证的代码，这正是这类工具最实际的价值。也有人提醒，这种规模的扩张会造成 cache disaster，任何省掉 JIT 带来的性能收益都可能被代码体积吃掉。",
+              "supportid": [
+                "48118892",
+                "48118644",
+                "48119402",
+                "48119173"
+              ]
+            },
+            {
+              "category": "算法核心：把每个字节都当成潜在代码",
+              "summary": "讨论的技术核心是，x86 的变量长度指令和缺乏明确 code/data 分离，使静态判断某个字节到底是不是指令天然模糊。Elevator 的做法是把每个可执行字节偏移同时当成数据和潜在指令入口，构建 superset control-flow graph，再用嵌入的 lookup table 在运行时把 indirect jump、callback 等目标映射到翻译后的地址。评论里还拿手工机器码和 Rice's theorem 来提醒：只要把 adversarial code 算进去，静态翻译就不可能对所有情况都成立。还有人追问，如果系统会把走向异常终止的路径剪掉，那是不是任何可能崩溃的真实程序都会被误判。",
+              "supportid": [
+                "48118235",
+                "48118325",
+                "48118263",
+                "48118431",
+                "48118365",
+                "48118481",
+                "48118240",
+                "48119183",
+                "48119079"
+              ]
+            },
+            {
+              "category": "支持范围有限：不含 self-modifying/JIT/多线程",
+              "summary": "多条评论直接指出，这不是通用 binary translation，而是明确不支持 self-modifying code 和 JIT-generated code 的 fully static 方案，因此一旦程序在运行时写出新指令，就和设计目标冲突。还有人提到 paper 目前只支持 single-threaded binaries，并且不支持 exception handling、部分 x64 extensions。Slack on Asahi 之类的期待因此被否掉，因为 Slack 是基于 Electron（一个桌面应用框架）的应用，内部依赖 Chromium、Node 和 V8（Google 的 JavaScript 引擎），本身就离不开 JIT。",
+              "supportid": [
+                "48118362",
+                "48118379",
+                "48119049",
+                "48119214",
+                "48118473",
+                "48118437",
+                "48118481"
+              ]
+            },
+            {
+              "category": "和 Rosetta、Box64 的现实对比",
+              "summary": "也有人把它放到 Rosetta（Apple 的 x86_64→ARM 动态翻译层）和 Box64（一个面向 x86 Linux 程序的兼容层）这类更成熟的方案里比较，认为即便做到和 QEMU 接近，离 Rosetta 仍有明显差距。讨论里还提到 x86 的 TSO（Total Store Order，存储顺序一致性模型）与 ARM 的相关扩展，说明部分 x86 语义可以靠目标平台硬件特性更自然地模拟。整体上，这类比较的结论不是它要赢过所有方案，而是它更强调“能确定地工作”，而不是“尽可能快”。",
+              "supportid": [
+                "48118972",
+                "48119039",
+                "48119161",
+                "48119040"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "superset disassembly（超集反汇编）",
+              "explanation": "把每个可执行字节都同时当成潜在指令起点，生成所有可能解码的超集，再从中筛出可行路径。"
+            },
+            {
+              "term": "JIT（Just-In-Time compilation）",
+              "explanation": "运行时动态生成或翻译代码的技术，速度高但不适合需要静态认证的场景。"
+            },
+            {
+              "term": "self-modifying code（自修改代码）",
+              "explanation": "程序在运行时改写自己的指令内容，和 fully static 翻译目标天然冲突。"
+            },
+            {
+              "term": "TSO（Total Store Order）",
+              "explanation": "一种内存一致性模型，x86 以它著称，ARM 也有相关扩展可用于模拟类似语义。"
+            }
+          ],
+          "context": "Elevator 是一个把 x86-64 二进制静态翻译成 aarch64（ARM64）可执行文件的系统，目标是完全确定、无需启发式地把整个二进制重写成新平台代码。它采用 superset disassembly（超集反汇编）把每个可执行字节同时视作数据和潜在指令入口，再通过运行时 lookup table 处理间接跳转和 callback 这类静态分析难点。评论关注的重点不是“能不能翻译”本身，而是这种方法能否在不使用 JIT 的前提下，生成可签名、可审计、适合受监管行业使用的二进制。代价是代码体积会显著膨胀，而且对 self-modifying code、JIT、异常处理、多线程等场景支持有限。",
+          "emoji": "🤔",
+          "sarcastic_question": "都全静态了，还想顺手跑 JIT？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nElevator 通过穷举所有可能的字节解释并生成对应的控制流路径，实现了首个完全静态、确定性的 x86-64 到 AArch64 二进制翻译，在无需运行时组件的情况下达到了与 QEMU JIT 相当的性能。\n\n### 静态二进制翻译的死结：代码和数据混在一起\n做二进制翻译最头疼的是什么？不是指令集复杂，而是你根本分不清哪是代码、哪是数据。现有的静态翻译器通常依赖启发式算法或者干脆假设代码布局是规整的，这在面对混淆过的二进制文件时经常翻车。一旦猜错，程序就崩了。为了保命，很多系统（比如 QEMU）不得不引入运行时组件，在出错时回退到解释执行。但这带来了新问题：运行时的存在让整个系统变得不可预测，而且你很难在部署前对生成的代码进行完整的安全审计或签名。\n\n### 既然猜不准，那就把所有可能性都算一遍\nElevator 的核心思路非常硬核：既然猜不准，那就不猜了。它对二进制文件中的每一个字节都进行穷举，考虑所有可能的解释。这个字节可能是指令操作码，可能是指令参数，也可能仅仅是数据。Elevator 会为每一种可行的解释都生成一条独立的控制流路径。这听起来很疯狂，但它通过一个巧妙的机制来控制爆炸：只有那些会导致程序异常终止的路径会被剪枝掉，剩下的路径都会被保留下来。\n\n### 用“瓦片”拼装出目标架构的代码\n具体怎么实现这种穷举翻译？作者设计了一套基于“瓦片”的框架。这些瓦片是根据源 ISA（x86-64）的高级描述自动生成的，本质上就是一段段已经翻译好的目标代码片段。翻译过程就像是拼图，系统根据不同的字节解释，把这些瓦片组合起来，构建出完整的 AArch64 代码。这种设计让整个翻译框架变得非常灵活，如果需要支持新的指令集，只需要更新高级描述，瓦片就能自动生成，大大降低了维护成本。\n\n### 牺牲空间换取确定性：代码膨胀是代价\n这种“宁可错杀一千，不可放过一个”的策略，最大的代价就是代码体积的急剧膨胀。因为要为同一段字节生成多个版本的翻译路径，最终输出的二进制文件会比原始文件大得多。但作者认为这个代价是值得的。因为这样做的好处是巨大的：输出的是完全确定性的、自包含的二进制文件。这意味着你可以在部署前对它进行穷尽测试、形式化验证，甚至进行加密签名，这是那些依赖 JIT 的动态翻译器完全做不到的。\n\n### 真实环境下的性能表现\n光有理论还不够，还得看实战效果。作者在 SPECint 2006 测试集上对 Elevator 进行了全面评估。结果显示，这种完全静态的翻译方案并没有因为“笨重”而变得不可用。相反，它的性能表现与 QEMU 的用户模式 JIT 模拟不相上下，甚至在某些情况下表现更好。这证明了静态全程序二进制翻译不仅理论上可行，在实际工程中也是可靠的。\n\n### 为什么这事儿对安全领域特别重要\n对于有经验的开发者来说，Elevator 的价值不仅仅在于性能。它最大的贡献在于消除了运行时的不确定性。在安全敏感的场景下，比如嵌入式系统或者需要高等级认证的软件，你绝对不希望代码在运行时突然触发一个未知的 fallback 路径。Elevator 提供了一种“所见即所得”的保证：你在静态分析中看到的代码，就是实际跑在 CPU 上的代码。这种可预测性，对于构建高可信度的系统来说是至关重要的。"
+    },
+    {
+      "id": 48115807,
+      "by": "doener",
+      "title": "Tell NYT, Atlantic, USA Today to Keep Wayback Machine",
+      "url": "https://www.savethearchive.com/newsleaders/",
+      "score": 327,
+      "detailUpdatedAt": 1778663639,
+      "createdAt": 1778632864,
+      "aiSummaryUpdatedAt": 1778664405,
+      "aisummary": {
+        "chinese_title": "NYT 等媒体屏蔽 Wayback Machine：robots.txt、AI 爬虫与档案价值之争",
+        "emoji": "⚖️",
+        "sarcastic_question": "既要付费墙，又要历史不留痕，还嫌读者不买账吗？"
+      },
+      "classifications": {
+        "topics": [
+          10,
+          5,
+          6
+        ],
+        "facets": [
+          9
+        ],
+        "tags": [
+          "Wayback Machine",
+          "Internet Archive",
+          "The New York Times",
+          "The Atlantic",
+          "USA Today",
+          "Save the Archive",
+          "robots.txt",
+          "AI",
+          "paywall"
+        ]
+      },
+      "classificationsUpdatedAt": 1778637078,
+      "aiSummary": {
+        "chinese_title": "NYT 等媒体屏蔽 Wayback Machine：robots.txt、AI 爬虫与档案价值之争",
+        "emoji": "⚖️",
+        "sarcastic_question": "既要付费墙，又要历史不留痕，还嫌读者不买账吗？"
+      },
+      "detail": {
+        "id": 48115807,
+        "by": "doener",
+        "title": "Tell NYT, Atlantic, USA Today to Keep Wayback Machine",
+        "url": "https://www.savethearchive.com/newsleaders/",
+        "score": 224,
+        "detailUpdatedAt": 1778645634,
+        "createdAt": 1778632864,
+        "aiSummaryUpdatedAt": 1778646633,
+        "aisummary": {
+          "chinese_title": "NYT等媒体封锁Wayback引发robots.txt、AI抓取与档案保存争议",
+          "discussion_overview": [
+            {
+              "category": "robots.txt与法律边界",
+              "summary": "讨论首先澄清了 archive.org 到底是不是“无视 robots.txt”。有人指出，nytimes.com 之类站点已经明确把 archive.org_bot 设为 Disallow，而 Internet Archive 公开说明过：robots.txt 主要限制自动爬取，不等于禁止任何人手动查看 URL。支持者认为，高知名度的 archive 项目如果公然不理会这些规则，很可能面对诉讼或监管压力，所以遵守爬虫排除规范是现实选择。反对者则觉得，这让守规矩的一方承担了额外负担，而更大的爬虫往往并不会因此停手。",
+              "supportid": [
+                "48116640",
+                "48116741",
+                "48116732",
+                "48117130",
+                "48117139",
+                "48117615",
+                "48117073",
+                "48117305"
+              ]
+            },
+            {
+              "category": "AI抓取与版权争议",
+              "summary": "不少人把媒体封锁 archive 的动机直接归结为 AI 训练数据之争。有人认为，出版社是想阻止 AI 公司把归档页变成免费语料；也有人反驳说，LLM 公司完全可以直接抓站、轮换账号和 IP，Wayback Machine 并不是唯一入口。讨论里还纠结法律措辞，有人认为“stealing”不准确，更接近 copyright infringement，而 robots.txt 的意义更多在于证明权利人明确反对抓取。还有人直言，真正该被限制的是 AI 抓取，不是 Internet Archive。",
+              "supportid": [
+                "48116834",
+                "48116894",
+                "48117087",
+                "48117223",
+                "48117511",
+                "48116657"
+              ]
+            },
+            {
+              "category": "档案保存与公共记忆",
+              "summary": "另一大主题是归档本身的公共价值。评论把 Wayback Machine 类比为图书馆里的 microfiche，认为历史报纸和网页快照是研究、核实和追责的重要基础。网上文章会被改字、补更、删段，甚至出现标题和措辞错误，因此保留版本变化能让外界看到当时公众实际接触到的内容。对这类观点来说，限制归档不是少了一个工具，而是在让不盈利的历史记录慢慢消失。",
+              "supportid": [
+                "48116683",
+                "48116742",
+                "48116776",
+                "48116864",
+                "48116566",
+                "48116817",
+                "48116944"
+              ]
+            },
+            {
+              "category": "商业模式：广告、付费墙与替代方案",
+              "summary": "很多评论把这事看成新闻商业模式冲突：NYT、The Atlantic 既靠订阅又靠广告和数据变现，却仍让付费用户看到很重的广告与追踪。有人认为，如果读者通过 Wayback 看到的本来就是不会付费的人，封掉 archive 也未必真能改善收入；也有人从相反方向主张回到纯广告模式，或者直接取消广告和订阅。更温和的折中方案包括 30 天或 1 年延迟开放、访问次数配额、NewsBank 式 escrow，以及 patronage / foundation model，让愿意支持的读者换取更高等级的访问权。",
+              "supportid": [
+                "48116505",
+                "48116537",
+                "48116795",
+                "48116913",
+                "48116558",
+                "48117363",
+                "48115997",
+                "48116923",
+                "48116983",
+                "48116882",
+                "48116947",
+                "48117194",
+                "48117146",
+                "48116956"
+              ]
+            },
+            {
+              "category": "媒体公信力与影响力",
+              "summary": "还有一派把这看作媒体公信力下滑的信号。有人觉得这些大媒体更像广告和数据收集公司，失去 archival 价值后是在加速自己的边缘化；也有人反驳 NYT 仍有数十亿美元收入，独立调查报道依然重要。评论区还争论“独立”到底是什么意思：只要能批评共和党并不等于真正独立，是否也敢批评民主党才更能检验立场。整体上，这条线索围绕的是大媒体究竟是公共机构、商业产品，还是两者之间的混合体。",
+              "supportid": [
+                "48116786",
+                "48116798",
+                "48116832",
+                "48116879",
+                "48116853",
+                "48117246",
+                "48117349",
+                "48117003",
+                "48116944"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "robots.txt",
+              "explanation": "网站给爬虫看的排除规则文件，用来声明哪些路径不应被自动抓取。"
+            },
+            {
+              "term": "Wayback Machine",
+              "explanation": "Internet Archive 提供的网页历史快照与回溯浏览服务。"
+            },
+            {
+              "term": "paywall",
+              "explanation": "付费墙，限制未订阅用户访问内容的机制。"
+            },
+            {
+              "term": "LLM scraping",
+              "explanation": "用自动化方式抓取网页内容，供大语言模型（LLM）训练或检索使用。"
+            }
+          ],
+          "context": "Wayback Machine 是 Internet Archive（一个保存网页与数字资料的非营利档案项目）的历史快照服务，站点所有者可以通过 robots.txt（给爬虫看的排除规则）限制 archive.org_bot 之类的自动抓取。NYT、The Atlantic、USA Today 被讨论的焦点，是它们是否应继续允许网页被长期保存成可检索的历史记录。评论里把这件事和 AI 公司抓取训练数据联系起来，认为出版社担心内容被二次利用；也有人强调，归档本身对历史研究、事实核查和新闻问责很重要。讨论还延伸到付费墙、广告、数据收集，以及新闻业在信息充足时代如何重新设计收入模式。",
+          "emoji": "🤨",
+          "sarcastic_question": "既要让人记住历史，又要把Wayback Machine关门？"
+        },
+        "classifications": {
+          "topics": [
+            10,
+            5,
+            6
+          ],
+          "facets": [
+            9
+          ],
+          "tags": [
+            "Wayback Machine",
+            "Internet Archive",
+            "The New York Times",
+            "The Atlantic",
+            "USA Today",
+            "Save the Archive",
+            "robots.txt",
+            "AI",
+            "paywall"
+          ]
+        },
+        "classificationsUpdatedAt": 1778637078,
+        "aiSummary": {
+          "chinese_title": "NYT等媒体封锁Wayback引发robots.txt、AI抓取与档案保存争议",
+          "discussion_overview": [
+            {
+              "category": "robots.txt与法律边界",
+              "summary": "讨论首先澄清了 archive.org 到底是不是“无视 robots.txt”。有人指出，nytimes.com 之类站点已经明确把 archive.org_bot 设为 Disallow，而 Internet Archive 公开说明过：robots.txt 主要限制自动爬取，不等于禁止任何人手动查看 URL。支持者认为，高知名度的 archive 项目如果公然不理会这些规则，很可能面对诉讼或监管压力，所以遵守爬虫排除规范是现实选择。反对者则觉得，这让守规矩的一方承担了额外负担，而更大的爬虫往往并不会因此停手。",
+              "supportid": [
+                "48116640",
+                "48116741",
+                "48116732",
+                "48117130",
+                "48117139",
+                "48117615",
+                "48117073",
+                "48117305"
+              ]
+            },
+            {
+              "category": "AI抓取与版权争议",
+              "summary": "不少人把媒体封锁 archive 的动机直接归结为 AI 训练数据之争。有人认为，出版社是想阻止 AI 公司把归档页变成免费语料；也有人反驳说，LLM 公司完全可以直接抓站、轮换账号和 IP，Wayback Machine 并不是唯一入口。讨论里还纠结法律措辞，有人认为“stealing”不准确，更接近 copyright infringement，而 robots.txt 的意义更多在于证明权利人明确反对抓取。还有人直言，真正该被限制的是 AI 抓取，不是 Internet Archive。",
+              "supportid": [
+                "48116834",
+                "48116894",
+                "48117087",
+                "48117223",
+                "48117511",
+                "48116657"
+              ]
+            },
+            {
+              "category": "档案保存与公共记忆",
+              "summary": "另一大主题是归档本身的公共价值。评论把 Wayback Machine 类比为图书馆里的 microfiche，认为历史报纸和网页快照是研究、核实和追责的重要基础。网上文章会被改字、补更、删段，甚至出现标题和措辞错误，因此保留版本变化能让外界看到当时公众实际接触到的内容。对这类观点来说，限制归档不是少了一个工具，而是在让不盈利的历史记录慢慢消失。",
+              "supportid": [
+                "48116683",
+                "48116742",
+                "48116776",
+                "48116864",
+                "48116566",
+                "48116817",
+                "48116944"
+              ]
+            },
+            {
+              "category": "商业模式：广告、付费墙与替代方案",
+              "summary": "很多评论把这事看成新闻商业模式冲突：NYT、The Atlantic 既靠订阅又靠广告和数据变现，却仍让付费用户看到很重的广告与追踪。有人认为，如果读者通过 Wayback 看到的本来就是不会付费的人，封掉 archive 也未必真能改善收入；也有人从相反方向主张回到纯广告模式，或者直接取消广告和订阅。更温和的折中方案包括 30 天或 1 年延迟开放、访问次数配额、NewsBank 式 escrow，以及 patronage / foundation model，让愿意支持的读者换取更高等级的访问权。",
+              "supportid": [
+                "48116505",
+                "48116537",
+                "48116795",
+                "48116913",
+                "48116558",
+                "48117363",
+                "48115997",
+                "48116923",
+                "48116983",
+                "48116882",
+                "48116947",
+                "48117194",
+                "48117146",
+                "48116956"
+              ]
+            },
+            {
+              "category": "媒体公信力与影响力",
+              "summary": "还有一派把这看作媒体公信力下滑的信号。有人觉得这些大媒体更像广告和数据收集公司，失去 archival 价值后是在加速自己的边缘化；也有人反驳 NYT 仍有数十亿美元收入，独立调查报道依然重要。评论区还争论“独立”到底是什么意思：只要能批评共和党并不等于真正独立，是否也敢批评民主党才更能检验立场。整体上，这条线索围绕的是大媒体究竟是公共机构、商业产品，还是两者之间的混合体。",
+              "supportid": [
+                "48116786",
+                "48116798",
+                "48116832",
+                "48116879",
+                "48116853",
+                "48117246",
+                "48117349",
+                "48117003",
+                "48116944"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "robots.txt",
+              "explanation": "网站给爬虫看的排除规则文件，用来声明哪些路径不应被自动抓取。"
+            },
+            {
+              "term": "Wayback Machine",
+              "explanation": "Internet Archive 提供的网页历史快照与回溯浏览服务。"
+            },
+            {
+              "term": "paywall",
+              "explanation": "付费墙，限制未订阅用户访问内容的机制。"
+            },
+            {
+              "term": "LLM scraping",
+              "explanation": "用自动化方式抓取网页内容，供大语言模型（LLM）训练或检索使用。"
+            }
+          ],
+          "context": "Wayback Machine 是 Internet Archive（一个保存网页与数字资料的非营利档案项目）的历史快照服务，站点所有者可以通过 robots.txt（给爬虫看的排除规则）限制 archive.org_bot 之类的自动抓取。NYT、The Atlantic、USA Today 被讨论的焦点，是它们是否应继续允许网页被长期保存成可检索的历史记录。评论里把这件事和 AI 公司抓取训练数据联系起来，认为出版社担心内容被二次利用；也有人强调，归档本身对历史研究、事实核查和新闻问责很重要。讨论还延伸到付费墙、广告、数据收集，以及新闻业在信息充足时代如何重新设计收入模式。",
+          "emoji": "🤨",
+          "sarcastic_question": "既要让人记住历史，又要把Wayback Machine关门？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n主流媒体以 AI 版权为由封锁 Wayback Machine，但这不仅无法阻止 AI 抓取，反而破坏了新闻业最需要的独立历史存证与事实核查防线。\n\n### 新闻自由不仅是写，更是被记住\n新闻自由的核心不仅仅是“写”的权利，更是作品能被后代阅读和记忆的权利。2026 年是世界新闻自由日 30 周年，但讽刺的是，包括纽约时报、大西洋月刊和今日美国在内的主流媒体，其记者的作品却不再被非营利性的 Internet Archive 保存。这封请愿书的目的，就是呼吁这些媒体巨头公开承诺与 Internet Archive 合作，让 Wayback Machine 继续保存新闻记录。说白了，如果新闻写出来却随时可能被抹去，那所谓的自由也就失去了根基。\n\n### 封锁存档的理由其实站不住脚\n自今年 2 月以来，纽约时报明确要求 Wayback Machine 停止保存其内容。更有意思的是，Wired 报道指出，今日美国一方面发布依赖 Wayback Machine 进行事实核查的重磅报道，另一方面却封锁该工具对自己同一篇报道的存档。当 100 多名记者联名感谢 Internet Archive 的尊重式存档时，大西洋月刊的 CEO 虽然回应了舆论，却拒绝承诺寻找解决方案。这些媒体封锁存档的理由是担心 AI 抓取，但请愿书指出，这种担忧完全是假设性的，并没有实际证据支持。\n\n### AI 根本不依赖 Wayback Machine\n很多人误以为封锁 Wayback Machine 就能挡住 AI，这其实是个巨大的误解。生成式 AI 公司完全可以像那些山寨存档网站一样，无视规则直接从发布商网站上抓取内容，而且几乎没什么成本。硅谷的大部分公司都在这么干，唯独 Internet Archive 选择遵守规则，靠的是“Integrity”（正直）。如果因为害怕 AI 就牺牲掉这个正直的合作伙伴，结果只能是挡住了守规矩的人，却防不住真正作恶的 AI。\n\n### 存档是抵御篡改的唯一防线\n随着审查制度和威权主义的抬头，修改报道、抹去事实的压力正在变大。记者们频繁面临死亡威胁，过去一年甚至已有记者为此牺牲。在这种环境下，Wayback Machine 作为中立的第三方，其存证价值比以往任何时候都高。它能让那些威胁权势的报道在压力下依然存活，这既是对逝者的尊重，也是给历史留下的真相。如果连媒体自己都切断这条防线，那才是真正的灾难。\n\n### 媒体应该拥抱而不是排斥盟友\nWayback Machine 实际上让每一个在线新闻媒体在面对“删稿”压力时都更具韧性。对于任何一家还在做严肃新闻的媒体来说，拥有这样一个盟友绝对符合自身利益。独立保存新闻本不该是一件难事，现在却变得如此复杂。请愿书最后呼吁各大媒体领导层立刻行动，与 Internet Archive 合作，把所有新闻都放进 Wayback Machine。毕竟，新闻如果不被存档，就等于从未存在过。"
+    },
+    {
+      "id": 48033483,
+      "by": "hggh",
+      "title": "The vi family",
+      "url": "https://lpar.ATH0.com/posts/2026/05/the-vi-family/",
+      "score": 132,
+      "detailUpdatedAt": 1778660030,
+      "createdAt": 1778646654,
+      "aiSummaryUpdatedAt": 1778661676,
+      "aisummary": {
+        "chinese_title": "vi家族：vim、NeoVim、Helix 与 no-LLM 分叉争论",
+        "emoji": "🤓",
+        "sarcastic_question": "难道编辑器史也要先做 LLM 纯种认证？"
+      },
+      "classifications": {
+        "topics": [
+          4,
+          6
+        ],
+        "facets": [
+          9
+        ],
+        "tags": [
+          "vi",
+          "vim",
+          "neovim",
+          "VS Code"
+        ]
+      },
+      "classificationsUpdatedAt": 1778649986,
+      "aiSummary": {
+        "chinese_title": "vi家族：vim、NeoVim、Helix 与 no-LLM 分叉争论",
+        "emoji": "🤓",
+        "sarcastic_question": "难道编辑器史也要先做 LLM 纯种认证？"
+      },
+      "detail": {
+        "id": 48033483,
+        "by": "hggh",
+        "title": "The vi family",
+        "url": "https://lpar.ATH0.com/posts/2026/05/the-vi-family/",
+        "score": 132,
+        "detailUpdatedAt": 1778660030,
+        "createdAt": 1778646654,
+        "aiSummaryUpdatedAt": 1778661676,
+        "aisummary": {
+          "chinese_title": "vi家族：vim、NeoVim、Helix 与 no-LLM 分叉争论",
+          "discussion_overview": [
+            {
+              "category": "肌肉记忆与效率",
+              "summary": "不少人把 vi/vim 描述成几乎不做额外定制的“最小工具集”，但因为多年重复操作形成了极强的 muscle memory，反而成了最省心的编辑器。有人强调，编辑器是每天用 8 小时以上的工具，效率提升会长期累积；反方则认为，若当前操作已经接近零成本，切换到新工具只会把脑内缓存全部重建。评论里还提到，重度 mouse 用户也会形成很快的 Fitts' Law 定位能力，说明“深度熟练”不只存在于 vi 体系。也有人补充，Vim 后来虽然有更多功能，但自己依旧只保留很少配置，因为基本键位已经足够。",
+              "supportid": [
+                "48118110",
+                "48118605",
+                "48119191",
+                "48118825",
+                "48118790",
+                "48119014",
+                "48118315",
+                "48117830",
+                "48033722",
+                "48118208"
+              ]
+            },
+            {
+              "category": "LazyVim/AstroNvim 让 NeoVim 更像 IDE",
+              "summary": "LazyVim、AstroNvim 这类 NeoVim 发行版被反复提到，因为它们把空白的 nvim 直接包装成可用的 IDE，而且默认键位和插件整合得比较顺手。有人说只靠默认配置就让自己的 vim 生产力翻了 2 到 3 倍，也有人建议配合书籍或教程慢慢学，不然新按键太多会劝退。flash.nvim 的 `seek`/`s` 模式尤其受欢迎：输入少量字符后屏幕上出现标签，几乎能“凭思考速度”跳到目标位置；类似思路也被拿来和浏览器里的 Vimium link hints 对比。与此同时，也有人觉得这些发行版还是太重，宁愿守着两行 .vimrc 或更接近原生的使用方式。",
+              "supportid": [
+                "48118512",
+                "48118613",
+                "48119199",
+                "48118708",
+                "48118726",
+                "48118717",
+                "48033722",
+                "48118585",
+                "48119156",
+                "48033523"
+              ]
+            },
+            {
+              "category": "Helix/Kakoune 的选择先行模型",
+              "summary": "Helix 和 Kakoune 在评论里被看作不是“换了几个键位的 Vim”，而是把编辑模型倒过来了：先选中对象，再执行动作。支持者强调这种 noun-verb/selection-action 的方式能让你先看到将要操作的范围，并且把 multi-selection 作为一等公民，甚至觉得比 Vim 的 action-selection 更符合直觉。反对者则指出，Vim 的 visual mode 本来就能覆盖很多选择场景，实际只是多按一两下键。也有人把 vis、sam 和其他小型编辑器拉进来，认为这条谱系的重点是不同的文本范围模型，而不是谁的按键更像 vi。",
+              "supportid": [
+                "48118953",
+                "48118273",
+                "48118501",
+                "48118675",
+                "48118531",
+                "48119156",
+                "48117744",
+                "48033523",
+                "48119218",
+                "48118306"
+              ]
+            },
+            {
+              "category": "vi 的历史、远程运维与工具可用性",
+              "summary": "这篇文章的历史线索被评论拉回到 90 年代：很多人是因为 Unix 课本、Sun 工作站、Telnet/SSH 服务器或“/bin/vi 总会在那儿”才学会它的。后来有人补充说，TRAMP（Emacs 的远程文件编辑机制）确实能绕过很多场景，但在真机排障时直接在服务器上用 vi 仍然最不容易把本地文件和远程文件搞混。评论还提到 BusyBox 里的基础 vi、早期的一层 undo、甚至 C64/6502 上的 vi clone，说明“vi 家族”不仅是软件史，也是运维习惯史。还有人直接指出，Bill Joy 和 Bram Moolenaar 这两位关键人物在家谱图里都不该缺席。",
+              "supportid": [
+                "48117690",
+                "48117845",
+                "48117989",
+                "48118165",
+                "48118167",
+                "48118152",
+                "48118056",
+                "48118601",
+                "48118554",
+                "48119050",
+                "48119093",
+                "48118005",
+                "48118742"
+              ]
+            },
+            {
+              "category": "LLM 代码标签与分叉价值观",
+              "summary": "文章里把某些 fork 标成“拒绝 LLM-generated code”，引发了明显分歧。有人觉得这是很具体的开发信号，未来读者也许会从中看出项目文化；也有人认为这像在历史文章里硬塞一个立场标签，破坏叙事。评论用“非拖拉机生成作物”或“bio”标签来类比，意思是技术上更先进不代表所有人都想跟进，而这种取舍迟早会变成审美和价值观问题。还有人顺手提到 vim-classic 这样的分叉，以及 Bram 如果还在会怎么看。",
+              "supportid": [
+                "48117690",
+                "48118246",
+                "48119060",
+                "48118873",
+                "48117890",
+                "48118358",
+                "48118962",
+                "48119031",
+                "48119028",
+                "48118596"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "modal editing",
+              "explanation": "把输入分成普通模式、插入模式等状态，通过模式切换来完成编辑。"
+            },
+            {
+              "term": "muscle memory",
+              "explanation": "长期重复后形成的几乎无意识按键习惯。"
+            },
+            {
+              "term": "selection-action / noun-verb",
+              "explanation": "先选中范围，再执行删除、替换等动作的编辑模型。"
+            },
+            {
+              "term": "visual mode",
+              "explanation": "Vim 里用于可视化选择文本范围的模式。"
+            },
+            {
+              "term": "Helix",
+              "explanation": "一种现代 modal editor，强调选择先于操作和多选原语。"
+            },
+            {
+              "term": "LazyVim",
+              "explanation": "一个为 NeoVim 提供预设插件和键位的发行版，目标是开箱即用。"
+            },
+            {
+              "term": "flash.nvim",
+              "explanation": "NeoVim 插件，通过标签式跳转快速定位屏幕上的文本。"
+            },
+            {
+              "term": "TRAMP",
+              "explanation": "Emacs 的远程文件访问机制，可通过 SSH、SMB 等编辑远端文件。"
+            },
+            {
+              "term": "LLM-generated code",
+              "explanation": "由大语言模型生成的代码，在评论里成为项目分叉和价值观争论的焦点。"
+            }
+          ],
+          "context": "这篇文章在梳理 vi 家族的演化：从 Bill Joy 写的原始 vi，到 Bram Moolenaar 的 Vim，再到 NeoVim（Vim 的活跃分支）以及各类 clone 和衍生版。评论把“为什么现在还用 vi”落到很现实的场景：SSH 到服务器、故障救火、BusyBox（嵌入式环境常见的工具集）里只有最小可用编辑器时，它往往仍然在场。另一条线是现代配置和插件生态，如 LazyVim、AstroNvim、flash.nvim 把 NeoVim 包装得更像 IDE；而 Helix、Kakoune、vis、sam 则代表不同的文本选择与编辑哲学。评论还提到 TRAMP（Emacs 的远程文件编辑机制）和 vim-classic 这类分叉，说明这篇文章不只是历史回顾，也在碰触编辑器文化、远程运维和“是否接受 LLM-generated code”这些当代争议。",
+          "emoji": "🤓",
+          "sarcastic_question": "难道编辑器史也要先做 LLM 纯种认证？"
+        },
+        "classifications": {
+          "topics": [
+            4,
+            6
+          ],
+          "facets": [
+            9
+          ],
+          "tags": [
+            "vi",
+            "vim",
+            "neovim",
+            "VS Code"
+          ]
+        },
+        "classificationsUpdatedAt": 1778649986,
+        "aiSummary": {
+          "chinese_title": "vi家族：vim、NeoVim、Helix 与 no-LLM 分叉争论",
+          "discussion_overview": [
+            {
+              "category": "肌肉记忆与效率",
+              "summary": "不少人把 vi/vim 描述成几乎不做额外定制的“最小工具集”，但因为多年重复操作形成了极强的 muscle memory，反而成了最省心的编辑器。有人强调，编辑器是每天用 8 小时以上的工具，效率提升会长期累积；反方则认为，若当前操作已经接近零成本，切换到新工具只会把脑内缓存全部重建。评论里还提到，重度 mouse 用户也会形成很快的 Fitts' Law 定位能力，说明“深度熟练”不只存在于 vi 体系。也有人补充，Vim 后来虽然有更多功能，但自己依旧只保留很少配置，因为基本键位已经足够。",
+              "supportid": [
+                "48118110",
+                "48118605",
+                "48119191",
+                "48118825",
+                "48118790",
+                "48119014",
+                "48118315",
+                "48117830",
+                "48033722",
+                "48118208"
+              ]
+            },
+            {
+              "category": "LazyVim/AstroNvim 让 NeoVim 更像 IDE",
+              "summary": "LazyVim、AstroNvim 这类 NeoVim 发行版被反复提到，因为它们把空白的 nvim 直接包装成可用的 IDE，而且默认键位和插件整合得比较顺手。有人说只靠默认配置就让自己的 vim 生产力翻了 2 到 3 倍，也有人建议配合书籍或教程慢慢学，不然新按键太多会劝退。flash.nvim 的 `seek`/`s` 模式尤其受欢迎：输入少量字符后屏幕上出现标签，几乎能“凭思考速度”跳到目标位置；类似思路也被拿来和浏览器里的 Vimium link hints 对比。与此同时，也有人觉得这些发行版还是太重，宁愿守着两行 .vimrc 或更接近原生的使用方式。",
+              "supportid": [
+                "48118512",
+                "48118613",
+                "48119199",
+                "48118708",
+                "48118726",
+                "48118717",
+                "48033722",
+                "48118585",
+                "48119156",
+                "48033523"
+              ]
+            },
+            {
+              "category": "Helix/Kakoune 的选择先行模型",
+              "summary": "Helix 和 Kakoune 在评论里被看作不是“换了几个键位的 Vim”，而是把编辑模型倒过来了：先选中对象，再执行动作。支持者强调这种 noun-verb/selection-action 的方式能让你先看到将要操作的范围，并且把 multi-selection 作为一等公民，甚至觉得比 Vim 的 action-selection 更符合直觉。反对者则指出，Vim 的 visual mode 本来就能覆盖很多选择场景，实际只是多按一两下键。也有人把 vis、sam 和其他小型编辑器拉进来，认为这条谱系的重点是不同的文本范围模型，而不是谁的按键更像 vi。",
+              "supportid": [
+                "48118953",
+                "48118273",
+                "48118501",
+                "48118675",
+                "48118531",
+                "48119156",
+                "48117744",
+                "48033523",
+                "48119218",
+                "48118306"
+              ]
+            },
+            {
+              "category": "vi 的历史、远程运维与工具可用性",
+              "summary": "这篇文章的历史线索被评论拉回到 90 年代：很多人是因为 Unix 课本、Sun 工作站、Telnet/SSH 服务器或“/bin/vi 总会在那儿”才学会它的。后来有人补充说，TRAMP（Emacs 的远程文件编辑机制）确实能绕过很多场景，但在真机排障时直接在服务器上用 vi 仍然最不容易把本地文件和远程文件搞混。评论还提到 BusyBox 里的基础 vi、早期的一层 undo、甚至 C64/6502 上的 vi clone，说明“vi 家族”不仅是软件史，也是运维习惯史。还有人直接指出，Bill Joy 和 Bram Moolenaar 这两位关键人物在家谱图里都不该缺席。",
+              "supportid": [
+                "48117690",
+                "48117845",
+                "48117989",
+                "48118165",
+                "48118167",
+                "48118152",
+                "48118056",
+                "48118601",
+                "48118554",
+                "48119050",
+                "48119093",
+                "48118005",
+                "48118742"
+              ]
+            },
+            {
+              "category": "LLM 代码标签与分叉价值观",
+              "summary": "文章里把某些 fork 标成“拒绝 LLM-generated code”，引发了明显分歧。有人觉得这是很具体的开发信号，未来读者也许会从中看出项目文化；也有人认为这像在历史文章里硬塞一个立场标签，破坏叙事。评论用“非拖拉机生成作物”或“bio”标签来类比，意思是技术上更先进不代表所有人都想跟进，而这种取舍迟早会变成审美和价值观问题。还有人顺手提到 vim-classic 这样的分叉，以及 Bram 如果还在会怎么看。",
+              "supportid": [
+                "48117690",
+                "48118246",
+                "48119060",
+                "48118873",
+                "48117890",
+                "48118358",
+                "48118962",
+                "48119031",
+                "48119028",
+                "48118596"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "modal editing",
+              "explanation": "把输入分成普通模式、插入模式等状态，通过模式切换来完成编辑。"
+            },
+            {
+              "term": "muscle memory",
+              "explanation": "长期重复后形成的几乎无意识按键习惯。"
+            },
+            {
+              "term": "selection-action / noun-verb",
+              "explanation": "先选中范围，再执行删除、替换等动作的编辑模型。"
+            },
+            {
+              "term": "visual mode",
+              "explanation": "Vim 里用于可视化选择文本范围的模式。"
+            },
+            {
+              "term": "Helix",
+              "explanation": "一种现代 modal editor，强调选择先于操作和多选原语。"
+            },
+            {
+              "term": "LazyVim",
+              "explanation": "一个为 NeoVim 提供预设插件和键位的发行版，目标是开箱即用。"
+            },
+            {
+              "term": "flash.nvim",
+              "explanation": "NeoVim 插件，通过标签式跳转快速定位屏幕上的文本。"
+            },
+            {
+              "term": "TRAMP",
+              "explanation": "Emacs 的远程文件访问机制，可通过 SSH、SMB 等编辑远端文件。"
+            },
+            {
+              "term": "LLM-generated code",
+              "explanation": "由大语言模型生成的代码，在评论里成为项目分叉和价值观争论的焦点。"
+            }
+          ],
+          "context": "这篇文章在梳理 vi 家族的演化：从 Bill Joy 写的原始 vi，到 Bram Moolenaar 的 Vim，再到 NeoVim（Vim 的活跃分支）以及各类 clone 和衍生版。评论把“为什么现在还用 vi”落到很现实的场景：SSH 到服务器、故障救火、BusyBox（嵌入式环境常见的工具集）里只有最小可用编辑器时，它往往仍然在场。另一条线是现代配置和插件生态，如 LazyVim、AstroNvim、flash.nvim 把 NeoVim 包装得更像 IDE；而 Helix、Kakoune、vis、sam 则代表不同的文本选择与编辑哲学。评论还提到 TRAMP（Emacs 的远程文件编辑机制）和 vim-classic 这类分叉，说明这篇文章不只是历史回顾，也在碰触编辑器文化、远程运维和“是否接受 LLM-generated code”这些当代争议。",
+          "emoji": "🤓",
+          "sarcastic_question": "难道编辑器史也要先做 LLM 纯种认证？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n这篇文章梳理了 `vi` 家族四十多年的演化史，从为了绕过商业授权限制而诞生的早期克隆，到如今为了拥抱现代开发体验（LSP、LLM）而分裂出的 Neovim 与 Vim Classic，展示了“极简编辑哲学”在不同时代的生存形态。\n\n### 五十岁的编辑器凭什么还能打？\n`vi` 诞生于 1977 年，虽然学习曲线陡峭，但一旦掌握，编辑效率极高。更重要的是，它几乎无处不在，从 VS Code 到 IntelliJ IDEA，主流 IDE 都提供 `vi` 键位绑定。这意味着你只需要学一次编辑逻辑，就能在任何环境下工作。这种“一次学习，终身受用”的通用性，是它至今仍被 Linux 用户奉为神器的根本原因。\n\n### 商业封锁逼出了开源克隆潮\n`vi` 2.0 在 1979 年发布时是个庞然大物，但在 80 年代，它被 AT&T 的商业 UNIX 许可证锁死了。为了在个人电脑（如 Atari ST 和 Amiga）上用上类似的工具，开发者们不得不动手写免费克隆版。STevie 就是这个时期的产物，虽然现在看来很简陋，但它却是后来大名鼎鼎的 Vim 的“祖先”。\n\n### 早期克隆在内存限制下的创新\n早期的克隆版不仅要解决“能用”的问题，还得应对硬件资源的匮乏。比如 1990 年的 Elvis，为了在 MS-DOS 和 Minix 上运行，引入了文件缓冲机制，这让编辑大文件不再受限于物理内存。它还引入了多窗口和语法高亮，这些在当时非常超前的特性，后来成为了现代编辑器的标配。\n\n### 两条路线：还原经典 vs 功能堆砌\n随着时间推移，`vi` 家族分化出了两个截然不同的方向。一派以 `nvi` 为代表，它基于 Elvis 重写，旨在 100% 还原原始 `vi` 的行为，甚至为了存储文件数据引入了数据库，但代价是至今不支持 UTF-8。另一派则是 Vim，它从 STevie 分支出来，疯狂堆叠功能，支持多窗口、脚本语言，甚至能处理 GB 级别的大文件，成为了目前最流行的克隆版。\n\n### 现代化改造：Neovim 的破局之道\n到了 2014 年，Vim 的代码库已经背负了太多历史包袱，难以进行现代化改造。Neovim 应运而生，它的核心思路很直接：砍掉对古董平台的支持，引入 Lua 脚本替代 VimScript，并原生支持 LSP 和内置终端。这种“做减法”的策略，让 `vi` 的编辑体验真正跟上了现代 IDE 的步伐。\n\n### AI 时代的分裂：Vim 的“去人类化”与“复古”\n最近几年，`vi` 家族又因为 AI 产生了新的分歧。Vim 和 Neovim 开始集成 LLM 生成的代码，这让一部分纯粹主义者感到不安。于是，我们在 2026 年看到了 EVi 和 Vim Classic 的出现——它们特意 fork 了没有 AI 代码的旧版本。这很有意思，技术圈在追求自动化的同时，竟然还有人为了“代码由人类编写”而专门维护一个分支。\n\n### 不止是 vi：受启发的后浪们\n除了正统克隆，还有一些编辑器虽然不是 `vi`，但深受其影响。比如 Kakoune 和 Helix，它们保留了 `vi` 的模态编辑核心，但重新设计了键位绑定，试图提供更符合人体工学的操作体验。还有 Emacs 下的 Evil 模式，它证明了 `vi` 的编辑逻辑甚至可以作为一种“插件”移植到完全不同的生态系统中去。"
+    },
+    {
+      "id": 48115823,
+      "by": "tcp_handshaker",
+      "title": "Kraftwerk's radical 1976 track",
+      "url": "https://www.bbc.com/culture/article/20260511-kraftwerks-radical-1976-track-radioactivity-became-an-anti-nuclear-anthem",
+      "score": 144,
+      "detailUpdatedAt": 1778660032,
+      "createdAt": 1778629262,
+      "aiSummaryUpdatedAt": 1778661447,
+      "aisummary": {
+        "chinese_title": "Kraftwerk《Radioactivity》：原是电台双关，后被改写为反核歌",
+        "emoji": "⚖️",
+        "sarcastic_question": "反核反到最后，难道是在给煤和俄气铺路？"
+      },
+      "classifications": {
+        "topics": [
+          9,
+          8
+        ],
+        "facets": [
+          9
+        ],
+        "tags": [
+          "Kraftwerk",
+          "Radioactivity",
+          "anti-nuclear",
+          "nuclear power",
+          "1976",
+          "BBC",
+          "Germany",
+          "coal",
+          "renewables"
+        ]
+      },
+      "classificationsUpdatedAt": 1778635281,
+      "aiSummary": {
+        "chinese_title": "Kraftwerk《Radioactivity》：原是电台双关，后被改写为反核歌",
+        "emoji": "⚖️",
+        "sarcastic_question": "反核反到最后，难道是在给煤和俄气铺路？"
+      },
+      "detail": {
+        "id": 48115823,
+        "by": "tcp_handshaker",
+        "title": "Kraftwerk's radical 1976 track",
+        "url": "https://www.bbc.com/culture/article/20260511-kraftwerks-radical-1976-track-radioactivity-became-an-anti-nuclear-anthem",
+        "score": 144,
+        "detailUpdatedAt": 1778660032,
+        "createdAt": 1778629262,
+        "aiSummaryUpdatedAt": 1778661447,
+        "aisummary": {
+          "chinese_title": "Kraftwerk《Radioactivity》：原是电台双关，后被改写为反核歌",
+          "discussion_overview": [
+            {
+              "category": "歌曲原意与后来的反核转向",
+              "summary": "有人指出，这首歌最初并不是反核宣言，而是把 Billboard magazine（美国音乐榜单杂志）里的 Radio Action 误听/误记成 Radio-Activity 后形成的双关：既可理解为广播电台的活动，也能联想到 radioactivity。书中的回忆显示，1976 年的初衷其实是赞美广播这种方便、廉价、民主的传播音乐和新闻的方式，后来才在更大的历史语境里被重读为反核。还有人补充，原版和今天常见的现场版差异很大，后者加入 stop 等词，把它明显推向抗议歌曲。",
+              "supportid": [
+                "48117895",
+                "48116598",
+                "48118805"
+              ]
+            },
+            {
+              "category": "反核情绪的历史根源",
+              "summary": "围绕德国反核情绪的来历，评论区出现了两种叙事：一边认为它主要来自 1970 年代的和平运动、环境主义和后来事故带来的长期创伤，另一边则把它看成冷战时期政府宣传和恐惧管理的产物。支持前者的人举出 Chernobyl（切尔诺贝利核事故）和 Fukushima（福岛核事故）后的外出限制、食品来源检查、野生蘑菇和野猪肉监测、Sellafield（英国核燃料后处理厂）担忧等细节，说明很多人的恐惧是身体经验而非抽象立场。Asse II（德国核废料试验仓库）被当作政治决策失信的例子，Brokdorf（德国一处著名核电站争议地点）之类的大规模示威也被提起，强调公众不信任并非凭空而来。也有人直接说核电“从来就不聪明”，但这类断言反而让争论更像一场历史记忆之战。",
+              "supportid": [
+                "48116903",
+                "48117011",
+                "48118620",
+                "48118670",
+                "48118817",
+                "48118952",
+                "48119045",
+                "48119097",
+                "48118446",
+                "48118792",
+                "48119012",
+                "48119225"
+              ]
+            },
+            {
+              "category": "核电支持者：煤更脏，废料可控",
+              "summary": "支持核电的人则强调，反核情绪把世界拖在煤上更久，而煤和油才是真正造成更多死亡与污染的主因。有人指出煤燃烧会把放射性副产物直接排进空气，核废料至少是集中、封装的，工程上可以用混凝土桶和深地质库处理；Finland 的 Onkalo（芬兰深地质核废料库项目）被拿来当作“零后续监管”方案的样板。还有人把核电描述成能与太阳能、风电互补的低碳电源，而不是必须被完全淘汰的技术。",
+              "supportid": [
+                "48116522",
+                "48116540",
+                "48116627",
+                "48116881",
+                "48116982",
+                "48117148",
+                "48117888",
+                "48118768",
+                "48118782"
+              ]
+            },
+            {
+              "category": "核电经济性与德国能源转型",
+              "summary": "另一些评论把焦点放在经济性和电网结构上，认为核电只有在把建设、退役、保险和税收补贴都算到公众头上时才会显得便宜。有人举欧洲中午电价跌到负值的例子，主张现代电网更需要电池、抽水蓄能和输电扩容这类灵活投资，而不是高风险的 baseload 大工程。关于德国能源转型（Energiewende，德国的能源结构转型），也有人纠正“核电换成俄罗斯天然气/石油”的说法，指出德国更像是先靠煤、再靠 renewables（可再生能源），gas（天然气）主要用于工业和供暖。",
+              "supportid": [
+                "48119067",
+                "48119110",
+                "48116570",
+                "48116220",
+                "48116252",
+                "48116587"
+              ]
+            },
+            {
+              "category": "Kraftwerk 作品与现场演出",
+              "summary": "很多评论其实是在回忆 Kraftwerk 这支乐队本身：有人说原版《Radioactivity》围绕 radio activity 的双关，而现在的现场版几乎只保留了 radioactivity 这个反核含义。也有人分享自己在伦敦 Albert Hall、Berkeley Greek Theater、Hong Kong 和 Seattle 看他们现场的经历，认为演出至今仍然震撼，甚至觉得他们很适合在 Sphere（拉斯维加斯一座球形巨幕场馆）里演出。顺带还有人推荐《Autobahn》《Ohm Sweet Ohm》《Ruckzuck》《Electronic Harpsichord》《Deep Distance》等曲目，说明讨论并不只是政治，也有很强的乐迷情绪。",
+              "supportid": [
+                "48116598",
+                "48118805",
+                "48117763",
+                "48116179",
+                "48116848",
+                "48116257",
+                "48116214",
+                "48116249"
+              ]
+            },
+            {
+              "category": "与 Imagine Dragons 的时代对照",
+              "summary": "有人把 Kraftwerk 的《Radioactivity》和 Imagine Dragons 的《Radioactive》并列，认为两首歌都在谈末日，但时代心理完全不同。前者诞生于 1970 年代的 Club of Rome（罗马俱乐部，一个讨论全球增长极限的国际智库）和核战争恐惧背景里，后来版本更像直接抗议；后者则来自 2012 年金融危机后的 doomer 心态，却带着在废墟中继续活下去的希望。这个对照还扯到 Fallout 游戏、后柏林墙一代和 Mormon（摩门教）信仰危机，像是在比较两代人如何想象灾难。",
+              "supportid": [
+                "48118241"
+              ]
+            },
+            {
+              "category": "版权诉讼的反讽背景",
+              "summary": "还有人插了一条很反讽的补充：这些被称作 radical 的乐队成员，后来卷入了欧洲最长寿的版权诉讼之一，案件从 1997 年拖到今年才结束。这个细节把他们的“激进”形象从音乐和政治，延伸到了音乐产业里的权利纠纷。也就是说，这首歌的故事不只是歌词和立场，还有一段很长的法律史。",
+              "supportid": [
+                "48119124"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Radio-Activity / Radioactivity",
+              "explanation": "Kraftwerk 歌曲/专辑标题的双关，既指广播活动，也借用了放射性。"
+            },
+            {
+              "term": "Chernobyl",
+              "explanation": "1986 年苏联核事故，成为欧洲反核情绪和食品污染担忧的重要记忆点。"
+            },
+            {
+              "term": "Fukushima",
+              "explanation": "2011 年日本核事故，被用来强调核电并非零风险。"
+            },
+            {
+              "term": "Asse II",
+              "explanation": "德国下萨克森州的核废料试验储存库，因政治决策和渗水问题长期争议不断。"
+            },
+            {
+              "term": "Onkalo",
+              "explanation": "芬兰的深地质核废料最终处置库项目，常被 pro-nuclear 评论视作长期封存样板。"
+            },
+            {
+              "term": "spent nuclear fuel（乏燃料）/核废料",
+              "explanation": "核电站运行后产生的高放射性废料，长期储存和最终处置是争论核心。"
+            },
+            {
+              "term": "baseload",
+              "explanation": "电网中需要持续稳定供应的基础负荷，常被用来讨论核电与 wind/solar 的关系。"
+            }
+          ],
+          "context": "Kraftwerk（德国电子音乐先驱）的《Radio-Activity》最初玩的是 radio activity / radioactivity 这个双关：既能理解成“电台活动”，也能联想到“放射性”，后来才逐步被赋予更明确的反核意味。评论补充说，早期版本本来是在赞美广播这种便宜、普及、民主的媒介，而现场版在多年后加上 stop 等词，才更像抗议歌。讨论又把它放进德国核电争论里：Chernobyl（切尔诺贝利核事故）、Fukushima（福岛核事故）、Asse II（德国核废料试验仓库）和 Onkalo（芬兰深地质核废料库项目）都被拿来作为核电安全与废料问题的参照。另一条线则在争论德国能源转型（Energiewende，德国的能源结构转型）、coal（煤）、renewables（可再生能源）和 Russian gas（俄罗斯天然气）之间的替代关系，以及核电到底是必要的低碳电源还是被低估的风险源。",
+          "emoji": "⚖️",
+          "sarcastic_question": "反核反到最后，难道是在给煤和俄气铺路？"
+        },
+        "classifications": {
+          "topics": [
+            9,
+            8
+          ],
+          "facets": [
+            9
+          ],
+          "tags": [
+            "Kraftwerk",
+            "Radioactivity",
+            "anti-nuclear",
+            "nuclear power",
+            "1976",
+            "BBC",
+            "Germany",
+            "coal",
+            "renewables"
+          ]
+        },
+        "classificationsUpdatedAt": 1778635281,
+        "aiSummary": {
+          "chinese_title": "Kraftwerk《Radioactivity》：原是电台双关，后被改写为反核歌",
+          "discussion_overview": [
+            {
+              "category": "歌曲原意与后来的反核转向",
+              "summary": "有人指出，这首歌最初并不是反核宣言，而是把 Billboard magazine（美国音乐榜单杂志）里的 Radio Action 误听/误记成 Radio-Activity 后形成的双关：既可理解为广播电台的活动，也能联想到 radioactivity。书中的回忆显示，1976 年的初衷其实是赞美广播这种方便、廉价、民主的传播音乐和新闻的方式，后来才在更大的历史语境里被重读为反核。还有人补充，原版和今天常见的现场版差异很大，后者加入 stop 等词，把它明显推向抗议歌曲。",
+              "supportid": [
+                "48117895",
+                "48116598",
+                "48118805"
+              ]
+            },
+            {
+              "category": "反核情绪的历史根源",
+              "summary": "围绕德国反核情绪的来历，评论区出现了两种叙事：一边认为它主要来自 1970 年代的和平运动、环境主义和后来事故带来的长期创伤，另一边则把它看成冷战时期政府宣传和恐惧管理的产物。支持前者的人举出 Chernobyl（切尔诺贝利核事故）和 Fukushima（福岛核事故）后的外出限制、食品来源检查、野生蘑菇和野猪肉监测、Sellafield（英国核燃料后处理厂）担忧等细节，说明很多人的恐惧是身体经验而非抽象立场。Asse II（德国核废料试验仓库）被当作政治决策失信的例子，Brokdorf（德国一处著名核电站争议地点）之类的大规模示威也被提起，强调公众不信任并非凭空而来。也有人直接说核电“从来就不聪明”，但这类断言反而让争论更像一场历史记忆之战。",
+              "supportid": [
+                "48116903",
+                "48117011",
+                "48118620",
+                "48118670",
+                "48118817",
+                "48118952",
+                "48119045",
+                "48119097",
+                "48118446",
+                "48118792",
+                "48119012",
+                "48119225"
+              ]
+            },
+            {
+              "category": "核电支持者：煤更脏，废料可控",
+              "summary": "支持核电的人则强调，反核情绪把世界拖在煤上更久，而煤和油才是真正造成更多死亡与污染的主因。有人指出煤燃烧会把放射性副产物直接排进空气，核废料至少是集中、封装的，工程上可以用混凝土桶和深地质库处理；Finland 的 Onkalo（芬兰深地质核废料库项目）被拿来当作“零后续监管”方案的样板。还有人把核电描述成能与太阳能、风电互补的低碳电源，而不是必须被完全淘汰的技术。",
+              "supportid": [
+                "48116522",
+                "48116540",
+                "48116627",
+                "48116881",
+                "48116982",
+                "48117148",
+                "48117888",
+                "48118768",
+                "48118782"
+              ]
+            },
+            {
+              "category": "核电经济性与德国能源转型",
+              "summary": "另一些评论把焦点放在经济性和电网结构上，认为核电只有在把建设、退役、保险和税收补贴都算到公众头上时才会显得便宜。有人举欧洲中午电价跌到负值的例子，主张现代电网更需要电池、抽水蓄能和输电扩容这类灵活投资，而不是高风险的 baseload 大工程。关于德国能源转型（Energiewende，德国的能源结构转型），也有人纠正“核电换成俄罗斯天然气/石油”的说法，指出德国更像是先靠煤、再靠 renewables（可再生能源），gas（天然气）主要用于工业和供暖。",
+              "supportid": [
+                "48119067",
+                "48119110",
+                "48116570",
+                "48116220",
+                "48116252",
+                "48116587"
+              ]
+            },
+            {
+              "category": "Kraftwerk 作品与现场演出",
+              "summary": "很多评论其实是在回忆 Kraftwerk 这支乐队本身：有人说原版《Radioactivity》围绕 radio activity 的双关，而现在的现场版几乎只保留了 radioactivity 这个反核含义。也有人分享自己在伦敦 Albert Hall、Berkeley Greek Theater、Hong Kong 和 Seattle 看他们现场的经历，认为演出至今仍然震撼，甚至觉得他们很适合在 Sphere（拉斯维加斯一座球形巨幕场馆）里演出。顺带还有人推荐《Autobahn》《Ohm Sweet Ohm》《Ruckzuck》《Electronic Harpsichord》《Deep Distance》等曲目，说明讨论并不只是政治，也有很强的乐迷情绪。",
+              "supportid": [
+                "48116598",
+                "48118805",
+                "48117763",
+                "48116179",
+                "48116848",
+                "48116257",
+                "48116214",
+                "48116249"
+              ]
+            },
+            {
+              "category": "与 Imagine Dragons 的时代对照",
+              "summary": "有人把 Kraftwerk 的《Radioactivity》和 Imagine Dragons 的《Radioactive》并列，认为两首歌都在谈末日，但时代心理完全不同。前者诞生于 1970 年代的 Club of Rome（罗马俱乐部，一个讨论全球增长极限的国际智库）和核战争恐惧背景里，后来版本更像直接抗议；后者则来自 2012 年金融危机后的 doomer 心态，却带着在废墟中继续活下去的希望。这个对照还扯到 Fallout 游戏、后柏林墙一代和 Mormon（摩门教）信仰危机，像是在比较两代人如何想象灾难。",
+              "supportid": [
+                "48118241"
+              ]
+            },
+            {
+              "category": "版权诉讼的反讽背景",
+              "summary": "还有人插了一条很反讽的补充：这些被称作 radical 的乐队成员，后来卷入了欧洲最长寿的版权诉讼之一，案件从 1997 年拖到今年才结束。这个细节把他们的“激进”形象从音乐和政治，延伸到了音乐产业里的权利纠纷。也就是说，这首歌的故事不只是歌词和立场，还有一段很长的法律史。",
+              "supportid": [
+                "48119124"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Radio-Activity / Radioactivity",
+              "explanation": "Kraftwerk 歌曲/专辑标题的双关，既指广播活动，也借用了放射性。"
+            },
+            {
+              "term": "Chernobyl",
+              "explanation": "1986 年苏联核事故，成为欧洲反核情绪和食品污染担忧的重要记忆点。"
+            },
+            {
+              "term": "Fukushima",
+              "explanation": "2011 年日本核事故，被用来强调核电并非零风险。"
+            },
+            {
+              "term": "Asse II",
+              "explanation": "德国下萨克森州的核废料试验储存库，因政治决策和渗水问题长期争议不断。"
+            },
+            {
+              "term": "Onkalo",
+              "explanation": "芬兰的深地质核废料最终处置库项目，常被 pro-nuclear 评论视作长期封存样板。"
+            },
+            {
+              "term": "spent nuclear fuel（乏燃料）/核废料",
+              "explanation": "核电站运行后产生的高放射性废料，长期储存和最终处置是争论核心。"
+            },
+            {
+              "term": "baseload",
+              "explanation": "电网中需要持续稳定供应的基础负荷，常被用来讨论核电与 wind/solar 的关系。"
+            }
+          ],
+          "context": "Kraftwerk（德国电子音乐先驱）的《Radio-Activity》最初玩的是 radio activity / radioactivity 这个双关：既能理解成“电台活动”，也能联想到“放射性”，后来才逐步被赋予更明确的反核意味。评论补充说，早期版本本来是在赞美广播这种便宜、普及、民主的媒介，而现场版在多年后加上 stop 等词，才更像抗议歌。讨论又把它放进德国核电争论里：Chernobyl（切尔诺贝利核事故）、Fukushima（福岛核事故）、Asse II（德国核废料试验仓库）和 Onkalo（芬兰深地质核废料库项目）都被拿来作为核电安全与废料问题的参照。另一条线则在争论德国能源转型（Energiewende，德国的能源结构转型）、coal（煤）、renewables（可再生能源）和 Russian gas（俄罗斯天然气）之间的替代关系，以及核电到底是必要的低碳电源还是被低估的风险源。",
+          "emoji": "⚖️",
+          "sarcastic_question": "反核反到最后，难道是在给煤和俄气铺路？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nKraftwerk 的《Radioactivity》不仅是电子音乐的里程碑，更在几十年间完成了一次惊人的演变：从歌颂科学创新的实验之作，变成了反核运动的激进圣歌。\n\n### 从科学赞歌到冷战焦虑的听觉实验\n1975 年，Kraftwerk 在第五张录音室专辑《Radio-Activity》中发布了这首同名曲。这不仅是他们从早期爵士/民谣风格转向全电子领域的标志，更确立了经典的四人阵容。核心成员 Ralf Hütter 将其定义为一种“科幻”概念，融合了恐怖与美感。技术上，他们大量使用了 Minimoog 的强劲合成器和 Vako Orchestron 的诡异合唱音色，营造出一种既像科学赞美诗又充满冷战时期不安的氛围。歌词里唱着“Radioactivity / Is in the air for you and me”，配合盖革计数器的脉冲声和摩尔斯电码，听起来既迷人又危险。\n\n### 开创性的“声音印象主义”影响了半个乐坛\n这首歌之所以被视为“通往未来的路标”，是因为它彻底打破了音乐流派的界限。它不仅是电子乐，更是一种“声音印象主义”，将采样音效与电子乐器结合。这种创新直接催生了后来的 Hip-hop、Techno、Synth-pop 甚至工业摇滚。像 The Human League 的 Martyn Ware 这样的后辈大神直言，如果没有 Kraftwerk，他们根本不会以现在的形式存在。甚至连坂本龙一都承认，组建 Yellow Magic Orchestra 就是为了做“日本的 Kraftwerk”。可以说，现代电子音乐的制作逻辑，很大一部分都源自这张不到 40 分钟的专辑。\n\n### 歌词反转：从致敬居里夫人到点名核灾难\n有意思的地方在于，这首歌并没有停留在 1975 年。到了 1991 年的专辑《The Mix》，Kraftwerk 对《Radioactivity》进行了彻底的“激进重塑”。原本歌词里还在致敬居里夫人发现放射性，新版本却变成了高呼“Stop radioactivity”的反核宣言。开场用声码器报出了一串核灾难地名：切尔诺贝利、哈里斯堡、塞拉菲尔德、广岛。这种转变让这首歌从俱乐部舞曲变成了抗议歌曲，甚至被《Rolling Stone》称为乐队唯一一次公开的政治行动。Kraftwerk 还在 1992 年亲自参与了 Greenpeace 组织的“Stop Sellafield”演唱会，用音乐表达立场。\n\n### 持续进化的抗议：福岛后的新歌词\n这首歌的生命力在于它随着历史在“变异”。2011 年福岛核事故发生后，坂本龙一邀请 Kraftwerk 参加东京的“No Nukes”演唱会。为了这次演出，双方频繁邮件沟通，不仅将歌词翻译成了日语，还特意加上了“Fukushima”的名字。这距离 Kraftwerk 与 YMO 上次同台已经过去了 31 年。这种与时俱进的修改，让一首 70 年代的老歌在 21 世纪的灾难现场依然具有刺痛人心的现实意义。它不再只是博物馆里的展品，而是活着的抗议。\n\n### 50 年后听来依然像未来的声音\n最让人惊讶的是，尽管已经过去了 50 年，这首歌听起来依然毫不过时，甚至非常“Vaporwave”。荷兰乐队 Yin Yin 的成员 Kees Berkers 指出，那高音摩尔斯电码、半速的电子鼓和史诗般的合成器贝斯，放到现在完全像是一首新歌。对于年轻一代来说，他们听到的不是“怀旧”，而是现代电子音乐的“母语”。正如 Martyn Ware 所说，年轻人在笔记本电脑上做音乐时，其实就是在使用 Kraftwerk 写下的 DNA。在这个充满不确定性的现代世界，《Radioactivity》依然在空气中回响。"
+    },
+    {
+      "id": 48115127,
+      "by": "Murfalo",
+      "title": "Restore full BambuNetwork support for Bambu Lab printers",
+      "url": "https://github.com/FULU-Foundation/OrcaSlicer-bambulab",
+      "score": 389,
+      "detailUpdatedAt": 1778660030,
+      "createdAt": 1778626863,
+      "aiSummaryUpdatedAt": 1778661061,
+      "aisummary": {
+        "chinese_title": "OrcaSlicer恢复BambuNetwork支持：Bambu Lab打印机云/本地争议",
+        "emoji": "🤨",
+        "sarcastic_question": "买都买了，难道还得向云端申请使用权吗？"
+      },
+      "classifications": {
+        "topics": [
+          7,
+          3,
+          6
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "BambuNetwork",
+          "Bambu Lab",
+          "OrcaSlicer",
+          "FULU-Foundation",
+          "Bambu Studio",
+          "Bambu Connect",
+          "cloud authentication",
+          "LAN mode"
+        ]
+      },
+      "classificationsUpdatedAt": 1778629885,
+      "aiSummary": {
+        "chinese_title": "OrcaSlicer恢复BambuNetwork支持：Bambu Lab打印机云/本地争议",
+        "emoji": "🤨",
+        "sarcastic_question": "买都买了，难道还得向云端申请使用权吗？"
+      },
+      "detail": {
+        "id": 48115127,
+        "by": "Murfalo",
+        "title": "Restore full BambuNetwork support for Bambu Lab printers",
+        "url": "https://github.com/FULU-Foundation/OrcaSlicer-bambulab",
+        "score": 167,
+        "detailUpdatedAt": 1778638429,
+        "createdAt": 1778626863,
+        "aiSummaryUpdatedAt": 1778639149,
+        "aisummary": {
+          "chinese_title": "OrcaSlicer 恢复 BambuNetwork：Bambu 打印机云/LAN 之争",
+          "discussion_overview": [
+            {
+              "category": "用户想同时保留云端与本地控制",
+              "summary": "不少评论认为，争议核心不是要不要云，而是能否同时保留 cloud 远程功能和本地直连。有人解释 Bambu 现在把系统拆成 Cloud mode 和 LAN/Developer mode，前者要走服务器认证，后者只给本地 token 但会关掉远程监控，所以所谓「不能兼得」更像 firmware 和产品策略制造出来的限制。还有人指出某些 pro 机型的 firmware 已经能同时开云和 LAN，说明技术上并非做不到。对许多用户来说，真正想要的是按自己买来的设备来决定工作流，而不是被厂商强迫二选一。",
+              "supportid": [
+                "48115890",
+                "48116180",
+                "48117001",
+                "48116972",
+                "48116008",
+                "48116109",
+                "48116035",
+                "48116071",
+                "48116079",
+                "48115855",
+                "48115861"
+              ]
+            },
+            {
+              "category": "云端便利 vs 隐私与厂商锁定",
+              "summary": "另一类评论把问题上升到信任和隐私。有人直接把这种做法称为 enshittification：卖的是一台自给自足的 3D printer，却逐渐把它变成必须连接公司服务的打印平台。也有人担心 print data、STL、logs 和 usage patterns 经过厂商基础设施后，会给 labs、startup 甚至政府环境带来数据泄露和合规风险，于是宁愿断网、上 VLAN 或干脆做 air gap。围绕厂商动机的猜测也很多，从收集数据到为未来监管、年龄验证或更严的 3D 打印管控铺路都有。",
+              "supportid": [
+                "48115815",
+                "48115869",
+                "48115963",
+                "48116452",
+                "48116466",
+                "48116353",
+                "48116508",
+                "48116918",
+                "48116075",
+                "48116977",
+                "48116071"
+              ]
+            },
+            {
+              "category": "本地替代方案与官方 LAN 模式局限",
+              "summary": "不少人则在讨论本地控制的现实替代方案。评论指出 LAN + Developer mode 下其实可以直接用 MQTT 发打印任务，不必依赖那个 proprietary binary plugin；配合 Home Assistant、Bambuddy、Tailscale 之类工具，还能做视频监控、远程控制和耗材状态读取。有人还贴出 OpenBambuAPI 作为更开放的接口实现，说明社区已经把很多所谓的「云功能」搬回了本地。与此同时，官方 LAN 模式又被吐槽在 Linux 上 buggy、slow，而且完全 technically unnecessary。",
+              "supportid": [
+                "48116146",
+                "48116441",
+                "48116690",
+                "48117023",
+                "48116735",
+                "48116801",
+                "48116555",
+                "48116716",
+                "48117001"
+              ]
+            },
+            {
+              "category": "仓库与网站真实性争议",
+              "summary": "线程外还有一条明显的质疑线，集中在仓库和配套网站是否靠谱。有人觉得站点像 LLM 生成的 AI slop，信息很少，还保留着类似伪装出来的 careers page，于是怀疑只是之前被删掉的仓库换皮重发。另一些人对把 git history squash 掉很不满，认为这会抹掉改动脉络，让审计和溯源更困难。围绕 Google 搜索偏好 AI 站点的争论也出现了，但不少人认为拿 SEO 当借口无法解释页面内容本身的空洞。",
+              "supportid": [
+                "48115128",
+                "48115893",
+                "48115954",
+                "48116516",
+                "48116577",
+                "48116001",
+                "48116105",
+                "48116139",
+                "48116725",
+                "48116855",
+                "48116888",
+                "48116576",
+                "48116160"
+              ]
+            },
+            {
+              "category": "传统 SD 卡流程与打印机可靠性比较",
+              "summary": "也有人把讨论拉回最朴素的打印工作流：如果只是把 gcode 写进 microSD 卡，根本不需要和云纠缠。反方则指出，一旦用过网络一键发送、远程查看和暂停打印，SD 卡插拔和屏幕点选会很快变得烦琐。这个分歧还引出了对不同机器可靠性的争论：有人认为 Bambu 的体验像「一键出活」，比更像 project car 的 Prusa 省心；也有人说自己老旧的 MakerBot 或 Prusa 一样可以长期稳定运行。最终争论落点不是某个品牌绝对更好，而是不同用户对便利和折腾的容忍度差异很大。",
+              "supportid": [
+                "48115991",
+                "48116979",
+                "48116068",
+                "48116063",
+                "48116065",
+                "48116152",
+                "48116703",
+                "48115971"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "BambuNetwork",
+              "explanation": "Bambu Lab 打印机的云端通信/RPC 层，slicer 或 app 通过它发送打印和监控请求。"
+            },
+            {
+              "term": "LAN mode",
+              "explanation": "局域网直连模式，打印机只在本地网络中接受控制，不必经过云端。"
+            },
+            {
+              "term": "Developer mode",
+              "explanation": "面向高级用户的本地访问模式，通常提供 token 或 API key 供第三方客户端使用。"
+            },
+            {
+              "term": "MQTT",
+              "explanation": "轻量级消息协议，常用于设备状态上报和本地控制。"
+            },
+            {
+              "term": "Tailscale",
+              "explanation": "基于 WireGuard 的组网工具，常用来安全地远程访问内网设备。"
+            },
+            {
+              "term": "enshittification",
+              "explanation": "平台先优化体验吸引用户，随后逐步加限制、抽取价值的恶化过程。"
+            },
+            {
+              "term": "OrcaSlicer",
+              "explanation": "第三方 3D 打印切片软件，许多用户用它替代 Bambu Studio。"
+            }
+          ],
+          "context": "这个帖子指向的是一个给 OrcaSlicer（第三方 3D 打印切片软件）补回 BambuNetwork 支持的仓库或补丁，而 BambuNetwork 本质上是 Bambu Lab 打印机的云端通信层。Bambu Lab（消费级 3D 打印机厂商）把打印分成 Cloud mode 和 LAN/Developer mode：前者要连云端做认证和远程监控，后者可用本地 token 直连打印机，但会牺牲部分云功能。评论之所以吵，是因为一部分人认为这些限制是人为的 firmware 策略，甚至已经在某些 pro 机型上存在“双开”能力；另一部分人则坚持打印数据走云会带来隐私、信任和厂商锁定问题。评论里还提到 MQTT、Tailscale、Home Assistant（开源智能家居自动化平台）和 OpenBambuAPI（社区维护的开放接口）等本地替代方案，以及这个仓库或网站是否只是前一个被删项目的换皮克隆。",
+          "emoji": "🤨",
+          "sarcastic_question": "我买的是打印机，还是Bambu云订阅呢？"
+        },
+        "classifications": {
+          "topics": [
+            7,
+            3,
+            6
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "BambuNetwork",
+            "Bambu Lab",
+            "OrcaSlicer",
+            "FULU-Foundation",
+            "Bambu Studio",
+            "Bambu Connect",
+            "cloud authentication",
+            "LAN mode"
+          ]
+        },
+        "classificationsUpdatedAt": 1778629885,
+        "aiSummary": {
+          "chinese_title": "OrcaSlicer 恢复 BambuNetwork：Bambu 打印机云/LAN 之争",
+          "discussion_overview": [
+            {
+              "category": "用户想同时保留云端与本地控制",
+              "summary": "不少评论认为，争议核心不是要不要云，而是能否同时保留 cloud 远程功能和本地直连。有人解释 Bambu 现在把系统拆成 Cloud mode 和 LAN/Developer mode，前者要走服务器认证，后者只给本地 token 但会关掉远程监控，所以所谓「不能兼得」更像 firmware 和产品策略制造出来的限制。还有人指出某些 pro 机型的 firmware 已经能同时开云和 LAN，说明技术上并非做不到。对许多用户来说，真正想要的是按自己买来的设备来决定工作流，而不是被厂商强迫二选一。",
+              "supportid": [
+                "48115890",
+                "48116180",
+                "48117001",
+                "48116972",
+                "48116008",
+                "48116109",
+                "48116035",
+                "48116071",
+                "48116079",
+                "48115855",
+                "48115861"
+              ]
+            },
+            {
+              "category": "云端便利 vs 隐私与厂商锁定",
+              "summary": "另一类评论把问题上升到信任和隐私。有人直接把这种做法称为 enshittification：卖的是一台自给自足的 3D printer，却逐渐把它变成必须连接公司服务的打印平台。也有人担心 print data、STL、logs 和 usage patterns 经过厂商基础设施后，会给 labs、startup 甚至政府环境带来数据泄露和合规风险，于是宁愿断网、上 VLAN 或干脆做 air gap。围绕厂商动机的猜测也很多，从收集数据到为未来监管、年龄验证或更严的 3D 打印管控铺路都有。",
+              "supportid": [
+                "48115815",
+                "48115869",
+                "48115963",
+                "48116452",
+                "48116466",
+                "48116353",
+                "48116508",
+                "48116918",
+                "48116075",
+                "48116977",
+                "48116071"
+              ]
+            },
+            {
+              "category": "本地替代方案与官方 LAN 模式局限",
+              "summary": "不少人则在讨论本地控制的现实替代方案。评论指出 LAN + Developer mode 下其实可以直接用 MQTT 发打印任务，不必依赖那个 proprietary binary plugin；配合 Home Assistant、Bambuddy、Tailscale 之类工具，还能做视频监控、远程控制和耗材状态读取。有人还贴出 OpenBambuAPI 作为更开放的接口实现，说明社区已经把很多所谓的「云功能」搬回了本地。与此同时，官方 LAN 模式又被吐槽在 Linux 上 buggy、slow，而且完全 technically unnecessary。",
+              "supportid": [
+                "48116146",
+                "48116441",
+                "48116690",
+                "48117023",
+                "48116735",
+                "48116801",
+                "48116555",
+                "48116716",
+                "48117001"
+              ]
+            },
+            {
+              "category": "仓库与网站真实性争议",
+              "summary": "线程外还有一条明显的质疑线，集中在仓库和配套网站是否靠谱。有人觉得站点像 LLM 生成的 AI slop，信息很少，还保留着类似伪装出来的 careers page，于是怀疑只是之前被删掉的仓库换皮重发。另一些人对把 git history squash 掉很不满，认为这会抹掉改动脉络，让审计和溯源更困难。围绕 Google 搜索偏好 AI 站点的争论也出现了，但不少人认为拿 SEO 当借口无法解释页面内容本身的空洞。",
+              "supportid": [
+                "48115128",
+                "48115893",
+                "48115954",
+                "48116516",
+                "48116577",
+                "48116001",
+                "48116105",
+                "48116139",
+                "48116725",
+                "48116855",
+                "48116888",
+                "48116576",
+                "48116160"
+              ]
+            },
+            {
+              "category": "传统 SD 卡流程与打印机可靠性比较",
+              "summary": "也有人把讨论拉回最朴素的打印工作流：如果只是把 gcode 写进 microSD 卡，根本不需要和云纠缠。反方则指出，一旦用过网络一键发送、远程查看和暂停打印，SD 卡插拔和屏幕点选会很快变得烦琐。这个分歧还引出了对不同机器可靠性的争论：有人认为 Bambu 的体验像「一键出活」，比更像 project car 的 Prusa 省心；也有人说自己老旧的 MakerBot 或 Prusa 一样可以长期稳定运行。最终争论落点不是某个品牌绝对更好，而是不同用户对便利和折腾的容忍度差异很大。",
+              "supportid": [
+                "48115991",
+                "48116979",
+                "48116068",
+                "48116063",
+                "48116065",
+                "48116152",
+                "48116703",
+                "48115971"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "BambuNetwork",
+              "explanation": "Bambu Lab 打印机的云端通信/RPC 层，slicer 或 app 通过它发送打印和监控请求。"
+            },
+            {
+              "term": "LAN mode",
+              "explanation": "局域网直连模式，打印机只在本地网络中接受控制，不必经过云端。"
+            },
+            {
+              "term": "Developer mode",
+              "explanation": "面向高级用户的本地访问模式，通常提供 token 或 API key 供第三方客户端使用。"
+            },
+            {
+              "term": "MQTT",
+              "explanation": "轻量级消息协议，常用于设备状态上报和本地控制。"
+            },
+            {
+              "term": "Tailscale",
+              "explanation": "基于 WireGuard 的组网工具，常用来安全地远程访问内网设备。"
+            },
+            {
+              "term": "enshittification",
+              "explanation": "平台先优化体验吸引用户，随后逐步加限制、抽取价值的恶化过程。"
+            },
+            {
+              "term": "OrcaSlicer",
+              "explanation": "第三方 3D 打印切片软件，许多用户用它替代 Bambu Studio。"
+            }
+          ],
+          "context": "这个帖子指向的是一个给 OrcaSlicer（第三方 3D 打印切片软件）补回 BambuNetwork 支持的仓库或补丁，而 BambuNetwork 本质上是 Bambu Lab 打印机的云端通信层。Bambu Lab（消费级 3D 打印机厂商）把打印分成 Cloud mode 和 LAN/Developer mode：前者要连云端做认证和远程监控，后者可用本地 token 直连打印机，但会牺牲部分云功能。评论之所以吵，是因为一部分人认为这些限制是人为的 firmware 策略，甚至已经在某些 pro 机型上存在“双开”能力；另一部分人则坚持打印数据走云会带来隐私、信任和厂商锁定问题。评论里还提到 MQTT、Tailscale、Home Assistant（开源智能家居自动化平台）和 OpenBambuAPI（社区维护的开放接口）等本地替代方案，以及这个仓库或网站是否只是前一个被删项目的换皮克隆。",
+          "emoji": "🤨",
+          "sarcastic_question": "我买的是打印机，还是Bambu云订阅呢？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n这个 OrcaSlicer 修改版通过绕过官方限制，成功让 Bambu Lab 打印机恢复了完整的 BambuNetwork 远程打印功能，不再局限于局域网。\n\n### 官方限制逼出的“曲线救国”\nBambu Lab 的官方策略最近发生了变化，导致原版 OrcaSlicer 在连接 BambuNetwork 时遇到了阻碍。这直接把用户逼到了墙角：要么只用局域网（LAN）打印，要么放弃第三方切片软件。对于习惯了 OrcaSlicer 强大功能，又需要随时随地远程管理的开发者来说，这显然是个无法接受的妥协。于是，这个修改版应运而生，它的目标非常明确——把被切断的“网线”接回去。\n\n### 核心突破：打破局域网壁垒\n这个版本最核心的改动，就是彻底恢复了 BambuNetwork 的支持。说白了，它不再受限于局域网环境，而是像以前一样，可以通过互联网直接连接打印机。这意味着你可以在公司给家里的打印机发任务，或者在外出时监控打印进度。这种“全功能”恢复不仅仅是能连上，还包括了正常的打印操作和状态监控，基本上把官方阉割的体验补齐了。\n\n### Windows 用户的门槛：WSL 2 是必选项\n如果你是 Windows 用户，这里有个硬性要求：必须启用 WSL 2。这不是为了折腾，而是因为该版本底层依赖 Linux 环境来运行某些关键组件。安装前，你需要以管理员身份运行 PowerShell，执行两条 `dism.exe` 命令来开启“适用于 Linux 的 Windows 子系统”和“虚拟机平台”。虽然多了一步重启系统的操作，但为了换取完整的网络功能，这点成本还是值得的。\n\n### Linux 与 macOS 的现状差异\n相比之下，Linux 用户的体验就顺滑多了，不需要任何特殊的虚拟化配置，正常安装即可运行。但 macOS 用户目前还得再等等，文档里明确标注了“Work in progress”。这也从侧面反映出，该项目目前的开发重心和测试环境主要集中在 Windows 和 Linux 平台上，Mac 支持还在追赶中。\n\n### BMCU：一个值得关注的配套选项\n除了恢复网络功能，作者还强烈推荐搭配使用 BMCU（Bambu MCU Custom Firmware）。你可以在作者的仓库里找到对应的固件。虽然文章没有细说 BMCU 的具体作用，但通常这类固件是为了解锁更多底层控制权或优化性能。对于追求极致体验、愿意折腾硬件的开发者来说，这算是一个额外的彩蛋。"
+    },
+    {
+      "id": 48109970,
+      "by": "xz18r",
+      "title": "The Future of Obsidian Plugins",
+      "url": "https://obsidian.md/blog/future-of-plugins/",
+      "score": 365,
+      "detailUpdatedAt": 1778660037,
+      "createdAt": 1778602865,
+      "aiSummaryUpdatedAt": 1778660764,
+      "aisummary": {
+        "chinese_title": "Obsidian 插件新审查：评分卡、披露与权限争议",
+        "emoji": "⚖️",
+        "sarcastic_question": "不做沙箱，只靠扫描和披露就能防住恶意插件吗？"
+      },
+      "classifications": {
+        "topics": [
+          11,
+          3,
+          4
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "Obsidian",
+          "Obsidian plugins",
+          "plugin API",
+          "permission system",
+          "sandboxing",
+          "automated scans",
+          "AI",
+          "scorecards",
+          "Notion"
+        ]
+      },
+      "classificationsUpdatedAt": 1778606517,
+      "aiSummary": {
+        "chinese_title": "Obsidian 插件新审查：评分卡、披露与权限争议",
+        "emoji": "⚖️",
+        "sarcastic_question": "不做沙箱，只靠扫描和披露就能防住恶意插件吗？"
+      },
+      "detail": {
+        "id": 48109970,
+        "by": "xz18r",
+        "title": "The Future of Obsidian Plugins",
+        "url": "https://obsidian.md/blog/future-of-plugins/",
+        "score": 264,
+        "detailUpdatedAt": 1778625841,
+        "createdAt": 1778602865,
+        "aiSummaryUpdatedAt": 1778626552,
+        "aisummary": {
+          "chinese_title": "Obsidian 社区插件审核上线：自动扫描、权限与沙箱争议",
+          "discussion_overview": [
+            {
+              "category": "发布与扩容",
+              "summary": "Obsidian 团队把这次新 Community site 和 review system 描述成一个耗时近一年的折中方案，目标是在兼容旧插件、降低迁移成本的同时，把安全和可发现性做得更好。评论里普遍把它看成一次重要的扩容，因为手工审核已经跟不上几千个插件和 AI 带来的提交洪流。也有人明确表示，这套机制终于缓解了开发者和团队长期承受的瓶颈。整体气氛是支持的，但也把它视为“先上线、再迭代”的工作中产品。",
+              "supportid": [
+                "48111426",
+                "48110898",
+                "48111554",
+                "48111332",
+                "48111666",
+                "48114254"
+              ]
+            },
+            {
+              "category": "自动扫描与人工复核",
+              "summary": "不少评论认为，这套系统的核心不是单纯自动判定，而是先用静态扫描和规则检查把大量插件过滤掉，再把少数高风险项交给人工处理。官方说明里提到每次更新都会扫描，最新版本也会持续重扫，底层还基于开源的 eslint plugin，方便外部贡献者改进。有人建议把 AI、静态分析和人工审核结合起来，既提高覆盖率，也利用机器先找出可疑行为或依赖风险。也有人提醒，依赖漏洞扫描会产生误报，需要懂上下文的人来解释结果，否则维护者会被无谓噪音拖累。",
+              "supportid": [
+                "48113408",
+                "48110748",
+                "48111027",
+                "48110794",
+                "48111282",
+                "48113911",
+                "48113986",
+                "48110939",
+                "48111715"
+              ]
+            },
+            {
+              "category": "权限与沙箱争议",
+              "summary": "讨论的另一条主线是，很多人根本不相信仅靠扫描或权限声明能拦住恶意插件。评论直接指出，Obsidian 插件目前没有 sandbox，实际上可以接触整个文件系统，还能发起 HTTP 请求，因此即使不连网也可能通过删文件、改 crontab 或 shell rc 留下后门。有人希望改成更严格的插件 API 和 permissions system，甚至在 Electron 环境里把插件放进独立上下文，但也有人认为只要允许读写笔记，这类风险就很难被彻底消除。共识更像是：安全边界必须继续加，但不可能靠单一机制一劳永逸。",
+              "supportid": [
+                "48110384",
+                "48111298",
+                "48112273",
+                "48110592",
+                "48112325",
+                "48110837",
+                "48115009",
+                "48115476",
+                "48110674"
+              ]
+            },
+            {
+              "category": "外联披露与scorecard可读性",
+              "summary": "新页面会显示插件的 disclosures，比如某个插件可能会访问外部域名，评论者对这种透明度提升普遍很买账。有人举例说，看到只写着 github.com 这种提示时，至少能顺着去查代码里到底是哪一段在外联。也有人提醒，单看域名会误导普通用户，因为 GitHub 既可能是正常仓库，也可能托管恶意脚本，所以更好的做法是继续细化到 repo、文件或代码行。还有人直接问，作为普通用户应该怎么解读 scorecard 上的一堆警告；这说明 UI 已经开始给信息，但可操作性还没完全打通。",
+              "supportid": [
+                "48114422",
+                "48114571",
+                "48115021",
+                "48115102",
+                "48115140",
+                "48112027"
+              ]
+            },
+            {
+              "category": "插件工作流与协作场景",
+              "summary": "不少人把 Obsidian 当作个人知识库和可编程工作台来用，讨论里也自然延伸到常用插件推荐、最小化插件集和本地安装方式。有人强调最好一次只装一个插件，这样才能知道每个插件到底在做什么，也有人直接分享自己常用的一串插件名单。另一类讨论集中在团队协作：Obsidian 对个人很强，但在共享、权限、实时协作上仍然不如 Notion，很多人只能借助 Obsidian Sync、Relay、Peerdraft 或 Screen Garden 等插件和服务补齐。也有人提到 AI、self-hosted sync、block reference 等本地化工作流，说明 Obsidian 的生态已经不只是记笔记，而是在拼装个人或团队的操作系统。",
+              "supportid": [
+                "48111214",
+                "48111487",
+                "48111472",
+                "48110984",
+                "48111185",
+                "48111296",
+                "48111949",
+                "48114411",
+                "48111564",
+                "48111524",
+                "48115035",
+                "48111777",
+                "48111543"
+              ]
+            },
+            {
+              "category": "开源、信任与锁定争论",
+              "summary": "有些人从一开始就拒绝使用 Obsidian，因为它不是 open source，而且他们担心自己的工作流会被专有语法和插件生态锁住。反方则认为，文件是本地 markdown、客户端离线可用、API 也足够稳定，所以真正该看的是信任和维护，而不只是源代码是否公开。争议进一步扩大到旧审核流程是否一直“名义上审核、实际上没审核”以及这次新系统是不是在承认过去的不足。也有人提醒，open source 本身并不自动等于安全，维护基础设施、依赖链和审计能力才是关键。",
+              "supportid": [
+                "48111447",
+                "48111627",
+                "48111495",
+                "48111661",
+                "48113740",
+                "48111898",
+                "48112205",
+                "48113047",
+                "48113852",
+                "48114325",
+                "48114754",
+                "48115074",
+                "48115141",
+                "48111708"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "sandboxing",
+              "explanation": "把插件限制在隔离环境里运行，只允许通过受控接口访问文件、网络等资源。"
+            },
+            {
+              "term": "permissions system",
+              "explanation": "插件先声明需要哪些能力，用户授权后才能访问相应资源的机制。"
+            },
+            {
+              "term": "scorecard",
+              "explanation": "社区站点上的插件风险/合规信息汇总，用来给用户快速判断插件状态。"
+            },
+            {
+              "term": "eslint",
+              "explanation": "JavaScript 代码检查工具，这次 review system 的基础之一。"
+            },
+            {
+              "term": "CVE",
+              "explanation": "已公开漏洞编号，用来标识和追踪软件安全漏洞。"
+            },
+            {
+              "term": "supply chain attack",
+              "explanation": "通过依赖、更新或发布链条投放恶意代码的攻击方式。"
+            }
+          ],
+          "context": "Obsidian（一个以 Markdown 为核心的笔记软件）这次上线了新的 Community site（社区插件目录）和 review system（插件审核系统），用来替代原先主要依赖社区协作和 GitHub PR 的旧流程。评论里反复强调，Obsidian 的第三方插件大多是跑在 Electron（桌面应用框架）里的 JavaScript 代码，历史上几乎没有真正的 sandbox，所以插件更新、依赖漏洞和网络外联一直是安全焦点。官方说新系统会对每个版本做扫描，并逐步增加 permissions 和更细的过滤；而用户则把它和 Debian/Ubuntu 的严格审核、PyPI/npm 的几乎无审核模式做比较。由于团队只有七个人，却要面对成千上万的插件开发者和数百万用户，这次讨论的核心其实是：如何在开放生态、兼容性和安全边界之间找到可持续的中间地带。",
+          "emoji": "🤔",
+          "sarcastic_question": "没有沙箱，扫描真能防住更新后的木马？"
+        },
+        "classifications": {
+          "topics": [
+            11,
+            3,
+            4
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "Obsidian",
+            "Obsidian plugins",
+            "plugin API",
+            "permission system",
+            "sandboxing",
+            "automated scans",
+            "AI",
+            "scorecards",
+            "Notion"
+          ]
+        },
+        "classificationsUpdatedAt": 1778606517,
+        "aiSummary": {
+          "chinese_title": "Obsidian 社区插件审核上线：自动扫描、权限与沙箱争议",
+          "discussion_overview": [
+            {
+              "category": "发布与扩容",
+              "summary": "Obsidian 团队把这次新 Community site 和 review system 描述成一个耗时近一年的折中方案，目标是在兼容旧插件、降低迁移成本的同时，把安全和可发现性做得更好。评论里普遍把它看成一次重要的扩容，因为手工审核已经跟不上几千个插件和 AI 带来的提交洪流。也有人明确表示，这套机制终于缓解了开发者和团队长期承受的瓶颈。整体气氛是支持的，但也把它视为“先上线、再迭代”的工作中产品。",
+              "supportid": [
+                "48111426",
+                "48110898",
+                "48111554",
+                "48111332",
+                "48111666",
+                "48114254"
+              ]
+            },
+            {
+              "category": "自动扫描与人工复核",
+              "summary": "不少评论认为，这套系统的核心不是单纯自动判定，而是先用静态扫描和规则检查把大量插件过滤掉，再把少数高风险项交给人工处理。官方说明里提到每次更新都会扫描，最新版本也会持续重扫，底层还基于开源的 eslint plugin，方便外部贡献者改进。有人建议把 AI、静态分析和人工审核结合起来，既提高覆盖率，也利用机器先找出可疑行为或依赖风险。也有人提醒，依赖漏洞扫描会产生误报，需要懂上下文的人来解释结果，否则维护者会被无谓噪音拖累。",
+              "supportid": [
+                "48113408",
+                "48110748",
+                "48111027",
+                "48110794",
+                "48111282",
+                "48113911",
+                "48113986",
+                "48110939",
+                "48111715"
+              ]
+            },
+            {
+              "category": "权限与沙箱争议",
+              "summary": "讨论的另一条主线是，很多人根本不相信仅靠扫描或权限声明能拦住恶意插件。评论直接指出，Obsidian 插件目前没有 sandbox，实际上可以接触整个文件系统，还能发起 HTTP 请求，因此即使不连网也可能通过删文件、改 crontab 或 shell rc 留下后门。有人希望改成更严格的插件 API 和 permissions system，甚至在 Electron 环境里把插件放进独立上下文，但也有人认为只要允许读写笔记，这类风险就很难被彻底消除。共识更像是：安全边界必须继续加，但不可能靠单一机制一劳永逸。",
+              "supportid": [
+                "48110384",
+                "48111298",
+                "48112273",
+                "48110592",
+                "48112325",
+                "48110837",
+                "48115009",
+                "48115476",
+                "48110674"
+              ]
+            },
+            {
+              "category": "外联披露与scorecard可读性",
+              "summary": "新页面会显示插件的 disclosures，比如某个插件可能会访问外部域名，评论者对这种透明度提升普遍很买账。有人举例说，看到只写着 github.com 这种提示时，至少能顺着去查代码里到底是哪一段在外联。也有人提醒，单看域名会误导普通用户，因为 GitHub 既可能是正常仓库，也可能托管恶意脚本，所以更好的做法是继续细化到 repo、文件或代码行。还有人直接问，作为普通用户应该怎么解读 scorecard 上的一堆警告；这说明 UI 已经开始给信息，但可操作性还没完全打通。",
+              "supportid": [
+                "48114422",
+                "48114571",
+                "48115021",
+                "48115102",
+                "48115140",
+                "48112027"
+              ]
+            },
+            {
+              "category": "插件工作流与协作场景",
+              "summary": "不少人把 Obsidian 当作个人知识库和可编程工作台来用，讨论里也自然延伸到常用插件推荐、最小化插件集和本地安装方式。有人强调最好一次只装一个插件，这样才能知道每个插件到底在做什么，也有人直接分享自己常用的一串插件名单。另一类讨论集中在团队协作：Obsidian 对个人很强，但在共享、权限、实时协作上仍然不如 Notion，很多人只能借助 Obsidian Sync、Relay、Peerdraft 或 Screen Garden 等插件和服务补齐。也有人提到 AI、self-hosted sync、block reference 等本地化工作流，说明 Obsidian 的生态已经不只是记笔记，而是在拼装个人或团队的操作系统。",
+              "supportid": [
+                "48111214",
+                "48111487",
+                "48111472",
+                "48110984",
+                "48111185",
+                "48111296",
+                "48111949",
+                "48114411",
+                "48111564",
+                "48111524",
+                "48115035",
+                "48111777",
+                "48111543"
+              ]
+            },
+            {
+              "category": "开源、信任与锁定争论",
+              "summary": "有些人从一开始就拒绝使用 Obsidian，因为它不是 open source，而且他们担心自己的工作流会被专有语法和插件生态锁住。反方则认为，文件是本地 markdown、客户端离线可用、API 也足够稳定，所以真正该看的是信任和维护，而不只是源代码是否公开。争议进一步扩大到旧审核流程是否一直“名义上审核、实际上没审核”以及这次新系统是不是在承认过去的不足。也有人提醒，open source 本身并不自动等于安全，维护基础设施、依赖链和审计能力才是关键。",
+              "supportid": [
+                "48111447",
+                "48111627",
+                "48111495",
+                "48111661",
+                "48113740",
+                "48111898",
+                "48112205",
+                "48113047",
+                "48113852",
+                "48114325",
+                "48114754",
+                "48115074",
+                "48115141",
+                "48111708"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "sandboxing",
+              "explanation": "把插件限制在隔离环境里运行，只允许通过受控接口访问文件、网络等资源。"
+            },
+            {
+              "term": "permissions system",
+              "explanation": "插件先声明需要哪些能力，用户授权后才能访问相应资源的机制。"
+            },
+            {
+              "term": "scorecard",
+              "explanation": "社区站点上的插件风险/合规信息汇总，用来给用户快速判断插件状态。"
+            },
+            {
+              "term": "eslint",
+              "explanation": "JavaScript 代码检查工具，这次 review system 的基础之一。"
+            },
+            {
+              "term": "CVE",
+              "explanation": "已公开漏洞编号，用来标识和追踪软件安全漏洞。"
+            },
+            {
+              "term": "supply chain attack",
+              "explanation": "通过依赖、更新或发布链条投放恶意代码的攻击方式。"
+            }
+          ],
+          "context": "Obsidian（一个以 Markdown 为核心的笔记软件）这次上线了新的 Community site（社区插件目录）和 review system（插件审核系统），用来替代原先主要依赖社区协作和 GitHub PR 的旧流程。评论里反复强调，Obsidian 的第三方插件大多是跑在 Electron（桌面应用框架）里的 JavaScript 代码，历史上几乎没有真正的 sandbox，所以插件更新、依赖漏洞和网络外联一直是安全焦点。官方说新系统会对每个版本做扫描，并逐步增加 permissions 和更细的过滤；而用户则把它和 Debian/Ubuntu 的严格审核、PyPI/npm 的几乎无审核模式做比较。由于团队只有七个人，却要面对成千上万的插件开发者和数百万用户，这次讨论的核心其实是：如何在开放生态、兼容性和安全边界之间找到可持续的中间地带。",
+          "emoji": "🤔",
+          "sarcastic_question": "没有沙箱，扫描真能防住更新后的木马？"
+        }
+      },
+      "articleSummary": "# 一句话总结\nObsidian 推出了全新的社区站点和开发者仪表盘，核心是用自动化审查系统替代人工审核，在解决插件审核积压的同时，通过持续扫描每个版本来大幅提升生态系统的安全性。\n\n---\n\n### 从 GitHub Issue 到一站式社区门户\nObsidian 的插件生态这几年增长得太猛了，自 2020 年 API 开放以来，社区已经贡献了超过 4,000 个插件和主题，总下载量突破 1.2 亿次。原来的发布流程主要依赖 GitHub，随着数量激增，这种原始的方式显然已经不够用了。这次官方直接上线了全新的 [Obsidian Community](https://community.obsidian.md/) 站点，把插件发现、搜索、分类和详情页整合在了一起。用户现在可以按 Integrations、Bases、Charts 等几十个类别筛选，还能直观地看到每个插件的安全评分卡和付费标签。\n\n### 开发者不再需要盯着审核队列干等\n对于开发者来说，最痛的体验莫过于提交插件后漫长的等待。以前所有插件都靠人工审核，队伍越排越长，甚至积压了 2,300 多个提交。现在的新开发者仪表盘直接接管了这套流程，你只需要登录并关联 GitHub 账号，就能认领旧项目或提交新项目。最爽的是，以前可能要等几周的人工审核，现在提交后几分钟内就能跑完自动化检查。如果通过了，通常 24 小时内就能在应用内被搜到，这效率提升是数量级的。\n\n### 自动化审查：不仅审“新人”，连“更新”也抓\n这套新系统的核心其实是一个全自动化的审查引擎。以前团队只审初次提交，后续更新基本是“裸奔”，这在安全上是个巨大的隐患。现在的新系统会扫描**每一个版本**，检查代码质量、安全漏洞以及是否遵守开发者政策。有意思的地方在于，这并不是为了完全取代人工，而是把人力解放出来去处理那些需要深度审查的热门插件或社区举报的问题。官方已经用这套系统把积压的 2,300 多个提交全清空了，顺便把现有的 4,000 多个项目也重扫了一遍。\n\n### 安全透明化：从“黑盒”到“记分卡”\n随着 AI 编程助手的普及，插件生成的门槛越来越低，但这也意味着潜在的恶意代码风险在增加。新系统引入了“Scorecards（记分卡）”概念，把安全检查结果直接展示在插件详情页。未来几个月，透明度还会进一步提升：插件必须声明它访问了哪些权限（网络、文件系统、剪贴板等），用户安装前一目了然。此外，还会有“Verified Authors（验证作者）”标签，用来标识那些通过了额外验证的可信开发者。\n\n### 给旧插件留了缓冲期，但红线是明确的\n既然标准提高了，那些历史遗留的老插件怎么办？官方在重扫中发现确实有不少老项目不符合新规。但为了不搞“一刀切”，这些老项目目前获得了临时豁免权，依然可以下载。不过，官方的态度很明确：如果不通过新审核，最终还是会从官方目录下架。这给了开发者一个明确的信号，虽然现在还没定死截止日期，但升级代码以符合新标准是迟早的事，毕竟没人想自己的插件因为安全问题被用户抛弃。\n\n### 团队协作与私有插件的未来展望\n除了面向个人开发者，这次更新也照顾到了企业团队的需求。使用 Obsidian 的团队未来可以更精细地控制成员能安装哪些社区插件，甚至可以直接分发私有插件。如果你的团队发布了官方认可的 Obsidian 插件，还可以申请“Official”徽章。这标志着 Obsidian 正在从个人知识库工具，慢慢向更严肃的团队协作平台演进，而插件生态的安全性和可控性正是这一转型的基石。"
+    },
     {
       "id": 48100706,
       "by": "varunsharma07",
@@ -2158,594 +3944,6 @@
       "articleSummary": "## 一句话总结\ndnsmasq 作者 Simon Kelley 发布了 2.92rel2 版本修复 6 个长期存在的严重漏洞，并指出 AI 安全工具引发的漏洞报告海啸正在迫使开源项目放弃传统的“披露 embargo”机制，转向更敏捷的修复策略。\n\n### 六个高危漏洞覆盖了几乎所有非远古版本\n今天（2026 年 5 月 11 日），CERT 正式披露了针对 dnsmasq 的 6 个 CVE。这些漏洞不是新引入的，而是长期存在的“陈年老病”，基本上只要你的版本不是特别老，大概率都在受影响范围内。好消息是，厂商已经提前拿到了预披露信息，理应会及时推送补丁。作者 Simon 也迅速发布了带补丁的 `2.92rel2` 版本，你可以直接从官网下载替换。\n\n### 补丁策略分两步走：稳定版打补丁，开发版动大手术\n修复方案分为了两条线。对于当前的稳定版 `2.92`，主要是 backport 补丁，力求改动最小、风险最低；而对于开发分支，有些修复采用了更激进的“重写”策略，旨在从根源上解决问题。这种差异化的处理方式很务实：既要保证现网业务能立刻止血，又不能把技术债留给未来。\n\n### AI 安全工具引发的“漏洞海啸”改变了游戏规则\n有意思的是，这次批量披露背后的推手是 AI 安全研究。过去几个月，作者被海量的 AI 生成的 Bug 报告淹没了，光是去重和分类就耗费了大量精力。这带来了一个现实问题：既然“好人”能用 AI 轻易挖出这些洞，那“坏人”肯定也能做到。在这种情况下，维持长时间的保密 embargo 意义不大，反而因为协调成本过高而拖慢了修复进度。\n\n### 传统的长周期 embargo 正在失效\n作者坦言，协调 embargo 和提供 backport 需要所有参与者投入巨大的时间和精力。在 AI 自动化挖掘成为常态的今天，这种高成本的协调机制显得越来越不合时宜。现在的核心思路变了：优先修复主分支，确保新发布的版本尽可能干净，而不是为了配合保密流程而压着补丁不发。这也是为什么最近几周 git 仓库里密集提交了大量安全修复。\n\n### 2.93 版本即将到来，速度优先是主旋律\n接下来，`dnsmasq-2.93rc1` 马上就会打 tag，目标是在一周内正式发布稳定版。作者强烈建议大家如果有能力，务必测试一下这个 RC 版本。面对 AI 带来的源源不断的漏洞报告，项目组面临一个两难选择：是尽可能多地修完 bug 再发版，还是为了保证时效性先发版？作者的选择很明确：优先保证及时发布，剩下的 bug 以后再修。"
     },
     {
-      "id": 48115127,
-      "by": "Murfalo",
-      "title": "Restore full BambuNetwork support for Bambu Lab printers",
-      "url": "https://github.com/FULU-Foundation/OrcaSlicer-bambulab",
-      "score": 275,
-      "detailUpdatedAt": 1778647429,
-      "createdAt": 1778626863,
-      "aiSummaryUpdatedAt": 1778648458,
-      "aisummary": {
-        "chinese_title": "OrcaSlicer 恢复 BambuNetwork：Bambu 打印机云/LAN 权限与溯源争议",
-        "emoji": "🤨",
-        "sarcastic_question": "花钱买打印机，怎么还得向云端请示打印？"
-      },
-      "classifications": {
-        "topics": [
-          7,
-          3,
-          6
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "BambuNetwork",
-          "Bambu Lab",
-          "OrcaSlicer",
-          "FULU-Foundation",
-          "Bambu Studio",
-          "Bambu Connect",
-          "cloud authentication",
-          "LAN mode"
-        ]
-      },
-      "classificationsUpdatedAt": 1778629885,
-      "aiSummary": {
-        "chinese_title": "OrcaSlicer 恢复 BambuNetwork：Bambu 打印机云/LAN 权限与溯源争议",
-        "emoji": "🤨",
-        "sarcastic_question": "花钱买打印机，怎么还得向云端请示打印？"
-      },
-      "detail": {
-        "id": 48115127,
-        "by": "Murfalo",
-        "title": "Restore full BambuNetwork support for Bambu Lab printers",
-        "url": "https://github.com/FULU-Foundation/OrcaSlicer-bambulab",
-        "score": 167,
-        "detailUpdatedAt": 1778638429,
-        "createdAt": 1778626863,
-        "aiSummaryUpdatedAt": 1778639149,
-        "aisummary": {
-          "chinese_title": "OrcaSlicer 恢复 BambuNetwork：Bambu 打印机云/LAN 之争",
-          "discussion_overview": [
-            {
-              "category": "用户想同时保留云端与本地控制",
-              "summary": "不少评论认为，争议核心不是要不要云，而是能否同时保留 cloud 远程功能和本地直连。有人解释 Bambu 现在把系统拆成 Cloud mode 和 LAN/Developer mode，前者要走服务器认证，后者只给本地 token 但会关掉远程监控，所以所谓「不能兼得」更像 firmware 和产品策略制造出来的限制。还有人指出某些 pro 机型的 firmware 已经能同时开云和 LAN，说明技术上并非做不到。对许多用户来说，真正想要的是按自己买来的设备来决定工作流，而不是被厂商强迫二选一。",
-              "supportid": [
-                "48115890",
-                "48116180",
-                "48117001",
-                "48116972",
-                "48116008",
-                "48116109",
-                "48116035",
-                "48116071",
-                "48116079",
-                "48115855",
-                "48115861"
-              ]
-            },
-            {
-              "category": "云端便利 vs 隐私与厂商锁定",
-              "summary": "另一类评论把问题上升到信任和隐私。有人直接把这种做法称为 enshittification：卖的是一台自给自足的 3D printer，却逐渐把它变成必须连接公司服务的打印平台。也有人担心 print data、STL、logs 和 usage patterns 经过厂商基础设施后，会给 labs、startup 甚至政府环境带来数据泄露和合规风险，于是宁愿断网、上 VLAN 或干脆做 air gap。围绕厂商动机的猜测也很多，从收集数据到为未来监管、年龄验证或更严的 3D 打印管控铺路都有。",
-              "supportid": [
-                "48115815",
-                "48115869",
-                "48115963",
-                "48116452",
-                "48116466",
-                "48116353",
-                "48116508",
-                "48116918",
-                "48116075",
-                "48116977",
-                "48116071"
-              ]
-            },
-            {
-              "category": "本地替代方案与官方 LAN 模式局限",
-              "summary": "不少人则在讨论本地控制的现实替代方案。评论指出 LAN + Developer mode 下其实可以直接用 MQTT 发打印任务，不必依赖那个 proprietary binary plugin；配合 Home Assistant、Bambuddy、Tailscale 之类工具，还能做视频监控、远程控制和耗材状态读取。有人还贴出 OpenBambuAPI 作为更开放的接口实现，说明社区已经把很多所谓的「云功能」搬回了本地。与此同时，官方 LAN 模式又被吐槽在 Linux 上 buggy、slow，而且完全 technically unnecessary。",
-              "supportid": [
-                "48116146",
-                "48116441",
-                "48116690",
-                "48117023",
-                "48116735",
-                "48116801",
-                "48116555",
-                "48116716",
-                "48117001"
-              ]
-            },
-            {
-              "category": "仓库与网站真实性争议",
-              "summary": "线程外还有一条明显的质疑线，集中在仓库和配套网站是否靠谱。有人觉得站点像 LLM 生成的 AI slop，信息很少，还保留着类似伪装出来的 careers page，于是怀疑只是之前被删掉的仓库换皮重发。另一些人对把 git history squash 掉很不满，认为这会抹掉改动脉络，让审计和溯源更困难。围绕 Google 搜索偏好 AI 站点的争论也出现了，但不少人认为拿 SEO 当借口无法解释页面内容本身的空洞。",
-              "supportid": [
-                "48115128",
-                "48115893",
-                "48115954",
-                "48116516",
-                "48116577",
-                "48116001",
-                "48116105",
-                "48116139",
-                "48116725",
-                "48116855",
-                "48116888",
-                "48116576",
-                "48116160"
-              ]
-            },
-            {
-              "category": "传统 SD 卡流程与打印机可靠性比较",
-              "summary": "也有人把讨论拉回最朴素的打印工作流：如果只是把 gcode 写进 microSD 卡，根本不需要和云纠缠。反方则指出，一旦用过网络一键发送、远程查看和暂停打印，SD 卡插拔和屏幕点选会很快变得烦琐。这个分歧还引出了对不同机器可靠性的争论：有人认为 Bambu 的体验像「一键出活」，比更像 project car 的 Prusa 省心；也有人说自己老旧的 MakerBot 或 Prusa 一样可以长期稳定运行。最终争论落点不是某个品牌绝对更好，而是不同用户对便利和折腾的容忍度差异很大。",
-              "supportid": [
-                "48115991",
-                "48116979",
-                "48116068",
-                "48116063",
-                "48116065",
-                "48116152",
-                "48116703",
-                "48115971"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "BambuNetwork",
-              "explanation": "Bambu Lab 打印机的云端通信/RPC 层，slicer 或 app 通过它发送打印和监控请求。"
-            },
-            {
-              "term": "LAN mode",
-              "explanation": "局域网直连模式，打印机只在本地网络中接受控制，不必经过云端。"
-            },
-            {
-              "term": "Developer mode",
-              "explanation": "面向高级用户的本地访问模式，通常提供 token 或 API key 供第三方客户端使用。"
-            },
-            {
-              "term": "MQTT",
-              "explanation": "轻量级消息协议，常用于设备状态上报和本地控制。"
-            },
-            {
-              "term": "Tailscale",
-              "explanation": "基于 WireGuard 的组网工具，常用来安全地远程访问内网设备。"
-            },
-            {
-              "term": "enshittification",
-              "explanation": "平台先优化体验吸引用户，随后逐步加限制、抽取价值的恶化过程。"
-            },
-            {
-              "term": "OrcaSlicer",
-              "explanation": "第三方 3D 打印切片软件，许多用户用它替代 Bambu Studio。"
-            }
-          ],
-          "context": "这个帖子指向的是一个给 OrcaSlicer（第三方 3D 打印切片软件）补回 BambuNetwork 支持的仓库或补丁，而 BambuNetwork 本质上是 Bambu Lab 打印机的云端通信层。Bambu Lab（消费级 3D 打印机厂商）把打印分成 Cloud mode 和 LAN/Developer mode：前者要连云端做认证和远程监控，后者可用本地 token 直连打印机，但会牺牲部分云功能。评论之所以吵，是因为一部分人认为这些限制是人为的 firmware 策略，甚至已经在某些 pro 机型上存在“双开”能力；另一部分人则坚持打印数据走云会带来隐私、信任和厂商锁定问题。评论里还提到 MQTT、Tailscale、Home Assistant（开源智能家居自动化平台）和 OpenBambuAPI（社区维护的开放接口）等本地替代方案，以及这个仓库或网站是否只是前一个被删项目的换皮克隆。",
-          "emoji": "🤨",
-          "sarcastic_question": "我买的是打印机，还是Bambu云订阅呢？"
-        },
-        "classifications": {
-          "topics": [
-            7,
-            3,
-            6
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "BambuNetwork",
-            "Bambu Lab",
-            "OrcaSlicer",
-            "FULU-Foundation",
-            "Bambu Studio",
-            "Bambu Connect",
-            "cloud authentication",
-            "LAN mode"
-          ]
-        },
-        "classificationsUpdatedAt": 1778629885,
-        "aiSummary": {
-          "chinese_title": "OrcaSlicer 恢复 BambuNetwork：Bambu 打印机云/LAN 之争",
-          "discussion_overview": [
-            {
-              "category": "用户想同时保留云端与本地控制",
-              "summary": "不少评论认为，争议核心不是要不要云，而是能否同时保留 cloud 远程功能和本地直连。有人解释 Bambu 现在把系统拆成 Cloud mode 和 LAN/Developer mode，前者要走服务器认证，后者只给本地 token 但会关掉远程监控，所以所谓「不能兼得」更像 firmware 和产品策略制造出来的限制。还有人指出某些 pro 机型的 firmware 已经能同时开云和 LAN，说明技术上并非做不到。对许多用户来说，真正想要的是按自己买来的设备来决定工作流，而不是被厂商强迫二选一。",
-              "supportid": [
-                "48115890",
-                "48116180",
-                "48117001",
-                "48116972",
-                "48116008",
-                "48116109",
-                "48116035",
-                "48116071",
-                "48116079",
-                "48115855",
-                "48115861"
-              ]
-            },
-            {
-              "category": "云端便利 vs 隐私与厂商锁定",
-              "summary": "另一类评论把问题上升到信任和隐私。有人直接把这种做法称为 enshittification：卖的是一台自给自足的 3D printer，却逐渐把它变成必须连接公司服务的打印平台。也有人担心 print data、STL、logs 和 usage patterns 经过厂商基础设施后，会给 labs、startup 甚至政府环境带来数据泄露和合规风险，于是宁愿断网、上 VLAN 或干脆做 air gap。围绕厂商动机的猜测也很多，从收集数据到为未来监管、年龄验证或更严的 3D 打印管控铺路都有。",
-              "supportid": [
-                "48115815",
-                "48115869",
-                "48115963",
-                "48116452",
-                "48116466",
-                "48116353",
-                "48116508",
-                "48116918",
-                "48116075",
-                "48116977",
-                "48116071"
-              ]
-            },
-            {
-              "category": "本地替代方案与官方 LAN 模式局限",
-              "summary": "不少人则在讨论本地控制的现实替代方案。评论指出 LAN + Developer mode 下其实可以直接用 MQTT 发打印任务，不必依赖那个 proprietary binary plugin；配合 Home Assistant、Bambuddy、Tailscale 之类工具，还能做视频监控、远程控制和耗材状态读取。有人还贴出 OpenBambuAPI 作为更开放的接口实现，说明社区已经把很多所谓的「云功能」搬回了本地。与此同时，官方 LAN 模式又被吐槽在 Linux 上 buggy、slow，而且完全 technically unnecessary。",
-              "supportid": [
-                "48116146",
-                "48116441",
-                "48116690",
-                "48117023",
-                "48116735",
-                "48116801",
-                "48116555",
-                "48116716",
-                "48117001"
-              ]
-            },
-            {
-              "category": "仓库与网站真实性争议",
-              "summary": "线程外还有一条明显的质疑线，集中在仓库和配套网站是否靠谱。有人觉得站点像 LLM 生成的 AI slop，信息很少，还保留着类似伪装出来的 careers page，于是怀疑只是之前被删掉的仓库换皮重发。另一些人对把 git history squash 掉很不满，认为这会抹掉改动脉络，让审计和溯源更困难。围绕 Google 搜索偏好 AI 站点的争论也出现了，但不少人认为拿 SEO 当借口无法解释页面内容本身的空洞。",
-              "supportid": [
-                "48115128",
-                "48115893",
-                "48115954",
-                "48116516",
-                "48116577",
-                "48116001",
-                "48116105",
-                "48116139",
-                "48116725",
-                "48116855",
-                "48116888",
-                "48116576",
-                "48116160"
-              ]
-            },
-            {
-              "category": "传统 SD 卡流程与打印机可靠性比较",
-              "summary": "也有人把讨论拉回最朴素的打印工作流：如果只是把 gcode 写进 microSD 卡，根本不需要和云纠缠。反方则指出，一旦用过网络一键发送、远程查看和暂停打印，SD 卡插拔和屏幕点选会很快变得烦琐。这个分歧还引出了对不同机器可靠性的争论：有人认为 Bambu 的体验像「一键出活」，比更像 project car 的 Prusa 省心；也有人说自己老旧的 MakerBot 或 Prusa 一样可以长期稳定运行。最终争论落点不是某个品牌绝对更好，而是不同用户对便利和折腾的容忍度差异很大。",
-              "supportid": [
-                "48115991",
-                "48116979",
-                "48116068",
-                "48116063",
-                "48116065",
-                "48116152",
-                "48116703",
-                "48115971"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "BambuNetwork",
-              "explanation": "Bambu Lab 打印机的云端通信/RPC 层，slicer 或 app 通过它发送打印和监控请求。"
-            },
-            {
-              "term": "LAN mode",
-              "explanation": "局域网直连模式，打印机只在本地网络中接受控制，不必经过云端。"
-            },
-            {
-              "term": "Developer mode",
-              "explanation": "面向高级用户的本地访问模式，通常提供 token 或 API key 供第三方客户端使用。"
-            },
-            {
-              "term": "MQTT",
-              "explanation": "轻量级消息协议，常用于设备状态上报和本地控制。"
-            },
-            {
-              "term": "Tailscale",
-              "explanation": "基于 WireGuard 的组网工具，常用来安全地远程访问内网设备。"
-            },
-            {
-              "term": "enshittification",
-              "explanation": "平台先优化体验吸引用户，随后逐步加限制、抽取价值的恶化过程。"
-            },
-            {
-              "term": "OrcaSlicer",
-              "explanation": "第三方 3D 打印切片软件，许多用户用它替代 Bambu Studio。"
-            }
-          ],
-          "context": "这个帖子指向的是一个给 OrcaSlicer（第三方 3D 打印切片软件）补回 BambuNetwork 支持的仓库或补丁，而 BambuNetwork 本质上是 Bambu Lab 打印机的云端通信层。Bambu Lab（消费级 3D 打印机厂商）把打印分成 Cloud mode 和 LAN/Developer mode：前者要连云端做认证和远程监控，后者可用本地 token 直连打印机，但会牺牲部分云功能。评论之所以吵，是因为一部分人认为这些限制是人为的 firmware 策略，甚至已经在某些 pro 机型上存在“双开”能力；另一部分人则坚持打印数据走云会带来隐私、信任和厂商锁定问题。评论里还提到 MQTT、Tailscale、Home Assistant（开源智能家居自动化平台）和 OpenBambuAPI（社区维护的开放接口）等本地替代方案，以及这个仓库或网站是否只是前一个被删项目的换皮克隆。",
-          "emoji": "🤨",
-          "sarcastic_question": "我买的是打印机，还是Bambu云订阅呢？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n这个 OrcaSlicer 修改版通过绕过官方限制，成功让 Bambu Lab 打印机恢复了完整的 BambuNetwork 远程打印功能，不再局限于局域网。\n\n### 官方限制逼出的“曲线救国”\nBambu Lab 的官方策略最近发生了变化，导致原版 OrcaSlicer 在连接 BambuNetwork 时遇到了阻碍。这直接把用户逼到了墙角：要么只用局域网（LAN）打印，要么放弃第三方切片软件。对于习惯了 OrcaSlicer 强大功能，又需要随时随地远程管理的开发者来说，这显然是个无法接受的妥协。于是，这个修改版应运而生，它的目标非常明确——把被切断的“网线”接回去。\n\n### 核心突破：打破局域网壁垒\n这个版本最核心的改动，就是彻底恢复了 BambuNetwork 的支持。说白了，它不再受限于局域网环境，而是像以前一样，可以通过互联网直接连接打印机。这意味着你可以在公司给家里的打印机发任务，或者在外出时监控打印进度。这种“全功能”恢复不仅仅是能连上，还包括了正常的打印操作和状态监控，基本上把官方阉割的体验补齐了。\n\n### Windows 用户的门槛：WSL 2 是必选项\n如果你是 Windows 用户，这里有个硬性要求：必须启用 WSL 2。这不是为了折腾，而是因为该版本底层依赖 Linux 环境来运行某些关键组件。安装前，你需要以管理员身份运行 PowerShell，执行两条 `dism.exe` 命令来开启“适用于 Linux 的 Windows 子系统”和“虚拟机平台”。虽然多了一步重启系统的操作，但为了换取完整的网络功能，这点成本还是值得的。\n\n### Linux 与 macOS 的现状差异\n相比之下，Linux 用户的体验就顺滑多了，不需要任何特殊的虚拟化配置，正常安装即可运行。但 macOS 用户目前还得再等等，文档里明确标注了“Work in progress”。这也从侧面反映出，该项目目前的开发重心和测试环境主要集中在 Windows 和 Linux 平台上，Mac 支持还在追赶中。\n\n### BMCU：一个值得关注的配套选项\n除了恢复网络功能，作者还强烈推荐搭配使用 BMCU（Bambu MCU Custom Firmware）。你可以在作者的仓库里找到对应的固件。虽然文章没有细说 BMCU 的具体作用，但通常这类固件是为了解锁更多底层控制权或优化性能。对于追求极致体验、愿意折腾硬件的开发者来说，这算是一个额外的彩蛋。"
-    },
-    {
-      "id": 48115807,
-      "by": "doener",
-      "title": "Tell NYT, Atlantic, USA Today to Keep Wayback Machine",
-      "url": "https://www.savethearchive.com/newsleaders/",
-      "score": 224,
-      "detailUpdatedAt": 1778645634,
-      "createdAt": 1778632864,
-      "aiSummaryUpdatedAt": 1778646633,
-      "aisummary": {
-        "chinese_title": "NYT等媒体封锁Wayback引发robots.txt、AI抓取与档案保存争议",
-        "emoji": "🤨",
-        "sarcastic_question": "既要让人记住历史，又要把Wayback Machine关门？"
-      },
-      "classifications": {
-        "topics": [
-          10,
-          5,
-          6
-        ],
-        "facets": [
-          9
-        ],
-        "tags": [
-          "Wayback Machine",
-          "Internet Archive",
-          "The New York Times",
-          "The Atlantic",
-          "USA Today",
-          "Save the Archive",
-          "robots.txt",
-          "AI",
-          "paywall"
-        ]
-      },
-      "classificationsUpdatedAt": 1778637078,
-      "aiSummary": {
-        "chinese_title": "NYT等媒体封锁Wayback引发robots.txt、AI抓取与档案保存争议",
-        "emoji": "🤨",
-        "sarcastic_question": "既要让人记住历史，又要把Wayback Machine关门？"
-      },
-      "detail": {
-        "id": 48115807,
-        "by": "doener",
-        "title": "Tell NYT, Atlantic, USA Today to Keep Wayback Machine",
-        "url": "https://www.savethearchive.com/newsleaders/",
-        "score": 224,
-        "detailUpdatedAt": 1778645634,
-        "createdAt": 1778632864,
-        "aiSummaryUpdatedAt": 1778646633,
-        "aisummary": {
-          "chinese_title": "NYT等媒体封锁Wayback引发robots.txt、AI抓取与档案保存争议",
-          "discussion_overview": [
-            {
-              "category": "robots.txt与法律边界",
-              "summary": "讨论首先澄清了 archive.org 到底是不是“无视 robots.txt”。有人指出，nytimes.com 之类站点已经明确把 archive.org_bot 设为 Disallow，而 Internet Archive 公开说明过：robots.txt 主要限制自动爬取，不等于禁止任何人手动查看 URL。支持者认为，高知名度的 archive 项目如果公然不理会这些规则，很可能面对诉讼或监管压力，所以遵守爬虫排除规范是现实选择。反对者则觉得，这让守规矩的一方承担了额外负担，而更大的爬虫往往并不会因此停手。",
-              "supportid": [
-                "48116640",
-                "48116741",
-                "48116732",
-                "48117130",
-                "48117139",
-                "48117615",
-                "48117073",
-                "48117305"
-              ]
-            },
-            {
-              "category": "AI抓取与版权争议",
-              "summary": "不少人把媒体封锁 archive 的动机直接归结为 AI 训练数据之争。有人认为，出版社是想阻止 AI 公司把归档页变成免费语料；也有人反驳说，LLM 公司完全可以直接抓站、轮换账号和 IP，Wayback Machine 并不是唯一入口。讨论里还纠结法律措辞，有人认为“stealing”不准确，更接近 copyright infringement，而 robots.txt 的意义更多在于证明权利人明确反对抓取。还有人直言，真正该被限制的是 AI 抓取，不是 Internet Archive。",
-              "supportid": [
-                "48116834",
-                "48116894",
-                "48117087",
-                "48117223",
-                "48117511",
-                "48116657"
-              ]
-            },
-            {
-              "category": "档案保存与公共记忆",
-              "summary": "另一大主题是归档本身的公共价值。评论把 Wayback Machine 类比为图书馆里的 microfiche，认为历史报纸和网页快照是研究、核实和追责的重要基础。网上文章会被改字、补更、删段，甚至出现标题和措辞错误，因此保留版本变化能让外界看到当时公众实际接触到的内容。对这类观点来说，限制归档不是少了一个工具，而是在让不盈利的历史记录慢慢消失。",
-              "supportid": [
-                "48116683",
-                "48116742",
-                "48116776",
-                "48116864",
-                "48116566",
-                "48116817",
-                "48116944"
-              ]
-            },
-            {
-              "category": "商业模式：广告、付费墙与替代方案",
-              "summary": "很多评论把这事看成新闻商业模式冲突：NYT、The Atlantic 既靠订阅又靠广告和数据变现，却仍让付费用户看到很重的广告与追踪。有人认为，如果读者通过 Wayback 看到的本来就是不会付费的人，封掉 archive 也未必真能改善收入；也有人从相反方向主张回到纯广告模式，或者直接取消广告和订阅。更温和的折中方案包括 30 天或 1 年延迟开放、访问次数配额、NewsBank 式 escrow，以及 patronage / foundation model，让愿意支持的读者换取更高等级的访问权。",
-              "supportid": [
-                "48116505",
-                "48116537",
-                "48116795",
-                "48116913",
-                "48116558",
-                "48117363",
-                "48115997",
-                "48116923",
-                "48116983",
-                "48116882",
-                "48116947",
-                "48117194",
-                "48117146",
-                "48116956"
-              ]
-            },
-            {
-              "category": "媒体公信力与影响力",
-              "summary": "还有一派把这看作媒体公信力下滑的信号。有人觉得这些大媒体更像广告和数据收集公司，失去 archival 价值后是在加速自己的边缘化；也有人反驳 NYT 仍有数十亿美元收入，独立调查报道依然重要。评论区还争论“独立”到底是什么意思：只要能批评共和党并不等于真正独立，是否也敢批评民主党才更能检验立场。整体上，这条线索围绕的是大媒体究竟是公共机构、商业产品，还是两者之间的混合体。",
-              "supportid": [
-                "48116786",
-                "48116798",
-                "48116832",
-                "48116879",
-                "48116853",
-                "48117246",
-                "48117349",
-                "48117003",
-                "48116944"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "robots.txt",
-              "explanation": "网站给爬虫看的排除规则文件，用来声明哪些路径不应被自动抓取。"
-            },
-            {
-              "term": "Wayback Machine",
-              "explanation": "Internet Archive 提供的网页历史快照与回溯浏览服务。"
-            },
-            {
-              "term": "paywall",
-              "explanation": "付费墙，限制未订阅用户访问内容的机制。"
-            },
-            {
-              "term": "LLM scraping",
-              "explanation": "用自动化方式抓取网页内容，供大语言模型（LLM）训练或检索使用。"
-            }
-          ],
-          "context": "Wayback Machine 是 Internet Archive（一个保存网页与数字资料的非营利档案项目）的历史快照服务，站点所有者可以通过 robots.txt（给爬虫看的排除规则）限制 archive.org_bot 之类的自动抓取。NYT、The Atlantic、USA Today 被讨论的焦点，是它们是否应继续允许网页被长期保存成可检索的历史记录。评论里把这件事和 AI 公司抓取训练数据联系起来，认为出版社担心内容被二次利用；也有人强调，归档本身对历史研究、事实核查和新闻问责很重要。讨论还延伸到付费墙、广告、数据收集，以及新闻业在信息充足时代如何重新设计收入模式。",
-          "emoji": "🤨",
-          "sarcastic_question": "既要让人记住历史，又要把Wayback Machine关门？"
-        },
-        "classifications": {
-          "topics": [
-            10,
-            5,
-            6
-          ],
-          "facets": [
-            9
-          ],
-          "tags": [
-            "Wayback Machine",
-            "Internet Archive",
-            "The New York Times",
-            "The Atlantic",
-            "USA Today",
-            "Save the Archive",
-            "robots.txt",
-            "AI",
-            "paywall"
-          ]
-        },
-        "classificationsUpdatedAt": 1778637078,
-        "aiSummary": {
-          "chinese_title": "NYT等媒体封锁Wayback引发robots.txt、AI抓取与档案保存争议",
-          "discussion_overview": [
-            {
-              "category": "robots.txt与法律边界",
-              "summary": "讨论首先澄清了 archive.org 到底是不是“无视 robots.txt”。有人指出，nytimes.com 之类站点已经明确把 archive.org_bot 设为 Disallow，而 Internet Archive 公开说明过：robots.txt 主要限制自动爬取，不等于禁止任何人手动查看 URL。支持者认为，高知名度的 archive 项目如果公然不理会这些规则，很可能面对诉讼或监管压力，所以遵守爬虫排除规范是现实选择。反对者则觉得，这让守规矩的一方承担了额外负担，而更大的爬虫往往并不会因此停手。",
-              "supportid": [
-                "48116640",
-                "48116741",
-                "48116732",
-                "48117130",
-                "48117139",
-                "48117615",
-                "48117073",
-                "48117305"
-              ]
-            },
-            {
-              "category": "AI抓取与版权争议",
-              "summary": "不少人把媒体封锁 archive 的动机直接归结为 AI 训练数据之争。有人认为，出版社是想阻止 AI 公司把归档页变成免费语料；也有人反驳说，LLM 公司完全可以直接抓站、轮换账号和 IP，Wayback Machine 并不是唯一入口。讨论里还纠结法律措辞，有人认为“stealing”不准确，更接近 copyright infringement，而 robots.txt 的意义更多在于证明权利人明确反对抓取。还有人直言，真正该被限制的是 AI 抓取，不是 Internet Archive。",
-              "supportid": [
-                "48116834",
-                "48116894",
-                "48117087",
-                "48117223",
-                "48117511",
-                "48116657"
-              ]
-            },
-            {
-              "category": "档案保存与公共记忆",
-              "summary": "另一大主题是归档本身的公共价值。评论把 Wayback Machine 类比为图书馆里的 microfiche，认为历史报纸和网页快照是研究、核实和追责的重要基础。网上文章会被改字、补更、删段，甚至出现标题和措辞错误，因此保留版本变化能让外界看到当时公众实际接触到的内容。对这类观点来说，限制归档不是少了一个工具，而是在让不盈利的历史记录慢慢消失。",
-              "supportid": [
-                "48116683",
-                "48116742",
-                "48116776",
-                "48116864",
-                "48116566",
-                "48116817",
-                "48116944"
-              ]
-            },
-            {
-              "category": "商业模式：广告、付费墙与替代方案",
-              "summary": "很多评论把这事看成新闻商业模式冲突：NYT、The Atlantic 既靠订阅又靠广告和数据变现，却仍让付费用户看到很重的广告与追踪。有人认为，如果读者通过 Wayback 看到的本来就是不会付费的人，封掉 archive 也未必真能改善收入；也有人从相反方向主张回到纯广告模式，或者直接取消广告和订阅。更温和的折中方案包括 30 天或 1 年延迟开放、访问次数配额、NewsBank 式 escrow，以及 patronage / foundation model，让愿意支持的读者换取更高等级的访问权。",
-              "supportid": [
-                "48116505",
-                "48116537",
-                "48116795",
-                "48116913",
-                "48116558",
-                "48117363",
-                "48115997",
-                "48116923",
-                "48116983",
-                "48116882",
-                "48116947",
-                "48117194",
-                "48117146",
-                "48116956"
-              ]
-            },
-            {
-              "category": "媒体公信力与影响力",
-              "summary": "还有一派把这看作媒体公信力下滑的信号。有人觉得这些大媒体更像广告和数据收集公司，失去 archival 价值后是在加速自己的边缘化；也有人反驳 NYT 仍有数十亿美元收入，独立调查报道依然重要。评论区还争论“独立”到底是什么意思：只要能批评共和党并不等于真正独立，是否也敢批评民主党才更能检验立场。整体上，这条线索围绕的是大媒体究竟是公共机构、商业产品，还是两者之间的混合体。",
-              "supportid": [
-                "48116786",
-                "48116798",
-                "48116832",
-                "48116879",
-                "48116853",
-                "48117246",
-                "48117349",
-                "48117003",
-                "48116944"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "robots.txt",
-              "explanation": "网站给爬虫看的排除规则文件，用来声明哪些路径不应被自动抓取。"
-            },
-            {
-              "term": "Wayback Machine",
-              "explanation": "Internet Archive 提供的网页历史快照与回溯浏览服务。"
-            },
-            {
-              "term": "paywall",
-              "explanation": "付费墙，限制未订阅用户访问内容的机制。"
-            },
-            {
-              "term": "LLM scraping",
-              "explanation": "用自动化方式抓取网页内容，供大语言模型（LLM）训练或检索使用。"
-            }
-          ],
-          "context": "Wayback Machine 是 Internet Archive（一个保存网页与数字资料的非营利档案项目）的历史快照服务，站点所有者可以通过 robots.txt（给爬虫看的排除规则）限制 archive.org_bot 之类的自动抓取。NYT、The Atlantic、USA Today 被讨论的焦点，是它们是否应继续允许网页被长期保存成可检索的历史记录。评论里把这件事和 AI 公司抓取训练数据联系起来，认为出版社担心内容被二次利用；也有人强调，归档本身对历史研究、事实核查和新闻问责很重要。讨论还延伸到付费墙、广告、数据收集，以及新闻业在信息充足时代如何重新设计收入模式。",
-          "emoji": "🤨",
-          "sarcastic_question": "既要让人记住历史，又要把Wayback Machine关门？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n主流媒体以 AI 版权为由封锁 Wayback Machine，但这不仅无法阻止 AI 抓取，反而破坏了新闻业最需要的独立历史存证与事实核查防线。\n\n### 新闻自由不仅是写，更是被记住\n新闻自由的核心不仅仅是“写”的权利，更是作品能被后代阅读和记忆的权利。2026 年是世界新闻自由日 30 周年，但讽刺的是，包括纽约时报、大西洋月刊和今日美国在内的主流媒体，其记者的作品却不再被非营利性的 Internet Archive 保存。这封请愿书的目的，就是呼吁这些媒体巨头公开承诺与 Internet Archive 合作，让 Wayback Machine 继续保存新闻记录。说白了，如果新闻写出来却随时可能被抹去，那所谓的自由也就失去了根基。\n\n### 封锁存档的理由其实站不住脚\n自今年 2 月以来，纽约时报明确要求 Wayback Machine 停止保存其内容。更有意思的是，Wired 报道指出，今日美国一方面发布依赖 Wayback Machine 进行事实核查的重磅报道，另一方面却封锁该工具对自己同一篇报道的存档。当 100 多名记者联名感谢 Internet Archive 的尊重式存档时，大西洋月刊的 CEO 虽然回应了舆论，却拒绝承诺寻找解决方案。这些媒体封锁存档的理由是担心 AI 抓取，但请愿书指出，这种担忧完全是假设性的，并没有实际证据支持。\n\n### AI 根本不依赖 Wayback Machine\n很多人误以为封锁 Wayback Machine 就能挡住 AI，这其实是个巨大的误解。生成式 AI 公司完全可以像那些山寨存档网站一样，无视规则直接从发布商网站上抓取内容，而且几乎没什么成本。硅谷的大部分公司都在这么干，唯独 Internet Archive 选择遵守规则，靠的是“Integrity”（正直）。如果因为害怕 AI 就牺牲掉这个正直的合作伙伴，结果只能是挡住了守规矩的人，却防不住真正作恶的 AI。\n\n### 存档是抵御篡改的唯一防线\n随着审查制度和威权主义的抬头，修改报道、抹去事实的压力正在变大。记者们频繁面临死亡威胁，过去一年甚至已有记者为此牺牲。在这种环境下，Wayback Machine 作为中立的第三方，其存证价值比以往任何时候都高。它能让那些威胁权势的报道在压力下依然存活，这既是对逝者的尊重，也是给历史留下的真相。如果连媒体自己都切断这条防线，那才是真正的灾难。\n\n### 媒体应该拥抱而不是排斥盟友\nWayback Machine 实际上让每一个在线新闻媒体在面对“删稿”压力时都更具韧性。对于任何一家还在做严肃新闻的媒体来说，拥有这样一个盟友绝对符合自身利益。独立保存新闻本不该是一件难事，现在却变得如此复杂。请愿书最后呼吁各大媒体领导层立刻行动，与 Internet Archive 合作，把所有新闻都放进 Wayback Machine。毕竟，新闻如果不被存档，就等于从未存在过。"
-    },
-    {
       "id": 48069032,
       "by": "luispa",
       "title": "When life gives you lemons, write better error messages",
@@ -4652,335 +5850,6 @@
         }
       },
       "articleSummary": "## 一句话总结\nBambu Lab 为了强推云服务，不惜用法律手段威胁开源开发者，把使用自家 AGPL 代码的行为污蔑为“伪造攻击”，彻底撕破了开源社区的脸面。\n\n### 当“拥有”变成一种奢望，防火墙成了最后的防线\n作者其实是个典型的技术控，手里拿着 Bambu Lab 的 P1S 打印机，但他对厂商越来越不信任。自从 Bambu 开始强推“始终在线”的云方案，作者就意识到这玩意儿不受控。为了夺回对自己买下的硬件的控制权，他搞了一套组合拳：用 OPNsense 防火墙切断打印机联网、停更固件、强制开启 Developer 模式，甚至把官方软件 Bambu Studio 换成了开源的 OrcaSlicer。说白了，就是不想让厂商盯着自己的一举一动。本来这事儿也就这样了，厂商赚大众的钱，极客玩自己的，相安无事。但 Bambu Lab 显然不满足于此，他们非要把手伸向那 0.1% 不想用云服务的硬核用户。\n\n### 开源协议的传承，成了厂商眼中的“原罪”\n要理解这次冲突，得先理清软件的谱系。OrcaSlicer 是从 Bambu Studio fork 出来的，而 Bambu Studio 又 fork 自 Prusa Slicer，最早能追溯到 Slic3r。这一脉相承的代码都是基于 AGPLv3 协议，这意味着开源、可修改是写在基因里的。OrcaSlicer 本来就在努力适配 Bambu 那套别扭的默认设置——因为默认情况下，你打印的每一个文件都要经过 Bambu 的服务器。对于不想用云的用户，OrcaSlicer 提供了本地化的可能，这本来是开源社区最正常的贡献。但 Bambu 看不惯这一点，他们发现了一个叫 OrcaSlicer-bambulab 的 fork，这个版本允许用户在不经过 Bambu 云端的情况下使用打印机的全部功能，这直接触动了他们的神经。\n\n### 所谓的“伪造攻击”，其实只是用了你自己的代码\nBambu Lab 的反应非常激烈，直接给那个 fork 的开发者发了法律威胁。最离谱的是，他们的指控完全站不住脚。Bambu 声称这个 fork 进行了“伪造攻击”，冒充了官方客户端。但事实是，这个 fork 用的完全是 Bambu Studio 上游的原始代码，连 User Agent 字符串都没改。开发者对此感到愤怒，因为 Bambu 没有私下沟通，而是直接发了一篇充满误导性的公开声明，把他描绘成一个攻击基础设施的黑客。这不仅是法律霸凌，更是对开源精神的践踏——你把代码开源了，别人照着用，你反过来说人家在伪造你？\n\n### 安全借口背后的逻辑硬伤\nBambu 在官方博客里试图把事情上升到安全高度，说这种修改会注入虚假的身份元数据，导致 DDoS 风险。他们声称如果大家都这么干，服务器就无法区分流量，系统会崩溃。但这套说辞在技术人看来简直是个笑话。如果仅仅靠一个公开的 User Agent 字符串来防御 DDoS，那这架构本身就有大问题。更有意思的是，Bambu 自己当年 fork Prusa Slicer 时，也曾导致 Bambu 用户的遥测数据打到了 Prusa 的服务器，Prusa 当时可没像他们现在这样发律师函。这种“只许州官放火”的做法，很难让人相信他们真的是为了安全，更像是为了维护云生态的垄断地位。\n\n### 用脚投票，或许比争论更有效\n这已经不是 Bambu 第一次跟社区对立了。去年面对用户对云模式的质疑，他们就发过博客把大家的愤怒归结为“不幸的错误信息”。今年，他们更进一步，把锅甩给一个单打独斗的开源开发者，声称他威胁到了整个基础设施。这种公关策略不仅没能解决问题，反而激怒了像 Louis Rossmann 这样的技术大牛，甚至有人愿意众筹 1 万美金帮开发者打官司。但作者觉得，与其跟这种把开源协议当擦手纸的厂商纠缠，不如直接用钱投票——换一家买。毕竟，对于一个不尊重用户所有权、也不懂开源文化的公司，再多的技术讨论恐怕也是对牛弹琴。"
-    },
-    {
-      "id": 48109970,
-      "by": "xz18r",
-      "title": "The Future of Obsidian Plugins",
-      "url": "https://obsidian.md/blog/future-of-plugins/",
-      "score": 264,
-      "detailUpdatedAt": 1778625841,
-      "createdAt": 1778602865,
-      "aiSummaryUpdatedAt": 1778626552,
-      "aisummary": {
-        "chinese_title": "Obsidian 社区插件审核上线：自动扫描、权限与沙箱争议",
-        "emoji": "🤔",
-        "sarcastic_question": "没有沙箱，扫描真能防住更新后的木马？"
-      },
-      "classifications": {
-        "topics": [
-          11,
-          3,
-          4
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "Obsidian",
-          "Obsidian plugins",
-          "plugin API",
-          "permission system",
-          "sandboxing",
-          "automated scans",
-          "AI",
-          "scorecards",
-          "Notion"
-        ]
-      },
-      "classificationsUpdatedAt": 1778606517,
-      "aiSummary": {
-        "chinese_title": "Obsidian 社区插件审核上线：自动扫描、权限与沙箱争议",
-        "emoji": "🤔",
-        "sarcastic_question": "没有沙箱，扫描真能防住更新后的木马？"
-      },
-      "detail": {
-        "id": 48109970,
-        "by": "xz18r",
-        "title": "The Future of Obsidian Plugins",
-        "url": "https://obsidian.md/blog/future-of-plugins/",
-        "score": 264,
-        "detailUpdatedAt": 1778625841,
-        "createdAt": 1778602865,
-        "aiSummaryUpdatedAt": 1778626552,
-        "aisummary": {
-          "chinese_title": "Obsidian 社区插件审核上线：自动扫描、权限与沙箱争议",
-          "discussion_overview": [
-            {
-              "category": "发布与扩容",
-              "summary": "Obsidian 团队把这次新 Community site 和 review system 描述成一个耗时近一年的折中方案，目标是在兼容旧插件、降低迁移成本的同时，把安全和可发现性做得更好。评论里普遍把它看成一次重要的扩容，因为手工审核已经跟不上几千个插件和 AI 带来的提交洪流。也有人明确表示，这套机制终于缓解了开发者和团队长期承受的瓶颈。整体气氛是支持的，但也把它视为“先上线、再迭代”的工作中产品。",
-              "supportid": [
-                "48111426",
-                "48110898",
-                "48111554",
-                "48111332",
-                "48111666",
-                "48114254"
-              ]
-            },
-            {
-              "category": "自动扫描与人工复核",
-              "summary": "不少评论认为，这套系统的核心不是单纯自动判定，而是先用静态扫描和规则检查把大量插件过滤掉，再把少数高风险项交给人工处理。官方说明里提到每次更新都会扫描，最新版本也会持续重扫，底层还基于开源的 eslint plugin，方便外部贡献者改进。有人建议把 AI、静态分析和人工审核结合起来，既提高覆盖率，也利用机器先找出可疑行为或依赖风险。也有人提醒，依赖漏洞扫描会产生误报，需要懂上下文的人来解释结果，否则维护者会被无谓噪音拖累。",
-              "supportid": [
-                "48113408",
-                "48110748",
-                "48111027",
-                "48110794",
-                "48111282",
-                "48113911",
-                "48113986",
-                "48110939",
-                "48111715"
-              ]
-            },
-            {
-              "category": "权限与沙箱争议",
-              "summary": "讨论的另一条主线是，很多人根本不相信仅靠扫描或权限声明能拦住恶意插件。评论直接指出，Obsidian 插件目前没有 sandbox，实际上可以接触整个文件系统，还能发起 HTTP 请求，因此即使不连网也可能通过删文件、改 crontab 或 shell rc 留下后门。有人希望改成更严格的插件 API 和 permissions system，甚至在 Electron 环境里把插件放进独立上下文，但也有人认为只要允许读写笔记，这类风险就很难被彻底消除。共识更像是：安全边界必须继续加，但不可能靠单一机制一劳永逸。",
-              "supportid": [
-                "48110384",
-                "48111298",
-                "48112273",
-                "48110592",
-                "48112325",
-                "48110837",
-                "48115009",
-                "48115476",
-                "48110674"
-              ]
-            },
-            {
-              "category": "外联披露与scorecard可读性",
-              "summary": "新页面会显示插件的 disclosures，比如某个插件可能会访问外部域名，评论者对这种透明度提升普遍很买账。有人举例说，看到只写着 github.com 这种提示时，至少能顺着去查代码里到底是哪一段在外联。也有人提醒，单看域名会误导普通用户，因为 GitHub 既可能是正常仓库，也可能托管恶意脚本，所以更好的做法是继续细化到 repo、文件或代码行。还有人直接问，作为普通用户应该怎么解读 scorecard 上的一堆警告；这说明 UI 已经开始给信息，但可操作性还没完全打通。",
-              "supportid": [
-                "48114422",
-                "48114571",
-                "48115021",
-                "48115102",
-                "48115140",
-                "48112027"
-              ]
-            },
-            {
-              "category": "插件工作流与协作场景",
-              "summary": "不少人把 Obsidian 当作个人知识库和可编程工作台来用，讨论里也自然延伸到常用插件推荐、最小化插件集和本地安装方式。有人强调最好一次只装一个插件，这样才能知道每个插件到底在做什么，也有人直接分享自己常用的一串插件名单。另一类讨论集中在团队协作：Obsidian 对个人很强，但在共享、权限、实时协作上仍然不如 Notion，很多人只能借助 Obsidian Sync、Relay、Peerdraft 或 Screen Garden 等插件和服务补齐。也有人提到 AI、self-hosted sync、block reference 等本地化工作流，说明 Obsidian 的生态已经不只是记笔记，而是在拼装个人或团队的操作系统。",
-              "supportid": [
-                "48111214",
-                "48111487",
-                "48111472",
-                "48110984",
-                "48111185",
-                "48111296",
-                "48111949",
-                "48114411",
-                "48111564",
-                "48111524",
-                "48115035",
-                "48111777",
-                "48111543"
-              ]
-            },
-            {
-              "category": "开源、信任与锁定争论",
-              "summary": "有些人从一开始就拒绝使用 Obsidian，因为它不是 open source，而且他们担心自己的工作流会被专有语法和插件生态锁住。反方则认为，文件是本地 markdown、客户端离线可用、API 也足够稳定，所以真正该看的是信任和维护，而不只是源代码是否公开。争议进一步扩大到旧审核流程是否一直“名义上审核、实际上没审核”以及这次新系统是不是在承认过去的不足。也有人提醒，open source 本身并不自动等于安全，维护基础设施、依赖链和审计能力才是关键。",
-              "supportid": [
-                "48111447",
-                "48111627",
-                "48111495",
-                "48111661",
-                "48113740",
-                "48111898",
-                "48112205",
-                "48113047",
-                "48113852",
-                "48114325",
-                "48114754",
-                "48115074",
-                "48115141",
-                "48111708"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "sandboxing",
-              "explanation": "把插件限制在隔离环境里运行，只允许通过受控接口访问文件、网络等资源。"
-            },
-            {
-              "term": "permissions system",
-              "explanation": "插件先声明需要哪些能力，用户授权后才能访问相应资源的机制。"
-            },
-            {
-              "term": "scorecard",
-              "explanation": "社区站点上的插件风险/合规信息汇总，用来给用户快速判断插件状态。"
-            },
-            {
-              "term": "eslint",
-              "explanation": "JavaScript 代码检查工具，这次 review system 的基础之一。"
-            },
-            {
-              "term": "CVE",
-              "explanation": "已公开漏洞编号，用来标识和追踪软件安全漏洞。"
-            },
-            {
-              "term": "supply chain attack",
-              "explanation": "通过依赖、更新或发布链条投放恶意代码的攻击方式。"
-            }
-          ],
-          "context": "Obsidian（一个以 Markdown 为核心的笔记软件）这次上线了新的 Community site（社区插件目录）和 review system（插件审核系统），用来替代原先主要依赖社区协作和 GitHub PR 的旧流程。评论里反复强调，Obsidian 的第三方插件大多是跑在 Electron（桌面应用框架）里的 JavaScript 代码，历史上几乎没有真正的 sandbox，所以插件更新、依赖漏洞和网络外联一直是安全焦点。官方说新系统会对每个版本做扫描，并逐步增加 permissions 和更细的过滤；而用户则把它和 Debian/Ubuntu 的严格审核、PyPI/npm 的几乎无审核模式做比较。由于团队只有七个人，却要面对成千上万的插件开发者和数百万用户，这次讨论的核心其实是：如何在开放生态、兼容性和安全边界之间找到可持续的中间地带。",
-          "emoji": "🤔",
-          "sarcastic_question": "没有沙箱，扫描真能防住更新后的木马？"
-        },
-        "classifications": {
-          "topics": [
-            11,
-            3,
-            4
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "Obsidian",
-            "Obsidian plugins",
-            "plugin API",
-            "permission system",
-            "sandboxing",
-            "automated scans",
-            "AI",
-            "scorecards",
-            "Notion"
-          ]
-        },
-        "classificationsUpdatedAt": 1778606517,
-        "aiSummary": {
-          "chinese_title": "Obsidian 社区插件审核上线：自动扫描、权限与沙箱争议",
-          "discussion_overview": [
-            {
-              "category": "发布与扩容",
-              "summary": "Obsidian 团队把这次新 Community site 和 review system 描述成一个耗时近一年的折中方案，目标是在兼容旧插件、降低迁移成本的同时，把安全和可发现性做得更好。评论里普遍把它看成一次重要的扩容，因为手工审核已经跟不上几千个插件和 AI 带来的提交洪流。也有人明确表示，这套机制终于缓解了开发者和团队长期承受的瓶颈。整体气氛是支持的，但也把它视为“先上线、再迭代”的工作中产品。",
-              "supportid": [
-                "48111426",
-                "48110898",
-                "48111554",
-                "48111332",
-                "48111666",
-                "48114254"
-              ]
-            },
-            {
-              "category": "自动扫描与人工复核",
-              "summary": "不少评论认为，这套系统的核心不是单纯自动判定，而是先用静态扫描和规则检查把大量插件过滤掉，再把少数高风险项交给人工处理。官方说明里提到每次更新都会扫描，最新版本也会持续重扫，底层还基于开源的 eslint plugin，方便外部贡献者改进。有人建议把 AI、静态分析和人工审核结合起来，既提高覆盖率，也利用机器先找出可疑行为或依赖风险。也有人提醒，依赖漏洞扫描会产生误报，需要懂上下文的人来解释结果，否则维护者会被无谓噪音拖累。",
-              "supportid": [
-                "48113408",
-                "48110748",
-                "48111027",
-                "48110794",
-                "48111282",
-                "48113911",
-                "48113986",
-                "48110939",
-                "48111715"
-              ]
-            },
-            {
-              "category": "权限与沙箱争议",
-              "summary": "讨论的另一条主线是，很多人根本不相信仅靠扫描或权限声明能拦住恶意插件。评论直接指出，Obsidian 插件目前没有 sandbox，实际上可以接触整个文件系统，还能发起 HTTP 请求，因此即使不连网也可能通过删文件、改 crontab 或 shell rc 留下后门。有人希望改成更严格的插件 API 和 permissions system，甚至在 Electron 环境里把插件放进独立上下文，但也有人认为只要允许读写笔记，这类风险就很难被彻底消除。共识更像是：安全边界必须继续加，但不可能靠单一机制一劳永逸。",
-              "supportid": [
-                "48110384",
-                "48111298",
-                "48112273",
-                "48110592",
-                "48112325",
-                "48110837",
-                "48115009",
-                "48115476",
-                "48110674"
-              ]
-            },
-            {
-              "category": "外联披露与scorecard可读性",
-              "summary": "新页面会显示插件的 disclosures，比如某个插件可能会访问外部域名，评论者对这种透明度提升普遍很买账。有人举例说，看到只写着 github.com 这种提示时，至少能顺着去查代码里到底是哪一段在外联。也有人提醒，单看域名会误导普通用户，因为 GitHub 既可能是正常仓库，也可能托管恶意脚本，所以更好的做法是继续细化到 repo、文件或代码行。还有人直接问，作为普通用户应该怎么解读 scorecard 上的一堆警告；这说明 UI 已经开始给信息，但可操作性还没完全打通。",
-              "supportid": [
-                "48114422",
-                "48114571",
-                "48115021",
-                "48115102",
-                "48115140",
-                "48112027"
-              ]
-            },
-            {
-              "category": "插件工作流与协作场景",
-              "summary": "不少人把 Obsidian 当作个人知识库和可编程工作台来用，讨论里也自然延伸到常用插件推荐、最小化插件集和本地安装方式。有人强调最好一次只装一个插件，这样才能知道每个插件到底在做什么，也有人直接分享自己常用的一串插件名单。另一类讨论集中在团队协作：Obsidian 对个人很强，但在共享、权限、实时协作上仍然不如 Notion，很多人只能借助 Obsidian Sync、Relay、Peerdraft 或 Screen Garden 等插件和服务补齐。也有人提到 AI、self-hosted sync、block reference 等本地化工作流，说明 Obsidian 的生态已经不只是记笔记，而是在拼装个人或团队的操作系统。",
-              "supportid": [
-                "48111214",
-                "48111487",
-                "48111472",
-                "48110984",
-                "48111185",
-                "48111296",
-                "48111949",
-                "48114411",
-                "48111564",
-                "48111524",
-                "48115035",
-                "48111777",
-                "48111543"
-              ]
-            },
-            {
-              "category": "开源、信任与锁定争论",
-              "summary": "有些人从一开始就拒绝使用 Obsidian，因为它不是 open source，而且他们担心自己的工作流会被专有语法和插件生态锁住。反方则认为，文件是本地 markdown、客户端离线可用、API 也足够稳定，所以真正该看的是信任和维护，而不只是源代码是否公开。争议进一步扩大到旧审核流程是否一直“名义上审核、实际上没审核”以及这次新系统是不是在承认过去的不足。也有人提醒，open source 本身并不自动等于安全，维护基础设施、依赖链和审计能力才是关键。",
-              "supportid": [
-                "48111447",
-                "48111627",
-                "48111495",
-                "48111661",
-                "48113740",
-                "48111898",
-                "48112205",
-                "48113047",
-                "48113852",
-                "48114325",
-                "48114754",
-                "48115074",
-                "48115141",
-                "48111708"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "sandboxing",
-              "explanation": "把插件限制在隔离环境里运行，只允许通过受控接口访问文件、网络等资源。"
-            },
-            {
-              "term": "permissions system",
-              "explanation": "插件先声明需要哪些能力，用户授权后才能访问相应资源的机制。"
-            },
-            {
-              "term": "scorecard",
-              "explanation": "社区站点上的插件风险/合规信息汇总，用来给用户快速判断插件状态。"
-            },
-            {
-              "term": "eslint",
-              "explanation": "JavaScript 代码检查工具，这次 review system 的基础之一。"
-            },
-            {
-              "term": "CVE",
-              "explanation": "已公开漏洞编号，用来标识和追踪软件安全漏洞。"
-            },
-            {
-              "term": "supply chain attack",
-              "explanation": "通过依赖、更新或发布链条投放恶意代码的攻击方式。"
-            }
-          ],
-          "context": "Obsidian（一个以 Markdown 为核心的笔记软件）这次上线了新的 Community site（社区插件目录）和 review system（插件审核系统），用来替代原先主要依赖社区协作和 GitHub PR 的旧流程。评论里反复强调，Obsidian 的第三方插件大多是跑在 Electron（桌面应用框架）里的 JavaScript 代码，历史上几乎没有真正的 sandbox，所以插件更新、依赖漏洞和网络外联一直是安全焦点。官方说新系统会对每个版本做扫描，并逐步增加 permissions 和更细的过滤；而用户则把它和 Debian/Ubuntu 的严格审核、PyPI/npm 的几乎无审核模式做比较。由于团队只有七个人，却要面对成千上万的插件开发者和数百万用户，这次讨论的核心其实是：如何在开放生态、兼容性和安全边界之间找到可持续的中间地带。",
-          "emoji": "🤔",
-          "sarcastic_question": "没有沙箱，扫描真能防住更新后的木马？"
-        }
-      },
-      "articleSummary": "# 一句话总结\nObsidian 推出了全新的社区站点和开发者仪表盘，核心是用自动化审查系统替代人工审核，在解决插件审核积压的同时，通过持续扫描每个版本来大幅提升生态系统的安全性。\n\n---\n\n### 从 GitHub Issue 到一站式社区门户\nObsidian 的插件生态这几年增长得太猛了，自 2020 年 API 开放以来，社区已经贡献了超过 4,000 个插件和主题，总下载量突破 1.2 亿次。原来的发布流程主要依赖 GitHub，随着数量激增，这种原始的方式显然已经不够用了。这次官方直接上线了全新的 [Obsidian Community](https://community.obsidian.md/) 站点，把插件发现、搜索、分类和详情页整合在了一起。用户现在可以按 Integrations、Bases、Charts 等几十个类别筛选，还能直观地看到每个插件的安全评分卡和付费标签。\n\n### 开发者不再需要盯着审核队列干等\n对于开发者来说，最痛的体验莫过于提交插件后漫长的等待。以前所有插件都靠人工审核，队伍越排越长，甚至积压了 2,300 多个提交。现在的新开发者仪表盘直接接管了这套流程，你只需要登录并关联 GitHub 账号，就能认领旧项目或提交新项目。最爽的是，以前可能要等几周的人工审核，现在提交后几分钟内就能跑完自动化检查。如果通过了，通常 24 小时内就能在应用内被搜到，这效率提升是数量级的。\n\n### 自动化审查：不仅审“新人”，连“更新”也抓\n这套新系统的核心其实是一个全自动化的审查引擎。以前团队只审初次提交，后续更新基本是“裸奔”，这在安全上是个巨大的隐患。现在的新系统会扫描**每一个版本**，检查代码质量、安全漏洞以及是否遵守开发者政策。有意思的地方在于，这并不是为了完全取代人工，而是把人力解放出来去处理那些需要深度审查的热门插件或社区举报的问题。官方已经用这套系统把积压的 2,300 多个提交全清空了，顺便把现有的 4,000 多个项目也重扫了一遍。\n\n### 安全透明化：从“黑盒”到“记分卡”\n随着 AI 编程助手的普及，插件生成的门槛越来越低，但这也意味着潜在的恶意代码风险在增加。新系统引入了“Scorecards（记分卡）”概念，把安全检查结果直接展示在插件详情页。未来几个月，透明度还会进一步提升：插件必须声明它访问了哪些权限（网络、文件系统、剪贴板等），用户安装前一目了然。此外，还会有“Verified Authors（验证作者）”标签，用来标识那些通过了额外验证的可信开发者。\n\n### 给旧插件留了缓冲期，但红线是明确的\n既然标准提高了，那些历史遗留的老插件怎么办？官方在重扫中发现确实有不少老项目不符合新规。但为了不搞“一刀切”，这些老项目目前获得了临时豁免权，依然可以下载。不过，官方的态度很明确：如果不通过新审核，最终还是会从官方目录下架。这给了开发者一个明确的信号，虽然现在还没定死截止日期，但升级代码以符合新标准是迟早的事，毕竟没人想自己的插件因为安全问题被用户抛弃。\n\n### 团队协作与私有插件的未来展望\n除了面向个人开发者，这次更新也照顾到了企业团队的需求。使用 Obsidian 的团队未来可以更精细地控制成员能安装哪些社区插件，甚至可以直接分发私有插件。如果你的团队发布了官方认可的 Obsidian 插件，还可以申请“Official”徽章。这标志着 Obsidian 正在从个人知识库工具，慢慢向更严肃的团队协作平台演进，而插件生态的安全性和可控性正是这一转型的基石。"
     },
     {
       "id": 48107997,
@@ -13912,1007 +14781,6 @@
         }
       },
       "articleSummary": "### 一句话总结\n墨西哥国立自治大学（UNAM）团队分别从蝎子毒液和哈瓦那辣椒中提取出新型化合物，通过化学合成与基因工程手段，成功开发出针对耐药结核病、金黄色葡萄球菌及铜绿假单胞菌的新型抗生素。\n\n### 从毒液到抗生素的跨界尝试\n墨西哥国立自治大学（UNAM）的一个研究团队，正在尝试用一种意想不到的方式解决细菌耐药性难题。他们没有去合成传统的化学分子，而是把目光投向了自然界。具体来说，是来自韦拉克鲁斯州的蝎子 *Diplocentrus melici* 的毒液。团队从这种蛛形纲动物的毒素中，分离出了两种不含氨基酸的杂环化合物——苯醌。这听起来有点像炼金术，但确实是实打实的化学提取工作。\n\n### 颜色变化带来的结构突破口\n这里有个非常巧妙的设计，帮了大忙。这两种苯醌分子有一个独特的物理性质：一旦接触空气就会氧化变色。一个变蓝，一个变红。这不仅仅是视觉上的奇观，更是化学结构解析的关键线索。科学家正是利用这种颜色变化，确定了它们的化学结构，并成功在实验室里进行了人工合成。这意味着，我们不需要靠养蝎子来量产药物，可以直接在实验室合成出来。\n\n### 蓝红分子各显神通\n合成出来之后，就要看它们到底能干啥了。测试结果很有意思：蓝色的苯醌对导致结核病的 *Mycobacterium tuberculosis* 有效；而红色的苯醌则能搞定 *Staphylococcus aureus*（金黄色葡萄球菌）。后者在医院环境里非常麻烦，能引起从皮肤感染到肺炎、脑膜炎等一系列致命并发症。斯坦福大学的化学教授 Richard Zare 也参与了这个过程，为这些发现提供了强有力的理论验证。\n\n### 动物实验验证了结核病疗效\n光有体外测试还不够，还得看活体效果。团队与萨尔瓦多苏比兰国家医学科学和营养研究所的 Rogelio Hernández Pando 合作，在诱导患上结核病的小鼠模型上测试了蓝色苯醌。结果显示，这种分子作为一种高效抗生素，效果非常显著。更有意思的是，后续测试发现它还能杀死 *Acinetobacter baumannii*（鲍曼不动杆菌）。这是一种高度耐药的机会性病原体，经常在医院里引起血液、肺部和伤口感染。\n\n### 纳米技术解决给药难题\n药物有了，怎么安全送进人体是个大问题。目前，这些从蝎子毒液中提取的分子已经在墨西哥和南非获得了专利。研究人员正在开发一种纳米颗粒，作为稳定剂和保护系统。说白了，就是给药物穿上一层“防弹衣”，让它能安全地在体内发挥作用。下一步就是临床试验，但这需要大量资金。团队表示有兴趣与制药公司合作，以实现规模化生产。\n\n### 辣椒里的防御肽：XisHar J1-1\n与此同时，UNAM 生物技术研究所的另一个团队，也没闲着。他们在哈瓦那辣椒里发现了一种肽。这个项目由 Gerardo Corzo Burguete 领导，针对的是世界卫生组织列出的高优先级病原体——*Pseudomonas aeruginosa*（铜绿假单胞菌）。这种细菌对传统抗生素有很强的耐药性，对免疫系统较弱的患者威胁极大。团队在 *Capsicum chinense* 中识别出了一种叫做 Defensin J1-1 的肽。\n\n### 基因改造与发酵量产\n发现肽只是第一步，怎么量产才是关键。团队基于这个发现，开发了一种名为 XisHar J1-1 的药物。为了生产它，科学家对一种细菌进行了基因改造，诱导其生产 J1-1 defensin。随后，他们利用深层发酵这种工业技术，对改造后的微生物进行培养。这是一种大规模生成化合物的成熟工艺。最后，将肽提取并纯化，就变成了我们可用的抗生素。这套流程不仅证明了辣椒的药用潜力，也展示了一条可行的生物技术量产路径。"
-    },
-    {
-      "id": 48058260,
-      "by": "adm4",
-      "title": "Guitar tuner that uses phone accelerometer",
-      "url": "https://tautme.github.io/phone-sensors/accel-tuner.html",
-      "score": 120,
-      "detailUpdatedAt": 1778521407,
-      "createdAt": 1778493030,
-      "aiSummaryUpdatedAt": 1778522758,
-      "aisummary": {
-        "chinese_title": "手机加速度计调吉他：混叠、权限与侧信道",
-        "emoji": "🤔",
-        "sarcastic_question": "手机里到底还有什么传感器不能顺手当麦克风？"
-      },
-      "classifications": {
-        "topics": [
-          7,
-          5,
-          3
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "accelerometer",
-          "guitar tuner",
-          "phone sensors",
-          "JavaScript",
-          "50 Hz sampling",
-          "aliasing",
-          "anti-aliasing",
-          "accelerometer as microphone",
-          "privacy",
-          "tautme/phone-sensors"
-        ]
-      },
-      "classificationsUpdatedAt": 1778498494,
-      "aiSummary": {
-        "chinese_title": "手机加速度计调吉他：混叠、权限与侧信道",
-        "emoji": "🤔",
-        "sarcastic_question": "手机里到底还有什么传感器不能顺手当麦克风？"
-      },
-      "detail": {
-        "id": 48058260,
-        "by": "adm4",
-        "title": "Guitar tuner that uses phone accelerometer",
-        "url": "https://tautme.github.io/phone-sensors/accel-tuner.html",
-        "score": 120,
-        "detailUpdatedAt": 1778521407,
-        "createdAt": 1778493030,
-        "aiSummaryUpdatedAt": 1778522758,
-        "aisummary": {
-          "chinese_title": "手机加速度计调吉他：混叠、权限与侧信道",
-          "discussion_overview": [
-            {
-              "category": "振动调音原型",
-              "summary": "很多人最先惊讶的是，这个网页小工具把手机放在琴体或琴颈上后，确实能从机械振动里读出音高。有人实测对 E、A 弦还能工作，但对更细的 1–4 弦就不稳定，说明它更像有趣的原型而不是万能调音器。评论也提到夹式调音器本来就是靠木头振动而不是空气声，所以这种思路并不离谱。还有人用拍频消失就对了来解释为什么一些人甚至可以靠手感或耳朵完成部分校音。",
-              "supportid": [
-                "48058261",
-                "48096484",
-                "48096628",
-                "48096823",
-                "48096926",
-                "48097354",
-                "48094472"
-              ]
-            },
-            {
-              "category": "采样率、混叠与算法",
-              "summary": "讨论最密集的是采样率和混叠问题。有人指出 50Hz 的采样率低于低音 E2 的 82Hz，但如果已知只是在少数几根弦之间找目标，仍可利用 aliasing（混叠）从折叠后的峰值反推出真实频率。也有人把它类比成 stroboscopic measurement（频闪测量）和 higher Nyquist zones，说明不必直接采到原频率。与此同时，代码里的 autocorrelation（自相关）被批评容易出现 octave error（八度错误）、精度受整数 delay 限制，而且比 FFT 和 YIN 这类方法更慢。",
-              "supportid": [
-                "48092464",
-                "48092841",
-                "48093090",
-                "48094552",
-                "48095038",
-                "48093696",
-                "48093998",
-                "48093113",
-                "48095017",
-                "48095267"
-              ]
-            },
-            {
-              "category": "传感器侧信道与麦克风化",
-              "summary": "另一条主线是把 accelerometer 看成潜在的侧信道。有人担心它若能做更复杂的频率分析，理论上就能在不申请麦克风权限的情况下充当隐蔽录音入口。评论里举了很多先例：用加速度计捕捉键盘敲击、把 HDD（机械硬盘）的反馈传感器当麦克风，甚至讨论扬声器和耳机的可逆性。也有人强调，真正能录得像样声音的通常是机械耦合场景，而不是手机静放在桌上时听空气声。",
-              "supportid": [
-                "48094299",
-                "48094627",
-                "48095506",
-                "48097138",
-                "48095238",
-                "48096432",
-                "48095381",
-                "48097562",
-                "48097467",
-                "48097537"
-              ]
-            },
-            {
-              "category": "浏览器权限与系统限制",
-              "summary": "不少人是第一次意识到网站也能直接拿到 accelerometer 数据。有人提到 Android 和 iOS（两大移动操作系统）已经把高频 accelerometer 访问放进额外权限里，但另一些测试者仍只看到约 50Hz 的样本率。讨论因此转向浏览器端是否还有硬件或模拟低通限制，以及这种默认权限下的信息泄露到底有多大。整体上，这条线把“能不能做出来”变成了“系统到底允许泄露多少”。",
-              "supportid": [
-                "48092464",
-                "48092421",
-                "48092721",
-                "48094345"
-              ]
-            },
-            {
-              "category": "耳调 vs 调音器",
-              "summary": "也有人直接质疑：如果你会用耳朵，为什么还需要 tuner？但这条线很快被反驳，因为标准定音并不等于现场和录音时总能保持正确定音。几位评论者提到，耳调在有外部 reference 时可行，但在 stage banter、换歌间隙、低于 E 标准的调弦或 tempered tuning（平均律）折中时，靠耳朵很难保证每根弦都准确。长期演奏者还强调，能听出明显跑调和精确调准是两回事。",
-              "supportid": [
-                "48094159",
-                "48094283",
-                "48094213",
-                "48097242",
-                "48094524",
-                "48095157",
-                "48094235",
-                "48095006"
-              ]
-            },
-            {
-              "category": "玩笑与音高梗",
-              "summary": "评论里还有一串纯玩笑和音高梗。比如把足球桌把手当成琴弦，读到 24.74Hz 后说这像 subacoustic G#，还有人玩 Total Football 和 pitch 的双关。也有人吐槽页面文案太过清爽，怀念早年那种古怪、非 AI 的产品文案。整体气氛虽然技术上很认真，但闲聊部分很像 HN 典型的乐器和声学玩笑串场。",
-              "supportid": [
-                "48094804",
-                "48095653",
-                "48095330",
-                "48095760",
-                "48094254"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "accelerometer（加速度计）",
-              "explanation": "测量设备在各轴上的加速度和振动，这里被用来感知琴体或琴颈的机械振动。"
-            },
-            {
-              "term": "aliasing（混叠）",
-              "explanation": "采样率不足时，高频信号会折叠到低频区，导致看到“假频率”。"
-            },
-            {
-              "term": "Nyquist zone（奈奎斯特区间）",
-              "explanation": "在固定采样率下，频率按区间折叠到不同别名频带中的分区概念。"
-            },
-            {
-              "term": "autocorrelation（自相关）",
-              "explanation": "把信号和其延迟版本比较来找周期的音高估计方法。"
-            },
-            {
-              "term": "YIN",
-              "explanation": "一种更稳健的音高估计算法，常用来减少 octave error。"
-            },
-            {
-              "term": "FFT（快速傅里叶变换）",
-              "explanation": "把时域信号转成频域，便于找主频和谐波。"
-            },
-            {
-              "term": "anti-aliasing filter（反混叠滤波器）",
-              "explanation": "在采样前抑制过高频率，减少混叠带来的误判。"
-            },
-            {
-              "term": "beat frequencies（拍频）",
-              "explanation": "两个接近频率叠加后产生的起伏，调弦时可用来判断是否对准。"
-            }
-          ],
-          "context": "这篇帖子讨论的是一个网页小工具：把手机放在吉他琴体或琴颈上，利用 phone accelerometer（手机加速度计）测到的机械振动来估弦音，而不是依赖麦克风采集空气声。评论之所以热闹，是因为很多手机浏览器都能读到加速度数据，但采样率常在 50Hz 左右，直接测 82Hz 的低音 E2 不一定够，所以大家开始讨论 aliasing（混叠）、高阶 Nyquist zone 和频率估计算法。有人补充，clip-on tuner（夹式调音器）本来就是靠琴颈振动工作；而在安全研究里，accelerometer 也曾被用于键盘击键识别、HDD（机械硬盘）侧信道和其他把传感器当麦克风的实验。因此它既是一个乐器调音 demo，也顺带引出了浏览器权限和传感器泄露问题。",
-          "emoji": "🤔",
-          "sarcastic_question": "手机里到底还有什么传感器不能顺手当麦克风？"
-        },
-        "classifications": {
-          "topics": [
-            7,
-            5,
-            3
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "accelerometer",
-            "guitar tuner",
-            "phone sensors",
-            "JavaScript",
-            "50 Hz sampling",
-            "aliasing",
-            "anti-aliasing",
-            "accelerometer as microphone",
-            "privacy",
-            "tautme/phone-sensors"
-          ]
-        },
-        "classificationsUpdatedAt": 1778498494,
-        "aiSummary": {
-          "chinese_title": "手机加速度计调吉他：混叠、权限与侧信道",
-          "discussion_overview": [
-            {
-              "category": "振动调音原型",
-              "summary": "很多人最先惊讶的是，这个网页小工具把手机放在琴体或琴颈上后，确实能从机械振动里读出音高。有人实测对 E、A 弦还能工作，但对更细的 1–4 弦就不稳定，说明它更像有趣的原型而不是万能调音器。评论也提到夹式调音器本来就是靠木头振动而不是空气声，所以这种思路并不离谱。还有人用拍频消失就对了来解释为什么一些人甚至可以靠手感或耳朵完成部分校音。",
-              "supportid": [
-                "48058261",
-                "48096484",
-                "48096628",
-                "48096823",
-                "48096926",
-                "48097354",
-                "48094472"
-              ]
-            },
-            {
-              "category": "采样率、混叠与算法",
-              "summary": "讨论最密集的是采样率和混叠问题。有人指出 50Hz 的采样率低于低音 E2 的 82Hz，但如果已知只是在少数几根弦之间找目标，仍可利用 aliasing（混叠）从折叠后的峰值反推出真实频率。也有人把它类比成 stroboscopic measurement（频闪测量）和 higher Nyquist zones，说明不必直接采到原频率。与此同时，代码里的 autocorrelation（自相关）被批评容易出现 octave error（八度错误）、精度受整数 delay 限制，而且比 FFT 和 YIN 这类方法更慢。",
-              "supportid": [
-                "48092464",
-                "48092841",
-                "48093090",
-                "48094552",
-                "48095038",
-                "48093696",
-                "48093998",
-                "48093113",
-                "48095017",
-                "48095267"
-              ]
-            },
-            {
-              "category": "传感器侧信道与麦克风化",
-              "summary": "另一条主线是把 accelerometer 看成潜在的侧信道。有人担心它若能做更复杂的频率分析，理论上就能在不申请麦克风权限的情况下充当隐蔽录音入口。评论里举了很多先例：用加速度计捕捉键盘敲击、把 HDD（机械硬盘）的反馈传感器当麦克风，甚至讨论扬声器和耳机的可逆性。也有人强调，真正能录得像样声音的通常是机械耦合场景，而不是手机静放在桌上时听空气声。",
-              "supportid": [
-                "48094299",
-                "48094627",
-                "48095506",
-                "48097138",
-                "48095238",
-                "48096432",
-                "48095381",
-                "48097562",
-                "48097467",
-                "48097537"
-              ]
-            },
-            {
-              "category": "浏览器权限与系统限制",
-              "summary": "不少人是第一次意识到网站也能直接拿到 accelerometer 数据。有人提到 Android 和 iOS（两大移动操作系统）已经把高频 accelerometer 访问放进额外权限里，但另一些测试者仍只看到约 50Hz 的样本率。讨论因此转向浏览器端是否还有硬件或模拟低通限制，以及这种默认权限下的信息泄露到底有多大。整体上，这条线把“能不能做出来”变成了“系统到底允许泄露多少”。",
-              "supportid": [
-                "48092464",
-                "48092421",
-                "48092721",
-                "48094345"
-              ]
-            },
-            {
-              "category": "耳调 vs 调音器",
-              "summary": "也有人直接质疑：如果你会用耳朵，为什么还需要 tuner？但这条线很快被反驳，因为标准定音并不等于现场和录音时总能保持正确定音。几位评论者提到，耳调在有外部 reference 时可行，但在 stage banter、换歌间隙、低于 E 标准的调弦或 tempered tuning（平均律）折中时，靠耳朵很难保证每根弦都准确。长期演奏者还强调，能听出明显跑调和精确调准是两回事。",
-              "supportid": [
-                "48094159",
-                "48094283",
-                "48094213",
-                "48097242",
-                "48094524",
-                "48095157",
-                "48094235",
-                "48095006"
-              ]
-            },
-            {
-              "category": "玩笑与音高梗",
-              "summary": "评论里还有一串纯玩笑和音高梗。比如把足球桌把手当成琴弦，读到 24.74Hz 后说这像 subacoustic G#，还有人玩 Total Football 和 pitch 的双关。也有人吐槽页面文案太过清爽，怀念早年那种古怪、非 AI 的产品文案。整体气氛虽然技术上很认真，但闲聊部分很像 HN 典型的乐器和声学玩笑串场。",
-              "supportid": [
-                "48094804",
-                "48095653",
-                "48095330",
-                "48095760",
-                "48094254"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "accelerometer（加速度计）",
-              "explanation": "测量设备在各轴上的加速度和振动，这里被用来感知琴体或琴颈的机械振动。"
-            },
-            {
-              "term": "aliasing（混叠）",
-              "explanation": "采样率不足时，高频信号会折叠到低频区，导致看到“假频率”。"
-            },
-            {
-              "term": "Nyquist zone（奈奎斯特区间）",
-              "explanation": "在固定采样率下，频率按区间折叠到不同别名频带中的分区概念。"
-            },
-            {
-              "term": "autocorrelation（自相关）",
-              "explanation": "把信号和其延迟版本比较来找周期的音高估计方法。"
-            },
-            {
-              "term": "YIN",
-              "explanation": "一种更稳健的音高估计算法，常用来减少 octave error。"
-            },
-            {
-              "term": "FFT（快速傅里叶变换）",
-              "explanation": "把时域信号转成频域，便于找主频和谐波。"
-            },
-            {
-              "term": "anti-aliasing filter（反混叠滤波器）",
-              "explanation": "在采样前抑制过高频率，减少混叠带来的误判。"
-            },
-            {
-              "term": "beat frequencies（拍频）",
-              "explanation": "两个接近频率叠加后产生的起伏，调弦时可用来判断是否对准。"
-            }
-          ],
-          "context": "这篇帖子讨论的是一个网页小工具：把手机放在吉他琴体或琴颈上，利用 phone accelerometer（手机加速度计）测到的机械振动来估弦音，而不是依赖麦克风采集空气声。评论之所以热闹，是因为很多手机浏览器都能读到加速度数据，但采样率常在 50Hz 左右，直接测 82Hz 的低音 E2 不一定够，所以大家开始讨论 aliasing（混叠）、高阶 Nyquist zone 和频率估计算法。有人补充，clip-on tuner（夹式调音器）本来就是靠琴颈振动工作；而在安全研究里，accelerometer 也曾被用于键盘击键识别、HDD（机械硬盘）侧信道和其他把传感器当麦克风的实验。因此它既是一个乐器调音 demo，也顺带引出了浏览器权限和传感器泄露问题。",
-          "emoji": "🤔",
-          "sarcastic_question": "手机里到底还有什么传感器不能顺手当麦克风？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n这篇文章展示了一个利用手机高采样率 IMU（加速度计）捕捉吉他琴体物理振动，从而在嘈杂环境中实现精准调音的“硬核”方案。\n\n### 调音器的终极难题：麦克风听不见\n传统的吉他调音器全靠麦克风，但这有个致命弱点：环境噪音。你在嘈杂的排练室或者有背景音乐的地方，麦克风根本分不清哪是琴弦的声音，哪是噪音。那怎么办？作者换了个思路，既然听声不行，那就“摸骨”。他让用户把手机紧紧贴在吉他琴体上，直接去感应木头震动的物理信号。这就像医生听诊一样，绕过了空气传播的干扰，直接读取乐器的“脉搏”。\n\n### 加速度计比麦克风更懂吉他\n这里的核心技术点在于，作者没有使用任何音频 API，而是直接读取了手机的三轴加速度计数据。当琴弦振动带动琴体时，手机内部的 IMU 传感器会捕捉到极其微小的物理位移。文章中展示了三轴的原始波形图，并计算了一个合成向量 **|a|**（即三轴加速度的合成幅值）。有意思的地方在于，这种物理振动信号对环境噪音完全免疫，哪怕你在闹市里，只要贴紧琴体，传感器读到的就只有吉他自己的震动。\n\n### 数据采样率是成败的关键\n但这事儿在 iOS 上基本跑不通，因为苹果限制了加速度计的采样率。作者特别指出，这个方案 works best on Android，原因就在于 Android 设备通常提供高采样率的 IMU 数据。要检测吉他低音 E 弦（约 82.4 Hz）的基频，根据奈奎斯特采样定理，采样率至少得翻倍，实际应用中为了精度往往需要更高。只有拿到了高密度的数据点，后续的算法才能从杂乱的振动中提取出准确的音高。\n\n### 巧妙处理信号混叠与轴选择\n拿到数据后怎么算音高？作者并没有简单粗暴地做 FFT，而是先做了一个聪明的筛选：在三轴数据中，自动选取信号最强的那一轴作为主信号源。因为手机贴在琴身上的角度不固定，振动在不同轴上的投影强弱也不同，选最强的轴信噪比最高。此外，针对传感器可能出现的 aliasing（混叠）现象，算法里还包含了一个修正逻辑，将检测到的频率校准回真实的琴弦频率，确保显示的音高是准的。\n\n### 一个极简但硬核的工程实现\n整个方案不需要复杂的音频信号处理库，只需要申请 Motion 权限，读取传感器数据，然后跑一遍频率检测算法。虽然听起来简单，但它巧妙地利用了物理特性解决了声学难题。对于那些受够了环境噪音干扰的开发者来说，这篇文章提供了一个非常规但极其有效的思路：有时候，与其在软件算法里跟噪音死磕，不如换个传感器，直接从物理层面解决问题。"
-    },
-    {
-      "id": 48067184,
-      "by": "bryan0",
-      "title": "Driver accused of DUI tracks missing laptop to Illinois State trooper's house",
-      "url": "https://abc7chicago.com/post/top-cop-driver-accused-dui-tracks-missing-laptop-illinois-state-police-trooper-kevin-bradleys-house/19060850/",
-      "score": 386,
-      "detailUpdatedAt": 1778521418,
-      "createdAt": 1778506828,
-      "aiSummaryUpdatedAt": 1778522426,
-      "aisummary": {
-        "chinese_title": "伊州州警DUI拦查后私藏MacBook，OT冲25万美元只停职一天",
-        "emoji": "🤬",
-        "sarcastic_question": "州警把MacBook带回家，还能叫“courtesy”执法吗？"
-      },
-      "classifications": {
-        "topics": [
-          9,
-          3
-        ],
-        "facets": [
-          8
-        ],
-        "tags": [
-          "Illinois State Police",
-          "Kevin Bradley",
-          "DUI",
-          "missing laptop",
-          "tracking",
-          "police misconduct",
-          "chain of custody",
-          "qualified immunity",
-          "ABC7 Chicago"
-        ]
-      },
-      "classificationsUpdatedAt": 1778507454,
-      "aiSummary": {
-        "chinese_title": "伊州州警DUI拦查后私藏MacBook，OT冲25万美元只停职一天",
-        "emoji": "🤬",
-        "sarcastic_question": "州警把MacBook带回家，还能叫“courtesy”执法吗？"
-      },
-      "detail": {
-        "id": 48067184,
-        "by": "bryan0",
-        "title": "Driver accused of DUI tracks missing laptop to Illinois State trooper's house",
-        "url": "https://abc7chicago.com/post/top-cop-driver-accused-dui-tracks-missing-laptop-illinois-state-police-trooper-kevin-bradleys-house/19060850/",
-        "score": 282,
-        "detailUpdatedAt": 1778514207,
-        "createdAt": 1778506828,
-        "aiSummaryUpdatedAt": 1778514643,
-        "aisummary": {
-          "chinese_title": "DUI嫌疑人定位找回笔记本，伊州州警被指把物品带回家",
-          "discussion_overview": [
-            {
-              "category": "私藏证据与问责失灵",
-              "summary": "不少评论把重点放在这名 trooper 把嫌疑人的 laptop、phone、钥匙和钱包带回自己家这一点上，认为这已经不是普通失误，而是明显破坏了证据和物品交接链。有人指出，警方证据和嫌疑人物品不可能因为方便就进到执法者的私人住所，事后再用忘了归还来解释非常离谱。也有人强调，受害者用 tracker 找回财物后再去对质本身就很危险，因为对方掌握执法权，可能把冲突包装成报复或威胁。评论里对一天停职的反应也很一致：这种惩罚更像内部公关，而不是有效问责。",
-              "supportid": [
-                "48095985",
-                "48096271",
-                "48094899",
-                "48094903",
-                "48095212",
-                "48094943",
-                "48095005"
-              ]
-            },
-            {
-              "category": "警察 unions、豁免与系统性包庇",
-              "summary": "另一条主线是对 police unions、qualified immunity 和所谓内部处分的争论。很多人认为，问题不是单个坏警察，而是工会、纪律程序和豁免规则让同袍可以互相包庇，把本应进入刑事流程的行为先塞回内部调查。反对者则强调，teachers unions、军队和其他公职系统也有保护机制，但警察不同之处在于他们被授权使用 state-sanctioned violence，因此更需要外部监督。也有人直接主张取消所有公职豁免，改成由个人保险或刑责承担后果；另一派则担心这会让没人愿意做这些工作。",
-              "supportid": [
-                "48095186",
-                "48095499",
-                "48095534",
-                "48096156",
-                "48096037",
-                "48095884",
-                "48096287",
-                "48095521",
-                "48095731",
-                "48095809",
-                "48094728",
-                "48095041",
-                "48095311",
-                "48075004"
-              ]
-            },
-            {
-              "category": "DUI 路检：field sobriety test 争议",
-              "summary": "关于 DUI 检测，评论几乎变成了 field sobriety test、breathalyzer 和 blood test 的法律与技术课。批评者说路边平衡测试、念字母、跟灯光等动作高度主观，更像给警察制造 probable cause，而不是科学测量酒驾；因此有人建议拒绝 roadside test、要律师、要求 chemical test。另一派则指出，field sobriety test 也能看出药物、睡眠药或其他 impairment，不只是 alcohol；而且在一些州，拒绝 chemical test 会触发 license suspension 或血检 warrant。Illinois 的规则还被多次纠正：路边测试通常可拒绝，但 breathalyzer / blood draw 和 implied consent 又是另一套。",
-              "supportid": [
-                "48069576",
-                "48072458",
-                "48095205",
-                "48094964",
-                "48094932",
-                "48095108",
-                "48095614",
-                "48096006",
-                "48095739",
-                "48095822",
-                "48096357",
-                "48096304",
-                "48096524",
-                "48095844",
-                "48096072",
-                "48095693",
-                "48095792",
-                "48095806",
-                "48095832",
-                "48095030",
-                "48095200",
-                "48095465",
-                "48095495"
-              ]
-            },
-            {
-              "category": "加班、养老金与执法激励扭曲",
-              "summary": "还有大量评论把焦点放在薪酬、 overtime 和 pension 设计上。文章提到这名 trooper 2024 年收入接近 $250,000，评论者把它解释为 DUI 案件必须频繁出庭、每次都能拿 overtime 的结果，而最后几年工资又会抬高退休金基数，形成所谓 pension spiking。有人进一步说，很多城市把警察当成预算里的大头，却又把交通指挥、施工围挡等低风险工作变成高薪 overtime；也有人引用 BLS 数据，反驳警察是高危职业所以必须高薪的说法。更激烈的评论则把 civil asset forfeiture、ticket quotas 和 forfeiture corridors 也算进了同一套激励扭曲里。",
-              "supportid": [
-                "48076305",
-                "48096103",
-                "48095901",
-                "48096079",
-                "48095805",
-                "48094706",
-                "48094726",
-                "48095889",
-                "48094805",
-                "48094827",
-                "48094833",
-                "48094920",
-                "48095464",
-                "48095366",
-                "48095892",
-                "48095001",
-                "48095937",
-                "48095119",
-                "48096106",
-                "48094968"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "qualified immunity（限定性豁免）",
-              "explanation": "美国公职人员在未违反“清晰既定”法律时，更难被个人起诉索赔的规则。"
-            },
-            {
-              "term": "sovereign immunity（主权豁免）",
-              "explanation": "政府及其机构在很多情形下免于被起诉的原则，评论里也讨论了它是否被误用。"
-            },
-            {
-              "term": "field sobriety test（路边酒测动作测试）",
-              "explanation": "通过走直线、单脚站立、念字母等动作判断 impairment 的现场测试，争议在于主观性很强。"
-            },
-            {
-              "term": "implied consent（默示同意）",
-              "explanation": "驾驶员通常被视为已同意接受 chemical test；拒绝可能带来驾照吊销等后果。"
-            },
-            {
-              "term": "chain of custody（证据保管链）",
-              "explanation": "证据从收集到入库、出庭的交接记录，任何断裂都会削弱证据可信度。"
-            },
-            {
-              "term": "civil asset forfeiture（民事资产没收）",
-              "explanation": "执法机关可在不一定刑事定罪的情况下没收财产，常被批评会制造滥权激励。"
-            },
-            {
-              "term": "pension spiking（养老金冲高）",
-              "explanation": "通过退休前几年大量 overtime 或奖金抬高最终工资，进而放大养老金待遇的做法。"
-            }
-          ],
-          "context": "这篇报道讲的是一名 Illinois State Police（伊利诺伊州州警）trooper 在拦查一名被怀疑 DUI 的司机后，把对方的 laptop、phone、钥匙和钱包带回了自己家；司机随后通过定位追到 trooper 家门口。报道还提到州方只给了他一天停职，而评论区补充说他因为大量 DUI arrests 产生的 court appearances 拿了很多 overtime，2024 年收入接近 $250,000。讨论因此延伸到 Illinois pension system（伊利诺伊州养老金系统）的“最后几年高收入抬高退休金”问题，以及 police unions、qualified immunity（限定性豁免）和 sovereign immunity（主权豁免）这些美国警务问责争议。另一条支线是 DUI 执法本身：field sobriety test（路边酒测动作测试）、breathalyzer（呼气酒精测试仪）、blood draw（采血）和 implied consent（默示同意）在不同州的法律差异，被拿来争论警察到底是在查酒驾，还是在制造可逮捕的借口。",
-          "emoji": "🤦",
-          "sarcastic_question": "证据都带回家了，还能叫执法失误吗？"
-        },
-        "classifications": {
-          "topics": [
-            9,
-            3
-          ],
-          "facets": [
-            8
-          ],
-          "tags": [
-            "Illinois State Police",
-            "Kevin Bradley",
-            "DUI",
-            "missing laptop",
-            "tracking",
-            "police misconduct",
-            "chain of custody",
-            "qualified immunity",
-            "ABC7 Chicago"
-          ]
-        },
-        "classificationsUpdatedAt": 1778507454,
-        "aiSummary": {
-          "chinese_title": "DUI嫌疑人定位找回笔记本，伊州州警被指把物品带回家",
-          "discussion_overview": [
-            {
-              "category": "私藏证据与问责失灵",
-              "summary": "不少评论把重点放在这名 trooper 把嫌疑人的 laptop、phone、钥匙和钱包带回自己家这一点上，认为这已经不是普通失误，而是明显破坏了证据和物品交接链。有人指出，警方证据和嫌疑人物品不可能因为方便就进到执法者的私人住所，事后再用忘了归还来解释非常离谱。也有人强调，受害者用 tracker 找回财物后再去对质本身就很危险，因为对方掌握执法权，可能把冲突包装成报复或威胁。评论里对一天停职的反应也很一致：这种惩罚更像内部公关，而不是有效问责。",
-              "supportid": [
-                "48095985",
-                "48096271",
-                "48094899",
-                "48094903",
-                "48095212",
-                "48094943",
-                "48095005"
-              ]
-            },
-            {
-              "category": "警察 unions、豁免与系统性包庇",
-              "summary": "另一条主线是对 police unions、qualified immunity 和所谓内部处分的争论。很多人认为，问题不是单个坏警察，而是工会、纪律程序和豁免规则让同袍可以互相包庇，把本应进入刑事流程的行为先塞回内部调查。反对者则强调，teachers unions、军队和其他公职系统也有保护机制，但警察不同之处在于他们被授权使用 state-sanctioned violence，因此更需要外部监督。也有人直接主张取消所有公职豁免，改成由个人保险或刑责承担后果；另一派则担心这会让没人愿意做这些工作。",
-              "supportid": [
-                "48095186",
-                "48095499",
-                "48095534",
-                "48096156",
-                "48096037",
-                "48095884",
-                "48096287",
-                "48095521",
-                "48095731",
-                "48095809",
-                "48094728",
-                "48095041",
-                "48095311",
-                "48075004"
-              ]
-            },
-            {
-              "category": "DUI 路检：field sobriety test 争议",
-              "summary": "关于 DUI 检测，评论几乎变成了 field sobriety test、breathalyzer 和 blood test 的法律与技术课。批评者说路边平衡测试、念字母、跟灯光等动作高度主观，更像给警察制造 probable cause，而不是科学测量酒驾；因此有人建议拒绝 roadside test、要律师、要求 chemical test。另一派则指出，field sobriety test 也能看出药物、睡眠药或其他 impairment，不只是 alcohol；而且在一些州，拒绝 chemical test 会触发 license suspension 或血检 warrant。Illinois 的规则还被多次纠正：路边测试通常可拒绝，但 breathalyzer / blood draw 和 implied consent 又是另一套。",
-              "supportid": [
-                "48069576",
-                "48072458",
-                "48095205",
-                "48094964",
-                "48094932",
-                "48095108",
-                "48095614",
-                "48096006",
-                "48095739",
-                "48095822",
-                "48096357",
-                "48096304",
-                "48096524",
-                "48095844",
-                "48096072",
-                "48095693",
-                "48095792",
-                "48095806",
-                "48095832",
-                "48095030",
-                "48095200",
-                "48095465",
-                "48095495"
-              ]
-            },
-            {
-              "category": "加班、养老金与执法激励扭曲",
-              "summary": "还有大量评论把焦点放在薪酬、 overtime 和 pension 设计上。文章提到这名 trooper 2024 年收入接近 $250,000，评论者把它解释为 DUI 案件必须频繁出庭、每次都能拿 overtime 的结果，而最后几年工资又会抬高退休金基数，形成所谓 pension spiking。有人进一步说，很多城市把警察当成预算里的大头，却又把交通指挥、施工围挡等低风险工作变成高薪 overtime；也有人引用 BLS 数据，反驳警察是高危职业所以必须高薪的说法。更激烈的评论则把 civil asset forfeiture、ticket quotas 和 forfeiture corridors 也算进了同一套激励扭曲里。",
-              "supportid": [
-                "48076305",
-                "48096103",
-                "48095901",
-                "48096079",
-                "48095805",
-                "48094706",
-                "48094726",
-                "48095889",
-                "48094805",
-                "48094827",
-                "48094833",
-                "48094920",
-                "48095464",
-                "48095366",
-                "48095892",
-                "48095001",
-                "48095937",
-                "48095119",
-                "48096106",
-                "48094968"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "qualified immunity（限定性豁免）",
-              "explanation": "美国公职人员在未违反“清晰既定”法律时，更难被个人起诉索赔的规则。"
-            },
-            {
-              "term": "sovereign immunity（主权豁免）",
-              "explanation": "政府及其机构在很多情形下免于被起诉的原则，评论里也讨论了它是否被误用。"
-            },
-            {
-              "term": "field sobriety test（路边酒测动作测试）",
-              "explanation": "通过走直线、单脚站立、念字母等动作判断 impairment 的现场测试，争议在于主观性很强。"
-            },
-            {
-              "term": "implied consent（默示同意）",
-              "explanation": "驾驶员通常被视为已同意接受 chemical test；拒绝可能带来驾照吊销等后果。"
-            },
-            {
-              "term": "chain of custody（证据保管链）",
-              "explanation": "证据从收集到入库、出庭的交接记录，任何断裂都会削弱证据可信度。"
-            },
-            {
-              "term": "civil asset forfeiture（民事资产没收）",
-              "explanation": "执法机关可在不一定刑事定罪的情况下没收财产，常被批评会制造滥权激励。"
-            },
-            {
-              "term": "pension spiking（养老金冲高）",
-              "explanation": "通过退休前几年大量 overtime 或奖金抬高最终工资，进而放大养老金待遇的做法。"
-            }
-          ],
-          "context": "这篇报道讲的是一名 Illinois State Police（伊利诺伊州州警）trooper 在拦查一名被怀疑 DUI 的司机后，把对方的 laptop、phone、钥匙和钱包带回了自己家；司机随后通过定位追到 trooper 家门口。报道还提到州方只给了他一天停职，而评论区补充说他因为大量 DUI arrests 产生的 court appearances 拿了很多 overtime，2024 年收入接近 $250,000。讨论因此延伸到 Illinois pension system（伊利诺伊州养老金系统）的“最后几年高收入抬高退休金”问题，以及 police unions、qualified immunity（限定性豁免）和 sovereign immunity（主权豁免）这些美国警务问责争议。另一条支线是 DUI 执法本身：field sobriety test（路边酒测动作测试）、breathalyzer（呼气酒精测试仪）、blood draw（采血）和 implied consent（默示同意）在不同州的法律差异，被拿来争论警察到底是在查酒驾，还是在制造可逮捕的借口。",
-          "emoji": "🤦",
-          "sarcastic_question": "证据都带回家了，还能叫执法失误吗？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n一名被指控酒驾的餐厅高管利用 MacBook 的 \"Find My\" 功能，发现扣押他车辆的警员将电脑带回了家，进而揭露了这位\"顶级警员\"高定罪率背后潜在的系统性问题。\n\n### \"顶级警员\"的高产背后是惊人的撤案率\n\nTrooper Kevin Bradley 在伊利诺伊州警界是个响当当的人物，连续三年被评为州内\"Top Cop\"，理由是他抓捕的 DUI（酒驾）嫌疑人数量全州第一。但有意思的地方在于，ABC7 I-Team 的调查发现了一个反常的数据：在 Bradley 涉及的 319 起案件中，有 174 起要么在审判前被撤销，要么被告人被判无罪。这就形成了一个巨大的疑点：为什么这位\"明星警员\"抓的人里，超过一半都没法定罪？律师 Brandon Brown 甚至直言，这让人怀疑有多少没钱请律师的人被迫认了本不该认的罪。\n\n### 一次例行拦截演变成的\"罗生门\"\n\n事情的主角是餐厅高管 Sherard Holland，他在 2024 年 6 月的一个清晨被 Bradley 拦下。Bradley 在报告中声称 Holland 车辆晃动且闻到了酒味，但 Holland 坚称自己是代驾，清醒且合规。关键的转折点在于，Bradley 要求 Holland 把车开到几公里外的加油站才进行测试，这种操作在程序上非常罕见。当 Holland 拒绝现场清醒测试后，Bradley 以重罪 DUI 逮捕了他，并在 Holland 被关进警车后，搜查了 Holland 的车辆——正是在这个时间窗口，Holland 的 MacBook 不见了。\n\n### Find My 功能戳破了\"意外遗忘\"的谎言\n\nHolland 被释放后发现清单上没有 MacBook，起初以为车在拖车场，但他灵机一动用了 Apple 的 \"Find My\" 功能。结果让他大吃一惊：电脑没有在拖车场，而是显示在 Tinley Park 的一个私人住宅地址。Holland 鼓起勇气按响了门铃，开门的竟然就是逮捕他的 Bradley。Bradley 起初否认，但在 Holland 报警并当着 911 调度员的面质问后，Bradley 才把电脑还给了他，并辩称是\"为了你好，不小心忘在警车上了\"。\n\n### 内部调查的轻判与\"主权豁免\"的挡箭牌\n\n这件事最讽刺的地方在于后续的处理。伊利诺伊州警的内部调查认定 Bradley 没有上报拿走电脑的事，违反了规定，但仅仅给了他停职一天的处分。Bradley 对调查人员解释说，他是为了帮嫌疑人保管财物才带回家的。目前 Holland 正在起诉 Bradley 和州政府，指控其侵犯民权，但代表州政府的律师正在申请驳回诉讼，理由是 Bradley 享有\"主权豁免\"，且拦截是合法的。这意味着，即便行为明显越界，法律程序上的壁垒也让追责变得异常艰难。\n\n### 高额加班费与系统性的激励错位\n\n故事的尾声揭示了一个更深层的利益驱动机制。因为每次 DUI 逮捕后警员都必须出庭，Bradley 在 2024 年 通过法庭加班费赚了近 25 万美元，几乎是他基础工资的三倍，甚至比州警察局局长的薪水还高。虽然州警发言人强调逮捕是基于\"合理怀疑\"，定罪是检察官的事，但这种\"按抓捕量计酬\"的机制，很难不让人联想到这是否变相鼓励了像 Bradley 这样的警员为了冲业绩而滥捕。目前 Bradley 因公受伤正在休病假，但这起案件留下的关于执法公正与监督的问号，至今无人能解。"
-    },
-    {
-      "id": 48085821,
-      "by": "cylo",
-      "title": "Local AI needs to be the norm",
-      "url": "https://unix.foo/posts/local-ai-needs-to-be-norm/",
-      "score": 1627,
-      "detailUpdatedAt": 1778519606,
-      "createdAt": 1778443206,
-      "aiSummaryUpdatedAt": 1778520621,
-      "aisummary": {
-        "chinese_title": "本地AI成常态？隐私、成本与硬件拉锯",
-        "emoji": "⚖️",
-        "sarcastic_question": "都靠云端订阅喂饭了，还装什么本地自由？"
-      },
-      "classifications": {
-        "topics": [
-          1,
-          7,
-          6
-        ],
-        "facets": [
-          9
-        ],
-        "tags": [
-          "Local AI",
-          "Local LLMs",
-          "Data centers",
-          "Inference",
-          "GPU",
-          "RAM",
-          "Deepseek v4"
-        ]
-      },
-      "classificationsUpdatedAt": 1778444431,
-      "aiSummary": {
-        "chinese_title": "本地AI成常态？隐私、成本与硬件拉锯",
-        "emoji": "⚖️",
-        "sarcastic_question": "都靠云端订阅喂饭了，还装什么本地自由？"
-      },
-      "detail": {
-        "id": 48085821,
-        "by": "cylo",
-        "title": "Local AI needs to be the norm",
-        "url": "https://unix.foo/posts/local-ai-needs-to-be-norm/",
-        "score": 779,
-        "detailUpdatedAt": 1778474604,
-        "createdAt": 1778443206,
-        "aiSummaryUpdatedAt": 1778475038,
-        "aisummary": {
-          "chinese_title": "本地 AI 何时成默认：硬件、成本与云端护城河",
-          "discussion_overview": [
-            {
-              "category": "本地 AI 已能胜任日常窄任务",
-              "summary": "不少人认为本地 AI 现在已经能干很多日常活：在旧游戏本或中端主机上跑 quantized Qwen、Gemma，就能做旅行照片分类、收据 OCR、花费总结、简单问答和小段代码生成。也有人把它用于私有 agentic coding、邮件分流、文档检索和离线办公，核心卖点是数据不出设备。评论里反复强调，真正有价值的不是让本地模型像 Opus 那样“全能”，而是让它在窄任务上稳定可用。对这派人来说，本地 AI 更像一层实用工具，而不是云端的完全替代品。",
-              "supportid": [
-                "48089061",
-                "48089879",
-                "48090067",
-                "48088730",
-                "48090592",
-                "48090863",
-                "48087435",
-                "48088205",
-                "48090258",
-                "48088310"
-              ]
-            },
-            {
-              "category": "复杂知识工作仍离不开云端前沿模型",
-              "summary": "反对者则认为，本地模型在复杂编程、长上下文和通用知识上仍明显落后于 Opus、Sonnet 这类云端模型。有人指出本地推理常常只有很小的 context window、很慢的 decode 速度，做 agentic coding 时容易跑偏或卡循环。也有人提到，Cloud 模型之所以看起来便宜，是因为服务商靠共享硬件、batching 和可能的补贴把成本摊薄了。按这条线看，local 适合补位，但真正难啃的知识工作仍得靠前沿模型。",
-              "supportid": [
-                "48090170",
-                "48090332",
-                "48091074",
-                "48087676",
-                "48088537",
-                "48087418",
-                "48090822",
-                "48088431",
-                "48091027",
-                "48087828",
-                "48090644",
-                "48087511",
-                "48088924"
-              ]
-            },
-            {
-              "category": "内存、VRAM 和带宽才是硬门槛",
-              "summary": "硬件派把争论落在 memory、VRAM 和 bandwidth 上：128GB、256GB RAM 是否会变便宜，决定了本地模型能否进入普通桌面和笔记本。有人拿 Mac Studio、M3 Ultra、M5 Max、RTX 6000 Pro、H100/H200、DGX Spark、Strix Halo 等配置讨论，结论是大模型在本地不是不能跑，而是“能跑”和“跑得像样”之间差得很远。长上下文会迅速吃掉 KV cache，显存和内存带宽一紧，prefill/TTFT 和 token/s 就会崩。乐观者相信硬件会继续降价并被 unified memory 架构拉平，悲观者则认为 DDR5 和高端 GPU 的价格会被数据中心需求长期抬高。",
-              "supportid": [
-                "48089742",
-                "48089832",
-                "48090304",
-                "48090560",
-                "48088708",
-                "48088008",
-                "48087215",
-                "48087372",
-                "48091091",
-                "48088436",
-                "48090783",
-                "48089133",
-                "48088740"
-              ]
-            },
-            {
-              "category": "本地 AI 必须先有可控的 OS/API 体验",
-              "summary": "另一条主线是用户控制权：很多人不是反对 local inference，而是反对 Chrome 之类产品在后台静默下载大模型、隐藏行为、让用户没有 opt-in。评论建议把本地模型做成 OS 级能力，而不是每个应用各自塞一个 800MB 到 8GB 的模型包，最好还能通过统一 API 让应用调用。有人提到 Apple、Microsoft 已经在做系统级模型分发，也有人建议 secure enclaves 和 remote attestation 这类 verifiable private inference 方案。总体诉求是：本地 AI 要先解决 UX、资源分配和跨平台一致性，否则只会变成“会吃磁盘和电池的功能开关”。",
-              "supportid": [
-                "48090315",
-                "48087705",
-                "48087958",
-                "48088242",
-                "48088320",
-                "48090676",
-                "48088205",
-                "48089303",
-                "48090574",
-                "48088433",
-                "48089137",
-                "48088943",
-                "48090602"
-              ]
-            },
-            {
-              "category": "open weights 的商业模式与地缘博弈",
-              "summary": "围绕 open weights 的商业模式，评论区分歧很大。支持者认为公开权重本质上是营销和品牌战：先把模型放出去建立口碑，再通过 inference、平台和企业服务赚钱，甚至在中国还能起到软实力和国产替代的效果。怀疑者则认为训练成本太高，真正的公民众筹几乎撑不住 billion-dollar 级别的训练跑，最后还是得靠政府、巨头或 subsidy。与此同时，也有人担心一旦 local 替代品成熟，$200/月 之类的订阅就会被“先甜后贵”的 enshittification 吃掉。",
-              "supportid": [
-                "48087524",
-                "48088162",
-                "48090984",
-                "48087467",
-                "48088293",
-                "48088931",
-                "48088711",
-                "48089982",
-                "48088573",
-                "48088767",
-                "48089207",
-                "48089905",
-                "48088482",
-                "48090310",
-                "48090147"
-              ]
-            },
-            {
-              "category": "小模型+工具链/微调比堆参数更实际",
-              "summary": "还有一派把未来押在更小、更专用的模型上，而不是更大的通用 LLM。有人提到 JS-only、Python-only、邮件分类、代码风格学习、LoRA 微调和特定 stack 的“taste”训练，认为小模型只要在固定任务上足够好，再配上工具调用和 harness 就能很好用。也有人说 continual learning、RAG 和本地文档检索可以把“记忆”外包出去，降低模型本身的负担。这个视角下，关键不是模型像不像 frontier，而是它能否被训练成你工作流里的一个稳定零件。",
-              "supportid": [
-                "48090863",
-                "48089891",
-                "48091019",
-                "48088310",
-                "48089337",
-                "48088281",
-                "48090549",
-                "48087637",
-                "48087808",
-                "48087472",
-                "48089405",
-                "48089275"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "量化（quantization）",
-              "explanation": "通过降低模型权重或激活的数值精度来减少内存占用和成本，但通常会损失部分质量与稳定性。"
-            },
-            {
-              "term": "VRAM",
-              "explanation": "GPU 显存，模型权重和上下文缓存通常要放在这里；容量和带宽直接决定本地推理能跑多大、多快。"
-            },
-            {
-              "term": "KV cache",
-              "explanation": "attention 里保存 key/value 的缓存，用来加速后续 token 生成；长上下文和多会话会迅速吃掉内存。"
-            },
-            {
-              "term": "continuous batching",
-              "explanation": "把多个请求合并在一起推理，以摊薄读取模型的开销并提高吞吐，是云端服务的核心优势之一。"
-            },
-            {
-              "term": "open weights（公开权重）",
-              "explanation": "模型权重可被下载并本地部署，但不一定等于真正的 open source；这也是本帖反复讨论的分发与商业模式基础。"
-            }
-          ],
-          "context": "这帖围绕“本地 AI 是否会成为默认形态”展开，背景是 Chrome 的 Prompt API（浏览器内置的本地模型接口）、Apple 的 Foundation Models（Apple 提供的设备端模型）以及 DeepSeek、Qwen、Kimi、Gemma 这类 open-weight 模型不断进步。评论者一边讨论在 Mac Studio、MacBook Pro、RTX 3080/4090、A100/H100、DGX Spark、Strix Halo 上跑 quantized 模型和 agentic coding harness（如 OpenCode、ollama、llama.cpp、vLLM），一边争论 memory、VRAM、KV cache 和 bandwidth 是否会把本地方案卡死。很多人把本地 AI 看成隐私、离线和避免 lock-in 的办法，也有人认为云端模型靠 batching、共享算力和 token 定价仍然更有经济优势。整场讨论其实是在问：当 open weights、OS 级接口和更便宜的硬件继续成熟后，按 token 收费的集中式 AI 服务还能不能保持护城河。",
-          "emoji": "🤔",
-          "sarcastic_question": "既然本地AI都够用，云端还收什么智商税？"
-        },
-        "classifications": {
-          "topics": [
-            1,
-            7,
-            6
-          ],
-          "facets": [
-            9
-          ],
-          "tags": [
-            "Local AI",
-            "Local LLMs",
-            "Data centers",
-            "Inference",
-            "GPU",
-            "RAM",
-            "Deepseek v4"
-          ]
-        },
-        "classificationsUpdatedAt": 1778444431,
-        "aiSummary": {
-          "chinese_title": "本地 AI 何时成默认：硬件、成本与云端护城河",
-          "discussion_overview": [
-            {
-              "category": "本地 AI 已能胜任日常窄任务",
-              "summary": "不少人认为本地 AI 现在已经能干很多日常活：在旧游戏本或中端主机上跑 quantized Qwen、Gemma，就能做旅行照片分类、收据 OCR、花费总结、简单问答和小段代码生成。也有人把它用于私有 agentic coding、邮件分流、文档检索和离线办公，核心卖点是数据不出设备。评论里反复强调，真正有价值的不是让本地模型像 Opus 那样“全能”，而是让它在窄任务上稳定可用。对这派人来说，本地 AI 更像一层实用工具，而不是云端的完全替代品。",
-              "supportid": [
-                "48089061",
-                "48089879",
-                "48090067",
-                "48088730",
-                "48090592",
-                "48090863",
-                "48087435",
-                "48088205",
-                "48090258",
-                "48088310"
-              ]
-            },
-            {
-              "category": "复杂知识工作仍离不开云端前沿模型",
-              "summary": "反对者则认为，本地模型在复杂编程、长上下文和通用知识上仍明显落后于 Opus、Sonnet 这类云端模型。有人指出本地推理常常只有很小的 context window、很慢的 decode 速度，做 agentic coding 时容易跑偏或卡循环。也有人提到，Cloud 模型之所以看起来便宜，是因为服务商靠共享硬件、batching 和可能的补贴把成本摊薄了。按这条线看，local 适合补位，但真正难啃的知识工作仍得靠前沿模型。",
-              "supportid": [
-                "48090170",
-                "48090332",
-                "48091074",
-                "48087676",
-                "48088537",
-                "48087418",
-                "48090822",
-                "48088431",
-                "48091027",
-                "48087828",
-                "48090644",
-                "48087511",
-                "48088924"
-              ]
-            },
-            {
-              "category": "内存、VRAM 和带宽才是硬门槛",
-              "summary": "硬件派把争论落在 memory、VRAM 和 bandwidth 上：128GB、256GB RAM 是否会变便宜，决定了本地模型能否进入普通桌面和笔记本。有人拿 Mac Studio、M3 Ultra、M5 Max、RTX 6000 Pro、H100/H200、DGX Spark、Strix Halo 等配置讨论，结论是大模型在本地不是不能跑，而是“能跑”和“跑得像样”之间差得很远。长上下文会迅速吃掉 KV cache，显存和内存带宽一紧，prefill/TTFT 和 token/s 就会崩。乐观者相信硬件会继续降价并被 unified memory 架构拉平，悲观者则认为 DDR5 和高端 GPU 的价格会被数据中心需求长期抬高。",
-              "supportid": [
-                "48089742",
-                "48089832",
-                "48090304",
-                "48090560",
-                "48088708",
-                "48088008",
-                "48087215",
-                "48087372",
-                "48091091",
-                "48088436",
-                "48090783",
-                "48089133",
-                "48088740"
-              ]
-            },
-            {
-              "category": "本地 AI 必须先有可控的 OS/API 体验",
-              "summary": "另一条主线是用户控制权：很多人不是反对 local inference，而是反对 Chrome 之类产品在后台静默下载大模型、隐藏行为、让用户没有 opt-in。评论建议把本地模型做成 OS 级能力，而不是每个应用各自塞一个 800MB 到 8GB 的模型包，最好还能通过统一 API 让应用调用。有人提到 Apple、Microsoft 已经在做系统级模型分发，也有人建议 secure enclaves 和 remote attestation 这类 verifiable private inference 方案。总体诉求是：本地 AI 要先解决 UX、资源分配和跨平台一致性，否则只会变成“会吃磁盘和电池的功能开关”。",
-              "supportid": [
-                "48090315",
-                "48087705",
-                "48087958",
-                "48088242",
-                "48088320",
-                "48090676",
-                "48088205",
-                "48089303",
-                "48090574",
-                "48088433",
-                "48089137",
-                "48088943",
-                "48090602"
-              ]
-            },
-            {
-              "category": "open weights 的商业模式与地缘博弈",
-              "summary": "围绕 open weights 的商业模式，评论区分歧很大。支持者认为公开权重本质上是营销和品牌战：先把模型放出去建立口碑，再通过 inference、平台和企业服务赚钱，甚至在中国还能起到软实力和国产替代的效果。怀疑者则认为训练成本太高，真正的公民众筹几乎撑不住 billion-dollar 级别的训练跑，最后还是得靠政府、巨头或 subsidy。与此同时，也有人担心一旦 local 替代品成熟，$200/月 之类的订阅就会被“先甜后贵”的 enshittification 吃掉。",
-              "supportid": [
-                "48087524",
-                "48088162",
-                "48090984",
-                "48087467",
-                "48088293",
-                "48088931",
-                "48088711",
-                "48089982",
-                "48088573",
-                "48088767",
-                "48089207",
-                "48089905",
-                "48088482",
-                "48090310",
-                "48090147"
-              ]
-            },
-            {
-              "category": "小模型+工具链/微调比堆参数更实际",
-              "summary": "还有一派把未来押在更小、更专用的模型上，而不是更大的通用 LLM。有人提到 JS-only、Python-only、邮件分类、代码风格学习、LoRA 微调和特定 stack 的“taste”训练，认为小模型只要在固定任务上足够好，再配上工具调用和 harness 就能很好用。也有人说 continual learning、RAG 和本地文档检索可以把“记忆”外包出去，降低模型本身的负担。这个视角下，关键不是模型像不像 frontier，而是它能否被训练成你工作流里的一个稳定零件。",
-              "supportid": [
-                "48090863",
-                "48089891",
-                "48091019",
-                "48088310",
-                "48089337",
-                "48088281",
-                "48090549",
-                "48087637",
-                "48087808",
-                "48087472",
-                "48089405",
-                "48089275"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "量化（quantization）",
-              "explanation": "通过降低模型权重或激活的数值精度来减少内存占用和成本，但通常会损失部分质量与稳定性。"
-            },
-            {
-              "term": "VRAM",
-              "explanation": "GPU 显存，模型权重和上下文缓存通常要放在这里；容量和带宽直接决定本地推理能跑多大、多快。"
-            },
-            {
-              "term": "KV cache",
-              "explanation": "attention 里保存 key/value 的缓存，用来加速后续 token 生成；长上下文和多会话会迅速吃掉内存。"
-            },
-            {
-              "term": "continuous batching",
-              "explanation": "把多个请求合并在一起推理，以摊薄读取模型的开销并提高吞吐，是云端服务的核心优势之一。"
-            },
-            {
-              "term": "open weights（公开权重）",
-              "explanation": "模型权重可被下载并本地部署，但不一定等于真正的 open source；这也是本帖反复讨论的分发与商业模式基础。"
-            }
-          ],
-          "context": "这帖围绕“本地 AI 是否会成为默认形态”展开，背景是 Chrome 的 Prompt API（浏览器内置的本地模型接口）、Apple 的 Foundation Models（Apple 提供的设备端模型）以及 DeepSeek、Qwen、Kimi、Gemma 这类 open-weight 模型不断进步。评论者一边讨论在 Mac Studio、MacBook Pro、RTX 3080/4090、A100/H100、DGX Spark、Strix Halo 上跑 quantized 模型和 agentic coding harness（如 OpenCode、ollama、llama.cpp、vLLM），一边争论 memory、VRAM、KV cache 和 bandwidth 是否会把本地方案卡死。很多人把本地 AI 看成隐私、离线和避免 lock-in 的办法，也有人认为云端模型靠 batching、共享算力和 token 定价仍然更有经济优势。整场讨论其实是在问：当 open weights、OS 级接口和更便宜的硬件继续成熟后，按 token 收费的集中式 AI 服务还能不能保持护城河。",
-          "emoji": "🤔",
-          "sarcastic_question": "既然本地AI都够用，云端还收什么智商税？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n别为了简单的功能就把应用变成脆弱的分布式系统，大多数场景下，利用设备端算力和结构化输出，才是构建可信赖 AI 功能的正确路径。\n\n### 把一个 UX 功能变成了昂贵的分布式系统\n现在的开发者有个坏习惯，一提到 AI 功能就习惯性地调用 OpenAI 或 Anthropic 的 API。说白了，这其实是一种偷懒，它正在制造一代脆弱、侵犯隐私且根本坏掉的应用。你的应用现在依赖于网络状况、第三方服务可用性、速率限制，甚至你的信用卡余额。结果就是，一旦服务器宕机或账单过期，功能就立刻瘫痪。作者讽刺道，恭喜你，你本想发布一个功能，结果却造出了一个**还要花钱的分布式系统**。\n\n### 口袋里的算力被严重浪费了\n这种对云端模型的依赖不仅没必要，甚至有点荒谬。我们口袋里的设备算力惊人，甚至有专门闲置的 Neural Engine，而我们却为了一个 JSON 响应，傻傻地等待弗吉尼亚州服务器农场的结果。更糟糕的是，一旦你把用户数据流给第三方 AI 提供商，你的产品性质就变了。你立刻就要面对数据保留、合规性、审计、泄露以及政府索取数据等一系列烂摊子。如果这个功能能在本地完成，选择云端简直就是自找苦吃。\n\n### Brutalist Report 的本地化实践\n作者以他的 iOS 应用 \"Brutalist Report\" 为例，展示了如何正确做事。这是一个高密度的新闻阅读器，其中的文章摘要功能完全在设备端生成，使用的是 Apple 的本地模型 API。没有服务器绕路，没有提示词日志，也不需要供应商账户。对于这种输入数据已在本地、输出要求轻量级的任务，本地模型简直是完美的。**Local AI 的强项在于转换用户拥有的数据，而不是充当全宇宙的搜索引擎。**\n\n### 别再祈祷模型输出正确的 JSON 了\nApple 生态的工具链还有一个非常精妙的设计：它把 AI 输出从非结构化的文本块推向了**类型化数据**。以前我们需要“让模型输出 JSON 然后祈祷它格式正确”，现在的模式是定义一个 Swift `struct`，用自然语言描述每个字段的规则，然后直接让模型生成该类型的实例。这不仅仅是开发体验的提升，更是工程质量的飞跃。你的 UI 不需要再去解析 Markdown 或清洗 JSON，而是直接获得了一个可用的结构化对象。\n\n### 本地模型不需要通过图灵测试\n肯定会有人质疑：“但本地模型没那么聪明啊”。作者承认这一点，但反问“那又怎样？”。大多数应用功能并不需要一个能写莎士比亚或通过律师考试的模型，它们只需要可靠地完成摘要、分类、提取、重写或归一化这五件事之一。如果你把本地模型当作整个互联网的替代品，你肯定会失望；但如果你把它当作应用内部的“数据转换器”，你会后悔以前为什么要把这些数据发到服务器上去。\n\n### 结论：停止为了功能而造分布式系统\n归根结底，我们的目标是**有用的软件**，而不是“AI 无处不在”。只有在真正必要时才使用云端模型，把用户数据留在它该待的地方。当你使用 AI 时，不要只是把它粘合成一个聊天框，而要把它当作一个具有类型化输出和可预测行为的真正子系统。别再本想发布一个功能时，却意外地发布了一个分布式系统。"
     }
   ]
 }
