@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2557,
-  "filtered_articles": 16,
+  "filtered_articles": 22,
   "articles": [
     {
       "title": "Managed agents are the new Lambda",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "A constant-space linear-time algorithm for deleting all but the 10 most recent files in a directory",
+      "title_zh": "常量空间线性时间删除旧文件算法",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260514-00/?p=112322",
+      "pub_date": "2026-05-14T14:00:00.000Z",
+      "summary": "## 一句话总结\n利用固定大小的 Min-Priority Queue，可以在遍历目录时实时淘汰旧文件，从而将“保留最新 N 个文件”的操作优化为 O(n) 时间复杂度和 O(1) 空间复杂度的在线算法。\n\n### 文件系统不按你的套路出牌\n假设你想在一个目录里只保留最新的 10 个文件，直觉上你会问：能不能让 `FindFirstFile` 直接按时间顺序枚举文件？很遗憾，答案是否定的。文件系统驱动返回文件的顺序完全取决于它的心情，FAT 可能按创建顺序，NTFS 可能按字母顺序，中间夹杂的删除和重命名操作会让顺序更加混乱。既然无法控制输入顺序，你就得自己动手排序，但这引出了一个新的问题：怎么排才最高效？\n\n### 暴力排序的代价有点高\n最直观的“暴力解法”是先把所有文件元数据读进内存，按修改时间排个序，然后删掉除了最后 10 个以外的所有文件。这听起来没问题，但它的空间复杂度是 O(n)，时间复杂度是 O(n log n)。如果目录里有几百万个文件，光是内存占用和排序开销就够喝一壶的。对于这种只需要保留“前 N 名”的场景，把所有数据都存下来其实是一种浪费，我们完全不需要知道第 11 名以后的具体排序。\n\n### 固定容量的优先队列是关键\n这里有个巧妙的设计：使用一个 Min-Priority Queue（最小优先队列）。核心思路其实很简单：我们维护一个最多只存 10 个元素的队列，队列按修改时间排序，队头永远是最旧的那个文件。遍历目录时，把每个文件扔进队列；一旦队列大小超过 10，就立刻把队头（最旧的）删掉，并从队列中移除。这样，队列里始终浮动着当前见过的最新的 10 个文件，而那些“陪跑”的旧文件在进队的一瞬间就被淘汰了。\n\n### 为什么这是 O(1) 空间和 O(n) 时间？\n这个算法之所以快，是因为优先队列的大小被死死限制在了 10（或者你设定的任何常数 N）。在计算机科学里，如果操作对象的大小 n 是一个固定常数，那么无论 log n 是多少，它都被视为 O(1)。所以，入队、出队、查找极值这些操作，在这里统统都是常数时间。整个算法只需要遍历一次文件列表（O(n)），中间的操作都是即时处理的，不需要等待所有数据就绪。\n\n### 代码实现里的几个坑\nRaymond Chen 给出的 C++ 代码示例里，用 `std::priority_queue` 配合自定义的 lambda 比较器来实现这个逻辑。不过代码里也暴露了一些 C++ 的“糟点”：比如 `std::priority_queue` 没有 deduction guide，导致你必须手动把 `std::vector` 这种容器类型写全，没法让编译器自动推导。另外，因为无法直接给 `priority_queue` 内部的 vector 调用 `reserve()`，`push` 操作理论上可能会抛出内存分配异常，所以代码里用了 `wil::unique_hfind` 这种 RAII 类型来确保句柄不泄露。\n\n### 用 inplace_vector 彻底消灭动态分配\n如果你能用上 C++26 的 `std::inplace_vector`，这个算法还能变得更纯粹。你可以把底层容器换成 `std::inplace_vector<WIN32_FIND_DATA, 11>`，这样整个优先队列的内存直接分配在栈上。这不仅避免了堆内存分配的开销，也让“Constant Space”（常数空间）这个特性在代码层面一目了然。本质上，这是一个典型的 Online Algorithm（在线算法），它不需要预知所有输入，而是来一个处理一个，非常适合处理流式数据或大规模文件清理。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "priority queue",
+        "online algorithm",
+        "Windows API",
+        "algorithm"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Catch Flakes On Main",
       "title_zh": "在 main 分支冗余运行测试以捕获 flaky tests",
       "link": "https://matklad.github.io/2026/05/14/catch-flakes-on-main.html",
@@ -41,7 +60,7 @@
         "CI",
         "testing"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "New Driver for the Old Griffin PowerMate",
@@ -60,7 +79,7 @@
         "USB HID",
         "driver"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "datasette-ip-rate-limit 0.1a0",
@@ -79,7 +98,62 @@
         "crawlers",
         "Codex"
       ],
-      "rank": 4
+      "rank": 5
+    },
+    {
+      "title": "Google Announces Its Chromebook Successor: The Googlebook",
+      "title_zh": "Google 发布 Googlebook 笔记本产品线",
+      "link": "https://www.theverge.com/tech/928479/google-googlebook-laptops-android-tease-aluminium-chromebook?view_token=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjNVSjlWdlZESmgiLCJwIjoiL3RlY2gvOTI4NDc5L2dvb2dsZS1nb29nbGVib29rLWxhcHRvcHMtYW5kcm9pZC10ZWFzZS1hbHVtaW5pdW0tY2hyb21lYm9vayIsImV4cCI6MTc3OTIxNjg2NiwiaWF0IjoxNzc4Nzg0ODY2fQ.a74WT34THV0Ih1pGO7NH4daq39ytQXdhO4EAgE6HCeI",
+      "pub_date": "2026-05-14T19:02:21.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 7,
+      "depth": 2,
+      "novelty": 5,
+      "category": "tools",
+      "keywords": [
+        "Googlebook",
+        "Android",
+        "ChromeOS",
+        "Gemini"
+      ],
+      "rank": 6
+    },
+    {
+      "title": "Gurman Reports that OpenAI Is Unhappy With Apple Deal",
+      "title_zh": "OpenAI 与 Apple 合作关系出现裂痕",
+      "link": "https://www.bloomberg.com/news/articles/2026-05-14/openai-apple-partnership-frays-setting-up-possible-legal-fight?srnd=undefined&embedded-checkout=true",
+      "pub_date": "2026-05-14T18:27:50.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "OpenAI",
+        "Apple",
+        "partnership"
+      ],
+      "rank": 7
+    },
+    {
+      "title": "A GNU Emacs learning experience with text-mode hooks",
+      "title_zh": "Emacs text-mode hooks 学习笔记",
+      "link": "https://utcc.utoronto.ca/~cks/space/blog/programming/EmacsTextModeHooksGotcha",
+      "pub_date": "2026-05-14T17:51:54.000Z",
+      "summary": "",
+      "source_name": "utcc.utoronto.ca/~cks",
+      "score": 5,
+      "depth": 3,
+      "novelty": 2,
+      "category": "tools",
+      "keywords": [
+        "Emacs",
+        "hooks",
+        "text-mode"
+      ],
+      "rank": 8
     },
     {
       "title": "Klack",
@@ -97,7 +171,43 @@
         "sound",
         "macOS"
       ],
-      "rank": 5
+      "rank": 9
+    },
+    {
+      "title": "Tim Cook Is in Trump’s Executive Entourage for China Summit",
+      "title_zh": "特朗普携万亿富豪团访华",
+      "link": "https://www.the-independent.com/news/world/americas/us-politics/elon-musk-tim-cook-trump-china-tech-ceo-b2975568.html",
+      "pub_date": "2026-05-14T19:36:58.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Trump",
+        "China",
+        "delegation"
+      ],
+      "rank": 10
+    },
+    {
+      "title": "The Trump T1 Phone Starts Shipping This Week, Supposedly",
+      "title_zh": "Trump Mobile T1 手机本周开始发货",
+      "link": "https://www.theverge.com/gadgets/929471/trump-mobile-t1-phone-shipping-this-week",
+      "pub_date": "2026-05-14T17:50:05.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Trump Mobile",
+        "T1 Phone",
+        "shipping"
+      ],
+      "rank": 11
     }
   ]
 }
