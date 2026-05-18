@@ -1,10 +1,48 @@
 {
   "date": "2026-05-18",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2558,
-  "filtered_articles": 7,
+  "success_feeds": 84,
+  "total_articles": 2545,
+  "filtered_articles": 10,
   "articles": [
+    {
+      "title": "FediMeteo, HAProxy, and the art of not wasting snac threads",
+      "title_zh": "HAProxy 缓存优化 FediMeteo 架构",
+      "link": "https://it-notes.dragas.net/2026/05/18/fedimeteo-haproxy-and-the-art-of-not-wasting-snac-threads/",
+      "pub_date": "2026-05-18T09:44:00.000Z",
+      "summary": "## 一句话总结\n通过 HAProxy 的精细缓存策略和架构设计，把重复的静态资源请求和 ActivityPub 查询挡在 snac 实例之外，让后端线程只处理真正必要的逻辑。\n\n### 不浪费线程，才是对 snac 最大的尊重\nFediMeteo 的后端核心是 snac，作者很喜欢它，因为它小巧、专注且高效。但 snac 使用有限数量的线程来处理请求，这种限制虽然健康，却也让资源浪费变得显而易见。试想一下，如果宝贵的线程被反复用来传输同一个公开的头像，或者在一分钟内多次响应同一个公开的 ActivityPub 对象，这虽然不算灾难，但绝对是浪费。作者引入 HAProxy 的目的不是为了炫技，而是为了保护 snac，让它能安安静静地做它最擅长的事，而不是被这些琐碎的重复劳动缠住。\n\n### 最好的优化是根本不产生问题\n在深入 HAProxy 配置之前，作者提到了一个极其关键的设计决策：FediMeteo 几乎不使用媒体文件。天气预报全是纯文本加 Emoji，没有图片、没有卡片、没有地图。这不仅仅是为了复古或极简，更是为了减轻基础设施负担。少一个媒体文件，就少一份存储、分发、缓存和调试的工作。唯一的例外是头像，所有账号共用同一个头像。这个设计非常巧妙，因为它把头像变成了一个极其适合缓存的“热对象”：公开、极小、请求频繁。这样，HAProxy 就可以直接处理这些请求，根本不需要去打扰后端的 snac 实例。\n\n### 首页能静态，就绝不动态\n主页的设计逻辑也是一脉相承的。它不是每次访问都去查数据库或调用后端 API 生成的动态页面，而是一个由 cron 任务每小时更新一次的静态 HTML。作者认为，天气数据不需要秒级更新，一小时一次完全足够。这种“无聊”的实现方式，避免了每次访问都触发后端计算，把昂贵的实时查询变成了极其廉价的静态文件服务。这再次印证了项目的核心理念：在需要的时候做工作，然后廉价地分发结果。\n\n### 用 Map 文件管理路由，拒绝配置膨胀\n随着国家实例的增加，如果还在 HAProxy 的 frontend 里写一堆 ACL（访问控制列表）来匹配域名，配置文件很快就会变得难以维护。作者选择将域名到后端的映射关系剥离到一个独立的 map 文件里。Frontend 只需要一行规则，读取 Host 头并在 map 文件中查找对应的 backend。这样，新增一个国家只需要在 map 文件里加一行，定义一个 backend 即可，完全不需要改动核心的代理逻辑。这种“策略与数据分离”的做法，让配置随着服务增长依然保持清晰。\n\n### 后端隔离与连接复用\n每个国家的 snac 实例都运行在独立的 FreeBSD jail 中，HAProxy 的 backend 配置也遵循这种隔离原则。每个 backend 只对应一个 jail，并设置了 `maxconn 30` 的连接上限。这不是一个随意的数字，而是一个安全天花板，确保流量压力出现在 HAProxy 层面，而不是击穿到后端。同时，开启 `http-reuse safe` 允许 HAProxy 复用后端连接，减少了频繁握手带来的开销。这种设计让每个小服务都像是一个独立的隔间，互不干扰，且资源可控。\n\n### 针对不同内容的双缓存策略\n作者在 HAProxy 中定义了两个缓存：`mediacache` 和 `jsoncache`。为什么要分开？因为它们的访问模式完全不同。媒体缓存（主要是头像）空间大（128MB）、过期时间长（1小时）；而 ActivityPub 的 JSON 响应缓存空间小（16MB）、过期时间短（60秒）。对于 JSON 数据，60 秒的缓存时间足以把短时间内涌来的重复请求“合并”掉，又不会导致联邦状态长期滞后。这种区分对待的策略，体现了作者对缓存本质的理解：缓存不是简单的开关，而是一系列关于数据生命周期和访问模式的精细决策。\n\n### 打造完美的缓存对象\n为了让缓存发挥最大效力，作者对媒体请求做了非常激进的“清洗”。一旦识别出请求是媒体文件，HAProxy 会删除请求中的 `Authorization` 和 `Cookie` 头，并在响应时删除 `Set-Cookie` 和 `Vary` 头。这听起来很粗暴，但在 FediMeteo 的语境下是完全合理的：既然所有账号共用一个公开头像，就不需要因为用户身份或 Cookie 的差异导致缓存碎片化。通过这些手段，那个共享的头像变成了一个几乎完美的缓存对象，几乎所有的请求都能在 HAProxy 层直接命中，彻底解放了后端的 snac 线程。",
+      "source_name": "it-notes.dragas.net",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "HAProxy",
+        "ActivityPub",
+        "caching",
+        "FreeBSD"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "The just-say-no engineer was a ZIRP phenomenon",
+      "title_zh": "“只说不”工程师是 ZIRP 时代的产物",
+      "link": "https://seangoedecke.com/the-just-say-no-engineer-was-a-zirp-phenomenon/",
+      "pub_date": "2026-05-18T00:00:00.000Z",
+      "summary": "## 一句话总结\n“只说 No”的工程师并不是因为 AI 时代才失宠，他们其实是 2008-2022 年零利率（ZIRP）泡沫时代的特殊产物，当公司不再为了股价而盲目堆人头，这种“守门员”角色自然就从资产变成了负债。\n\n### “只说 No”曾是 ZIRP 时代的必需品\n所谓的“只说 No”工程师，是那些以代码质量为绝对信仰、习惯性拒绝 PR、把“少写代码”当作 KPI 的资深人员。在 2008 到 2022 年的 ZIRP（零利率政策）时代，这种工程师简直是公司的救命稻草。那时候资金成本极低，科技公司疯狂借钱招人，工程师队伍从几十人膨胀到几千人。老板们根本不在乎这些人具体在干什么，只要人头数能推高股价就行。但问题来了：成千上万的工程师如果“野蛮生长”，系统早就崩了。这时候，就需要一个“只说 No”的人来充当刹车片，把那些想搞自研数据库或者无意义重构的人拦下来。这既保护了系统，又让闲置的工程师有事可做（哪怕是在被拒绝的过程中），还对外树立了技术门槛高的招牌。\n\n### 泡沫破裂，守门员成了绊脚石\n但好日子在加息周期中结束了。利率一涨，养闲人就不划算了，科技公司裁员 5%-20% 成了常态。现在的核心逻辑变了：公司不再是为了“看起来很忙”，而是要实打实地赚钱。这种环境下，“只说 No”工程师就从“定海神针”变成了“拦路虎”。公司现在急需的是能快速上线新功能、验证商业价值的速度，而不是完美的代码质量。以前管理层会无条件支持他们拒绝需求，现在他们却被要求“做个 Team player”，甚至在做决策时直接被绕过。同样的行为，以前是“坚持原则”，现在成了“阻碍业务”，这种评价标准的剧变让他们非常不适应。\n\n### AI 只是背锅侠，经济周期才是真凶\n有意思的是，很多人把这种压力归咎于 AI 的崛起，觉得是 AI 生成的代码泛滥导致了标准降低。但这其实是个误解。如果 LLM 没有出现，这种文化转型依然会发生，因为根本原因是 ZIRP 时代的结束，而不是技术的进步。公司为了给裁员找个好听的理由，才把锅甩给了 AI——“因为有了 AI，我们可以用更少的人做更多的事”。但逻辑上这站不住脚：如果 AI 真的能带来 10 倍效率，为什么不保留原有工程师去追求 20 倍产出？真相很简单：公司不再需要那么多靠“拒绝”来维持秩序的人了，他们需要的是能交付结果的人。\n\n### 纯工程领域依然是避风港\n那这种工程师就要灭绝了吗？倒也不必这么悲观。作者区分了“纯工程”和“非纯工程”：前者像编译器、运行时，目标明确且技术导向强；后者像业务功能，需求模糊且由客户驱动。“只说 No”的工程师在“非纯工程”领域确实混不下去了，因为那里需要快速试错，代码写得烂点也没关系，不行就重写。但在核心基础设施等“纯工程”领域，高质量代码和低故障率依然是刚需。如果你真的坚持这种风格，建议往这些深水区转，虽然舞台变小了，不再处于聚光灯下，但那里依然需要你这种严苛的守门人。",
+      "source_name": "seangoedecke.com",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "ZIRP",
+        "engineering culture",
+        "senior engineer",
+        "AI"
+      ],
+      "rank": 2
+    },
     {
       "title": "How to be inspired without copying",
       "title_zh": "LLM 时代如何模仿而不抄袭",
@@ -22,7 +60,26 @@
         "apprenticeship",
         "influence"
       ],
-      "rank": 1
+      "rank": 3
+    },
+    {
+      "title": "How I Use My Index 01 + Production Update",
+      "title_zh": "Pebble Index 01 戒指：本地优先的外部记忆设备",
+      "link": "https://repebble.com/blog/how-i-use-my-index-01-production-update",
+      "pub_date": "2026-05-18T00:00:00.000Z",
+      "summary": "Pebble Index 01 是一款带按钮和麦克风的戒指，售价 75 美元，电池不可充电但可使用 3 年以上。作者每天使用 5-10 次，主要用于骑行、外出时快速记录想法、设置提醒或通过双击长按按钮向 Claude Sonnet + web search 提问获取答案。软件采用本地优先设计，使用 Parakeet 0.6B v3 模型进行本地语音转文字，Needle 模型处理工具调用，支持通过 Webhooks 和 MCP 自定义集成到第三方服务如 Notion、Linear、Apple Reminders。目前已生产 700 枚戒指，计划 8 月前完成所有预订单发货，应用完全开源，无需订阅。",
+      "source_name": "ericmigi.com",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "tools",
+      "keywords": [
+        "Index 01",
+        "local-first",
+        "Parakeet",
+        "MCP"
+      ],
+      "rank": 4
     },
     {
       "title": "GDS weighs in on the NHS's decision to retreat from Open Source",
@@ -41,7 +98,7 @@
         "GDS",
         "Project Glasswing"
       ],
-      "rank": 2
+      "rank": 5
     },
     {
       "title": "Weekly Update 504",
@@ -60,7 +117,7 @@
         "Grafana",
         "Instructure"
       ],
-      "rank": 3
+      "rank": 6
     },
     {
       "title": "Drata",
@@ -77,7 +134,7 @@
         "drata",
         "marketing"
       ],
-      "rank": 4
+      "rank": 7
     },
     {
       "title": "Unicode and Emoji in terminals, or my simple but difficult wish",
@@ -95,7 +152,7 @@
         "terminal",
         "emoji"
       ],
-      "rank": 5
+      "rank": 8
     }
   ]
 }
