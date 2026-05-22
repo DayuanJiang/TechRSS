@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "Dependency Pruning",
+      "title_zh": "依赖修剪：供应链安全最廉价的加固手段",
+      "link": "https://nesbitt.io/2026/05/22/dependency-pruning.html",
+      "pub_date": "2026-05-22T10:00:00.000Z",
+      "summary": "## 一句话总结\n最有效的供应链加固手段不是修补漏洞，而是直接删除那些你根本不再需要的依赖。\n\n### 依赖越多，攻击面越大\n每个 lockfile 里的包，其实都是一把别人拿着钥匙的门。维护者的账号可能被钓鱼，包的所有权可能易手，甚至下一个 patch 版本就可能植入恶意代码。最糟糕的是，那些你早在两次重构前就不再调用的依赖，依然暴露在同样的风险中，一旦爆出 CVE，照样得半夜起来修。说白了，最廉价的供应链加固手段，就是停止引入那些你根本用不上的东西。\n\n### 先问“能不能删”，再问“怎么修”\n作者现在的习惯是，收到 Dependabot 的 CVE 预警时，第一反应不是看改了什么，而是先确认自己还用不用这个包。如果几乎不用，删掉它比修补它更划算——这不仅关掉了当前的 alert，也顺带把未来的预警一起消除了。这不需要什么复杂的工具，只需要你看到预警时多想一步。现有的文章大多关注前端 bundle 大小或 tree-shaking，但针对 manifest 文件本身的清理建议却少得可怜。\n\n### 不仅要找“死”依赖，还要找“虚胖”依赖\n清理依赖其实要解决两个不同的问题。第一个是二元的：哪些依赖在代码里完全没有被 import？这通常是功能删改后没清理 manifest 遗留的。第二个是比例问题：对于确实在用的依赖，你实际用到了多少？为了调用一个 helper 而引入一个 6 万行的库，虽然不算完全死依赖，但依然让大量别人的代码毫无价值地躺在你的供应链里。\n\n### 给依赖称重，看看有多虚\nMike Fiedler 的 `unladen` 是少数尝试解决第二个问题的工具。它构建从代码到依赖的调用图，计算你实际激活的代码行数比例，并给出一个“heft ratio”（重量比）。如果你用过 SCA 扫描器的可达性分析，这原理类似，只不过是对整个包做分析。低比例的依赖提示你应该考虑内联代码或换个更小的库，这正是 Rob Pike 说的“一点复制好过一点依赖”。目前 `unladen` 只支持 Python，其他语言暂时只能靠 AI 助手来建议内联。\n\n### Python：工具最丰富，但名字映射是坑\nPython 这块工具出奇地多，可能是因为动态导入和 `requirements.txt` 的坑逼得大家不得不造轮子。`deptry` 和 `creosote` 都做静态 AST 扫描，对比 `pyproject.toml` 和实际 import；Tweag 的 `FawltyDeps` 处理 import 名和包名映射（比如 `import sklearn` 实际来自 `scikit-learn`）做得更好；老牌的 `pip-check-reqs` 则适合简单的 `requirements.txt`。这几个都在维护，按项目结构选一个就行。\n\n### JavaScript：Knip 已经接棒 depcheck\n在 JS 生态找 `package.json` 里的无用依赖，现在首选 `knip`。老牌的 `depcheck` 已经在 2025 年初归档并推荐了 `knip`。`knip` 会构建完整的模块图，甚至支持一百多种框架和配置文件的插件，确保像 `eslint-plugin-whatever` 这种没被源码显式 import 的包也能被识别为“已使用”，还能直接 `--fix` 自动删除。让人惊讶的是，npm/pnpm/Yarn 官方至今都没原生支持这个功能。\n\n### Rust：从快速扫描到精确编译\nCargo 没内置功能，但第三方方案不错。`cargo-machete` 做纯文本扫描，不编译，速度极快适合跑 CI，但宏和重导出可能会有误报；`cargo-shear` 解析源码更准，也不用全量编译；`cargo-udeps` 则通过实际编译看链接了哪些 crate，最准但最慢且需要 nightly Rust。作者建议 CI 里跑 machete，偶尔手动跑 shear 或 udeps。\n\n### Go：教科书级别的原生支持\nGo 是唯一在工具链层面完美解决这个问题的语言。标准的 `go mod tidy` 会遍历所有 `.go` 文件，算出真实的 import 集合，然后重写 `go.mod` 和 `go.sum`，直接删掉没引用的包。因为这是大家都跑的标准命令，Go 项目基本不会堆积死依赖，这简直是给所有其他包管理器上了一课。如果不确定某个包为什么还在，`go mod why -m <module>` 能告诉你引用路径。\n\n### Java：字节码分析的利与弊\nMaven 很久以前就有 `mvn dependency:analyze`，基于编译后的字节码对比类引用和依赖声明，能查出“未声明的使用”和“声明的未使用”。Gradle 上 `Dependency Analysis Gradle Plugin` 是标准，Netflix 的 `Nebula Lint` 也能做类似检查。不过字节码分析看不懂反射和注解处理器，所以企业级 Java 里会有不少误报。SAP 的研究团队曾给真实的 Java 应用“瘦身”，实测发现 CVE 暴露度确实显著下降了。\n\n### 其他语言：有喜有忧\nPHP 有 `composer-unused` 和 `composer-dependency-analyser`，都能匹配 autoload map 找出未引用的包。.NET 没原生 CLI 命令，主要靠 Visual Studio 的 Roslyn 分析或 `ReferenceTrimmer`。Elixir 的 `mix deps.unlock --unused` 只清理 lockfile，不做代码级分析，目前没找到好用的第三方工具。Ruby 最让人失望，Bundler 没内置检查，`degem` 是唯一还在维护的静态扫描工具，考虑到 Ruby 的动态特性，误报在所难免。\n\n### 静态分析的局限与测试的价值\n所有静态分析工具都有盲区：动态 import、通过字符串加载的插件、只提供 CLI 的包、或者只给类型检查器用的 stub 包，都会被误报为“未使用”。好在大多数工具都支持 ignore list。此外，如果工具误删了依赖导致生产挂掉，这其实暴露了你测试覆盖的漏洞——那个代码路径根本没被测到。删依赖的过程，顺便帮你把这种边界情况的测试补齐了，这本身就值回票价。",
+      "source_name": "nesbitt.io",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "dependency pruning",
+        "supply chain security",
+        "unladen",
+        "knip"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Couth and uncouth function pairs",
       "title_zh": "三角函数与双曲函数的逆运算关系",
       "link": "https://www.johndcook.com/blog/2026/05/21/couth-and-uncouth-function-pairs/",
@@ -60,7 +79,7 @@
         "NumPy",
         "inverse functions"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Datasette Agent",
@@ -79,7 +98,7 @@
         "agent",
         "plugins"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "TIL: Symlinking NixOS Dotfiles",
@@ -98,7 +117,7 @@
         "systemd-tmpfiles",
         "symlink"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "\"No way to prevent this\" say users of only language where this regularly happens",
@@ -117,7 +136,7 @@
         "memory safety",
         "kernel overflow"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "The $500 Price Increase",
@@ -136,7 +155,7 @@
         "Jellyfin",
         "SaaS"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "How do I use Win32 structures from the Windows Runtime?",
@@ -155,7 +174,7 @@
         "ABI",
         "interoperability"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "FTC to Require Cox Media Group, Two Other Firms to Pay Nearly $1 Million to Settle Charges They Deceived Customers About “Active Listening” AI-Powered Marketing Service",
@@ -174,7 +193,7 @@
         "privacy",
         "data brokers"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Circular and hyperbolic functions differ by rotations",
@@ -193,7 +212,7 @@
         "rotation",
         "complex numbers"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Apple Seeks Supreme Court Review of Contempt Finding and Injunction Scope in Epic Games Case",
@@ -212,7 +231,7 @@
         "Supreme Court",
         "App Store"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "‘Geography Is Four-Dimensional’",
@@ -230,7 +249,7 @@
         "time",
         "geography"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "\"No way to prevent this\" say users of only package manager where this regularly happens",
@@ -248,7 +267,7 @@
         "supply-chain attack",
         "art-template"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "Notes on respectfully getting a personal copy of a website's contents",
@@ -267,7 +286,7 @@
         "crawling",
         "ethics"
       ],
-      "rank": 14
+      "rank": 15
     },
     {
       "title": "datasette-agent 0.1a3",
@@ -286,7 +305,26 @@
         "agent",
         "UI"
       ],
-      "rank": 15
+      "rank": 16
+    },
+    {
+      "title": "Advantages and disadvantages of Windows 3.0",
+      "title_zh": "Windows 3.0 的优缺点回顾",
+      "link": "https://dfarq.homeip.net/advantages-disadvantages-windows-3-0/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=advantages-disadvantages-windows-3-0",
+      "pub_date": "2026-05-22T11:00:50.000Z",
+      "summary": "",
+      "source_name": "dfarq.homeip.net",
+      "score": 5,
+      "depth": 3,
+      "novelty": 2,
+      "category": "engineering",
+      "keywords": [
+        "Windows 3.0",
+        "multitasking",
+        "GUI",
+        "history"
+      ],
+      "rank": 17
     },
     {
       "title": "Pluralistic: Shopping isn't politics (21 May 2026)",
@@ -304,7 +342,7 @@
         "consumption",
         "boycott"
       ],
-      "rank": 16
+      "rank": 18
     },
     {
       "title": "Book Notes: “Poor Charlie’s Almanack”",
@@ -322,7 +360,7 @@
         "practicality",
         "problem solving"
       ],
-      "rank": 17
+      "rank": 19
     },
     {
       "title": "datasette-agent-sprites 0.1a0",
@@ -341,7 +379,7 @@
         "sandboxing",
         "fly"
       ],
-      "rank": 18
+      "rank": 20
     },
     {
       "title": "Apple Sports Expands to More Than 90 New Countries on Cusp of World Cup",
@@ -359,7 +397,7 @@
         "World Cup",
         "iOS"
       ],
-      "rank": 19
+      "rank": 21
     },
     {
       "title": "datasette-agent-charts 0.1a2",
@@ -376,7 +414,7 @@
         "datasette",
         "datasette-agent"
       ],
-      "rank": 20
+      "rank": 22
     },
     {
       "title": "Apple TV to Broadcast Entire MLS Match Shot Using iPhones",
@@ -395,7 +433,7 @@
         "broadcast",
         "Apple TV"
       ],
-      "rank": 21
+      "rank": 23
     },
     {
       "title": "Google I/O Keynote in 54 Seconds",
@@ -412,7 +450,7 @@
         "Google I/O",
         "keynote"
       ],
-      "rank": 22
+      "rank": 24
     }
   ]
 }
