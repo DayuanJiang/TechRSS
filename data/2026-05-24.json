@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2585,
-  "filtered_articles": 10,
+  "filtered_articles": 9,
   "articles": [
     {
       "title": "Reverse engineering circuitry in a Spacelab computer from 1980",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Signing is for the bad days",
+      "title_zh": "软件供应链签名：为最坏日子准备的保险",
+      "link": "https://nesbitt.io/2026/05/24/signing-is-for-the-bad-days.html",
+      "pub_date": "2026-05-24T10:00:00.000Z",
+      "summary": "## 一句话总结\n软件供应链安全的核心不是为了风平浪静时的效率，而是为了在基础设施被攻陷的那一天，利用 TUF、in-toto 和 Sigstore 这三层防御，确保攻击者无法篡改软件且无法掩盖痕迹。\n\n### 签名不是为了好日子，是为了“坏日子”\n很多开发者会有个疑问：既然我们用了 TLS 传输，Registry 也会校验 Hash，Lockfile 也锁定了版本，那再加个签名到底有啥用？说实话，在一切正常的周二下午，签名确实只是增加了一点 CPU 开销和几行 YAML 配置，看起来毫无价值。但这个问题的答案，也是为什么供应链攻击频发的原因：Hash 只能证明文件没变，却不能证明文件原本就是对的。签名和证明这套工具链，在“快乐路径”上是不可见的，它们唯一的价值，就在于构建服务器被黑、镜像包被替换的那个“坏日子”。在那一天，有无签名就是“客户端拒绝安装”和“发布一篇事故博客”的区别。\n\n### TUF：假设 Registry 已经被攻陷了\nTUF（The Update Framework）解决的是“最后一公里”的问题，即从仓库到客户端机器的传输安全。传统的 PGP 签名有个致命缺陷：为了自动化发布，私钥必须在线，一旦 CI 被攻破，攻击者就能用这个私钥给任何恶意包签名，客户端照单全收。TUF 的核心思路是“分权”：它把签名拆分成 `root`、`targets`、`snapshot` 和 `timestamp` 四个角色。`root` 密钥离线保存在保险柜里，一年才动一次；只有 `timestamp` 密钥必须在线，但它只能声明“元数据是最新的”，无权修改包的内容或 Hash。这意味着即便攻击者拿下了 Registry 的在线基础设施，他们也无法篡改包内容，也无法回滚到旧版本，因为那需要他们根本拿不到的离线密钥。\n\n### in-toto：假设构建流水线被投毒了\nTUF 确保了你下载的包是 Registry 想给你的，但 Registry 里的包本身该不该存在？比如 `xz` 后门事件，恶意代码存在于发布 tarball 中，但在 Git 仓库里却不存在，这就是构建环节出了问题。in-toto 的设计初衷就是为了填补这个空白：它定义了一个 `layout` 文件，规定了构建流水线的每一步（如 clone、build、package）由谁执行、允许输入什么、输出什么。每一步执行完都会生成一个带签名的 `link` 元数据，记录输入输出的 Hash。验证时，只要发现 tarball 的 Hash 和 Git tag 的 Hash 对不上，或者构建步骤被跳过，验证就会失败。这把“可复现构建”从一个口号变成了可强制执行的策略。\n\n### Sigstore：假设没人能管好私钥\nTUF 和 in-toto 都假设开发者能妥善保管私钥，但过去三十年的 PGP 实践证明这纯属幻想。Sigstore 的贡献就是直接消灭了“长期私钥”这个概念。你不需要自己管密钥，而是通过 OIDC（比如 GitHub Actions 的 Identity）去认证。Fulcio 会签发一个有效期仅 10 分钟的证书，你签完名就把证书扔进 Rekor 这个不可篡改的透明日志里。验证时，客户端不再问“这是不是 0xABCD 密钥签的”，而是问“Rekor 里有没有一条记录，证明这个 Hash 是由 `github.com/foo/bar` 这个特定工作流签名的”。这样，攻击者就算把代码库扒光了，也偷不到任何能用来签名的长期凭证。\n\n### 即使签名挡不住攻击，也能让你看清真相\n但这套体系也不是银弹，最近的攻击（如 Shai-Hulud 蠕虫和 Ultralytics 事件）表明，如果攻击者直接拿到了 CI 运行时的权限，他们就能窃取 OIDC token，或者污染缓存让合法流程构建出恶意包。在这种情况下，Sigstore 确实挡不住发布，但它的价值在于“取证”。在 Ultralytics 事件中，正是因为 Rekor 日志的存在，PyPI 才能迅速确认恶意包是来自合法的 CI 流程（指向缓存投毒），而不是被窃取的 API Token（后者不会有合法的签名记录）。虽然签名没能阻止事故，但它极大地缩短了排查时间，明确了攻击路径。\n\n### 三层叠加：构建现代软件的防御纵深\n真正落地的方案，其实是这三者的组合。in-toto 定义了什么样的构建过程是合法的；Sigstore 负责让构建步骤无需管理密钥就能生成签名，并将身份绑定到具体的 CI Run；TUF 则负责把这些策略、证明和软件包安全地分发到客户端，防止分发渠道作恶。现在的 npm provenance、PyPI attestations 和 Homebrew 的构建溯源，本质上都是这套组合拳的体现。它们共同构成了一个假设“部分基础设施必将被攻陷”的防御体系，确保即便在最坏的情况下，软件供应链的完整性和可追溯性依然坚挺。",
+      "source_name": "nesbitt.io",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "security",
+      "keywords": [
+        "TUF",
+        "in-toto",
+        "Sigstore",
+        "software supply chain"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Hilbert transform as an infinite matrix",
       "title_zh": "Hilbert 变换的无限矩阵表示",
       "link": "https://www.johndcook.com/blog/2026/05/23/hilbert-transform-as-an-infinite-matrix/",
@@ -40,7 +59,7 @@
         "Fourier series",
         "infinite matrix"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "On the",
@@ -59,7 +78,7 @@
         "accessibility",
         "ARIA"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Childhood Computing",
@@ -78,7 +97,7 @@
         "IBM PC",
         "childhood"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Weekly Update 505",
@@ -97,7 +116,7 @@
         "Charter Communications",
         "DentaQuest"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "How our environment still needs the security boundary of Unix logins",
@@ -116,7 +135,7 @@
         "security",
         "authentication"
       ],
-      "rank": 6
+      "rank": 7
     }
   ]
 }
