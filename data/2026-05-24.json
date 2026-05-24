@@ -1,10 +1,29 @@
 {
   "date": "2026-05-24",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2585,
+  "success_feeds": 84,
+  "total_articles": 2565,
   "filtered_articles": 9,
   "articles": [
+    {
+      "title": "How my minimal, memory-safe Go rsync steers clear of vulnerabilities",
+      "title_zh": "Go rsync 实现如何规避 12 个安全漏洞",
+      "link": "https://michael.stapelberg.ch/posts/2026-05-24-minimal-memory-safe-go-rsync-vulns/",
+      "pub_date": "2026-05-24T14:20:22.000Z",
+      "summary": "## 一句话总结\n用 Go 重写 rsync 并不能自动消除所有安全漏洞，但内存安全特性确实能拦截 C 语言中常见的缓冲区溢出，配合最小化实现和纵深防御策略，能显著降低攻击面。\n\n### 12 个漏洞引发的灵魂拷问\n故事始于 2025 年 1 月，安全研究员一次性公开了 rsync 的 6 个漏洞，其中甚至包含允许任意代码执行的高危漏洞。作者当时就在想：我用 Go 重写的 `gokrazy/rsync`，是不是因为语言本身的内存安全特性就天然免疫？这篇文章的调研过程一波三折，甚至因为后续又挖出了未公开的漏洞（包括 2026 年 5 月的一批），导致发布推迟。最终文章涵盖了 12 个 CVE，核心目的就是验证一个假设：现代内存安全语言配合最小化实现，到底能不能防住这些老牌 C 语言软件的顽疾。\n\n### 经典的堆溢出：Go 的 runtime 是最后一道防线\nCVE-2024-12084 是个典型的 C 语言内存破坏漏洞。rsync 在支持 SHA256/512 时，虽然检查了长度不超过 `MAX_DIGEST_LEN`，但结构体里的缓冲区 `sum2` 依然是硬编码的 16 字节。这就导致检查形同虚设，攻击者可以写出界，造成堆溢出。有意思的地方在于，`gokrazy/rsync` 其实也有类似的校验疏忽——它压根没校验 checksum 长度。但在 Go 里，这种越界写入不会导致内存破坏，而是直接触发 panic。作者实测把长度改成 512 后，程序立刻报错 `slice bounds out of range`。这说明 Go 的 runtime 确实兜住了底，把“远程代码执行”降级成了“服务拒绝攻击（DoS）”。\n\n### 栈内存泄露：Go 的零值初始化立大功\nCVE-2024-12085 利用了栈上未初始化的内存来泄露信息，进而绕过 ASLR 攻击。攻击者可以诱导服务器读取比实际 checksum 更多的字节，从而把栈上的残留数据（如指针）发给客户端。在 C 语言里，开发者必须记得手动 `memset` 清零内存，一旦忘了就是漏洞。而 Go 的设计哲学是所有变量默认零值初始化，这意味着栈内存天然就是干净的。所以，即便 `gokrazy/rsync` 犯了同样的逻辑错误，也不会泄露敏感信息，因为多读出来的那几个字节全是 0。\n\n### 最小化实现的意外之喜\n除了语言特性，架构选择也起到了关键作用。`gokrazy/rsync` 为了精简，目前只实现了 rsync 协议的 27 版本，而很多引入新算法（如 xxhash64）和复杂逻辑的漏洞是在协议 30 之后才引入的。说白了就是：代码写得少，踩雷的概率就小。作者并不是在鼓吹“重造轮子”，而是指出了一个事实：当你为了特定场景重写一个工具时，往往会砍掉那些为了通用性而牺牲安全性的复杂功能，这反而构成了天然的防御。\n\n### 语言不是万能药，逻辑漏洞依然存在\n虽然 Go 挡住了内存破坏，但逻辑漏洞是语言解决不了的。比如 CVE-2024-12087 这种路径穿越漏洞，无论用 C 还是 Go 写，只要没正确校验路径，攻击者就能读到系统里的任意文件。`gokrazy/rsync` 在这方面就中招了，因为它直接信任了客户端发送的路径。这给开发者的启示很明确：内存安全语言能帮你防住“怎么读”的问题（比如缓冲区溢出），但防不住“读什么”的问题（比如权限校验）。\n\n### 纵深防御：即使被攻破也要限制损失\n既然单靠语言不能 100% 安全，作者还探讨了 Linux 下的纵深防御手段。比如利用 Linux 的 Landlock 限制文件访问权限，或者用 `systemd` 的各种沙箱机制。这里有个巧妙的设计：Go 标准库的 `os.Root` 可以非常方便地实现 chroot，配合这些系统级约束，即使 rsync 进程被攻破，攻击者也被困在一个极小的范围内，无法危害宿主机。这比单纯依赖代码质量要靠谱得多。\n\n### 总结：Go 加最小化，确实比原版更安全\n回到最初的问题：用 Go 重写 rsync 值得吗？答案是肯定的。虽然它不能像魔法一样消除所有漏洞，但 Go 的内存安全机制消除了整整一类的 RCE 漏洞，而最小化实现则减少了攻击面。对于有经验的开发者来说，这篇文章的核心价值在于展示了防御的层次：底层靠语言特性（runtime bounds check），中层靠架构设计（minimal implementation），上层靠系统策略（Landlock/chroot）。如果你还在运行原版 C 语言 rsync，赶紧升级到 3.4.3；如果你在用 Go 版，也别忘了更新逻辑校验。",
+      "source_name": "michael.stapelberg.ch",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "rsync",
+        "Go",
+        "os.Root",
+        "vulnerabilities"
+      ],
+      "rank": 1
+    },
     {
       "title": "Reverse engineering circuitry in a Spacelab computer from 1980",
       "title_zh": "逆向工程 Spacelab 1980 年计算机的 ALU 电路板",
@@ -22,7 +41,7 @@
         "74181",
         "Spacelab"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Signing is for the bad days",
@@ -41,7 +60,7 @@
         "Sigstore",
         "software supply chain"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Hilbert transform as an infinite matrix",
@@ -59,7 +78,7 @@
         "Fourier series",
         "infinite matrix"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "On the",
@@ -78,7 +97,7 @@
         "accessibility",
         "ARIA"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Childhood Computing",
@@ -97,7 +116,7 @@
         "IBM PC",
         "childhood"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Weekly Update 505",
@@ -116,7 +135,26 @@
         "Charter Communications",
         "DentaQuest"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "An idea: user level WireGuard for UDP based encryption and authentication",
+      "title_zh": "WireGuard 用于 UDP 加密认证的构想",
+      "link": "https://utcc.utoronto.ca/~cks/space/blog/tech/WireGuardForUDPAuthEncryption",
+      "pub_date": "2026-05-24T14:24:46.000Z",
+      "summary": "",
+      "source_name": "utcc.utoronto.ca/~cks",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "engineering",
+      "keywords": [
+        "WireGuard",
+        "UDP",
+        "encryption",
+        "authentication"
+      ],
+      "rank": 8
     },
     {
       "title": "How our environment still needs the security boundary of Unix logins",
@@ -135,7 +173,7 @@
         "security",
         "authentication"
       ],
-      "rank": 7
+      "rank": 9
     }
   ]
 }
