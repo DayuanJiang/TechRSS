@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2587,
-  "filtered_articles": 12,
+  "filtered_articles": 15,
   "articles": [
+    {
+      "title": "GitHub Actions security in Python packages",
+      "title_zh": "Python 包 GitHub Actions 安全全景扫描",
+      "link": "https://nesbitt.io/2026/05/25/github-actions-security-in-python-packages.html",
+      "pub_date": "2026-05-25T10:00:00.000Z",
+      "summary": "## 一句话总结\nGitHub Actions 已经成为 Python 供应链安全的最大软肋，因为大多数 CI 配置不仅过度授权、未锁定依赖版本，还极易受到注入攻击，导致攻击者能劫持工作流并上传恶意包到 PyPI。\n\n### 开源 Python 的 CI 基本被 GitHub 垄断了\n现在的 Python 开源生态里，GitHub Actions 已经是事实上的标准，Travis CI 那些老古董早就没人用了。数据显示，在 PyPI 上有 GitHub 仓库的包里，大概有 15.2 万个用了 Actions，而还在用 Travis 的连 2% 都不到。这其中，有 5.6 万个仓库直接用 `pypa/gh-action-pypi-publish` 发包。虽然大家都在吹 Trusted Publishing（OIDC 令牌）这玩意儿，说它比长期存 API Token 安全，但真正用上的只有 22%，剩下 78% 还在仓库里存着 `PYPI_API_TOKEN`。这就像是你换了个指纹锁，但门口地毯底下还是藏着把备用钥匙，锁再高级也没用。\n\n### 你的 CI 配置其实是个不安全的包管理器\n很多人没意识到，Workflow 文件里的 `uses:` 指令本质上就是 `pip install`，只不过它拉取的是别人的代码并在你的 Runner 上直接跑。最可怕的是，这玩意儿默认用的不是不可变的版本号，而是 Git tag。只要攻击者拿到那个 Action 仓库的控制权，用 `git tag -f` 强制推个新标签上去，你所有引用 `@v41` 的工作流下次运行时就会自动执行恶意代码。更糟的是，这里没有 `requirements.txt` 这种锁文件，也没有哈希校验，Composite Actions 甚至还能在内部动态引用其他版本。这就导致了过去一年里，光是这种标签劫持就引发了多次供应链攻击，比如 `tj-actions` 和 `Trivy` 的事件。\n\n### 真实的攻击案例往往是一连串的失误\n文章里提到的 Ultralytics 事件简直是教科书级别的“灾难合集”。攻击者利用 `pull_request_target` 这个高危触发器，在 PR 里跑了恶意代码，还把分支名注入到了 shell 命令里。这一步不仅拿到了缓存写入权限，还成功投毒了 GitHub Actions 的缓存。等到正常的发包流程跑起来时，它恢复了那个被污染的缓存，把挖矿程序打进了 Wheel 包并传到了 PyPI。更讽刺的是，那个模板注入的 Bug 其实早就修过，结果十天后又回滚了。这说明光修 Bug 不够，如果 CI 权限太大，任何一点复燃都能酿成大祸。\n\n### 数据扫描揭示了惊人的安全隐患\n为了搞清楚这到底是个别现象还是普遍问题，作者用 `zizmor` 这个静态分析工具扫了整个 PyPI 生态。结果发现，有 10.2 万个仓库（占总数的三分之二）存在 `excessive-permissions` 问题，也就是没设置 `permissions` 块，导致默认的 `GITHUB_TOKEN` 拥有写权限。还有 8.5 万个仓库用的第三方 Action 没有锁定到具体的 Commit SHA，全靠 tag 指向，随时可能被劫持。这些不是理论上的风险，而是实打实能被利用的漏洞，因为过去 49 个相关的 GHSA 安全公告里，大部分都是因为这些配置问题导致的。\n\n### 模板注入是攻击者最喜欢的后门\n在所有漏洞类型里，`template-injection` 占了安全公告的大多数，有 2.1 万个仓库中招。它的原理很简单：把 `${{ }}` 表达式直接插到 `run:` 的 shell 命令里。比如把 issue 评论的内容直接 echo 进 bash，攻击者只要留个评论，里面写个 `curl | bash`，你的 Runner 就帮他执行了。作者筛选了一下，发现大概有 99 个仓库不仅存在这个注入点，而且触发器还是 `issue_comment`，同时手里的 Token 还正好有写权限。这就像是你把门锁上了，但门铃一响你就自动开门，也不看看门外是谁。修复办法也很简单，把数据先传到 `env` 里再引用，避开那个预解析阶段。\n\n### 缓存投毒让 Trusted Publishing 也防不住\n很多人以为上了 Trusted Publishing（OIDC）就万事大吉，但 `cache-poisoning` 告诉我们这还不够。大概有 1.5 万个仓库存在这种风险：一个低权限的任务能写缓存，而高权限的发包任务又去读这个缓存。Mistralai 的事件就是典型的例子，攻击者通过 `pull_request_target` 污染了缓存，发包流程恢复缓存后，恶意代码直接在 Runner 内存里偷走了 OIDC Token。这时候，虽然 Token 是合法的，也是 PyPI 认可的，但发出来的包已经是被篡改过的了。对于这种攻击，唯一的解法就是在构建或发包的关键任务里，别去恢复那些不可信的缓存。\n\n### 我们到底在信任谁？\n除了配置问题，文章还扒了一下 Python CI 到底依赖了哪些第三方 Action。除了官方的 `pypa/gh-action-pypi-publish`，像 `codecov/codecov-action` 这种也被广泛使用，而且大部分都没锁定版本。更有意思的是，有 3600 个仓库还在用已经被归档的 Action，比如 GitHub 自己废弃的 `actions/create-release`。这些依赖就像“行尸走肉”，虽然还能用，但已经没人维护了，一旦出事没人修。这提醒我们，供应链安全不光要看自己的代码，还得时刻盯着你引入的那些第三方 CI 组件，它们可能比你的代码更脆弱。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "GitHub Actions",
+        "supply chain",
+        "trusted publishing",
+        "zizmor"
+      ],
+      "rank": 1
+    },
     {
       "title": "Building Pi With Pi",
       "title_zh": "AI 时代开源维护的垃圾内容危机",
@@ -22,7 +41,7 @@
         "issue tracker",
         "maintenance"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "FediMeteo, timezones, and the art of not breaking what already works",
@@ -41,7 +60,7 @@
         "cache",
         "API key"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "The Eternal Sloptember",
@@ -60,7 +79,26 @@
         "LLM",
         "code quality"
       ],
-      "rank": 3
+      "rank": 4
+    },
+    {
+      "title": "Pluralistic: No honor among (ad-tech) thieves (25 May 2026)",
+      "title_zh": "广告技术行业的双重欺诈生态",
+      "link": "https://pluralistic.net/2026/05/25/lying-spies/",
+      "pub_date": "2026-05-25T08:21:45.000Z",
+      "summary": "## 一句话总结\nAd-tech 行业不仅是个侵犯隐私的监控骗局，更是一个针对广告商的庞氏骗局：他们一边夸大监控能力来骗取广告费，一边用虚假数据填补漏洞，导致高达 99% 的广告预算被浪费。\n\n### 监控生意的本质是“两头骗”\n我们常以为“如果你没付钱，你就是产品”，但这其实低估了这些公司的无底线。作者指出，一个敢于为了利润欺骗用户的公司，绝不会放过欺骗它的付费客户。这不仅仅是监控，这是一场彻头彻尾的骗局。他们不仅对用户撒谎说“我们很尊重隐私”，转头就对广告商撒谎说“我们掌握了用户的一切”。说白了，在这个行业里，只要有机会骗钱，他们会骗所有人：用户、广告商、监管者，甚至是投资者。\n\n### “洗脑广告”其实是帮凶吹出来的\n有意思的地方在于，很多技术批评者无意中成了这场骗局的帮凶。Ad-tech 公司喜欢吹嘘自己掌握了“多巴胺黑客”技术，能像洗脑一样操控用户购买。批评者们往往信以为真，开始焦虑地讨论这种“精神控制”的巨大风险。作者把这种现象称为“Criti-hype”。这种批评看似在揭露风险，实则是在帮广告公司向那些迷信技术的金主证明：“看，我们的广告真的能改变人的思想，快掏钱吧。”\n\n### 广告效果不仅是差，简直是零\n如果我们剥开这些营销话术，看一点实实在在的数据，真相就很残酷了。早在 2020 年，Tim Hwang 就在《Subprime Attention Crisis》里指出，数字广告不仅危险，而且根本无效。著名的百货大亨 John Wannamaker 曾抱怨“一半广告费被浪费了”，但现在的数据显示，真正的浪费率接近 99%。宝洁曾做过一次实验，砍掉了每年 2 亿美元的数字广告预算，结果销售额没有任何变化。这证明了那 2 亿美元基本上都打水漂了。\n\n### 汽车厂商连基因数据都敢编\n这几年，这种数据造假不仅没收敛，反而变本加厉。Mozilla 基金会在 2023 年的一份报告里把汽车评为“隐私最差的产品类别”。这里有个离谱的细节：日产和起亚声称它们掌握了用户的性生活数据，甚至有六家车企声称拥有用户的基因数据。稍微动点脑子就知道，车里哪来的传感器能测 DNA？这纯粹是为了把数据卖个好价钱而编造的谎言。他们既骗你说没收集数据，又骗买家说收集了超多维度的数据。\n\n### Cox Media 的“主动监听”骗局\n最近的一个典型案例是 Cox Media 推出的“Active Listening”产品。他们向广告商兜售说，能通过智能音箱和电视监听并转录用户的所有对话。这当然是谎言，虽然这些设备确实在疯狂收集数据，但还没到全天候录音的地步。Cox Media 这么做，只是为了把手里那点其实很普通的数据，包装成“绝密情报”卖给冤大头。这再次印证了那个逻辑：为了赚钱，他们敢于编造任何不存在的监控能力。\n\n### 骗子互害，罚款只是零花钱\n那怎么办？虽然 Cox Media 欺诈了其他广告商，但这帮“贼”之间也没什么江湖道义。特朗普时期的 FTC 最终介入调查，并对 Cox Media 处以了 88 万美元的罚款。听起来不少？但对于这种规模的媒体集团来说，这点钱简直就是沙发缝里的零钱。这个案例最大的讽刺在于，它提醒了那些付费投放广告的企业：即便你付了钱，在这个充满谎言的生态里，你依然是那个被收割的“产品”。",
+      "source_name": "pluralistic.net",
+      "score": 12,
+      "depth": 6,
+      "novelty": 6,
+      "category": "security",
+      "keywords": [
+        "ad-tech",
+        "surveillance",
+        "privacy",
+        "fraud"
+      ],
+      "rank": 5
     },
     {
       "title": "Walking the dog with Claude",
@@ -79,7 +117,7 @@
         "Compiler Explorer",
         "Computerphile"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Quoting Armin Ronacher",
@@ -97,7 +135,7 @@
         "AI",
         "open source"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Why I can't stand the word \"driven\"",
@@ -115,7 +153,7 @@
         "autonomy",
         "motivation"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "datasette-agent 0.1a4",
@@ -133,7 +171,45 @@
         "agent",
         "JavaScript plugin"
       ],
-      "rank": 7
+      "rank": 9
+    },
+    {
+      "title": "PHP - simple way to send HTTP headers before a script ends",
+      "title_zh": "PHP 脚本提前发送响应头的简单技巧",
+      "link": "https://shkspr.mobi/blog/2026/05/php-simple-way-to-send-http-headers-before-a-script-ends/",
+      "pub_date": "2026-05-25T11:34:38.000Z",
+      "summary": "PHP 脚本在发送 HTTP 响应后继续执行通常会被阻塞，因为服务器会等待输出缓冲区填满或显式终止。通过输出 4097 字节的填充数据并调用 flush()，可以强制服务器立即发送响应头。作者的服务器缓冲区大小为 4096 字节，因此需要输出超过该大小的数据。对于 curl 等客户端，这个方案足以让响应立即返回，而脚本继续执行后续操作。但 Python Requests 等客户端会等待完整响应结束才处理，此方法不适用。",
+      "source_name": "shkspr.mobi",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "engineering",
+      "keywords": [
+        "PHP",
+        "HTTP headers",
+        "output buffering",
+        "flush"
+      ],
+      "rank": 10
+    },
+    {
+      "title": "Quantum Link: AOL before it was AOL",
+      "title_zh": "AOL 前身 Quantum Link 的兴衰史",
+      "link": "https://dfarq.homeip.net/quantum-link-aol-before-it-was-aol/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=quantum-link-aol-before-it-was-aol",
+      "pub_date": "2026-05-25T11:00:15.000Z",
+      "summary": "Quantum Link 是 AOL 的前身，1985 年为 Commodore 64 推出的在线服务。它起源于 Play Net 技术，Control Video（后更名为 Quantum Computer Services）以 5 万美元加版税获得授权。服务采用 C64 客户端连接 Stratus 小型机，通过 Telenet/Tymnet 的 X.25 协议通信。月费 9.95 美元含 1 小时免费使用，额外时间每小时 3.60-4.80 美元，还需支付电话费。Q-Link 与 Lucasfilm 合作开发了 Habitat 多人在线游戏项目，虽未成功但衍生出 SCUMM 游戏引擎。随着 Commodore 市场萎缩（年销量从 300 万台降至 100 万台）和 PC 市场崛起（年销量近 1000 万台），Quantum 转向 PC 平台，技术演变为早期 AOL。Q-Link 一直运营到 1995 年中，比 Commodore 破产还晚一年多。",
+      "source_name": "dfarq.homeip.net",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "other",
+      "keywords": [
+        "Quantum Link",
+        "AOL",
+        "Commodore 64",
+        "online service"
+      ],
+      "rank": 11
     },
     {
       "title": "Mad House — Usborne Creepy Computer Games",
@@ -152,7 +228,7 @@
         "retro games",
         "Usborne"
       ],
-      "rank": 8
+      "rank": 12
     },
     {
       "title": "datasette-fixtures 0.1a0",
@@ -170,7 +246,7 @@
         "fixtures",
         "testing"
       ],
-      "rank": 9
+      "rank": 13
     },
     {
       "title": "datasette 1.0a30",
@@ -188,7 +264,7 @@
         "plugin",
         "UI"
       ],
-      "rank": 10
+      "rank": 14
     },
     {
       "title": "Why Steve Kerr Stayed With the Warriors",
@@ -205,7 +281,7 @@
         "ESPN",
         "JavaScript"
       ],
-      "rank": 11
+      "rank": 15
     }
   ]
 }
