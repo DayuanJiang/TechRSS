@@ -2,7 +2,7 @@
   "date": "2026-05-25",
   "total_feeds": 92,
   "success_feeds": 85,
-  "total_articles": 2585,
+  "total_articles": 2587,
   "filtered_articles": 12,
   "articles": [
     {
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "FediMeteo, timezones, and the art of not breaking what already works",
+      "title_zh": "FediMeteo 重构：在不破坏现有系统下支持美国",
+      "link": "https://it-notes.dragas.net/2026/05/25/fedimeteo-timezones-and-the-art-of-not-breaking-what-already-works/",
+      "pub_date": "2026-05-25T09:14:00.000Z",
+      "summary": "## 一句话总结\n这篇文章讲了一个看似简单的天气机器人如何在不破坏现有服务的前提下，通过引入配置化、缓存和多层脱敏机制，优雅地重构以支持美国复杂的时区和多地名需求，并分享了关于 API 密钥泄露和地理编码偏差的实战教训。\n\n### 从简单脚本到复杂系统的演进\nFediMeteo 最初只是一个极其简单的 Python 脚本，硬编码了意大利的时区和语言，通过 Nominatim 获取坐标，再调用 Open-Meteo 拉取天气数据。随着项目扩展到德国，作者开始意识到地名歧义的问题——比如德国有多个叫 Frankfurt 和 Halle 的城市，虽然当时通过手动编辑配置文件勉强绕过了，但这为后来的问题埋下了伏笔。这种“能用就行”的补丁式开发，在系统规模较小时确实有效，但也暗示了架构的脆弱性。\n\n### 美国市场的加入打破了所有假设\n当作者决定支持美国时，系统面临的挑战瞬间升级。首先是城市数量激增至 1200 多个，其次是横跨六个时区，原本统一的“当前时间”逻辑彻底失效。更糟糕的是地名冲突问题，像 Springfield 这样的重名城市在美国遍地都是，之前针对德国的手动修复方案完全无法扩展。面对这些新需求，作者意识到仅仅修修补补已经行不通了，必须对底层逻辑进行一次彻底的重构。\n\n### 重构的核心在于遵守“隐形契约”\n重构的难点不在于写新代码，而在于不能破坏现有的基础设施。Jails、备份任务、HAProxy 以及现有的欧洲国家服务都依赖于机器人既有的行为：输入城市名和国家代码，输出标准的 Markdown。为了满足新需求，作者在 CLI 参数中引入了可选的 `__state` 后缀来区分重名城市，并在配置文件中增加了 `timezone` 字段支持自动检测。通过将所有新功能设计为可选配置，确保了旧配置文件的行为与之前完全一致。\n\n### 用文件系统做缓存是最高级的解耦\n为了应对 Nominatim 的公共 API 限制和偶尔的超时，作者引入了一个极其简单的坐标缓存机制。每次解析城市后，将经纬度写入 `/tmp` 下的文本文件，后续运行直接读取文件。这不仅大幅减少了对外部 API 的依赖，还意外地解决了地理编码偏差的问题。比如 Nominatim 把“Ferrara”定位到了省中心的荒野，作者只需手动修改缓存文件中的坐标即可修正，无需改动任何代码或重新部署。这种利用文件系统作为“真相来源”的设计，体现了 Unix 哲学的精髓。\n\n### 调试代码是泄露密钥的最大元凶\n文章中最令人警醒的教训是一次 API 密钥泄露事故。作者在开发时为了调试 Open-Meteo 的错误响应，加了一行 `print` 语句输出完整的请求 URL，却忘记在部署前删除。当 Open-Meteo 出现故障时，包含 API Key 的 URL 被直接打印到了推文中并同步到了整个联邦宇宙。这次事故让作者明白，靠“小心”是没用的，必须在架构层面杜绝这种可能。现在的系统会在输出、日志甚至调试辅助函数的多个层级自动脱敏，任何包含 `apikey` 字样的参数都会被掩码处理。\n\n### 慢即是快：为稳定性而设计的串行处理\n由于美国城市数量庞大，完整的天气更新周期需要数小时。作者没有选择并发处理来加速，而是故意在每次请求间加入了 `sleep`，让 snac 有足够的时间分发上一条推文。这种“礼貌”的串行设计虽然慢，但极其稳定。唯一的隐患在于，如果运行脚本的 FreeBSD jail 在循环中途重启，整个任务就会中断且无法自动恢复。这暴露了将调度逻辑完全依赖 cron 和 wrapper 进程的局限性，也为未来的改进指明了方向。",
+      "source_name": "it-notes.dragas.net",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "timezone",
+        "daemon",
+        "cache",
+        "API key"
+      ],
+      "rank": 2
+    },
+    {
       "title": "The Eternal Sloptember",
       "title_zh": "AI agents 无法编程，软件工程的昂贵错误",
       "link": "https://geohot.github.io//blog/jekyll/update/2026/05/24/the-eternal-sloptember.html",
@@ -41,7 +60,7 @@
         "LLM",
         "code quality"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Walking the dog with Claude",
@@ -60,7 +79,7 @@
         "Compiler Explorer",
         "Computerphile"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Quoting Armin Ronacher",
@@ -78,7 +97,7 @@
         "AI",
         "open source"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Why I can't stand the word \"driven\"",
@@ -96,7 +115,7 @@
         "autonomy",
         "motivation"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "datasette-agent 0.1a4",
@@ -114,7 +133,7 @@
         "agent",
         "JavaScript plugin"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Mad House — Usborne Creepy Computer Games",
@@ -133,7 +152,7 @@
         "retro games",
         "Usborne"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "datasette-fixtures 0.1a0",
@@ -151,7 +170,7 @@
         "fixtures",
         "testing"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "datasette 1.0a30",
@@ -169,7 +188,7 @@
         "plugin",
         "UI"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Why Steve Kerr Stayed With the Warriors",
@@ -186,7 +205,7 @@
         "ESPN",
         "JavaScript"
       ],
-      "rank": 10
+      "rank": 11
     }
   ]
 }
