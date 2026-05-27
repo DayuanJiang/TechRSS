@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2589,
-  "filtered_articles": 16,
+  "filtered_articles": 17,
   "articles": [
     {
       "title": "CHAOSS Metrics in 2026",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "Sharing the result of a single Windows Runtime IAsyncOperation among multiple coroutines, part 1",
+      "title_zh": "C++/WinRT 中共享 IAsyncOperation 的竞态陷阱",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260527-00/?p=112361",
+      "pub_date": "2026-05-27T14:00:00.000Z",
+      "summary": "## 一句话总结\n在 C++/WinRT 中试图复刻 C# 的 `Task` 共享机制时，手动管理状态锁和信号量极易引发数据竞争和异常安全问题，核心难点在于 `IAsyncOperation` 本身不支持多次 await。\n\n### C# 的“理所当然”在 C++ 里行不通\n在 C# 里，把一个 `Task` 缓存起来给多个协程 await 是基操，因为 `Task` 天生支持被多次等待。但在 C++/WinRT 里，`IAsyncOperation` 是一次性的，这就很尴尬了：你想复用异步结果，却发现对象本身不支持。于是，有开发者试图手动实现一套缓存机制，核心思路是“只干活一次，其他人排队等结果”。听起来很合理，但实现起来全是坑。\n\n### 试图用信号量搭积木，结果埋了雷\n这位开发者的方案是引入一套状态机：用 `m_busy` 标记任务是否在进行，用 `m_finished` 事件通知完成，用 `m_thing` 缓存结果。第一个调用者负责启动任务并设置回调，后续调用者发现 `m_busy` 为 true 就乖乖等 `m_finished` 信号。逻辑看似闭环，但代码里到处是隐患。比如，为了支持任务失败后重试，代码在完成时重置了 `m_busy`，这直接导致了更严重的并发问题。\n\n### 锁没锁住的地方，就是数据竞争的温床\n代码里虽然用了 `std::mutex`，但锁的范围没覆盖全。最明显的问题在于，完成回调 lambda 里修改 `m_busy` 时根本没加锁。这不仅是数据竞争，更是逻辑漏洞。更糟糕的是异常安全性：如果 `GetThingWorkerAsync` 在返回 `IAsyncOperation` 之前就抛了异常，`m_busy` 会被卡在 `true` 状态。结果就是，后续所有调用者都以为任务在进行，实际上任务早就挂了，只能拿到一个 `nullptr`。\n\n### 竞态窗口让缓存机制形同虚设\n最致命的 bug 藏在一个微妙的时间窗口里。假设任务刚好完成，回调把 `m_busy` 改回了 `false`，但还没来得及 `SetEvent`。此时如果有新线程调用 `GetThingAsync`，它会误以为任务没开始，于是重新启动一个新任务并覆盖 `m_task`。结果就是，第一个调用者等的是任务 A，结果却拿到了任务 B 的结果，或者直接崩溃。这种“检查-执行”不是原子操作带来的竞态，是并发编程里的经典陷阱。\n\n### 这里的教训是：别过度设计\n说白了，这段代码试图用 primitives（互斥锁、事件、状态位）去硬凑一个高级语义，结果反而把自己绕进去了。作者指出，其实不需要这么复杂，这种“为了重试而重置状态”的设计往往得不偿失。既然 `IAsyncOperation` 不支持多 await，正确的解法应该是利用 C++/WinRT 提供的更高级的抽象，或者彻底改变缓存策略，而不是在底层裸奔。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "C++/WinRT",
+        "IAsyncOperation",
+        "coroutine",
+        "race condition"
+      ],
+      "rank": 4
+    },
+    {
       "title": "The Meta logo and fitting Besace curves",
       "title_zh": "Meta 标志的 Besace 曲线拟合",
       "link": "https://www.johndcook.com/blog/2026/05/27/the-meta-logo-and-fitting-besace-curves/",
@@ -79,7 +98,26 @@
         "curve fitting",
         "parametric equations"
       ],
-      "rank": 4
+      "rank": 5
+    },
+    {
+      "title": "SQLAlchemy 2 In Practice - Solutions to the Exercises",
+      "title_zh": "SQLAlchemy 2 练习题解答",
+      "link": "https://blog.miguelgrinberg.com/post/sqlalchemy-2-in-practice---solutions-to-the-exercises",
+      "pub_date": "2026-05-27T19:22:35.000Z",
+      "summary": "",
+      "source_name": "miguelgrinberg.com",
+      "score": 6,
+      "depth": 4,
+      "novelty": 2,
+      "category": "engineering",
+      "keywords": [
+        "SQLAlchemy",
+        "ORM",
+        "exercises",
+        "solutions"
+      ],
+      "rank": 6
     },
     {
       "title": "AMD K6-2 released May 28, 1998",
@@ -98,7 +136,7 @@
         "Socket 7",
         "retro computing"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Bill Gates’ Internet Tidal Wave Microsoft memo",
@@ -117,7 +155,7 @@
         "Internet",
         "memo"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Gadget Review: Chuwi Minibook X N150 + Linux ★★★★☆",
@@ -135,7 +173,7 @@
         "hardware",
         "review"
       ],
-      "rank": 7
+      "rank": 9
     }
   ]
 }
