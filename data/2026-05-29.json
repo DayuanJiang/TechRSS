@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2590,
-  "filtered_articles": 16,
+  "filtered_articles": 17,
   "articles": [
     {
       "title": "Protestware for coding agents",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Composer’s dependency policies",
+      "title_zh": "Composer 2.10 统一依赖策略配置",
+      "link": "https://nesbitt.io/2026/05/29/composer-dependency-policies.html",
+      "pub_date": "2026-05-29T10:00:00.000Z",
+      "summary": "## 一句话总结\nComposer 2.10 引入了统一的 `config.policy` 配置块，把恶意软件、废弃包等安全策略变成了像广告拦截器那样可订阅、可扩展的过滤列表，甚至支持未来实现类似 Rust 的“白名单审计”模式。\n\n### 统一配置：把安全策略做成“广告拦截器”\n以前 Composer 处理安全公告、恶意软件和废弃包时，配置散落在各处，逻辑也不统一。这次 2.10 版本的核心思路是借鉴 uBlock Origin 的设计：把所有策略都抽象成“列表”。新的 `config.policy` 配置块把这些东西收归统一管理，每个列表都有三个标准动作：`block`（直接从依赖池里剔除）、`audit`（是报错还是仅提示）和 `ignore`（设置例外）。这种设计让开发者可以用同一套逻辑处理不同类型的安全策略，配置起来非常直观。\n\n### 恶意软件拦截：从“事后审计”到“安装阻断”\n在所有策略列表中，`malware`（恶意软件）列表是默认开启的，而且它的权限最高。不同于 `composer audit` 只能在安装后告诉你有问题，`malware` 列表会在 `composer install` 时直接阻断安装。这意味着即使你的 `lock` 文件是之前生成的，如果某个版本后来被标记为恶意软件，Composer 也会拒绝安装它。这比传统的“先安装后审计”模式安全得多，真正做到了防患于未然。\n\n### 元数据传输：不增加额外的网络请求\n为了实现这个功能，Composer 在现有的元数据结构里加了一个 `filter` 字段。Composer 仓库（比如 Packagist）在 `packages.json` 里声明自己支持 `filter.metadata: true`，然后在解析依赖时，Composer 就能顺手拿到每个包的过滤标记。因为复用了现有的元数据请求，所以在 `composer update` 时并不会产生额外的网络往返，性能开销几乎可以忽略不计。\n\n### 针对锁文件的优化：Summary 与 PURL\n但在 `composer install` 或 `composer audit` 时，Composer 通常不会去联网检查锁文件里的包。为了解决这个问题，规范引入了两个新接口：`summary-url` 和 `api-url`。`summary-url` 返回一个包含所有被标记包的 JSON 文件（目前 Packagist 的这个文件只包含 70 个包），而 `api-url` 允许客户端 POST 一批 PURLs（包 URL），服务器只返回匹配的过滤项。这种按需查询的方式既灵活又高效。\n\n### 真正的亮点：`malware` 不是特权关键字\n这个设计最巧妙的地方在于，`malware` 虽然是内置的默认列表，但它并不是一个保留关键字。开发者可以在 `config.policy` 下定义任意名字的自定义列表，比如 `company-policy`，然后指定数据源（`sources`）。数据源可以来自 Composer 仓库，也可以是你自己维护的 HTTPS 接口。这意味着你可以用它来拦截“法务未批准的包”或者社区维护的“拼写抢注（typosquat）”列表，扩展性极强。\n\n### 数据源的竞争与去中心化\n默认情况下，Packagist 使用 Aikido 提供的数据作为 `malware` 源，但它是可插拔的。你可以通过配置忽略 Aikido 的源，换成其他安全厂商的接口，或者让多个源并行工作。这种设计打破了中心化仓库的垄断，让安全厂商的数据能直接接入客户端。虽然这要求客户端升级到 2.10 才能生效，但换来的是更快速的市场响应和更灵活的供应商选择。\n\n### 未来的可能性：从黑名单到白名单\n虽然目前主要是黑名单模式，但底层的协议格式其实已经支持白名单。只要把逻辑反过来，只保留列表中存在的版本，就能实现类似 Rust `cargo-vet` 的模式：只允许经过审计的包进入项目。Composer 已经预留了 `license`、`support` 等关键字，这暗示未来可能会用同样的机制来实现许可证合规检查，甚至允许社区维护“已有人工审阅”的包列表。\n\n### 与其他生态的对比：客户端 vs 服务端\n像 PyPI 或 npm 这样的仓库，通常选择在服务端直接下架恶意包。这种方式对老客户端也有效，但缺点是只有仓库管理员说了算，第三方安全厂商的数据很难介入。Composer 选择把判断权交给客户端，虽然这意味着老版本客户端享受不到新策略，但配合 Packagist 正在做的“版本不可变”特性，整体安全性是在提升的。这种设计让时间冷却（cooldown）机制和精确过滤列表可以并存，为未来的安全策略打好了基础。",
+      "source_name": "nesbitt.io",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "Composer",
+        "dependency policy",
+        "malware",
+        "supply chain security"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Dancing mad with sandboxing",
       "title_zh": "Kefka：Go 原生 shell 沙箱实现",
       "link": "https://xeiaso.net/blog/2026/dancing-mad-sandboxing/",
@@ -41,7 +60,7 @@
         "POSIX",
         "Go"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Claude Opus 4.8: \"a modest but tangible improvement\"",
@@ -60,7 +79,7 @@
         "prompt caching",
         "mid-conversation system messages"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Anthropic's run-rate revenue hits $47 billion",
@@ -79,7 +98,7 @@
         "enterprise adoption",
         "growth"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Sharing the result of a single Windows Runtime IAsyncOperation among multiple coroutines, part 2",
@@ -98,7 +117,7 @@
         "WinRT",
         "caching"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "datasette 1.0a31",
@@ -117,7 +136,26 @@
         "write queries",
         "stored queries"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "The UK Government's Low Value Purchase System is a Waste of Time",
+      "title_zh": "英国政府采购系统每月浪费企业 2 天时间",
+      "link": "https://shkspr.mobi/blog/2026/05/the-uk-governments-low-value-purchase-system-is-a-waste-of-time/",
+      "pub_date": "2026-05-29T11:34:54.000Z",
+      "summary": "英国政府 RM6237 低值采购系统要求所有注册供应商每月报告业务数据，即使没有交易也必须登录并点击“无业务”按钮。作者通过信息公开请求获得的 2025 年 3 月至 2026 年 2 月的数据显示，每月约 1500 家供应商中，96% 以上提交的都是空报告，实际有交易的供应商最多仅 59 家。按每次操作 2 分钟计算，全国小企业每月因此浪费超过 2 天时间。作者质疑为何不将报告责任转嫁给采购方，并指出政府商业署并未收集该服务的满意度数据。",
+      "source_name": "shkspr.mobi",
+      "score": 11,
+      "depth": 6,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "bureaucracy",
+        "government",
+        "data",
+        "waste"
+      ],
+      "rank": 8
     },
     {
       "title": "Knowing about things is cheaper than knowing things",
@@ -136,7 +174,7 @@
         "knowledge",
         "roi"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "llm-anthropic 0.25.1",
@@ -154,7 +192,7 @@
         "llm-anthropic",
         "fast mode"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "The Go language server can do some impressive code navigation",
@@ -172,7 +210,7 @@
         "code navigation",
         "Go"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "markdown-svg-renderer",
@@ -190,7 +228,45 @@
         "svg",
         "renderer"
       ],
-      "rank": 10
+      "rank": 12
+    },
+    {
+      "title": "Why people say CRTs don’t have pixels",
+      "title_zh": "CRT 显示器像素与分辨率的技术澄清",
+      "link": "https://dfarq.homeip.net/why-people-say-crts-dont-have-pixels/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=why-people-say-crts-dont-have-pixels",
+      "pub_date": "2026-05-29T11:00:59.000Z",
+      "summary": "",
+      "source_name": "dfarq.homeip.net",
+      "score": 6,
+      "depth": 4,
+      "novelty": 2,
+      "category": "engineering",
+      "keywords": [
+        "CRT",
+        "pixel",
+        "dot pitch",
+        "resolution"
+      ],
+      "rank": 13
+    },
+    {
+      "title": "DR DOS: Revenge of CP/M",
+      "title_zh": "DR DOS 与微软的 DOS 竞争史",
+      "link": "https://dfarq.homeip.net/dr-dos-revenge-of-cp-m/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=dr-dos-revenge-of-cp-m",
+      "pub_date": "2026-05-29T11:00:33.000Z",
+      "summary": "",
+      "source_name": "dfarq.homeip.net",
+      "score": 6,
+      "depth": 3,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "DR DOS",
+        "MS-DOS",
+        "CP/M",
+        "history"
+      ],
+      "rank": 14
     },
     {
       "title": "Footage From the LA-Houston MLS Match That Apple Shot Using iPhone 17 Pro Cameras",
@@ -208,7 +284,7 @@
         "MLS",
         "Apple"
       ],
-      "rank": 11
+      "rank": 15
     }
   ]
 }
