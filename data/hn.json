@@ -1,6 +1,1750 @@
 {
-  "updatedAt": "2026-05-29T13:40:46.616Z",
+  "updatedAt": "2026-05-29T16:40:49.452Z",
   "items": [
+    {
+      "id": 48321076,
+      "by": "NicoConstant",
+      "title": "Real-time LLM Inference on Standard GPUs: 3k tokens/s per request",
+      "url": "https://blog.kog.ai/real-time-llm-inference-on-standard-gpus-3-000-tokens-s-per-request/",
+      "score": 126,
+      "detailUpdatedAt": 1780071190,
+      "createdAt": 1780050611,
+      "aiSummaryUpdatedAt": 1780072492,
+      "aisummary": {
+        "chinese_title": "8×H200跑2B模型到3k tok/s，“标准GPU”标题引争议",
+        "emoji": "🤨",
+        "sarcastic_question": "原来“标准GPU”就是8张H200豪华套装吗？"
+      },
+      "classifications": {
+        "topics": [
+          1,
+          6,
+          7
+        ],
+        "facets": [
+          10,
+          4
+        ],
+        "tags": [
+          "LLM",
+          "kog.ai",
+          "NVIDIA H200",
+          "DeepSeek V4",
+          "MI300X",
+          "Groq",
+          "Taalas",
+          "FP16",
+          "FP8",
+          "GPT-OSS-120B"
+        ]
+      },
+      "classificationsUpdatedAt": 1780053637,
+      "aiSummary": {
+        "chinese_title": "8×H200跑2B模型到3k tok/s，“标准GPU”标题引争议",
+        "emoji": "🤨",
+        "sarcastic_question": "原来“标准GPU”就是8张H200豪华套装吗？"
+      },
+      "detail": {
+        "id": 48321076,
+        "by": "NicoConstant",
+        "title": "Real-time LLM Inference on Standard GPUs: 3k tokens/s per request",
+        "url": "https://blog.kog.ai/real-time-llm-inference-on-standard-gpus-3-000-tokens-s-per-request/",
+        "score": 126,
+        "detailUpdatedAt": 1780071190,
+        "createdAt": 1780050611,
+        "aiSummaryUpdatedAt": 1780072492,
+        "aisummary": {
+          "chinese_title": "8×H200跑2B模型到3k tok/s，“标准GPU”标题引争议",
+          "discussion_overview": [
+            {
+              "category": "标题与硬件口径争议",
+              "summary": "评论区首先争论的是“Standard GPUs”这个说法是否成立。很多人以为指的是消费级显卡，比如 4090、3090 或至少能接显示器的“普通 GPU”，但文章实际用的是 8× NVIDIA H200 这类数据中心加速卡。作者随后澄清并把文章标题改成了“standard datacenter GPUs”，但不少人仍认为原标题带有误导性，甚至接近 clickbait。",
+              "supportid": [
+                "48321414",
+                "48321520",
+                "48321581",
+                "48323311",
+                "48322420",
+                "48321635",
+                "48324115",
+                "48323326",
+                "48324268",
+                "48321630",
+                "48323318",
+                "48321846",
+                "48321831",
+                "48323395"
+              ]
+            },
+            {
+              "category": "2B 预览不足以证明大模型可扩展",
+              "summary": "不少评论认为，拿 2B dense model 做 3k tok/s 展示，无法说明这套方案对真正有用的大模型也成立。有人直接把这种外推类比成“1 到 4 核线性提升就假设 256 核也一样”，或者“缓存内优化就假设多机问题也能同样优化”，并要求看到 27B、30B 甚至更大的实测。作者回应说，文章最后给了 scaling math：按 active params 和显存占用估算，GPT-OSS-120B、DeepSeek V4 Pro/Flash 这类 MoE 模型理论上可以继续扩展，但真正难点在于保持速度、处理更复杂的 routing 和 attention 逻辑。",
+              "supportid": [
+                "48321384",
+                "48321392",
+                "48322032",
+                "48321383",
+                "48321544",
+                "48322964",
+                "48322115",
+                "48323374",
+                "48324079",
+                "48321487",
+                "48321519",
+                "48322166",
+                "48321485"
+              ]
+            },
+            {
+              "category": "高 tok/s 的应用价值",
+              "summary": "支持者强调，token/s 并不只是“跑分”，而是直接影响 agentic workflow 的体验。比如软件工程、vibe coding、代码重构、测试循环都需要大量连续推理，如果每秒只能几十个 token，整个交互会被模型速度拖垮。也有人提到实时 video、shader generation、worldbuilding，甚至并行生成多个方案、做 Monte Carlo search 这类场景，认为 400–500 tok/s 可能只是起步，真正高吞吐才会打开新的工作流。",
+              "supportid": [
+                "48323081",
+                "48324135",
+                "48321457",
+                "48321778",
+                "48323413",
+                "48323573",
+                "48325027",
+                "48325062",
+                "48323553"
+              ]
+            },
+            {
+              "category": "工程实现：Monokernel、TP 与带宽瓶颈",
+              "summary": "技术讨论集中在这套推理引擎到底怎么做到这么快。作者说明他们会为不同 GPU 类型手写 CUDA/HIP 和 assembly，把模型逻辑重写到非常底层，以压缩 launch、sync、CPU sampling 等微秒级开销。评论和回复还解释了 Monokernel（单内核优化）和 TP（tensor parallelism，张量并行）的关系：当前 1k–5k tok/s 主要靠把 all-reduce 压到 3µs 以下，而 DTP（Delayed Tensor Parallelism，延迟张量并行）是面向 10k+ tok/s 的更激进路线。即便如此，consumer GPU 仍会受限于带宽和 PCIe 等互连性能，开源与否则被认为还要权衡 startup 的 IP 价值。",
+              "supportid": [
+                "48321626",
+                "48322002",
+                "48322460",
+                "48323756",
+                "48324024",
+                "48323741",
+                "48324742",
+                "48324953"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Monokernel",
+              "explanation": "把推理流程尽量压缩到少量 GPU kernel 的优化思路，用来减少 launch 和同步开销。"
+            },
+            {
+              "term": "DTP（Delayed Tensor Parallelism）",
+              "explanation": "一种把张量并行中的通信尽量延后或隐藏的设计，目标是进一步提高 tokens/s。"
+            },
+            {
+              "term": "TP（Tensor Parallelism）",
+              "explanation": "把模型张量切分到多块 GPU 上并行计算的常见方法。"
+            },
+            {
+              "term": "all-reduce",
+              "explanation": "多 GPU 间同步归并数据的通信操作，常常是性能瓶颈。"
+            },
+            {
+              "term": "MoE（Mixture of Experts）",
+              "explanation": "混合专家模型，只激活部分专家参数，以较少 active params 支撑更大的总参数量。"
+            }
+          ],
+          "context": "这篇讨论围绕 Kog 发布的 LLM inference engine 技术预览展开，声称在 8× NVIDIA H200（数据中心 GPU）上把单请求吞吐做到约 3k tokens/s。标题里的“Standard GPUs”引发大量误解，很多人以为是消费级显卡，随后作者澄清并更新为“standard datacenter GPUs”。评论里反复提到 Monokernel（单内核优化）和 Delayed Tensor Parallelism（DTP，延迟张量并行）这两条路线：前者通过手写 CUDA/HIP/assembly 压榨推理路径，后者则面向更激进的 10k+ tok/s 目标。争论焦点不只是速度本身，而是这套方法能否从 2B 的预览模型外推到 GPT-OSS-120B、DeepSeek V4 Pro/Flash 这类更有用的 MoE（Mixture of Experts，混合专家）模型，以及在 consumer GPU、PCIe 和多节点环境下会遇到什么带宽上限。",
+          "emoji": "🤨",
+          "sarcastic_question": "原来“标准GPU”就是8张H200豪华套装吗？"
+        },
+        "classifications": {
+          "topics": [
+            1,
+            6,
+            7
+          ],
+          "facets": [
+            10,
+            4
+          ],
+          "tags": [
+            "LLM",
+            "kog.ai",
+            "NVIDIA H200",
+            "DeepSeek V4",
+            "MI300X",
+            "Groq",
+            "Taalas",
+            "FP16",
+            "FP8",
+            "GPT-OSS-120B"
+          ]
+        },
+        "classificationsUpdatedAt": 1780053637,
+        "aiSummary": {
+          "chinese_title": "8×H200跑2B模型到3k tok/s，“标准GPU”标题引争议",
+          "discussion_overview": [
+            {
+              "category": "标题与硬件口径争议",
+              "summary": "评论区首先争论的是“Standard GPUs”这个说法是否成立。很多人以为指的是消费级显卡，比如 4090、3090 或至少能接显示器的“普通 GPU”，但文章实际用的是 8× NVIDIA H200 这类数据中心加速卡。作者随后澄清并把文章标题改成了“standard datacenter GPUs”，但不少人仍认为原标题带有误导性，甚至接近 clickbait。",
+              "supportid": [
+                "48321414",
+                "48321520",
+                "48321581",
+                "48323311",
+                "48322420",
+                "48321635",
+                "48324115",
+                "48323326",
+                "48324268",
+                "48321630",
+                "48323318",
+                "48321846",
+                "48321831",
+                "48323395"
+              ]
+            },
+            {
+              "category": "2B 预览不足以证明大模型可扩展",
+              "summary": "不少评论认为，拿 2B dense model 做 3k tok/s 展示，无法说明这套方案对真正有用的大模型也成立。有人直接把这种外推类比成“1 到 4 核线性提升就假设 256 核也一样”，或者“缓存内优化就假设多机问题也能同样优化”，并要求看到 27B、30B 甚至更大的实测。作者回应说，文章最后给了 scaling math：按 active params 和显存占用估算，GPT-OSS-120B、DeepSeek V4 Pro/Flash 这类 MoE 模型理论上可以继续扩展，但真正难点在于保持速度、处理更复杂的 routing 和 attention 逻辑。",
+              "supportid": [
+                "48321384",
+                "48321392",
+                "48322032",
+                "48321383",
+                "48321544",
+                "48322964",
+                "48322115",
+                "48323374",
+                "48324079",
+                "48321487",
+                "48321519",
+                "48322166",
+                "48321485"
+              ]
+            },
+            {
+              "category": "高 tok/s 的应用价值",
+              "summary": "支持者强调，token/s 并不只是“跑分”，而是直接影响 agentic workflow 的体验。比如软件工程、vibe coding、代码重构、测试循环都需要大量连续推理，如果每秒只能几十个 token，整个交互会被模型速度拖垮。也有人提到实时 video、shader generation、worldbuilding，甚至并行生成多个方案、做 Monte Carlo search 这类场景，认为 400–500 tok/s 可能只是起步，真正高吞吐才会打开新的工作流。",
+              "supportid": [
+                "48323081",
+                "48324135",
+                "48321457",
+                "48321778",
+                "48323413",
+                "48323573",
+                "48325027",
+                "48325062",
+                "48323553"
+              ]
+            },
+            {
+              "category": "工程实现：Monokernel、TP 与带宽瓶颈",
+              "summary": "技术讨论集中在这套推理引擎到底怎么做到这么快。作者说明他们会为不同 GPU 类型手写 CUDA/HIP 和 assembly，把模型逻辑重写到非常底层，以压缩 launch、sync、CPU sampling 等微秒级开销。评论和回复还解释了 Monokernel（单内核优化）和 TP（tensor parallelism，张量并行）的关系：当前 1k–5k tok/s 主要靠把 all-reduce 压到 3µs 以下，而 DTP（Delayed Tensor Parallelism，延迟张量并行）是面向 10k+ tok/s 的更激进路线。即便如此，consumer GPU 仍会受限于带宽和 PCIe 等互连性能，开源与否则被认为还要权衡 startup 的 IP 价值。",
+              "supportid": [
+                "48321626",
+                "48322002",
+                "48322460",
+                "48323756",
+                "48324024",
+                "48323741",
+                "48324742",
+                "48324953"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Monokernel",
+              "explanation": "把推理流程尽量压缩到少量 GPU kernel 的优化思路，用来减少 launch 和同步开销。"
+            },
+            {
+              "term": "DTP（Delayed Tensor Parallelism）",
+              "explanation": "一种把张量并行中的通信尽量延后或隐藏的设计，目标是进一步提高 tokens/s。"
+            },
+            {
+              "term": "TP（Tensor Parallelism）",
+              "explanation": "把模型张量切分到多块 GPU 上并行计算的常见方法。"
+            },
+            {
+              "term": "all-reduce",
+              "explanation": "多 GPU 间同步归并数据的通信操作，常常是性能瓶颈。"
+            },
+            {
+              "term": "MoE（Mixture of Experts）",
+              "explanation": "混合专家模型，只激活部分专家参数，以较少 active params 支撑更大的总参数量。"
+            }
+          ],
+          "context": "这篇讨论围绕 Kog 发布的 LLM inference engine 技术预览展开，声称在 8× NVIDIA H200（数据中心 GPU）上把单请求吞吐做到约 3k tokens/s。标题里的“Standard GPUs”引发大量误解，很多人以为是消费级显卡，随后作者澄清并更新为“standard datacenter GPUs”。评论里反复提到 Monokernel（单内核优化）和 Delayed Tensor Parallelism（DTP，延迟张量并行）这两条路线：前者通过手写 CUDA/HIP/assembly 压榨推理路径，后者则面向更激进的 10k+ tok/s 目标。争论焦点不只是速度本身，而是这套方法能否从 2B 的预览模型外推到 GPT-OSS-120B、DeepSeek V4 Pro/Flash 这类更有用的 MoE（Mixture of Experts，混合专家）模型，以及在 consumer GPU、PCIe 和多节点环境下会遇到什么带宽上限。",
+          "emoji": "🤨",
+          "sarcastic_question": "原来“标准GPU”就是8张H200豪华套装吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n通过架构、引擎和内核的协同设计，Kog Inference Engine 将单请求解码速度推向了 3,000 tokens/s，证明了标准数据中心 GPU 完全可以达到专用推理硬件的速度上限。\n\n### AI Agent 的核心痛点：单请求延迟比吞吐量更重要\n传统的推理基准通常关注聚合吞吐量或首字延迟，但在 AI Agent 的场景下，这些指标具有欺骗性。Agent 的工作流本质上是串行的——检查、规划、编辑、测试、修订，每一步都依赖上一步的输出。如果 Agent 需要生成 50,000 个 token，100 tokens/s 的速度意味着用户要等 8 分钟，而 3,000 tokens/s 只需要不到 20 秒。这种数量级的差异直接决定了产品的可用性。因此，Kog 选择优先优化 Batch Size 为 1 的单请求延迟，这抓住了当前 Agent 体验的瓶颈。\n\n### 算力不是瓶颈，内存带宽才是\n在低 Batch 场景下，模型推理的瓶颈通常不在计算能力（FLOPS），而在内存带宽。生成一个 token 需要把所有激活权重从 HBM 搬运到计算单元，计算量相对很小（FP16 约为 1 FLOP/byte），而现代 GPU 的 FLOPS 远高于带宽供给能力。以 8× NVIDIA H200 为例，其有效聚合带宽约为 30.7 TB/s。对于一个 4 GB 大小的 FP16 2B 模型，理论上的速度上限约为 7,700 tokens/s。这意味着只要能榨干内存带宽，标准 GPU 完全具备极高速推理的物理基础。\n\n### 现有软件栈在微秒级预算中\"漏洞百出\"\n既然硬件带宽足够，为什么现在的引擎跑不快？问题出在软件栈的\"微秒级浪费\"上。在 3,000 tokens/s 的目标下，生成一个 token 的预算只有 333 微秒。传统的推理框架（如 vLLM, TensorRT-LLM）通常由 CPU 调度、多个 GPU Kernel 串行组成。如果每层启动 10 个 Kernel，仅 Kernel 启动和清理的开销就能吃掉 1,125 微秒，直接把速度封顶在 890 tokens/s。加上 CPU 采样、GPU 同步、跨卡通信等开销，现有的分层抽象设计根本无法适应这种严苛的时序要求。\n\n### Kog 的解法：把整个模型变成一个 Kernel\n为了堵住这些漏洞，Kog 采用了激进的协同设计策略，核心是 **Monokernel（单内核）**。他们不再把模型拆成一个个小 Kernel 交给 CPU 调度，而是把整个解码路径写成一个常驻 GPU 的单一程序。这消除了所有 Kernel 边界和 CPU 调度开销，甚至连采样逻辑都在 GPU 上完成。同时，他们自研了 KCCL 通信库，针对微秒级延迟进行了汇编级优化，将 AllReduce 延迟控制在 3 微秒以内，远超通用库的表现。\n\n### 连模型架构也要为硬件让路\n这种协同设计甚至延伸到了模型架构本身。Kog 提出了 **Laneformer** 架构，引入了\"延迟张量并行\"（DTP）。传统的张量并行要求每层都进行跨卡同步，阻塞计算；而 DTP 改变了依赖结构，允许跨卡通信与计算重叠。此外，针对 AMD MI300X 这种复杂的 Chiplet 拓扑结构，他们还做了 IOD 感知的内存访问优化。说白了，他们不是在适配模型，而是在设计模型时就已经把硬件的物理拓扑和通信开销算进去了。\n\n### 效果与未来：打破专用芯片的神话\n最终结果显示，在 8× AMD MI300X 上达到了 3,000 tokens/s，在 8× NVIDIA H200 上达到了 2,100 tokens/s（FP16，无投机解码）。这证明了只要解决软件栈的效率问题，企业现有的标准数据中心 GPU 就能跑出专用推理卡的速度。随着下一代 GPU（如 Rubin 和 MI450）在 2026 年带来 4 倍的带宽提升，这种架构甚至有望在更大的 MoE 模型上维持数千 tokens/s 的速度，彻底摆脱对专用硬件的依赖。"
+    },
+    {
+      "id": 48317774,
+      "by": "enraged_camel",
+      "title": "Blue Origin's New Glenn blows up during static fire test",
+      "url": "https://twitter.com/nasaspaceflight/status/2060164928472854821",
+      "score": 383,
+      "detailUpdatedAt": 1780069390,
+      "createdAt": 1780021812,
+      "aiSummaryUpdatedAt": 1780071055,
+      "aisummary": {
+        "chinese_title": "Blue Origin New Glenn静态点火爆炸，发射台损毁恐延一年",
+        "emoji": "💥",
+        "sarcastic_question": "静态点火，顺便把发射台也验收了？"
+      },
+      "classifications": {
+        "topics": [
+          8,
+          7
+        ],
+        "facets": [
+          8,
+          12
+        ],
+        "tags": [
+          "Blue Origin",
+          "New Glenn",
+          "static fire",
+          "SpaceX",
+          "NASASpaceflight"
+        ]
+      },
+      "classificationsUpdatedAt": 1780022434,
+      "aiSummary": {
+        "chinese_title": "Blue Origin New Glenn静态点火爆炸，发射台损毁恐延一年",
+        "emoji": "💥",
+        "sarcastic_question": "静态点火，顺便把发射台也验收了？"
+      },
+      "detail": {
+        "id": 48317774,
+        "by": "enraged_camel",
+        "title": "Blue Origin's New Glenn blows up during static fire test",
+        "url": "https://twitter.com/nasaspaceflight/status/2060164928472854821",
+        "score": 170,
+        "detailUpdatedAt": 1780029789,
+        "createdAt": 1780021812,
+        "aiSummaryUpdatedAt": 1780030198,
+        "aisummary": {
+          "chinese_title": "Blue Origin New Glenn静态点火爆炸，发射台重创",
+          "discussion_overview": [
+            {
+              "category": "发射台与地面设施重创",
+              "summary": "很多评论认为，真正麻烦的不只是火箭报废，而是发射台和地面设备可能遭到大面积损坏。有人提到闪电塔、transport-erector 甚至整个 launch complex 都可能被波及，修复周期可能从数月拖到一年以上。也有人推测 Blue Origin 可能会加速新发射台建设，或者借机直接转向更大的 9x4 版本 New Glenn。和 SpaceX 过去的 pad 事故相比，大家普遍认为这种在台面上的爆炸对后续发射排期更致命。",
+              "supportid": [
+                "48318525",
+                "48319125",
+                "48318101",
+                "48318303",
+                "48318614",
+                "48318581",
+                "48318809",
+                "48318729"
+              ]
+            },
+            {
+              "category": "Artemis 与月球计划受挫",
+              "summary": "不少人把这次事故直接联系到 NASA 的 Artemis 重返月球计划，担心 Blue Origin 的月球任务节奏会再次被打乱。讨论里有人澄清 Blue Moon 只是 Artemis 的两个 lander 承包商之一，但 Blue Origin 原本被看作更快的那条路，因为它的关键路径风险相对低。随后争论又转向真正的瓶颈：Starship HLS 可能还要多年，Axiom Space 的航天服进度也很不理想，甚至连可用的 EVA suits 都成问题。也有人认为即便着陆器暂时不到位，机器人建设和运送电源、设备仍可继续，但有人类登月就离不开航天服。",
+              "supportid": [
+                "48318498",
+                "48318573",
+                "48318627",
+                "48318690",
+                "48319060",
+                "48319070",
+                "48319104",
+                "48318858"
+              ]
+            },
+            {
+              "category": "爆炸规模与燃料当量争议",
+              "summary": "评论区里有人试图估算这次爆炸到底有多大，甚至把满载 methane 的理论能量拿去和 Trinity、TNT 当量做比较。很快就有人反驳：燃料箱里的 methane 和 oxygen 不是预先混合的，所以不可能把全部燃料都以同一种方式爆炸掉，大部分只会燃烧。还有人根据冲击波到达塔顶的时间反推，认为规模大概是几百吨到低千吨 TNT，而不是十几千吨。大家也顺手解释了 full duration static fire 的意思：发动机按真实飞行配置全程点火，但火箭仍固定在台上。",
+              "supportid": [
+                "48318435",
+                "48318595",
+                "48318527",
+                "48318546",
+                "48318684",
+                "48318679",
+                "48318850",
+                "48318496",
+                "48318441"
+              ]
+            },
+            {
+              "category": "术语梗与工程测试文化",
+              "summary": "不少人把这次事故当成工程黑色幽默来玩，先是把 static fire 改成了 dynamic fire，再用 Rapid Unscheduled Disassembly 来概括结果。也有人反过来强调，测试的意义就是提前找出 latent problem，虽然代价巨大，但总比在真正上天后才出事好。评论里还有对 B.O.N.G. 之类 acronym 的调侃，以及对这声巨响的夸张形容。整体来看，这一组评论不是在认真追责，而是在用技术行话和冷幽默消化一次昂贵的失败。",
+              "supportid": [
+                "48318961",
+                "48318331",
+                "48318881",
+                "48318335",
+                "48318453",
+                "48318312",
+                "48318840"
+              ]
+            },
+            {
+              "category": "SpaceX 对比与竞争格局",
+              "summary": "另一条主线是在讨论：这事到底会不会让 SpaceX 更加一家独大。很多人认为 SpaceX 仍然是绝对领先者，无论是累计送入轨道的质量还是发射节奏，都远超 Blue Origin；也有人补充说，Blue Origin 甚至还谈不上真正意义上的同级竞争者。与此同时，也有人强调竞争本身很重要，因为如果没有对手压着，领先者可能会变得 complacent，最后抬价、耍手段、吞掉市场空间。评论里还顺带回顾了 SpaceX 自己的火箭爆炸和 pad 事故，认为 pad 级事故比 test stand 事故更伤，说明这类失败并不只属于 Blue Origin。",
+              "supportid": [
+                "48318005",
+                "48318281",
+                "48318631",
+                "48318288",
+                "48318503",
+                "48317864",
+                "48318013",
+                "48318278",
+                "48318191",
+                "48318515",
+                "48318470",
+                "48318319",
+                "48318390",
+                "48318411",
+                "48318835",
+                "48319137"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "static fire",
+              "explanation": "火箭固定在地面上进行全功率发动机点火的测试。"
+            },
+            {
+              "term": "RUD",
+              "explanation": "Rapid Unscheduled Disassembly，指火箭意外爆炸或解体的工程圈戏称。"
+            },
+            {
+              "term": "TNT equivalent",
+              "explanation": "用 TNT 当量粗略换算爆炸能量的指标。"
+            },
+            {
+              "term": "Artemis",
+              "explanation": "NASA 的重返月球计划。"
+            },
+            {
+              "term": "HLS",
+              "explanation": "Human Landing System，阿耳忒弥斯计划中的月面着陆系统。"
+            }
+          ],
+          "context": "Blue Origin（Jeff Bezos 旗下航天公司）的 New Glenn（可重复使用重型运载火箭）在卡纳维拉尔角的静态点火测试中发生爆炸，地点是它目前唯一完工的发射台。静态点火本来是把火箭牢牢固定在地面上，按真实飞行工况点燃发动机，用来验证推力、供气和控制系统。评论区把这次事故放到 NASA Artemis（重返月球计划）和 Blue Moon（月球着陆器）的大背景下讨论，因为发射节奏、发射台恢复时间和月面任务排期都可能被拖慢。很多人还提到 SpaceX 的 Starship HLS（月面着陆版 Starship）和 Axiom Space（为 NASA 开发新一代舱外航天服的公司）的进度，认为月球计划的真正瓶颈未必只有火箭。",
+          "emoji": "💥",
+          "sarcastic_question": "这是静态点火，还是顺手拆发射台？"
+        },
+        "classifications": {
+          "topics": [
+            8,
+            7
+          ],
+          "facets": [
+            8,
+            12
+          ],
+          "tags": [
+            "Blue Origin",
+            "New Glenn",
+            "static fire",
+            "SpaceX",
+            "NASASpaceflight"
+          ]
+        },
+        "classificationsUpdatedAt": 1780022434,
+        "aiSummary": {
+          "chinese_title": "Blue Origin New Glenn静态点火爆炸，发射台重创",
+          "discussion_overview": [
+            {
+              "category": "发射台与地面设施重创",
+              "summary": "很多评论认为，真正麻烦的不只是火箭报废，而是发射台和地面设备可能遭到大面积损坏。有人提到闪电塔、transport-erector 甚至整个 launch complex 都可能被波及，修复周期可能从数月拖到一年以上。也有人推测 Blue Origin 可能会加速新发射台建设，或者借机直接转向更大的 9x4 版本 New Glenn。和 SpaceX 过去的 pad 事故相比，大家普遍认为这种在台面上的爆炸对后续发射排期更致命。",
+              "supportid": [
+                "48318525",
+                "48319125",
+                "48318101",
+                "48318303",
+                "48318614",
+                "48318581",
+                "48318809",
+                "48318729"
+              ]
+            },
+            {
+              "category": "Artemis 与月球计划受挫",
+              "summary": "不少人把这次事故直接联系到 NASA 的 Artemis 重返月球计划，担心 Blue Origin 的月球任务节奏会再次被打乱。讨论里有人澄清 Blue Moon 只是 Artemis 的两个 lander 承包商之一，但 Blue Origin 原本被看作更快的那条路，因为它的关键路径风险相对低。随后争论又转向真正的瓶颈：Starship HLS 可能还要多年，Axiom Space 的航天服进度也很不理想，甚至连可用的 EVA suits 都成问题。也有人认为即便着陆器暂时不到位，机器人建设和运送电源、设备仍可继续，但有人类登月就离不开航天服。",
+              "supportid": [
+                "48318498",
+                "48318573",
+                "48318627",
+                "48318690",
+                "48319060",
+                "48319070",
+                "48319104",
+                "48318858"
+              ]
+            },
+            {
+              "category": "爆炸规模与燃料当量争议",
+              "summary": "评论区里有人试图估算这次爆炸到底有多大，甚至把满载 methane 的理论能量拿去和 Trinity、TNT 当量做比较。很快就有人反驳：燃料箱里的 methane 和 oxygen 不是预先混合的，所以不可能把全部燃料都以同一种方式爆炸掉，大部分只会燃烧。还有人根据冲击波到达塔顶的时间反推，认为规模大概是几百吨到低千吨 TNT，而不是十几千吨。大家也顺手解释了 full duration static fire 的意思：发动机按真实飞行配置全程点火，但火箭仍固定在台上。",
+              "supportid": [
+                "48318435",
+                "48318595",
+                "48318527",
+                "48318546",
+                "48318684",
+                "48318679",
+                "48318850",
+                "48318496",
+                "48318441"
+              ]
+            },
+            {
+              "category": "术语梗与工程测试文化",
+              "summary": "不少人把这次事故当成工程黑色幽默来玩，先是把 static fire 改成了 dynamic fire，再用 Rapid Unscheduled Disassembly 来概括结果。也有人反过来强调，测试的意义就是提前找出 latent problem，虽然代价巨大，但总比在真正上天后才出事好。评论里还有对 B.O.N.G. 之类 acronym 的调侃，以及对这声巨响的夸张形容。整体来看，这一组评论不是在认真追责，而是在用技术行话和冷幽默消化一次昂贵的失败。",
+              "supportid": [
+                "48318961",
+                "48318331",
+                "48318881",
+                "48318335",
+                "48318453",
+                "48318312",
+                "48318840"
+              ]
+            },
+            {
+              "category": "SpaceX 对比与竞争格局",
+              "summary": "另一条主线是在讨论：这事到底会不会让 SpaceX 更加一家独大。很多人认为 SpaceX 仍然是绝对领先者，无论是累计送入轨道的质量还是发射节奏，都远超 Blue Origin；也有人补充说，Blue Origin 甚至还谈不上真正意义上的同级竞争者。与此同时，也有人强调竞争本身很重要，因为如果没有对手压着，领先者可能会变得 complacent，最后抬价、耍手段、吞掉市场空间。评论里还顺带回顾了 SpaceX 自己的火箭爆炸和 pad 事故，认为 pad 级事故比 test stand 事故更伤，说明这类失败并不只属于 Blue Origin。",
+              "supportid": [
+                "48318005",
+                "48318281",
+                "48318631",
+                "48318288",
+                "48318503",
+                "48317864",
+                "48318013",
+                "48318278",
+                "48318191",
+                "48318515",
+                "48318470",
+                "48318319",
+                "48318390",
+                "48318411",
+                "48318835",
+                "48319137"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "static fire",
+              "explanation": "火箭固定在地面上进行全功率发动机点火的测试。"
+            },
+            {
+              "term": "RUD",
+              "explanation": "Rapid Unscheduled Disassembly，指火箭意外爆炸或解体的工程圈戏称。"
+            },
+            {
+              "term": "TNT equivalent",
+              "explanation": "用 TNT 当量粗略换算爆炸能量的指标。"
+            },
+            {
+              "term": "Artemis",
+              "explanation": "NASA 的重返月球计划。"
+            },
+            {
+              "term": "HLS",
+              "explanation": "Human Landing System，阿耳忒弥斯计划中的月面着陆系统。"
+            }
+          ],
+          "context": "Blue Origin（Jeff Bezos 旗下航天公司）的 New Glenn（可重复使用重型运载火箭）在卡纳维拉尔角的静态点火测试中发生爆炸，地点是它目前唯一完工的发射台。静态点火本来是把火箭牢牢固定在地面上，按真实飞行工况点燃发动机，用来验证推力、供气和控制系统。评论区把这次事故放到 NASA Artemis（重返月球计划）和 Blue Moon（月球着陆器）的大背景下讨论，因为发射节奏、发射台恢复时间和月面任务排期都可能被拖慢。很多人还提到 SpaceX 的 Starship HLS（月面着陆版 Starship）和 Axiom Space（为 NASA 开发新一代舱外航天服的公司）的进度，认为月球计划的真正瓶颈未必只有火箭。",
+          "emoji": "💥",
+          "sarcastic_question": "这是静态点火，还是顺手拆发射台？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nBlue Origin 的 New Glenn 火箭在静态点火测试中发生爆炸，但这属于航天研发中预料之内的“炸得其所”，团队大概率会迅速排查并重试。\n\n### 静态点火本就是“带保险丝”的极限测试\n大家先别急着唱衰，这次事故发生在静态点火测试阶段。说白了，这就是把火箭锁死在发射台上，然后猛踩油门，看看发动机在最大推力下到底稳不稳。这种测试的目的，本身就是要在火箭真正飞上天之前，把所有的隐患都逼出来。既然是极限测试，出问题的概率自然不低。对于 New Glenn 这种还没首飞的新火箭来说，地面试车炸了，总比在发射几秒后炸要好得多。\n\n### 爆炸瞬间暴露了推进系统的短板\n从现场传出的画面来看，这次爆炸相当剧烈，说明推进剂燃料在短时间内发生了失控燃烧。这通常意味着燃料输送系统、发动机涡轮泵或者是燃烧室结构在高压下出现了物理损坏。虽然官方还没出详细的事故调查报告，但这种级别的爆炸，往往不是简单的传感器误报，而是硬核的硬件故障。对于工程团队来说，这反而是最直接的故障数据，比跑了几百次完美的测试更有价值。\n\n### New Glenn 的 BE-4 发动机容不得半点马虎\n这里得提一下 New Glenn 的核心——BE-4 发动机。这可是 Blue Origin 拿出看家本领搞的液氧甲烷发动机，不仅自己要用，还要供货给 ULA 的 Vulcan 火箭。这次测试的主角就是它，压力可想而知。BE-4 采用了复杂的分级燃烧循环，这种设计虽然效率高，但对结构强度的要求也极其苛刻。这次爆炸虽然看着吓人，但也正好验证了 BE-4 在极端工况下的物理极限到底在哪里。\n\n### 快速失败是航天研发的必经之路\n有意思的地方在于，Blue Origin 的反应其实挺淡定。原文标题那句 \"Something went wrong, but don’t fret\" 很能说明问题。在航天领域，尤其是开发新火箭时，“快速失败”是一种被验证过的有效策略。炸了不可怕，可怕的是不知道为什么炸。只要能从残骸中找到根本原因，对设计进行针对性加固，下一次测试的成功率反而会更高。SpaceX 的猎鹰 9 号当年也是这么一路炸过来的。\n\n### 只要不是首飞失利，一切都还有救\n归根结底，这次事故虽然损失了一台甚至多台昂贵的发动机，但没有造成人员伤亡，也没有毁掉发射台设施，这其实算是不幸中的万幸。对于 New Glenn 这种承载着 Blue Origin 未来商业发射重任的重型火箭来说，现在暴露问题总比首飞时出洋相要好。只要工程团队能像预期的那样 \"give it another shot\"，把问题修好，这次爆炸最终只会成为它成功履历上的一行注脚。"
+    },
+    {
+      "id": 48321631,
+      "by": "xyzal",
+      "title": "Is AI causing a repeat of Front end's Lost Decade?",
+      "url": "https://mastrojs.github.io/blog/2026-05-23-is-AI-causing-a-repeat-of-frontends-lost-decade/",
+      "score": 150,
+      "detailUpdatedAt": 1780067594,
+      "createdAt": 1780056015,
+      "aiSummaryUpdatedAt": 1780068372,
+      "aisummary": {
+        "chinese_title": "AI会复刻前端的“失去的十年”吗",
+        "emoji": "🤔",
+        "sarcastic_question": "把更快地造 slop 叫进步，就算软件赢了吗？"
+      },
+      "classifications": {
+        "topics": [
+          5,
+          1,
+          12
+        ],
+        "facets": [
+          9
+        ],
+        "tags": [
+          "AI",
+          "Frontend",
+          "LLM",
+          "React",
+          "accessibility",
+          "CSS",
+          "HTML",
+          "deskilling",
+          "prompt engineering",
+          "web performance"
+        ]
+      },
+      "classificationsUpdatedAt": 1780059362,
+      "aiSummary": {
+        "chinese_title": "AI会复刻前端的“失去的十年”吗",
+        "emoji": "🤔",
+        "sarcastic_question": "把更快地造 slop 叫进步，就算软件赢了吗？"
+      },
+      "detail": {
+        "id": 48321631,
+        "by": "xyzal",
+        "title": "Is AI causing a repeat of Front end's Lost Decade?",
+        "url": "https://mastrojs.github.io/blog/2026-05-23-is-AI-causing-a-repeat-of-frontends-lost-decade/",
+        "score": 150,
+        "detailUpdatedAt": 1780067594,
+        "createdAt": 1780056015,
+        "aiSummaryUpdatedAt": 1780068372,
+        "aisummary": {
+          "chinese_title": "AI会复刻前端的“失去的十年”吗",
+          "discussion_overview": [
+            {
+              "category": "AI 提升效率并补上测试/规范",
+              "summary": "有一派认为 LLM 并不是单纯产出 slop，而是在把前端里最耗时的重复劳动自动化：写测试、改测试、补文档、查规范、整理常见 a11y 约定。有人说自己现在花更少时间在 CSS 上，更多时间在 UX 决策上，甚至能更快试不同设计方案。也有人指出，把 a11y 和 i18n 之类的要求写进提示词和流程里，至少比很多团队以前“根本不做”更好。这个观点的核心是，AI 把门槛压低后，很多小项目和原型反而更容易达到可用基线。",
+              "supportid": [
+                "48322458",
+                "48322644",
+                "48322310",
+                "48322502",
+                "48324011",
+                "48322331",
+                "48324014",
+                "48323383",
+                "48322192",
+                "48322509"
+              ]
+            },
+            {
+              "category": "LLM 输出 slop，仍需人工把关",
+              "summary": "反对者认为 LLM 的问题不只是“偶尔出错”，而是没有真正的 rigor：它会生成看起来很像样的测试、mock 和场景，但其中很多并不验证关键行为。对 a11y 来说，错误的 ARIA 往往比不用更糟，真正可用还得靠 screen reader、键盘操作、focus 恢复这些人类测试。有人还提到，当前 AI 辅助代码库之所以能站住，多半靠测试和人工 code review 撑着。公共网站在某些国家甚至有法律义务做 accessibility，所以“愿意牺牲”并不总是开发者单方面能决定的。",
+              "supportid": [
+                "48322515",
+                "48323494",
+                "48323906",
+                "48322276",
+                "48323348",
+                "48323097",
+                "48322326",
+                "48322818",
+                "48323354",
+                "48322261",
+                "48323996"
+              ]
+            },
+            {
+              "category": "框架与抽象是在消灭旧浏览器噩梦",
+              "summary": "很多评论把所谓“前端的失去十年”理解成把旧时代的浏览器噩梦变成了可管理的抽象：以前要对付 IE 兼容、CSS hack、不同屏幕和输入方式，现在框架和浏览器原生能力至少给了一个统一入口。有人强调，flexbox、grid、原生 select/modal 定制等改进，确实消掉了不少手工苦力。也有人提醒，文章里真正抱怨的其实是 React 等框架和 Electron（跨平台桌面应用框架）把性能和内存占用推高，而不是 a11y 或 semantic HTML 本身。这个阵营认为“deskilling”更像是在清理 accidental complexity，而不是丢失核心能力。",
+              "supportid": [
+                "48322296",
+                "48322638",
+                "48322769",
+                "48323100",
+                "48322403",
+                "48323943",
+                "48322309",
+                "48322041",
+                "48322214",
+                "48322545",
+                "48322411",
+                "48322280",
+                "48322482",
+                "48322506"
+              ]
+            },
+            {
+              "category": "商业激励让“可用”压过“精致”，AI 只是加速 slop",
+              "summary": "另一派认为问题不在技术本身，而在商业激励：公司把 prototype 当 final product，追求“acceptable”而不是“decent”，于是越能快速交付越被奖励。评论里频繁拿 bootcamp、React/Next.js 专家、只会窄化工具链的人举例，认为这类人更容易被用来多关卡多票地出活。AI 只是把这种趋势再往前推了一步，让 cookie-cutter 产品、低质量 UI 和 entry-level 岗位缩水看起来更合理。还有人把它形容为 slop economy：如果用户和老板照单全收，市场就只会继续供给 slop。",
+              "supportid": [
+                "48322450",
+                "48322317",
+                "48322055",
+                "48322194",
+                "48322347",
+                "48322322",
+                "48322335",
+                "48322429",
+                "48322589",
+                "48323521",
+                "48323098",
+                "48323341",
+                "48322480",
+                "48322046"
+              ]
+            },
+            {
+              "category": "开源、版权与未来训练数据",
+              "summary": "还有一条线在讨论训练数据和知识供给：现在的模型大量吃 open-source、公开文档和网页内容，未来如果创作者开始收紧许可，训练管线会不会枯竭。有人把这看成明确的偷窃，主张最基本的原则就是先问 permission、不给就别用，否则就该把相关资产公共化。另一边则认为 public docs、commit history、synthetic data、verified prompts 还会持续存在，过去搜索引擎和 open source 也没把创作杀死。争议的焦点其实是，AI 会不会把原创内容变得更难被看见，从而削弱下一轮人类知识生产。",
+              "supportid": [
+                "48322142",
+                "48322180",
+                "48322323",
+                "48322445",
+                "48322583",
+                "48322648",
+                "48322914",
+                "48323793",
+                "48322321"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "a11y",
+              "explanation": "accessibility（可访问性）的常用写法，关注屏幕阅读器、键盘操作等是否可用。"
+            },
+            {
+              "term": "ARIA",
+              "explanation": "Accessible Rich Internet Applications，一组帮助辅助技术理解界面的属性规范。"
+            },
+            {
+              "term": "TDD",
+              "explanation": "Test-Driven Development，先写测试再写实现的开发方法。"
+            },
+            {
+              "term": "Electron",
+              "explanation": "用 HTML/CSS/JS 构建跨平台桌面应用的框架。"
+            },
+            {
+              "term": "React",
+              "explanation": "用于构建 UI 的 JavaScript library，强调组件和 state。"
+            },
+            {
+              "term": "Next.js",
+              "explanation": "基于 React 的应用框架，常用于 SSR、SSG 和全栈网页应用。"
+            }
+          ],
+          "context": "文章把当前 AI coding 热潮类比成前端的“失去的十年”，意思是从手写 HTML/CSS、处理浏览器兼容性和 a11y，到 React（JavaScript UI library）、Next.js（基于 React 的框架）、Electron（用 Web 技术做桌面应用的框架）等更高层抽象，开发门槛下降但也可能把性能和质量问题藏起来。评论里有人提醒，早期前端也并不“纯粹”：很多工作只是把设计稿硬翻成网页，或在 IE、CSS、布局和响应式上补洞。也有人拿 Flash（曾经流行的浏览器插件式富交互平台）和 WYSIWYG（所见即所得编辑器）作类比，认为软件史本来就是不断抽象和自动化。讨论继续延伸到 AI 的训练数据、版权、测试和 accessibility：它究竟是在帮助更多人做出可用产品，还是在加速 slop 的生产并让原创知识更难持续。",
+          "emoji": "🤔",
+          "sarcastic_question": "把更快地造 slop 叫进步，就算软件赢了吗？"
+        },
+        "classifications": {
+          "topics": [
+            5,
+            1,
+            12
+          ],
+          "facets": [
+            9
+          ],
+          "tags": [
+            "AI",
+            "Frontend",
+            "LLM",
+            "React",
+            "accessibility",
+            "CSS",
+            "HTML",
+            "deskilling",
+            "prompt engineering",
+            "web performance"
+          ]
+        },
+        "classificationsUpdatedAt": 1780059362,
+        "aiSummary": {
+          "chinese_title": "AI会复刻前端的“失去的十年”吗",
+          "discussion_overview": [
+            {
+              "category": "AI 提升效率并补上测试/规范",
+              "summary": "有一派认为 LLM 并不是单纯产出 slop，而是在把前端里最耗时的重复劳动自动化：写测试、改测试、补文档、查规范、整理常见 a11y 约定。有人说自己现在花更少时间在 CSS 上，更多时间在 UX 决策上，甚至能更快试不同设计方案。也有人指出，把 a11y 和 i18n 之类的要求写进提示词和流程里，至少比很多团队以前“根本不做”更好。这个观点的核心是，AI 把门槛压低后，很多小项目和原型反而更容易达到可用基线。",
+              "supportid": [
+                "48322458",
+                "48322644",
+                "48322310",
+                "48322502",
+                "48324011",
+                "48322331",
+                "48324014",
+                "48323383",
+                "48322192",
+                "48322509"
+              ]
+            },
+            {
+              "category": "LLM 输出 slop，仍需人工把关",
+              "summary": "反对者认为 LLM 的问题不只是“偶尔出错”，而是没有真正的 rigor：它会生成看起来很像样的测试、mock 和场景，但其中很多并不验证关键行为。对 a11y 来说，错误的 ARIA 往往比不用更糟，真正可用还得靠 screen reader、键盘操作、focus 恢复这些人类测试。有人还提到，当前 AI 辅助代码库之所以能站住，多半靠测试和人工 code review 撑着。公共网站在某些国家甚至有法律义务做 accessibility，所以“愿意牺牲”并不总是开发者单方面能决定的。",
+              "supportid": [
+                "48322515",
+                "48323494",
+                "48323906",
+                "48322276",
+                "48323348",
+                "48323097",
+                "48322326",
+                "48322818",
+                "48323354",
+                "48322261",
+                "48323996"
+              ]
+            },
+            {
+              "category": "框架与抽象是在消灭旧浏览器噩梦",
+              "summary": "很多评论把所谓“前端的失去十年”理解成把旧时代的浏览器噩梦变成了可管理的抽象：以前要对付 IE 兼容、CSS hack、不同屏幕和输入方式，现在框架和浏览器原生能力至少给了一个统一入口。有人强调，flexbox、grid、原生 select/modal 定制等改进，确实消掉了不少手工苦力。也有人提醒，文章里真正抱怨的其实是 React 等框架和 Electron（跨平台桌面应用框架）把性能和内存占用推高，而不是 a11y 或 semantic HTML 本身。这个阵营认为“deskilling”更像是在清理 accidental complexity，而不是丢失核心能力。",
+              "supportid": [
+                "48322296",
+                "48322638",
+                "48322769",
+                "48323100",
+                "48322403",
+                "48323943",
+                "48322309",
+                "48322041",
+                "48322214",
+                "48322545",
+                "48322411",
+                "48322280",
+                "48322482",
+                "48322506"
+              ]
+            },
+            {
+              "category": "商业激励让“可用”压过“精致”，AI 只是加速 slop",
+              "summary": "另一派认为问题不在技术本身，而在商业激励：公司把 prototype 当 final product，追求“acceptable”而不是“decent”，于是越能快速交付越被奖励。评论里频繁拿 bootcamp、React/Next.js 专家、只会窄化工具链的人举例，认为这类人更容易被用来多关卡多票地出活。AI 只是把这种趋势再往前推了一步，让 cookie-cutter 产品、低质量 UI 和 entry-level 岗位缩水看起来更合理。还有人把它形容为 slop economy：如果用户和老板照单全收，市场就只会继续供给 slop。",
+              "supportid": [
+                "48322450",
+                "48322317",
+                "48322055",
+                "48322194",
+                "48322347",
+                "48322322",
+                "48322335",
+                "48322429",
+                "48322589",
+                "48323521",
+                "48323098",
+                "48323341",
+                "48322480",
+                "48322046"
+              ]
+            },
+            {
+              "category": "开源、版权与未来训练数据",
+              "summary": "还有一条线在讨论训练数据和知识供给：现在的模型大量吃 open-source、公开文档和网页内容，未来如果创作者开始收紧许可，训练管线会不会枯竭。有人把这看成明确的偷窃，主张最基本的原则就是先问 permission、不给就别用，否则就该把相关资产公共化。另一边则认为 public docs、commit history、synthetic data、verified prompts 还会持续存在，过去搜索引擎和 open source 也没把创作杀死。争议的焦点其实是，AI 会不会把原创内容变得更难被看见，从而削弱下一轮人类知识生产。",
+              "supportid": [
+                "48322142",
+                "48322180",
+                "48322323",
+                "48322445",
+                "48322583",
+                "48322648",
+                "48322914",
+                "48323793",
+                "48322321"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "a11y",
+              "explanation": "accessibility（可访问性）的常用写法，关注屏幕阅读器、键盘操作等是否可用。"
+            },
+            {
+              "term": "ARIA",
+              "explanation": "Accessible Rich Internet Applications，一组帮助辅助技术理解界面的属性规范。"
+            },
+            {
+              "term": "TDD",
+              "explanation": "Test-Driven Development，先写测试再写实现的开发方法。"
+            },
+            {
+              "term": "Electron",
+              "explanation": "用 HTML/CSS/JS 构建跨平台桌面应用的框架。"
+            },
+            {
+              "term": "React",
+              "explanation": "用于构建 UI 的 JavaScript library，强调组件和 state。"
+            },
+            {
+              "term": "Next.js",
+              "explanation": "基于 React 的应用框架，常用于 SSR、SSG 和全栈网页应用。"
+            }
+          ],
+          "context": "文章把当前 AI coding 热潮类比成前端的“失去的十年”，意思是从手写 HTML/CSS、处理浏览器兼容性和 a11y，到 React（JavaScript UI library）、Next.js（基于 React 的框架）、Electron（用 Web 技术做桌面应用的框架）等更高层抽象，开发门槛下降但也可能把性能和质量问题藏起来。评论里有人提醒，早期前端也并不“纯粹”：很多工作只是把设计稿硬翻成网页，或在 IE、CSS、布局和响应式上补洞。也有人拿 Flash（曾经流行的浏览器插件式富交互平台）和 WYSIWYG（所见即所得编辑器）作类比，认为软件史本来就是不断抽象和自动化。讨论继续延伸到 AI 的训练数据、版权、测试和 accessibility：它究竟是在帮助更多人做出可用产品，还是在加速 slop 的生产并让原创知识更难持续。",
+          "emoji": "🤔",
+          "sarcastic_question": "把更快地造 slop 叫进步，就算软件赢了吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nAI 对编程的冲击，本质上是一场重演的“去技能化”运动：它像当年的前端框架一样降低了门槛，但也制造了更不可控的抽象泄漏，而未来的高薪开发者将是那些在 AI 生成代码的废墟中，依然懂底层原理并敢于对质量负责的人。\n\n---\n\n### 前端早已预演了这场“去技能化”危机\n如果你觉得 AI 正在让编程变得廉价，那前端开发者可能会告诉你：这剧本我们十年前就见过了。文章把这种现象定义为“去技能化”，即通过引入技术，让半熟练甚至不熟练的工人取代熟练工，从而降低成本并削弱工人的议价能力。在前端领域，这表现为 React 等框架将浏览器视为单纯的编译目标，开发者不再需要深究语义化 HTML、CSS 细节、可访问性或网络性能。这导致了一个尴尬的现实：所谓的“全栈工程师”往往只是会用框架的通才，企业可以随意在项目间调配他们，就像流水线上的工人一样。\n\n### 现代前端是一座“漏水的抽象”高塔\n从另一个角度看，这种变化被美化为“更高层次的抽象”，似乎让我们能专注于大局而忽略细节。但问题在于，抽象总是要付出代价的，而且细节总会泄漏。在服务端，我们愿意用运行时性能换取开发效率（比如垃圾回收）；但在移动端和弱网环境下，这种权衡就很致命。当你用 React 和一堆 npm 包屏蔽了底层实现时，你实际上是在选择无视可访问性和低端设备的性能。这种“我不关心底层”的态度，正是现代前端应用臃肿不堪的根源。\n\n### AI 编程本质上是不确定的“复制粘贴”\n现在的 AI 编码助手，其实可以看作是当年从 Stack Overflow 复制粘贴代码的终极进化版。以前我们需要掌握“Google-fu”技巧，用精准的关键词搜索答案；现在我们用 Prompt 引导 LLM 从高维数据中检索。两者本质上都是模糊查找，都极其依赖输入的措辞。有意思的是，Google 后来为了降低门槛，把搜索词做了激进的归一化处理，反而让懂行的人觉得变弱了。AI 也是如此：它让不懂行的人能快速拼凑出能跑的代码，但也让懂行的人失去了对细节的掌控。\n\n### 当抽象泄漏时，谁来做那个“填坑”的人？\n不管是复制粘贴还是 AI 生成，代码能跑只是第一步，真正的麻烦在于抽象泄漏的那一刻。以前我们教导初级开发者：复制 Stack Overflow 的代码前，先读懂它；现在我们需要教导人们：审查 AI 吐出的代码，并理解它如何融入现有代码库。遗憾的是，很多人从未跨过“理解”这道坎，只要能跑就行。更糟糕的是，现在的公司甚至不再假装在乎代码质量，公开炫耀自己用了多少 AI，却对输出结果一无所知。这给团队协作带来了巨大的混乱，因为大家对质量的底线完全不一致。\n\n### 商业成功往往不需要高质量的软件\n这是一个扎心的事实：很多公司虽然软件写得一塌糊涂，但生意依然做得风生水起。软件质量和商业成功之间，几乎没有直接关联。就像没人因为选了 React 而被解雇一样，也没人因为网站慢、Cookie 弹窗多而破产。竞争对手的网站也一样慢，用户没得选。这意味着，虽然我们不应该放弃对工艺的追求，但想要找到一份允许你追求高质量代码的工作，可能会变得越来越难。\n\n### 像包豪斯那样拥抱机器，但别丢掉手艺\n面对工业化的冲击，百年前的包豪斯运动给出了一个很好的答案：不要让工匠和机器对立，而是让设计师深入车间，了解材料，结合工业流程进行设计。对应到软件领域，这意味着我们依然需要手写代码的能力，就像工业设计师必须懂材料一样。虽然 Wix、Next.js 和 AI 让制造垃圾软件变得更容易，但这并不代表“前端的前端”或高质量的软件工程会消失。就像文字处理器没有杀死排版设计，AI 也不会杀死真正的工程师，它只是让平庸变得更廉价。\n\n### 未来的机会属于“手艺人”\n文章最后指出，虽然“正确地做事”在整个行业蛋糕中的占比会越来越小，但因为门槛降低，蛋糕的总体积会变得更大。这意味着，绝对数量上，依然会有很多人被付费去从事高质量、深度的技术工作。只不过，在这个充斥着 AI 生成代码的世界里，真正稀缺的不是“写代码的人”，而是那些懂底层原理、能判断 AI 对错、并对最终用户体验负责的“手艺人”。"
+    },
+    {
+      "id": 48318174,
+      "by": "ankitg12",
+      "title": "Claude Code – Everything You Can Configure That the Docs Don't Tell You",
+      "url": "https://buildingbetter.tech/p/i-read-the-claude-code-source-code",
+      "score": 247,
+      "detailUpdatedAt": 1780065793,
+      "createdAt": 1780039815,
+      "aiSummaryUpdatedAt": 1780066850,
+      "aisummary": {
+        "chinese_title": "Claude Code 隐藏配置考古：文档滞后、版本易碎与自动执行争议",
+        "emoji": "🤨",
+        "sarcastic_question": "都写进 docs 了，还算“没告诉你”吗？"
+      },
+      "classifications": {
+        "topics": [
+          1,
+          4
+        ],
+        "facets": [
+          5
+        ],
+        "tags": [
+          "Claude Code",
+          "Claude"
+        ]
+      },
+      "classificationsUpdatedAt": 1780043132,
+      "aiSummary": {
+        "chinese_title": "Claude Code 隐藏配置考古：文档滞后、版本易碎与自动执行争议",
+        "emoji": "🤨",
+        "sarcastic_question": "都写进 docs 了，还算“没告诉你”吗？"
+      },
+      "detail": {
+        "id": 48318174,
+        "by": "ankitg12",
+        "title": "Claude Code – Everything You Can Configure That the Docs Don't Tell You",
+        "url": "https://buildingbetter.tech/p/i-read-the-claude-code-source-code",
+        "score": 147,
+        "detailUpdatedAt": 1780054990,
+        "createdAt": 1780039815,
+        "aiSummaryUpdatedAt": 1780055997,
+        "aisummary": {
+          "chinese_title": "Claude Code 文档外可配项：Skills frontmatter、feature flags 与脆弱 hack",
+          "discussion_overview": [
+            {
+              "category": "双关玩笑：cardinality / 枢机团",
+              "summary": "有人把 Claude Code 功能太多的感觉，玩成了“Pope 会从 Anthropic 出来”的笑话，因为 Pope 由 College of Cardinals（枢机团）选出，而 cardinality 正好是个相关双关。后续回复继续接梗，并补充了 Anthropic 相关人物曾被教皇邀请参与 encyclical（教皇通谕）活动。这个分支主要是在用技术圈式冷笑话缓和话题氛围。",
+              "supportid": [
+                "48320949",
+                "48321075",
+                "48321209",
+                "48321244",
+                "48321792"
+              ]
+            },
+            {
+              "category": "并非全都没文档：隐藏但可查的配置",
+              "summary": "不少人指出，帖子里列出的内容并不完全算“文档外”，只是藏得很深或者分散在不同页面里。有人提到 Skills（Claude Code 的技能机制）里的 frontmatter 其实可以指定 model，相关说明在 docs 中能找到，但很难被其他文档串联起来。还有人说部分条目现在已经不存在，或者仍被 feature flags（功能开关）控制；也有人建议把抽出来的 prompts 固化成本地 command，避免每次都靠记忆和临场操作。",
+              "supportid": [
+                "48320947",
+                "48320362",
+                "48321024"
+              ]
+            },
+            {
+              "category": "版本更新快，隐藏技巧很脆",
+              "summary": "很多人认为，依赖这些“未写明”的技巧最大的问题是 Claude package 和模型更新太频繁，昨天能用的 hack 明天就可能失效。有人举例说，`clear context and execute plan` 这种模式在 1M Opus 之后被移除，只能改用手动清理，或者在 `settings.json` 里重新打开 `showClearContextOnPlanAccept`、配合 `disableAutoMode` 在 yolo 和 plan 之间切换。也有人认为 automation 可以适配底层变化，但对这种 temporal hacks 来说，最好每次大版本都重新检查指令是否还适用。",
+              "supportid": [
+                "48320213",
+                "48320321",
+                "48320372",
+                "48320618",
+                "48321693",
+                "48320401"
+              ]
+            },
+            {
+              "category": "长任务执行力不足",
+              "summary": "有用户抱怨 Claude Code 在复杂项目里经常做到一半就停，哪怕用了 `/goal` 或新推出的 `ultracode`，还是会反问要不要继续。对比之下，Codex 被描述成更能持续“grind”下去、不轻易收手。这里争论的核心不是能不能写代码，而是 agent 在长任务上的 persistence（持续执行能力）和完成意愿。",
+              "supportid": [
+                "48321332",
+                "48321443"
+              ]
+            },
+            {
+              "category": "自动审批分类器太粗糙",
+              "summary": "有人直接吐槽示例 classifier 很糟糕，像是简单按 `ls/cat/echo` 这类子串做判断，看不出真正的安全语义。立刻有人举出危险例子：如果命令是把内容 `echo` 到 `~/.ssh/authorized_keys`，这种规则会不会也被自动放行。也有人觉得，尽管它很粗，但还是比那种一刀切的“NEVER FUCKING GUESS”式策略更实用。",
+              "supportid": [
+                "48319832",
+                "48321247",
+                "48320490"
+              ]
+            },
+            {
+              "category": "页面兼容性吐槽",
+              "summary": "还有一段讨论转到了文章页面本身：有人说在 Safari/Orion iOS 上滚动会被锁在某个区域，最后不得不放弃阅读。后面有人调侃这可能是“Claude Code 写的”。也有回复把问题指向 Substack（文章发布平台），认为这种常见浏览器组合的兼容性不该让用户来忍。",
+              "supportid": [
+                "48319724",
+                "48319943",
+                "48321012",
+                "48321094"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "feature flags",
+              "explanation": "功能开关/灰度开关，用来控制某个功能是否对部分用户或环境开放。"
+            },
+            {
+              "term": "frontmatter",
+              "explanation": "文件开头的元数据区块，常用来写模型、作者、标签等配置。"
+            },
+            {
+              "term": "context window",
+              "explanation": "模型一次能保留和处理的上下文长度，决定它能“记住”多少内容。"
+            }
+          ],
+          "context": "这篇文章讨论的是 Anthropic（AI 公司）旗下 Claude Code（面向编程的命令行/agent 工具）里那些 docs 没写透、但实际能影响行为的配置项和技巧。评论区补充了几个具体例子：Skills（Claude Code 的技能机制）里的 frontmatter 可以指定 model，一些开关被 feature flags（功能开关）控制，还有像 `showClearContextOnPlanAccept`、`disableAutoMode` 这样的本地设置能改变 plan / yolo 切换方式。有人担心这类“隐藏能力”会随频繁发版和新模型上线而失效，因为文档化不充分的依赖往往最脆弱。讨论也顺带延伸到 agent 的长任务执行能力、命令审批分类器的安全性，以及 Substack（文章发布平台）在 iOS 浏览器上的滚动兼容问题。",
+          "emoji": "🤨",
+          "sarcastic_question": "文档都没写的配置，出了问题还算什么“稳”？"
+        },
+        "classifications": {
+          "topics": [
+            1,
+            4
+          ],
+          "facets": [
+            5
+          ],
+          "tags": [
+            "Claude Code",
+            "Claude"
+          ]
+        },
+        "classificationsUpdatedAt": 1780043132,
+        "aiSummary": {
+          "chinese_title": "Claude Code 文档外可配项：Skills frontmatter、feature flags 与脆弱 hack",
+          "discussion_overview": [
+            {
+              "category": "双关玩笑：cardinality / 枢机团",
+              "summary": "有人把 Claude Code 功能太多的感觉，玩成了“Pope 会从 Anthropic 出来”的笑话，因为 Pope 由 College of Cardinals（枢机团）选出，而 cardinality 正好是个相关双关。后续回复继续接梗，并补充了 Anthropic 相关人物曾被教皇邀请参与 encyclical（教皇通谕）活动。这个分支主要是在用技术圈式冷笑话缓和话题氛围。",
+              "supportid": [
+                "48320949",
+                "48321075",
+                "48321209",
+                "48321244",
+                "48321792"
+              ]
+            },
+            {
+              "category": "并非全都没文档：隐藏但可查的配置",
+              "summary": "不少人指出，帖子里列出的内容并不完全算“文档外”，只是藏得很深或者分散在不同页面里。有人提到 Skills（Claude Code 的技能机制）里的 frontmatter 其实可以指定 model，相关说明在 docs 中能找到，但很难被其他文档串联起来。还有人说部分条目现在已经不存在，或者仍被 feature flags（功能开关）控制；也有人建议把抽出来的 prompts 固化成本地 command，避免每次都靠记忆和临场操作。",
+              "supportid": [
+                "48320947",
+                "48320362",
+                "48321024"
+              ]
+            },
+            {
+              "category": "版本更新快，隐藏技巧很脆",
+              "summary": "很多人认为，依赖这些“未写明”的技巧最大的问题是 Claude package 和模型更新太频繁，昨天能用的 hack 明天就可能失效。有人举例说，`clear context and execute plan` 这种模式在 1M Opus 之后被移除，只能改用手动清理，或者在 `settings.json` 里重新打开 `showClearContextOnPlanAccept`、配合 `disableAutoMode` 在 yolo 和 plan 之间切换。也有人认为 automation 可以适配底层变化，但对这种 temporal hacks 来说，最好每次大版本都重新检查指令是否还适用。",
+              "supportid": [
+                "48320213",
+                "48320321",
+                "48320372",
+                "48320618",
+                "48321693",
+                "48320401"
+              ]
+            },
+            {
+              "category": "长任务执行力不足",
+              "summary": "有用户抱怨 Claude Code 在复杂项目里经常做到一半就停，哪怕用了 `/goal` 或新推出的 `ultracode`，还是会反问要不要继续。对比之下，Codex 被描述成更能持续“grind”下去、不轻易收手。这里争论的核心不是能不能写代码，而是 agent 在长任务上的 persistence（持续执行能力）和完成意愿。",
+              "supportid": [
+                "48321332",
+                "48321443"
+              ]
+            },
+            {
+              "category": "自动审批分类器太粗糙",
+              "summary": "有人直接吐槽示例 classifier 很糟糕，像是简单按 `ls/cat/echo` 这类子串做判断，看不出真正的安全语义。立刻有人举出危险例子：如果命令是把内容 `echo` 到 `~/.ssh/authorized_keys`，这种规则会不会也被自动放行。也有人觉得，尽管它很粗，但还是比那种一刀切的“NEVER FUCKING GUESS”式策略更实用。",
+              "supportid": [
+                "48319832",
+                "48321247",
+                "48320490"
+              ]
+            },
+            {
+              "category": "页面兼容性吐槽",
+              "summary": "还有一段讨论转到了文章页面本身：有人说在 Safari/Orion iOS 上滚动会被锁在某个区域，最后不得不放弃阅读。后面有人调侃这可能是“Claude Code 写的”。也有回复把问题指向 Substack（文章发布平台），认为这种常见浏览器组合的兼容性不该让用户来忍。",
+              "supportid": [
+                "48319724",
+                "48319943",
+                "48321012",
+                "48321094"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "feature flags",
+              "explanation": "功能开关/灰度开关，用来控制某个功能是否对部分用户或环境开放。"
+            },
+            {
+              "term": "frontmatter",
+              "explanation": "文件开头的元数据区块，常用来写模型、作者、标签等配置。"
+            },
+            {
+              "term": "context window",
+              "explanation": "模型一次能保留和处理的上下文长度，决定它能“记住”多少内容。"
+            }
+          ],
+          "context": "这篇文章讨论的是 Anthropic（AI 公司）旗下 Claude Code（面向编程的命令行/agent 工具）里那些 docs 没写透、但实际能影响行为的配置项和技巧。评论区补充了几个具体例子：Skills（Claude Code 的技能机制）里的 frontmatter 可以指定 model，一些开关被 feature flags（功能开关）控制，还有像 `showClearContextOnPlanAccept`、`disableAutoMode` 这样的本地设置能改变 plan / yolo 切换方式。有人担心这类“隐藏能力”会随频繁发版和新模型上线而失效，因为文档化不充分的依赖往往最脆弱。讨论也顺带延伸到 agent 的长任务执行能力、命令审批分类器的安全性，以及 Substack（文章发布平台）在 iOS 浏览器上的滚动兼容问题。",
+          "emoji": "🤨",
+          "sarcastic_question": "文档都没写的配置，出了问题还算什么“稳”？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nClaude Code 的源代码里藏着大量官方文档未记载的配置项，特别是 Hooks 的 JSON 返回值、Skills 的模型选择与作用域绑定，以及 Auto Mode 的环境描述能力，能让你把 AI 从“辅助工具”深度定制为“自动化 Agent”。\n\n### 文档没说的 Hooks：不仅能拦截，还能改写行为\n官方文档只告诉你 Hooks 能接收 JSON 并通过退出码拦截操作，但没提它们还能通过 stdout 返回 JSON 来实时改写 Claude 的行为。比如 `PreToolUse` 可以返回 `updatedInput` 偷偷修改命令，或者返回 `permissionDecision` 绕过用户确认；`SessionStart` 可以注入 `watchPaths` 自动监听文件变动。这意味着你不再是被动的“批准者”，而是可以用 Shell 脚本编写逻辑，在 Claude 执行前动态修正它的意图，或者在会话开始时就预置好上下文。\n\n### 用 Hooks 实现自动化的“安全网”与“审计员”\n利用这些未公开字段，你可以构建非常实用的自动化工作流。比如写一个 PreToolUse Hook，自动给 `git push` 加上 `--dry-run` 参数，或者用正则匹配 `ls`、`cat` 等只读命令直接返回 `allow`，省去反复确认的麻烦。更有意思的是 `PostToolUse` 配合 `updatedMCPToolOutput`，可以过滤或修改 Claude 看到的工具返回结果。这相当于在 Claude 和系统之间夹了一层中间件，既能防止它手滑，又能审计它的一举一动。\n\n### 三个隐藏的 Hook 控制参数：once、async 与 asyncRewake\n除了文档里的基础字段，源码解析器还支持三个改变游戏规则的参数。`once: true` 适合做一次性初始化，比如检测 `.env` 不存在就自动复制模板，之后再也不触发；`async: true` 适合做非阻塞的日志记录，把命令丢到后台跑不耽误主流程。最巧妙的是 `asyncRewake: true`，它平时在后台跑不阻塞，但如果检测到问题（比如代码里写了硬编码密码）就退出码 2 唤醒主进程并拦截操作。这是一种“快乐路径不阻塞，异常路径必拦截”的高性能设计。\n\n### Skills 的隐藏参数：指定模型与绑定专属 Hooks\nSkills 的 Frontmatter 支持指定 `model`（如用 haiku 跑廉价任务，opus 跑深度分析）和 `effort`（控制推理深度），这能帮你精细控制成本和质量。更强大的是 `hooks` 字段，它允许你给某个 Skill 绑定专属的 Hooks，当 Skill 激活时注册，结束时注销。比如定义一个 TypeScript 编写 Skill，绑定一个 `PostToolUse` Hook 自动在每次保存后跑 `tsc` 类型检查。这种作用域隔离的设计，让特定任务能携带自己的执行环境，互不干扰。\n\n### Agents 的持久化记忆与“新鲜视角”\n自定义 Agents 支持很多文档没写的配置。`color` 能给不同 Agent 设置 UI 颜色以便区分，`memory` 字段则允许 Agent 拥有持久化记忆（`user` 全局、`project` 项目级、`local` 本地私有），这意味着 Agent 可以跨会话学习你的代码库架构，越用越聪明。还有一个 `omitClaudeMd: true`，可以让 Agent 忽略项目的 CLAUDE.md 指令，以“新鲜视角”基于行业标准审查代码，避免被项目既有偏见带偏。\n\n### 那个传说中的 YOLO Classifier 到底怎么配\nClaude Code 内部把 Auto Mode 的权限系统称为 “YOLO Classifier”（源码里真叫这名），它在 `settings.json` 的 `autoMode` 下配置。除了 `allow` 和 `soft_deny` 的模式匹配，最关键的是 `environment` 数组。这里不是写正则，而是用自然语言描述环境，比如“这是本地开发机，没有生产库权限”或“Docker 容器都是隔离网络”。Classifier 会读取这些描述来辅助判断模糊操作的安全性，相当于给 AI 写了一份安全简报。\n\n### 实验性功能的诱惑与风险\n源码里还有一些带 `EXPERIMENTAL` 前缀的字段，比如 Agent 的 `criticalSystemReminder_EXPERIMENTAL`。它能在每次对话轮次中强制注入一段系统提示，即使上下文被压缩了也会保留，非常适合用来做“永不遗忘的安全警告”。但正如其名，这些字段被 Anthropic 工程师标记为不稳定，随时可能删改。你可以拿来玩玩或者做非关键路径的增强，但千万别把核心业务逻辑依赖在上面，毕竟下一个版本可能就没了。"
+    },
+    {
+      "id": 48276598,
+      "by": "rbanffy",
+      "title": "News about Raspberry Pi 6 and Microcontroller Development",
+      "url": "https://www.jeffgeerling.com/blog/2026/news-about-raspberry-pi-6-and-microcontroller-development/",
+      "score": 225,
+      "detailUpdatedAt": 1780063998,
+      "createdAt": 1779992413,
+      "aiSummaryUpdatedAt": 1780065030,
+      "aisummary": {
+        "chinese_title": "Raspberry Pi 6 争议：提速、降功耗与 MCU/USB-C 路线",
+        "emoji": "😒",
+        "sarcastic_question": "Pi 6 难道就是更贵更热的电暖器吗？"
+      },
+      "classifications": {
+        "topics": [
+          7,
+          6,
+          3
+        ],
+        "facets": [
+          9
+        ],
+        "tags": [
+          "Raspberry Pi 6",
+          "Raspberry Pi",
+          "microcontroller",
+          "Raspberry Pi Zero",
+          "Raspberry Pi Pico",
+          "Raspberry Pi 4",
+          "Intel N150"
+        ]
+      },
+      "classificationsUpdatedAt": 1779993037,
+      "aiSummary": {
+        "chinese_title": "Raspberry Pi 6 争议：提速、降功耗与 MCU/USB-C 路线",
+        "emoji": "😒",
+        "sarcastic_question": "Pi 6 难道就是更贵更热的电暖器吗？"
+      },
+      "detail": {
+        "id": 48276598,
+        "by": "rbanffy",
+        "title": "News about Raspberry Pi 6 and Microcontroller Development",
+        "url": "https://www.jeffgeerling.com/blog/2026/news-about-raspberry-pi-6-and-microcontroller-development/",
+        "score": 125,
+        "detailUpdatedAt": 1780009990,
+        "createdAt": 1779992413,
+        "aiSummaryUpdatedAt": 1780010430,
+        "aisummary": {
+          "chinese_title": "Raspberry Pi 6争议：该加性能还是补低功耗与MCU特性",
+          "discussion_overview": [
+            {
+              "category": "先补低功耗，而不是只堆性能",
+              "summary": "不少评论认为 Raspberry Pi 的下一步不该只是更快的 CPU 和 I/O，而应优先解决睡眠、待机功耗和更低的空闲功耗。有人直接把 Pi 5 视为已经逼近散热和供电设计上限，认为 Pi 6 再往上冲只会和 Intel N150 这类低价 x86 小主机正面撞车，且在价格和性能上都未必占优。也有人希望出现更像 Zero 系列的低功耗版本，哪怕只配 1GB RAM，也比继续做一个更热、更大的版本更有意义。",
+              "supportid": [
+                "48281601",
+                "48287628",
+                "48312789",
+                "48316502",
+                "48314688",
+                "48314971",
+                "48314455"
+              ]
+            },
+            {
+              "category": "Pi 的现实用途：原型机、设备盒子与“找不到场景”",
+              "summary": "一边是“买了每代都没找到用途”的怀疑：有评论认为，计算上 mini PC 或旧笔记本更划算，做嵌入式又不如专用 microcontroller。另一边则列出大量真实场景，包括快速原型、摄像头定时上传、体育馆数字标牌、HVAC 控制、BLE 数据汇聚、打印机监控和智能音箱，说明 Pi 在“一个小盒子解决很多问题”上仍然很强。还有人强调商业用户看重的不是消费者眼里的“便宜”，而是可预期供货、品牌软件支持和少量部署的开发速度。",
+              "supportid": [
+                "48313511",
+                "48315291",
+                "48313726",
+                "48313845",
+                "48313937",
+                "48315405",
+                "48316349",
+                "48315304"
+              ]
+            },
+            {
+              "category": "Pi 不是 MCU，microcontroller 市场已被 ESP32 / RP2350 分流",
+              "summary": "评论里有人反复纠正：能跑 Linux 的东西本质上就是 SBC（Single-Board Computer，单板计算机），不是 microcontroller。Raspberry Pi 早期之所以被拿来做很多 GPIO 场景，是因为它刚好填补了“能跑完整 OS 又有接口”的空缺，但现在这个空缺已经被 ESP8266/ESP32、Raspberry Pi Pico 和 RP2350 之类更便宜、更低功耗的器件分走了。也有人提到，硬件玩家现在家里堆的往往是 ESP32，而不是 Pi；真正做 microcontroller 开发时，MicroPython、GPIO 和更清晰的资料生态反而更重要。",
+              "supportid": [
+                "48313875",
+                "48313774",
+                "48315125",
+                "48314040",
+                "48314112",
+                "48312662",
+                "48312773",
+                "48315589",
+                "48316442",
+                "48314997"
+              ]
+            },
+            {
+              "category": "散热与供电：burst 很香，持续负载更麻烦",
+              "summary": "有些人认为 Pi 5 在无风扇甚至无散热片时也能安全降频，短时 burst 性能对大量轻负载很有价值，打字、点菜单和命令行响应都会更快。另一些人则把随机重启、要备一块“刚好合适”的电源、以及为了持续负载不得不加大散热，当作平台越来越像一台小型 x86 电脑的证据。还有人提醒，长时间热循环可能会伤芯片，说明“允许一点 throttling”可以接受，但这并不等于平台没有边界。",
+              "supportid": [
+                "48314178",
+                "48314855",
+                "48314494",
+                "48315024",
+                "48315645",
+                "48313692",
+                "48315401",
+                "48315760"
+              ]
+            },
+            {
+              "category": "和 N150、Jetson、Radxa 的性价比竞争",
+              "summary": "讨论里最常见的对照物是 Intel N100/N150 mini PC：当 Pi 5 价格涨到接近甚至超过某些 N150 盒子时，后者往往在算力、吞吐和通用性上更有吸引力。支持 Pi 的人则强调，Pi 的强项是文档、稳定的软件生态和长期供货；反对者则指出，这些优势在供货紧张和价格上扬时会被削弱。另一条支线是 Jetson Orin Nano 和 Radxa Dragon Q6A 这类边缘 AI 板卡：前者更强但软件历史包袱重，后者则因 Qualcomm 芯片、GPU、DSP 和 AI 加速器而显得很诱人。",
+              "supportid": [
+                "48313411",
+                "48313896",
+                "48314181",
+                "48314349",
+                "48316303",
+                "48314802",
+                "48314159",
+                "48315189",
+                "48315564",
+                "48314472",
+                "48314894",
+                "48315778",
+                "48316045",
+                "48316131"
+              ]
+            },
+            {
+              "category": "大家真正想要的是功能补齐：NPU、TPM、USB-C、视频解码",
+              "summary": "不少评论把希望寄托在“下一代补短板”上，而不是单纯提速：有人想要 NPU 来做视觉 AI，有人想要更完整的 TPM / fTPM，甚至是实体 TPM，以便安全存放磁盘解密密钥。还有人希望 secure boot 更灵活、h.264 解码别再退步，以及 Pico / RP2350 参考板早点换成 USB-C，顺便给出更现代的 3++ 式新板，带上 M.2、更多 I/O 和更合理的接口布局。这个主题的核心不是“再做一个更快的 Pi”，而是“把用户一直缺的东西一次补齐”。",
+              "supportid": [
+                "48316333",
+                "48313200",
+                "48313659",
+                "48315546",
+                "48316102",
+                "48316439",
+                "48313163",
+                "48313353",
+                "48313873",
+                "48313962",
+                "48315432",
+                "48314161",
+                "48314044",
+                "48314933",
+                "48316703",
+                "48313559"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "SBC",
+              "explanation": "Single-Board Computer，单板计算机，把 CPU、内存和常用接口集成在一块板上。"
+            },
+            {
+              "term": "GPIO",
+              "explanation": "通用输入输出引脚，用来连接传感器、继电器、按键等外设。"
+            },
+            {
+              "term": "MicroPython",
+              "explanation": "面向 microcontroller 的 Python 运行时，方便用 Python 写嵌入式程序。"
+            },
+            {
+              "term": "RP2350",
+              "explanation": "Raspberry Pi 的 microcontroller 芯片，常见于 Pico 系列开发板。"
+            },
+            {
+              "term": "ESP32",
+              "explanation": "Espressif 的低功耗 MCU，集成 Wi‑Fi/Bluetooth，常被拿来替代 Pi 做小型联网设备。"
+            },
+            {
+              "term": "TPM/fTPM",
+              "explanation": "可信平台模块或其固件实现，用于密钥存储、设备证明和启动链保护。"
+            },
+            {
+              "term": "N100/N150",
+              "explanation": "Intel 的低功耗 x86 处理器系列，评论里常被拿来和 Raspberry Pi 比价格、性能和功耗。"
+            }
+          ],
+          "context": "这轮讨论围绕传闻中的 Raspberry Pi 6 展开，起点是媒体提到下一代可能主要升级 CPU 速度和 I/O，而不是加入新功能。评论不断拿 Raspberry Pi 5（现款单板计算机）、Raspberry Pi Pico / RP2350（面向 microcontroller 的开发板和芯片）以及 ESP32（带 Wi‑Fi/Bluetooth 的低功耗 MCU）做对比，争论它究竟该继续做便宜的 Linux 盒子，还是回到更轻量的嵌入式定位。另一条主线是和 Intel N100/N150 mini PC（低价 x86 小主机）、Jetson Orin Nano（NVIDIA 的边缘 AI 开发板）等竞品比较，焦点集中在价格、性能、供电、散热和软件支持。安全启动、TPM、OP-TEE、NPU、h.264 解码和 USB-C 这些“该补齐的功能”也被反复提到。",
+          "emoji": "🤨",
+          "sarcastic_question": "Pi6先别忙着提速，先把睡眠和供电学会行吗？"
+        },
+        "classifications": {
+          "topics": [
+            7,
+            6,
+            3
+          ],
+          "facets": [
+            9
+          ],
+          "tags": [
+            "Raspberry Pi 6",
+            "Raspberry Pi",
+            "microcontroller",
+            "Raspberry Pi Zero",
+            "Raspberry Pi Pico",
+            "Raspberry Pi 4",
+            "Intel N150"
+          ]
+        },
+        "classificationsUpdatedAt": 1779993037,
+        "aiSummary": {
+          "chinese_title": "Raspberry Pi 6争议：该加性能还是补低功耗与MCU特性",
+          "discussion_overview": [
+            {
+              "category": "先补低功耗，而不是只堆性能",
+              "summary": "不少评论认为 Raspberry Pi 的下一步不该只是更快的 CPU 和 I/O，而应优先解决睡眠、待机功耗和更低的空闲功耗。有人直接把 Pi 5 视为已经逼近散热和供电设计上限，认为 Pi 6 再往上冲只会和 Intel N150 这类低价 x86 小主机正面撞车，且在价格和性能上都未必占优。也有人希望出现更像 Zero 系列的低功耗版本，哪怕只配 1GB RAM，也比继续做一个更热、更大的版本更有意义。",
+              "supportid": [
+                "48281601",
+                "48287628",
+                "48312789",
+                "48316502",
+                "48314688",
+                "48314971",
+                "48314455"
+              ]
+            },
+            {
+              "category": "Pi 的现实用途：原型机、设备盒子与“找不到场景”",
+              "summary": "一边是“买了每代都没找到用途”的怀疑：有评论认为，计算上 mini PC 或旧笔记本更划算，做嵌入式又不如专用 microcontroller。另一边则列出大量真实场景，包括快速原型、摄像头定时上传、体育馆数字标牌、HVAC 控制、BLE 数据汇聚、打印机监控和智能音箱，说明 Pi 在“一个小盒子解决很多问题”上仍然很强。还有人强调商业用户看重的不是消费者眼里的“便宜”，而是可预期供货、品牌软件支持和少量部署的开发速度。",
+              "supportid": [
+                "48313511",
+                "48315291",
+                "48313726",
+                "48313845",
+                "48313937",
+                "48315405",
+                "48316349",
+                "48315304"
+              ]
+            },
+            {
+              "category": "Pi 不是 MCU，microcontroller 市场已被 ESP32 / RP2350 分流",
+              "summary": "评论里有人反复纠正：能跑 Linux 的东西本质上就是 SBC（Single-Board Computer，单板计算机），不是 microcontroller。Raspberry Pi 早期之所以被拿来做很多 GPIO 场景，是因为它刚好填补了“能跑完整 OS 又有接口”的空缺，但现在这个空缺已经被 ESP8266/ESP32、Raspberry Pi Pico 和 RP2350 之类更便宜、更低功耗的器件分走了。也有人提到，硬件玩家现在家里堆的往往是 ESP32，而不是 Pi；真正做 microcontroller 开发时，MicroPython、GPIO 和更清晰的资料生态反而更重要。",
+              "supportid": [
+                "48313875",
+                "48313774",
+                "48315125",
+                "48314040",
+                "48314112",
+                "48312662",
+                "48312773",
+                "48315589",
+                "48316442",
+                "48314997"
+              ]
+            },
+            {
+              "category": "散热与供电：burst 很香，持续负载更麻烦",
+              "summary": "有些人认为 Pi 5 在无风扇甚至无散热片时也能安全降频，短时 burst 性能对大量轻负载很有价值，打字、点菜单和命令行响应都会更快。另一些人则把随机重启、要备一块“刚好合适”的电源、以及为了持续负载不得不加大散热，当作平台越来越像一台小型 x86 电脑的证据。还有人提醒，长时间热循环可能会伤芯片，说明“允许一点 throttling”可以接受，但这并不等于平台没有边界。",
+              "supportid": [
+                "48314178",
+                "48314855",
+                "48314494",
+                "48315024",
+                "48315645",
+                "48313692",
+                "48315401",
+                "48315760"
+              ]
+            },
+            {
+              "category": "和 N150、Jetson、Radxa 的性价比竞争",
+              "summary": "讨论里最常见的对照物是 Intel N100/N150 mini PC：当 Pi 5 价格涨到接近甚至超过某些 N150 盒子时，后者往往在算力、吞吐和通用性上更有吸引力。支持 Pi 的人则强调，Pi 的强项是文档、稳定的软件生态和长期供货；反对者则指出，这些优势在供货紧张和价格上扬时会被削弱。另一条支线是 Jetson Orin Nano 和 Radxa Dragon Q6A 这类边缘 AI 板卡：前者更强但软件历史包袱重，后者则因 Qualcomm 芯片、GPU、DSP 和 AI 加速器而显得很诱人。",
+              "supportid": [
+                "48313411",
+                "48313896",
+                "48314181",
+                "48314349",
+                "48316303",
+                "48314802",
+                "48314159",
+                "48315189",
+                "48315564",
+                "48314472",
+                "48314894",
+                "48315778",
+                "48316045",
+                "48316131"
+              ]
+            },
+            {
+              "category": "大家真正想要的是功能补齐：NPU、TPM、USB-C、视频解码",
+              "summary": "不少评论把希望寄托在“下一代补短板”上，而不是单纯提速：有人想要 NPU 来做视觉 AI，有人想要更完整的 TPM / fTPM，甚至是实体 TPM，以便安全存放磁盘解密密钥。还有人希望 secure boot 更灵活、h.264 解码别再退步，以及 Pico / RP2350 参考板早点换成 USB-C，顺便给出更现代的 3++ 式新板，带上 M.2、更多 I/O 和更合理的接口布局。这个主题的核心不是“再做一个更快的 Pi”，而是“把用户一直缺的东西一次补齐”。",
+              "supportid": [
+                "48316333",
+                "48313200",
+                "48313659",
+                "48315546",
+                "48316102",
+                "48316439",
+                "48313163",
+                "48313353",
+                "48313873",
+                "48313962",
+                "48315432",
+                "48314161",
+                "48314044",
+                "48314933",
+                "48316703",
+                "48313559"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "SBC",
+              "explanation": "Single-Board Computer，单板计算机，把 CPU、内存和常用接口集成在一块板上。"
+            },
+            {
+              "term": "GPIO",
+              "explanation": "通用输入输出引脚，用来连接传感器、继电器、按键等外设。"
+            },
+            {
+              "term": "MicroPython",
+              "explanation": "面向 microcontroller 的 Python 运行时，方便用 Python 写嵌入式程序。"
+            },
+            {
+              "term": "RP2350",
+              "explanation": "Raspberry Pi 的 microcontroller 芯片，常见于 Pico 系列开发板。"
+            },
+            {
+              "term": "ESP32",
+              "explanation": "Espressif 的低功耗 MCU，集成 Wi‑Fi/Bluetooth，常被拿来替代 Pi 做小型联网设备。"
+            },
+            {
+              "term": "TPM/fTPM",
+              "explanation": "可信平台模块或其固件实现，用于密钥存储、设备证明和启动链保护。"
+            },
+            {
+              "term": "N100/N150",
+              "explanation": "Intel 的低功耗 x86 处理器系列，评论里常被拿来和 Raspberry Pi 比价格、性能和功耗。"
+            }
+          ],
+          "context": "这轮讨论围绕传闻中的 Raspberry Pi 6 展开，起点是媒体提到下一代可能主要升级 CPU 速度和 I/O，而不是加入新功能。评论不断拿 Raspberry Pi 5（现款单板计算机）、Raspberry Pi Pico / RP2350（面向 microcontroller 的开发板和芯片）以及 ESP32（带 Wi‑Fi/Bluetooth 的低功耗 MCU）做对比，争论它究竟该继续做便宜的 Linux 盒子，还是回到更轻量的嵌入式定位。另一条主线是和 Intel N100/N150 mini PC（低价 x86 小主机）、Jetson Orin Nano（NVIDIA 的边缘 AI 开发板）等竞品比较，焦点集中在价格、性能、供电、散热和软件支持。安全启动、TPM、OP-TEE、NPU、h.264 解码和 USB-C 这些“该补齐的功能”也被反复提到。",
+          "emoji": "🤨",
+          "sarcastic_question": "Pi6先别忙着提速，先把睡眠和供电学会行吗？"
+        }
+      },
+      "articleSummary": "# 一句话总结\n树莓派 6 要等到 2028 年才会来，而且这次不拼新功能，只拼更强的 CPU 和 IO，同时 RP2350 微控制器的出货量已经正式超过了树莓派单板电脑。\n\n### 发布周期被打乱，Pi 6 要等到 2028 年\n回顾树莓派的历史，从 Pi 1 到 Pi 5，发布间隔通常是 1 到 4 年不等。按照这个节奏，大家本以为 2026 或 2027 年就能见到 Pi 6。但 Eben Upton 亲自把时间表推迟到了 2028 年初甚至更晚。这背后的核心原因不是技术没搞定，而是全球 DRAM 供应短缺。现在发布新硬件，成本可能会直接翻倍，做出一款价格离谱的单板电脑显然没有意义。\n\n### 不搞花哨功能，CPU 才是 AI 的主战场\n对于期待 Pi 6 能自带 M.2 接口或者一堆新接口的朋友，Eben 建议大家降低预期。这次升级的核心思路就是“更多”：更快的 CPU 和更快的 IO，而不是增加新功能。更有意思的是关于 AI 的路线选择。树莓派不打算在芯片里浪费宝贵的硅面积去塞一个专用的 NPU。他们的逻辑很简单：CPU 本身就是很好的 AI 计算载体，没必要为了跟风硬加 AI 芯片。\n\n### Pi Zero 3 难产，全靠 LPDDR2 硬撑价格\n很多人关心的 Pi Zero 2 W 缺货问题，主要是因为 AI 芯片爆发挤占了旧工艺节点的产能，导致基板供应紧张。不过他们正在引入新供应商，缺货应该只是暂时的。至于 Pi Zero 3，短期内别指望了。为了维持 15 美元的低价，他们必须坚持使用单层 PCB 和便宜的 LPDDR2 内存。一旦升级到更快的 CPU，就需要堆叠封装内存，这会破坏单层设计；而用新的 LPDDR 内存，成本又根本压不下来。\n\n### RP2350 修好了漏电 Bug，微 USB 纯粹是为了省钱\n在微控制器方面，RP2350 的开发过程比预想的要难，主要卡在功耗和安全性上。好在新的硅片版本修复了电流泄漏的 Bug，算是解决了大麻烦。至于大家吐槽的 Pico 还在用 micro USB 而不是 USB-C，原因非常直白：USB-C 接口更贵，而且占用的板子空间也稍微大一点。虽然未来肯定会换，但目前为了极致的成本控制，只能先这样。\n\n### 微控制器出货量逆袭，软件才是最后的护城河\n一个值得注意的里程碑是，2025 年树莓派微控制器的出货量已经超过了单板电脑，而且随着单板电脑价格上涨，这个差距还在拉大。面对硬件上的“挤牙膏”，树莓派高层非常清楚自己的优势在哪。软件工程主管承诺，要把 95% 的时间都花在库、驱动、内核和操作系统的支持上。说白了，在硬件同质化严重的嵌入式领域，极致的软件支持才是树莓派让开发者愿意买单的真正原因。"
+    },
+    {
+      "id": 48319509,
+      "by": "Kwastie",
+      "title": "Volkswagen blocks Home Assistant by requiring client assertion",
+      "url": "https://github.com/robinostlund/homeassistant-volkswagencarnet/issues/967",
+      "score": 281,
+      "detailUpdatedAt": 1780063994,
+      "createdAt": 1780040412,
+      "aiSummaryUpdatedAt": 1780064739,
+      "aisummary": {
+        "chinese_title": "VW以客户端证明封杀Home Assistant，车主数据权争议升温",
+        "emoji": "😠",
+        "sarcastic_question": "花钱买了车，还得先向VW证明你是你本人吗？"
+      },
+      "classifications": {
+        "topics": [
+          6,
+          9,
+          3
+        ],
+        "facets": [
+          8
+        ],
+        "tags": [
+          "Home Assistant",
+          "Volkswagen",
+          "Volkswagen Carnet",
+          "Client assertion",
+          "API",
+          "Terms & Conditions",
+          "GitHub"
+        ]
+      },
+      "classificationsUpdatedAt": 1780042848,
+      "aiSummary": {
+        "chinese_title": "VW以客户端证明封杀Home Assistant，车主数据权争议升温",
+        "emoji": "😠",
+        "sarcastic_question": "花钱买了车，还得先向VW证明你是你本人吗？"
+      },
+      "detail": {
+        "id": 48319509,
+        "by": "Kwastie",
+        "title": "Volkswagen blocks Home Assistant by requiring client assertion",
+        "url": "https://github.com/robinostlund/homeassistant-volkswagencarnet/issues/967",
+        "score": 181,
+        "detailUpdatedAt": 1780051390,
+        "createdAt": 1780040412,
+        "aiSummaryUpdatedAt": 1780052107,
+        "aisummary": {
+          "chinese_title": "Volkswagen 以远程证明阻断 Home Assistant，遭 EU 数据法质疑",
+          "discussion_overview": [
+            {
+              "category": "法律与数据可携权争议",
+              "summary": "不少评论直接把这件事放到 EU Data Act（欧盟数据法）的框架下看，认为车主对“connected product”产生的数据本来就应当拥有可访问、可携带的权利，尤其是车辆数据还另有专门指导。有人引用条文强调数据应以机器可读、实时、免费方式提供，因此 VW 这类做法可能踩到合规红线。另一部分讨论则集中在 T&C（条款与条件）和法律的关系：合同条款不能凌驾于法律之上，但如果现行法规并没有明确赋权，厂商仍可能先用条款和技术门槛挡住用户。也有人追问，若数据被放进 secure enclave（安全隔区）或类似机制里，用户的法定访问权到底还能不能真正落地。",
+              "supportid": [
+                "48321408",
+                "48320837",
+                "48321216",
+                "48320368",
+                "48320477",
+                "48320512",
+                "48320718",
+                "48320466",
+                "48320561"
+              ]
+            },
+            {
+              "category": "技术机制：术语混淆与安全性怀疑",
+              "summary": "有评论指出标题里的 client assertion 其实是 OAuth 里的一个术语，但这里讨论的更像是 remote attestation（远程证明）或“Security Assertion”，即让服务器确认请求来自未修改的官方 App。有人补充说 Android 端可能依赖 Play Protect，iOS 端则可能借助苹果的设备完整性能力。批评者认为这种限制未必牢靠，因为浏览器登录似乎还能工作，说明实现未必严密；即便用了 Secure Enclave，也未必能防住 App 本身被利用或网络层钥匙被截获。还有人提醒，attestation 通常只证明开机状态正常，并不能检测之后的入侵。",
+              "supportid": [
+                "48320789",
+                "48320717",
+                "48320748",
+                "48320935",
+                "48320911",
+                "48320557",
+                "48320730",
+                "48321153",
+                "48320959",
+                "48321007"
+              ]
+            },
+            {
+              "category": "企业动机：控制权、风险规避与数据封锁",
+              "summary": "很多评论认为，这类改动未必是为了真正提升安全，更像是公司内部的风险规避和控制欲：某个部门把微小风险写成风险评估，最后就演化成限制第三方接入的硬措施。也有人认为，这背后是把用户数据导回官方 App、减少第三方使用带来的云成本，并把“我们防住了安全风险”当成管理层可汇报的成果。订阅层面也被拿来讨论：用户明明已经付了 WeConnect（大众官方车联网服务）年费，却被迫只能通过 VW 自家或合作方访问同样的数据。整体上，评论者普遍不信这能带来多少新增收入，更像是“管控比利润更重要”。",
+              "supportid": [
+                "48320481",
+                "48320734",
+                "48320445",
+                "48320619",
+                "48320705",
+                "48321206",
+                "48320435",
+                "48320483",
+                "48320663",
+                "48320825"
+              ]
+            },
+            {
+              "category": "市场替代、生态开放与“用钱包投票”的局限",
+              "summary": "有人拿 Tesla、Volvo、Garmin、Polestar 和 BSH（博世/西门子家电）作对比，认为更开放的官方 API 或数据接口会显著提升品牌好感，甚至形成销售优势。也有人分享了逆向工程、scraping、CANBUS sniffer、esphome via BLE 等绕过方案，但这些方案都可能被登录机制、TLS fingerprinting（TLS 指纹识别）或接口改动继续封堵。评论里反复出现“vote with your wallet”的说法，但多数人觉得这对普通消费者并不现实：Connected car 功能对大多数买家并不重要，等买完车再碰到政策回收也很难补救。于是，监管被视为比市场自发约束更有效的手段。",
+              "supportid": [
+                "48320373",
+                "48320643",
+                "48321036",
+                "48320671",
+                "48320367",
+                "48320571",
+                "48321323",
+                "48320635",
+                "48320763",
+                "48320936",
+                "48320687",
+                "48320881",
+                "48321294",
+                "48321063",
+                "48320675"
+              ]
+            },
+            {
+              "category": "品牌伦理、历史包袱与选择性愤怒",
+              "summary": "一部分评论把 VW 的历史拉进来，提到其 Nazi 时代起源、Dieselgate（柴油门）以及长期的不诚信形象，借此强调这家公司“早就不值得信任”。但也有人反驳，现代 Volkswagen 不能简单等同于纳粹党，拿几十年前的历史来解释今天的 API 政策属于过度引申。讨论随后滑向 Tesla 和 Musk，出现了“选择性愤怒”“Godwin's law”之类的吐槽，显示这场争论很容易从技术问题变成品牌政治。整体气氛更像一轮对车企信誉的情绪宣泄，而不是单纯的接口兼容争论。",
+              "supportid": [
+                "48320531",
+                "48320585",
+                "48320991",
+                "48320541",
+                "48320583",
+                "48320545",
+                "48320805",
+                "48320689",
+                "48320835",
+                "48321352"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Remote Attestation（远程证明）",
+              "explanation": "让服务器验证设备或 App 是否在未篡改、受信任环境中运行的机制，常用于限制非官方客户端。"
+            },
+            {
+              "term": "Home Assistant（开源家庭自动化平台）",
+              "explanation": "可把汽车、传感器和家居设备接入统一自动化规则的开源平台。"
+            },
+            {
+              "term": "EU Data Act（欧盟数据法）",
+              "explanation": "欧盟关于数据访问与可移植性的法规，被评论者用来主张车主应能获取车辆数据。"
+            },
+            {
+              "term": "TLS fingerprinting（TLS 指纹识别）",
+              "explanation": "通过 TLS 握手特征识别客户端类型，常用于阻止脚本或非官方 App。"
+            },
+            {
+              "term": "WeConnect（大众官方车联网服务）",
+              "explanation": "Volkswagen 的官方车辆数据与远程控制订阅服务，用来提供车况、充电和远程功能。"
+            }
+          ],
+          "context": "这场讨论围绕 Volkswagen 在车辆 App/API 端加入客户端证明机制展开，结果是 Home Assistant（开源家庭自动化平台）这类第三方集成不再能正常读取车况、充电状态或执行远程控制。Home Assistant 常被车主用来把汽车数据纳入自动化规则，而 VW 的官方车联网服务 WeConnect（大众官方车联网订阅平台）本来就掌握这些数据，所以争议焦点不是“有没有数据”，而是“用户能不能通过自己选择的工具访问数据”。评论把这一变化放进更大的行业背景：车企正越来越多地用 TLS fingerprinting（TLS 指纹识别）和 Remote Attestation（远程证明）之类手段收紧非官方客户端。很多人进一步把它和 EU Data Act（欧盟数据法）的数据可携权、车企的订阅商业模式，以及 Tesla、Volvo、Garmin、BSH 等品牌的开放程度放在一起比较。",
+          "emoji": "🤦",
+          "sarcastic_question": "买了车，数据还得先向VW请示授权吗？"
+        },
+        "classifications": {
+          "topics": [
+            6,
+            9,
+            3
+          ],
+          "facets": [
+            8
+          ],
+          "tags": [
+            "Home Assistant",
+            "Volkswagen",
+            "Volkswagen Carnet",
+            "Client assertion",
+            "API",
+            "Terms & Conditions",
+            "GitHub"
+          ]
+        },
+        "classificationsUpdatedAt": 1780042848,
+        "aiSummary": {
+          "chinese_title": "Volkswagen 以远程证明阻断 Home Assistant，遭 EU 数据法质疑",
+          "discussion_overview": [
+            {
+              "category": "法律与数据可携权争议",
+              "summary": "不少评论直接把这件事放到 EU Data Act（欧盟数据法）的框架下看，认为车主对“connected product”产生的数据本来就应当拥有可访问、可携带的权利，尤其是车辆数据还另有专门指导。有人引用条文强调数据应以机器可读、实时、免费方式提供，因此 VW 这类做法可能踩到合规红线。另一部分讨论则集中在 T&C（条款与条件）和法律的关系：合同条款不能凌驾于法律之上，但如果现行法规并没有明确赋权，厂商仍可能先用条款和技术门槛挡住用户。也有人追问，若数据被放进 secure enclave（安全隔区）或类似机制里，用户的法定访问权到底还能不能真正落地。",
+              "supportid": [
+                "48321408",
+                "48320837",
+                "48321216",
+                "48320368",
+                "48320477",
+                "48320512",
+                "48320718",
+                "48320466",
+                "48320561"
+              ]
+            },
+            {
+              "category": "技术机制：术语混淆与安全性怀疑",
+              "summary": "有评论指出标题里的 client assertion 其实是 OAuth 里的一个术语，但这里讨论的更像是 remote attestation（远程证明）或“Security Assertion”，即让服务器确认请求来自未修改的官方 App。有人补充说 Android 端可能依赖 Play Protect，iOS 端则可能借助苹果的设备完整性能力。批评者认为这种限制未必牢靠，因为浏览器登录似乎还能工作，说明实现未必严密；即便用了 Secure Enclave，也未必能防住 App 本身被利用或网络层钥匙被截获。还有人提醒，attestation 通常只证明开机状态正常，并不能检测之后的入侵。",
+              "supportid": [
+                "48320789",
+                "48320717",
+                "48320748",
+                "48320935",
+                "48320911",
+                "48320557",
+                "48320730",
+                "48321153",
+                "48320959",
+                "48321007"
+              ]
+            },
+            {
+              "category": "企业动机：控制权、风险规避与数据封锁",
+              "summary": "很多评论认为，这类改动未必是为了真正提升安全，更像是公司内部的风险规避和控制欲：某个部门把微小风险写成风险评估，最后就演化成限制第三方接入的硬措施。也有人认为，这背后是把用户数据导回官方 App、减少第三方使用带来的云成本，并把“我们防住了安全风险”当成管理层可汇报的成果。订阅层面也被拿来讨论：用户明明已经付了 WeConnect（大众官方车联网服务）年费，却被迫只能通过 VW 自家或合作方访问同样的数据。整体上，评论者普遍不信这能带来多少新增收入，更像是“管控比利润更重要”。",
+              "supportid": [
+                "48320481",
+                "48320734",
+                "48320445",
+                "48320619",
+                "48320705",
+                "48321206",
+                "48320435",
+                "48320483",
+                "48320663",
+                "48320825"
+              ]
+            },
+            {
+              "category": "市场替代、生态开放与“用钱包投票”的局限",
+              "summary": "有人拿 Tesla、Volvo、Garmin、Polestar 和 BSH（博世/西门子家电）作对比，认为更开放的官方 API 或数据接口会显著提升品牌好感，甚至形成销售优势。也有人分享了逆向工程、scraping、CANBUS sniffer、esphome via BLE 等绕过方案，但这些方案都可能被登录机制、TLS fingerprinting（TLS 指纹识别）或接口改动继续封堵。评论里反复出现“vote with your wallet”的说法，但多数人觉得这对普通消费者并不现实：Connected car 功能对大多数买家并不重要，等买完车再碰到政策回收也很难补救。于是，监管被视为比市场自发约束更有效的手段。",
+              "supportid": [
+                "48320373",
+                "48320643",
+                "48321036",
+                "48320671",
+                "48320367",
+                "48320571",
+                "48321323",
+                "48320635",
+                "48320763",
+                "48320936",
+                "48320687",
+                "48320881",
+                "48321294",
+                "48321063",
+                "48320675"
+              ]
+            },
+            {
+              "category": "品牌伦理、历史包袱与选择性愤怒",
+              "summary": "一部分评论把 VW 的历史拉进来，提到其 Nazi 时代起源、Dieselgate（柴油门）以及长期的不诚信形象，借此强调这家公司“早就不值得信任”。但也有人反驳，现代 Volkswagen 不能简单等同于纳粹党，拿几十年前的历史来解释今天的 API 政策属于过度引申。讨论随后滑向 Tesla 和 Musk，出现了“选择性愤怒”“Godwin's law”之类的吐槽，显示这场争论很容易从技术问题变成品牌政治。整体气氛更像一轮对车企信誉的情绪宣泄，而不是单纯的接口兼容争论。",
+              "supportid": [
+                "48320531",
+                "48320585",
+                "48320991",
+                "48320541",
+                "48320583",
+                "48320545",
+                "48320805",
+                "48320689",
+                "48320835",
+                "48321352"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Remote Attestation（远程证明）",
+              "explanation": "让服务器验证设备或 App 是否在未篡改、受信任环境中运行的机制，常用于限制非官方客户端。"
+            },
+            {
+              "term": "Home Assistant（开源家庭自动化平台）",
+              "explanation": "可把汽车、传感器和家居设备接入统一自动化规则的开源平台。"
+            },
+            {
+              "term": "EU Data Act（欧盟数据法）",
+              "explanation": "欧盟关于数据访问与可移植性的法规，被评论者用来主张车主应能获取车辆数据。"
+            },
+            {
+              "term": "TLS fingerprinting（TLS 指纹识别）",
+              "explanation": "通过 TLS 握手特征识别客户端类型，常用于阻止脚本或非官方 App。"
+            },
+            {
+              "term": "WeConnect（大众官方车联网服务）",
+              "explanation": "Volkswagen 的官方车辆数据与远程控制订阅服务，用来提供车况、充电和远程功能。"
+            }
+          ],
+          "context": "这场讨论围绕 Volkswagen 在车辆 App/API 端加入客户端证明机制展开，结果是 Home Assistant（开源家庭自动化平台）这类第三方集成不再能正常读取车况、充电状态或执行远程控制。Home Assistant 常被车主用来把汽车数据纳入自动化规则，而 VW 的官方车联网服务 WeConnect（大众官方车联网订阅平台）本来就掌握这些数据，所以争议焦点不是“有没有数据”，而是“用户能不能通过自己选择的工具访问数据”。评论把这一变化放进更大的行业背景：车企正越来越多地用 TLS fingerprinting（TLS 指纹识别）和 Remote Attestation（远程证明）之类手段收紧非官方客户端。很多人进一步把它和 EU Data Act（欧盟数据法）的数据可携权、车企的订阅商业模式，以及 Tesla、Volvo、Garmin、BSH 等品牌的开放程度放在一起比较。",
+          "emoji": "🤦",
+          "sarcastic_question": "买了车，数据还得先向VW请示授权吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n大众汽车突然强制要求 OAuth 客户端断言，导致 Home Assistant 集成无法通过传统的用户名密码登录，官方 App 却不受影响。\n\n### 官方 App 正常，第三方却掉线了\n这次问题的起因很典型：用户发现 Home Assistant 的集成突然报错，提示认证过期且无法重新登录。但有意思的地方在于，大众自家的 Android App 和网页端登录一切正常。这说明问题不在于用户的账号被封禁，也不在于网络连接，而是大众的服务端针对不同类型的客户端采取了不同的验证策略。\n\n### 传统的用户名密码登录失效了\n用户尝试输入邮箱和密码进行重新认证，结果直接被拒，返回了德文错误信息，提示“登录 Volkswagen Connect 不可能，请检查凭据”。这表明大众汽车的后端接口逻辑发生了变更，不再接受这种基础的凭证校验方式。对于习惯了“账号+密码”直连模式的开发者来说，这无疑是一记闷棍。\n\n### 核心原因：强制要求 Client Assertion\n经过排查，问题的根源在于大众汽车开始强制要求“Client Assertion”。说白了就是，以前只要证明“我是账号主人”就行，现在还得证明“我是经过官方授权的特定客户端”。这通常涉及到私钥签名和更复杂的 OAuth 2.0 流程，而 Home Assistant 当前的集成版本并没有实现这套机制，导致握手失败。\n\n### 区分官方与第三方的“隐形墙”\n这种变更其实是厂商为了保护生态安全常用的手段。通过要求 Client Assertion，大众可以精确控制哪些客户端能接入 API。官方 App 内置了证书或密钥，自然能通过验证；而像 Home Assistant 这样的开源项目，因为无法合法地获取这些私钥，瞬间就被挡在了门外。这解释了为什么官方 App 没事，而第三方集成直接瘫痪。\n\n### 开发者面临的逆向难题\n对于有经验的开发者来说，这意味着简单的抓包模拟已经行不通了。要解决这个问题，必须逆向工程官方 App 的通信协议，提取出生成 Client Assertion 的算法和密钥。但这在法律和技术上都存在极高的门槛，而且一旦厂商更新密钥，集成就会再次失效，维护成本极高。\n\n### 暂时无解，只能等待架构升级\n目前的状况是，只要大众汽车不撤回这个强制要求，Home Assistant 的现有集成就无法通过简单的修复恢复工作。这不仅仅是改几行代码的问题，而是需要整个认证架构的升级。对于用户而言，除了等待社区开发者找到绕过新机制的方法（或者大众官方开放 API），暂时没有太好的办法。"
+    },
     {
       "id": 48314136,
       "by": "philips",
@@ -397,227 +2141,6 @@
       "articleSummary": "### 一句话总结\n这篇文章其实是一个名为 MyBrickLog 的乐高收藏管理工具的产品落地页，旨在帮助玩家追踪收藏、发现新套装并与其他爱好者建立连接。\n\n### 乐高玩家的数字化痛点\n对于资深乐高玩家来说，随着收藏规模不断扩大，单纯靠脑子记或者用 Excel 表格管理变得越来越吃力。MyBrickLog 这个工具就是为了解决这个问题而生的，它提供了一个集中的平台来追踪你的每一套收藏。这不仅仅是简单的记录，更是一种对个人资产的数字化管理。毕竟，当收藏达到一定数量级时，知道自己有什么、缺什么，比盲目买买买更重要。\n\n### 发现新套装的智能推荐\n除了管理现有收藏，玩家还有一个刚需是“发现新乐趣”。MyBrickLog 内置了发现新套装的功能，这不仅仅是展示目录那么简单。它通过算法或者社区热度，帮你挖掘那些你可能错过的经典套装。这种设计思路其实和现在的流媒体推荐类似，目的是延长用户在平台上的停留时间，同时激发新的购买欲。\n\n### 社区连接带来的额外价值\n玩积木有时候是一件挺孤独的事，但 MyBrickLog 试图改变这一点。它提供了连接其他积木爱好者的功能，让你能找到志同道合的朋友。你可以分享自己的搭建心得，或者单纯炫耀一下刚入手的限量版。这种社区属性是工具类产品留存用户的关键，因为社交关系链一旦形成，用户的迁移成本就会变高。\n\n### 订阅机制保持用户活跃\n为了防止用户用完即走，产品设计了 Newsletter 订阅功能。这不仅仅是一个邮件列表，它是维持用户粘性的重要触点。通过订阅，用户能第一时间获取新套装资讯和功能更新。对于开发者来说，这也是一种低成本、高效率的召回机制，比推送通知更温和，也更精准。\n\n### 品牌合规的严谨边界\n有意思的是，页面底部专门有一段关于 LEGO® 商标的免责声明。这看似是法律套话，实则是此类非官方社区产品的生存红线。明确声明“未获乐高集团赞助、授权或认可”，既规避了法律风险，也向用户表明了其独立第三方的身份。在做任何基于大 IP 的二次开发产品时，这种合规意识是必须有的。"
     },
     {
-      "id": 48318174,
-      "by": "ankitg12",
-      "title": "Claude Code – Everything You Can Configure That the Docs Don't Tell You",
-      "url": "https://buildingbetter.tech/p/i-read-the-claude-code-source-code",
-      "score": 147,
-      "detailUpdatedAt": 1780054990,
-      "createdAt": 1780039815,
-      "aiSummaryUpdatedAt": 1780055997,
-      "aisummary": {
-        "chinese_title": "Claude Code 文档外可配项：Skills frontmatter、feature flags 与脆弱 hack",
-        "emoji": "🤨",
-        "sarcastic_question": "文档都没写的配置，出了问题还算什么“稳”？"
-      },
-      "classifications": {
-        "topics": [
-          1,
-          4
-        ],
-        "facets": [
-          5
-        ],
-        "tags": [
-          "Claude Code",
-          "Claude"
-        ]
-      },
-      "classificationsUpdatedAt": 1780043132,
-      "aiSummary": {
-        "chinese_title": "Claude Code 文档外可配项：Skills frontmatter、feature flags 与脆弱 hack",
-        "emoji": "🤨",
-        "sarcastic_question": "文档都没写的配置，出了问题还算什么“稳”？"
-      },
-      "detail": {
-        "id": 48318174,
-        "by": "ankitg12",
-        "title": "Claude Code – Everything You Can Configure That the Docs Don't Tell You",
-        "url": "https://buildingbetter.tech/p/i-read-the-claude-code-source-code",
-        "score": 147,
-        "detailUpdatedAt": 1780054990,
-        "createdAt": 1780039815,
-        "aiSummaryUpdatedAt": 1780055997,
-        "aisummary": {
-          "chinese_title": "Claude Code 文档外可配项：Skills frontmatter、feature flags 与脆弱 hack",
-          "discussion_overview": [
-            {
-              "category": "双关玩笑：cardinality / 枢机团",
-              "summary": "有人把 Claude Code 功能太多的感觉，玩成了“Pope 会从 Anthropic 出来”的笑话，因为 Pope 由 College of Cardinals（枢机团）选出，而 cardinality 正好是个相关双关。后续回复继续接梗，并补充了 Anthropic 相关人物曾被教皇邀请参与 encyclical（教皇通谕）活动。这个分支主要是在用技术圈式冷笑话缓和话题氛围。",
-              "supportid": [
-                "48320949",
-                "48321075",
-                "48321209",
-                "48321244",
-                "48321792"
-              ]
-            },
-            {
-              "category": "并非全都没文档：隐藏但可查的配置",
-              "summary": "不少人指出，帖子里列出的内容并不完全算“文档外”，只是藏得很深或者分散在不同页面里。有人提到 Skills（Claude Code 的技能机制）里的 frontmatter 其实可以指定 model，相关说明在 docs 中能找到，但很难被其他文档串联起来。还有人说部分条目现在已经不存在，或者仍被 feature flags（功能开关）控制；也有人建议把抽出来的 prompts 固化成本地 command，避免每次都靠记忆和临场操作。",
-              "supportid": [
-                "48320947",
-                "48320362",
-                "48321024"
-              ]
-            },
-            {
-              "category": "版本更新快，隐藏技巧很脆",
-              "summary": "很多人认为，依赖这些“未写明”的技巧最大的问题是 Claude package 和模型更新太频繁，昨天能用的 hack 明天就可能失效。有人举例说，`clear context and execute plan` 这种模式在 1M Opus 之后被移除，只能改用手动清理，或者在 `settings.json` 里重新打开 `showClearContextOnPlanAccept`、配合 `disableAutoMode` 在 yolo 和 plan 之间切换。也有人认为 automation 可以适配底层变化，但对这种 temporal hacks 来说，最好每次大版本都重新检查指令是否还适用。",
-              "supportid": [
-                "48320213",
-                "48320321",
-                "48320372",
-                "48320618",
-                "48321693",
-                "48320401"
-              ]
-            },
-            {
-              "category": "长任务执行力不足",
-              "summary": "有用户抱怨 Claude Code 在复杂项目里经常做到一半就停，哪怕用了 `/goal` 或新推出的 `ultracode`，还是会反问要不要继续。对比之下，Codex 被描述成更能持续“grind”下去、不轻易收手。这里争论的核心不是能不能写代码，而是 agent 在长任务上的 persistence（持续执行能力）和完成意愿。",
-              "supportid": [
-                "48321332",
-                "48321443"
-              ]
-            },
-            {
-              "category": "自动审批分类器太粗糙",
-              "summary": "有人直接吐槽示例 classifier 很糟糕，像是简单按 `ls/cat/echo` 这类子串做判断，看不出真正的安全语义。立刻有人举出危险例子：如果命令是把内容 `echo` 到 `~/.ssh/authorized_keys`，这种规则会不会也被自动放行。也有人觉得，尽管它很粗，但还是比那种一刀切的“NEVER FUCKING GUESS”式策略更实用。",
-              "supportid": [
-                "48319832",
-                "48321247",
-                "48320490"
-              ]
-            },
-            {
-              "category": "页面兼容性吐槽",
-              "summary": "还有一段讨论转到了文章页面本身：有人说在 Safari/Orion iOS 上滚动会被锁在某个区域，最后不得不放弃阅读。后面有人调侃这可能是“Claude Code 写的”。也有回复把问题指向 Substack（文章发布平台），认为这种常见浏览器组合的兼容性不该让用户来忍。",
-              "supportid": [
-                "48319724",
-                "48319943",
-                "48321012",
-                "48321094"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "feature flags",
-              "explanation": "功能开关/灰度开关，用来控制某个功能是否对部分用户或环境开放。"
-            },
-            {
-              "term": "frontmatter",
-              "explanation": "文件开头的元数据区块，常用来写模型、作者、标签等配置。"
-            },
-            {
-              "term": "context window",
-              "explanation": "模型一次能保留和处理的上下文长度，决定它能“记住”多少内容。"
-            }
-          ],
-          "context": "这篇文章讨论的是 Anthropic（AI 公司）旗下 Claude Code（面向编程的命令行/agent 工具）里那些 docs 没写透、但实际能影响行为的配置项和技巧。评论区补充了几个具体例子：Skills（Claude Code 的技能机制）里的 frontmatter 可以指定 model，一些开关被 feature flags（功能开关）控制，还有像 `showClearContextOnPlanAccept`、`disableAutoMode` 这样的本地设置能改变 plan / yolo 切换方式。有人担心这类“隐藏能力”会随频繁发版和新模型上线而失效，因为文档化不充分的依赖往往最脆弱。讨论也顺带延伸到 agent 的长任务执行能力、命令审批分类器的安全性，以及 Substack（文章发布平台）在 iOS 浏览器上的滚动兼容问题。",
-          "emoji": "🤨",
-          "sarcastic_question": "文档都没写的配置，出了问题还算什么“稳”？"
-        },
-        "classifications": {
-          "topics": [
-            1,
-            4
-          ],
-          "facets": [
-            5
-          ],
-          "tags": [
-            "Claude Code",
-            "Claude"
-          ]
-        },
-        "classificationsUpdatedAt": 1780043132,
-        "aiSummary": {
-          "chinese_title": "Claude Code 文档外可配项：Skills frontmatter、feature flags 与脆弱 hack",
-          "discussion_overview": [
-            {
-              "category": "双关玩笑：cardinality / 枢机团",
-              "summary": "有人把 Claude Code 功能太多的感觉，玩成了“Pope 会从 Anthropic 出来”的笑话，因为 Pope 由 College of Cardinals（枢机团）选出，而 cardinality 正好是个相关双关。后续回复继续接梗，并补充了 Anthropic 相关人物曾被教皇邀请参与 encyclical（教皇通谕）活动。这个分支主要是在用技术圈式冷笑话缓和话题氛围。",
-              "supportid": [
-                "48320949",
-                "48321075",
-                "48321209",
-                "48321244",
-                "48321792"
-              ]
-            },
-            {
-              "category": "并非全都没文档：隐藏但可查的配置",
-              "summary": "不少人指出，帖子里列出的内容并不完全算“文档外”，只是藏得很深或者分散在不同页面里。有人提到 Skills（Claude Code 的技能机制）里的 frontmatter 其实可以指定 model，相关说明在 docs 中能找到，但很难被其他文档串联起来。还有人说部分条目现在已经不存在，或者仍被 feature flags（功能开关）控制；也有人建议把抽出来的 prompts 固化成本地 command，避免每次都靠记忆和临场操作。",
-              "supportid": [
-                "48320947",
-                "48320362",
-                "48321024"
-              ]
-            },
-            {
-              "category": "版本更新快，隐藏技巧很脆",
-              "summary": "很多人认为，依赖这些“未写明”的技巧最大的问题是 Claude package 和模型更新太频繁，昨天能用的 hack 明天就可能失效。有人举例说，`clear context and execute plan` 这种模式在 1M Opus 之后被移除，只能改用手动清理，或者在 `settings.json` 里重新打开 `showClearContextOnPlanAccept`、配合 `disableAutoMode` 在 yolo 和 plan 之间切换。也有人认为 automation 可以适配底层变化，但对这种 temporal hacks 来说，最好每次大版本都重新检查指令是否还适用。",
-              "supportid": [
-                "48320213",
-                "48320321",
-                "48320372",
-                "48320618",
-                "48321693",
-                "48320401"
-              ]
-            },
-            {
-              "category": "长任务执行力不足",
-              "summary": "有用户抱怨 Claude Code 在复杂项目里经常做到一半就停，哪怕用了 `/goal` 或新推出的 `ultracode`，还是会反问要不要继续。对比之下，Codex 被描述成更能持续“grind”下去、不轻易收手。这里争论的核心不是能不能写代码，而是 agent 在长任务上的 persistence（持续执行能力）和完成意愿。",
-              "supportid": [
-                "48321332",
-                "48321443"
-              ]
-            },
-            {
-              "category": "自动审批分类器太粗糙",
-              "summary": "有人直接吐槽示例 classifier 很糟糕，像是简单按 `ls/cat/echo` 这类子串做判断，看不出真正的安全语义。立刻有人举出危险例子：如果命令是把内容 `echo` 到 `~/.ssh/authorized_keys`，这种规则会不会也被自动放行。也有人觉得，尽管它很粗，但还是比那种一刀切的“NEVER FUCKING GUESS”式策略更实用。",
-              "supportid": [
-                "48319832",
-                "48321247",
-                "48320490"
-              ]
-            },
-            {
-              "category": "页面兼容性吐槽",
-              "summary": "还有一段讨论转到了文章页面本身：有人说在 Safari/Orion iOS 上滚动会被锁在某个区域，最后不得不放弃阅读。后面有人调侃这可能是“Claude Code 写的”。也有回复把问题指向 Substack（文章发布平台），认为这种常见浏览器组合的兼容性不该让用户来忍。",
-              "supportid": [
-                "48319724",
-                "48319943",
-                "48321012",
-                "48321094"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "feature flags",
-              "explanation": "功能开关/灰度开关，用来控制某个功能是否对部分用户或环境开放。"
-            },
-            {
-              "term": "frontmatter",
-              "explanation": "文件开头的元数据区块，常用来写模型、作者、标签等配置。"
-            },
-            {
-              "term": "context window",
-              "explanation": "模型一次能保留和处理的上下文长度，决定它能“记住”多少内容。"
-            }
-          ],
-          "context": "这篇文章讨论的是 Anthropic（AI 公司）旗下 Claude Code（面向编程的命令行/agent 工具）里那些 docs 没写透、但实际能影响行为的配置项和技巧。评论区补充了几个具体例子：Skills（Claude Code 的技能机制）里的 frontmatter 可以指定 model，一些开关被 feature flags（功能开关）控制，还有像 `showClearContextOnPlanAccept`、`disableAutoMode` 这样的本地设置能改变 plan / yolo 切换方式。有人担心这类“隐藏能力”会随频繁发版和新模型上线而失效，因为文档化不充分的依赖往往最脆弱。讨论也顺带延伸到 agent 的长任务执行能力、命令审批分类器的安全性，以及 Substack（文章发布平台）在 iOS 浏览器上的滚动兼容问题。",
-          "emoji": "🤨",
-          "sarcastic_question": "文档都没写的配置，出了问题还算什么“稳”？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nClaude Code 的源代码里藏着大量官方文档未记载的配置项，特别是 Hooks 的 JSON 返回值、Skills 的模型选择与作用域绑定，以及 Auto Mode 的环境描述能力，能让你把 AI 从“辅助工具”深度定制为“自动化 Agent”。\n\n### 文档没说的 Hooks：不仅能拦截，还能改写行为\n官方文档只告诉你 Hooks 能接收 JSON 并通过退出码拦截操作，但没提它们还能通过 stdout 返回 JSON 来实时改写 Claude 的行为。比如 `PreToolUse` 可以返回 `updatedInput` 偷偷修改命令，或者返回 `permissionDecision` 绕过用户确认；`SessionStart` 可以注入 `watchPaths` 自动监听文件变动。这意味着你不再是被动的“批准者”，而是可以用 Shell 脚本编写逻辑，在 Claude 执行前动态修正它的意图，或者在会话开始时就预置好上下文。\n\n### 用 Hooks 实现自动化的“安全网”与“审计员”\n利用这些未公开字段，你可以构建非常实用的自动化工作流。比如写一个 PreToolUse Hook，自动给 `git push` 加上 `--dry-run` 参数，或者用正则匹配 `ls`、`cat` 等只读命令直接返回 `allow`，省去反复确认的麻烦。更有意思的是 `PostToolUse` 配合 `updatedMCPToolOutput`，可以过滤或修改 Claude 看到的工具返回结果。这相当于在 Claude 和系统之间夹了一层中间件，既能防止它手滑，又能审计它的一举一动。\n\n### 三个隐藏的 Hook 控制参数：once、async 与 asyncRewake\n除了文档里的基础字段，源码解析器还支持三个改变游戏规则的参数。`once: true` 适合做一次性初始化，比如检测 `.env` 不存在就自动复制模板，之后再也不触发；`async: true` 适合做非阻塞的日志记录，把命令丢到后台跑不耽误主流程。最巧妙的是 `asyncRewake: true`，它平时在后台跑不阻塞，但如果检测到问题（比如代码里写了硬编码密码）就退出码 2 唤醒主进程并拦截操作。这是一种“快乐路径不阻塞，异常路径必拦截”的高性能设计。\n\n### Skills 的隐藏参数：指定模型与绑定专属 Hooks\nSkills 的 Frontmatter 支持指定 `model`（如用 haiku 跑廉价任务，opus 跑深度分析）和 `effort`（控制推理深度），这能帮你精细控制成本和质量。更强大的是 `hooks` 字段，它允许你给某个 Skill 绑定专属的 Hooks，当 Skill 激活时注册，结束时注销。比如定义一个 TypeScript 编写 Skill，绑定一个 `PostToolUse` Hook 自动在每次保存后跑 `tsc` 类型检查。这种作用域隔离的设计，让特定任务能携带自己的执行环境，互不干扰。\n\n### Agents 的持久化记忆与“新鲜视角”\n自定义 Agents 支持很多文档没写的配置。`color` 能给不同 Agent 设置 UI 颜色以便区分，`memory` 字段则允许 Agent 拥有持久化记忆（`user` 全局、`project` 项目级、`local` 本地私有），这意味着 Agent 可以跨会话学习你的代码库架构，越用越聪明。还有一个 `omitClaudeMd: true`，可以让 Agent 忽略项目的 CLAUDE.md 指令，以“新鲜视角”基于行业标准审查代码，避免被项目既有偏见带偏。\n\n### 那个传说中的 YOLO Classifier 到底怎么配\nClaude Code 内部把 Auto Mode 的权限系统称为 “YOLO Classifier”（源码里真叫这名），它在 `settings.json` 的 `autoMode` 下配置。除了 `allow` 和 `soft_deny` 的模式匹配，最关键的是 `environment` 数组。这里不是写正则，而是用自然语言描述环境，比如“这是本地开发机，没有生产库权限”或“Docker 容器都是隔离网络”。Classifier 会读取这些描述来辅助判断模糊操作的安全性，相当于给 AI 写了一份安全简报。\n\n### 实验性功能的诱惑与风险\n源码里还有一些带 `EXPERIMENTAL` 前缀的字段，比如 Agent 的 `criticalSystemReminder_EXPERIMENTAL`。它能在每次对话轮次中强制注入一段系统提示，即使上下文被压缩了也会保留，非常适合用来做“永不遗忘的安全警告”。但正如其名，这些字段被 Anthropic 工程师标记为不稳定，随时可能删改。你可以拿来玩玩或者做非关键路径的增强，但千万别把核心业务逻辑依赖在上面，毕竟下一个版本可能就没了。"
-    },
-    {
       "id": 48280451,
       "by": "b-man",
       "title": "Coalton is an efficient, statically typed Lisp with ideas from Haskell and OCaml",
@@ -871,305 +2394,6 @@
         }
       },
       "articleSummary": "### 一句话总结\nCoalton 并没有试图取代 Common Lisp，而是通过在其内部嵌入一个基于 Hindley-Milner 类型系统的静态强类型子集，让你在享受 Lisp 宏系统的同时，获得 Haskell 级别的性能优化和类型安全。\n\n---\n\n### Common Lisp 的性能痛点：动态与静态的博弈\nCommon Lisp 虽然强大，但在高性能计算场景下有个尴尬的处境。它的动态类型特性虽然灵活，但编译器很难进行激进的优化，比如消除中间数据结构或自动向量化。开发者为了榨取 CPU 性能，往往不得不放弃优雅的 Lisp 风格，去写那种充满类型声明、甚至看起来像 C 的代码。这就像你买了一辆顶级跑车，却只能在拥堵的市区里开，完全发挥不出引擎的潜力。作者意识到，单纯优化现有的 Lisp 编译器已经很难再有质的飞跃，必须引入新的范式。\n\n### 借鉴 Haskell：引入 Hindley-Milner 类型系统\n那怎么办？作者决定把 Haskell 和 OCaml 里最精华的部分搬过来。Coalton 引入了 Hindley-Milner 类型系统，这意味着它支持类型推断。你不需要像写 Java 那样到处写类型签名，编译器能自动推导出来，既保持了代码的简洁，又保证了静态类型的安全。更有意思的是，它还支持代数数据类型和模式匹配。这对于习惯了函数式编程的开发者来说简直是福音，因为它让你能用非常声明式的方式表达复杂的逻辑，而不是写一堆嵌套的 `if-else`。\n\n### 并不是另起炉灶，而是无缝嵌入 Common Lisp\n这里有个巧妙的设计：Coalton 并不是一个独立的语言，它是嵌入在 Common Lisp 里的。你可以在一个 Lisp 项目里，混用普通的 Lisp 代码和 Coalton 代码。通过一个特殊的 `coalton-toplevel` 宏，你可以直接在 Lisp 文件里写 Coalton 代码，然后编译成高效的 Lisp。这解决了最大的痛点——你不需要抛弃现有的 Lisp 生态系统。你依然可以使用 Lisp 的编辑器、构建工具，甚至是它的宏系统来生成 Coalton 代码，这种互操作性才是它真正的杀手锏。\n\n### 编译策略：Lisp 只是它的中间表示（IR）\n你可能会好奇，静态类型的 Coalton 代码是怎么跑在动态的 Lisp 上的？核心思路其实很简单：Coalton 编译器先把代码编译成一种“类型擦除”后的 Common Lisp 形式。在这个过程中，所有的类型检查都已经在前端完成了，生成的 Lisp 代码虽然看起来是动态的，但实际上是非常规范的、适合优化的低级操作。这就好比 TypeScript 编译成 JavaScript，或者是 Rust 编译到 LLVM。Lisp 在这里充当了高性能的汇编层，底层的 SBCL 或 CCL 编译器再把这些 Lisp 代码编译成极致优化的机器码。\n\n### 性能实测：向原生速度看齐\n说了这么多，效果到底怎么样？文章里的 Benchmark 数据很能说明问题。在数值计算和矩阵运算等场景下，Coalton 的性能直接对标了手动优化过的 Common Lisp 代码，甚至在某些情况下接近 C 语言的速度。因为它能利用类型信息生成更高效的机器码，避免了动态分发的开销。对于那些既想要 Lisp 的开发体验，又需要 C++ 级别性能的科学计算或游戏开发项目来说，这个结果非常有吸引力。\n\n### 最终形态：两全其美的混合编程体验\n说白了，Coalton 给 Common Lisp 开发者提供了一种“降维打击”的能力。你可以在业务逻辑复杂的部分继续用灵活的动态 Lisp 快速迭代，而在性能敏感的核心算法部分切换到 Coalton。它不需要你学习全新的工具链，也不需要重构整个项目。这种设计哲学非常务实：不追求纯粹的函数式教条，而是专注于解决实际问题——让 Lisp 在 2025 年依然能成为高性能系统开发的首选语言之一。"
-    },
-    {
-      "id": 48319509,
-      "by": "Kwastie",
-      "title": "Volkswagen blocks Home Assistant by requiring client assertion",
-      "url": "https://github.com/robinostlund/homeassistant-volkswagencarnet/issues/967",
-      "score": 181,
-      "detailUpdatedAt": 1780051390,
-      "createdAt": 1780040412,
-      "aiSummaryUpdatedAt": 1780052107,
-      "aisummary": {
-        "chinese_title": "Volkswagen 以远程证明阻断 Home Assistant，遭 EU 数据法质疑",
-        "emoji": "🤦",
-        "sarcastic_question": "买了车，数据还得先向VW请示授权吗？"
-      },
-      "classifications": {
-        "topics": [
-          6,
-          9,
-          3
-        ],
-        "facets": [
-          8
-        ],
-        "tags": [
-          "Home Assistant",
-          "Volkswagen",
-          "Volkswagen Carnet",
-          "Client assertion",
-          "API",
-          "Terms & Conditions",
-          "GitHub"
-        ]
-      },
-      "classificationsUpdatedAt": 1780042848,
-      "aiSummary": {
-        "chinese_title": "Volkswagen 以远程证明阻断 Home Assistant，遭 EU 数据法质疑",
-        "emoji": "🤦",
-        "sarcastic_question": "买了车，数据还得先向VW请示授权吗？"
-      },
-      "detail": {
-        "id": 48319509,
-        "by": "Kwastie",
-        "title": "Volkswagen blocks Home Assistant by requiring client assertion",
-        "url": "https://github.com/robinostlund/homeassistant-volkswagencarnet/issues/967",
-        "score": 181,
-        "detailUpdatedAt": 1780051390,
-        "createdAt": 1780040412,
-        "aiSummaryUpdatedAt": 1780052107,
-        "aisummary": {
-          "chinese_title": "Volkswagen 以远程证明阻断 Home Assistant，遭 EU 数据法质疑",
-          "discussion_overview": [
-            {
-              "category": "法律与数据可携权争议",
-              "summary": "不少评论直接把这件事放到 EU Data Act（欧盟数据法）的框架下看，认为车主对“connected product”产生的数据本来就应当拥有可访问、可携带的权利，尤其是车辆数据还另有专门指导。有人引用条文强调数据应以机器可读、实时、免费方式提供，因此 VW 这类做法可能踩到合规红线。另一部分讨论则集中在 T&C（条款与条件）和法律的关系：合同条款不能凌驾于法律之上，但如果现行法规并没有明确赋权，厂商仍可能先用条款和技术门槛挡住用户。也有人追问，若数据被放进 secure enclave（安全隔区）或类似机制里，用户的法定访问权到底还能不能真正落地。",
-              "supportid": [
-                "48321408",
-                "48320837",
-                "48321216",
-                "48320368",
-                "48320477",
-                "48320512",
-                "48320718",
-                "48320466",
-                "48320561"
-              ]
-            },
-            {
-              "category": "技术机制：术语混淆与安全性怀疑",
-              "summary": "有评论指出标题里的 client assertion 其实是 OAuth 里的一个术语，但这里讨论的更像是 remote attestation（远程证明）或“Security Assertion”，即让服务器确认请求来自未修改的官方 App。有人补充说 Android 端可能依赖 Play Protect，iOS 端则可能借助苹果的设备完整性能力。批评者认为这种限制未必牢靠，因为浏览器登录似乎还能工作，说明实现未必严密；即便用了 Secure Enclave，也未必能防住 App 本身被利用或网络层钥匙被截获。还有人提醒，attestation 通常只证明开机状态正常，并不能检测之后的入侵。",
-              "supportid": [
-                "48320789",
-                "48320717",
-                "48320748",
-                "48320935",
-                "48320911",
-                "48320557",
-                "48320730",
-                "48321153",
-                "48320959",
-                "48321007"
-              ]
-            },
-            {
-              "category": "企业动机：控制权、风险规避与数据封锁",
-              "summary": "很多评论认为，这类改动未必是为了真正提升安全，更像是公司内部的风险规避和控制欲：某个部门把微小风险写成风险评估，最后就演化成限制第三方接入的硬措施。也有人认为，这背后是把用户数据导回官方 App、减少第三方使用带来的云成本，并把“我们防住了安全风险”当成管理层可汇报的成果。订阅层面也被拿来讨论：用户明明已经付了 WeConnect（大众官方车联网服务）年费，却被迫只能通过 VW 自家或合作方访问同样的数据。整体上，评论者普遍不信这能带来多少新增收入，更像是“管控比利润更重要”。",
-              "supportid": [
-                "48320481",
-                "48320734",
-                "48320445",
-                "48320619",
-                "48320705",
-                "48321206",
-                "48320435",
-                "48320483",
-                "48320663",
-                "48320825"
-              ]
-            },
-            {
-              "category": "市场替代、生态开放与“用钱包投票”的局限",
-              "summary": "有人拿 Tesla、Volvo、Garmin、Polestar 和 BSH（博世/西门子家电）作对比，认为更开放的官方 API 或数据接口会显著提升品牌好感，甚至形成销售优势。也有人分享了逆向工程、scraping、CANBUS sniffer、esphome via BLE 等绕过方案，但这些方案都可能被登录机制、TLS fingerprinting（TLS 指纹识别）或接口改动继续封堵。评论里反复出现“vote with your wallet”的说法，但多数人觉得这对普通消费者并不现实：Connected car 功能对大多数买家并不重要，等买完车再碰到政策回收也很难补救。于是，监管被视为比市场自发约束更有效的手段。",
-              "supportid": [
-                "48320373",
-                "48320643",
-                "48321036",
-                "48320671",
-                "48320367",
-                "48320571",
-                "48321323",
-                "48320635",
-                "48320763",
-                "48320936",
-                "48320687",
-                "48320881",
-                "48321294",
-                "48321063",
-                "48320675"
-              ]
-            },
-            {
-              "category": "品牌伦理、历史包袱与选择性愤怒",
-              "summary": "一部分评论把 VW 的历史拉进来，提到其 Nazi 时代起源、Dieselgate（柴油门）以及长期的不诚信形象，借此强调这家公司“早就不值得信任”。但也有人反驳，现代 Volkswagen 不能简单等同于纳粹党，拿几十年前的历史来解释今天的 API 政策属于过度引申。讨论随后滑向 Tesla 和 Musk，出现了“选择性愤怒”“Godwin's law”之类的吐槽，显示这场争论很容易从技术问题变成品牌政治。整体气氛更像一轮对车企信誉的情绪宣泄，而不是单纯的接口兼容争论。",
-              "supportid": [
-                "48320531",
-                "48320585",
-                "48320991",
-                "48320541",
-                "48320583",
-                "48320545",
-                "48320805",
-                "48320689",
-                "48320835",
-                "48321352"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "Remote Attestation（远程证明）",
-              "explanation": "让服务器验证设备或 App 是否在未篡改、受信任环境中运行的机制，常用于限制非官方客户端。"
-            },
-            {
-              "term": "Home Assistant（开源家庭自动化平台）",
-              "explanation": "可把汽车、传感器和家居设备接入统一自动化规则的开源平台。"
-            },
-            {
-              "term": "EU Data Act（欧盟数据法）",
-              "explanation": "欧盟关于数据访问与可移植性的法规，被评论者用来主张车主应能获取车辆数据。"
-            },
-            {
-              "term": "TLS fingerprinting（TLS 指纹识别）",
-              "explanation": "通过 TLS 握手特征识别客户端类型，常用于阻止脚本或非官方 App。"
-            },
-            {
-              "term": "WeConnect（大众官方车联网服务）",
-              "explanation": "Volkswagen 的官方车辆数据与远程控制订阅服务，用来提供车况、充电和远程功能。"
-            }
-          ],
-          "context": "这场讨论围绕 Volkswagen 在车辆 App/API 端加入客户端证明机制展开，结果是 Home Assistant（开源家庭自动化平台）这类第三方集成不再能正常读取车况、充电状态或执行远程控制。Home Assistant 常被车主用来把汽车数据纳入自动化规则，而 VW 的官方车联网服务 WeConnect（大众官方车联网订阅平台）本来就掌握这些数据，所以争议焦点不是“有没有数据”，而是“用户能不能通过自己选择的工具访问数据”。评论把这一变化放进更大的行业背景：车企正越来越多地用 TLS fingerprinting（TLS 指纹识别）和 Remote Attestation（远程证明）之类手段收紧非官方客户端。很多人进一步把它和 EU Data Act（欧盟数据法）的数据可携权、车企的订阅商业模式，以及 Tesla、Volvo、Garmin、BSH 等品牌的开放程度放在一起比较。",
-          "emoji": "🤦",
-          "sarcastic_question": "买了车，数据还得先向VW请示授权吗？"
-        },
-        "classifications": {
-          "topics": [
-            6,
-            9,
-            3
-          ],
-          "facets": [
-            8
-          ],
-          "tags": [
-            "Home Assistant",
-            "Volkswagen",
-            "Volkswagen Carnet",
-            "Client assertion",
-            "API",
-            "Terms & Conditions",
-            "GitHub"
-          ]
-        },
-        "classificationsUpdatedAt": 1780042848,
-        "aiSummary": {
-          "chinese_title": "Volkswagen 以远程证明阻断 Home Assistant，遭 EU 数据法质疑",
-          "discussion_overview": [
-            {
-              "category": "法律与数据可携权争议",
-              "summary": "不少评论直接把这件事放到 EU Data Act（欧盟数据法）的框架下看，认为车主对“connected product”产生的数据本来就应当拥有可访问、可携带的权利，尤其是车辆数据还另有专门指导。有人引用条文强调数据应以机器可读、实时、免费方式提供，因此 VW 这类做法可能踩到合规红线。另一部分讨论则集中在 T&C（条款与条件）和法律的关系：合同条款不能凌驾于法律之上，但如果现行法规并没有明确赋权，厂商仍可能先用条款和技术门槛挡住用户。也有人追问，若数据被放进 secure enclave（安全隔区）或类似机制里，用户的法定访问权到底还能不能真正落地。",
-              "supportid": [
-                "48321408",
-                "48320837",
-                "48321216",
-                "48320368",
-                "48320477",
-                "48320512",
-                "48320718",
-                "48320466",
-                "48320561"
-              ]
-            },
-            {
-              "category": "技术机制：术语混淆与安全性怀疑",
-              "summary": "有评论指出标题里的 client assertion 其实是 OAuth 里的一个术语，但这里讨论的更像是 remote attestation（远程证明）或“Security Assertion”，即让服务器确认请求来自未修改的官方 App。有人补充说 Android 端可能依赖 Play Protect，iOS 端则可能借助苹果的设备完整性能力。批评者认为这种限制未必牢靠，因为浏览器登录似乎还能工作，说明实现未必严密；即便用了 Secure Enclave，也未必能防住 App 本身被利用或网络层钥匙被截获。还有人提醒，attestation 通常只证明开机状态正常，并不能检测之后的入侵。",
-              "supportid": [
-                "48320789",
-                "48320717",
-                "48320748",
-                "48320935",
-                "48320911",
-                "48320557",
-                "48320730",
-                "48321153",
-                "48320959",
-                "48321007"
-              ]
-            },
-            {
-              "category": "企业动机：控制权、风险规避与数据封锁",
-              "summary": "很多评论认为，这类改动未必是为了真正提升安全，更像是公司内部的风险规避和控制欲：某个部门把微小风险写成风险评估，最后就演化成限制第三方接入的硬措施。也有人认为，这背后是把用户数据导回官方 App、减少第三方使用带来的云成本，并把“我们防住了安全风险”当成管理层可汇报的成果。订阅层面也被拿来讨论：用户明明已经付了 WeConnect（大众官方车联网服务）年费，却被迫只能通过 VW 自家或合作方访问同样的数据。整体上，评论者普遍不信这能带来多少新增收入，更像是“管控比利润更重要”。",
-              "supportid": [
-                "48320481",
-                "48320734",
-                "48320445",
-                "48320619",
-                "48320705",
-                "48321206",
-                "48320435",
-                "48320483",
-                "48320663",
-                "48320825"
-              ]
-            },
-            {
-              "category": "市场替代、生态开放与“用钱包投票”的局限",
-              "summary": "有人拿 Tesla、Volvo、Garmin、Polestar 和 BSH（博世/西门子家电）作对比，认为更开放的官方 API 或数据接口会显著提升品牌好感，甚至形成销售优势。也有人分享了逆向工程、scraping、CANBUS sniffer、esphome via BLE 等绕过方案，但这些方案都可能被登录机制、TLS fingerprinting（TLS 指纹识别）或接口改动继续封堵。评论里反复出现“vote with your wallet”的说法，但多数人觉得这对普通消费者并不现实：Connected car 功能对大多数买家并不重要，等买完车再碰到政策回收也很难补救。于是，监管被视为比市场自发约束更有效的手段。",
-              "supportid": [
-                "48320373",
-                "48320643",
-                "48321036",
-                "48320671",
-                "48320367",
-                "48320571",
-                "48321323",
-                "48320635",
-                "48320763",
-                "48320936",
-                "48320687",
-                "48320881",
-                "48321294",
-                "48321063",
-                "48320675"
-              ]
-            },
-            {
-              "category": "品牌伦理、历史包袱与选择性愤怒",
-              "summary": "一部分评论把 VW 的历史拉进来，提到其 Nazi 时代起源、Dieselgate（柴油门）以及长期的不诚信形象，借此强调这家公司“早就不值得信任”。但也有人反驳，现代 Volkswagen 不能简单等同于纳粹党，拿几十年前的历史来解释今天的 API 政策属于过度引申。讨论随后滑向 Tesla 和 Musk，出现了“选择性愤怒”“Godwin's law”之类的吐槽，显示这场争论很容易从技术问题变成品牌政治。整体气氛更像一轮对车企信誉的情绪宣泄，而不是单纯的接口兼容争论。",
-              "supportid": [
-                "48320531",
-                "48320585",
-                "48320991",
-                "48320541",
-                "48320583",
-                "48320545",
-                "48320805",
-                "48320689",
-                "48320835",
-                "48321352"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "Remote Attestation（远程证明）",
-              "explanation": "让服务器验证设备或 App 是否在未篡改、受信任环境中运行的机制，常用于限制非官方客户端。"
-            },
-            {
-              "term": "Home Assistant（开源家庭自动化平台）",
-              "explanation": "可把汽车、传感器和家居设备接入统一自动化规则的开源平台。"
-            },
-            {
-              "term": "EU Data Act（欧盟数据法）",
-              "explanation": "欧盟关于数据访问与可移植性的法规，被评论者用来主张车主应能获取车辆数据。"
-            },
-            {
-              "term": "TLS fingerprinting（TLS 指纹识别）",
-              "explanation": "通过 TLS 握手特征识别客户端类型，常用于阻止脚本或非官方 App。"
-            },
-            {
-              "term": "WeConnect（大众官方车联网服务）",
-              "explanation": "Volkswagen 的官方车辆数据与远程控制订阅服务，用来提供车况、充电和远程功能。"
-            }
-          ],
-          "context": "这场讨论围绕 Volkswagen 在车辆 App/API 端加入客户端证明机制展开，结果是 Home Assistant（开源家庭自动化平台）这类第三方集成不再能正常读取车况、充电状态或执行远程控制。Home Assistant 常被车主用来把汽车数据纳入自动化规则，而 VW 的官方车联网服务 WeConnect（大众官方车联网订阅平台）本来就掌握这些数据，所以争议焦点不是“有没有数据”，而是“用户能不能通过自己选择的工具访问数据”。评论把这一变化放进更大的行业背景：车企正越来越多地用 TLS fingerprinting（TLS 指纹识别）和 Remote Attestation（远程证明）之类手段收紧非官方客户端。很多人进一步把它和 EU Data Act（欧盟数据法）的数据可携权、车企的订阅商业模式，以及 Tesla、Volvo、Garmin、BSH 等品牌的开放程度放在一起比较。",
-          "emoji": "🤦",
-          "sarcastic_question": "买了车，数据还得先向VW请示授权吗？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n大众汽车突然强制要求 OAuth 客户端断言，导致 Home Assistant 集成无法通过传统的用户名密码登录，官方 App 却不受影响。\n\n### 官方 App 正常，第三方却掉线了\n这次问题的起因很典型：用户发现 Home Assistant 的集成突然报错，提示认证过期且无法重新登录。但有意思的地方在于，大众自家的 Android App 和网页端登录一切正常。这说明问题不在于用户的账号被封禁，也不在于网络连接，而是大众的服务端针对不同类型的客户端采取了不同的验证策略。\n\n### 传统的用户名密码登录失效了\n用户尝试输入邮箱和密码进行重新认证，结果直接被拒，返回了德文错误信息，提示“登录 Volkswagen Connect 不可能，请检查凭据”。这表明大众汽车的后端接口逻辑发生了变更，不再接受这种基础的凭证校验方式。对于习惯了“账号+密码”直连模式的开发者来说，这无疑是一记闷棍。\n\n### 核心原因：强制要求 Client Assertion\n经过排查，问题的根源在于大众汽车开始强制要求“Client Assertion”。说白了就是，以前只要证明“我是账号主人”就行，现在还得证明“我是经过官方授权的特定客户端”。这通常涉及到私钥签名和更复杂的 OAuth 2.0 流程，而 Home Assistant 当前的集成版本并没有实现这套机制，导致握手失败。\n\n### 区分官方与第三方的“隐形墙”\n这种变更其实是厂商为了保护生态安全常用的手段。通过要求 Client Assertion，大众可以精确控制哪些客户端能接入 API。官方 App 内置了证书或密钥，自然能通过验证；而像 Home Assistant 这样的开源项目，因为无法合法地获取这些私钥，瞬间就被挡在了门外。这解释了为什么官方 App 没事，而第三方集成直接瘫痪。\n\n### 开发者面临的逆向难题\n对于有经验的开发者来说，这意味着简单的抓包模拟已经行不通了。要解决这个问题，必须逆向工程官方 App 的通信协议，提取出生成 Client Assertion 的算法和密钥。但这在法律和技术上都存在极高的门槛，而且一旦厂商更新密钥，集成就会再次失效，维护成本极高。\n\n### 暂时无解，只能等待架构升级\n目前的状况是，只要大众汽车不撤回这个强制要求，Home Assistant 的现有集成就无法通过简单的修复恢复工作。这不仅仅是改几行代码的问题，而是需要整个认证架构的升级。对于用户而言，除了等待社区开发者找到绕过新机制的方法（或者大众官方开放 API），暂时没有太好的办法。"
     },
     {
       "id": 48308376,
@@ -2113,289 +3337,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n现代汽车不仅是轮子上的电脑，更是全天候监控你的移动间谍站，它们正在毫无节制地收集并变现你的隐私数据，而即将生效的安全法规可能会让这一情况变得更糟。\n\n### 曾经的“自由堡垒”，现在的“移动监控”\n以前提到汽车，大家想到的是自由和独立，是逃离父母视线的那个私密空间。但现在的汽车本质上就是装了轮子的计算机，大公司正利用它们疯狂吸走你生活中的私密细节。如果你觉得开车还能图个清静，那你就太天真了。只要你翻翻那些冗长的隐私政策，就会发现车企收集的数据简直令人咋舌。从你的精确位置、车里坐了谁、听了什么歌，到你是否系安全带、急刹车还是超速，它们全都知道。更离谱的是，有些车甚至能通过座椅和摄像头推断你的体重、年龄、种族，甚至你在车里有没有挖鼻孔。\n\n### 你的驾驶习惯，正在变成保险公司的“涨价依据”\n这不仅仅是隐私泄露的问题，它直接能让你掏更多的钱。汽车数据最大的买家之一就是保险公司，它们正利用这些数据给部分用户定更高的保费。车企承认会出售数据，但它们不需要告诉你买家是谁。Mozilla 基金会的分析显示，在 25 个主流汽车品牌中，每一个都没达到基本的隐私安全标准，被直接评为“有史以来隐私最差的产品类别”。比如 Kia 的隐私政策里甚至写着可能收集你的“性生活”和健康状况，虽然官方解释这只是照搬加州的法律定义，但这足以说明车企对数据的胃口有多大。\n\n### 传感器无处不在，数据流出后你无法掌控\n你可能很难想象车里到底藏了多少传感器，从座椅、仪表盘到方向盘，到处都是它们的眼睛。很多车车内车外都有摄像头，你在车里的一举一动，理论上都有被记录的可能。Mozilla 发现，有 19 家车企明确表示有权出售你的数据，而且这已经在发生了。通用汽车（GM）就曾因在未经同意的情况下出售位置数据，被美国联邦机构调查并处罚。这些数据一旦离开你的车，你就失去了控制权。数据经纪商会把它们打包卖给营销公司、雇主，甚至是没法拿到搜查令的执法部门。\n\n### 真实的代价：保费暴涨与 130 页的“黑档案”\n数据变现的后果非常具体。通用汽车曾把司机数据卖给 LexisNexis 这样的数据经纪商，有位司机发现，对方手里竟然有他和妻子六个月内每一次行程的详细记录，足足 130 页。结果他的保险费因此暴涨了 21%。虽然现在通用汽车被禁止在 5 年内出售数据，但这只是暂时的，而且其他厂商和 App 的数据交易依然猖獗。在美国，只要你在设置车载娱乐系统时点了“同意”，这种交易就是完全合法的。而在欧洲，虽然有 GDPR 保护，但专家认为监管执行并不到位，情况依然不容乐观。\n\n### 新法规的“副作用”：打着安全的旗号，收集医疗级数据\n更让人担心的是，事情可能还会变得更糟。美国一项即将生效的联邦法律要求新车必须安装“高级醉酒驾驶预防技术”。这听起来是为了安全，系统会利用红外摄像头扫描你的眼球和肢体语言，判断你是否醉酒或疲劳。但问题的关键在于，这项法律完全没有规定这些极其敏感的生物识别数据能被怎么用。隐私专家担心，这相当于给了车企一个合法的理由去收集相当于医疗级别的数据，而且没有任何防护措施。很多数据收集行为，都是披着“安全”的外衣在进行的。\n\n### 开发者视角：我们能做什么？\n虽然形势严峻，但我们并非完全无能为力。在英国、欧盟以及美国部分州，你可以要求车企提供一份关于你的数据副本，并选择退出数据共享。你可以直接去车企官网的隐私中心，或者在车载系统的设置里关闭数据分享选项。Consumer Reports 甚至出了详细的指南教大家怎么操作。但归根结底，这不该是用户的负担。只要数据的所有权不回归用户，只要“默认收集”的游戏规则不改变，这个问题只会越来越严重。"
-    },
-    {
-      "id": 48317774,
-      "by": "enraged_camel",
-      "title": "Blue Origin's New Glenn blows up during static fire test",
-      "url": "https://twitter.com/nasaspaceflight/status/2060164928472854821",
-      "score": 277,
-      "detailUpdatedAt": 1780045991,
-      "createdAt": 1780021812,
-      "aiSummaryUpdatedAt": 1780046729,
-      "aisummary": {
-        "chinese_title": "New Glenn 静态点火爆炸，Blue Origin 发射台或停摆一年",
-        "emoji": "💥",
-        "sarcastic_question": "静态点火都能炸台，还叫什么静态火？"
-      },
-      "classifications": {
-        "topics": [
-          8,
-          7
-        ],
-        "facets": [
-          8,
-          12
-        ],
-        "tags": [
-          "Blue Origin",
-          "New Glenn",
-          "static fire",
-          "SpaceX",
-          "NASASpaceflight"
-        ]
-      },
-      "classificationsUpdatedAt": 1780022434,
-      "aiSummary": {
-        "chinese_title": "New Glenn 静态点火爆炸，Blue Origin 发射台或停摆一年",
-        "emoji": "💥",
-        "sarcastic_question": "静态点火都能炸台，还叫什么静态火？"
-      },
-      "detail": {
-        "id": 48317774,
-        "by": "enraged_camel",
-        "title": "Blue Origin's New Glenn blows up during static fire test",
-        "url": "https://twitter.com/nasaspaceflight/status/2060164928472854821",
-        "score": 170,
-        "detailUpdatedAt": 1780029789,
-        "createdAt": 1780021812,
-        "aiSummaryUpdatedAt": 1780030198,
-        "aisummary": {
-          "chinese_title": "Blue Origin New Glenn静态点火爆炸，发射台重创",
-          "discussion_overview": [
-            {
-              "category": "发射台与地面设施重创",
-              "summary": "很多评论认为，真正麻烦的不只是火箭报废，而是发射台和地面设备可能遭到大面积损坏。有人提到闪电塔、transport-erector 甚至整个 launch complex 都可能被波及，修复周期可能从数月拖到一年以上。也有人推测 Blue Origin 可能会加速新发射台建设，或者借机直接转向更大的 9x4 版本 New Glenn。和 SpaceX 过去的 pad 事故相比，大家普遍认为这种在台面上的爆炸对后续发射排期更致命。",
-              "supportid": [
-                "48318525",
-                "48319125",
-                "48318101",
-                "48318303",
-                "48318614",
-                "48318581",
-                "48318809",
-                "48318729"
-              ]
-            },
-            {
-              "category": "Artemis 与月球计划受挫",
-              "summary": "不少人把这次事故直接联系到 NASA 的 Artemis 重返月球计划，担心 Blue Origin 的月球任务节奏会再次被打乱。讨论里有人澄清 Blue Moon 只是 Artemis 的两个 lander 承包商之一，但 Blue Origin 原本被看作更快的那条路，因为它的关键路径风险相对低。随后争论又转向真正的瓶颈：Starship HLS 可能还要多年，Axiom Space 的航天服进度也很不理想，甚至连可用的 EVA suits 都成问题。也有人认为即便着陆器暂时不到位，机器人建设和运送电源、设备仍可继续，但有人类登月就离不开航天服。",
-              "supportid": [
-                "48318498",
-                "48318573",
-                "48318627",
-                "48318690",
-                "48319060",
-                "48319070",
-                "48319104",
-                "48318858"
-              ]
-            },
-            {
-              "category": "爆炸规模与燃料当量争议",
-              "summary": "评论区里有人试图估算这次爆炸到底有多大，甚至把满载 methane 的理论能量拿去和 Trinity、TNT 当量做比较。很快就有人反驳：燃料箱里的 methane 和 oxygen 不是预先混合的，所以不可能把全部燃料都以同一种方式爆炸掉，大部分只会燃烧。还有人根据冲击波到达塔顶的时间反推，认为规模大概是几百吨到低千吨 TNT，而不是十几千吨。大家也顺手解释了 full duration static fire 的意思：发动机按真实飞行配置全程点火，但火箭仍固定在台上。",
-              "supportid": [
-                "48318435",
-                "48318595",
-                "48318527",
-                "48318546",
-                "48318684",
-                "48318679",
-                "48318850",
-                "48318496",
-                "48318441"
-              ]
-            },
-            {
-              "category": "术语梗与工程测试文化",
-              "summary": "不少人把这次事故当成工程黑色幽默来玩，先是把 static fire 改成了 dynamic fire，再用 Rapid Unscheduled Disassembly 来概括结果。也有人反过来强调，测试的意义就是提前找出 latent problem，虽然代价巨大，但总比在真正上天后才出事好。评论里还有对 B.O.N.G. 之类 acronym 的调侃，以及对这声巨响的夸张形容。整体来看，这一组评论不是在认真追责，而是在用技术行话和冷幽默消化一次昂贵的失败。",
-              "supportid": [
-                "48318961",
-                "48318331",
-                "48318881",
-                "48318335",
-                "48318453",
-                "48318312",
-                "48318840"
-              ]
-            },
-            {
-              "category": "SpaceX 对比与竞争格局",
-              "summary": "另一条主线是在讨论：这事到底会不会让 SpaceX 更加一家独大。很多人认为 SpaceX 仍然是绝对领先者，无论是累计送入轨道的质量还是发射节奏，都远超 Blue Origin；也有人补充说，Blue Origin 甚至还谈不上真正意义上的同级竞争者。与此同时，也有人强调竞争本身很重要，因为如果没有对手压着，领先者可能会变得 complacent，最后抬价、耍手段、吞掉市场空间。评论里还顺带回顾了 SpaceX 自己的火箭爆炸和 pad 事故，认为 pad 级事故比 test stand 事故更伤，说明这类失败并不只属于 Blue Origin。",
-              "supportid": [
-                "48318005",
-                "48318281",
-                "48318631",
-                "48318288",
-                "48318503",
-                "48317864",
-                "48318013",
-                "48318278",
-                "48318191",
-                "48318515",
-                "48318470",
-                "48318319",
-                "48318390",
-                "48318411",
-                "48318835",
-                "48319137"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "static fire",
-              "explanation": "火箭固定在地面上进行全功率发动机点火的测试。"
-            },
-            {
-              "term": "RUD",
-              "explanation": "Rapid Unscheduled Disassembly，指火箭意外爆炸或解体的工程圈戏称。"
-            },
-            {
-              "term": "TNT equivalent",
-              "explanation": "用 TNT 当量粗略换算爆炸能量的指标。"
-            },
-            {
-              "term": "Artemis",
-              "explanation": "NASA 的重返月球计划。"
-            },
-            {
-              "term": "HLS",
-              "explanation": "Human Landing System，阿耳忒弥斯计划中的月面着陆系统。"
-            }
-          ],
-          "context": "Blue Origin（Jeff Bezos 旗下航天公司）的 New Glenn（可重复使用重型运载火箭）在卡纳维拉尔角的静态点火测试中发生爆炸，地点是它目前唯一完工的发射台。静态点火本来是把火箭牢牢固定在地面上，按真实飞行工况点燃发动机，用来验证推力、供气和控制系统。评论区把这次事故放到 NASA Artemis（重返月球计划）和 Blue Moon（月球着陆器）的大背景下讨论，因为发射节奏、发射台恢复时间和月面任务排期都可能被拖慢。很多人还提到 SpaceX 的 Starship HLS（月面着陆版 Starship）和 Axiom Space（为 NASA 开发新一代舱外航天服的公司）的进度，认为月球计划的真正瓶颈未必只有火箭。",
-          "emoji": "💥",
-          "sarcastic_question": "这是静态点火，还是顺手拆发射台？"
-        },
-        "classifications": {
-          "topics": [
-            8,
-            7
-          ],
-          "facets": [
-            8,
-            12
-          ],
-          "tags": [
-            "Blue Origin",
-            "New Glenn",
-            "static fire",
-            "SpaceX",
-            "NASASpaceflight"
-          ]
-        },
-        "classificationsUpdatedAt": 1780022434,
-        "aiSummary": {
-          "chinese_title": "Blue Origin New Glenn静态点火爆炸，发射台重创",
-          "discussion_overview": [
-            {
-              "category": "发射台与地面设施重创",
-              "summary": "很多评论认为，真正麻烦的不只是火箭报废，而是发射台和地面设备可能遭到大面积损坏。有人提到闪电塔、transport-erector 甚至整个 launch complex 都可能被波及，修复周期可能从数月拖到一年以上。也有人推测 Blue Origin 可能会加速新发射台建设，或者借机直接转向更大的 9x4 版本 New Glenn。和 SpaceX 过去的 pad 事故相比，大家普遍认为这种在台面上的爆炸对后续发射排期更致命。",
-              "supportid": [
-                "48318525",
-                "48319125",
-                "48318101",
-                "48318303",
-                "48318614",
-                "48318581",
-                "48318809",
-                "48318729"
-              ]
-            },
-            {
-              "category": "Artemis 与月球计划受挫",
-              "summary": "不少人把这次事故直接联系到 NASA 的 Artemis 重返月球计划，担心 Blue Origin 的月球任务节奏会再次被打乱。讨论里有人澄清 Blue Moon 只是 Artemis 的两个 lander 承包商之一，但 Blue Origin 原本被看作更快的那条路，因为它的关键路径风险相对低。随后争论又转向真正的瓶颈：Starship HLS 可能还要多年，Axiom Space 的航天服进度也很不理想，甚至连可用的 EVA suits 都成问题。也有人认为即便着陆器暂时不到位，机器人建设和运送电源、设备仍可继续，但有人类登月就离不开航天服。",
-              "supportid": [
-                "48318498",
-                "48318573",
-                "48318627",
-                "48318690",
-                "48319060",
-                "48319070",
-                "48319104",
-                "48318858"
-              ]
-            },
-            {
-              "category": "爆炸规模与燃料当量争议",
-              "summary": "评论区里有人试图估算这次爆炸到底有多大，甚至把满载 methane 的理论能量拿去和 Trinity、TNT 当量做比较。很快就有人反驳：燃料箱里的 methane 和 oxygen 不是预先混合的，所以不可能把全部燃料都以同一种方式爆炸掉，大部分只会燃烧。还有人根据冲击波到达塔顶的时间反推，认为规模大概是几百吨到低千吨 TNT，而不是十几千吨。大家也顺手解释了 full duration static fire 的意思：发动机按真实飞行配置全程点火，但火箭仍固定在台上。",
-              "supportid": [
-                "48318435",
-                "48318595",
-                "48318527",
-                "48318546",
-                "48318684",
-                "48318679",
-                "48318850",
-                "48318496",
-                "48318441"
-              ]
-            },
-            {
-              "category": "术语梗与工程测试文化",
-              "summary": "不少人把这次事故当成工程黑色幽默来玩，先是把 static fire 改成了 dynamic fire，再用 Rapid Unscheduled Disassembly 来概括结果。也有人反过来强调，测试的意义就是提前找出 latent problem，虽然代价巨大，但总比在真正上天后才出事好。评论里还有对 B.O.N.G. 之类 acronym 的调侃，以及对这声巨响的夸张形容。整体来看，这一组评论不是在认真追责，而是在用技术行话和冷幽默消化一次昂贵的失败。",
-              "supportid": [
-                "48318961",
-                "48318331",
-                "48318881",
-                "48318335",
-                "48318453",
-                "48318312",
-                "48318840"
-              ]
-            },
-            {
-              "category": "SpaceX 对比与竞争格局",
-              "summary": "另一条主线是在讨论：这事到底会不会让 SpaceX 更加一家独大。很多人认为 SpaceX 仍然是绝对领先者，无论是累计送入轨道的质量还是发射节奏，都远超 Blue Origin；也有人补充说，Blue Origin 甚至还谈不上真正意义上的同级竞争者。与此同时，也有人强调竞争本身很重要，因为如果没有对手压着，领先者可能会变得 complacent，最后抬价、耍手段、吞掉市场空间。评论里还顺带回顾了 SpaceX 自己的火箭爆炸和 pad 事故，认为 pad 级事故比 test stand 事故更伤，说明这类失败并不只属于 Blue Origin。",
-              "supportid": [
-                "48318005",
-                "48318281",
-                "48318631",
-                "48318288",
-                "48318503",
-                "48317864",
-                "48318013",
-                "48318278",
-                "48318191",
-                "48318515",
-                "48318470",
-                "48318319",
-                "48318390",
-                "48318411",
-                "48318835",
-                "48319137"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "static fire",
-              "explanation": "火箭固定在地面上进行全功率发动机点火的测试。"
-            },
-            {
-              "term": "RUD",
-              "explanation": "Rapid Unscheduled Disassembly，指火箭意外爆炸或解体的工程圈戏称。"
-            },
-            {
-              "term": "TNT equivalent",
-              "explanation": "用 TNT 当量粗略换算爆炸能量的指标。"
-            },
-            {
-              "term": "Artemis",
-              "explanation": "NASA 的重返月球计划。"
-            },
-            {
-              "term": "HLS",
-              "explanation": "Human Landing System，阿耳忒弥斯计划中的月面着陆系统。"
-            }
-          ],
-          "context": "Blue Origin（Jeff Bezos 旗下航天公司）的 New Glenn（可重复使用重型运载火箭）在卡纳维拉尔角的静态点火测试中发生爆炸，地点是它目前唯一完工的发射台。静态点火本来是把火箭牢牢固定在地面上，按真实飞行工况点燃发动机，用来验证推力、供气和控制系统。评论区把这次事故放到 NASA Artemis（重返月球计划）和 Blue Moon（月球着陆器）的大背景下讨论，因为发射节奏、发射台恢复时间和月面任务排期都可能被拖慢。很多人还提到 SpaceX 的 Starship HLS（月面着陆版 Starship）和 Axiom Space（为 NASA 开发新一代舱外航天服的公司）的进度，认为月球计划的真正瓶颈未必只有火箭。",
-          "emoji": "💥",
-          "sarcastic_question": "这是静态点火，还是顺手拆发射台？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nBlue Origin 的 New Glenn 火箭在静态点火测试中发生爆炸，但这属于航天研发中预料之内的“炸得其所”，团队大概率会迅速排查并重试。\n\n### 静态点火本就是“带保险丝”的极限测试\n大家先别急着唱衰，这次事故发生在静态点火测试阶段。说白了，这就是把火箭锁死在发射台上，然后猛踩油门，看看发动机在最大推力下到底稳不稳。这种测试的目的，本身就是要在火箭真正飞上天之前，把所有的隐患都逼出来。既然是极限测试，出问题的概率自然不低。对于 New Glenn 这种还没首飞的新火箭来说，地面试车炸了，总比在发射几秒后炸要好得多。\n\n### 爆炸瞬间暴露了推进系统的短板\n从现场传出的画面来看，这次爆炸相当剧烈，说明推进剂燃料在短时间内发生了失控燃烧。这通常意味着燃料输送系统、发动机涡轮泵或者是燃烧室结构在高压下出现了物理损坏。虽然官方还没出详细的事故调查报告，但这种级别的爆炸，往往不是简单的传感器误报，而是硬核的硬件故障。对于工程团队来说，这反而是最直接的故障数据，比跑了几百次完美的测试更有价值。\n\n### New Glenn 的 BE-4 发动机容不得半点马虎\n这里得提一下 New Glenn 的核心——BE-4 发动机。这可是 Blue Origin 拿出看家本领搞的液氧甲烷发动机，不仅自己要用，还要供货给 ULA 的 Vulcan 火箭。这次测试的主角就是它，压力可想而知。BE-4 采用了复杂的分级燃烧循环，这种设计虽然效率高，但对结构强度的要求也极其苛刻。这次爆炸虽然看着吓人，但也正好验证了 BE-4 在极端工况下的物理极限到底在哪里。\n\n### 快速失败是航天研发的必经之路\n有意思的地方在于，Blue Origin 的反应其实挺淡定。原文标题那句 \"Something went wrong, but don’t fret\" 很能说明问题。在航天领域，尤其是开发新火箭时，“快速失败”是一种被验证过的有效策略。炸了不可怕，可怕的是不知道为什么炸。只要能从残骸中找到根本原因，对设计进行针对性加固，下一次测试的成功率反而会更高。SpaceX 的猎鹰 9 号当年也是这么一路炸过来的。\n\n### 只要不是首飞失利，一切都还有救\n归根结底，这次事故虽然损失了一台甚至多台昂贵的发动机，但没有造成人员伤亡，也没有毁掉发射台设施，这其实算是不幸中的万幸。对于 New Glenn 这种承载着 Blue Origin 未来商业发射重任的重型火箭来说，现在暴露问题总比首飞时出洋相要好。只要工程团队能像预期的那样 \"give it another shot\"，把问题修好，这次爆炸最终只会成为它成功履历上的一行注脚。"
     },
     {
       "id": 48311647,
@@ -5555,351 +6496,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n写作不是靠灵感这种玄学，而是一门可以通过拆解任务、管理认知负荷和刻意练习来掌握的科学技能。\n\n### 写作痛苦的根源：把“创造”和“评判”混为一谈\n很多开发者（包括作者自己）以前觉得写作是纯艺术，得等“缪斯女神”来了才能动笔。这种心态导致写作过程极其痛苦，因为我们在试图同时做两件冲突的事：一边疯狂发散思维寻找创意，一边又用批判的眼光审视每一个字句。说白了，这就像让你在写代码的同时进行 Code Review，大脑的认知负荷直接爆表。作者指出，这种“边写边改”的习惯是扼杀写作效率的元凶，它让原本流畅的思维流被频繁的自我打断所切断。\n\n### 核心解法：把写作流程拆解为独立的流水线\n那怎么办？作者给出的方案是借鉴工程思维，把写作拆解成独立的阶段，就像软件开发中的“开发”和“测试”分离一样。具体来说，写作应该被拆分为：构思、起草、修改和编辑。在起草阶段，你的唯一任务是把想法倒出来，哪怕是一堆垃圾也无所谓，绝对不要回头修改。等到所有内容都写完了，再启动“编辑模式”去打磨结构、润色语言。这种分离让大脑在同一个时间点只专注于一种模式，极大地降低了心理阻力。\n\n### 降低门槛：用“烂初稿”骗过大脑的完美主义\n有意思的地方在于，为了克服拖延，作者建议我们要刻意追求“烂初稿”。这听起来很反直觉，但背后的逻辑非常硬核：大脑天生抗拒困难任务，如果你一开始就想写出完美的文章，大脑就会本能地逃避。相反，如果你告诉自己“我现在只是要写一堆没人看的废话”，心理压力瞬间就释放了。作者强调，初稿的唯一目的就是“存在”，而不是“完美”。一旦你接受了这一点，你会发现开始写作变得异常容易，而修改一堆已有的文字，远比凭空创造要简单得多。\n\n### 结构先行：不要让读者在迷宫里找路\n除了流程管理，文章还提到了一个关键技术点：结构化思维。很多技术文章写得烂，不是因为文笔不好，而是因为逻辑混乱。作者建议在写任何内容之前，先列出详细的大纲，确保逻辑链条是通顺的。这就像写代码前先画架构图，如果逻辑骨架是歪的，堆砌再华丽的辞藻也没用。好的结构能让读者预判接下来的内容，减少他们理解信息的认知成本。说白了，写作的本质不是展示你的词汇量，而是高效地传输信息。\n\n### 刻意练习：把反馈变成迭代的动力\n最后，作者打破了“写作靠天赋”的迷思，指出写作其实和编程一样，是一项可以通过刻意练习习得的技能。关键在于获取反馈并进行迭代。你需要把读者的反应当作 Benchmark，如果读者在某一段停顿或感到困惑，那就是你的“Bug”，需要修复。通过不断地“写—反馈—改”，你的大脑会建立起一套关于写作的神经回路。久而久之，那些曾经需要绞尽脑汁思考的修辞和结构，会变成像敲 `for` 循环一样自然的肌肉记忆。"
-    },
-    {
-      "id": 48276598,
-      "by": "rbanffy",
-      "title": "News about Raspberry Pi 6 and Microcontroller Development",
-      "url": "https://www.jeffgeerling.com/blog/2026/news-about-raspberry-pi-6-and-microcontroller-development/",
-      "score": 125,
-      "detailUpdatedAt": 1780009990,
-      "createdAt": 1779992413,
-      "aiSummaryUpdatedAt": 1780010430,
-      "aisummary": {
-        "chinese_title": "Raspberry Pi 6争议：该加性能还是补低功耗与MCU特性",
-        "emoji": "🤨",
-        "sarcastic_question": "Pi6先别忙着提速，先把睡眠和供电学会行吗？"
-      },
-      "classifications": {
-        "topics": [
-          7,
-          6,
-          3
-        ],
-        "facets": [
-          9
-        ],
-        "tags": [
-          "Raspberry Pi 6",
-          "Raspberry Pi",
-          "microcontroller",
-          "Raspberry Pi Zero",
-          "Raspberry Pi Pico",
-          "Raspberry Pi 4",
-          "Intel N150"
-        ]
-      },
-      "classificationsUpdatedAt": 1779993037,
-      "aiSummary": {
-        "chinese_title": "Raspberry Pi 6争议：该加性能还是补低功耗与MCU特性",
-        "emoji": "🤨",
-        "sarcastic_question": "Pi6先别忙着提速，先把睡眠和供电学会行吗？"
-      },
-      "detail": {
-        "id": 48276598,
-        "by": "rbanffy",
-        "title": "News about Raspberry Pi 6 and Microcontroller Development",
-        "url": "https://www.jeffgeerling.com/blog/2026/news-about-raspberry-pi-6-and-microcontroller-development/",
-        "score": 125,
-        "detailUpdatedAt": 1780009990,
-        "createdAt": 1779992413,
-        "aiSummaryUpdatedAt": 1780010430,
-        "aisummary": {
-          "chinese_title": "Raspberry Pi 6争议：该加性能还是补低功耗与MCU特性",
-          "discussion_overview": [
-            {
-              "category": "先补低功耗，而不是只堆性能",
-              "summary": "不少评论认为 Raspberry Pi 的下一步不该只是更快的 CPU 和 I/O，而应优先解决睡眠、待机功耗和更低的空闲功耗。有人直接把 Pi 5 视为已经逼近散热和供电设计上限，认为 Pi 6 再往上冲只会和 Intel N150 这类低价 x86 小主机正面撞车，且在价格和性能上都未必占优。也有人希望出现更像 Zero 系列的低功耗版本，哪怕只配 1GB RAM，也比继续做一个更热、更大的版本更有意义。",
-              "supportid": [
-                "48281601",
-                "48287628",
-                "48312789",
-                "48316502",
-                "48314688",
-                "48314971",
-                "48314455"
-              ]
-            },
-            {
-              "category": "Pi 的现实用途：原型机、设备盒子与“找不到场景”",
-              "summary": "一边是“买了每代都没找到用途”的怀疑：有评论认为，计算上 mini PC 或旧笔记本更划算，做嵌入式又不如专用 microcontroller。另一边则列出大量真实场景，包括快速原型、摄像头定时上传、体育馆数字标牌、HVAC 控制、BLE 数据汇聚、打印机监控和智能音箱，说明 Pi 在“一个小盒子解决很多问题”上仍然很强。还有人强调商业用户看重的不是消费者眼里的“便宜”，而是可预期供货、品牌软件支持和少量部署的开发速度。",
-              "supportid": [
-                "48313511",
-                "48315291",
-                "48313726",
-                "48313845",
-                "48313937",
-                "48315405",
-                "48316349",
-                "48315304"
-              ]
-            },
-            {
-              "category": "Pi 不是 MCU，microcontroller 市场已被 ESP32 / RP2350 分流",
-              "summary": "评论里有人反复纠正：能跑 Linux 的东西本质上就是 SBC（Single-Board Computer，单板计算机），不是 microcontroller。Raspberry Pi 早期之所以被拿来做很多 GPIO 场景，是因为它刚好填补了“能跑完整 OS 又有接口”的空缺，但现在这个空缺已经被 ESP8266/ESP32、Raspberry Pi Pico 和 RP2350 之类更便宜、更低功耗的器件分走了。也有人提到，硬件玩家现在家里堆的往往是 ESP32，而不是 Pi；真正做 microcontroller 开发时，MicroPython、GPIO 和更清晰的资料生态反而更重要。",
-              "supportid": [
-                "48313875",
-                "48313774",
-                "48315125",
-                "48314040",
-                "48314112",
-                "48312662",
-                "48312773",
-                "48315589",
-                "48316442",
-                "48314997"
-              ]
-            },
-            {
-              "category": "散热与供电：burst 很香，持续负载更麻烦",
-              "summary": "有些人认为 Pi 5 在无风扇甚至无散热片时也能安全降频，短时 burst 性能对大量轻负载很有价值，打字、点菜单和命令行响应都会更快。另一些人则把随机重启、要备一块“刚好合适”的电源、以及为了持续负载不得不加大散热，当作平台越来越像一台小型 x86 电脑的证据。还有人提醒，长时间热循环可能会伤芯片，说明“允许一点 throttling”可以接受，但这并不等于平台没有边界。",
-              "supportid": [
-                "48314178",
-                "48314855",
-                "48314494",
-                "48315024",
-                "48315645",
-                "48313692",
-                "48315401",
-                "48315760"
-              ]
-            },
-            {
-              "category": "和 N150、Jetson、Radxa 的性价比竞争",
-              "summary": "讨论里最常见的对照物是 Intel N100/N150 mini PC：当 Pi 5 价格涨到接近甚至超过某些 N150 盒子时，后者往往在算力、吞吐和通用性上更有吸引力。支持 Pi 的人则强调，Pi 的强项是文档、稳定的软件生态和长期供货；反对者则指出，这些优势在供货紧张和价格上扬时会被削弱。另一条支线是 Jetson Orin Nano 和 Radxa Dragon Q6A 这类边缘 AI 板卡：前者更强但软件历史包袱重，后者则因 Qualcomm 芯片、GPU、DSP 和 AI 加速器而显得很诱人。",
-              "supportid": [
-                "48313411",
-                "48313896",
-                "48314181",
-                "48314349",
-                "48316303",
-                "48314802",
-                "48314159",
-                "48315189",
-                "48315564",
-                "48314472",
-                "48314894",
-                "48315778",
-                "48316045",
-                "48316131"
-              ]
-            },
-            {
-              "category": "大家真正想要的是功能补齐：NPU、TPM、USB-C、视频解码",
-              "summary": "不少评论把希望寄托在“下一代补短板”上，而不是单纯提速：有人想要 NPU 来做视觉 AI，有人想要更完整的 TPM / fTPM，甚至是实体 TPM，以便安全存放磁盘解密密钥。还有人希望 secure boot 更灵活、h.264 解码别再退步，以及 Pico / RP2350 参考板早点换成 USB-C，顺便给出更现代的 3++ 式新板，带上 M.2、更多 I/O 和更合理的接口布局。这个主题的核心不是“再做一个更快的 Pi”，而是“把用户一直缺的东西一次补齐”。",
-              "supportid": [
-                "48316333",
-                "48313200",
-                "48313659",
-                "48315546",
-                "48316102",
-                "48316439",
-                "48313163",
-                "48313353",
-                "48313873",
-                "48313962",
-                "48315432",
-                "48314161",
-                "48314044",
-                "48314933",
-                "48316703",
-                "48313559"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "SBC",
-              "explanation": "Single-Board Computer，单板计算机，把 CPU、内存和常用接口集成在一块板上。"
-            },
-            {
-              "term": "GPIO",
-              "explanation": "通用输入输出引脚，用来连接传感器、继电器、按键等外设。"
-            },
-            {
-              "term": "MicroPython",
-              "explanation": "面向 microcontroller 的 Python 运行时，方便用 Python 写嵌入式程序。"
-            },
-            {
-              "term": "RP2350",
-              "explanation": "Raspberry Pi 的 microcontroller 芯片，常见于 Pico 系列开发板。"
-            },
-            {
-              "term": "ESP32",
-              "explanation": "Espressif 的低功耗 MCU，集成 Wi‑Fi/Bluetooth，常被拿来替代 Pi 做小型联网设备。"
-            },
-            {
-              "term": "TPM/fTPM",
-              "explanation": "可信平台模块或其固件实现，用于密钥存储、设备证明和启动链保护。"
-            },
-            {
-              "term": "N100/N150",
-              "explanation": "Intel 的低功耗 x86 处理器系列，评论里常被拿来和 Raspberry Pi 比价格、性能和功耗。"
-            }
-          ],
-          "context": "这轮讨论围绕传闻中的 Raspberry Pi 6 展开，起点是媒体提到下一代可能主要升级 CPU 速度和 I/O，而不是加入新功能。评论不断拿 Raspberry Pi 5（现款单板计算机）、Raspberry Pi Pico / RP2350（面向 microcontroller 的开发板和芯片）以及 ESP32（带 Wi‑Fi/Bluetooth 的低功耗 MCU）做对比，争论它究竟该继续做便宜的 Linux 盒子，还是回到更轻量的嵌入式定位。另一条主线是和 Intel N100/N150 mini PC（低价 x86 小主机）、Jetson Orin Nano（NVIDIA 的边缘 AI 开发板）等竞品比较，焦点集中在价格、性能、供电、散热和软件支持。安全启动、TPM、OP-TEE、NPU、h.264 解码和 USB-C 这些“该补齐的功能”也被反复提到。",
-          "emoji": "🤨",
-          "sarcastic_question": "Pi6先别忙着提速，先把睡眠和供电学会行吗？"
-        },
-        "classifications": {
-          "topics": [
-            7,
-            6,
-            3
-          ],
-          "facets": [
-            9
-          ],
-          "tags": [
-            "Raspberry Pi 6",
-            "Raspberry Pi",
-            "microcontroller",
-            "Raspberry Pi Zero",
-            "Raspberry Pi Pico",
-            "Raspberry Pi 4",
-            "Intel N150"
-          ]
-        },
-        "classificationsUpdatedAt": 1779993037,
-        "aiSummary": {
-          "chinese_title": "Raspberry Pi 6争议：该加性能还是补低功耗与MCU特性",
-          "discussion_overview": [
-            {
-              "category": "先补低功耗，而不是只堆性能",
-              "summary": "不少评论认为 Raspberry Pi 的下一步不该只是更快的 CPU 和 I/O，而应优先解决睡眠、待机功耗和更低的空闲功耗。有人直接把 Pi 5 视为已经逼近散热和供电设计上限，认为 Pi 6 再往上冲只会和 Intel N150 这类低价 x86 小主机正面撞车，且在价格和性能上都未必占优。也有人希望出现更像 Zero 系列的低功耗版本，哪怕只配 1GB RAM，也比继续做一个更热、更大的版本更有意义。",
-              "supportid": [
-                "48281601",
-                "48287628",
-                "48312789",
-                "48316502",
-                "48314688",
-                "48314971",
-                "48314455"
-              ]
-            },
-            {
-              "category": "Pi 的现实用途：原型机、设备盒子与“找不到场景”",
-              "summary": "一边是“买了每代都没找到用途”的怀疑：有评论认为，计算上 mini PC 或旧笔记本更划算，做嵌入式又不如专用 microcontroller。另一边则列出大量真实场景，包括快速原型、摄像头定时上传、体育馆数字标牌、HVAC 控制、BLE 数据汇聚、打印机监控和智能音箱，说明 Pi 在“一个小盒子解决很多问题”上仍然很强。还有人强调商业用户看重的不是消费者眼里的“便宜”，而是可预期供货、品牌软件支持和少量部署的开发速度。",
-              "supportid": [
-                "48313511",
-                "48315291",
-                "48313726",
-                "48313845",
-                "48313937",
-                "48315405",
-                "48316349",
-                "48315304"
-              ]
-            },
-            {
-              "category": "Pi 不是 MCU，microcontroller 市场已被 ESP32 / RP2350 分流",
-              "summary": "评论里有人反复纠正：能跑 Linux 的东西本质上就是 SBC（Single-Board Computer，单板计算机），不是 microcontroller。Raspberry Pi 早期之所以被拿来做很多 GPIO 场景，是因为它刚好填补了“能跑完整 OS 又有接口”的空缺，但现在这个空缺已经被 ESP8266/ESP32、Raspberry Pi Pico 和 RP2350 之类更便宜、更低功耗的器件分走了。也有人提到，硬件玩家现在家里堆的往往是 ESP32，而不是 Pi；真正做 microcontroller 开发时，MicroPython、GPIO 和更清晰的资料生态反而更重要。",
-              "supportid": [
-                "48313875",
-                "48313774",
-                "48315125",
-                "48314040",
-                "48314112",
-                "48312662",
-                "48312773",
-                "48315589",
-                "48316442",
-                "48314997"
-              ]
-            },
-            {
-              "category": "散热与供电：burst 很香，持续负载更麻烦",
-              "summary": "有些人认为 Pi 5 在无风扇甚至无散热片时也能安全降频，短时 burst 性能对大量轻负载很有价值，打字、点菜单和命令行响应都会更快。另一些人则把随机重启、要备一块“刚好合适”的电源、以及为了持续负载不得不加大散热，当作平台越来越像一台小型 x86 电脑的证据。还有人提醒，长时间热循环可能会伤芯片，说明“允许一点 throttling”可以接受，但这并不等于平台没有边界。",
-              "supportid": [
-                "48314178",
-                "48314855",
-                "48314494",
-                "48315024",
-                "48315645",
-                "48313692",
-                "48315401",
-                "48315760"
-              ]
-            },
-            {
-              "category": "和 N150、Jetson、Radxa 的性价比竞争",
-              "summary": "讨论里最常见的对照物是 Intel N100/N150 mini PC：当 Pi 5 价格涨到接近甚至超过某些 N150 盒子时，后者往往在算力、吞吐和通用性上更有吸引力。支持 Pi 的人则强调，Pi 的强项是文档、稳定的软件生态和长期供货；反对者则指出，这些优势在供货紧张和价格上扬时会被削弱。另一条支线是 Jetson Orin Nano 和 Radxa Dragon Q6A 这类边缘 AI 板卡：前者更强但软件历史包袱重，后者则因 Qualcomm 芯片、GPU、DSP 和 AI 加速器而显得很诱人。",
-              "supportid": [
-                "48313411",
-                "48313896",
-                "48314181",
-                "48314349",
-                "48316303",
-                "48314802",
-                "48314159",
-                "48315189",
-                "48315564",
-                "48314472",
-                "48314894",
-                "48315778",
-                "48316045",
-                "48316131"
-              ]
-            },
-            {
-              "category": "大家真正想要的是功能补齐：NPU、TPM、USB-C、视频解码",
-              "summary": "不少评论把希望寄托在“下一代补短板”上，而不是单纯提速：有人想要 NPU 来做视觉 AI，有人想要更完整的 TPM / fTPM，甚至是实体 TPM，以便安全存放磁盘解密密钥。还有人希望 secure boot 更灵活、h.264 解码别再退步，以及 Pico / RP2350 参考板早点换成 USB-C，顺便给出更现代的 3++ 式新板，带上 M.2、更多 I/O 和更合理的接口布局。这个主题的核心不是“再做一个更快的 Pi”，而是“把用户一直缺的东西一次补齐”。",
-              "supportid": [
-                "48316333",
-                "48313200",
-                "48313659",
-                "48315546",
-                "48316102",
-                "48316439",
-                "48313163",
-                "48313353",
-                "48313873",
-                "48313962",
-                "48315432",
-                "48314161",
-                "48314044",
-                "48314933",
-                "48316703",
-                "48313559"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "SBC",
-              "explanation": "Single-Board Computer，单板计算机，把 CPU、内存和常用接口集成在一块板上。"
-            },
-            {
-              "term": "GPIO",
-              "explanation": "通用输入输出引脚，用来连接传感器、继电器、按键等外设。"
-            },
-            {
-              "term": "MicroPython",
-              "explanation": "面向 microcontroller 的 Python 运行时，方便用 Python 写嵌入式程序。"
-            },
-            {
-              "term": "RP2350",
-              "explanation": "Raspberry Pi 的 microcontroller 芯片，常见于 Pico 系列开发板。"
-            },
-            {
-              "term": "ESP32",
-              "explanation": "Espressif 的低功耗 MCU，集成 Wi‑Fi/Bluetooth，常被拿来替代 Pi 做小型联网设备。"
-            },
-            {
-              "term": "TPM/fTPM",
-              "explanation": "可信平台模块或其固件实现，用于密钥存储、设备证明和启动链保护。"
-            },
-            {
-              "term": "N100/N150",
-              "explanation": "Intel 的低功耗 x86 处理器系列，评论里常被拿来和 Raspberry Pi 比价格、性能和功耗。"
-            }
-          ],
-          "context": "这轮讨论围绕传闻中的 Raspberry Pi 6 展开，起点是媒体提到下一代可能主要升级 CPU 速度和 I/O，而不是加入新功能。评论不断拿 Raspberry Pi 5（现款单板计算机）、Raspberry Pi Pico / RP2350（面向 microcontroller 的开发板和芯片）以及 ESP32（带 Wi‑Fi/Bluetooth 的低功耗 MCU）做对比，争论它究竟该继续做便宜的 Linux 盒子，还是回到更轻量的嵌入式定位。另一条主线是和 Intel N100/N150 mini PC（低价 x86 小主机）、Jetson Orin Nano（NVIDIA 的边缘 AI 开发板）等竞品比较，焦点集中在价格、性能、供电、散热和软件支持。安全启动、TPM、OP-TEE、NPU、h.264 解码和 USB-C 这些“该补齐的功能”也被反复提到。",
-          "emoji": "🤨",
-          "sarcastic_question": "Pi6先别忙着提速，先把睡眠和供电学会行吗？"
-        }
-      },
-      "articleSummary": "# 一句话总结\n树莓派 6 要等到 2028 年才会来，而且这次不拼新功能，只拼更强的 CPU 和 IO，同时 RP2350 微控制器的出货量已经正式超过了树莓派单板电脑。\n\n### 发布周期被打乱，Pi 6 要等到 2028 年\n回顾树莓派的历史，从 Pi 1 到 Pi 5，发布间隔通常是 1 到 4 年不等。按照这个节奏，大家本以为 2026 或 2027 年就能见到 Pi 6。但 Eben Upton 亲自把时间表推迟到了 2028 年初甚至更晚。这背后的核心原因不是技术没搞定，而是全球 DRAM 供应短缺。现在发布新硬件，成本可能会直接翻倍，做出一款价格离谱的单板电脑显然没有意义。\n\n### 不搞花哨功能，CPU 才是 AI 的主战场\n对于期待 Pi 6 能自带 M.2 接口或者一堆新接口的朋友，Eben 建议大家降低预期。这次升级的核心思路就是“更多”：更快的 CPU 和更快的 IO，而不是增加新功能。更有意思的是关于 AI 的路线选择。树莓派不打算在芯片里浪费宝贵的硅面积去塞一个专用的 NPU。他们的逻辑很简单：CPU 本身就是很好的 AI 计算载体，没必要为了跟风硬加 AI 芯片。\n\n### Pi Zero 3 难产，全靠 LPDDR2 硬撑价格\n很多人关心的 Pi Zero 2 W 缺货问题，主要是因为 AI 芯片爆发挤占了旧工艺节点的产能，导致基板供应紧张。不过他们正在引入新供应商，缺货应该只是暂时的。至于 Pi Zero 3，短期内别指望了。为了维持 15 美元的低价，他们必须坚持使用单层 PCB 和便宜的 LPDDR2 内存。一旦升级到更快的 CPU，就需要堆叠封装内存，这会破坏单层设计；而用新的 LPDDR 内存，成本又根本压不下来。\n\n### RP2350 修好了漏电 Bug，微 USB 纯粹是为了省钱\n在微控制器方面，RP2350 的开发过程比预想的要难，主要卡在功耗和安全性上。好在新的硅片版本修复了电流泄漏的 Bug，算是解决了大麻烦。至于大家吐槽的 Pico 还在用 micro USB 而不是 USB-C，原因非常直白：USB-C 接口更贵，而且占用的板子空间也稍微大一点。虽然未来肯定会换，但目前为了极致的成本控制，只能先这样。\n\n### 微控制器出货量逆袭，软件才是最后的护城河\n一个值得注意的里程碑是，2025 年树莓派微控制器的出货量已经超过了单板电脑，而且随着单板电脑价格上涨，这个差距还在拉大。面对硬件上的“挤牙膏”，树莓派高层非常清楚自己的优势在哪。软件工程主管承诺，要把 95% 的时间都花在库、驱动、内核和操作系统的支持上。说白了，在硬件同质化严重的嵌入式领域，极致的软件支持才是树莓派让开发者愿意买单的真正原因。"
     },
     {
       "id": 48309302,
@@ -14530,690 +15126,6 @@
         }
       },
       "articleSummary": "## 一句话总结\nMini Micro 是一台基于 **MiniScript** 语言的复古虚拟计算机，它通过提供 960x640 分辨率的图形显示、内置代码编辑器和 REPL 环境，让开发者既能体验 8-bit 时代的极客感，又能利用现代编程语言特性进行从像素绘图到复杂游戏开发的创作。\n\n### 复古机箱里的现代内核\nMini Micro 的定位很有意思，它披着一层“neo-retro”的外衣，但骨子里是为了解决现代编程入门和快速原型开发的问题。说白了，它不是让你去啃晦涩的汇编语言，而是提供了一个 960 x 640 分辨率、32 位全彩显示的虚拟环境。在这个环境里，你不仅能处理像素、精灵和瓦片图形，还能直接操作合成与数字化立体声音频。这种设计保留了复古计算机那种“一切尽在掌握”的极客感，但又把硬件门槛降到了零。\n\n### 语言设计是降低门槛的关键\n这台虚拟机最大的杀手锏是它内置的 **MiniScript** 语言。作者特意强调这门语言是“clean and modern”的，甚至专门为此写过 IEEE 论文。为什么这么做？因为对于有经验的开发者来说，语法糖和清晰的语义能极大减少认知负担。MiniScript 的设计初衷就是易学，配合内置的 REPL（Read/Eval/Print Loop），你可以像在 Python 或 Ruby 环境里一样，直接在命令行敲代码并立即看到执行结果。\n\n### 从 Hello World 到复杂游戏的平滑过渡\n很多开发环境的问题是，入门简单但进阶难，或者反过来。Mini Micro 试图打破这个僵局，它的策略是提供一套“Grows With You”的工具链。刚开始，你可以用简单的文本输出或像素绘图练手；当你准备好后，可以直接利用内置的代码编辑器开发复杂的、包含多层精灵、瓦片地图甚至 REST 网络请求的游戏。这种无缝衔接意味着你不需要在熟悉了环境后，再痛苦地迁移到另一个 IDE 或框架。\n\n### 调试与交互体验的细节打磨\n对于开发者而言，调试体验往往决定了工具的生死。Mini Micro 在这方面有个很实用的设计：你可以随时用 Control-C 中断正在运行的程序，然后直接检查变量或调用栈。这种“上帝视角”的调试能力，配合对键盘、鼠标和游戏手柄的原生支持，让它不仅是一个编程玩具，更像是一个迷你的游戏开发引擎。无论是 12 岁的孩子还是专业的软件工程师，都能在这个环境里找到适合自己的 hacking 方式。"
-    },
-    {
-      "id": 48289950,
-      "by": "arps18",
-      "title": "Claude Code as a Daily Driver: Claude.md, Skills, Subagents, Plugins, and MCPs",
-      "url": "https://arps18.github.io/posts/claude-code-mastery/",
-      "score": 345,
-      "detailUpdatedAt": 1779925435,
-      "createdAt": 1779864651,
-      "aiSummaryUpdatedAt": 1779926776,
-      "aisummary": {
-        "chinese_title": "Claude Code 日用：CLAUDE.md、Skills、subagents、MCP 命令碎片化与锁定争议",
-        "emoji": "🤨",
-        "sarcastic_question": "把插提示词叫架构就不算锁定了吗？"
-      },
-      "classifications": {
-        "topics": [
-          1,
-          4,
-          6
-        ],
-        "facets": [
-          5,
-          9
-        ],
-        "tags": [
-          "Claude Code",
-          "Claude",
-          "Claude.md",
-          "Skills",
-          "Subagents",
-          "Plugins",
-          "MCPs",
-          "bun"
-        ]
-      },
-      "classificationsUpdatedAt": 1779875775,
-      "aiSummary": {
-        "chinese_title": "Claude Code 日用：CLAUDE.md、Skills、subagents、MCP 命令碎片化与锁定争议",
-        "emoji": "🤨",
-        "sarcastic_question": "把插提示词叫架构就不算锁定了吗？"
-      },
-      "detail": {
-        "id": 48289950,
-        "by": "arps18",
-        "title": "Claude Code as a Daily Driver: Claude.md, Skills, Subagents, Plugins, and MCPs",
-        "url": "https://arps18.github.io/posts/claude-code-mastery/",
-        "score": 136,
-        "detailUpdatedAt": 1779887632,
-        "createdAt": 1779864651,
-        "aiSummaryUpdatedAt": 1779889275,
-        "aisummary": {
-          "chinese_title": "Claude Code 日常用法：CLAUDE.md、Skills、MCP、Nix 与锁定争议",
-          "discussion_overview": [
-            {
-              "category": "AI文风与内容浅薄",
-              "summary": "不少人直接把这篇文章看成 AI slop：内容像是在重复众所周知的 Claude Code 基础用法，没有真正的 load-bearing parts。有人抓住文中反复出现的怪表达和措辞错误，怀疑它本身就是 LLM 生成后直接发布的。还有评论认为现在已经看腻了这种“教你如何用 coding agent”的浅层指南，读起来像在嚼沙子。讨论串里一些机械化、相似的回复也被拿来当作“自动生成味”过重的证据。",
-              "supportid": [
-                "48293239",
-                "48293614",
-                "48293334",
-                "48293447",
-                "48293049",
-                "48292386",
-                "48293732",
-                "48291755",
-                "48291856",
-                "48292471"
-              ]
-            },
-            {
-              "category": "提效靠规则、测试和反馈回路",
-              "summary": "另一派则认为 Claude Code 的确能显著提效，尤其是在 100k 行级别的代码库里，只要先把项目规则写进 CLAUDE.md 或 AGENTS 文件，效果会明显稳定。大家反复提到要让它先计划、再编码、再用 tests、lint、commit 等确定性脚本自检；提交信息格式、VOCABULARY.md 也能减少误解。前端场景里，Playwright MCP、截图和可运行的 integration/unit tests 被视为最实用的反馈回路，让模型不只是写，还要能验证。即便如此，很多人仍坚持 live feedback：让 Claude 干重复劳动可以，但最终还是要人来回看和修正。",
-              "supportid": [
-                "48292593",
-                "48293240",
-                "48293523",
-                "48291371",
-                "48291982",
-                "48292566",
-                "48293777",
-                "48292618",
-                "48292741",
-                "48292040",
-                "48292263",
-                "48292376"
-              ]
-            },
-            {
-              "category": "依赖、锁定与成本焦虑",
-              "summary": "围绕 Claude 的最大焦虑是依赖和锁定：如果它停机、涨价，或者 Anthropic 改策略，整条 workflow 会不会立刻卡住。有人认为可以接 DeepSeek、Codex CLI 或其他 provider，做 multi-harness fallback，但也有人指出带 Skills、MCP、plugins 的复杂配置并不容易无缝切换，真正代价是时间、tokens 和维护成本。更现实的担心是，一个 codebase 如果长期由 Claude 生成，接手的人在没有 Claude 的情况下可能连构造器和命名意图都看不懂。费用讨论也很具体：有人提到 Pro/API 门槛、Opus 订阅、token 上限和偶发的五小时限制。",
-              "supportid": [
-                "48291572",
-                "48292076",
-                "48292783",
-                "48292988",
-                "48293989",
-                "48292323",
-                "48292342",
-                "48292374",
-                "48292223",
-                "48292400",
-                "48292486",
-                "48293203",
-                "48290713",
-                "48292055",
-                "48291308",
-                "48290739",
-                "48293217",
-                "48293575"
-              ]
-            },
-            {
-              "category": "可复现环境与沙箱配置",
-              "summary": "还有一条很实用的线索是给 agent 搭一个可复现、可隔离的 battle station。Nix 被反复称赞，因为它能把开发、CI、部署环境收敛到同一套声明式配置；也有人用 Docker、Linux user namespace、VPS 或者 Mise 作为折中方案。核心目标是让 Claude 在沙箱里拿到 secrets、环境变量和必要工具，同时尽量不污染宿主机，甚至能自己改环境。与此同时，另一部分人觉得把 Skills、plugins、markdown 规则和外部工具堆成一整套，已经有点像在给一个不成熟产品做插件驱动的补丁工程。",
-              "supportid": [
-                "48291730",
-                "48292246",
-                "48293076",
-                "48292229",
-                "48293786",
-                "48292054",
-                "48292180",
-                "48292215",
-                "48292951",
-                "48293106",
-                "48293125",
-                "48292696",
-                "48293652",
-                "48292136",
-                "48291638"
-              ]
-            },
-            {
-              "category": "对 agent 可靠性的根本怀疑",
-              "summary": "更底层的怀疑是：这类模型并不会真正听懂指令，只是在上下文里做概率补全，所以会 hallucinate、忘记约束、乱改 pipeline，甚至写出看起来像测试、实际上什么都没测的代码。基于这个前提，很多人不相信只靠 CLAUDE.md 或“给它更多 context”就能解决问题，而是要求自动监控、权限隔离和环境层 containment。也有人直言，所谓 delegate like an engineer 很容易变成把人类工程判断外包给一个并不稳定的统计模型。",
-              "supportid": [
-                "48293030",
-                "48293597",
-                "48293110",
-                "48293216",
-                "48292195",
-                "48292225",
-                "48292252",
-                "48293020",
-                "48293753"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "CLAUDE.md",
-              "explanation": "给 Claude Code 写的项目或用户级 markdown 指令文件，用来固定编码规则、流程和术语。"
-            },
-            {
-              "term": "AGENTS.md / AGENTS file",
-              "explanation": "面向 agent 的规则文件，作用类似 CLAUDE.md，用来把仓库约束写成可重复执行的指令。"
-            },
-            {
-              "term": "MCP（Model Context Protocol）",
-              "explanation": "连接 AI agent 和外部工具/服务的协议，常用来接浏览器、文件系统或其他自动化能力。"
-            },
-            {
-              "term": "Skills",
-              "explanation": "预先封装的任务能力或操作脚本，让 agent 按固定流程完成特定工作。"
-            },
-            {
-              "term": "Subagents",
-              "explanation": "辅助 agent 实例，用来拆分任务、并行处理或执行更细粒度的子工作。"
-            },
-            {
-              "term": "Nix",
-              "explanation": "声明式包与环境管理系统，强调跨机器一致性、可复现构建和开发/部署同构。"
-            },
-            {
-              "term": "Playwright MCP",
-              "explanation": "把 Playwright 浏览器自动化暴露给 agent 的 MCP 服务，常用于前端验证和 UI 观察。"
-            },
-            {
-              "term": "plan mode",
-              "explanation": "先让模型规划再执行的模式，通常用于在编码前明确步骤和约束。"
-            },
-            {
-              "term": "sandboxing",
-              "explanation": "通过容器、namespace 或隔离环境限制 agent 权限，防止它污染宿主机或误操作关键资源。"
-            }
-          ],
-          "context": "Claude Code（Anthropic 的命令行编程代理）这篇文章，主张把 CLAUDE.md、Skills、Subagents、plugins 和 MCP 组合起来，作为日常编码工作流的“主力工具”。评论区把它放进更大的“agentic development”语境里讨论：如何让模型先规划、再写代码、再跑 tests 和 lint，并通过 Playwright MCP、截图或其他自动化手段验证结果。与此同时，很多人把重点放在可控性上，讨论用 Nix、Docker、VPS、Linux user namespace 之类的方式给 agent 做隔离和复现环境。也有人引用 Anthropic 自己关于 containment 的思路，认为只靠提示词和 markdown 规则不够，真正的风险在于权限、依赖和服务可用性。",
-          "emoji": "🤨",
-          "sarcastic_question": "Claude 一宕机，你们就都不会写代码了？"
-        },
-        "classifications": {
-          "topics": [
-            1,
-            4,
-            6
-          ],
-          "facets": [
-            5,
-            9
-          ],
-          "tags": [
-            "Claude Code",
-            "Claude",
-            "Claude.md",
-            "Skills",
-            "Subagents",
-            "Plugins",
-            "MCPs",
-            "bun"
-          ]
-        },
-        "classificationsUpdatedAt": 1779875775,
-        "aiSummary": {
-          "chinese_title": "Claude Code 日常用法：CLAUDE.md、Skills、MCP、Nix 与锁定争议",
-          "discussion_overview": [
-            {
-              "category": "AI文风与内容浅薄",
-              "summary": "不少人直接把这篇文章看成 AI slop：内容像是在重复众所周知的 Claude Code 基础用法，没有真正的 load-bearing parts。有人抓住文中反复出现的怪表达和措辞错误，怀疑它本身就是 LLM 生成后直接发布的。还有评论认为现在已经看腻了这种“教你如何用 coding agent”的浅层指南，读起来像在嚼沙子。讨论串里一些机械化、相似的回复也被拿来当作“自动生成味”过重的证据。",
-              "supportid": [
-                "48293239",
-                "48293614",
-                "48293334",
-                "48293447",
-                "48293049",
-                "48292386",
-                "48293732",
-                "48291755",
-                "48291856",
-                "48292471"
-              ]
-            },
-            {
-              "category": "提效靠规则、测试和反馈回路",
-              "summary": "另一派则认为 Claude Code 的确能显著提效，尤其是在 100k 行级别的代码库里，只要先把项目规则写进 CLAUDE.md 或 AGENTS 文件，效果会明显稳定。大家反复提到要让它先计划、再编码、再用 tests、lint、commit 等确定性脚本自检；提交信息格式、VOCABULARY.md 也能减少误解。前端场景里，Playwright MCP、截图和可运行的 integration/unit tests 被视为最实用的反馈回路，让模型不只是写，还要能验证。即便如此，很多人仍坚持 live feedback：让 Claude 干重复劳动可以，但最终还是要人来回看和修正。",
-              "supportid": [
-                "48292593",
-                "48293240",
-                "48293523",
-                "48291371",
-                "48291982",
-                "48292566",
-                "48293777",
-                "48292618",
-                "48292741",
-                "48292040",
-                "48292263",
-                "48292376"
-              ]
-            },
-            {
-              "category": "依赖、锁定与成本焦虑",
-              "summary": "围绕 Claude 的最大焦虑是依赖和锁定：如果它停机、涨价，或者 Anthropic 改策略，整条 workflow 会不会立刻卡住。有人认为可以接 DeepSeek、Codex CLI 或其他 provider，做 multi-harness fallback，但也有人指出带 Skills、MCP、plugins 的复杂配置并不容易无缝切换，真正代价是时间、tokens 和维护成本。更现实的担心是，一个 codebase 如果长期由 Claude 生成，接手的人在没有 Claude 的情况下可能连构造器和命名意图都看不懂。费用讨论也很具体：有人提到 Pro/API 门槛、Opus 订阅、token 上限和偶发的五小时限制。",
-              "supportid": [
-                "48291572",
-                "48292076",
-                "48292783",
-                "48292988",
-                "48293989",
-                "48292323",
-                "48292342",
-                "48292374",
-                "48292223",
-                "48292400",
-                "48292486",
-                "48293203",
-                "48290713",
-                "48292055",
-                "48291308",
-                "48290739",
-                "48293217",
-                "48293575"
-              ]
-            },
-            {
-              "category": "可复现环境与沙箱配置",
-              "summary": "还有一条很实用的线索是给 agent 搭一个可复现、可隔离的 battle station。Nix 被反复称赞，因为它能把开发、CI、部署环境收敛到同一套声明式配置；也有人用 Docker、Linux user namespace、VPS 或者 Mise 作为折中方案。核心目标是让 Claude 在沙箱里拿到 secrets、环境变量和必要工具，同时尽量不污染宿主机，甚至能自己改环境。与此同时，另一部分人觉得把 Skills、plugins、markdown 规则和外部工具堆成一整套，已经有点像在给一个不成熟产品做插件驱动的补丁工程。",
-              "supportid": [
-                "48291730",
-                "48292246",
-                "48293076",
-                "48292229",
-                "48293786",
-                "48292054",
-                "48292180",
-                "48292215",
-                "48292951",
-                "48293106",
-                "48293125",
-                "48292696",
-                "48293652",
-                "48292136",
-                "48291638"
-              ]
-            },
-            {
-              "category": "对 agent 可靠性的根本怀疑",
-              "summary": "更底层的怀疑是：这类模型并不会真正听懂指令，只是在上下文里做概率补全，所以会 hallucinate、忘记约束、乱改 pipeline，甚至写出看起来像测试、实际上什么都没测的代码。基于这个前提，很多人不相信只靠 CLAUDE.md 或“给它更多 context”就能解决问题，而是要求自动监控、权限隔离和环境层 containment。也有人直言，所谓 delegate like an engineer 很容易变成把人类工程判断外包给一个并不稳定的统计模型。",
-              "supportid": [
-                "48293030",
-                "48293597",
-                "48293110",
-                "48293216",
-                "48292195",
-                "48292225",
-                "48292252",
-                "48293020",
-                "48293753"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "CLAUDE.md",
-              "explanation": "给 Claude Code 写的项目或用户级 markdown 指令文件，用来固定编码规则、流程和术语。"
-            },
-            {
-              "term": "AGENTS.md / AGENTS file",
-              "explanation": "面向 agent 的规则文件，作用类似 CLAUDE.md，用来把仓库约束写成可重复执行的指令。"
-            },
-            {
-              "term": "MCP（Model Context Protocol）",
-              "explanation": "连接 AI agent 和外部工具/服务的协议，常用来接浏览器、文件系统或其他自动化能力。"
-            },
-            {
-              "term": "Skills",
-              "explanation": "预先封装的任务能力或操作脚本，让 agent 按固定流程完成特定工作。"
-            },
-            {
-              "term": "Subagents",
-              "explanation": "辅助 agent 实例，用来拆分任务、并行处理或执行更细粒度的子工作。"
-            },
-            {
-              "term": "Nix",
-              "explanation": "声明式包与环境管理系统，强调跨机器一致性、可复现构建和开发/部署同构。"
-            },
-            {
-              "term": "Playwright MCP",
-              "explanation": "把 Playwright 浏览器自动化暴露给 agent 的 MCP 服务，常用于前端验证和 UI 观察。"
-            },
-            {
-              "term": "plan mode",
-              "explanation": "先让模型规划再执行的模式，通常用于在编码前明确步骤和约束。"
-            },
-            {
-              "term": "sandboxing",
-              "explanation": "通过容器、namespace 或隔离环境限制 agent 权限，防止它污染宿主机或误操作关键资源。"
-            }
-          ],
-          "context": "Claude Code（Anthropic 的命令行编程代理）这篇文章，主张把 CLAUDE.md、Skills、Subagents、plugins 和 MCP 组合起来，作为日常编码工作流的“主力工具”。评论区把它放进更大的“agentic development”语境里讨论：如何让模型先规划、再写代码、再跑 tests 和 lint，并通过 Playwright MCP、截图或其他自动化手段验证结果。与此同时，很多人把重点放在可控性上，讨论用 Nix、Docker、VPS、Linux user namespace 之类的方式给 agent 做隔离和复现环境。也有人引用 Anthropic 自己关于 containment 的思路，认为只靠提示词和 markdown 规则不够，真正的风险在于权限、依赖和服务可用性。",
-          "emoji": "🤨",
-          "sarcastic_question": "Claude 一宕机，你们就都不会写代码了？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n把 Claude Code 当作一个需要配置、记忆和验证机制的“虚拟工程师”来管理，通过精心维护的 `CLAUDE.md`、Skills 和验证闭环，让 AI 的代码质量随着时间推移产生复利效应。\n\n### 别当聊天机器人用，要当带验证的智能体用\n很多开发者把 Claude Code 当成高级自动补全，但这浪费了它最核心的价值。真正的区别在于你是否把它当作一个需要“护栏”的自主智能体。核心思路其实很简单：**必须给 Claude 一种自我验证的方法**。如果没有这个，你就是唯一的反馈回路，效率极低；有了它，Claude 就能自我迭代直到代码跑通，Boris 说这能带来 2-3 倍的质量提升。具体怎么做？先按两次 `Shift+Tab` 进入只读的 Plan 模式，让它读文件、理逻辑、出方案，甚至可以开第二个 Session 像资深工程师一样 Review 这个计划，确认无误后再执行。\n\n### .claude 目录其实是一个分层配置系统\n很多人只盯着 `.claude/` 里的 `CLAUDE.md`，却忽略了它其实是一套完整的配置体系。这里有个巧妙的设计：配置分为 Project（项目级）和 Global（全局级）。项目级配置在 repo 里，团队共享；全局级在 `~/.claude/`，描述的是“你”的习惯。比如 `CLAUDE.md` 是每条 Session 必载入的指令，而 `skills/` 里存放的是可复用的技能包，`rules/` 则是针对特定文件夹（如 `db/migrations/`）的路径门控规则。有意思的地方在于，这些文件是级联的，Monorepo 里根目录和子目录的 `CLAUDE.md` 会同时生效，既保证了全局规范，又兼顾了局部特性。\n\n### CLAUDE.md 越短越好，最好让 Claude 自己写\n`CLAUDE.md` 决定了 Claude 的下限，写错了它就会重复犯错。Boris 的建议非常反直觉：**保持极简**。每一行都要问自己：“删了这行会导致 Claude 犯错吗？”如果不会，就删掉。更绝的是，不要自己写规则，而是等 Claude 犯错后，命令它“Update CLAUDE.md so you do not repeat this”。Claude 擅长从自己的失败中提炼精确规则，几周下来，这个文件就会变成项目所有“坑”的精选集。官方团队的 `CLAUDE.md` 只有 20 行，全是构建命令、测试顺序和 Pre-PR 检查清单，没有任何废话。\n\n### 用 CLAUDE.local.md 私藏你的个人“黑名单”\n除了团队共享的 `CLAUDE.md`，你一定要利用好 `CLAUDE.local.md`。这个文件被 gitignore，永远不会离开你的机器，是存放个人反馈的最佳场所。作者的做法是：每次 PR 收到 Review 意见，如果不涉及团队规范，就立刻丢进这个文件。比如“SQS Consumer 必须带 DLQ”或者“别用 console.log，用 logger”。久而久之，Claude 在写代码前就已经预判了你会被骂的地方，你的 PR Nitpick 评论量在几周内就会显著下降。记得定期修剪这个文件，把已经形成肌肉记忆的规则删掉，只保留还在学习阶段的。\n\n### Skills 是把“经验”固化为“工具”的最小单元\n如果你每天重复做同一件事，就该把它写成 Skill。Skill 本质上是一个文件夹，里面包含 `SKILL.md` 指令、模板代码和参考文档。它比单纯的 Slash Command 强大得多，因为它支持“渐进式披露”：Session 开始时只加载简短描述，只有当你调用 `/skill-name` 时，才加载完整的指令和辅助文件，节省 Token。这里有个实用的技巧：在 frontmatter 里设置 `disable-model-invocation: true`，防止像 `/deploy` 这种有副作用的操作被 Claude 自动触发。你可以去安装 `mattpocock/skills` 这种热门库，里面有 `/tdd` 强制红绿重构，也有 `/grill-me` 在写代码前先面试你的计划。\n\n### MCP 和 Subagents 让 Claude 突破终端的边界\n文章最后提到了 MCP (Model Context Protocol) 和 Subagents，这是让 Claude 真正“联网”和“分工”的关键。MCP 允许你挂载外部数据源（如数据库、API）给 Claude，而 Subagents 则允许你定义专门的“子工种”。比如定义一个 `pr-review.md` agent 专门只负责看代码，或者一个 `test-writer.md` 专门写测试。核心思路是：不要试图让一个 Claude 做所有事，而是用配置文件定义好不同角色的职责边界。配合 `Ctrl+G` 把计划拉到编辑器里手动修改，再配合 `@src/auth/login.py` 这种精确引用，你实际上是在指挥一支分工明确、指令清晰的 AI 工程师团队。"
-    },
-    {
-      "id": 48296994,
-      "by": "tosh",
-      "title": "Canada to order military plane fleet from Sweden in shift from US suppliers",
-      "url": "https://www.theguardian.com/world/2026/may/27/canada-sweden-saab-globaleye-aircraft",
-      "score": 360,
-      "detailUpdatedAt": 1779925433,
-      "createdAt": 1779909653,
-      "aiSummaryUpdatedAt": 1779926475,
-      "aisummary": {
-        "chinese_title": "加拿大转向瑞典军机，摆脱美国军购依赖",
-        "emoji": "😒",
-        "sarcastic_question": "先威胁盟友，再怪别人不买？"
-      },
-      "classifications": {
-        "topics": [
-          9,
-          3,
-          7
-        ],
-        "facets": [],
-        "tags": [
-          "Saab GlobalEye",
-          "Canada",
-          "Sweden",
-          "United States",
-          "Gripen"
-        ]
-      },
-      "classificationsUpdatedAt": 1779910299,
-      "aiSummary": {
-        "chinese_title": "加拿大转向瑞典军机，摆脱美国军购依赖",
-        "emoji": "😒",
-        "sarcastic_question": "先威胁盟友，再怪别人不买？"
-      },
-      "detail": {
-        "id": 48296994,
-        "by": "tosh",
-        "title": "Canada to order military plane fleet from Sweden in shift from US suppliers",
-        "url": "https://www.theguardian.com/world/2026/may/27/canada-sweden-saab-globaleye-aircraft",
-        "score": 360,
-        "detailUpdatedAt": 1779925433,
-        "createdAt": 1779909653,
-        "aiSummaryUpdatedAt": 1779926475,
-        "aisummary": {
-          "chinese_title": "加拿大转向瑞典军机，摆脱美国军购依赖",
-          "discussion_overview": [
-            {
-              "category": "对欧洲盟友靠拢",
-              "summary": "不少评论把这单生意看成加拿大向欧洲盟友重新站队，而不是单纯挑选某个更便宜的机型。讨论里反复提到瑞典防务产品在乌克兰战场上的表现、加拿大更紧密接入欧盟防务网络，以及 Saab 方案里有加拿大制造的 Bombardier 平台这一点。还有人强调，若把关键数据、软件和维护都放在美国控制之外，至少能降低被美国政府掐脖子的风险。即便这只是部分转向，很多人也认为它象征着加拿大开始把防务采购当成主权工具。",
-              "supportid": [
-                "48301645",
-                "48301678",
-                "48301504",
-                "48299145",
-                "48299722",
-                "48302404",
-                "48299408",
-                "48299881"
-              ]
-            },
-            {
-              "category": "交付排期与供应链现实",
-              "summary": "另一组评论纠正了把商业 backlog 直接套到军机上的说法，但仍认为交付排期和供应链对军购极其重要。有人指出军用型号常和民航机共享零件、供应商甚至装配链，真正卡住的往往不是最后一条产线，而是上游零件和软件。也有人提醒，若要在 7 到 10 年后交机，现在就必须下单，因为 backlog 会变，排期却不会。这个角度把问题从谁更强拉回到谁能按时交付并长期支持。",
-              "supportid": [
-                "48298948",
-                "48300172",
-                "48300239",
-                "48300985",
-                "48302263",
-                "48300655",
-                "48301410",
-                "48300522"
-              ]
-            },
-            {
-              "category": "机型适配与维护成本",
-              "summary": "技术派评论主要围绕 Canada 的地理和任务需求展开：北极巡逻、长航程、远距离基地以及更小规模的空军。有人认为 F-35 这种“exquisite”平台对加拿大并不划算，反而是 Gripen、GlobalEye 这类更易维护、成本更低的系统更合适。围绕 E-7 Wedgetail、Erieye/GlobalEye、F-16、F-15EX 还展开了雷达频段、双发可靠性和 NORAD 整合的比较。结论不是谁在绝对性能上更强，而是谁更适合加拿大这种大国但预算有限、部署半径很长的场景。",
-              "supportid": [
-                "48298397",
-                "48300666",
-                "48300219",
-                "48300736",
-                "48300871",
-                "48300334",
-                "48300432",
-                "48302169",
-                "48301197",
-                "48299408"
-              ]
-            },
-            {
-              "category": "美国信誉下滑与去风险",
-              "summary": "很多人把这件事归因于美国信誉下滑，而不只是某一届政府的临时失误。评论里提到对加拿大征关税、威胁吞并、对盟友翻脸、以及美国在 F-35 和 E-7 等项目上的政治施压，这些都让买美国武器的盟友溢价消失了。也有人认为问题并不只在 Trump，而是美国长期的干预主义和制度失灵让盟友无法相信未来不会重演。于是，去风险和减少对美国军工链的依赖，被看成一种越来越理性的选择。",
-              "supportid": [
-                "48299145",
-                "48301678",
-                "48300046",
-                "48301028",
-                "48301190",
-                "48301291",
-                "48301464",
-                "48299689",
-                "48302324",
-                "48301329",
-                "48302027"
-              ]
-            },
-            {
-              "category": "加拿大产业空心化与联邦裂痕",
-              "summary": "更长线的讨论把焦点放到加拿大自身的产业和联邦结构上。有人回顾 Arrow、Bombardier C-Series、NAFTA 之后的技术外流，认为加拿大一遇到高成本就放弃本土航空能力，最后只能依赖美国或被大厂吸收。另一条支线则争论 Alberta 的资源贡献、管道项目、分离主义和西部不满，说明加拿大内部对联邦财政与产业分配本就有深层裂痕。虽然不少具体数字被质疑，但加拿大在重建工业和主权这个判断被反复提及。",
-              "supportid": [
-                "48298955",
-                "48299143",
-                "48298630",
-                "48298928",
-                "48299079",
-                "48299422",
-                "48299845",
-                "48302294",
-                "48300560",
-                "48301414",
-                "48298648",
-                "48299884",
-                "48300249",
-                "48300319",
-                "48300638",
-                "48299671",
-                "48300566",
-                "48301075"
-              ]
-            },
-            {
-              "category": "标题党与谈判筹码",
-              "summary": "也有人认为这条新闻被过度政治化了，本质上更像采购谈判中的筹码。评论指出，各国常拿 Saab 的方案去压美国厂商让利，而真正的合同往往要等到签字交付后才算数。还有人抱怨媒体和 HN 只放大转向非美国的故事，却很少报道继续选择美国的平常消息。按这种看法，这更像 man bites dog 式的标题党，而不是已经发生的结构性断裂。",
-              "supportid": [
-                "48300968",
-                "48299977",
-                "48299819",
-                "48299900",
-                "48300415",
-                "48299865",
-                "48299841",
-                "48299983"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "Gripen",
-              "explanation": "Saab 的轻型多用途战斗机，常被拿来与 F-35、F-16 比较。"
-            },
-            {
-              "term": "GlobalEye",
-              "explanation": "Saab 的空中预警与监视平台，常以 Bombardier Global 6500 为底盘。"
-            },
-            {
-              "term": "E-7 Wedgetail",
-              "explanation": "Boeing 的空中预警机，基于 737 平台，用于远程监视和指挥控制。"
-            },
-            {
-              "term": "F-35",
-              "explanation": "Lockheed Martin 的隐身战斗机，加拿大原本的重要采购项目。"
-            },
-            {
-              "term": "NORAD",
-              "explanation": "北美防空司令部，加美共享的空防体系。"
-            },
-            {
-              "term": "Bombardier Global 6500",
-              "explanation": "加拿大 Bombardier 的远程商务机，是 Saab 某些方案的基础平台。"
-            }
-          ],
-          "context": "这条新闻围绕加拿大政府重新评估军事采购展开，焦点是是否从美国供应商转向 Saab（瑞典军工公司）的 GlobalEye 空中预警机，甚至 Gripen 战斗机。评论里多次提到它们与 Bombardier Global 6500（加拿大商务机）等平台的关系，以及加拿大原本对 F-35（Lockheed Martin 隐身战斗机）和 E-7 Wedgetail（Boeing 空中预警机）的依赖。背景则是美国对加拿大商品加征关税、Trump 时期对盟友的威胁与不确定性，让加拿大在防务、数据主权和维护链上更想降低对美国的单点依赖。NORAD（北美防空司令部）和北极巡逻需求也在讨论中反复出现，因为加拿大更在意航程、补给、交付速度和长期可维护性。",
-          "emoji": "😒",
-          "sarcastic_question": "先威胁盟友，再怪别人不买？"
-        },
-        "classifications": {
-          "topics": [
-            9,
-            3,
-            7
-          ],
-          "facets": [],
-          "tags": [
-            "Saab GlobalEye",
-            "Canada",
-            "Sweden",
-            "United States",
-            "Gripen"
-          ]
-        },
-        "classificationsUpdatedAt": 1779910299,
-        "aiSummary": {
-          "chinese_title": "加拿大转向瑞典军机，摆脱美国军购依赖",
-          "discussion_overview": [
-            {
-              "category": "对欧洲盟友靠拢",
-              "summary": "不少评论把这单生意看成加拿大向欧洲盟友重新站队，而不是单纯挑选某个更便宜的机型。讨论里反复提到瑞典防务产品在乌克兰战场上的表现、加拿大更紧密接入欧盟防务网络，以及 Saab 方案里有加拿大制造的 Bombardier 平台这一点。还有人强调，若把关键数据、软件和维护都放在美国控制之外，至少能降低被美国政府掐脖子的风险。即便这只是部分转向，很多人也认为它象征着加拿大开始把防务采购当成主权工具。",
-              "supportid": [
-                "48301645",
-                "48301678",
-                "48301504",
-                "48299145",
-                "48299722",
-                "48302404",
-                "48299408",
-                "48299881"
-              ]
-            },
-            {
-              "category": "交付排期与供应链现实",
-              "summary": "另一组评论纠正了把商业 backlog 直接套到军机上的说法，但仍认为交付排期和供应链对军购极其重要。有人指出军用型号常和民航机共享零件、供应商甚至装配链，真正卡住的往往不是最后一条产线，而是上游零件和软件。也有人提醒，若要在 7 到 10 年后交机，现在就必须下单，因为 backlog 会变，排期却不会。这个角度把问题从谁更强拉回到谁能按时交付并长期支持。",
-              "supportid": [
-                "48298948",
-                "48300172",
-                "48300239",
-                "48300985",
-                "48302263",
-                "48300655",
-                "48301410",
-                "48300522"
-              ]
-            },
-            {
-              "category": "机型适配与维护成本",
-              "summary": "技术派评论主要围绕 Canada 的地理和任务需求展开：北极巡逻、长航程、远距离基地以及更小规模的空军。有人认为 F-35 这种“exquisite”平台对加拿大并不划算，反而是 Gripen、GlobalEye 这类更易维护、成本更低的系统更合适。围绕 E-7 Wedgetail、Erieye/GlobalEye、F-16、F-15EX 还展开了雷达频段、双发可靠性和 NORAD 整合的比较。结论不是谁在绝对性能上更强，而是谁更适合加拿大这种大国但预算有限、部署半径很长的场景。",
-              "supportid": [
-                "48298397",
-                "48300666",
-                "48300219",
-                "48300736",
-                "48300871",
-                "48300334",
-                "48300432",
-                "48302169",
-                "48301197",
-                "48299408"
-              ]
-            },
-            {
-              "category": "美国信誉下滑与去风险",
-              "summary": "很多人把这件事归因于美国信誉下滑，而不只是某一届政府的临时失误。评论里提到对加拿大征关税、威胁吞并、对盟友翻脸、以及美国在 F-35 和 E-7 等项目上的政治施压，这些都让买美国武器的盟友溢价消失了。也有人认为问题并不只在 Trump，而是美国长期的干预主义和制度失灵让盟友无法相信未来不会重演。于是，去风险和减少对美国军工链的依赖，被看成一种越来越理性的选择。",
-              "supportid": [
-                "48299145",
-                "48301678",
-                "48300046",
-                "48301028",
-                "48301190",
-                "48301291",
-                "48301464",
-                "48299689",
-                "48302324",
-                "48301329",
-                "48302027"
-              ]
-            },
-            {
-              "category": "加拿大产业空心化与联邦裂痕",
-              "summary": "更长线的讨论把焦点放到加拿大自身的产业和联邦结构上。有人回顾 Arrow、Bombardier C-Series、NAFTA 之后的技术外流，认为加拿大一遇到高成本就放弃本土航空能力，最后只能依赖美国或被大厂吸收。另一条支线则争论 Alberta 的资源贡献、管道项目、分离主义和西部不满，说明加拿大内部对联邦财政与产业分配本就有深层裂痕。虽然不少具体数字被质疑，但加拿大在重建工业和主权这个判断被反复提及。",
-              "supportid": [
-                "48298955",
-                "48299143",
-                "48298630",
-                "48298928",
-                "48299079",
-                "48299422",
-                "48299845",
-                "48302294",
-                "48300560",
-                "48301414",
-                "48298648",
-                "48299884",
-                "48300249",
-                "48300319",
-                "48300638",
-                "48299671",
-                "48300566",
-                "48301075"
-              ]
-            },
-            {
-              "category": "标题党与谈判筹码",
-              "summary": "也有人认为这条新闻被过度政治化了，本质上更像采购谈判中的筹码。评论指出，各国常拿 Saab 的方案去压美国厂商让利，而真正的合同往往要等到签字交付后才算数。还有人抱怨媒体和 HN 只放大转向非美国的故事，却很少报道继续选择美国的平常消息。按这种看法，这更像 man bites dog 式的标题党，而不是已经发生的结构性断裂。",
-              "supportid": [
-                "48300968",
-                "48299977",
-                "48299819",
-                "48299900",
-                "48300415",
-                "48299865",
-                "48299841",
-                "48299983"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "Gripen",
-              "explanation": "Saab 的轻型多用途战斗机，常被拿来与 F-35、F-16 比较。"
-            },
-            {
-              "term": "GlobalEye",
-              "explanation": "Saab 的空中预警与监视平台，常以 Bombardier Global 6500 为底盘。"
-            },
-            {
-              "term": "E-7 Wedgetail",
-              "explanation": "Boeing 的空中预警机，基于 737 平台，用于远程监视和指挥控制。"
-            },
-            {
-              "term": "F-35",
-              "explanation": "Lockheed Martin 的隐身战斗机，加拿大原本的重要采购项目。"
-            },
-            {
-              "term": "NORAD",
-              "explanation": "北美防空司令部，加美共享的空防体系。"
-            },
-            {
-              "term": "Bombardier Global 6500",
-              "explanation": "加拿大 Bombardier 的远程商务机，是 Saab 某些方案的基础平台。"
-            }
-          ],
-          "context": "这条新闻围绕加拿大政府重新评估军事采购展开，焦点是是否从美国供应商转向 Saab（瑞典军工公司）的 GlobalEye 空中预警机，甚至 Gripen 战斗机。评论里多次提到它们与 Bombardier Global 6500（加拿大商务机）等平台的关系，以及加拿大原本对 F-35（Lockheed Martin 隐身战斗机）和 E-7 Wedgetail（Boeing 空中预警机）的依赖。背景则是美国对加拿大商品加征关税、Trump 时期对盟友的威胁与不确定性，让加拿大在防务、数据主权和维护链上更想降低对美国的单点依赖。NORAD（北美防空司令部）和北极巡逻需求也在讨论中反复出现，因为加拿大更在意航程、补给、交付速度和长期可维护性。",
-          "emoji": "😒",
-          "sarcastic_question": "先威胁盟友，再怪别人不买？"
-        }
-      },
-      "articleSummary": "### 一句话总结\n加拿大为了降低对美防务依赖并主导北极防御，毅然放弃波音，转而采购瑞典 Saab 的 GlobalEye 预警机，这标志着其军事采购策略的重大转向。\n\n### 北极防务必须拿回主导权\n加拿大这次采购的核心动机，其实是为了拿回自家后门的钥匙。几十年来，加拿大一直依赖美国来监控其超过 440 万平方公里的北极领土，这块地盘比印度还大。但现在的国际局势变了，美国被加拿大视为“不再那么可靠的伙伴”。因此，总理 Mark Carney 承诺要由加拿大自己全权负责北极的防御。说白了，这次买飞机不只是为了装备升级，更是为了落实国家主权，不再单纯看美国脸色行事。\n\n### 放弃波音不仅是因为它慢\n在竞标阶段，摆在加拿大面前的其实只有两个选择：波音的 E-7 Wedgetail 和 Saab 的 GlobalEye。波音的方案虽然成熟，但深受延期和成本超支的困扰，这在军用采购中是大忌。更有意思的是，Saab 的 GlobalEye 是基于庞巴迪 Global 6500 公务机改装的。这其实是个巧妙的设计：庞巴迪是加拿大本土企业，这意味着机身本身就是国产的，既照顾了本土产业链，又在政治上更容易被接受。\n\n### GlobalEye 的技术底牌\n既然要自己扛大旗，装备性能必须过硬。GlobalEye 的核心卖点是它那套先进的传感器和任务系统。Carney 明确表示，这将是加拿大武装部队在北极探测和威慑威胁的关键资源。对于有经验的开发者来说，这就像是选技术栈：不仅要看现在的稳定性，更要看未来的扩展性。GlobalEye 能够在极地这种极端环境下提供长久的监视能力，这正是加拿大目前最急需的“核心功能”。\n\n### 用订单换取技术转移\n除了买飞机，加拿大还在谈一笔更划算的“技术入股”。Saab 承诺，作为交易的一部分，他们计划在加拿大投资进行研发工作。瑞典首相 Ulf Kristersson 也证实，GlobalEye 已经在加拿大创造就业机会，并融入了当地供应链。这不仅仅是买卖关系，更是一种深度绑定。通过这次采购，加拿大把瑞典这个新晋北约盟友的防务利益，牢牢地锁在了自己的北极战略上。\n\n### 军事采购的“去美化”实验\n专家们都在盯着这笔单子，因为它是 Carney 政府“摆脱美国军事能力”政策的一次重要测试。渥太华卡尔顿大学的教授指出，这确认了加拿大正在减少对美国防务公司的依赖。虽然目前官方还没透露具体的机队规模和合同金额，但军方早前透露过目标是购买 6 架。这 6 架飞机的订单，实际上就是加拿大向世界发出的一个信号：在关键国防采购上，美国不再是唯一选项。\n\n### 战斗机采购可能也要变天\n更有意思的后续在于，这次预警机的转向可能只是个开始。加拿大原本已经签了洛克希德·马丁 88 架 F-35 战斗机的订单。但因为去年美国对加拿大关键产品加征关税，Carney 已经让军方调查是否可以削减订单，转而购买其他制造商的飞机。而 Saab 的 Gripen 战斗机目前也在候选名单中。如果这笔交易也成了，那加拿大和瑞典的防务绑定可就真的“锁死”了。"
     }
   ]
 }
