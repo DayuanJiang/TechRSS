@@ -1,6 +1,933 @@
 {
-  "updatedAt": "2026-05-30T13:16:27.625Z",
+  "updatedAt": "2026-05-30T15:02:08.687Z",
   "items": [
+    {
+      "id": 48323992,
+      "by": "justinweiss",
+      "title": "Bijou64: A variable-length integer encoding",
+      "url": "https://www.inkandswitch.com/tangents/bijou64/",
+      "score": 241,
+      "detailUpdatedAt": 1780150426,
+      "createdAt": 1780068012,
+      "aiSummaryUpdatedAt": 1780152328,
+      "aisummary": {
+        "chinese_title": "Bijou64：用首字节定长的 uint64 变长整数编码",
+        "emoji": "🤔",
+        "sarcastic_question": "把校验搬进格式里就真更安全吗，还是更危险？"
+      },
+      "classifications": {
+        "topics": [
+          4,
+          6,
+          3
+        ],
+        "facets": [
+          7,
+          9
+        ],
+        "tags": [
+          "Bijou64",
+          "varint",
+          "LEB128",
+          "canonicalization",
+          "u64",
+          "wire-format",
+          "multicodec",
+          "inkandswitch"
+        ]
+      },
+      "classificationsUpdatedAt": 1780071943,
+      "aiSummary": {
+        "chinese_title": "Bijou64：用首字节定长的 uint64 变长整数编码",
+        "emoji": "🤔",
+        "sarcastic_question": "把校验搬进格式里就真更安全吗，还是更危险？"
+      },
+      "detail": {
+        "id": 48323992,
+        "by": "justinweiss",
+        "title": "Bijou64: A variable-length integer encoding",
+        "url": "https://www.inkandswitch.com/tangents/bijou64/",
+        "score": 141,
+        "detailUpdatedAt": 1780078423,
+        "createdAt": 1780068012,
+        "aiSummaryUpdatedAt": 1780080028,
+        "aisummary": {
+          "chinese_title": "Bijou64：首字节定长的规范 varint",
+          "discussion_overview": [
+            {
+              "category": "SIMD 与解码性能争论",
+              "summary": "一些人认为 Bijou64 最大的问题是难以吃到 SIMD 的红利：单个值的长度虽能从首字节判断，但真正高效的 SIMD varint 往往依赖在一个窗口里快速找出所有边界，而 Bijou64 把标签和数据都混在 0x00-0xFF 中，没有像 ULEB128 那样固定位置的 continuation bit。也有人反驳说这要看场景，如果目标是存储或传输而不是 CPU 批量计算，密集打包仍然有价值；在数据中心或 search index 这类解码本身就是瓶颈的系统里，编码方式的影响并不小。还有观点认为它并非完全不能用 SIMD 做，只是很难做到 byte-parallel，只能更多依赖 speculative decode、compress/expand 之类的技巧。",
+              "supportid": [
+                "48325099",
+                "48325533",
+                "48325591",
+                "48325658",
+                "48325932",
+                "48326028",
+                "48326454",
+                "48326625",
+                "48326885"
+              ]
+            },
+            {
+              "category": "canonical encoding 与安全性",
+              "summary": "讨论里非常强调 canonical encoding 的价值：同一个数只有一种表示，便于 hashing、签名和 content-addressed 数据，也让 fuzzing 的 round-trip 测试更直接。相反，LEB128 这类允许 overlong encoding 的方案会让解析器面对歧义和攻击面，甚至可能导致不同实现对同一字节流得出不同结果，延伸出 signature wrapping 或 malleability 问题。还有人提醒，恶意长度前缀可能让解码器在真正完成边界检查前就多读几个字节，所以接口最好显式带上 end_address 或 max_read。",
+              "supportid": [
+                "48324675",
+                "48325042",
+                "48325724",
+                "48326251",
+                "48324889",
+                "48325402",
+                "48324974",
+                "48325521",
+                "48326063",
+                "48326385",
+                "48326277"
+              ]
+            },
+            {
+              "category": "非 canonical 编码的实际用途",
+              "summary": "另一派则为 overlong 或 non-canonical 编码辩护，认为它在一些工程流程里并非纯粹浪费。比如写入 length prefix 时，如果 payload 长度要等编码完才知道，先预留固定宽度再回填会很方便；媒体容器或已编码文件的原地修改也常需要这种缓冲空间。编译器和 linker 场景更典型：先用最长形式发出未链接的 varint，可以避免后续补丁把周围代码挤来挤去，导致所有引用地址都要重新计算。",
+              "supportid": [
+                "48324865",
+                "48325114",
+                "48325135",
+                "48324998",
+                "48325277",
+                "48326265",
+                "48325078"
+              ]
+            },
+            {
+              "category": "与现有 varint / 长度编码的对比",
+              "summary": "很多评论把 Bijou64 放到现有格式谱系里比较：它像 length-prefixed varint，和 LEB128、protobuf varint、SQLite varint、BER-TLV 都有关联，但每种方案的取舍不同。它的优点是首字节就能知道总长度，而且对每个值只有一种编码；代价是常见的 2 字节范围没有 LEB128 那么宽，且只覆盖 uint64，不追求无限扩展。有人还提到 vu128、vectorizing VByte、Elias omega coding 等替代方案，说明这个设计空间里速度、空间和实现复杂度一直在拉扯。",
+              "supportid": [
+                "48324781",
+                "48325332",
+                "48325368",
+                "48326400",
+                "48326176",
+                "48326233",
+                "48326671",
+                "48326121",
+                "48327115",
+                "48325019",
+                "48324960",
+                "48325441"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "SIMD",
+              "explanation": "Single Instruction, Multiple Data，一类用向量寄存器并行处理多字节或多数值的 CPU 技术。"
+            },
+            {
+              "term": "LEB128",
+              "explanation": "一种 variable-length integer 编码，靠 continuation bit 表示后续字节，常见于 DWARF 和 WASM。"
+            },
+            {
+              "term": "canonical encoding",
+              "explanation": "同一个数值只有唯一表示的编码方式，便于签名、hashing 和一致性校验。"
+            },
+            {
+              "term": "overlong encoding",
+              "explanation": "用比必要更多的字节表示同一值的非规范编码，常用于 padding，但也会带来歧义和攻击面。"
+            },
+            {
+              "term": "SQLite varint",
+              "explanation": "SQLite 使用的变长整数格式，常被拿来和 LEB128、Bijou64 对比。"
+            },
+            {
+              "term": "BER-TLV",
+              "explanation": "ISO/IEC 8825-1 里的长度/类型/值编码格式，长度字段本身也可变长。"
+            }
+          ],
+          "context": "Bijou64 是一种 variable-length integer encoding：小整数可以直接用 1 byte 表示，更大的值则由首字节携带长度信息，后面跟随相应数量的 payload bytes，因此读到第一个字节就能知道总宽度。它的核心卖点是每个数只有一种 canonical representation，尽量避免 LEB128 这类格式里常见的 overlong / non-canonical 形式。评论把它放在 DWARF（调试信息格式）和 WASM（WebAssembly，一种字节码运行时）常用的 LEB128、SQLite varint（SQLite 的变长整数）、BER-TLV（ISO 7816/ASN.1 的长度编码）这些方案旁边比较。讨论背景还涉及编译器和 linker 的重定位、签名与 content-addressing 的稳定性，以及现代 CPU 上 SIMD 是否能高效做 varint boundary detection。",
+          "emoji": "🤔",
+          "sarcastic_question": "为了省字节，连 SIMD 和安全都不要了？"
+        },
+        "classifications": {
+          "topics": [
+            4,
+            6,
+            3
+          ],
+          "facets": [
+            7,
+            9
+          ],
+          "tags": [
+            "Bijou64",
+            "varint",
+            "LEB128",
+            "canonicalization",
+            "u64",
+            "wire-format",
+            "multicodec",
+            "inkandswitch"
+          ]
+        },
+        "classificationsUpdatedAt": 1780071943,
+        "aiSummary": {
+          "chinese_title": "Bijou64：首字节定长的规范 varint",
+          "discussion_overview": [
+            {
+              "category": "SIMD 与解码性能争论",
+              "summary": "一些人认为 Bijou64 最大的问题是难以吃到 SIMD 的红利：单个值的长度虽能从首字节判断，但真正高效的 SIMD varint 往往依赖在一个窗口里快速找出所有边界，而 Bijou64 把标签和数据都混在 0x00-0xFF 中，没有像 ULEB128 那样固定位置的 continuation bit。也有人反驳说这要看场景，如果目标是存储或传输而不是 CPU 批量计算，密集打包仍然有价值；在数据中心或 search index 这类解码本身就是瓶颈的系统里，编码方式的影响并不小。还有观点认为它并非完全不能用 SIMD 做，只是很难做到 byte-parallel，只能更多依赖 speculative decode、compress/expand 之类的技巧。",
+              "supportid": [
+                "48325099",
+                "48325533",
+                "48325591",
+                "48325658",
+                "48325932",
+                "48326028",
+                "48326454",
+                "48326625",
+                "48326885"
+              ]
+            },
+            {
+              "category": "canonical encoding 与安全性",
+              "summary": "讨论里非常强调 canonical encoding 的价值：同一个数只有一种表示，便于 hashing、签名和 content-addressed 数据，也让 fuzzing 的 round-trip 测试更直接。相反，LEB128 这类允许 overlong encoding 的方案会让解析器面对歧义和攻击面，甚至可能导致不同实现对同一字节流得出不同结果，延伸出 signature wrapping 或 malleability 问题。还有人提醒，恶意长度前缀可能让解码器在真正完成边界检查前就多读几个字节，所以接口最好显式带上 end_address 或 max_read。",
+              "supportid": [
+                "48324675",
+                "48325042",
+                "48325724",
+                "48326251",
+                "48324889",
+                "48325402",
+                "48324974",
+                "48325521",
+                "48326063",
+                "48326385",
+                "48326277"
+              ]
+            },
+            {
+              "category": "非 canonical 编码的实际用途",
+              "summary": "另一派则为 overlong 或 non-canonical 编码辩护，认为它在一些工程流程里并非纯粹浪费。比如写入 length prefix 时，如果 payload 长度要等编码完才知道，先预留固定宽度再回填会很方便；媒体容器或已编码文件的原地修改也常需要这种缓冲空间。编译器和 linker 场景更典型：先用最长形式发出未链接的 varint，可以避免后续补丁把周围代码挤来挤去，导致所有引用地址都要重新计算。",
+              "supportid": [
+                "48324865",
+                "48325114",
+                "48325135",
+                "48324998",
+                "48325277",
+                "48326265",
+                "48325078"
+              ]
+            },
+            {
+              "category": "与现有 varint / 长度编码的对比",
+              "summary": "很多评论把 Bijou64 放到现有格式谱系里比较：它像 length-prefixed varint，和 LEB128、protobuf varint、SQLite varint、BER-TLV 都有关联，但每种方案的取舍不同。它的优点是首字节就能知道总长度，而且对每个值只有一种编码；代价是常见的 2 字节范围没有 LEB128 那么宽，且只覆盖 uint64，不追求无限扩展。有人还提到 vu128、vectorizing VByte、Elias omega coding 等替代方案，说明这个设计空间里速度、空间和实现复杂度一直在拉扯。",
+              "supportid": [
+                "48324781",
+                "48325332",
+                "48325368",
+                "48326400",
+                "48326176",
+                "48326233",
+                "48326671",
+                "48326121",
+                "48327115",
+                "48325019",
+                "48324960",
+                "48325441"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "SIMD",
+              "explanation": "Single Instruction, Multiple Data，一类用向量寄存器并行处理多字节或多数值的 CPU 技术。"
+            },
+            {
+              "term": "LEB128",
+              "explanation": "一种 variable-length integer 编码，靠 continuation bit 表示后续字节，常见于 DWARF 和 WASM。"
+            },
+            {
+              "term": "canonical encoding",
+              "explanation": "同一个数值只有唯一表示的编码方式，便于签名、hashing 和一致性校验。"
+            },
+            {
+              "term": "overlong encoding",
+              "explanation": "用比必要更多的字节表示同一值的非规范编码，常用于 padding，但也会带来歧义和攻击面。"
+            },
+            {
+              "term": "SQLite varint",
+              "explanation": "SQLite 使用的变长整数格式，常被拿来和 LEB128、Bijou64 对比。"
+            },
+            {
+              "term": "BER-TLV",
+              "explanation": "ISO/IEC 8825-1 里的长度/类型/值编码格式，长度字段本身也可变长。"
+            }
+          ],
+          "context": "Bijou64 是一种 variable-length integer encoding：小整数可以直接用 1 byte 表示，更大的值则由首字节携带长度信息，后面跟随相应数量的 payload bytes，因此读到第一个字节就能知道总宽度。它的核心卖点是每个数只有一种 canonical representation，尽量避免 LEB128 这类格式里常见的 overlong / non-canonical 形式。评论把它放在 DWARF（调试信息格式）和 WASM（WebAssembly，一种字节码运行时）常用的 LEB128、SQLite varint（SQLite 的变长整数）、BER-TLV（ISO 7816/ASN.1 的长度编码）这些方案旁边比较。讨论背景还涉及编译器和 linker 的重定位、签名与 content-addressing 的稳定性，以及现代 CPU 上 SIMD 是否能高效做 varint boundary detection。",
+          "emoji": "🤔",
+          "sarcastic_question": "为了省字节，连 SIMD 和安全都不要了？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n为了修复签名验证中的“非规范编码”漏洞，作者设计了 bijou64，结果发现这种“结构上强制唯一性”的设计，不仅消除了运行时检查，还因为避免了逐位扫描和利用了 CPU 指令，比通用的 LEB128 快了 2-10 倍。\n\n### LEB128 的隐患：同一个数字，多种写法\n很多二进制协议用 LEB128 这种变长整数来省空间，但它有个致命伤：**非规范性**。比如数字 `0`，既可以用单字节 `0x00` 表示，也可以用 `0x80 0x00` 甚至更长的 `0x80` 序列表示。大多数解码器为了兼容性会照单全收，但这在安全场景下是灾难。如果你对数据进行签名，攻击者可以在不改变数值的前提下篡改字节（比如加个 `0x80`），导致签名验证失败。虽然可以通过写额外的代码强制校验“规范格式”，但历史经验（如 ASN.1、JWT 的漏洞）告诉我们，这种校验逻辑很容易被开发者遗漏、优化掉或忘记移植，最终留下安全隐患。\n\n### 核心思路：把校验逻辑“编码”进格式里\n作者不想依赖运行时的 `if` 语句来修补漏洞，而是从格式设计上根除它。bijou64 的核心目标是：**让每个整数只有一种合法的编码方式**。这样，任何符合格式的数据自动就是规范的，不需要额外的校验代码。这种设计不仅为了安全，也意外地带来了性能红利。因为不需要处理各种边界情况，解码器的逻辑可以变得非常纯粹和直接。\n\n### 巧妙设计：首字节即标签，拒绝歧义\nbijou64 的第一个技巧是利用首字节做“双重 duty”。数值 0-247 直接用单字节表示，和 LEB128 类似。但 248-255 不再表示数值本身，而是变成了**长度标签**，告诉解码器后面还有多少个字节。这意味着解码器读完第一个字节就能立刻知道需要分配多少内存（O(1)），而 LEB128 必须逐字节扫描直到遇到没有 continuation bit 的字节（O(n)）。这种“一看便知”的特性让分支预测器非常开心。\n\n### 消除冗余：利用偏移量强制唯一\n光有标签还不够，作者引入了第二个技巧：**偏移量**。为了防止 `0xF8 0x00` 这种写法被解释为 `0`（因为 `0` 已经是 `0x00` 了），bijou64 规定后续字节的值必须加上一个偏移量。比如标签 `0xF8` 后面的字节，实际值是 `字节值 + 248`。随着标签代表的长度增加，偏移量也按特定规律累加（如 `0x01F8`, `0x0101F8`）。这种设计就像我们的十进制系统，保证了每个数字只有唯一的组合方式，彻底杜绝了 LEB128 那种“前导零”式的歧义。\n\n### 性能惊喜：比 LEB128 快 2-10 倍\n原本作者以为为了安全性会牺牲性能，结果 Benchmark 打了脸。在 ARM (M2 Pro) 和 x86 (Zen 5) 上的测试显示，bijou64 的解码速度比 LEB128 快 2-10 倍。对于小数字，bijou64 大约快 2 倍；而对于需要扫描多个字节的大数字，优势扩大到 8-10 倍。在全 `u64` 分布的压力测试下，bijou64 处理 4096 个值只需约 3µs，而 LEB128 需要约 30µs。更有意思的是，bijou64 的性能曲线非常陡峭且稳定，而 LEB128 因为依赖数据内容的分支预测，性能抖动很大。\n\n### 为什么这么快？因为 CPU 很喜欢\n这背后的原因其实很符合计算机直觉：首先，不需要像 LEB128 那样逐个检查 continuation bit，减少了大量的分支跳转；其次，bijou64 的 payload 是连续的大端序整数，CPU 可以直接用 `bswap` 指令一次性加载并交换字节序，而 LEB128 得把 7-bit 的碎片拼起来，又要移位又要掩码；最后，虽然 bijou64 引入了偏移量计算，但这只是一次简单的加法指令，比复杂的循环和分支判断要轻量得多。\n\n### 权衡与建议：何时该换掉 LEB128\n当然，bijou64 不是万能的。在编码速度上，对于 248-65535 这个区间的小数字，LEB128 依然能赢 bijou64 约 1.24 倍。在空间占用上，两者在大多数真实负载下差别微乎其微。作者的建议很中肯：如果你的新协议涉及签名、内容寻址或者任何要求“字节级一致性”的场景，bijou64 是比 LEB128 更安全且更快的替代品；但如果你只是在一个成熟协议里做内部优化，LEB128 依然是那个经过充分考验的老朋友。"
+    },
+    {
+      "id": 48333820,
+      "by": "vrganj",
+      "title": "Danish pension fund excludes SpaceX citing governance and valuation",
+      "url": "https://www.reuters.com/legal/transactional/danish-pension-fund-excludes-spacex-citing-governance-valuation-2026-05-29/",
+      "score": 319,
+      "detailUpdatedAt": 1780150422,
+      "createdAt": 1780131044,
+      "aiSummaryUpdatedAt": 1780151796,
+      "aisummary": {
+        "chinese_title": "丹麦养老金因治理与高估值排除 SpaceX，引爆政治、ESG与接盘争议",
+        "emoji": "🤨",
+        "sarcastic_question": "先改规则再喊市场决定，这也算被动投资？"
+      },
+      "classifications": {
+        "topics": [
+          10,
+          9
+        ],
+        "facets": [],
+        "tags": [
+          "SpaceX",
+          "pension fund",
+          "governance",
+          "valuation",
+          "Elon Musk",
+          "Anthropic",
+          "Mark Zuckerberg"
+        ]
+      },
+      "classificationsUpdatedAt": 1780133191,
+      "aiSummary": {
+        "chinese_title": "丹麦养老金因治理与高估值排除 SpaceX，引爆政治、ESG与接盘争议",
+        "emoji": "🤨",
+        "sarcastic_question": "先改规则再喊市场决定，这也算被动投资？"
+      },
+      "detail": {
+        "id": 48333820,
+        "by": "vrganj",
+        "title": "Danish pension fund excludes SpaceX citing governance and valuation",
+        "url": "https://www.reuters.com/legal/transactional/danish-pension-fund-excludes-spacex-citing-governance-valuation-2026-05-29/",
+        "score": 203,
+        "detailUpdatedAt": 1780141419,
+        "createdAt": 1780131044,
+        "aiSummaryUpdatedAt": 1780142772,
+        "aisummary": {
+          "chinese_title": "丹麦养老金因治理与估值剔除 SpaceX，引发 ESG、政治与 IPO 争论",
+          "discussion_overview": [
+            {
+              "category": "长期治理与 ESG 支持剔除",
+              "summary": "支持者认为主权/养老金基金不是短线交易员，而是要对几十年的回报和社会后果负责，所以把 ESG 和公司治理纳入筛选是本职工作。评论里提到该基金早就排除 Tesla、武器、化石燃料和人权风险公司，理由包括极端的投票权集中、CEO/CTO/董事长合一，以及对长期风险的担忧。还有人查了该基金 2009-2021 的平均年回报，发现它在丹麦养老金机构里反而表现最好，用来反驳“做伦理筛选就一定亏钱”的说法。",
+              "supportid": [
+                "48334785",
+                "48335152",
+                "48334921",
+                "48335103",
+                "48334954",
+                "48334948",
+                "48334097",
+                "48334304",
+                "48334441",
+                "48334869",
+                "48334177",
+                "48334201",
+                "48334913"
+              ]
+            },
+            {
+              "category": "利润优先派反对价值筛选",
+              "summary": "另一派认为基金经理的职责就是赚钱，伦理边界应由民主选出的政治层面来定，而不是由投资经理自行加码。有人直接说 defense 和 fossil fuels 仍然是必要产业，全面排除它们不现实，甚至会伤害欧洲安全。也有人强调 broad ETF 本来就该“买下整个市场”，如果想按价值观挑选，那就应该明说自己买的是 ESG fund，而不是把道德判断包装成理财规则。",
+              "supportid": [
+                "48334883",
+                "48334989",
+                "48335171",
+                "48335054",
+                "48335107",
+                "48334744",
+                "48334875"
+              ]
+            },
+            {
+              "category": "SpaceX 估值泡沫与接盘流动性",
+              "summary": "很多评论认为 1.8T 估值主要不是靠火箭业务，而是靠 hype、有限流通股、xAI 合并，以及把 passive money 变成接盘流动性的设计。有人说公司的纸面业务和资金结构都很吓人，所谓 fast-track 纳入指数更像是在合法抽水。还有人把这形容成 Musk 的 FOMO 和“现实扭曲场”，认为股价更多是为了让下一批买家接手，而不是反映真实现金流。",
+              "supportid": [
+                "48334322",
+                "48334539",
+                "48334410",
+                "48334295",
+                "48334298",
+                "48334194",
+                "48334519",
+                "48334635",
+                "48334617",
+                "48334673",
+                "48334586",
+                "48334658",
+                "48334414"
+              ]
+            },
+            {
+              "category": "Starlink 与空间经济的乐观叙事",
+              "summary": "支持者则强调 Starlink 是真实在赚钱的核心资产，尤其在 maritime、aviation 和 remote internet 场景里几乎没有 meaningful competition。Falcon 9 的高频成功发射也被视为 SpaceX 在低地轨道发射上的实际统治力，而不是纯故事股。乐观者相信 space economy 会逐步扩大，只要公司能长期守住份额，今天的高估值就是在提前给未来基础设施定价。",
+              "supportid": [
+                "48334317",
+                "48335222",
+                "48334704",
+                "48334657",
+                "48335092"
+              ]
+            },
+            {
+              "category": "指数基金规则与 ETF 替代方案",
+              "summary": "讨论还延伸到被动基金如何避免被迫买入这种新股。有人提议用 float-adjusted 的 ETF，如 VTI、VGT、DFUS，或者干脆选择更有筛选规则的产品；也有人想要对 IPO 设置 6 个月观察期，等 lock-up 和价格发现完成后再纳入。反方则坚持 broad index 的设计就是尽量覆盖全部市场，否则就已经偏离指数基金的本义了。",
+              "supportid": [
+                "48334357",
+                "48335001",
+                "48334596",
+                "48334457",
+                "48334410",
+                "48334796",
+                "48334744",
+                "48334782",
+                "48334582",
+                "48334747"
+              ]
+            },
+            {
+              "category": "政治因素与北欧对美国信任下滑",
+              "summary": "不少人把这次剔除和 Musk、Trump 以及 Greenland 主权争议联系起来，因为 Greenland 是丹麦王国的一部分，而 Trump 曾威胁以武力吞并它。也有人认为核心问题仍是治理缺陷，但政治背景让基金更难保持中立。另一条线索来自北欧评论者：他们说过去北欧社会普遍信任美国，如今却因边检体验、极化政治和对极右翼的支持而明显降温。",
+              "supportid": [
+                "48334787",
+                "48335100",
+                "48335218",
+                "48335025",
+                "48334844",
+                "48334480",
+                "48334541",
+                "48334547",
+                "48335182",
+                "48334494"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "ESG",
+              "explanation": "环境、社会与治理框架，用来按社会责任和长期风险筛选投资。"
+            },
+            {
+              "term": "corporate governance",
+              "explanation": "公司治理，指董事会、控制权、监督机制和管理层制衡。"
+            },
+            {
+              "term": "float-adjusted market cap",
+              "explanation": "按流通股比例调整后的市值权重，锁定股越多，在指数中的权重通常越低。"
+            },
+            {
+              "term": "Nasdaq 100 fast-track rule",
+              "explanation": "纳斯达克100的快速纳入规则，缩短新上市公司进入指数的等待期。"
+            },
+            {
+              "term": "S-1",
+              "explanation": "美国 IPO 的招股说明书/注册文件，披露业务、风险和财务信息。"
+            },
+            {
+              "term": "Starlink",
+              "explanation": "SpaceX 旗下的卫星互联网业务，也是评论里争论估值的重要资产。"
+            },
+            {
+              "term": "sovereign fund",
+              "explanation": "主权财富基金，国家或公共机构管理的长期投资基金。"
+            },
+            {
+              "term": "exit liquidity",
+              "explanation": "接盘流动性，指让后进入的投资者为早期持有人提供卖出出口。"
+            }
+          ],
+          "context": "这场讨论围绕丹麦 AkademikerPension（丹麦学术人员养老金基金）宣布退出 SpaceX 展开，理由是公司治理“极其不足”且估值过高；该基金此前也曾排除 Tesla、武器、化石燃料和人权风险公司。评论里进一步提到 Elon Musk 可能控制超过 80% 的投票权，并同时兼任 CEO、CTO 和董事长，因此即使公司还未上市，治理风险也被认为很突出。争论之所以扩大，是因为 SpaceX 可能通过 IPO 和 Nasdaq 100 fast-track rule（纳斯达克100快速纳入规则）迅速进入指数，被动资金和退休金可能被动卷入高估值资产。政治层面上，Musk 与 Trump 的关系、Trump 对 Greenland（格陵兰，丹麦王国自治领地）的威胁，以及北欧社会对美国信任下降，都让这次决定带上了更强的地缘政治色彩。",
+          "emoji": "🤨",
+          "sarcastic_question": "火箭估值1.8万亿，靠的是推力还是接盘？"
+        },
+        "classifications": {
+          "topics": [
+            10,
+            9
+          ],
+          "facets": [],
+          "tags": [
+            "SpaceX",
+            "pension fund",
+            "governance",
+            "valuation",
+            "Elon Musk",
+            "Anthropic",
+            "Mark Zuckerberg"
+          ]
+        },
+        "classificationsUpdatedAt": 1780133191,
+        "aiSummary": {
+          "chinese_title": "丹麦养老金因治理与估值剔除 SpaceX，引发 ESG、政治与 IPO 争论",
+          "discussion_overview": [
+            {
+              "category": "长期治理与 ESG 支持剔除",
+              "summary": "支持者认为主权/养老金基金不是短线交易员，而是要对几十年的回报和社会后果负责，所以把 ESG 和公司治理纳入筛选是本职工作。评论里提到该基金早就排除 Tesla、武器、化石燃料和人权风险公司，理由包括极端的投票权集中、CEO/CTO/董事长合一，以及对长期风险的担忧。还有人查了该基金 2009-2021 的平均年回报，发现它在丹麦养老金机构里反而表现最好，用来反驳“做伦理筛选就一定亏钱”的说法。",
+              "supportid": [
+                "48334785",
+                "48335152",
+                "48334921",
+                "48335103",
+                "48334954",
+                "48334948",
+                "48334097",
+                "48334304",
+                "48334441",
+                "48334869",
+                "48334177",
+                "48334201",
+                "48334913"
+              ]
+            },
+            {
+              "category": "利润优先派反对价值筛选",
+              "summary": "另一派认为基金经理的职责就是赚钱，伦理边界应由民主选出的政治层面来定，而不是由投资经理自行加码。有人直接说 defense 和 fossil fuels 仍然是必要产业，全面排除它们不现实，甚至会伤害欧洲安全。也有人强调 broad ETF 本来就该“买下整个市场”，如果想按价值观挑选，那就应该明说自己买的是 ESG fund，而不是把道德判断包装成理财规则。",
+              "supportid": [
+                "48334883",
+                "48334989",
+                "48335171",
+                "48335054",
+                "48335107",
+                "48334744",
+                "48334875"
+              ]
+            },
+            {
+              "category": "SpaceX 估值泡沫与接盘流动性",
+              "summary": "很多评论认为 1.8T 估值主要不是靠火箭业务，而是靠 hype、有限流通股、xAI 合并，以及把 passive money 变成接盘流动性的设计。有人说公司的纸面业务和资金结构都很吓人，所谓 fast-track 纳入指数更像是在合法抽水。还有人把这形容成 Musk 的 FOMO 和“现实扭曲场”，认为股价更多是为了让下一批买家接手，而不是反映真实现金流。",
+              "supportid": [
+                "48334322",
+                "48334539",
+                "48334410",
+                "48334295",
+                "48334298",
+                "48334194",
+                "48334519",
+                "48334635",
+                "48334617",
+                "48334673",
+                "48334586",
+                "48334658",
+                "48334414"
+              ]
+            },
+            {
+              "category": "Starlink 与空间经济的乐观叙事",
+              "summary": "支持者则强调 Starlink 是真实在赚钱的核心资产，尤其在 maritime、aviation 和 remote internet 场景里几乎没有 meaningful competition。Falcon 9 的高频成功发射也被视为 SpaceX 在低地轨道发射上的实际统治力，而不是纯故事股。乐观者相信 space economy 会逐步扩大，只要公司能长期守住份额，今天的高估值就是在提前给未来基础设施定价。",
+              "supportid": [
+                "48334317",
+                "48335222",
+                "48334704",
+                "48334657",
+                "48335092"
+              ]
+            },
+            {
+              "category": "指数基金规则与 ETF 替代方案",
+              "summary": "讨论还延伸到被动基金如何避免被迫买入这种新股。有人提议用 float-adjusted 的 ETF，如 VTI、VGT、DFUS，或者干脆选择更有筛选规则的产品；也有人想要对 IPO 设置 6 个月观察期，等 lock-up 和价格发现完成后再纳入。反方则坚持 broad index 的设计就是尽量覆盖全部市场，否则就已经偏离指数基金的本义了。",
+              "supportid": [
+                "48334357",
+                "48335001",
+                "48334596",
+                "48334457",
+                "48334410",
+                "48334796",
+                "48334744",
+                "48334782",
+                "48334582",
+                "48334747"
+              ]
+            },
+            {
+              "category": "政治因素与北欧对美国信任下滑",
+              "summary": "不少人把这次剔除和 Musk、Trump 以及 Greenland 主权争议联系起来，因为 Greenland 是丹麦王国的一部分，而 Trump 曾威胁以武力吞并它。也有人认为核心问题仍是治理缺陷，但政治背景让基金更难保持中立。另一条线索来自北欧评论者：他们说过去北欧社会普遍信任美国，如今却因边检体验、极化政治和对极右翼的支持而明显降温。",
+              "supportid": [
+                "48334787",
+                "48335100",
+                "48335218",
+                "48335025",
+                "48334844",
+                "48334480",
+                "48334541",
+                "48334547",
+                "48335182",
+                "48334494"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "ESG",
+              "explanation": "环境、社会与治理框架，用来按社会责任和长期风险筛选投资。"
+            },
+            {
+              "term": "corporate governance",
+              "explanation": "公司治理，指董事会、控制权、监督机制和管理层制衡。"
+            },
+            {
+              "term": "float-adjusted market cap",
+              "explanation": "按流通股比例调整后的市值权重，锁定股越多，在指数中的权重通常越低。"
+            },
+            {
+              "term": "Nasdaq 100 fast-track rule",
+              "explanation": "纳斯达克100的快速纳入规则，缩短新上市公司进入指数的等待期。"
+            },
+            {
+              "term": "S-1",
+              "explanation": "美国 IPO 的招股说明书/注册文件，披露业务、风险和财务信息。"
+            },
+            {
+              "term": "Starlink",
+              "explanation": "SpaceX 旗下的卫星互联网业务，也是评论里争论估值的重要资产。"
+            },
+            {
+              "term": "sovereign fund",
+              "explanation": "主权财富基金，国家或公共机构管理的长期投资基金。"
+            },
+            {
+              "term": "exit liquidity",
+              "explanation": "接盘流动性，指让后进入的投资者为早期持有人提供卖出出口。"
+            }
+          ],
+          "context": "这场讨论围绕丹麦 AkademikerPension（丹麦学术人员养老金基金）宣布退出 SpaceX 展开，理由是公司治理“极其不足”且估值过高；该基金此前也曾排除 Tesla、武器、化石燃料和人权风险公司。评论里进一步提到 Elon Musk 可能控制超过 80% 的投票权，并同时兼任 CEO、CTO 和董事长，因此即使公司还未上市，治理风险也被认为很突出。争论之所以扩大，是因为 SpaceX 可能通过 IPO 和 Nasdaq 100 fast-track rule（纳斯达克100快速纳入规则）迅速进入指数，被动资金和退休金可能被动卷入高估值资产。政治层面上，Musk 与 Trump 的关系、Trump 对 Greenland（格陵兰，丹麦王国自治领地）的威胁，以及北欧社会对美国信任下降，都让这次决定带上了更强的地缘政治色彩。",
+          "emoji": "🤨",
+          "sarcastic_question": "火箭估值1.8万亿，靠的是推力还是接盘？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n丹麦最大的养老基金 AkademikerPension 决定清仓 SpaceX，核心原因不是业绩不好，而是因为 Elon Musk 的治理风险和缺乏透明度的估值机制让他们睡不着觉。\n\n### 投资不是只看回报，还得看\"人\"\n大家可能觉得，只要 SpaceX 的火箭发得好、估值涨得快，机构投资者就会蜂拥而入。但 AkademikerParker 这次偏偏反其道而行之。他们管理着大约 200 亿美元的资金，本来持有 SpaceX 的股份，但现在决定彻底卖出。理由很直接：他们觉得 Elon Musk 这个\"关键人\"带来的风险已经超过了潜在收益。说白了，就是担心 Musk 的个人行为和决策风格太不可控，万一哪天出个幺蛾子，作为股东他们一点办法都没有。\n\n### 治理结构才是最大的雷区\n这里有个很现实的问题：SpaceX 是一家私人公司，不是上市公司。这意味着它不需要像 Apple 或 Tesla 那样披露详细的财务报告，也不受同样的监管约束。对于一家受托管理养老金的机构来说，这种\"黑盒\"状态是致命的。文章提到，他们特别担心 Musk 在其他公司（比如 X/Twitter）的行为会波及到 SpaceX。因为缺乏独立董事的制衡，Musk 在 SpaceX 的话语权几乎是绝对的。这种\"一言堂\"的治理结构，在机构眼里就是一颗定时炸弹。\n\n### 估值也是个迷\n除了治理风险，估值的不透明也是劝退的重要原因。SpaceX 的估值主要靠二级市场的员工股交易来推算，而不是经过审计的公开财报。最近虽然有传闻说 SpaceX 的内部股交易价格飙升，但这毕竟是\"内部价\"。对于需要向公众负责的养老基金来说，他们很难验证这个价格是不是真实的反映。如果估值是虚高的，那现在买入或者持有，就是在给未来的亏损埋单。\n\n### ESG 标准不是摆设\n有意思的地方在于，这其实是一个典型的 ESG（环境、社会和治理）投资决策。很多开发者可能觉得 ESG 是虚的，但在大资金这里，\"G\"（Governance，治理）是硬指标。AkademikerPension 明确表示，他们无法确认 SpaceX 是否符合其内部的负责任投资标准。这不仅仅是道德审判，更是一种风控手段。如果一家公司的治理结构不透明，那么无论它的技术多牛，在合规层面都是不合格的。\n\n### 用脚投票的信号\n这次撤资虽然金额可能不算惊天动地，但信号意义很强。它说明在当前的市场环境下，即使是处于科技前沿的独角兽，如果治理结构跟不上，也会被长期资本抛弃。对于开发者来说，这其实是个提醒：技术壁垒固然重要，但商业世界的运行规则——尤其是透明度和制衡机制——同样决定着一家公司的生死。SpaceX 现在依然强势，但这种\"不透明\"的溢价，迟早会被市场重新定价。"
+    },
+    {
+      "id": 48334048,
+      "by": "tosh",
+      "title": "Zig: Build System Reworked",
+      "url": "https://ziglang.org/devlog/2026/#2026-05-26",
+      "score": 168,
+      "detailUpdatedAt": 1780148618,
+      "createdAt": 1780134643,
+      "aiSummaryUpdatedAt": 1780149937,
+      "aisummary": {
+        "chinese_title": "Zig 0.16 重做 build system：I/O、编译与 1.0 争议",
+        "emoji": "🛠️",
+        "sarcastic_question": "build system 都重做了，1.0还要等到下个世纪吗？"
+      },
+      "classifications": {
+        "topics": [
+          4,
+          6
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "Zig",
+          "build system",
+          "devlog",
+          "ziglang.org"
+        ]
+      },
+      "classificationsUpdatedAt": 1780140053,
+      "aiSummary": {
+        "chinese_title": "Zig 0.16 重做 build system：I/O、编译与 1.0 争议",
+        "emoji": "🛠️",
+        "sarcastic_question": "build system 都重做了，1.0还要等到下个世纪吗？"
+      },
+      "detail": {
+        "id": 48334048,
+        "by": "tosh",
+        "title": "Zig: Build System Reworked",
+        "url": "https://ziglang.org/devlog/2026/#2026-05-26",
+        "score": 168,
+        "detailUpdatedAt": 1780148618,
+        "createdAt": 1780134643,
+        "aiSummaryUpdatedAt": 1780149937,
+        "aisummary": {
+          "chinese_title": "Zig 0.16 重做 build system：I/O、编译与 1.0 争议",
+          "discussion_overview": [
+            {
+              "category": "新版 I/O 与 build 改进带来乐观，也有性能疑虑",
+              "summary": "不少评论先肯定 0.16.0 的改动很大，尤其是 build system 和新 I/O 机制，被认为会让 Zig 的编译与运行模型更统一。支持者觉得升级后代码更顺手，甚至能把单线程、多线程和 event loop 写成相近风格。反对者则指出当前 I/O 仍有多层 indirection 和 dynamic dispatch，性能未必比旧方案好，真正的效率提升还要看后续版本。也有人说自己仍会把 `.use_llvm = true` 当作默认选项，以换取更稳定和更成熟的 target 支持。",
+              "supportid": [
+                "48335050",
+                "48335343",
+                "48335969",
+                "48335903",
+                "48336045",
+                "48334612",
+                "48334664",
+                "48334727",
+                "48334773",
+                "48336015"
+              ]
+            },
+            {
+              "category": "Zig 被看作 garage/tinkering 语言",
+              "summary": "有一批评论把 Zig 定义成更接近 modern C 的“garage language”，适合在车库里快速试想法、再往低层深入。大家强调它的优势是 C 互操作好、native speed、没有 monkey patching 之类的隐式魔法，而且能从高层代码平滑下钻到硬件、embedded bare metal 或性能敏感场景。也有人反问：如果目标只是快速搓原型，Python 的 batteries 和庞大生态更顺手；Zig 的价值更像是当你开始在意性能、启动速度和可控内存时，它能替代一部分 C。讨论里还拿 Nim、Go、Rust 作对照，分别对应 Python-like 体验、快速编译和极限性能/安全。",
+              "supportid": [
+                "48334723",
+                "48334820",
+                "48334956",
+                "48334863",
+                "48334898",
+                "48335089",
+                "48335127",
+                "48335016",
+                "48335014",
+                "48335807",
+                "48335847",
+                "48335099",
+                "48335258",
+                "48335771",
+                "48335943",
+                "48335696",
+                "48335250",
+                "48335418",
+                "48334900",
+                "48335159",
+                "48335961"
+              ]
+            },
+            {
+              "category": "低层设计更可控，但字符串与资源管理仍嫌繁琐",
+              "summary": "另一个主题是 Zig 的低层设计是否真的比 C 更可控。支持者认为 C 和 C++ 长期被 undefined behavior 与实现差异拖累，编译器甚至会利用这些灰区做激进优化；Zig 则试图保留低层哲学，但把语义和边界整理得更明确。有人因此把它和 Modula-2、Object Pascal、Nim、Delphi、C#、Swift 这类语言放在一起谈，认为它在“能直接摸到硬件”与“代码不至于处处埋雷”之间找到了折中。与此同时，也有人直言字符串处理过于繁琐，希望能像 RAII 那样对 strings 和 containers 提供更轻量的自动管理。",
+              "supportid": [
+                "48335062",
+                "48335674",
+                "48335655",
+                "48335423",
+                "48335130",
+                "48335951",
+                "48336106",
+                "48335493"
+              ]
+            },
+            {
+              "category": "语法和工具链摩擦影响“好玩”程度",
+              "summary": "反对声音主要集中在语法和工具链摩擦。有人抱怨 Zig 把 unused variable 直接当 error，导致重构时无法像在 Rust 或 F# 那样先留着再清理，也不方便把一大段代码临时注释掉；这些细节会让“快速试错”变得更累。也有人提到某些 IDE/LSP 体验不稳定，像 Nim 的 LSP 崩溃、Helix 里的问题，说明编辑器生态还没完全跟上。再加上对 string handling 和 manual allocation 的持续抱怨，很多人觉得 Zig 的摩擦感会直接影响“好不好玩”。",
+              "supportid": [
+                "48335778",
+                "48335982",
+                "48335931",
+                "48335963",
+                "48335493",
+                "48335943",
+                "48334900",
+                "48335159",
+                "48335961"
+              ]
+            },
+            {
+              "category": "1.0 与稳定性：语言本体相对稳，stdlib 仍在变",
+              "summary": "围绕 1.0 的问题，大家更在意的是稳定边界而不是版本号本身。有人说语言本体其实已经相当稳定，频繁变化的是 stdlib；也有人提醒 big features like async IO 还在改，说明官方并不急着给出 ETA。维护者的态度被概括成“ready when it's ready”，目标是把 Zig 设计成能撑 50 年的语言，而不是为了行业信号仓促发布 1.0。升级难度相对可控、release notes 很详尽，是支持者认为值得继续跟进的理由。",
+              "supportid": [
+                "48335510",
+                "48335691",
+                "48335794",
+                "48335677",
+                "48336183",
+                "48335418"
+              ]
+            },
+            {
+              "category": "Bun 转 Rust 引发生态信任担忧",
+              "summary": "围绕 Bun 迁移到 Rust 的传闻或现实，评论把 Zig 的生态层面顾虑放大了。有人认为这是收购、upstreaming 争议和 devX 不足共同作用的结果，尤其对一个约 100 万行代码的大项目来说，改写语言本身就是危险信号。另一些人反驳说原因被夸大了，或者只是 Bun 没有认真用 incremental compilation，因此不能把个案直接上升成对 Zig 的判决。也有讨论指出，像 curl 这种测试极其严格的项目更容易自动化迁移，但像 Bun 这种规模和组织背景复杂的案例，很难靠所谓 vibe coding 一把完成。",
+              "supportid": [
+                "48335185",
+                "48335313",
+                "48335669",
+                "48335934",
+                "48335680",
+                "48335430",
+                "48336104",
+                "48335929",
+                "48335990"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "comptime",
+              "explanation": "Zig 的编译期执行/元编程机制，可在编译阶段计算值、生成代码。"
+            },
+            {
+              "term": "incremental compilation",
+              "explanation": "只重新编译受影响部分的构建方式，用来显著缩短迭代时间。"
+            },
+            {
+              "term": "undefined behavior",
+              "explanation": "C/C++ 中未定义的行为，编译器可据此做激进优化，常带来不可预测风险。"
+            },
+            {
+              "term": "LSP",
+              "explanation": "Language Server Protocol，编辑器与语言服务交互的标准协议，负责补全、跳转和诊断。"
+            },
+            {
+              "term": "async IO",
+              "explanation": "异步 I/O，通过非阻塞方式处理读写，常与 event loop 一起使用。"
+            }
+          ],
+          "context": "这条讨论围绕 Zig 0.16.0 的 build system 重做和相关发布改进展开。Zig（一个强调与 C 互操作、追求可预测性的系统编程语言）仍处在 1.0 之前，因此评论里既有人称赞它的编译速度、I/O 机制和 release notes 进步巨大，也有人担心 stdlib 和后端仍在频繁变化。很多人用 Python（脚本语言）、Rust（强调内存安全的系统语言）、Go（以快速编译著称的语言）和 Nim（语法接近 Python 的编译型语言）来对比 Zig 的定位。另一个背景是 Bun（一个 JavaScript/TypeScript 运行时）曾深度使用 Zig，后来转向 Rust 的传闻或实际迁移，让社区对 Zig 能否承载大项目产生了额外争论。",
+          "emoji": "🛠️",
+          "sarcastic_question": "build system 都重做了，1.0还要等到下个世纪吗？"
+        },
+        "classifications": {
+          "topics": [
+            4,
+            6
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "Zig",
+            "build system",
+            "devlog",
+            "ziglang.org"
+          ]
+        },
+        "classificationsUpdatedAt": 1780140053,
+        "aiSummary": {
+          "chinese_title": "Zig 0.16 重做 build system：I/O、编译与 1.0 争议",
+          "discussion_overview": [
+            {
+              "category": "新版 I/O 与 build 改进带来乐观，也有性能疑虑",
+              "summary": "不少评论先肯定 0.16.0 的改动很大，尤其是 build system 和新 I/O 机制，被认为会让 Zig 的编译与运行模型更统一。支持者觉得升级后代码更顺手，甚至能把单线程、多线程和 event loop 写成相近风格。反对者则指出当前 I/O 仍有多层 indirection 和 dynamic dispatch，性能未必比旧方案好，真正的效率提升还要看后续版本。也有人说自己仍会把 `.use_llvm = true` 当作默认选项，以换取更稳定和更成熟的 target 支持。",
+              "supportid": [
+                "48335050",
+                "48335343",
+                "48335969",
+                "48335903",
+                "48336045",
+                "48334612",
+                "48334664",
+                "48334727",
+                "48334773",
+                "48336015"
+              ]
+            },
+            {
+              "category": "Zig 被看作 garage/tinkering 语言",
+              "summary": "有一批评论把 Zig 定义成更接近 modern C 的“garage language”，适合在车库里快速试想法、再往低层深入。大家强调它的优势是 C 互操作好、native speed、没有 monkey patching 之类的隐式魔法，而且能从高层代码平滑下钻到硬件、embedded bare metal 或性能敏感场景。也有人反问：如果目标只是快速搓原型，Python 的 batteries 和庞大生态更顺手；Zig 的价值更像是当你开始在意性能、启动速度和可控内存时，它能替代一部分 C。讨论里还拿 Nim、Go、Rust 作对照，分别对应 Python-like 体验、快速编译和极限性能/安全。",
+              "supportid": [
+                "48334723",
+                "48334820",
+                "48334956",
+                "48334863",
+                "48334898",
+                "48335089",
+                "48335127",
+                "48335016",
+                "48335014",
+                "48335807",
+                "48335847",
+                "48335099",
+                "48335258",
+                "48335771",
+                "48335943",
+                "48335696",
+                "48335250",
+                "48335418",
+                "48334900",
+                "48335159",
+                "48335961"
+              ]
+            },
+            {
+              "category": "低层设计更可控，但字符串与资源管理仍嫌繁琐",
+              "summary": "另一个主题是 Zig 的低层设计是否真的比 C 更可控。支持者认为 C 和 C++ 长期被 undefined behavior 与实现差异拖累，编译器甚至会利用这些灰区做激进优化；Zig 则试图保留低层哲学，但把语义和边界整理得更明确。有人因此把它和 Modula-2、Object Pascal、Nim、Delphi、C#、Swift 这类语言放在一起谈，认为它在“能直接摸到硬件”与“代码不至于处处埋雷”之间找到了折中。与此同时，也有人直言字符串处理过于繁琐，希望能像 RAII 那样对 strings 和 containers 提供更轻量的自动管理。",
+              "supportid": [
+                "48335062",
+                "48335674",
+                "48335655",
+                "48335423",
+                "48335130",
+                "48335951",
+                "48336106",
+                "48335493"
+              ]
+            },
+            {
+              "category": "语法和工具链摩擦影响“好玩”程度",
+              "summary": "反对声音主要集中在语法和工具链摩擦。有人抱怨 Zig 把 unused variable 直接当 error，导致重构时无法像在 Rust 或 F# 那样先留着再清理，也不方便把一大段代码临时注释掉；这些细节会让“快速试错”变得更累。也有人提到某些 IDE/LSP 体验不稳定，像 Nim 的 LSP 崩溃、Helix 里的问题，说明编辑器生态还没完全跟上。再加上对 string handling 和 manual allocation 的持续抱怨，很多人觉得 Zig 的摩擦感会直接影响“好不好玩”。",
+              "supportid": [
+                "48335778",
+                "48335982",
+                "48335931",
+                "48335963",
+                "48335493",
+                "48335943",
+                "48334900",
+                "48335159",
+                "48335961"
+              ]
+            },
+            {
+              "category": "1.0 与稳定性：语言本体相对稳，stdlib 仍在变",
+              "summary": "围绕 1.0 的问题，大家更在意的是稳定边界而不是版本号本身。有人说语言本体其实已经相当稳定，频繁变化的是 stdlib；也有人提醒 big features like async IO 还在改，说明官方并不急着给出 ETA。维护者的态度被概括成“ready when it's ready”，目标是把 Zig 设计成能撑 50 年的语言，而不是为了行业信号仓促发布 1.0。升级难度相对可控、release notes 很详尽，是支持者认为值得继续跟进的理由。",
+              "supportid": [
+                "48335510",
+                "48335691",
+                "48335794",
+                "48335677",
+                "48336183",
+                "48335418"
+              ]
+            },
+            {
+              "category": "Bun 转 Rust 引发生态信任担忧",
+              "summary": "围绕 Bun 迁移到 Rust 的传闻或现实，评论把 Zig 的生态层面顾虑放大了。有人认为这是收购、upstreaming 争议和 devX 不足共同作用的结果，尤其对一个约 100 万行代码的大项目来说，改写语言本身就是危险信号。另一些人反驳说原因被夸大了，或者只是 Bun 没有认真用 incremental compilation，因此不能把个案直接上升成对 Zig 的判决。也有讨论指出，像 curl 这种测试极其严格的项目更容易自动化迁移，但像 Bun 这种规模和组织背景复杂的案例，很难靠所谓 vibe coding 一把完成。",
+              "supportid": [
+                "48335185",
+                "48335313",
+                "48335669",
+                "48335934",
+                "48335680",
+                "48335430",
+                "48336104",
+                "48335929",
+                "48335990"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "comptime",
+              "explanation": "Zig 的编译期执行/元编程机制，可在编译阶段计算值、生成代码。"
+            },
+            {
+              "term": "incremental compilation",
+              "explanation": "只重新编译受影响部分的构建方式，用来显著缩短迭代时间。"
+            },
+            {
+              "term": "undefined behavior",
+              "explanation": "C/C++ 中未定义的行为，编译器可据此做激进优化，常带来不可预测风险。"
+            },
+            {
+              "term": "LSP",
+              "explanation": "Language Server Protocol，编辑器与语言服务交互的标准协议，负责补全、跳转和诊断。"
+            },
+            {
+              "term": "async IO",
+              "explanation": "异步 I/O，通过非阻塞方式处理读写，常与 event loop 一起使用。"
+            }
+          ],
+          "context": "这条讨论围绕 Zig 0.16.0 的 build system 重做和相关发布改进展开。Zig（一个强调与 C 互操作、追求可预测性的系统编程语言）仍处在 1.0 之前，因此评论里既有人称赞它的编译速度、I/O 机制和 release notes 进步巨大，也有人担心 stdlib 和后端仍在频繁变化。很多人用 Python（脚本语言）、Rust（强调内存安全的系统语言）、Go（以快速编译著称的语言）和 Nim（语法接近 Python 的编译型语言）来对比 Zig 的定位。另一个背景是 Bun（一个 JavaScript/TypeScript 运行时）曾深度使用 Zig，后来转向 Rust 的传闻或实际迁移，让社区对 Zig 能否承载大项目产生了额外争论。",
+          "emoji": "🛠️",
+          "sarcastic_question": "build system 都重做了，1.0还要等到下个世纪吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nZig 通过将构建系统拆分为“配置器”和“执行器”两个独立进程，配合缓存机制，让 `zig build` 的冷启动速度提升了 10 倍以上。\n\n### 以前的构建系统太“重”了\n在旧版本里，`build.zig` 脚本和整个构建系统的核心实现都被编译到了同一个臃肿的进程里。这意味着每次你运行构建命令，哪怕只是改了一行代码，Zig 都得把整个构建系统连同你的脚本一起重新编译。随着 Zig 引入了 `--watch`、`--fuzz` 等复杂功能，构建系统本身的代码量越来越大，这种“每次都重头再来”的机制成了性能瓶颈。\n\n### 核心思路：把“想做什么”和“怎么做”分开\n为了解决这个问题，Andrew Kelley 提交了一个大改动，把构建逻辑拆成了两个独立的进程。第一个叫“configurer”（配置器），它只负责编译你的 `build.zig`，在内存里构建好依赖图后，将其序列化成一个二进制配置文件。第二个叫“maker”（执行器），它负责读取这个配置文件并真正执行构建任务。这两个进程各司其职，不再像以前那样搅在一起。\n\n### 利用缓存和异步编译榨干性能\n这个设计带来了三个立竿见影的性能红利。首先，现在每次构建只需要重新编译用户写的 `build.zig`，庞大的构建系统核心代码被隔离出去了。其次，父进程会缓存那个二进制配置文件，如果你只是改了命令行参数（比如加了 `-freference-trace`），系统发现配置没变，就会直接复用缓存，连 `build.zig` 都不用跑。最后，那个负责干活的“maker”进程是以 Release 模式编译的，执行效率极高，而且因为有全局缓存，每个 Zig 版本只需要编译一次。\n\n### 数据不会骗人：速度提升 90%\n这种架构优化的效果在 Benchmark 数据上非常夸张。以前运行 `zig build --help` 平均需要 150ms，CPU 指令数接近 10 亿条；现在只需要 14.3ms，CPU 指令数降到了 4300 万左右。这是一个 90% 以上的性能提升。之所以差别这么大，是因为以前每次都要执行一遍构建脚本逻辑，而现在只要读取缓存好的配置文件就能直接干活。\n\n### 给第三方工具留了后门\n除了快，这个改动还有一个隐藏福利：那个序列化后的配置文件是一个稳定的中间产物。像 ZLS（Zig Language Server）这样的第三方工具，以后可以直接读取这个文件来理解项目结构，而不需要自己去维护一套复杂的构建 runner 代码，或者去 fork Zig 的源码。这对生态系统的健康发展是个好消息。\n\n### 唯一的破坏性变更：参数透传\n虽然内部机制大改，但对普通用户的 API 冲击其实很小。唯一值得注意的破坏性变更是关于命令行参数的处理。以前大家习惯在 `build.zig` 里直接读取 `b.args`，现在需要改成调用 `run_cmd.addPassthruArgs()`。代价是构建脚本不能再“观察”这些参数了，但换来的是：当你修改命令行参数时，构建脚本不需要重新编译，进一步提升了响应速度。\n\n### 0.17.0 即将到来，是时候尝鲜了\n这个改动目前已经在 main 分支落地了，预计会包含在几周后发布的 0.17.0 版本中。如果你关心 Zig 的发展方向，现在就可以把项目切到开发版试试看，给官方团队反馈一下。当然，如果你没时间折腾，等到 0.17.1 修复了潜在 bug 再升级也完全来得及。"
+    },
     {
       "id": 48284494,
       "by": "GaggiX",
@@ -642,343 +1569,6 @@
         }
       },
       "articleSummary": "## 一句话总结\nAI 行业为了回本数千亿的投资，正试图用机器全面取代人类劳动力，但这不仅会摧毁作为经济基础的消费市场，更将瓦解维持民主运转的社会契约。\n\n### AI 行业的估值模型里，人是必须要去掉的“成本中心”\n现在的 AI 巨头们面临一个巨大的数字难题：OpenAI 估值超过 8000 亿美元，Anthropic 虽然没盈利但估值也高达数千亿。为了撑起这些天文数字的估值，仅仅卖“更好的自动补全”或者“写更长的备忘录”是远远不够的。唯一能消化这些投资的市场只有一个，那就是全球劳动力市场。说白了，投资人投的不是“副驾驶”，而是能直接替代人类员工的“自动驾驶”。如果 AI 不能大规模削减人力成本，这些公司就是资本主义历史上估值最高的泡沫。\n\n### 所谓的“生产力基准”，其实是职业淘汰的瞄准镜\n为了证明这种替代的可行性，AI 公司们开始制定各种针对性极强的基准测试。比如 OpenAI 的 GDPVal 测量模型在 44 个职业上的表现，AI Productivity Index 则专门盯着投资银行分析师、管理咨询师、律师和医生。他们甚至宣称，在几个月前模型还无法胜任的任务上，现在相比人类专业人士已经胜率超过 80%。这根本不是在说“辅助人类”，而是在给职业阶层画红圈，告诉投资人这些人的工资马上可以省下来了。\n\n### 第一阶段：裁员带来的股价狂欢是真实的\n假设技术真的像宣传的那样有效，我们来看看会发生什么。第一阶段，一家公司引入 AI 裁掉大量员工，成本大幅下降，利润率飙升，股价大涨。就像 Block 的 Jack Dorsey 今年 3 月裁掉近一半员工并归因于 AI 编码代理后，股价在盘后交易瞬间暴涨 25%。在这个阶段，资本市场对“消灭人类岗位”给予了极其丰厚的即时奖励，一切看起来都很美好。\n\n### 第二阶段：被裁掉的人不再买你的产品\n但故事马上进入第二阶段。那些被裁掉的员工失去了收入来源，自然会大幅削减消费。原本服务于这些人的企业开始营收下滑，为了生存，它们也不得不引入 AI 裁员，导致失业潮扩散。整个经济体的消费需求开始迅速萎缩。这里有个很讽刺的逻辑：企业以为自己在降本增效，实际上它们是在合力摧毁自己的客户群。\n\n### 第三阶段：囚徒困境导致集体走向毁灭\n最致命的是第三阶段，沃顿商学院的两位经济学家将其称为“AI 裁员陷阱”。在竞争激烈的市场里，一家公司通过裁员获得了全部的成本节约，却只需要承担市场需求萎缩的一小部分后果（比如二十分之一）。这制造了一个典型的囚徒困境：每家公司都理性地选择加速自动化以跑赢对手，因为个体裁员的收益总是大于集体需求崩溃的代价。结果就是，所有人都在理性地冲向悬崖，哪怕前面是集体毁灭。\n\n### 历史上的技术转型花了七十年，这次只给你两年\n乐观主义者总爱拿农业革命或工业革命举例，说新技术总会创造新工作。但数据不会骗人：农业转型花了 140 年，工业革命让工人花了 70 年才恢复工资水平。而这次 AI 革命，前白宫官员 Bharat Ramamurti 指出，可能只需要两年时间。以前的自动化是替代特定任务（比如织布或计算），而通用 AI 是在所有行业同时全面替代认知劳动。这就像当年的马匹面对内燃机，不是马做错了什么，只是它们在经济上不再被需要了。\n\n### 当劳动力不再是必需品，民主也就失去了筹码\n这不仅仅是经济危机，更是政治危机。现代民主制度建立在一个古老的契约之上：统治者需要被统治者提供劳动、税收和兵源。一旦 AI 生成价值，且所有权集中在几家擅长避税的巨头手里，这个契约就失效了。税基崩塌，工会失效，消费枯竭，财富以前所未有的速度向极少数人集中。更讽刺的是，这些 AI 技术的基础研究原本是靠公共资金资助的，现在公众承担了风险，私人公司却拿走了所有收益，还要把公众一脚踢开。\n\n### 掌权者其实很清楚后果，但他们停不下来\n最可怕的是，构建这些系统的人完全知道后果。Anthropic 的 CEO Dario Amodei 公开承认，如果普通人失去了通过创造经济价值来获得的政治筹码，局面会变得非常可怕。但他一边说着这些，一边继续加速开发这项技术，并且不支持任何立法来干预。这就像 Peter Thiel 当年的论调：当精英阶层不再需要大众来创造财富时，他们自然会认为民主和自由不再兼容。我们正在见证的，可能就是这种分离的开始。"
-    },
-    {
-      "id": 48333820,
-      "by": "vrganj",
-      "title": "Danish pension fund excludes SpaceX citing governance and valuation",
-      "url": "https://www.reuters.com/legal/transactional/danish-pension-fund-excludes-spacex-citing-governance-valuation-2026-05-29/",
-      "score": 203,
-      "detailUpdatedAt": 1780141419,
-      "createdAt": 1780131044,
-      "aiSummaryUpdatedAt": 1780142772,
-      "aisummary": {
-        "chinese_title": "丹麦养老金因治理与估值剔除 SpaceX，引发 ESG、政治与 IPO 争论",
-        "emoji": "🤨",
-        "sarcastic_question": "火箭估值1.8万亿，靠的是推力还是接盘？"
-      },
-      "classifications": {
-        "topics": [
-          10,
-          9
-        ],
-        "facets": [],
-        "tags": [
-          "SpaceX",
-          "pension fund",
-          "governance",
-          "valuation",
-          "Elon Musk",
-          "Anthropic",
-          "Mark Zuckerberg"
-        ]
-      },
-      "classificationsUpdatedAt": 1780133191,
-      "aiSummary": {
-        "chinese_title": "丹麦养老金因治理与估值剔除 SpaceX，引发 ESG、政治与 IPO 争论",
-        "emoji": "🤨",
-        "sarcastic_question": "火箭估值1.8万亿，靠的是推力还是接盘？"
-      },
-      "detail": {
-        "id": 48333820,
-        "by": "vrganj",
-        "title": "Danish pension fund excludes SpaceX citing governance and valuation",
-        "url": "https://www.reuters.com/legal/transactional/danish-pension-fund-excludes-spacex-citing-governance-valuation-2026-05-29/",
-        "score": 203,
-        "detailUpdatedAt": 1780141419,
-        "createdAt": 1780131044,
-        "aiSummaryUpdatedAt": 1780142772,
-        "aisummary": {
-          "chinese_title": "丹麦养老金因治理与估值剔除 SpaceX，引发 ESG、政治与 IPO 争论",
-          "discussion_overview": [
-            {
-              "category": "长期治理与 ESG 支持剔除",
-              "summary": "支持者认为主权/养老金基金不是短线交易员，而是要对几十年的回报和社会后果负责，所以把 ESG 和公司治理纳入筛选是本职工作。评论里提到该基金早就排除 Tesla、武器、化石燃料和人权风险公司，理由包括极端的投票权集中、CEO/CTO/董事长合一，以及对长期风险的担忧。还有人查了该基金 2009-2021 的平均年回报，发现它在丹麦养老金机构里反而表现最好，用来反驳“做伦理筛选就一定亏钱”的说法。",
-              "supportid": [
-                "48334785",
-                "48335152",
-                "48334921",
-                "48335103",
-                "48334954",
-                "48334948",
-                "48334097",
-                "48334304",
-                "48334441",
-                "48334869",
-                "48334177",
-                "48334201",
-                "48334913"
-              ]
-            },
-            {
-              "category": "利润优先派反对价值筛选",
-              "summary": "另一派认为基金经理的职责就是赚钱，伦理边界应由民主选出的政治层面来定，而不是由投资经理自行加码。有人直接说 defense 和 fossil fuels 仍然是必要产业，全面排除它们不现实，甚至会伤害欧洲安全。也有人强调 broad ETF 本来就该“买下整个市场”，如果想按价值观挑选，那就应该明说自己买的是 ESG fund，而不是把道德判断包装成理财规则。",
-              "supportid": [
-                "48334883",
-                "48334989",
-                "48335171",
-                "48335054",
-                "48335107",
-                "48334744",
-                "48334875"
-              ]
-            },
-            {
-              "category": "SpaceX 估值泡沫与接盘流动性",
-              "summary": "很多评论认为 1.8T 估值主要不是靠火箭业务，而是靠 hype、有限流通股、xAI 合并，以及把 passive money 变成接盘流动性的设计。有人说公司的纸面业务和资金结构都很吓人，所谓 fast-track 纳入指数更像是在合法抽水。还有人把这形容成 Musk 的 FOMO 和“现实扭曲场”，认为股价更多是为了让下一批买家接手，而不是反映真实现金流。",
-              "supportid": [
-                "48334322",
-                "48334539",
-                "48334410",
-                "48334295",
-                "48334298",
-                "48334194",
-                "48334519",
-                "48334635",
-                "48334617",
-                "48334673",
-                "48334586",
-                "48334658",
-                "48334414"
-              ]
-            },
-            {
-              "category": "Starlink 与空间经济的乐观叙事",
-              "summary": "支持者则强调 Starlink 是真实在赚钱的核心资产，尤其在 maritime、aviation 和 remote internet 场景里几乎没有 meaningful competition。Falcon 9 的高频成功发射也被视为 SpaceX 在低地轨道发射上的实际统治力，而不是纯故事股。乐观者相信 space economy 会逐步扩大，只要公司能长期守住份额，今天的高估值就是在提前给未来基础设施定价。",
-              "supportid": [
-                "48334317",
-                "48335222",
-                "48334704",
-                "48334657",
-                "48335092"
-              ]
-            },
-            {
-              "category": "指数基金规则与 ETF 替代方案",
-              "summary": "讨论还延伸到被动基金如何避免被迫买入这种新股。有人提议用 float-adjusted 的 ETF，如 VTI、VGT、DFUS，或者干脆选择更有筛选规则的产品；也有人想要对 IPO 设置 6 个月观察期，等 lock-up 和价格发现完成后再纳入。反方则坚持 broad index 的设计就是尽量覆盖全部市场，否则就已经偏离指数基金的本义了。",
-              "supportid": [
-                "48334357",
-                "48335001",
-                "48334596",
-                "48334457",
-                "48334410",
-                "48334796",
-                "48334744",
-                "48334782",
-                "48334582",
-                "48334747"
-              ]
-            },
-            {
-              "category": "政治因素与北欧对美国信任下滑",
-              "summary": "不少人把这次剔除和 Musk、Trump 以及 Greenland 主权争议联系起来，因为 Greenland 是丹麦王国的一部分，而 Trump 曾威胁以武力吞并它。也有人认为核心问题仍是治理缺陷，但政治背景让基金更难保持中立。另一条线索来自北欧评论者：他们说过去北欧社会普遍信任美国，如今却因边检体验、极化政治和对极右翼的支持而明显降温。",
-              "supportid": [
-                "48334787",
-                "48335100",
-                "48335218",
-                "48335025",
-                "48334844",
-                "48334480",
-                "48334541",
-                "48334547",
-                "48335182",
-                "48334494"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "ESG",
-              "explanation": "环境、社会与治理框架，用来按社会责任和长期风险筛选投资。"
-            },
-            {
-              "term": "corporate governance",
-              "explanation": "公司治理，指董事会、控制权、监督机制和管理层制衡。"
-            },
-            {
-              "term": "float-adjusted market cap",
-              "explanation": "按流通股比例调整后的市值权重，锁定股越多，在指数中的权重通常越低。"
-            },
-            {
-              "term": "Nasdaq 100 fast-track rule",
-              "explanation": "纳斯达克100的快速纳入规则，缩短新上市公司进入指数的等待期。"
-            },
-            {
-              "term": "S-1",
-              "explanation": "美国 IPO 的招股说明书/注册文件，披露业务、风险和财务信息。"
-            },
-            {
-              "term": "Starlink",
-              "explanation": "SpaceX 旗下的卫星互联网业务，也是评论里争论估值的重要资产。"
-            },
-            {
-              "term": "sovereign fund",
-              "explanation": "主权财富基金，国家或公共机构管理的长期投资基金。"
-            },
-            {
-              "term": "exit liquidity",
-              "explanation": "接盘流动性，指让后进入的投资者为早期持有人提供卖出出口。"
-            }
-          ],
-          "context": "这场讨论围绕丹麦 AkademikerPension（丹麦学术人员养老金基金）宣布退出 SpaceX 展开，理由是公司治理“极其不足”且估值过高；该基金此前也曾排除 Tesla、武器、化石燃料和人权风险公司。评论里进一步提到 Elon Musk 可能控制超过 80% 的投票权，并同时兼任 CEO、CTO 和董事长，因此即使公司还未上市，治理风险也被认为很突出。争论之所以扩大，是因为 SpaceX 可能通过 IPO 和 Nasdaq 100 fast-track rule（纳斯达克100快速纳入规则）迅速进入指数，被动资金和退休金可能被动卷入高估值资产。政治层面上，Musk 与 Trump 的关系、Trump 对 Greenland（格陵兰，丹麦王国自治领地）的威胁，以及北欧社会对美国信任下降，都让这次决定带上了更强的地缘政治色彩。",
-          "emoji": "🤨",
-          "sarcastic_question": "火箭估值1.8万亿，靠的是推力还是接盘？"
-        },
-        "classifications": {
-          "topics": [
-            10,
-            9
-          ],
-          "facets": [],
-          "tags": [
-            "SpaceX",
-            "pension fund",
-            "governance",
-            "valuation",
-            "Elon Musk",
-            "Anthropic",
-            "Mark Zuckerberg"
-          ]
-        },
-        "classificationsUpdatedAt": 1780133191,
-        "aiSummary": {
-          "chinese_title": "丹麦养老金因治理与估值剔除 SpaceX，引发 ESG、政治与 IPO 争论",
-          "discussion_overview": [
-            {
-              "category": "长期治理与 ESG 支持剔除",
-              "summary": "支持者认为主权/养老金基金不是短线交易员，而是要对几十年的回报和社会后果负责，所以把 ESG 和公司治理纳入筛选是本职工作。评论里提到该基金早就排除 Tesla、武器、化石燃料和人权风险公司，理由包括极端的投票权集中、CEO/CTO/董事长合一，以及对长期风险的担忧。还有人查了该基金 2009-2021 的平均年回报，发现它在丹麦养老金机构里反而表现最好，用来反驳“做伦理筛选就一定亏钱”的说法。",
-              "supportid": [
-                "48334785",
-                "48335152",
-                "48334921",
-                "48335103",
-                "48334954",
-                "48334948",
-                "48334097",
-                "48334304",
-                "48334441",
-                "48334869",
-                "48334177",
-                "48334201",
-                "48334913"
-              ]
-            },
-            {
-              "category": "利润优先派反对价值筛选",
-              "summary": "另一派认为基金经理的职责就是赚钱，伦理边界应由民主选出的政治层面来定，而不是由投资经理自行加码。有人直接说 defense 和 fossil fuels 仍然是必要产业，全面排除它们不现实，甚至会伤害欧洲安全。也有人强调 broad ETF 本来就该“买下整个市场”，如果想按价值观挑选，那就应该明说自己买的是 ESG fund，而不是把道德判断包装成理财规则。",
-              "supportid": [
-                "48334883",
-                "48334989",
-                "48335171",
-                "48335054",
-                "48335107",
-                "48334744",
-                "48334875"
-              ]
-            },
-            {
-              "category": "SpaceX 估值泡沫与接盘流动性",
-              "summary": "很多评论认为 1.8T 估值主要不是靠火箭业务，而是靠 hype、有限流通股、xAI 合并，以及把 passive money 变成接盘流动性的设计。有人说公司的纸面业务和资金结构都很吓人，所谓 fast-track 纳入指数更像是在合法抽水。还有人把这形容成 Musk 的 FOMO 和“现实扭曲场”，认为股价更多是为了让下一批买家接手，而不是反映真实现金流。",
-              "supportid": [
-                "48334322",
-                "48334539",
-                "48334410",
-                "48334295",
-                "48334298",
-                "48334194",
-                "48334519",
-                "48334635",
-                "48334617",
-                "48334673",
-                "48334586",
-                "48334658",
-                "48334414"
-              ]
-            },
-            {
-              "category": "Starlink 与空间经济的乐观叙事",
-              "summary": "支持者则强调 Starlink 是真实在赚钱的核心资产，尤其在 maritime、aviation 和 remote internet 场景里几乎没有 meaningful competition。Falcon 9 的高频成功发射也被视为 SpaceX 在低地轨道发射上的实际统治力，而不是纯故事股。乐观者相信 space economy 会逐步扩大，只要公司能长期守住份额，今天的高估值就是在提前给未来基础设施定价。",
-              "supportid": [
-                "48334317",
-                "48335222",
-                "48334704",
-                "48334657",
-                "48335092"
-              ]
-            },
-            {
-              "category": "指数基金规则与 ETF 替代方案",
-              "summary": "讨论还延伸到被动基金如何避免被迫买入这种新股。有人提议用 float-adjusted 的 ETF，如 VTI、VGT、DFUS，或者干脆选择更有筛选规则的产品；也有人想要对 IPO 设置 6 个月观察期，等 lock-up 和价格发现完成后再纳入。反方则坚持 broad index 的设计就是尽量覆盖全部市场，否则就已经偏离指数基金的本义了。",
-              "supportid": [
-                "48334357",
-                "48335001",
-                "48334596",
-                "48334457",
-                "48334410",
-                "48334796",
-                "48334744",
-                "48334782",
-                "48334582",
-                "48334747"
-              ]
-            },
-            {
-              "category": "政治因素与北欧对美国信任下滑",
-              "summary": "不少人把这次剔除和 Musk、Trump 以及 Greenland 主权争议联系起来，因为 Greenland 是丹麦王国的一部分，而 Trump 曾威胁以武力吞并它。也有人认为核心问题仍是治理缺陷，但政治背景让基金更难保持中立。另一条线索来自北欧评论者：他们说过去北欧社会普遍信任美国，如今却因边检体验、极化政治和对极右翼的支持而明显降温。",
-              "supportid": [
-                "48334787",
-                "48335100",
-                "48335218",
-                "48335025",
-                "48334844",
-                "48334480",
-                "48334541",
-                "48334547",
-                "48335182",
-                "48334494"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "ESG",
-              "explanation": "环境、社会与治理框架，用来按社会责任和长期风险筛选投资。"
-            },
-            {
-              "term": "corporate governance",
-              "explanation": "公司治理，指董事会、控制权、监督机制和管理层制衡。"
-            },
-            {
-              "term": "float-adjusted market cap",
-              "explanation": "按流通股比例调整后的市值权重，锁定股越多，在指数中的权重通常越低。"
-            },
-            {
-              "term": "Nasdaq 100 fast-track rule",
-              "explanation": "纳斯达克100的快速纳入规则，缩短新上市公司进入指数的等待期。"
-            },
-            {
-              "term": "S-1",
-              "explanation": "美国 IPO 的招股说明书/注册文件，披露业务、风险和财务信息。"
-            },
-            {
-              "term": "Starlink",
-              "explanation": "SpaceX 旗下的卫星互联网业务，也是评论里争论估值的重要资产。"
-            },
-            {
-              "term": "sovereign fund",
-              "explanation": "主权财富基金，国家或公共机构管理的长期投资基金。"
-            },
-            {
-              "term": "exit liquidity",
-              "explanation": "接盘流动性，指让后进入的投资者为早期持有人提供卖出出口。"
-            }
-          ],
-          "context": "这场讨论围绕丹麦 AkademikerPension（丹麦学术人员养老金基金）宣布退出 SpaceX 展开，理由是公司治理“极其不足”且估值过高；该基金此前也曾排除 Tesla、武器、化石燃料和人权风险公司。评论里进一步提到 Elon Musk 可能控制超过 80% 的投票权，并同时兼任 CEO、CTO 和董事长，因此即使公司还未上市，治理风险也被认为很突出。争论之所以扩大，是因为 SpaceX 可能通过 IPO 和 Nasdaq 100 fast-track rule（纳斯达克100快速纳入规则）迅速进入指数，被动资金和退休金可能被动卷入高估值资产。政治层面上，Musk 与 Trump 的关系、Trump 对 Greenland（格陵兰，丹麦王国自治领地）的威胁，以及北欧社会对美国信任下降，都让这次决定带上了更强的地缘政治色彩。",
-          "emoji": "🤨",
-          "sarcastic_question": "火箭估值1.8万亿，靠的是推力还是接盘？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n丹麦最大的养老基金 AkademikerPension 决定清仓 SpaceX，核心原因不是业绩不好，而是因为 Elon Musk 的治理风险和缺乏透明度的估值机制让他们睡不着觉。\n\n### 投资不是只看回报，还得看\"人\"\n大家可能觉得，只要 SpaceX 的火箭发得好、估值涨得快，机构投资者就会蜂拥而入。但 AkademikerParker 这次偏偏反其道而行之。他们管理着大约 200 亿美元的资金，本来持有 SpaceX 的股份，但现在决定彻底卖出。理由很直接：他们觉得 Elon Musk 这个\"关键人\"带来的风险已经超过了潜在收益。说白了，就是担心 Musk 的个人行为和决策风格太不可控，万一哪天出个幺蛾子，作为股东他们一点办法都没有。\n\n### 治理结构才是最大的雷区\n这里有个很现实的问题：SpaceX 是一家私人公司，不是上市公司。这意味着它不需要像 Apple 或 Tesla 那样披露详细的财务报告，也不受同样的监管约束。对于一家受托管理养老金的机构来说，这种\"黑盒\"状态是致命的。文章提到，他们特别担心 Musk 在其他公司（比如 X/Twitter）的行为会波及到 SpaceX。因为缺乏独立董事的制衡，Musk 在 SpaceX 的话语权几乎是绝对的。这种\"一言堂\"的治理结构，在机构眼里就是一颗定时炸弹。\n\n### 估值也是个迷\n除了治理风险，估值的不透明也是劝退的重要原因。SpaceX 的估值主要靠二级市场的员工股交易来推算，而不是经过审计的公开财报。最近虽然有传闻说 SpaceX 的内部股交易价格飙升，但这毕竟是\"内部价\"。对于需要向公众负责的养老基金来说，他们很难验证这个价格是不是真实的反映。如果估值是虚高的，那现在买入或者持有，就是在给未来的亏损埋单。\n\n### ESG 标准不是摆设\n有意思的地方在于，这其实是一个典型的 ESG（环境、社会和治理）投资决策。很多开发者可能觉得 ESG 是虚的，但在大资金这里，\"G\"（Governance，治理）是硬指标。AkademikerPension 明确表示，他们无法确认 SpaceX 是否符合其内部的负责任投资标准。这不仅仅是道德审判，更是一种风控手段。如果一家公司的治理结构不透明，那么无论它的技术多牛，在合规层面都是不合格的。\n\n### 用脚投票的信号\n这次撤资虽然金额可能不算惊天动地，但信号意义很强。它说明在当前的市场环境下，即使是处于科技前沿的独角兽，如果治理结构跟不上，也会被长期资本抛弃。对于开发者来说，这其实是个提醒：技术壁垒固然重要，但商业世界的运行规则——尤其是透明度和制衡机制——同样决定着一家公司的生死。SpaceX 现在依然强势，但这种\"不透明\"的溢价，迟早会被市场重新定价。"
     },
     {
       "id": 48321631,
@@ -8047,275 +8637,6 @@
       "articleSummary": "抱歉，我无法完成这项任务。\n\n你提供的文本内容并非一篇技术文章，而是网站 `dutchreview.com` 的反爬虫验证页面（Cloudflare Challenge）的 HTML 和 JavaScript 代码。这段代码主要用于验证浏览器环境，并不包含关于“郁金香狂热”或任何技术分析的实质性内容。\n\n既然没有原文内容，我无法为你提取技术细节、逻辑链或进行总结。如果你能提供文章的正文文本或有效的链接，我很乐意为你撰写这篇技术博客。"
     },
     {
-      "id": 48323992,
-      "by": "justinweiss",
-      "title": "Bijou64: A variable-length integer encoding",
-      "url": "https://www.inkandswitch.com/tangents/bijou64/",
-      "score": 141,
-      "detailUpdatedAt": 1780078423,
-      "createdAt": 1780068012,
-      "aiSummaryUpdatedAt": 1780080028,
-      "aisummary": {
-        "chinese_title": "Bijou64：首字节定长的规范 varint",
-        "emoji": "🤔",
-        "sarcastic_question": "为了省字节，连 SIMD 和安全都不要了？"
-      },
-      "classifications": {
-        "topics": [
-          4,
-          6,
-          3
-        ],
-        "facets": [
-          7,
-          9
-        ],
-        "tags": [
-          "Bijou64",
-          "varint",
-          "LEB128",
-          "canonicalization",
-          "u64",
-          "wire-format",
-          "multicodec",
-          "inkandswitch"
-        ]
-      },
-      "classificationsUpdatedAt": 1780071943,
-      "aiSummary": {
-        "chinese_title": "Bijou64：首字节定长的规范 varint",
-        "emoji": "🤔",
-        "sarcastic_question": "为了省字节，连 SIMD 和安全都不要了？"
-      },
-      "detail": {
-        "id": 48323992,
-        "by": "justinweiss",
-        "title": "Bijou64: A variable-length integer encoding",
-        "url": "https://www.inkandswitch.com/tangents/bijou64/",
-        "score": 141,
-        "detailUpdatedAt": 1780078423,
-        "createdAt": 1780068012,
-        "aiSummaryUpdatedAt": 1780080028,
-        "aisummary": {
-          "chinese_title": "Bijou64：首字节定长的规范 varint",
-          "discussion_overview": [
-            {
-              "category": "SIMD 与解码性能争论",
-              "summary": "一些人认为 Bijou64 最大的问题是难以吃到 SIMD 的红利：单个值的长度虽能从首字节判断，但真正高效的 SIMD varint 往往依赖在一个窗口里快速找出所有边界，而 Bijou64 把标签和数据都混在 0x00-0xFF 中，没有像 ULEB128 那样固定位置的 continuation bit。也有人反驳说这要看场景，如果目标是存储或传输而不是 CPU 批量计算，密集打包仍然有价值；在数据中心或 search index 这类解码本身就是瓶颈的系统里，编码方式的影响并不小。还有观点认为它并非完全不能用 SIMD 做，只是很难做到 byte-parallel，只能更多依赖 speculative decode、compress/expand 之类的技巧。",
-              "supportid": [
-                "48325099",
-                "48325533",
-                "48325591",
-                "48325658",
-                "48325932",
-                "48326028",
-                "48326454",
-                "48326625",
-                "48326885"
-              ]
-            },
-            {
-              "category": "canonical encoding 与安全性",
-              "summary": "讨论里非常强调 canonical encoding 的价值：同一个数只有一种表示，便于 hashing、签名和 content-addressed 数据，也让 fuzzing 的 round-trip 测试更直接。相反，LEB128 这类允许 overlong encoding 的方案会让解析器面对歧义和攻击面，甚至可能导致不同实现对同一字节流得出不同结果，延伸出 signature wrapping 或 malleability 问题。还有人提醒，恶意长度前缀可能让解码器在真正完成边界检查前就多读几个字节，所以接口最好显式带上 end_address 或 max_read。",
-              "supportid": [
-                "48324675",
-                "48325042",
-                "48325724",
-                "48326251",
-                "48324889",
-                "48325402",
-                "48324974",
-                "48325521",
-                "48326063",
-                "48326385",
-                "48326277"
-              ]
-            },
-            {
-              "category": "非 canonical 编码的实际用途",
-              "summary": "另一派则为 overlong 或 non-canonical 编码辩护，认为它在一些工程流程里并非纯粹浪费。比如写入 length prefix 时，如果 payload 长度要等编码完才知道，先预留固定宽度再回填会很方便；媒体容器或已编码文件的原地修改也常需要这种缓冲空间。编译器和 linker 场景更典型：先用最长形式发出未链接的 varint，可以避免后续补丁把周围代码挤来挤去，导致所有引用地址都要重新计算。",
-              "supportid": [
-                "48324865",
-                "48325114",
-                "48325135",
-                "48324998",
-                "48325277",
-                "48326265",
-                "48325078"
-              ]
-            },
-            {
-              "category": "与现有 varint / 长度编码的对比",
-              "summary": "很多评论把 Bijou64 放到现有格式谱系里比较：它像 length-prefixed varint，和 LEB128、protobuf varint、SQLite varint、BER-TLV 都有关联，但每种方案的取舍不同。它的优点是首字节就能知道总长度，而且对每个值只有一种编码；代价是常见的 2 字节范围没有 LEB128 那么宽，且只覆盖 uint64，不追求无限扩展。有人还提到 vu128、vectorizing VByte、Elias omega coding 等替代方案，说明这个设计空间里速度、空间和实现复杂度一直在拉扯。",
-              "supportid": [
-                "48324781",
-                "48325332",
-                "48325368",
-                "48326400",
-                "48326176",
-                "48326233",
-                "48326671",
-                "48326121",
-                "48327115",
-                "48325019",
-                "48324960",
-                "48325441"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "SIMD",
-              "explanation": "Single Instruction, Multiple Data，一类用向量寄存器并行处理多字节或多数值的 CPU 技术。"
-            },
-            {
-              "term": "LEB128",
-              "explanation": "一种 variable-length integer 编码，靠 continuation bit 表示后续字节，常见于 DWARF 和 WASM。"
-            },
-            {
-              "term": "canonical encoding",
-              "explanation": "同一个数值只有唯一表示的编码方式，便于签名、hashing 和一致性校验。"
-            },
-            {
-              "term": "overlong encoding",
-              "explanation": "用比必要更多的字节表示同一值的非规范编码，常用于 padding，但也会带来歧义和攻击面。"
-            },
-            {
-              "term": "SQLite varint",
-              "explanation": "SQLite 使用的变长整数格式，常被拿来和 LEB128、Bijou64 对比。"
-            },
-            {
-              "term": "BER-TLV",
-              "explanation": "ISO/IEC 8825-1 里的长度/类型/值编码格式，长度字段本身也可变长。"
-            }
-          ],
-          "context": "Bijou64 是一种 variable-length integer encoding：小整数可以直接用 1 byte 表示，更大的值则由首字节携带长度信息，后面跟随相应数量的 payload bytes，因此读到第一个字节就能知道总宽度。它的核心卖点是每个数只有一种 canonical representation，尽量避免 LEB128 这类格式里常见的 overlong / non-canonical 形式。评论把它放在 DWARF（调试信息格式）和 WASM（WebAssembly，一种字节码运行时）常用的 LEB128、SQLite varint（SQLite 的变长整数）、BER-TLV（ISO 7816/ASN.1 的长度编码）这些方案旁边比较。讨论背景还涉及编译器和 linker 的重定位、签名与 content-addressing 的稳定性，以及现代 CPU 上 SIMD 是否能高效做 varint boundary detection。",
-          "emoji": "🤔",
-          "sarcastic_question": "为了省字节，连 SIMD 和安全都不要了？"
-        },
-        "classifications": {
-          "topics": [
-            4,
-            6,
-            3
-          ],
-          "facets": [
-            7,
-            9
-          ],
-          "tags": [
-            "Bijou64",
-            "varint",
-            "LEB128",
-            "canonicalization",
-            "u64",
-            "wire-format",
-            "multicodec",
-            "inkandswitch"
-          ]
-        },
-        "classificationsUpdatedAt": 1780071943,
-        "aiSummary": {
-          "chinese_title": "Bijou64：首字节定长的规范 varint",
-          "discussion_overview": [
-            {
-              "category": "SIMD 与解码性能争论",
-              "summary": "一些人认为 Bijou64 最大的问题是难以吃到 SIMD 的红利：单个值的长度虽能从首字节判断，但真正高效的 SIMD varint 往往依赖在一个窗口里快速找出所有边界，而 Bijou64 把标签和数据都混在 0x00-0xFF 中，没有像 ULEB128 那样固定位置的 continuation bit。也有人反驳说这要看场景，如果目标是存储或传输而不是 CPU 批量计算，密集打包仍然有价值；在数据中心或 search index 这类解码本身就是瓶颈的系统里，编码方式的影响并不小。还有观点认为它并非完全不能用 SIMD 做，只是很难做到 byte-parallel，只能更多依赖 speculative decode、compress/expand 之类的技巧。",
-              "supportid": [
-                "48325099",
-                "48325533",
-                "48325591",
-                "48325658",
-                "48325932",
-                "48326028",
-                "48326454",
-                "48326625",
-                "48326885"
-              ]
-            },
-            {
-              "category": "canonical encoding 与安全性",
-              "summary": "讨论里非常强调 canonical encoding 的价值：同一个数只有一种表示，便于 hashing、签名和 content-addressed 数据，也让 fuzzing 的 round-trip 测试更直接。相反，LEB128 这类允许 overlong encoding 的方案会让解析器面对歧义和攻击面，甚至可能导致不同实现对同一字节流得出不同结果，延伸出 signature wrapping 或 malleability 问题。还有人提醒，恶意长度前缀可能让解码器在真正完成边界检查前就多读几个字节，所以接口最好显式带上 end_address 或 max_read。",
-              "supportid": [
-                "48324675",
-                "48325042",
-                "48325724",
-                "48326251",
-                "48324889",
-                "48325402",
-                "48324974",
-                "48325521",
-                "48326063",
-                "48326385",
-                "48326277"
-              ]
-            },
-            {
-              "category": "非 canonical 编码的实际用途",
-              "summary": "另一派则为 overlong 或 non-canonical 编码辩护，认为它在一些工程流程里并非纯粹浪费。比如写入 length prefix 时，如果 payload 长度要等编码完才知道，先预留固定宽度再回填会很方便；媒体容器或已编码文件的原地修改也常需要这种缓冲空间。编译器和 linker 场景更典型：先用最长形式发出未链接的 varint，可以避免后续补丁把周围代码挤来挤去，导致所有引用地址都要重新计算。",
-              "supportid": [
-                "48324865",
-                "48325114",
-                "48325135",
-                "48324998",
-                "48325277",
-                "48326265",
-                "48325078"
-              ]
-            },
-            {
-              "category": "与现有 varint / 长度编码的对比",
-              "summary": "很多评论把 Bijou64 放到现有格式谱系里比较：它像 length-prefixed varint，和 LEB128、protobuf varint、SQLite varint、BER-TLV 都有关联，但每种方案的取舍不同。它的优点是首字节就能知道总长度，而且对每个值只有一种编码；代价是常见的 2 字节范围没有 LEB128 那么宽，且只覆盖 uint64，不追求无限扩展。有人还提到 vu128、vectorizing VByte、Elias omega coding 等替代方案，说明这个设计空间里速度、空间和实现复杂度一直在拉扯。",
-              "supportid": [
-                "48324781",
-                "48325332",
-                "48325368",
-                "48326400",
-                "48326176",
-                "48326233",
-                "48326671",
-                "48326121",
-                "48327115",
-                "48325019",
-                "48324960",
-                "48325441"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "SIMD",
-              "explanation": "Single Instruction, Multiple Data，一类用向量寄存器并行处理多字节或多数值的 CPU 技术。"
-            },
-            {
-              "term": "LEB128",
-              "explanation": "一种 variable-length integer 编码，靠 continuation bit 表示后续字节，常见于 DWARF 和 WASM。"
-            },
-            {
-              "term": "canonical encoding",
-              "explanation": "同一个数值只有唯一表示的编码方式，便于签名、hashing 和一致性校验。"
-            },
-            {
-              "term": "overlong encoding",
-              "explanation": "用比必要更多的字节表示同一值的非规范编码，常用于 padding，但也会带来歧义和攻击面。"
-            },
-            {
-              "term": "SQLite varint",
-              "explanation": "SQLite 使用的变长整数格式，常被拿来和 LEB128、Bijou64 对比。"
-            },
-            {
-              "term": "BER-TLV",
-              "explanation": "ISO/IEC 8825-1 里的长度/类型/值编码格式，长度字段本身也可变长。"
-            }
-          ],
-          "context": "Bijou64 是一种 variable-length integer encoding：小整数可以直接用 1 byte 表示，更大的值则由首字节携带长度信息，后面跟随相应数量的 payload bytes，因此读到第一个字节就能知道总宽度。它的核心卖点是每个数只有一种 canonical representation，尽量避免 LEB128 这类格式里常见的 overlong / non-canonical 形式。评论把它放在 DWARF（调试信息格式）和 WASM（WebAssembly，一种字节码运行时）常用的 LEB128、SQLite varint（SQLite 的变长整数）、BER-TLV（ISO 7816/ASN.1 的长度编码）这些方案旁边比较。讨论背景还涉及编译器和 linker 的重定位、签名与 content-addressing 的稳定性，以及现代 CPU 上 SIMD 是否能高效做 varint boundary detection。",
-          "emoji": "🤔",
-          "sarcastic_question": "为了省字节，连 SIMD 和安全都不要了？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n为了修复签名验证中的“非规范编码”漏洞，作者设计了 bijou64，结果发现这种“结构上强制唯一性”的设计，不仅消除了运行时检查，还因为避免了逐位扫描和利用了 CPU 指令，比通用的 LEB128 快了 2-10 倍。\n\n### LEB128 的隐患：同一个数字，多种写法\n很多二进制协议用 LEB128 这种变长整数来省空间，但它有个致命伤：**非规范性**。比如数字 `0`，既可以用单字节 `0x00` 表示，也可以用 `0x80 0x00` 甚至更长的 `0x80` 序列表示。大多数解码器为了兼容性会照单全收，但这在安全场景下是灾难。如果你对数据进行签名，攻击者可以在不改变数值的前提下篡改字节（比如加个 `0x80`），导致签名验证失败。虽然可以通过写额外的代码强制校验“规范格式”，但历史经验（如 ASN.1、JWT 的漏洞）告诉我们，这种校验逻辑很容易被开发者遗漏、优化掉或忘记移植，最终留下安全隐患。\n\n### 核心思路：把校验逻辑“编码”进格式里\n作者不想依赖运行时的 `if` 语句来修补漏洞，而是从格式设计上根除它。bijou64 的核心目标是：**让每个整数只有一种合法的编码方式**。这样，任何符合格式的数据自动就是规范的，不需要额外的校验代码。这种设计不仅为了安全，也意外地带来了性能红利。因为不需要处理各种边界情况，解码器的逻辑可以变得非常纯粹和直接。\n\n### 巧妙设计：首字节即标签，拒绝歧义\nbijou64 的第一个技巧是利用首字节做“双重 duty”。数值 0-247 直接用单字节表示，和 LEB128 类似。但 248-255 不再表示数值本身，而是变成了**长度标签**，告诉解码器后面还有多少个字节。这意味着解码器读完第一个字节就能立刻知道需要分配多少内存（O(1)），而 LEB128 必须逐字节扫描直到遇到没有 continuation bit 的字节（O(n)）。这种“一看便知”的特性让分支预测器非常开心。\n\n### 消除冗余：利用偏移量强制唯一\n光有标签还不够，作者引入了第二个技巧：**偏移量**。为了防止 `0xF8 0x00` 这种写法被解释为 `0`（因为 `0` 已经是 `0x00` 了），bijou64 规定后续字节的值必须加上一个偏移量。比如标签 `0xF8` 后面的字节，实际值是 `字节值 + 248`。随着标签代表的长度增加，偏移量也按特定规律累加（如 `0x01F8`, `0x0101F8`）。这种设计就像我们的十进制系统，保证了每个数字只有唯一的组合方式，彻底杜绝了 LEB128 那种“前导零”式的歧义。\n\n### 性能惊喜：比 LEB128 快 2-10 倍\n原本作者以为为了安全性会牺牲性能，结果 Benchmark 打了脸。在 ARM (M2 Pro) 和 x86 (Zen 5) 上的测试显示，bijou64 的解码速度比 LEB128 快 2-10 倍。对于小数字，bijou64 大约快 2 倍；而对于需要扫描多个字节的大数字，优势扩大到 8-10 倍。在全 `u64` 分布的压力测试下，bijou64 处理 4096 个值只需约 3µs，而 LEB128 需要约 30µs。更有意思的是，bijou64 的性能曲线非常陡峭且稳定，而 LEB128 因为依赖数据内容的分支预测，性能抖动很大。\n\n### 为什么这么快？因为 CPU 很喜欢\n这背后的原因其实很符合计算机直觉：首先，不需要像 LEB128 那样逐个检查 continuation bit，减少了大量的分支跳转；其次，bijou64 的 payload 是连续的大端序整数，CPU 可以直接用 `bswap` 指令一次性加载并交换字节序，而 LEB128 得把 7-bit 的碎片拼起来，又要移位又要掩码；最后，虽然 bijou64 引入了偏移量计算，但这只是一次简单的加法指令，比复杂的循环和分支判断要轻量得多。\n\n### 权衡与建议：何时该换掉 LEB128\n当然，bijou64 不是万能的。在编码速度上，对于 248-65535 这个区间的小数字，LEB128 依然能赢 bijou64 约 1.24 倍。在空间占用上，两者在大多数真实负载下差别微乎其微。作者的建议很中肯：如果你的新协议涉及签名、内容寻址或者任何要求“字节级一致性”的场景，bijou64 是比 LEB128 更安全且更快的替代品；但如果你只是在一个成熟协议里做内部优化，LEB128 依然是那个经过充分考验的老朋友。"
-    },
-    {
       "id": 48323683,
       "by": "PinkG",
       "title": "I Am Retiring from Tech to Live Offline",
@@ -14858,319 +15179,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n写作不是靠灵感这种玄学，而是一门可以通过拆解任务、管理认知负荷和刻意练习来掌握的科学技能。\n\n### 写作痛苦的根源：把“创造”和“评判”混为一谈\n很多开发者（包括作者自己）以前觉得写作是纯艺术，得等“缪斯女神”来了才能动笔。这种心态导致写作过程极其痛苦，因为我们在试图同时做两件冲突的事：一边疯狂发散思维寻找创意，一边又用批判的眼光审视每一个字句。说白了，这就像让你在写代码的同时进行 Code Review，大脑的认知负荷直接爆表。作者指出，这种“边写边改”的习惯是扼杀写作效率的元凶，它让原本流畅的思维流被频繁的自我打断所切断。\n\n### 核心解法：把写作流程拆解为独立的流水线\n那怎么办？作者给出的方案是借鉴工程思维，把写作拆解成独立的阶段，就像软件开发中的“开发”和“测试”分离一样。具体来说，写作应该被拆分为：构思、起草、修改和编辑。在起草阶段，你的唯一任务是把想法倒出来，哪怕是一堆垃圾也无所谓，绝对不要回头修改。等到所有内容都写完了，再启动“编辑模式”去打磨结构、润色语言。这种分离让大脑在同一个时间点只专注于一种模式，极大地降低了心理阻力。\n\n### 降低门槛：用“烂初稿”骗过大脑的完美主义\n有意思的地方在于，为了克服拖延，作者建议我们要刻意追求“烂初稿”。这听起来很反直觉，但背后的逻辑非常硬核：大脑天生抗拒困难任务，如果你一开始就想写出完美的文章，大脑就会本能地逃避。相反，如果你告诉自己“我现在只是要写一堆没人看的废话”，心理压力瞬间就释放了。作者强调，初稿的唯一目的就是“存在”，而不是“完美”。一旦你接受了这一点，你会发现开始写作变得异常容易，而修改一堆已有的文字，远比凭空创造要简单得多。\n\n### 结构先行：不要让读者在迷宫里找路\n除了流程管理，文章还提到了一个关键技术点：结构化思维。很多技术文章写得烂，不是因为文笔不好，而是因为逻辑混乱。作者建议在写任何内容之前，先列出详细的大纲，确保逻辑链条是通顺的。这就像写代码前先画架构图，如果逻辑骨架是歪的，堆砌再华丽的辞藻也没用。好的结构能让读者预判接下来的内容，减少他们理解信息的认知成本。说白了，写作的本质不是展示你的词汇量，而是高效地传输信息。\n\n### 刻意练习：把反馈变成迭代的动力\n最后，作者打破了“写作靠天赋”的迷思，指出写作其实和编程一样，是一项可以通过刻意练习习得的技能。关键在于获取反馈并进行迭代。你需要把读者的反应当作 Benchmark，如果读者在某一段停顿或感到困惑，那就是你的“Bug”，需要修复。通过不断地“写—反馈—改”，你的大脑会建立起一套关于写作的神经回路。久而久之，那些曾经需要绞尽脑汁思考的修辞和结构，会变成像敲 `for` 循环一样自然的肌肉记忆。"
-    },
-    {
-      "id": 48309302,
-      "by": "jjp",
-      "title": "EU fines Temu €200M for allowing sale of illegal products",
-      "url": "https://www.bbc.co.uk/news/articles/c1k2ydn1rz8o",
-      "score": 276,
-      "detailUpdatedAt": 1780004594,
-      "createdAt": 1779979211,
-      "aiSummaryUpdatedAt": 1780005601,
-      "aisummary": {
-        "chinese_title": "EU罚Temu 2亿欧元：非法商品、安全与平台责任争议",
-        "emoji": "⚖️",
-        "sarcastic_question": "卖毒玩具只罚这点，难道真能叫合规成本吗？"
-      },
-      "classifications": {
-        "topics": [
-          9,
-          10,
-          7
-        ],
-        "facets": [
-          8
-        ],
-        "tags": [
-          "Temu",
-          "EU",
-          "CE mark",
-          "China",
-          "BBC"
-        ]
-      },
-      "classificationsUpdatedAt": 1779981647,
-      "aiSummary": {
-        "chinese_title": "EU罚Temu 2亿欧元：非法商品、安全与平台责任争议",
-        "emoji": "⚖️",
-        "sarcastic_question": "卖毒玩具只罚这点，难道真能叫合规成本吗？"
-      },
-      "detail": {
-        "id": 48309302,
-        "by": "jjp",
-        "title": "EU fines Temu €200M for allowing sale of illegal products",
-        "url": "https://www.bbc.co.uk/news/articles/c1k2ydn1rz8o",
-        "score": 276,
-        "detailUpdatedAt": 1780004594,
-        "createdAt": 1779979211,
-        "aiSummaryUpdatedAt": 1780005601,
-        "aisummary": {
-          "chinese_title": "EU罚Temu 2亿欧元：非法商品、安全与平台责任争议",
-          "discussion_overview": [
-            {
-              "category": "支持监管：低价不能越过安全底线",
-              "summary": "不少评论承认 Temu 的低价和供给价值，但认为 chargers、儿童玩具、接墙电的电器、e-bike 电池、激光器这类商品本来就该是监管红线。有人提到自己买到过会冒火花或频繁出问题的产品，说明危险并不只存在于 Temu，而是低价消费品领域的普遍问题。另一边也有人强调，父母和普通消费者不可能对每件商品做毒性与电气安全测试，不能把安全责任完全推回个人。这个观点的核心是：便宜可以接受，但不能以火灾、窒息或有毒材料为代价。",
-              "supportid": [
-                "48312569",
-                "48312700",
-                "48313378",
-                "48314458",
-                "48313599",
-                "48314050",
-                "48309508",
-                "48312733"
-              ]
-            },
-            {
-              "category": "反对双标：Temu只是替整个零售系统背锅",
-              "summary": "另一组评论认为 Temu 被单独点名有明显双标，因为 Amazon、eBay、Action、Carrefour、Leclerc 以及大量本地 bazaar 也在卖几乎相同的中国货，只是加了更高的 markup。有人举例说本地实体店甚至连价格都不公开，却借着本地化叙事赚取高利润，实际上只是薄包装的 importer 或 dropshipper。还有人指出，很多所谓本地品牌和 store brand 也未必比 Temu 更安全，区别更多是品牌、售后和合规链条是否清楚。这个阵营的结论是：Temu 不是唯一的问题，甚至可能只是被拿来替整个零售系统背锅。",
-              "supportid": [
-                "48310692",
-                "48312887",
-                "48313606",
-                "48313727",
-                "48313868",
-                "48315986",
-                "48313368",
-                "48311141",
-                "48315819"
-              ]
-            },
-            {
-              "category": "平台责任与执法难题",
-              "summary": "讨论里反复出现的平台责任问题：如果商品在网站上售出，平台到底是 marketplace 还是 seller。有人强调 CE mark 本质上是 self-certification，真假难靠海量包裹逐一验证，而真正有效的追责必须找到能被起诉或罚款的欧盟境内主体。也有人把 Amazon 的第三方卖家、fulfilled by 与 direct seller 的灰区拿来类比，认为平台常借“只是中介”来逃避责任。还有评论提到，海关对小包裹的 spot checks 无法覆盖每天数千万件包裹，因此 local warehouse、bond、audits 之类机制才可能让责任落地。",
-              "supportid": [
-                "48309756",
-                "48309749",
-                "48309924",
-                "48310439",
-                "48310744",
-                "48311161",
-                "48312475",
-                "48312671",
-                "48311734",
-                "48314900",
-                "48309922"
-              ]
-            },
-            {
-              "category": "罚款是否足够：震慑还是成本",
-              "summary": "关于 €200M 是否够重，评论明显分裂。有人按 Temu/PDD 的利润、营业额或 EU 业务规模来算，认为这只是 penny slap，甚至可能低于他们靠违规赚到的钱。也有人反驳说，罚款的意义在于建立 precedent 和后续更大的 escalations，第一击不一定要直接打死公司。争论焦点不是金额本身，而是罚款能否变成真正的 deterrent，而不是可预期的 business cost。",
-              "supportid": [
-                "48310478",
-                "48312405",
-                "48312575",
-                "48312706",
-                "48315449",
-                "48312100",
-                "48313811",
-                "48315670",
-                "48310760",
-                "48310491"
-              ]
-            },
-            {
-              "category": "跨境直购的现实需求与质量分层",
-              "summary": "支持直接从中国买的人强调，这类平台满足了欧洲不少地区的真实需求：选择少、配送慢、价格高，尤其是电子元件、一次性工具、服装配件和小众商品。有人还举出西班牙、葡萄牙、意大利的 Chinese-run bazaar 和 general store，说明线下本地店也在做同样的低价转售，只是品类更少。反对者则认为，低价往往对应更差材料、更少 QA 和更弱售后，不能把所有东西都归成同一种“便宜替代品”。这个视角承认市场存在，但对质量分层和用途边界看得更细。",
-              "supportid": [
-                "48314765",
-                "48312494",
-                "48312887",
-                "48313606",
-                "48313702",
-                "48315807",
-                "48315865",
-                "48312514",
-                "48313043",
-                "48313571",
-                "48313328"
-              ]
-            },
-            {
-              "category": "贸易战、保护主义与政治化",
-              "summary": "很多评论把这件事放进更大的 EU-China 贸易摩擦里看，认为罚 Temu 不只是消费品安全，也是对中国 overproduction、补贴和低价倾销的反击。有人提到 EU 的小包裹税、tariffs、de minimis 争议，以及工业团体和工会对限制 Temu/Shein 的支持，说明政策背后还有产业保护。另一些评论则把话题进一步拉到 CCP ties、数据共享和政治影响，质疑跨境电商并不只是市场竞争。整体上，这一派把事件理解为监管、贸易和地缘政治交织的结果，而不只是一次单纯的罚单。",
-              "supportid": [
-                "48310035",
-                "48310582",
-                "48309657",
-                "48310532",
-                "48310719",
-                "48311501",
-                "48310975",
-                "48311848",
-                "48314694",
-                "48309941",
-                "48310148",
-                "48315923"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "CE marking",
-              "explanation": "欧盟的合规标志，通常由制造商自我声明符合要求，常被讨论真假与可伪造性。"
-            },
-            {
-              "term": "RoHS",
-              "explanation": "限制电子电气产品中铅、汞等有害物质的欧盟指令。"
-            },
-            {
-              "term": "DSA",
-              "explanation": "EU 的 Digital Services Act，要求大型平台对非法内容和部分非法商品承担更强责任。"
-            },
-            {
-              "term": "de minimis exemption",
-              "explanation": "低价值包裹免税/简化申报门槛，直接影响跨境小包直发成本。"
-            }
-          ],
-          "context": "Temu（拼多多旗下的跨境电商平台）因被欧盟指控允许销售非法商品而被罚 2 亿欧元，争议焦点落在电器、玩具和带电池商品的安全风险上。评论区围绕 EU 的消费品监管体系展开，尤其是 CE marking（欧盟合规标志）、RoHS（限制有害物质指令）和 DSA（欧盟数字服务法）下平台到底该承担多大责任。很多人还提到跨境直发把原本由进口商承担的检查和召回责任转移给了终端消费者，使小包裹执法变得很难。这个话题也牵连到中国低价供应链、欧洲本地零售加价，以及 de minimis exemption（低价值包裹免税/简化申报门槛）是否应该被收紧。",
-          "emoji": "⚖️",
-          "sarcastic_question": "卖毒玩具只罚这点，难道真能叫合规成本吗？"
-        },
-        "classifications": {
-          "topics": [
-            9,
-            10,
-            7
-          ],
-          "facets": [
-            8
-          ],
-          "tags": [
-            "Temu",
-            "EU",
-            "CE mark",
-            "China",
-            "BBC"
-          ]
-        },
-        "classificationsUpdatedAt": 1779981647,
-        "aiSummary": {
-          "chinese_title": "EU罚Temu 2亿欧元：非法商品、安全与平台责任争议",
-          "discussion_overview": [
-            {
-              "category": "支持监管：低价不能越过安全底线",
-              "summary": "不少评论承认 Temu 的低价和供给价值，但认为 chargers、儿童玩具、接墙电的电器、e-bike 电池、激光器这类商品本来就该是监管红线。有人提到自己买到过会冒火花或频繁出问题的产品，说明危险并不只存在于 Temu，而是低价消费品领域的普遍问题。另一边也有人强调，父母和普通消费者不可能对每件商品做毒性与电气安全测试，不能把安全责任完全推回个人。这个观点的核心是：便宜可以接受，但不能以火灾、窒息或有毒材料为代价。",
-              "supportid": [
-                "48312569",
-                "48312700",
-                "48313378",
-                "48314458",
-                "48313599",
-                "48314050",
-                "48309508",
-                "48312733"
-              ]
-            },
-            {
-              "category": "反对双标：Temu只是替整个零售系统背锅",
-              "summary": "另一组评论认为 Temu 被单独点名有明显双标，因为 Amazon、eBay、Action、Carrefour、Leclerc 以及大量本地 bazaar 也在卖几乎相同的中国货，只是加了更高的 markup。有人举例说本地实体店甚至连价格都不公开，却借着本地化叙事赚取高利润，实际上只是薄包装的 importer 或 dropshipper。还有人指出，很多所谓本地品牌和 store brand 也未必比 Temu 更安全，区别更多是品牌、售后和合规链条是否清楚。这个阵营的结论是：Temu 不是唯一的问题，甚至可能只是被拿来替整个零售系统背锅。",
-              "supportid": [
-                "48310692",
-                "48312887",
-                "48313606",
-                "48313727",
-                "48313868",
-                "48315986",
-                "48313368",
-                "48311141",
-                "48315819"
-              ]
-            },
-            {
-              "category": "平台责任与执法难题",
-              "summary": "讨论里反复出现的平台责任问题：如果商品在网站上售出，平台到底是 marketplace 还是 seller。有人强调 CE mark 本质上是 self-certification，真假难靠海量包裹逐一验证，而真正有效的追责必须找到能被起诉或罚款的欧盟境内主体。也有人把 Amazon 的第三方卖家、fulfilled by 与 direct seller 的灰区拿来类比，认为平台常借“只是中介”来逃避责任。还有评论提到，海关对小包裹的 spot checks 无法覆盖每天数千万件包裹，因此 local warehouse、bond、audits 之类机制才可能让责任落地。",
-              "supportid": [
-                "48309756",
-                "48309749",
-                "48309924",
-                "48310439",
-                "48310744",
-                "48311161",
-                "48312475",
-                "48312671",
-                "48311734",
-                "48314900",
-                "48309922"
-              ]
-            },
-            {
-              "category": "罚款是否足够：震慑还是成本",
-              "summary": "关于 €200M 是否够重，评论明显分裂。有人按 Temu/PDD 的利润、营业额或 EU 业务规模来算，认为这只是 penny slap，甚至可能低于他们靠违规赚到的钱。也有人反驳说，罚款的意义在于建立 precedent 和后续更大的 escalations，第一击不一定要直接打死公司。争论焦点不是金额本身，而是罚款能否变成真正的 deterrent，而不是可预期的 business cost。",
-              "supportid": [
-                "48310478",
-                "48312405",
-                "48312575",
-                "48312706",
-                "48315449",
-                "48312100",
-                "48313811",
-                "48315670",
-                "48310760",
-                "48310491"
-              ]
-            },
-            {
-              "category": "跨境直购的现实需求与质量分层",
-              "summary": "支持直接从中国买的人强调，这类平台满足了欧洲不少地区的真实需求：选择少、配送慢、价格高，尤其是电子元件、一次性工具、服装配件和小众商品。有人还举出西班牙、葡萄牙、意大利的 Chinese-run bazaar 和 general store，说明线下本地店也在做同样的低价转售，只是品类更少。反对者则认为，低价往往对应更差材料、更少 QA 和更弱售后，不能把所有东西都归成同一种“便宜替代品”。这个视角承认市场存在，但对质量分层和用途边界看得更细。",
-              "supportid": [
-                "48314765",
-                "48312494",
-                "48312887",
-                "48313606",
-                "48313702",
-                "48315807",
-                "48315865",
-                "48312514",
-                "48313043",
-                "48313571",
-                "48313328"
-              ]
-            },
-            {
-              "category": "贸易战、保护主义与政治化",
-              "summary": "很多评论把这件事放进更大的 EU-China 贸易摩擦里看，认为罚 Temu 不只是消费品安全，也是对中国 overproduction、补贴和低价倾销的反击。有人提到 EU 的小包裹税、tariffs、de minimis 争议，以及工业团体和工会对限制 Temu/Shein 的支持，说明政策背后还有产业保护。另一些评论则把话题进一步拉到 CCP ties、数据共享和政治影响，质疑跨境电商并不只是市场竞争。整体上，这一派把事件理解为监管、贸易和地缘政治交织的结果，而不只是一次单纯的罚单。",
-              "supportid": [
-                "48310035",
-                "48310582",
-                "48309657",
-                "48310532",
-                "48310719",
-                "48311501",
-                "48310975",
-                "48311848",
-                "48314694",
-                "48309941",
-                "48310148",
-                "48315923"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "CE marking",
-              "explanation": "欧盟的合规标志，通常由制造商自我声明符合要求，常被讨论真假与可伪造性。"
-            },
-            {
-              "term": "RoHS",
-              "explanation": "限制电子电气产品中铅、汞等有害物质的欧盟指令。"
-            },
-            {
-              "term": "DSA",
-              "explanation": "EU 的 Digital Services Act，要求大型平台对非法内容和部分非法商品承担更强责任。"
-            },
-            {
-              "term": "de minimis exemption",
-              "explanation": "低价值包裹免税/简化申报门槛，直接影响跨境小包直发成本。"
-            }
-          ],
-          "context": "Temu（拼多多旗下的跨境电商平台）因被欧盟指控允许销售非法商品而被罚 2 亿欧元，争议焦点落在电器、玩具和带电池商品的安全风险上。评论区围绕 EU 的消费品监管体系展开，尤其是 CE marking（欧盟合规标志）、RoHS（限制有害物质指令）和 DSA（欧盟数字服务法）下平台到底该承担多大责任。很多人还提到跨境直发把原本由进口商承担的检查和召回责任转移给了终端消费者，使小包裹执法变得很难。这个话题也牵连到中国低价供应链、欧洲本地零售加价，以及 de minimis exemption（低价值包裹免税/简化申报门槛）是否应该被收紧。",
-          "emoji": "⚖️",
-          "sarcastic_question": "卖毒玩具只罚这点，难道真能叫合规成本吗？"
-        }
-      },
-      "articleSummary": "### 一句话总结\nTemu 因未能有效阻止平台上的不安全充电器和婴儿玩具流通，被欧盟依据《数字服务法案》（DSA）开出 2 亿欧元罚单，并被勒令限期整改。\n\n### 罚单背后的技术硬伤：安全测试大面积挂科\n这次调查不是凭空猜测，而是有实打实的技术数据支撑。欧盟委托了一家独立测试机构进行了一次“神秘购物”行动。结果发现，Temu 平台上销售的充电器有很高比例未能通过基础的电气安全测试。更严重的是，大量婴儿玩具存在化学物质超标或含有易脱落小零件的问题，直接构成了窒息风险。说白了，Temu 的风控系统在拦截危险品这件事上，基本是形同虚设。\n\n### DSA 的“杀鸡儆猴”：Temu 成了第二个靶子\n这是欧盟《数字服务法案》（DSA）在内容监管领域开出的第二张罚单。第一张是去年 12 月针对 Elon Musk 的 X 社交网络，罚了 1.2 亿欧元。这次 Temu 被罚 2 亿欧元，显然是欧盟在加码。欧盟科技委员 Henna Virkkunen 对外放话，说这个决定就是为了给 Temu 传递一个“非常强烈的信号”。潜台词很明显：别以为做电商平台就能对产品安全睁一只眼闭一只眼。\n\n### 给 Temu 下的最后通牒：不仅要钱，还要系统整改\n光交钱是解决不了问题的，欧盟这次还给出了明确的时间表。Temu 必须在 8 月 28 日之前提交一份整改行动计划。欧盟委员会随后有两个月的时间来评估，看 Temu 做得够不够，能不能真正合规。这实际上是把技术整改的责任直接甩给了平台，要求他们必须在短时间内证明自己的审核系统能“管得住”。\n\n### Temu 的反击：罚款太重，且数据过时\n面对重罚，Temu 并没有完全认怂。他们的发言人回应说，尊重规则是必须的，但这次处罚针对的是 2024 年的情况，并不反映他们当前系统的真实水平。Temu 方面认为这笔罚款“不成比例”，并表示正在仔细审查决定，考虑所有可行的选项。这番话的潜台词是：我们系统已经升级了，你们拿旧账来罚，不仅冤枉，而且罚重了。\n\n### 监管风向标：英国也在蠢蠢欲动\n有意思的是，这事儿在欧盟之外也引起了连锁反应。英国的消费者组织 Which? 直接点赞了欧盟的决定，并且敦促英国政府跟进。他们认为这是让在线平台对危险产品负责的“强硬行动范例”。英国政府最近刚通过了《产品监管和计量法》，Which? 希望政府能利用这个新权力，让在线市场在法律上为危险产品担责。看来，针对电商平台产品安全的监管风暴，才刚刚开始。"
     }
   ]
 }
