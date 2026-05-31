@@ -1,9 +1,9 @@
 {
   "date": "2026-05-31",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2543,
-  "filtered_articles": 14,
+  "success_feeds": 85,
+  "total_articles": 2591,
+  "filtered_articles": 18,
   "articles": [
     {
       "title": "Microcode inside the Intel 8087 floating-point chip: register exchange",
@@ -82,6 +82,25 @@
       "rank": 4
     },
     {
+      "title": "Build agents, not pipelines",
+      "title_zh": "优先构建 Agent 而非 Pipeline",
+      "link": "https://seangoedecke.com/build-agents-not-pipelines/",
+      "pub_date": "2026-05-31T00:00:00.000Z",
+      "summary": "# 一句话总结\n在构建 LLM 应用时，除非受到上下文长度、成本或本地算力的硬性限制，否则默认选择 Agent，因为 Pipeline 的“可控性”往往是以牺牲解决复杂问题的“智能性”为代价的。\n\n---\n\n### 控制权的博弈：是写代码还是写配置？\n\n文章开篇就抛出了一个核心观点：在程序里使用 LLM 只有两种路径，要么是 Pipeline，要么是 Agent。说白了，Pipeline 就是你用代码写死了控制流，LLM 只是个被调用的函数；而 Agent 则是你把工具交给 LLM，让它自己决定怎么调用、调用顺序是什么。这就像 Library 和 Framework 的区别：Pipeline 让你拥有完全的控制权，但你要写很多胶水代码；Agent 让你上手很快，框架帮你搞定了很多事，但一旦你想搞点“非标”操作，就会发现自己被框住了。在处理简单任务时，这两者区别不大，Agent 甚至会退化成 Pipeline 的逻辑。但一旦任务变复杂，比如上下文塞不进一个 Prompt，或者需要根据上一步结果动态调整下一步动作，这个选择就变得生死攸关。\n\n### Pipeline 的确定性是假象，Agent 的不可预测才是真本事\n\nPipelines 看起来更可控，因为你明确知道程序会按顺序执行哪几步，成本和延迟都在预期内。但作者指出，这种“可控”是有代价的：如果你在 Pipeline 里用了推理模型，或者允许模型“思考”，其实你也很难精确控制它的耗时。相比之下，Agent 的灵活性极高，它可以根据问题难度自主决定循环多少次，但这直接导致了成本和延迟的不可预测——可能只要几美分，也可能要几美元。那为什么还要用 Agent？因为对于像编程（如 Claude Code、Cursor）这种高难度任务，Pipeline 根本搞不定。只有 Agent 能够通过长时间的循环思考和动态获取信息，才能处理这种复杂度。简单来说，Pipeline 胜在“稳”，Agent 赢在“强”。\n\n### 上下文获取：Pipeline 的阿喀琉斯之踵\n\n这里有个非常关键的技术细节：Pipeline 最大的坑其实在于“上下文获取”。在 Pipeline 里，LLM 只有一次运行机会，这意味着你必须在 Prompt 注入之前，把所有可能用到的数据都准备好。这听起来容易，做起来简直是噩梦。你可能会尝试用 RAG（检索增强生成），通过语义相似度去找相关代码，但作者直言，这种做法往往效果不佳。因为“找出相关信息”这个任务本身的难度，往往不亚于“解决问题”本身。反观 Agent，你只需要给它一个 `grep` 或 `read_file` 工具，它就能像人类工程师一样，边想边查，自己决定需要读哪些文件。这种按需获取信息的能力，是 Agent 对 Pipeline 的降维打击。\n\n### 多模型混搭的陷阱与本地模型的现实\n\n很多人推崇 Pipeline 的一个理由是：可以在不同步骤调用不同的模型，比如用便宜的小模型做汇总，用贵的大模型做推理。作者对这种“多模型 Pipeline”持怀疑态度，认为这往往是在丢失原始数据中的关键信号，就像 RAG 一样，低估了信息筛选的难度。当然，Pipeline 也有不可替代的场景，那就是本地模型。因为本地显存（VRAM）有限，上下文窗口通常很小（比如 32k 以下），而 Agent 因为需要不断循环和自我引用，通常会消耗大量 Token。在这种资源受限的环境下，Pipeline 精打细算的特性反而成了优势。但如果你用的是 GPT-4 这种 Frontier 模型，大上下文和 KV Cache 技术让 Agent 的资源消耗不再是问题。\n\n### 安全性其实是个伪命题\n\n关于安全性，业界有一种声音认为 Workflow（Pipeline）比 Agent 更安全。作者直接反驳了这种观点：如果你担心 LLM 乱执行操作，无论是在 Pipeline 的下一环节检查，还是在 Agent 的工具调用层检查，面临的挑战是一样的。你都要么写启发式代码去校验（可能出错），要么引入人工审核（慢）。至于 Prompt Injection（提示注入），Pipeline 和 Agent 都是把外部数据喂给模型，只要数据有毒，谁都跑不掉。唯一的区别在于“可读性”，Pipeline 的代码逻辑确实更容易让人看懂程序干了啥，但至于 LLM 为什么这么想，无论是 Pipeline 还是 Agent，本质上都是黑盒。\n\n### NSA 级别的架构设计：高低搭配\n\n为了把这些抽象的原则讲透，作者举了个相当硬核的例子：假设你要帮 NSA 处理全美国的邮件监控数据，该怎么设计？这显然是一个“既要又要”的场景。单纯用 Agent 去跑每一封邮件，成本和延迟会爆炸；单纯用 Pipeline，又可能漏掉复杂的威胁情报。作者建议采用“高低搭配”的混合架构：先用一个低成本的 Pipeline 对海量邮件进行初筛，只处理元数据，把可疑的邮件标记出来；然后再让一群 Agent 去深度分析这些被标记的邮件。这样既保证了大规模数据处理的性价比，又保留了 Agent 处理复杂问题的智能上限。这其实也是很多现代 AI 系统的演进方向：用 Pipeline 做守门员，用 Agent 做特种兵。\n\n### 犹豫不决时，选 Agent 就对了\n\n文章最后给出了一个非常务实的决策指南。只有三种情况你必须用 Pipeline：上下文窗口极其有限、必须严格限制 GPU 成本、或者被迫使用本地模型。除此之外，尤其是当你不确定能否一次性收集齐所有上下文，或者任务难度让你心里没底时，果断上 Agent。作者观察到一个有趣的现象：过去一年里，很多项目都是从 Pipeline 迁移到了 Agent，几乎没有反过来的案例。这背后的逻辑很简单：Agent 更容易把东西做出来，也更能解决实际问题。哪怕以后为了省钱要切回 Pipeline，你也得先有一个能跑通的 Agent 作为基准线。所以，当技术选型陷入僵局时，选择那个更智能、更未来-proof 的方案，通常不会错。",
+      "source_name": "seangoedecke.com",
+      "score": 14,
+      "depth": 7,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "agents",
+        "pipelines",
+        "RAG",
+        "context-gathering"
+      ],
+      "rank": 5
+    },
+    {
       "title": "Running Python ASGI apps in the browser via Pyodide + a service worker",
       "title_zh": "浏览器中运行 Python ASGI 应用",
       "link": "https://simonwillison.net/2026/May/30/pyodide-asgi-browser/#atom-everything",
@@ -98,7 +117,7 @@
         "Service Worker",
         "Datasette"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Spot checking polynomial identities",
@@ -117,7 +136,7 @@
         "zero-knowledge proofs",
         "finite fields"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "I Am Retiring from Tech to Live Offline",
@@ -136,7 +155,7 @@
         "open source",
         "digital minimalism"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "One &udm After Another",
@@ -155,7 +174,7 @@
         "udm14",
         "search"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Arp 114:",
@@ -173,7 +192,7 @@
         "imaging",
         "galaxy"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Quoting Karen Kwok for Reuters Breakingviews",
@@ -191,7 +210,7 @@
         "revenue",
         "Anthropic"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Quoting Daniel Jalkut",
@@ -208,7 +227,7 @@
         "AI",
         "opinion"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Our unusual system of \"web home directories\" for people",
@@ -225,7 +244,7 @@
         "403",
         "forbidden"
       ],
-      "rank": 12
+      "rank": 13
     }
   ]
 }
