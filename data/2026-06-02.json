@@ -1,0 +1,122 @@
+{
+  "date": "2026-06-02",
+  "total_feeds": 92,
+  "success_feeds": 85,
+  "total_articles": 2592,
+  "filtered_articles": 18,
+  "articles": [
+    {
+      "title": "It’s not just Taylor series",
+      "title_zh": "高斯函数余弦近似超越 Taylor 级数",
+      "link": "https://www.johndcook.com/blog/2026/06/01/not-just-taylor-series/",
+      "pub_date": "2026-06-01T12:42:12.000Z",
+      "summary": "### 一句话总结\n这个看似巧合的高斯函数近似公式之所以在实数域表现惊人，靠的不是 Taylor 级数的前几项匹配，而是它在复平面上的特定行为模式。\n\n### 别被 Taylor 级数骗了\n最近网上有个公式火了，说 `exp(-x²)` 可以近似成 `(1 + cos(sin(x) + x))/2`。很多人第一反应是查 Taylor 级数，发现两边确实直到 `x⁶` 项都一样，于是觉得\"谜底揭晓了\"。但这只说对了一半。如果仅仅是因为 Taylor 级数匹配，那直接用 `1 - x² + x⁴/2` 不就行了？反正误差都是 `O(x⁶)` 级别。但作者指出，这种想法忽略了这两个近似公式在实际表现上的巨大差异。\n\n### 真正的差距在于适用范围\n咱们看数据说话。在区间 `[-0.5, 0.5]` 里，Taylor 级数近似确实挺好用的。但一旦把范围拉大到 `[-4, 4]`，情况就完全变了。当 `x = 4` 时，Taylor 近似的误差直接飙到了 113，这已经完全没法用了。反观那个余弦近似公式，误差只有 0.002579。两者相差了五个数量级。这说明，单纯用 Taylor 级数的误差阶数，根本解释不了为什么余弦公式在这么大范围内还这么准。\n\n### 复平面上的\"照妖镜\"\n那怎么办？作者用了个很硬核的方法：去复平面看看。如果这个近似公式的准确性真的源于 Taylor 级数，那它不仅要在实数轴上准，在复平面上半径为 4 的圆盘里也应该准。但有意思的地方在于，一旦你把 `x` 换成虚数 `4i`，这个近似公式的值瞬间就炸到了 `10¹³` 量级。这直接证明了这个公式的\"好运气\"仅限于实数轴，并不是因为它的局部解析性质有多优越。\n\n### 核心思路其实很简单：局部相似不等于全局有效\n这篇文章其实是在提醒我们，不要被局部的数学巧合误导。无论是余弦近似还是 Taylor 近似，在复平面的小圆盘（比如半径 0.5）里表现都不错。但一旦范围扩大，余弦近似在实数轴上\"超常发挥\"，在复平面上却比 Taylor 近形还要烂。所以，这个公式之所以好用，是因为它在实数域上的特定形状碰巧拟合了高斯函数，而不是因为它在数学本质上有更深层的高阶联系。",
+      "source_name": "johndcook.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "approximation",
+        "Taylor series",
+        "numerical analysis",
+        "Gaussian"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Checking assembly with Z3",
+      "title_zh": "用 Z3 验证 JIT 汇编代码正确性",
+      "link": "https://bernsteinbear.com/blog/asm-z3/?utm_source=rss",
+      "pub_date": "2026-06-01T00:00:00.000Z",
+      "summary": "## 一句话总结\n与其死磕汇编代码里的位运算逻辑，不如用 Z3 这种 SMT 求解器写个脚本，通过数学证明来验证等价性，既快又准。\n\n### 一个经典的整数溢出坑\nZJIT 的一位新贡献者 dak2 提交了一个 PR，修复了 fixnum 除法中的溢出 bug。问题出在一个特殊的边界情况：当 `FIXNUM_MIN` 除以 `-1` 时，结果会超出 fixnum 的表示范围，必须升级为 bignum。这是补码系统的固有缺陷——负数比正数多一个。CRuby 在 C 语言层面用显式的 `if` 分支处理了这种情况，但在 JIT 编译生成的汇编代码里，我们需要一种更高效的方式来处理这个溢出，既要保证正确，又不能引入昂贵的分支预测开销。\n\n### 用分支less 逻辑替换显式判断\ndak2 提出的方案很巧妙，他没有用简单的 `if` 判断，而是用了一串位运算指令：`xor`、`or`、`test` 和 `je`。核心思路是把“左操作数等于 `FIXNUM_MIN` 且右操作数等于 `-1`”这个条件，转化为 `(left ^ MIN) | (right ^ -1) == 0`。如果这个表达式成立，就触发 side exit 跳出 JIT 代码，交给解释器处理。这种写法消除了条件分支，对流水线更友好，但问题来了：这串位运算真的等价于原来的逻辑吗？光靠人脑推演很容易出错。\n\n### 把证明题交给 Z3 去做\n作者没有选择硬啃汇编逻辑，而是想起了同事 CF 经常使用的 Z3 求解器。Z3 是一个 SMT（可满足性模理论）求解器，特别适合处理这种位运算和整数约束的问题。使用 Z3 的核心技巧不是直接证明“两者相等”，而是反过来：假设两者不相等，让 Z3 去寻找反例。如果 Z3 找不到反例（返回 `unsat`），那就证明在所有可能的输入下，这两个逻辑都是等价的。这比人肉 Review 代码要可靠得多。\n\n### 逻辑转换的数学原理\n为什么 Z3 能做到这一点？因为 Z3 的默认模型是“存在”量词，即寻找满足条件的解。如果你直接问它“是否总是相等”，它其实是在找有没有相等的例子。为了证明“总是相等”（即“对于所有输入”），我们需要否定这个条件，问 Z3 是否存在“不相等”的情况。如果 Z3 说“不存在解”，那就意味着找不到反例，从而反向证明了原命题的正确性。作者写了一个 Python 脚本，定义了 64 位的 BitVec 变量，把 C 语言的逻辑和 LIR 的位运算逻辑丢给 Z3 去比对。\n\n### 脚本跑通，逻辑验证无误\n脚本运行后没有任何报错，说明 Z3 确认了这两段逻辑是完全等价的。为了确保脚本是有效的，作者还故意把常量 `-1` 改成 `0` 制造一个错误的逻辑。结果 Z3 立刻抛出了 `AssertionError`，并给出了具体的反例数值（`right = 18446744073709551615` 等）。这个结果不仅验证了 dak2 的 patch 是正确的，也展示了用形式化验证工具辅助代码 Review 的巨大价值。",
+      "source_name": "bernsteinbear.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Z3",
+        "SMT solver",
+        "JIT",
+        "assembly"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Intel 8088s and non-Intel non-clones",
+      "title_zh": "Intel 8088 的授权生产史",
+      "link": "https://dfarq.homeip.net/intel-8088s-and-non-intel-non-clones/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=intel-8088s-and-non-intel-non-clones",
+      "pub_date": "2026-06-01T11:00:13.000Z",
+      "summary": "IBM 在 1980 年要求 Intel 提供 8088 的第二货源，以避免供应链中断风险。Intel 同意授权，AMD、Fujitsu、NEC、Harris、Mitsubishi、OKI、Siemens、Texas Instruments 和 IBM 共 9 家公司获得许可生产 8088。1980 年代约 6000 万台 PC 和克隆机中，大量使用这些授权芯片。AMD 制造的 8088 在二手市场极为常见，OKI 推出了低功耗的 CMOS 版本 80C88，用于 Atari Portfolio 掌上电脑。苏联未经授权仿制了 K1810VM88，引脚和性能与原版完全一致。Commodore 在 1984 年获得授权但从未实际生产自制的 8088，其产品使用 Siemens 芯片，原因是制造工艺落后且产能不足。Intel 在 286 时代继续授权，但到 386 时代改变策略，不再提供第二货源。AMD 通过逆向工程推出兼容 386，Intel 起诉后 AMD 胜诉，1991 年 AMD386 上市。Intel 随后推出 Intel Inside 营销应对。x86 市场最终形成 Intel 与 AMD 的双寡头格局，两者通过专利共享协议保持软件兼容。",
+      "source_name": "dfarq.homeip.net",
+      "score": 11,
+      "depth": 6,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "Intel 8088",
+        "second source",
+        "IBM PC",
+        "licensing"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "\"No way to prevent this\" say users of only package manager where this regularly happens",
+      "title_zh": "NPM 供应链攻击窃取多云平台凭证",
+      "link": "https://xeiaso.net/shitposts/no-way-to-prevent-this/supply-chain/2026-redhat-javascript-clients/",
+      "pub_date": "2026-06-01T00:00:00.000Z",
+      "summary": "RedHat Insights JavaScript 客户端包遭遇 NPM 供应链攻击，恶意代码窃取 AWS、GCP、Azure、Kubernetes、HashiCorp Vault、npm 和 CircleCI 凭证，并通过被盗的 npm 凭证和 bypass_2fa 设置自我传播。攻击者通过 Claude Code hooks 和 VS Code task injection 建立持久化。受影响用户需要重新配置开发硬件。NPM 是过去十年全球 90% 供应链攻击发生的平台，使用 NPM 的项目遭遇供应链攻击的可能性是其他平台的 20 倍。",
+      "source_name": "xeiaso.net",
+      "score": 10,
+      "depth": 6,
+      "novelty": 4,
+      "category": "security",
+      "keywords": [
+        "NPM",
+        "supply chain",
+        "RedHat Insights",
+        "credential theft"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "The Infosec Phrasebook",
+      "title_zh": "安全行业术语的真实含义",
+      "link": "https://nesbitt.io/2026/06/01/the-infosec-phrasebook.html",
+      "pub_date": "2026-06-01T10:00:00.000Z",
+      "summary": "这篇安全行业术语词典以讽刺方式解构了 30 多个常见安全术语的真实含义。Defense in depth 被简化为 coding，Zero trust 等同于 auth，Least privilege 是你忘记授予的权限，Attack surface 就是你的代码，Blast radius 是别人的代码。Hardening 意味着关闭功能，Air gap 实际上是 USB stick，Shift left 把问题甩给开发者，Threat model 是个 Google Doc，Tabletop exercise 是讨论这个文档的会议。Compensating control 和 Risk acceptance 都是没有修复，后者只是写下来了。Remediation 是个 Jira epic，Assume breach 意味着已经被入侵，CVE 是简历增强，CVSS 9.8 意味着赶紧接电话。Lateral movement 就是 ssh，Exfiltration 是 curl，Supply chain security 是紧张地运行 npm install，Security posture 完全靠感觉。作者还吐槽了 cyber 前缀的泛滥使用，并回忆了它作为动词时的原始含义。",
+      "source_name": "nesbitt.io",
+      "score": 7,
+      "depth": 2,
+      "novelty": 5,
+      "category": "security",
+      "keywords": [
+        "infosec",
+        "terminology",
+        "cyber",
+        "security"
+      ],
+      "rank": 5
+    },
+    {
+      "title": "Subscribe by email",
+      "title_zh": "博客邮件订阅服务迁移到 Substack",
+      "link": "https://www.johndcook.com/blog/2026/06/01/subscribe-by-email/",
+      "pub_date": "2026-06-01T11:01:26.000Z",
+      "summary": "",
+      "source_name": "johndcook.com",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "other",
+      "keywords": [
+        "Substack",
+        "RSS",
+        "newsletter"
+      ],
+      "rank": 6
+    }
+  ]
+}
