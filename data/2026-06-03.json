@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2594,
-  "filtered_articles": 19,
+  "filtered_articles": 16,
   "articles": [
+    {
+      "title": "Skills Registry Threat Models",
+      "title_zh": "Agent Skills 注册表的威胁模型全景分析",
+      "link": "https://nesbitt.io/2026/06/03/skills-registry-threat-models.html",
+      "pub_date": "2026-06-03T15:00:00.000Z",
+      "summary": "## 一句话总结\nSkills Registry 的安全模型本质上是一个“不受控的包管理器 + 可注入的 System Prompt”，它继承了传统软件供应链的所有漏洞，还引入了 Prompt 注入和权限继承这两个 AI 时代特有的新风险。\n\n---\n\n### 不仅仅是代码分发，更是 Prompt 注入载体\nSkills Registry 看起来像 npm 或 PyPI，但有个本质区别：它分发的不仅是代码，还有会直接注入 Agent System Prompt 的指令。这意味着 Skill 不仅能像传统包一样执行代码，还能通过 Prompt Injection 劫持 Agent 的决策逻辑。Snyk 的 ToxicSkills 审计报告显示，在确认恶意的样本中，91% 同时使用了恶意代码和 Prompt 注入。这种“代码 + 指令”的双重载荷，让传统的静态扫描器很难防住——因为恶意意图往往分散在 Manifest 和描述文本之间，单看哪一边都是正常的。\n\n### 安装过程是多个包管理器的“大乱炖”\n一个 Skill 往往声明对 npm、pip、cargo、brew 甚至 apt 的依赖，这让 Loader 变成了一个“超级包管理器客户端”。当你安装一个 Skill 时，实际上是在你的机器上并行运行多个包管理器的安装脚本。虽然你可能很容易关掉 Node 的 `postinstall` 脚本，但 Python 的 build isolation 或 Homebrew 的 tap allowlist 往往会被忽略。更糟糕的是，如果 LLM 在生成 Skill 时幻觉出了一个包名，攻击者可以通过抢注这个包名（slopsquatting）来实施攻击，这是传统依赖混淆的 AI 变体。\n\n### 版本锁定形同虚设，锁文件里没有哈希\n大多数 Skill 格式用 git 作为分发渠道，所谓的“版本”通常只是 fetch 时的默认分支。即使有 Lockfile，通常也只记录了名字和版本号，而没有记录内容的哈希值。这就导致了一个严重后果：你今天安装的 `skill@v1` 和下个月安装的同名 Skill，内容可能完全不同。包管理器社区花了十年时间用 `go.sum` 和 `Cargo.lock` 解决了这个问题，但 Skills Registry 目前大多还是只记录名字不记录字节，更新时也不会重新提示用户确认权限变更。\n\n### 权限继承让“信任”变得极其廉价\nSkill 运行时的权限完全继承自 Agent 的 Session。如果用户批准了 Agent 使用 bash、文件编辑和网络，那么所有安装的 Skill 都自动拥有这些权限。有些格式甚至允许 Skill 自己声明 `allowed-tools`，相当于把“审批通过”的权限和恶意代码打包在了一起。唯一的门槛通常是打开项目时的“信任工作区”弹窗，但用户往往会像点“同意 Cookie”一样习惯性点掉它。此外，Skill 可以在版本更新时静默添加对 `AWS_SECRET_ACCESS_KEY` 等环境变量的需求，而 Loader 通常不会对此发出警告。\n\n### 描述文本是潜伏在 System Prompt 里的特洛伊木马\n大多数 Loader 会在每一轮对话中把所有已安装 Skill 的描述注入到 System Prompt 里，不管用户是否真的调用了它们。这意味着一个被遗忘的 Skill，如果它的描述里包含对抗性 Token、隐藏的 HTML 或 Unicode 控制字符，就能在用户毫无察觉的情况下触发 Prompt 注入。这种攻击不需要 Skill 被激活，只要它被安装了，它的描述文本就成了 Agent 指令的一部分，随时可能干扰后续的决策。\n\n### 命名空间混乱，依赖混淆防不胜防\nSkills Registry 大多没有自己独立的命名空间，而是直接继承 GitHub 的 `owner/repo` 模型。这导致两个问题：一是不同源的 Skill 可能因为名字相同而互相覆盖；二是 Loader 在解析名称时，往往会先查 Skill 索引，找不到就回退到 npm 或 PyPI。这种回退机制极大地拓宽了攻击面，攻击者只需在公共仓库发布一个更高版本的包，就能拦截未来的安装请求。至于 Typosquatting（抢注拼写相似的名字）和 Namespace Hijack（劫持释放的命名空间），这些在传统包管理器里已经玩烂的套路，在这里依然有效。\n\n### 跨 Loader 的便携性牺牲了安全性\n虽然 Skill 的 Manifest 格式试图在不同 Loader 之间保持便携，但安全相关字段的解释却各不相同。在一个 Loader 里强制执行的 `allowed-tools`，在另一个 Loader 里可能只是建议，甚至直接被忽略。同样的 `requires.env` 字段，有的 Loader 会提示用户确认，有的则直接静默写入环境变量。这种不一致性意味着，一个在安全 Loader 上审核通过的 Skill，换个环境就可能变成特洛伊木马，因为安全策略并没有随着格式一起移植。\n\n### 供应链安全不能只靠 Loader，Registry 需要建立不可变性\n目前的 Registry 大多只是 GitHub 的镜像，缺乏对版本不可变性的保证。作者随时可以推送到某个分支，改变 `v1` 版本指向的内容。Go module 的 checksum database 模式（任何篡改都能被客户端检测到）在这里几乎不存在。此外，维护者的生命周期（如账号恢复、所有权转移）完全依赖上游平台，Registry 本身既不通知下游用户，也没有做角色分离。如果不引入“永久墓碑”机制来防止删除后的名字被重新注册，Skills Registry 的安全性将永远停留在“裸奔”状态。",
+      "source_name": "nesbitt.io",
+      "score": 18,
+      "depth": 9,
+      "novelty": 9,
+      "category": "security",
+      "keywords": [
+        "agent skills",
+        "prompt injection",
+        "package registry",
+        "supply chain"
+      ],
+      "rank": 1
+    },
     {
       "title": "Rotation revisited: Another unidirectional algorithm",
       "title_zh": "std::rotate 的单向交换算法解析",
@@ -22,7 +41,7 @@
         "algorithm",
         "memory"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "micropython-wasm 0.1a0",
@@ -41,7 +60,7 @@
         "wasmtime",
         "sandboxing"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "datasette-agent-micropython 0.1a0",
@@ -60,7 +79,26 @@
         "sandbox",
         "code execution"
       ],
-      "rank": 3
+      "rank": 4
+    },
+    {
+      "title": "Uber Caps Usage of AI Tools Like Claude Code to Manage Costs",
+      "title_zh": "Uber 限制 AI 编码工具月度支出",
+      "link": "https://simonwillison.net/2026/Jun/3/uber-caps-usage/#atom-everything",
+      "pub_date": "2026-06-03T12:01:27.000Z",
+      "summary": "Uber 将每位员工每月在每个 AI 编码工具上的 token 支出上限设定为 1,500 美元，该限制仅适用于 Cursor 和 Claude Code 等代理式编码软件。根据 Levels.fyi 数据，Uber 软件工程师年薪中位数为 33 万美元，这意味着每位工程师每年 3.6 万美元的 AI 工具支出上限约占其薪酬包的 11%。这一政策是对 Uber 在 2026 年前四个月耗尽全年 AI 预算的回应，预算制定于 2025 年，当时未能预见到 token 消耗型编码代理的爆发式增长。与鼓励员工最大化 AI 使用量的 tokenmaxxing 排行榜相比，按工具设置独立预算上限是更理性的成本管理方式。",
+      "source_name": "simonwillison.net",
+      "score": 10,
+      "depth": 4,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Uber",
+        "Claude Code",
+        "cost management",
+        "AI tools"
+      ],
+      "rank": 5
     },
     {
       "title": "The Metaverse Was Snake Oil for Isolation",
@@ -78,7 +116,7 @@
         "hype cycle",
         "Silicon Valley"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Using FourSquare's API to post location checkins to social media",
@@ -97,7 +135,7 @@
         "Mastodon",
         "BlueSky"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Microsoft's new MAI models",
@@ -116,7 +154,7 @@
         "Microsoft",
         "licensed data"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Meta Reportedly Has a Slew of New Smart Glasses Planned for This Year",
@@ -134,7 +172,25 @@
         "Meta",
         "hardware"
       ],
-      "rank": 7
+      "rank": 9
+    },
+    {
+      "title": "GE Widescreen 1000: Big time TV for big budgets",
+      "title_zh": "1978 年 GE Widescreen 1000 超大电视回顾",
+      "link": "https://dfarq.homeip.net/ge-widescreen-1000/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=ge-widescreen-1000",
+      "pub_date": "2026-06-03T11:00:54.000Z",
+      "summary": "GE Widescreen 1000 于 1978 年 6 月推出，售价 2,800 美元（相当于 2025 年的 13,700 美元），是当时面向高端市场的超大尺寸电视机。整机尺寸为 50 英寸高、70 英寸宽、24 英寸深，重 359 磅，功耗 185 瓦。屏幕对角线 45 英寸（36 英寸宽、27 英寸高），可视面积 972 平方英寸，是普通 25 英寸电视的三倍。采用全晶体管固态电路设计，内置 13 英寸 CRT 配合光学投影系统成像，而非直接使用 45 英寸 CRT。配备双扬声器，但立体声电视广播直到 1984 年才获得 FCC 批准，因此两个扬声器输出相同音频。可选配由日立制造的 GE Command Performance VCR，售价约 1,000 美元，重 38 磅。该机型主要销往酒吧、酒店大堂等商业场所，而非普通家庭。",
+      "source_name": "dfarq.homeip.net",
+      "score": 6,
+      "depth": 3,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "retro",
+        "CRT",
+        "television"
+      ],
+      "rank": 10
     },
     {
       "title": "Apple, the Anti-‘Metaverse’ VR Company",
@@ -153,7 +209,7 @@
         "AR",
         "rebranding"
       ],
-      "rank": 8
+      "rank": 11
     },
     {
       "title": "micropython-wasm 0.1a1",
@@ -171,7 +227,25 @@
         "WASM",
         "datasette-agent"
       ],
-      "rank": 9
+      "rank": 12
+    },
+    {
+      "title": "London Data Store Relaunch",
+      "title_zh": "伦敦开放数据平台完成 16 年来首次重构",
+      "link": "https://shkspr.mobi/blog/2026/06/london-data-store-relaunch/",
+      "pub_date": "2026-06-03T11:34:49.000Z",
+      "summary": "伦敦开放数据平台 data.london.gov.uk 在上线 16 年后完成前后端重构，新版本前端界面更新，后端升级，并强化了数据许可证信息的展示。新站点地址为 dfl.london.gov.uk，用户可通过 datastore@london.gov.uk 反馈问题。平台作为开放数据资源库，其价值取决于实际使用量和社区贡献，鼓励开发者挖掘数据集构建应用，并推动地方政府持续上传数据。",
+      "source_name": "shkspr.mobi",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "open data",
+        "data.london.gov.uk",
+        "government"
+      ],
+      "rank": 13
     },
     {
       "title": "Three Ways to Get Paid",
@@ -188,7 +262,7 @@
         "career",
         "wisdom"
       ],
-      "rank": 10
+      "rank": 14
     },
     {
       "title": "Welcoming the Philippine Government to Have I Been Pwned",
@@ -206,7 +280,7 @@
         "government",
         "credential exposure"
       ],
-      "rank": 11
+      "rank": 15
     },
     {
       "title": "California Brown Pelican",
@@ -223,7 +297,7 @@
         "sponsor",
         "newsletter"
       ],
-      "rank": 12
+      "rank": 16
     },
     {
       "title": "Scott Pelley Accuses CBS News Boss of ‘Murdering’ ‘60 Minutes’",
@@ -241,7 +315,7 @@
         "CBS",
         "60 Minutes"
       ],
-      "rank": 13
+      "rank": 17
     },
     {
       "title": "A wish for automatic or semi-automatic disk setup in Linux server installers",
@@ -260,7 +334,7 @@
         "automation",
         "installer"
       ],
-      "rank": 14
+      "rank": 18
     }
   ]
 }
