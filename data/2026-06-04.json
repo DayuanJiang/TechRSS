@@ -1,0 +1,47 @@
+{
+  "date": "2026-06-04",
+  "total_feeds": 92,
+  "success_feeds": 85,
+  "total_articles": 2594,
+  "filtered_articles": 15,
+  "articles": [
+    {
+      "title": "A survey of inlining heuristics",
+      "title_zh": "JIT 编译器内联启发式策略全景调研",
+      "link": "https://bernsteinbear.com/blog/inlining-heuristics/?utm_source=rss",
+      "pub_date": "2026-06-03T00:00:00.000Z",
+      "summary": "### 一句话总结\n这篇文章通过对比 Cinder、PyPy、SpiderMonkey 等主流 JIT 编译器的实现，指出内联优化的难点不在于“怎么做”，而在于“何时做”——即如何通过调用上下文和启发式规则，在代码体积膨胀、编译时间开销和运行性能之间找到微妙的平衡。\n\n### 编译器的“近视眼”困境\nJIT 编译器通常一次只处理一个函数，这在动态语言里很自然，但也带来了大麻烦。因为像 Ruby 这样的语言，方法调用无处不在且极其微小，比如一个简单的 `distance` 计算里就包含了 8 次方法调用和 2 次堆分配。编译器喜欢大块的上下文来做优化，这种细碎的代码让它很“难过”。虽然逃逸分析等手段能帮点忙，但它们往往因为副作用束手无策。说白了，只有把被调用的函数体塞进调用者里——也就是内联——才能解锁后续的一系列优化潜力。\n\n### 内联实现容易，决策难\n把函数代码复制粘贴到调用处，听起来是件简单事，作者在 Cinder 上花了周甚至月才搞定，同事在 ZJIT 上半小时就原型出来了。虽然为了支持调试和 Profiler 还需要维护一些“假装函数没被内联”的假象，但这部分工程量终究有限。真正的坑在于接下来的十年：你该怎么决定什么时候内联？内联是一把双刃剑，搞不好代码体积爆炸，CPU 缓存命中率下降；或者因为过早触发了大小限制，把真正关键的函数挡在了门外。更别提在交互式场景下，编译时间过长还会卡顿用户。\n\n### 启发式规则的众生相\n既然不能盲目内联，大家都在用启发式规则。作者调研了一圈，发现大家看重的指标惊人地一致：调用目标的 Profile 信息、调用者累积大小、被调函数大小、内联深度、递归情况、多态性，甚至是编译器当前处于 Baseline 还是 Aggressive 模式。甚至还有更激进的方案，比如用神经网络来训练决策，或者把内联当作搜索问题来遍历调用图。核心思路其实很简单：Inline methods. Mostly small. Not too many. 但要把这个原则量化成具体的代码逻辑，各家有各家的算盘。\n\n### 调用上下文：被忽略的关键信息\n还有一个更隐蔽的难点：调用上下文。一个函数在全局看可能是多态的，但在某个特定调用点却是单态的。比如 Rails 里常见的 `HashWithIndifferentAccess#[]`，全局看它既接受 String 也接受 Symbol，但在某个具体调用者里可能只传 String。如果编译器只看函数本身的 Profile，就会误判。为了解决这个问题，SpiderMonkey 做了“Trial Inlining”，让调用者为被调者分配独立的 Profile 记录；JavaScriptCore 更狠，直接在字节码层面做内联；HotSpot 则通过多层编译（C1 收集信息传给 C2）来传递上下文。\n\n### Cinder 的极简主义实践\n回到具体实现，Cinder 的内联器走的是极简路线。它遍历调用者的 CFG，只针对单态调用目标进行内联，而且有一堆“不做”的检查（比如处理不了复杂的参数约定）。它的核心逻辑就是一个简单的 Cost Model：算一下当前代码成本，加上被调函数的成本，如果没超限就内联，然后重新推导类型。这种简单粗暴的方法效果出奇地好，能内联大量常量返回的小方法，甚至还能缩减最终代码体积，且编译开销极低。\n\n### PyPy 的“全都要”策略\n相比之下，PyPy 的 tracing JIT 就显得非常“豪横”。他们的启发式规则基本就是“Yes”，除了递归函数和带循环的函数，其他统统内联。因为 tracing 的本质就是沿着执行路径记录，跨函数调用自然就变成了内联。更有意思的是，PyPy 把栈帧的 push/pop 当作普通的内存分配来处理，这样就能用标准的死代码消除（DCE）来清理掉这些操作，而不需要像 Cinder 那样专门写一套复杂的清理逻辑。这种设计上的差异，体现了不同编译器架构对内联的根本性不同理解。",
+      "source_name": "bernsteinbear.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "inlining",
+        "JIT",
+        "compiler",
+        "heuristics"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Naively summing an alternating series",
+      "title_zh": "交替级数求和的数值精度陷阱",
+      "link": "https://www.johndcook.com/blog/2026/06/03/naive-sum/",
+      "pub_date": "2026-06-03T15:13:24.000Z",
+      "summary": "使用朴素方法计算指数函数的交替级数时，当 x 为负数且绝对值较大时会出现严重的数值精度问题。以 exp(-20) 为例，部分和在收敛前会剧烈振荡，最大部分和达到 2.18×10^7，而最终结果约为 2×10^-9。由于浮点数精度限制，这种大幅度的数值抵消导致结果完全错误，exp(-22) 甚至会得到负数。解决方案是计算 exp(-20) 为 1/exp(20)，避免交替级数的抵消问题。",
+      "source_name": "johndcook.com",
+      "score": 10,
+      "depth": 6,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "floating point",
+        "numerical stability",
+        "exponential",
+        "cancellation"
+      ],
+      "rank": 2
+    }
+  ]
+}
