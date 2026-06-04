@@ -6,6 +6,25 @@
   "filtered_articles": 18,
   "articles": [
     {
+      "title": "gittuf - a signed log for git refs",
+      "title_zh": "gittuf：为 Git refs 引入签名日志",
+      "link": "https://nesbitt.io/2026/06/04/gittuf-a-signed-log-for-git-refs.html",
+      "pub_date": "2026-06-04T10:00:00.000Z",
+      "summary": "## 一句话总结\ngittuf 通过在 Git 仓库内维护一个签名链（RSL），将分支保护策略和审批记录从 Forge 的数据库搬到了代码库本身，从而彻底解决了恶意服务器篡改 refs 或回滚历史带来的信任问题。\n\n### 安全的盲区：Forge 守不住的边界\n我们习惯了依赖 GitHub 或 GitLab 的保护机制，比如 Branch protection、CODEOWNERS 或者必须的 Review。但说白了，这些规则只是 Forge 数据库里的一行配置，检查动作发生在它的 API 层。当你 clone 代码时，这些规则并不会跟着仓库一起走。这意味着服务器端可以给你推送任何它想要的 ref 指针，甚至管理员可以在设置里瞬间关掉保护，推完恶意代码再打开。唯一的记录可能只留在 Forge 自己的审计日志里，而这就留下了巨大的攻击面。\n\n### 历史教训：当守门人被攻破\n这种“信任鸿沟”并不是理论假设，而是已经发生过多次惨痛事故。2021 年 PHP 的官方 Git 服务器被入侵，攻击者直接伪造了 Rasmus Lerdorf 等核心开发者的身份推送了恶意提交；2018 年 Gentoo 的 GitHub 组织被劫持，攻击者拿到管理员权限后，不仅踢掉了合法开发者，还向 master 分支推送了包含 `rm -rf` 的破坏性代码。更有甚者，2025 年 tj-actions 的维护者密钥泄露，攻击者将数千个现有的标签重定向到了同一个恶意提交。在这些案例中，Branch protection 要么根本不存在（自建服务器），要么被攻击者直接接管而失效。\n\n### Git 的原生缺陷：Refs 是裸奔的\n问题的核心在于 Git 的设计：Commit 可以签名，但 Refs（引用）本身是不签名的。那篇 2016 年的 USENIX 论文早就指出了这个模式：恶意服务器可以将一个 ref 回滚到旧版本，或者换成另一个分支上的有效提交。你拉取下来的代码，虽然是真实存在的、甚至签名合法的 Commit，但并不是维护者当前认可的版本。因为 Git 仓库里没有任何记录能证明“哪个 Commit 才是该 Ref 最后的合法状态”，这就给了攻击者“时间旅行”篡改历史的机会。\n\n### 核心方案：把规则写进 RSL\ngittuf 的解决思路很直接：既然不能信任服务器，那就把每一次 Ref 的更新都记录在一个不可篡改的日志里。它在仓库的 `refs/gittuf/reference-state-log` 下维护了一个哈希链，每一个条目都记录了 Ref 名称、新的 Commit Hash 以及前一个条目的 Hash，并且全部用私钥签名。当你验证一个仓库时，只需要顺着这个 RSL（Reference State Log）往前走，检查每一次 Ref 变动是否符合当时的策略。如果你 clone 下来的 main 分支 tip 和 RSL 结尾记录的不一致，那说明中间有人给你投毒了。\n\n### 策略与委托：不依赖服务器的 M-of-N\n那谁来签名？策略存在 `refs/gittuf/policy` 里，采用了 TUF（The Update Framework）的元数据格式。Root policy 定义了受信任的密钥持有者，并且支持委托机制。比如你可以规定“这三个密钥里有两个签名才能推进 `refs/heads/main`”，或者“只有 Release Manager 的密钥才能移动 `v*` 开头的标签”。这种 M-of-N 的阈值签名是密码学层面的强制，不像现在的 Forge 设置那样只是个可随时修改的开关。验证过程完全在本地进行，不依赖 Forge 持有的任何密钥。\n\n### 填补供应链的最后一环\ngittuf 在整个软件供应链签名栈里扮演了关键角色。之前的文章提到过，Sigstore 或 in-toto 可以证明“这个制品是由哪个源码树构建的”，但它们无法证明“这个源码树是否是仓库里当时合法的 Tip”。gittuf 的 RSL 恰好补上了这块拼图。它建立了一条完整的信任链：客户端从 Registry 开始验证，经过构建记录，一直追溯到授权该 Commit 的 RSL 条目，最后链到 Forge 之外的密钥持有者。\n\n### 未来的愿景：让 Forge 成为参与者\n目前的痛点是，如果你在 GitHub 网页上点“Merge”，这个操作还是由 Forge 发起的，并没有经过 gittuf 的密钥签名。作者希望未来的 Forge 能原生集成 gittuf，让这些常规操作自动生成签名的 RSL 条目。现在最接近的方案是 gittuf 官方的 GitHub App，它能把 PR 的审批记录作为外部证明收集起来。如果 Forge 自己也能持有私钥并参与到委托图中，那么我们就能在不改变现有开发习惯的前提下，真正实现代码库的自主防御。",
+      "source_name": "nesbitt.io",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "gittuf",
+        "git",
+        "TUF",
+        "supply chain security"
+      ],
+      "rank": 1
+    },
+    {
       "title": "A survey of inlining heuristics",
       "title_zh": "JIT 编译器内联启发式策略全景调研",
       "link": "https://bernsteinbear.com/blog/inlining-heuristics/?utm_source=rss",
@@ -22,7 +41,7 @@
         "compiler",
         "heuristics"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Pluralistic: Delusion as a service (04 Jun 2026)",
@@ -41,7 +60,7 @@
         "psychological vulnerabilities",
         "chatbot"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Anti-AI nostalgia and the cult of the past",
@@ -60,7 +79,7 @@
         "Luddites",
         "nostalgia"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Is datacentre sovereignty really that important?",
@@ -79,7 +98,7 @@
         "datacentre",
         "AI infrastructure"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Naively summing an alternating series",
@@ -98,7 +117,26 @@
         "exponential",
         "cancellation"
       ],
-      "rank": 5
+      "rank": 6
+    },
+    {
+      "title": "Book Review: Accessible Communications by Lisa Riemers and Matisse Hamel-Nelis ★★★★★",
+      "title_zh": "无障碍通信实践指南：从法律到技术",
+      "link": "https://shkspr.mobi/blog/2026/06/book-review-accessible-communications-by-lisa-riemers-and-matisse-hamel-nelis/",
+      "pub_date": "2026-06-04T11:34:53.000Z",
+      "summary": "这本书超越了基础的 alt text 教程，深入讲解了不同发布工具如何暴露可访问性功能、PDF 可访问性实现细节以及播客无障碍化方法。内容涵盖多个司法管辖区的法律框架、伦理考量、商业案例，以及来自数十个国家的统计数据和案例研究。书中还分析了 TikTok 等平台的动态字幕对认知障碍用户的实际影响，并客观评估了 AI 在可访问性应用中的局限性和潜在危害。每章结尾提供关键要点总结，书末附有完整的可访问性检查清单。",
+      "source_name": "shkspr.mobi",
+      "score": 10,
+      "depth": 5,
+      "novelty": 5,
+      "category": "other",
+      "keywords": [
+        "accessibility",
+        "PDF",
+        "podcasts",
+        "AI"
+      ],
+      "rank": 7
     },
     {
       "title": "Rotation revisited: A shocking discovery about gcc’s unidirectional rotation algorithm",
@@ -117,7 +155,7 @@
         "iterators",
         "algorithm"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Now that your newsletter is AI-generated, I've Unsubscribed",
@@ -135,7 +173,26 @@
         "AI-generated content",
         "human voice"
       ],
-      "rank": 7
+      "rank": 9
+    },
+    {
+      "title": "AMD 486DX4 released June 4, 1995",
+      "title_zh": "1995 年 AMD 486DX4 处理器回顾",
+      "link": "https://dfarq.homeip.net/amd-486dx4-released-june-4-1995/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=amd-486dx4-released-june-4-1995",
+      "pub_date": "2026-06-04T11:00:58.000Z",
+      "summary": "AMD 于 1995 年 6 月 4 日发布 486DX4 处理器，比 Intel 晚六个月。AMD DX4 提供 75/90/100/120 MHz 四种频率，而 Intel 仅提供 75 和 100 MHz。标准版 AMD DX4 仅配备 8KB L1 缓存，而 Intel DX4 配备 16KB，因此 AMD 性能略逊但价格与 Intel DX2-66 相当。1996 年 AMD DX4-120 加主板售价约 160 美元，仅为 Intel Pentium 75 CPU（168 美元）加主板（159 美元）的一半，性能仅慢 10-15%。AMD 后续推出增强版 DX4，配备 16KB 写回缓存，售价 99 美元，但作者认为性价比不如将差价投入 PCI 主板和显卡。AMD DX4 运行在 3.3 电压而非 5 伏，这是 Intel 在法律诉讼中争取到的限制，迫使 AMD 无法在更高电压下运行更快的 486 芯片。",
+      "source_name": "dfarq.homeip.net",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "engineering",
+      "keywords": [
+        "AMD 486DX4",
+        "CPU",
+        "retro computing",
+        "Intel"
+      ],
+      "rank": 10
     },
     {
       "title": "How To Read More",
@@ -154,7 +211,7 @@
         "Goodreads",
         "Todoist"
       ],
-      "rank": 8
+      "rank": 11
     },
     {
       "title": "My GNU Emacs completion setup (as of June 2026)",
@@ -171,7 +228,7 @@
         "Emacs",
         "completion"
       ],
-      "rank": 9
+      "rank": 12
     },
     {
       "title": "Another Gem From the Annals of Nick Bilton Jackassery",
@@ -189,7 +246,7 @@
         "pseudoscience",
         "NYT"
       ],
-      "rank": 10
+      "rank": 13
     },
     {
       "title": "If There’s One Thing Nick Bilton Knows, It’s Television",
@@ -207,7 +264,7 @@
         "Apple TV",
         "rumor"
       ],
-      "rank": 11
+      "rank": 14
     },
     {
       "title": "CBS News Fires Scott Pelley of ‘60 Minutes’",
@@ -225,7 +282,7 @@
         "CBS",
         "Scott Pelley"
       ],
-      "rank": 12
+      "rank": 15
     },
     {
       "title": "The ‘60 Minutes’ Purge",
@@ -242,7 +299,7 @@
         "60 Minutes",
         "CBS"
       ],
-      "rank": 13
+      "rank": 16
     }
   ]
 }
