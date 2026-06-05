@@ -1,10 +1,29 @@
 {
   "date": "2026-06-05",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2585,
-  "filtered_articles": 23,
+  "success_feeds": 85,
+  "total_articles": 2595,
+  "filtered_articles": 25,
   "articles": [
+    {
+      "title": "Aggressive caching for a Mastodon reverse proxy: what to cache, what to never cache, and why content negotiation will eventually betray you",
+      "title_zh": "Mastodon 反向代理缓存策略",
+      "link": "https://it-notes.dragas.net/2026/06/05/aggressive_caching_for_a_mastodon_reverse_proxy/",
+      "pub_date": "2026-06-05T08:44:00.000Z",
+      "summary": "### 一句话总结\nMastodon 同一个 URL 会根据客户端身份返回 HTML、JSON 或 ActivityPub，只有把 `Accept` 请求头纳入缓存键并严格隔离私有流量，才能在反向代理层安全地开启激进缓存。\n\n### Mastodon 不是普通网站，是三合一的混合体\n给 Mastodon 配缓存之所以让人头疼，核心原因不在于流量大，而在于它身份复杂。说白了，同一个 URL 比如 `/@user/123`，浏览器访问它返回 HTML，别的实例访问它返回 ActivityPub JSON，客户端 App 访问可能又是普通 JSON。如果你只把 URL 当缓存键，nginx 根本分不清谁是谁，最后的结果就是灾难性的：实例收到了 HTML，浏览器下载了 JSON，你的时间线瞬间崩坏。所以，整篇文章的配置其实都在围绕一个事实展开：Mastodon 是网站、API 和联邦服务器的混合体，它们共享 URL 但必须隔离缓存。\n\n### 缓存键必须包含内容协商的变种\n为了解决“一 URL 多内容”的问题，作者设计了一个巧妙的 `map` 指令，把杂乱的 `Accept` 请求头归一化为四个标准桶：`activitypub`、`json`、`html` 和 `default`。这样做的好处是，不管客户端请求的是 `application/activity+json` 还是 `application/ld+json`，它们都会命中同一个缓存桶，避免缓存碎片化。接着，作者把这个变种值硬编码进了缓存键 `proxy_cache_key`，确保不同类型的客户端请求会被存成不同的缓存对象。这里有个细节值得注意：作者故意没把 `$request_method` 加进缓存键，因为 nginx 默认会把 `HEAD` 当作 `GET` 处理，分开存纯属浪费。\n\n### 别让上游的 Vary 头搞乱你的计划\n配置好自定义缓存键后，有个隐蔽的坑必须避开：nginx 默认会尊重后端返回的 `Vary` 头。如果 Mastodon 返回 `Vary: Accept`，nginx 可能会在你的缓存键之外再套一层原生逻辑，导致缓存键失效甚至碎片化。更糟糕的是，旧版 nginx 的 `Vary` 字段只有 42 字节长，一旦超长就被当成 `Vary: *`，直接禁止缓存。作者的对策很干脆：用 `proxy_ignore_headers Vary` 告诉 nginx 完全无视后端的 `Vary` 头。但这同时也意味着责任转移：你必须确保自己手动处理了所有变体（比如通过清空 `Accept-Encoding` 让前端统一处理压缩），否则就会出错。\n\n### 任何涉及身份的请求必须绕过缓存\n缓存公共内容没问题，但一旦涉及用户身份，就必须坚决绕过。作者把绕过逻辑拆解成了几个正交的 `map`：非 GET/HEAD 请求绕过、带 `Authorization` 头的 API 请求绕过、带 Cookie 的登录态请求绕过，以及特定路径（如 `/auth`、`/admin`）绕过。这里有个极易被忽视的细节：Mastodon 的联邦流量用的是 HTTP Signatures（`Signature` 头），而不是 `Authorization` 头。如果你开启了 `AUTHORIZED_FETCH` 安全模式，必须额外增加针对 `$http_signature` 的跳过规则，否则不同实例的私有内容可能会互相污染，这跟 CVE-2026-25540 漏洞的原理如出一辙。\n\n### 缓存策略分层：静态资源长存，动态内容微缓存\n具体的缓存策略上，作者采用了分层打法。对于指纹化的静态资源（如 `/assets`、`/packs`），直接给极长的 TTL，因为文件名变了 URL 自然就变了。对于用户上传的媒体文件，给中等长度的 TTL，但前提是后端存储没有用那种短期有效的 presigned URL。而对于最消耗性能的动态页面和联邦端点，则采用“微缓存”策略，缓存时间极短，专门用来吸收瞬间的并发洪峰。这种组合拳既保证了热门 toot 被转发时的响应速度，又避免了私有数据泄露的风险。\n\n### 基础配置里的两个关键细节\n在看似平淡的 proxy 基础配置里，有两个细节对性能至关重要。首先是 `proxy_http_version 1.1` 配合 `Connection \"\"` 头，这能确保 nginx 和后端 Mastodon 保持长连接，否则每次请求都新建连接会拖垮性能。其次是 `proxy_set_header Accept-Encoding \"\"`，这既让 nginx 自己处理压缩以节省 CPU，又防止后端因为 `Accept-Encoding` 的差异产生不同的缓存变体。这些配置虽然不起眼，但少了它们，前面的复杂缓存键设计可能都会大打折扣。",
+      "source_name": "it-notes.dragas.net",
+      "score": 16,
+      "depth": 9,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "nginx",
+        "Mastodon",
+        "caching",
+        "content negotiation"
+      ],
+      "rank": 1
+    },
     {
       "title": "Alex Imas and Phil Trammell – What remains scarce after AGI?",
       "title_zh": "AGI 时代的稀缺性与财富分配",
@@ -22,7 +41,7 @@
         "labor share",
         "redistribution"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "AI enthusiasts are in a race against time, AI skeptics are in a race against entropy",
@@ -41,7 +60,26 @@
         "organizational design",
         "feedback loops"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "Rotation revisited: Cycle decomposition in clang’s libcxx",
+      "title_zh": "Clang libcxx 的循环分解旋转算法",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260604-00/?p=112384",
+      "pub_date": "2026-06-04T14:00:00.000Z",
+      "summary": "## 一句话总结\nClang 的 libcxx 利用“循环分解”算法将旋转视为置换处理，虽然实现了理论上的最少交换次数（n/2），但牺牲了内存局部性。\n\n### 理论上的最优解：把旋转看作数学置换\nClang 的 libcxx 实现了一个非常“数学”的算法。它不把旋转看作数据块的移动，而是看作一个排列组合问题。核心思路是：整个旋转操作可以分解为若干个独立的“循环”。算法只需要遍历这些循环，把每个循环里的元素依次挪动一位。这种方法能保证交换次数最少，大约只需要 n/2 次赋值，这是目前所有算法里最省操作数的。\n\n### 循环的数量由最大公约数决定\n那怎么知道有多少个循环呢？这取决于 A 区间的长度（a）和总长度（n）的最大公约数（gcd）。循环的数量就是 gcd(a, n)。每个循环的起始点不同，但步长都是 a。比如 A 长度为 4，总长为 10，那就有 gcd(4, 10) = 2 个循环。算法会先算出这个 gcd 值，然后通过外层循环控制处理每一个独立的循环。\n\n### 具体的执行逻辑：保存起点，顺藤摸瓜\n在处理单个循环时，代码逻辑很巧妙。它先“拔起”循环的起始元素保存起来，然后按步长 a 依次寻找下一个元素，用 `std::move` 把后面的元素覆盖到前面的位置。这个过程一直持续，直到绕回到循环的起点。最后，再把最初保存的那个元素填到最后空出来的位置。这样，一个循环就完成了旋转，且没有浪费多余的交换操作。\n\n### 性能的权衡：赢了交换次数，输了缓存\n虽然交换次数最少，但这个算法有个致命伤：局部性极差。因为循环里的元素在内存中是跳跃分布的，跨度很大。对于现代 CPU 来说，这种跳跃式的访问会导致大量的 Cache Miss。相比之下，那些交换次数多一点但顺序访问内存的算法，在实际运行中可能反而更快。这就是典型的理论最优与工程现实的冲突。\n\n### 实现细节：GCD 的计算成本\n为了算出循环次数，必须先算 gcd。好在欧几里得算法非常高效，时间复杂度只有 O(log n)。代码里用了一个简单的 do-while 循环取模来实现。虽然这点计算开销相对于整个旋转操作来说不算大，但也不是完全没有成本。这也引出了文章最后埋下的伏笔：有没有办法连这个 gcd 都不用算？\n\n### 下一步的悬念：能不能更懒一点？\n有意思的是，作者提到评论区有人觉得这个算法显而易见，但真正的难点在于确定循环的次数。Clang 的实现老老实实算了 gcd，但作者暗示存在一个“trick”，可以完全跳过 gcd 的计算。这意味着我们可能不需要预先知道循环的数量，就能完成同样的操作。这个更“懒”的方案，留待下次揭晓。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "std::rotate",
+        "libcxx",
+        "cycle decomposition",
+        "gcd"
+      ],
+      "rank": 4
     },
     {
       "title": "Integrating smooth periodic functions",
@@ -60,7 +98,7 @@
         "periodic functions",
         "exponential convergence"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "IPv6 zones in URLs are a mistake",
@@ -79,7 +117,7 @@
         "zone index",
         "percent-encoding"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Using Safetensors with Flax",
@@ -98,7 +136,26 @@
         "JAX",
         "checkpoint"
       ],
-      "rank": 5
+      "rank": 7
+    },
+    {
+      "title": "AI-indecision is a recursive trap. Don't get stuck.",
+      "title_zh": "AI 决策辅助的递归陷阱",
+      "link": "https://www.joanwestenberg.com/ai-indecision-is-a-recursive-trap-dont-get-stuck/",
+      "pub_date": "2026-06-05T04:06:59.000Z",
+      "summary": "AI 决策辅助会陷入递归循环：语言模型会列出所有选项、权衡利弊、提出假设，但始终将最终决定权交还给你。这种无限耐心消解了人类决策的自然边界——在传统认知中，思考会耗尽新角度从而被迫行动，但 AI 能持续生成新视角。引用 Leslie Lamport 的 Buridan's Principle：连续输入的离散决策无法在有限时间内完成。艾森豪威尔在诺曼底登陆决策中选择了在信息不完美时行动，而非无限等待。大多数对话内容在开始前已存在于潜意识中，长期对话不会产生新信息，只是为已做的选择寻找合理化借口。Rilke 主张通过行动寻找答案，禅宗故事强调先吃饭再洗碗，最终必须关闭标签页做出决定，否则会像 Buridan 的驴一样饿死。",
+      "source_name": "joanwestenberg.com",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "opinion",
+      "keywords": [
+        "decision-making",
+        "AI",
+        "Buridan's Principle",
+        "paralysis"
+      ],
+      "rank": 8
     },
     {
       "title": "Giving your Go apps Tigris superpowers",
@@ -117,7 +174,7 @@
         "S3",
         "SDK"
       ],
-      "rank": 6
+      "rank": 9
     },
     {
       "title": "‘Microsoft and OpenAI Broke Up — Now They’re Ready to Fight’",
@@ -136,7 +193,7 @@
         "AI agents",
         "Autopilots"
       ],
-      "rank": 7
+      "rank": 10
     },
     {
       "title": "The Latin of Linux",
@@ -155,7 +212,7 @@
         "command line",
         "regex"
       ],
-      "rank": 8
+      "rank": 11
     },
     {
       "title": "Remember When Chrome Went Bad on MacOS?",
@@ -174,7 +231,7 @@
         "WindowServer",
         "Keystone"
       ],
-      "rank": 9
+      "rank": 12
     },
     {
       "title": "Google’s Gemini Mac App Is Native, in a Distinctly Google Way, But Annoyingly Presumptuous",
@@ -192,7 +249,7 @@
         "macOS",
         "native app"
       ],
-      "rank": 10
+      "rank": 13
     },
     {
       "title": "Quoting Emanuel Maiberg, 404 Media",
@@ -211,7 +268,7 @@
         "media",
         "statement"
       ],
-      "rank": 11
+      "rank": 14
     },
     {
       "title": "Lingon and Lingon Pro 10",
@@ -230,7 +287,7 @@
         "task scheduler",
         "Apple Intelligence"
       ],
-      "rank": 12
+      "rank": 15
     },
     {
       "title": "Some People Rooted for The Empire in ‘Star Wars’, Too",
@@ -249,7 +306,7 @@
         "Scott Pelley",
         "media"
       ],
-      "rank": 13
+      "rank": 16
     },
     {
       "title": "The Emacs packages that I use (as of June 2026)",
@@ -266,7 +323,7 @@
         "Emacs",
         "packages"
       ],
-      "rank": 14
+      "rank": 17
     },
     {
       "title": "‘The Insider’",
@@ -283,7 +340,7 @@
         "film",
         "review"
       ],
-      "rank": 15
+      "rank": 18
     },
     {
       "title": "The Talk Show Live From WWDC 2026: Tuesday in San Jose",
@@ -300,7 +357,7 @@
         "WWDC",
         "event"
       ],
-      "rank": 16
+      "rank": 19
     }
   ]
 }
