@@ -1,9 +1,9 @@
 {
   "date": "2026-06-06",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2575,
-  "filtered_articles": 20,
+  "success_feeds": 85,
+  "total_articles": 2595,
+  "filtered_articles": 22,
   "articles": [
     {
       "title": "Premium: The Hater's Guide To The AI Bubble 3.0",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Running Python code in a sandbox with MicroPython and WASM",
+      "title_zh": "MicroPython + WASM 构建 Python 沙箱",
+      "link": "https://simonwillison.net/2026/Jun/6/micropython-in-a-sandbox/#atom-everything",
+      "pub_date": "2026-06-06T03:53:34.000Z",
+      "summary": "## 一句话总结\n作者利用 MicroPython 编译成的 WebAssembly 二进制文件，配合 wasmtime 引擎，成功在 Python 应用中构建了一个既支持状态持久化又能严格限制资源的安全沙箱。\n\n### 插件系统的安全困境\n作者维护的 Datasette 和 LLM 等项目都严重依赖插件系统，但这带来了一个巨大的安全隐患：插件代码通常拥有与主程序完全相同的权限。这意味着一个恶意的或者有 Bug 的插件可以随意读取文件、发起网络请求，甚至搞垮整个应用。作者一直想找到一种既能像插件一样灵活扩展功能，又能把代码关在笼子里执行的方案，让代码只能访问被允许的文件，且无法触碰网络。\n\n### 为什么 WebAssembly 是最佳候选\n为了解决安全问题，作者考察了多种方案。虽然浏览器里的 JavaScript 引擎天天处理恶意代码，但它们太复杂了，很难嵌入到 Python 项目中。WebAssembly（WASM）则不同，它天生就是为了安全隔离设计的，经过了浏览器近十年的实战检验。更重要的是，Python 生态里有一个活跃维护的 `wasmtime` 库，它提供了现成的二进制包，不需要用户折腾复杂的编译环境就能安装。\n\n### MicroPython 比 Pyodide 更适合服务端\n要在 WASM 里跑 Python，得先把 Python 解释器编译成 WASM。虽然 Pyodide 很有名，但它主要是为浏览器设计的，并不支持在服务端 Python 环境中运行。作者把目光投向了 MicroPython，这个专为微控制器和受限环境设计的精简版 Python。WebAssembly 的资源受限特性，简直和 MicroPython 是天造地设的一对。\n\n### 用“死循环”解决状态持久化\n在构建原型时，作者遇到了一个棘手问题：标准的 WASM 入口点是“启动-运行-退出”模式，每次执行完代码，内存里的变量就清空了。但在 Datasette Agent 里，作者需要变量能在多次调用之间保留。这里有个巧妙的设计：作者让 WASM 内部的解释器进入一个“死循环”，阻塞等待宿主函数 `__session_next__()` 返回新的代码。宿主 Python 程序通过线程和队列把代码传进去，WASM 执行完后再通过 `__session_result__()` 把结果传回来。这样，解释器一直活着，状态自然就保留了。\n\n### 78 行 C 代码打通宿主交互\n为了让沙箱里的代码能和外界交互，作者还得支持“宿主函数”。这需要写一点 C 代码来桥接 WASM 和 Python。虽然作者自嘲不是 C 程序员，但在 AI 的帮助下，最终只用了 78 行 C 代码就搞定了这个模块，编译进 WASM 后体积只有 362KB。这种设计的好处是，即便 C 代码有严重漏洞，最坏的结果也不过是 WASM 执行抛出异常，不会危及宿主系统的安全，这比直接调用原生 C 扩展要安全得多。\n\n### 资源限制与“燃料”机制\n一个合格的沙箱必须能限制资源，防止死循环代码吃光 CPU。内存限制好办，`wasmtime` 原生支持。CPU 限制则用到了“Fuel（燃料）”机制：给 WASM 执行分配一定量的“燃料”，每执行一条指令消耗一点，燃料耗尽程序就被强制终止。作者目前默认设置了 2000 万的燃料值，虽然具体单位还不太好换算，但实测足以拦截 `while True` 这种死循环，同时又能保证正常代码跑完。\n\n### 现在的进展与未来展望\n目前这个名为 `micropython-wasm` 的包已经以 Alpha 版本发布到了 PyPI，你可以直接用 `uvx` 体验，甚至在 Datasette Agent 里跑一段 MicroPython 代码来算斐波那契数列。作者很诚实地表示，这还是个“Vibe-coded”（靠感觉和 AI 写出来的）实验性项目，虽然他让 GPT-5.5 尝试攻击沙箱都没成功，但他并不建议马上用于生产环境。他更希望抛砖引玉，吸引那些有专业安全团队的公司来关注 Python + WASM 这种沙箱路径，共同完善这个方案。",
+      "source_name": "simonwillison.net",
+      "score": 14,
+      "depth": 7,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "MicroPython",
+        "WebAssembly",
+        "sandbox",
+        "wasmtime"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Pluralistic: Refining humanity (05 Jun 2026)",
       "title_zh": "计算机如何帮助我们重新定义人性",
       "link": "https://pluralistic.net/2026/06/05/defining-humanity/",
@@ -41,7 +60,7 @@
         "creativity",
         "programming"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Rotation revisited: Avoiding having to calculate the gcd when doing cycle decomposition",
@@ -60,7 +79,26 @@
         "gcd",
         "algorithm"
       ],
-      "rank": 3
+      "rank": 4
+    },
+    {
+      "title": "OpenAI Help: Lockdown Mode",
+      "title_zh": "OpenAI 推出 Lockdown Mode 阻断数据外泄",
+      "link": "https://simonwillison.net/2026/Jun/5/openai-help-lockdown-mode/#atom-everything",
+      "pub_date": "2026-06-05T23:56:40.000Z",
+      "summary": "## 一句话总结\nOpenAI 推出的 Lockdown Mode 通过切断出站网络请求，直接解决了“致命三要素”中最难防的数据泄露问题，但也侧面承认了默认模式下 ChatGPT 对抗高级攻击的局限性。\n\n### 默认模式其实防不住高级数据窃取\nOpenAI 终于把 Lockdown Mode 正式上线了，覆盖从 Free 到 Pro 的个人账户以及自服务的 Business 账户。这东西最早是在二月预告的，现在终于落地。但有意思的是，官方文档里说得很直白：这个模式并不能阻止 Prompt Injection 的发生。也就是说，恶意代码依然可能通过缓存网页或上传文件混进来，依然能影响模型的回复准确性。它真正解决的，是攻击链条的最后一环——数据外泄。\n\n### 所谓“致命三要素”缺一不可\n这里得提一下 Simon Willison 之前总结的“Lethal Trifecta”（致命三要素）概念。一个 LLM 系统要想被彻底攻破，必须同时满足三个条件：能接触到敏感数据、能暴露在不可信的内容中、有渠道把数据偷走传回给攻击者。这三个要素就像凳子的三条腿，缺一不可。只要能砍断其中一条腿，整个攻击链条就塌了。\n\n### 砍断“外泄渠道”是性价比最高的解法\n那怎么办？在这三条腿里，砍哪一条最划算？如果限制接触数据，模型就没法干活；如果完全隔绝不可信内容，模型的实用性又大打折扣。相比之下，限制数据外泄渠道对现有功能的破坏最小。Lockdown Mode 的核心思路其实很简单：它不关心模型内部被怎么忽悠，只死死卡住所有可能把数据传出去的出站网络请求。\n\n### 用确定性机制对抗 AI 的不可靠\n这个设计最巧妙的地方在于，它用的不是 AI 去审查 AI，而是硬性的网络隔离。毕竟，用来防御的 AI 模型本身也可能被绕过，这就陷入了“用魔法打败魔法”的死循环。Lockdown Mode 采用的是确定性机制，直接在底层掐断流量。这意味着，无论攻击者的 Prompt Injection 写得多么高明，只要没有出站权限，数据就传不出去。\n\n### 潜台词：默认模式并不安全\n但这个功能的推出，也暴露了一个略显尴尬的事实。OpenAI 这等于是在暗示：ChatGPT 在默认设置下，其实并没有提供足够强大的防护来对抗那些死磕到底的数据窃取攻击。对于普通用户可能还好，但对于处理高度敏感数据的场景，默认配置显然是不够的。Lockdown Mode 的存在，本身就是对默认安全性的一种“打补丁”式承认。",
+      "source_name": "simonwillison.net",
+      "score": 12,
+      "depth": 5,
+      "novelty": 7,
+      "category": "security",
+      "keywords": [
+        "prompt injection",
+        "data exfiltration",
+        "Lockdown Mode",
+        "ChatGPT"
+      ],
+      "rank": 5
     },
     {
       "title": "JAX backends and devices",
@@ -79,7 +117,7 @@
         "CUDA",
         "backend"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Nieman Journalism Lab: Twitter/X Punishes Accounts That Post Links",
@@ -98,7 +136,7 @@
         "engagement",
         "news publishers"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Elon Musk’s X Is a Freak Show",
@@ -117,7 +155,7 @@
         "engagement",
         "traffic"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Why all the PRs?",
@@ -136,7 +174,7 @@
         "AI-generated PR",
         "job market"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Checking in on Perplexity",
@@ -155,7 +193,26 @@
         "acquisition",
         "robots.txt"
       ],
-      "rank": 8
+      "rank": 10
+    },
+    {
+      "title": "In pursuit of desirable difficulties",
+      "title_zh": "AI 写作与“合意困难”的悖论",
+      "link": "https://www.joanwestenberg.com/in-pursuit-of-desirable-difficulties/",
+      "pub_date": "2026-06-06T01:14:14.000Z",
+      "summary": "Robert Bjork 提出的“合意困难”理论指出，学习过程中的挣扎有助于知识的长期保持。写作同样遵循这一原理：与语言搏斗、亲手打磨句子才能留下思考的印记。AI 生成器能在几秒内产出看似完美的段落，但缺乏作者的决策痕迹。表面 polished 但未经深思熟虑的半成品，比粗糙的初稿更危险，因为它会让人误以为工作已完成。区分“构建判断力的困难”和“纯粹的苦役”的唯一方法是保持与工作的亲密接触。在发布那些未经触碰的完美段落前，问自己：其中有多少是你真正决定的？",
+      "source_name": "joanwestenberg.com",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "opinion",
+      "keywords": [
+        "writing",
+        "AI",
+        "desirable difficulties",
+        "judgment"
+      ],
+      "rank": 11
     },
     {
       "title": "It seems unlikely that I'll have basic ARM servers to deal with",
@@ -173,7 +230,26 @@
         "servers",
         "hardware"
       ],
-      "rank": 9
+      "rank": 12
+    },
+    {
+      "title": "micropython-wasm 0.1a2",
+      "title_zh": "micropython-wasm 新增 CLI 工具",
+      "link": "https://simonwillison.net/2026/Jun/6/micropython-wasm/#atom-everything",
+      "pub_date": "2026-06-06T04:26:06.000Z",
+      "summary": "micropython-wasm 0.1a2 新增 CLI 功能，允许用户直接在命令行中运行 MicroPython WASM 版本。该工具将 MicroPython 编译为 WebAssembly，可在浏览器和 Node.js 环境中执行，为 Python 代码提供轻量级沙箱运行环境。CLI 支持直接执行 Python 脚本和交互式 REPL 模式，简化了测试和开发流程。",
+      "source_name": "simonwillison.net",
+      "score": 6,
+      "depth": 3,
+      "novelty": 3,
+      "category": "tools",
+      "keywords": [
+        "MicroPython",
+        "WebAssembly",
+        "CLI",
+        "sandbox"
+      ],
+      "rank": 13
     },
     {
       "title": "The back cover of C++: The Programming Language also raises questions not answered by the front cover",
@@ -191,7 +267,7 @@
         "publishing",
         "blurb"
       ],
-      "rank": 10
+      "rank": 14
     }
   ]
 }
