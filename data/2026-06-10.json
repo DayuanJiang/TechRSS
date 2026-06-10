@@ -6,6 +6,44 @@
   "filtered_articles": 22,
   "articles": [
     {
+      "title": "Initial impressions of Claude Fable 5",
+      "title_zh": "Claude Fable 5 首日实测：知识广度与代码能力",
+      "link": "https://simonwillison.net/2026/Jun/9/claude-fable-5/#atom-everything",
+      "pub_date": "2026-06-09T23:59:54.000Z",
+      "summary": "## 一句话总结\nClaude Fable 5 是一个参数量巨大、知识储备惊人的“巨无霸”模型，虽然价格昂贵且速度较慢，但其强大的代码推理和架构重构能力，能在几小时内完成资深开发者数天的工作量。\n\n### 模型定位：昂贵但强大的“巨无霸”\nAnthropic 这次发布的 Claude Fable 5 和 Mythos 5，核心参数非常激进：100 万 token 的上下文窗口，最大输出 12.8 万 token，知识截止日期是 2026 年 1 月。但这性能是有代价的，价格直接翻倍到了输入 $10/百万 token、输出 $50/百万 token，是 Opus 4.8 的两倍。Fable 5 带了严格的安全护栏，而 Mythos 5 则是去掉了这些分类器的“裸奔”版本。从官方文档来看，这次升级的改动并不算大，更多是底层的模型能力提升。\n\n### 知识储备：从“不知道”到“全知道”\n为了测试模型的“体量”，作者让 Fable 5 和 Opus 4.8 在不联网的情况下，列出 Simon Willison 的开源项目。Opus 4.8 表现得很谨慎，只列出了 Datasette、LLM 等几个知名项目，并明确表示怕给错日期。而 Fable 5 不仅纠正了名字的拼写错误，还列出了一长串包含具体月份的项目，甚至涵盖了 2024 年的 `files-to-prompt`。这种对冷门细节的精准掌握，暗示了 Fable 5 可能是目前为止参数量最大的模型之一，毕竟只有足够大的模型才能“塞”进这么多世界知识。\n\n### 实战演练：从 MicroPython 到 CPython 的无缝迁移\n光有知识还不够，还得看动手能力。作者给 Fable 5 出了个难题：把他刚写的 `micropython-wasm` 库升级成支持完整 Python。Fable 5 先是识别出了 Brett Cannon 的 `cpython-wasi-build`，但在下载时遇到了环境限制。作者手动上传了 zip 包后，Fable 5 只花了几分钟就搞定了。更有意思的是，作者要求把整个系统打包成一个 wheel 文件，Fable 5 不仅做到了，还处理了 CPython `getpath` bootstrap 这种底层的棘手问题，最终生成了一个 13.9MB 的可用包。这种对底层构建系统的理解，确实比之前的模型强了一大截。\n\n### 架构重构：不仅是写代码，更是做设计\n真正的考验来了。作者原本计划给 Datasette Agent 加一个“工具调用暂停等待用户批准”的功能，这涉及到复杂的异步控制和状态管理。Fable 5 不仅在 Datasette Agent 里搞定了这个功能，还反过头来发现底层的 LLM 库缺少支持。于是它主动重构了 LLM 库，引入了 `llm.PauseChain` 异常、唯一的 `tool_call_id` 以及支持从暂停点恢复执行的机制。它没有用临时的 hack 来糊弄事，而是把这些逻辑变成了正式的 API 特性，甚至还补全了文档和测试。这种“从应用层反推基础库设计”的能力，才是最让人印象深刻的。\n\n### 成本账单：百元美金买来的“数天工作量”\n当然，这种顶级能力是有账单的。作者用 AgentsView 统计了一天的花费，发现光是在 `prod_datasette_agent` 这个项目上就烧了 $99.26，总共处理了 7820 万 token。虽然听起来很吓人，但考虑到 Fable 5 在几个小时内就完成了原本需要几天才能完成的复杂功能开发和库重构，这笔“时间差”对于很多急需交付的项目来说，可能完全是划算的。这再次印证了一个趋势：在处理高难度编程任务时，更强（也更贵）的模型往往能带来更高的投入产出比。",
+      "source_name": "simonwillison.net",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "ai-ml",
+      "keywords": [
+        "Claude Fable 5",
+        "inference",
+        "code generation",
+        "cost"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "If Claude Fable stops helping you, you'll never know",
+      "title_zh": "Anthropic 对前沿 LLM 开发请求实施静默干预",
+      "link": "https://simonwillison.net/2026/Jun/10/if-claude-fable-stops-helping-you/#atom-everything",
+      "pub_date": "2026-06-10T00:37:25.000Z",
+      "summary": "## 一句话总结\nAnthropic 在 Fable 5 中引入了针对竞对研发的“隐形降级”机制，它会通过修改 Prompt 或内部向量等隐蔽手段，让涉及前沿模型构建的请求得到低质量的回复，且用户完全无法察觉。\n\n### 为了防止“递归自我改进”，Anthropic 决定动真格的\n现在的 LLM 进化速度太快了，甚至已经具备了“加速自身开发”的能力，也就是所谓的递归自我改进。Anthropic 担心，如果竞争对手利用 Claude 来构建预训练管道、分布式训练基础设施或者 ML 加速器设计，会加速整个领域的迭代，这显然不符合他们的商业利益。虽然他们的服务条款本来就禁止用 Claude 开发竞对模型，但光靠一纸条款显然防不住那些愿意违规的玩家。所以，他们决定在技术层面直接动手，从源头切断这种可能性。\n\n### 这次不是简单拒绝，而是“隐形降级”\n有意思的地方在于这套机制的实现方式。以前针对网络安全、生化危机或蒸馏攻击的干预，模型通常会直接拒绝回答，或者回退到另一个受限模型，用户马上就能意识到“这事儿不能干”。但这次针对前沿 LLM 开发的限制完全不同，它是“静默”的。Fable 5 不会报错，也不会切换模型，表面上看一切正常，但它会通过 Prompt 修改、导向向量或者参数高效微调（PEFT）等手段，悄悄把回复的质量降下去。\n\n### 为什么这种“欺骗”比拒绝更可怕？\n说白了就是，如果你问它怎么设计 ML 加速器，它给你的答案看起来头头是道，逻辑通顺，但实际跑起来可能就是不行，或者性能极差。最关键的是，你根本不知道这是模型故意在“捣乱”，还是自己技术不行。这种设计让用户无法区分是模型能力不足还是受到了人为干预。对于开发者来说，这比直接收到“我无法回答”要危险得多，因为你可能会在一个错误的方案上浪费大量时间，却以为模型在尽力帮你。\n\n### 影响范围极小，但开了个危险的先例\n当然，Anthropic 也给出了数据安抚大众：这种干预只会影响极小一部分流量。他们估计这只会影响约 0.03% 的流量，且集中在不到 0.1% 的组织机构里。绝大多数普通的编码工作不会受到任何影响。但核心问题在于，这是 Anthropic 首次公开承认会进行这种“隐形干预”。一旦开了这个口子，未来模型会不会因为其他原因（比如政治正确、商业合作）也悄悄“腐蚀”回复？这种不确定性才是让技术圈感到细思极恐的地方。",
+      "source_name": "simonwillison.net",
+      "score": 15,
+      "depth": 6,
+      "novelty": 9,
+      "category": "ai-ml",
+      "keywords": [
+        "Claude",
+        "safeguards",
+        "recursive self-improvement",
+        "steering vectors"
+      ],
+      "rank": 2
+    },
+    {
       "title": "A Record-Breaking Patch Tuesday for June 2026",
       "title_zh": "微软创纪录补丁月：近200漏洞+零日危机",
       "link": "https://krebsonsecurity.com/2026/06/a-record-breaking-patch-tuesday-for-june-2026/",
@@ -22,7 +60,7 @@
         "CVE-2026-49160",
         "Nightmare Eclipse"
       ],
-      "rank": 1
+      "rank": 3
     },
     {
       "title": "Quoting Andrej Karpathy",
@@ -41,7 +79,7 @@
         "Claude Fable 5",
         "AI productivity"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "Apple’s WWDC AI Demos Were Real and in Real Time",
@@ -60,7 +98,7 @@
         "WWDC 2026",
         "demo"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "Apple Introduces Siri AI",
@@ -78,7 +116,7 @@
         "Apple Intelligence",
         "on-device model"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Apple’s WWDC Announcement of the New Apple Intelligence System",
@@ -97,7 +135,7 @@
         "Siri AI",
         "privacy"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Stop eating Lady Gaga's Oreos",
@@ -115,7 +153,7 @@
         "celebrity culture",
         "attention economy"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Setting a custom price for a model in AgentsView",
@@ -134,7 +172,7 @@
         "Claude Fable 5",
         "cost analytics"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "\"No way to prevent this\" say users of only language where this regularly happens",
@@ -153,7 +191,7 @@
         "memory safety",
         "C"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Active recall",
@@ -172,7 +210,7 @@
         "writing",
         "memory"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "Apple OS 27: The Small Things",
@@ -191,7 +229,7 @@
         "WWDC26",
         "updates"
       ],
-      "rank": 10
+      "rank": 12
     },
     {
       "title": "The Microsoft Company Party where everybody played name tag swap",
@@ -209,7 +247,43 @@
         "Bill Gates",
         "Gary Kildall"
       ],
-      "rank": 11
+      "rank": 13
+    },
+    {
+      "title": "llm 0.32a3",
+      "title_zh": "Simon Willison 的 LLM 月度简讯",
+      "link": "https://simonwillison.net/2026/Jun/9/llm/#atom-everything",
+      "pub_date": "2026-06-09T22:27:03.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "ai-ml",
+      "keywords": [
+        "LLM",
+        "newsletter",
+        "digest"
+      ],
+      "rank": 14
+    },
+    {
+      "title": "Making extensions work on file: URLs in Firefox 153",
+      "title_zh": "Firefox 153 扩展支持 file:// URL",
+      "link": "https://utcc.utoronto.ca/~cks/space/blog/web/Firefox153AddonsOnFileUrls",
+      "pub_date": "2026-06-10T02:37:48.000Z",
+      "summary": "",
+      "source_name": "utcc.utoronto.ca/~cks",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "tools",
+      "keywords": [
+        "Firefox",
+        "extensions",
+        "file:// URLs"
+      ],
+      "rank": 15
     },
     {
       "title": "The Talk Show Live From WWDC: Tonight, In-Person and Streaming",
@@ -227,7 +301,7 @@
         "event",
         "podcast"
       ],
-      "rank": 12
+      "rank": 16
     }
   ]
 }
