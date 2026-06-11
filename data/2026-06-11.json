@@ -1,10 +1,48 @@
 {
   "date": "2026-06-11",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2562,
-  "filtered_articles": 15,
+  "success_feeds": 84,
+  "total_articles": 2583,
+  "filtered_articles": 18,
   "articles": [
+    {
+      "title": "Hacking Google with A.I. for $500,000",
+      "title_zh": "用 AI 自动化挖掘 Google API 漏洞获 $50 万",
+      "link": "https://brutecat.com/articles/hacking-google-with-ai",
+      "pub_date": "2026-06-11T00:00:00.000Z",
+      "summary": "### 一句话总结\n通过逆向 Google 的 First Party Auth v2 协议并利用 AI 自动化 Fuzz 1500+ 个 API，作者成功绕过了 Google 的 API 限制，挖掘出了价值 50 万美元的高危漏洞。\n\n### 从 Swagger 到 Google 的“后门”\n作者发现 Google 的 API 架构和普通 Web 应用不太一样，它依赖一种叫 Discovery Document 的东西。说白了，这就是 Google 版的 Swagger 文档，机器可读，列出了所有端点、参数和方法。虽然像 YouTube Data API 这种是公开的，但很多内部 API（比如 Internal People API）也有对应的文档。有些文档只要能访问就能拿到，但大多数都需要一个有效的 API Key。作者意识到，如果能拿到这些文档，就能用 AI 自动化地构造请求去 Fuzz 这些 API，这比手工测试效率高太多了。\n\n### 6 万个 APK 换来的 API Key\n想访问 Discovery Document，首先得有 API Key。作者和朋友 Michael 采取了“地毯式搜索”策略。他们爬取并分析了超过 60,000 个 Android APK（几乎涵盖了所有版本的 Google 应用），解包后用 grep 硬搜 API Key。除此之外，他们还写了个 Chrome 扩展，利用 Chrome Debugger API 拦截网络流量，访问了 2800 多个已知的 Google 域名，把所有 Web 请求里的 Key 都抓了出来。为了确保这些 Key 确实属于 Google（而不是第三方 GCP 项目），他们还利用 Cloud Marketplace 的一个端点，通过 Project Number 反查域名，过滤掉了非 `google.com` 旗下的 Key。\n\n### 隐藏的 Discovery 文档与标签\n手里有了 Key 和域名列表，下一步就是扫 Discovery 文档。这里有个坑：Google 在 2025 年 7 月把大多数 API 的 `/$discovery/rest` 路径给移除了。不过作者发现，只要够聪明，有些情况下还是能绕过的。更有意思的是，某些 Google Cloud 项目开启了“可见性标签”，如果不传特定的 `labels` 参数，很多隐藏端点根本不会出现在文档里。比如加上 `?labels=GOOGLE_INTERNAL` 后，Service Management API 的文档大小直接从 253k 涨到了 329k。这意味着必须穷举所有已知的 Label 去测试，虽然请求量巨大，但这是发现隐藏接口的唯一途径。\n\n### 绕过 Bearer Token 的死胡同\n有了 Key 和文档，还得解决认证问题。很多端点不仅需要 Key，还需要身份凭证。如果你尝试用标准的 Bearer Token 配合 API Key，会直接报错，因为 Token 和 Key 必须属于同一个 GCP 项目，这根本没法绕。但作者发现，很多 Google 内部 API 支持一种叫 First Party Authentication (FPA) 的专有协议，这玩意儿可以和 API Key 配合使用。这种认证通常发往 `*.clients6.google.com` 而不是 `*.googleapis.com`，且 Header 里包含基于 Cookie 计算出的 Authorization 值。\n\n### 逆向源码拿到 FPA v2 算法\n难点在于怎么生成这个 FPA Token。虽然 Stack Overflow 上有一些老版本的介绍，但很多新 API（比如 `drivefrontend-pa`）需要更完整的 FPA v2，它把用户标识符（如邮箱）嵌进了 Hash 里。运气爆棚的是，Michael 发现 Google 在 `android-review.googlesource.com` 上意外泄露了前端源码的 sourcemap。通过分析内部 `gapix` 库的代码，作者拿到了生成 FPA v2 Token 的完整逻辑：将邮箱、Gaia ID、域名等标识符拼起来，加上时间戳和 Session Cookie，算出 SHA1 Hash，最后拼成 `<timestamp>_<hash>_<identifier_keys>` 的格式。\n\n### Origin 白名单的陷阱与突破\n有了 Token 还不够，很多 API 有严格的 Origin 白名单机制。如果你在请求头里带了一个不在白名单里的 `Origin`，服务器会返回 401，提示 Cookie 无效。这其实是个误导，真正的原因是 Origin 不对。为了搞清楚哪些 Origin 是合法的，作者利用之前发现的 Proto Leak 漏洞，查看了 `gaia_mint.AllowedFirstPartyAuth` 的定义。这个 Proto 揭示了 Google 内部是如何处理 Origin 验证的，包括不同的强制级别和子域名通配符支持。虽然文章在这里截断了，但显然，理解这套机制是成功调用内部 API 的最后一块拼图。",
+      "source_name": "brutecat.com",
+      "score": 19,
+      "depth": 10,
+      "novelty": 9,
+      "category": "security",
+      "keywords": [
+        "Google VRP",
+        "API fuzzing",
+        "GraphQL",
+        "AI pentesting"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "What Happened to tea.xyz",
+      "title_zh": "tea.xyz 代币崩盘与开源激励机制的失败",
+      "link": "https://nesbitt.io/2026/06/11/what-happened-to-tea.html",
+      "pub_date": "2026-06-11T10:00:00.000Z",
+      "summary": "# 一句话总结\nHomebrew 作者 Max Howell 历时四年、融资 1700 万美元试图用区块链奖励开源维护者，结果因激励机制设计缺陷引发垃圾包泛滥，加上代币解锁策略失误，导致开盘即暴跌 90%，项目实质上已陷入停滞。\n\n### 从 Homebrew 到 Web3 的理想主义实验\n\ntea.xyz 的起点非常硬核，由 Homebrew 作者 Max Howell 创立，拿下了 Binance Labs 领投的 1600 多万美元融资。它的愿景很美好：做一个基于区块链的协议，给开源维护者发代币作为报酬。为了配合这个协议，他们还开发了 `tea` CLI 包管理器（后来改名为 `pkgx`）。这本来是一个解决开源“用爱发电”痛点的完美故事，但技术理想主义在复杂的博弈论面前，往往显得不堪一击。\n\n### 依赖图谱变成了刷分游戏\n\n核心问题出在它的激励设计上，也就是所谓的 Proof of Contribution。说白了就是模仿 Google 的 PageRank 算法搞了个 teaRank：你的包被依赖越多，得分越高，奖励就越多。这个思路本身没问题，但它忽略了一个致命的现实：在区块链上，注册一个包的成本几乎为零。于是，刷子们发现了一个暴富密码——注册成千上万个空包，然后让它们互相依赖，瞬间就能把 Rank 刷上天。\n\n### 生态被垃圾包淹没，社区被迫买单\n\n这套机制在 2024 年 2 月上线激励测试网后，立刻引发了灾难性的后果。npm、RubyGems 等各大仓库被垃圾包淹没，数据显示 npm 上 70% 的新包都是为了刷 tea 奖励的垃圾。甚至有“IndonesianFoods”这种自动化战役，一个人就发布了 4 万多个包。这些包之间互相依赖，只要装一个就会把整个垃圾树拉下来。tea.xyz 官方虽然后来承认问题并暂停了奖励，但清理这些垃圾的成本，最终却落在了 npm 和 RubyGems 等无辜的基础设施身上。\n\n### 糟糕的代币经济学：开盘即崩盘\n\n如果说垃圾包是慢性毒药，那代币发行策略就是致命一击。2026 年 6 月上线时，tea 在流动性池里只放了 2% 的代币，却允许之前参与公募的投资者 100% 解锁。这意味着什么？意味着所有早期投资者可以在第一分钟就无限制抛售，而池子里根本没钱接盘。结果就是开盘一小时暴跌 75%，现在价格比发行价跌了 86%，整个项目的估值从预期的 5000 万美金跌到了只剩 700 万。\n\n### 代码不会撒谎：团队早已心不在焉\n\n最讽刺的证据藏在 GitHub 的提交记录里。从 2025 年底开始，tea 协议相关的核心仓库提交量就断崖式下跌，到了 2026 年上半年几乎归零。创始人 Max Howell 自己的公开提交也停在了 2025 年 11 月，转头去搞了一个叫 `automic-vault` 的新项目。虽然名义上他还是 CEO，但代码库显示，整个协议的开发工作在上线前半年就已经基本停摆了，只剩下一个维护者在靠 AI 辅助修修补补。\n\n### 四年烧掉近两千万，只留下一地鸡毛\n\n回过头看，这是一个典型的“为了技术而技术”的悲剧。tea.xyz 试图用一套看似精巧的算法解决社会问题，却低估了人性中逐利的一面。四年时间，近 2000 万美元的资金，最终没有让真正的开源维护者富起来，反而制造了几十万个垃圾包，让整个开源生态为此买单。现在，Discord 里只剩下愤怒的持币者在抱怨空承诺，而那个曾经承诺“让开源开发者体面生活”的项目，已经名存实亡。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "tea.xyz",
+        "token farming",
+        "npm spam",
+        "open source sustainability"
+      ],
+      "rank": 2
+    },
     {
       "title": "Craig Federighi Details Apple’s Collaboration With Google for Siri AI — Live, on Stage",
       "title_zh": "Apple 与 Google 合作细节：AFM 模型架构与隐私设计",
@@ -22,7 +60,7 @@
         "Siri AI",
         "Google collaboration"
       ],
-      "rank": 1
+      "rank": 3
     },
     {
       "title": "DiffusionGemma",
@@ -41,7 +79,7 @@
         "diffusion model",
         "inference"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "Formally proving a calculation with Claude and Lean",
@@ -60,7 +98,7 @@
         "formal verification",
         "theorem proving"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "datasette-agent 0.2a0",
@@ -79,7 +117,7 @@
         "save_query",
         "agent"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Gaslighting Openness",
@@ -98,7 +136,7 @@
         "licensing",
         "DMA"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Quoting Jeremy Howard",
@@ -117,7 +155,7 @@
         "Anthropic",
         "power imbalance"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Anthropic Walks Back Policy That Could Have ‘Sabotaged’ AI Researchers Using Claude",
@@ -136,7 +174,7 @@
         "Fable",
         "policy"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "What’s the opposite of Clip­Cursor that lets me exclude the cursor from a region?",
@@ -155,7 +193,7 @@
         "Windows API",
         "mouse handling"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "★ Sweet Jeebus, MacOS 27 Golden Gate Removes the Dumb Icons From Menu Items",
@@ -173,7 +211,26 @@
         "UI design",
         "Human Interface Guidelines"
       ],
-      "rank": 9
+      "rank": 11
+    },
+    {
+      "title": "The failed 3Com and US Robotics merger",
+      "title_zh": "3Com 与 US Robotics 合并失败案例",
+      "link": "https://dfarq.homeip.net/the-failed-3com-and-us-robotics-merger/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=the-failed-3com-and-us-robotics-merger",
+      "pub_date": "2026-06-11T11:00:56.000Z",
+      "summary": "",
+      "source_name": "dfarq.homeip.net",
+      "score": 6,
+      "depth": 3,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "3Com",
+        "US Robotics",
+        "merger",
+        "broadband"
+      ],
+      "rank": 12
     },
     {
       "title": "Please, use a link!",
@@ -192,7 +249,7 @@
         "accessibility",
         "navigation"
       ],
-      "rank": 10
+      "rank": 13
     },
     {
       "title": "Being “Good” at Things",
@@ -210,7 +267,7 @@
         "discipline",
         "quality"
       ],
-      "rank": 11
+      "rank": 14
     },
     {
       "title": "My Firefox addons as of Firefox 151 (and the current development version)",
@@ -227,7 +284,7 @@
         "Firefox",
         "addons"
       ],
-      "rank": 12
+      "rank": 15
     }
   ]
 }
