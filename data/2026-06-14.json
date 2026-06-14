@@ -44,6 +44,44 @@
       "rank": 2
     },
     {
+      "title": "Publishing WASM wheels to PyPI for use with Pyodide",
+      "title_zh": "PyPI 现支持直接发布 WASM wheel 包",
+      "link": "https://simonwillison.net/2026/Jun/13/publishing-wasm-wheels/#atom-everything",
+      "pub_date": "2026-06-13T23:55:18.000Z",
+      "summary": "# 一句话总结\nPyPI 现已原生支持 Pyodide 的 WASM wheels，这意味着开发者终于可以像发布传统扩展一样，直接把编译好的 C/C++ 或 Rust 包丢到 PyPI，供浏览器端的 Python 运行时动态安装了。\n\n---\n\n### 痛点：维护者不堪重负，社区生态卡脖子\n在 Pyodide 314.0 版本发布之前，想在浏览器里跑带 C 扩展的 Python 包简直是场噩梦。Pyodide 团队不得不自己维护、构建并托管超过 300 个包，这成了巨大的维护负担。更糟糕的是，这成了社区发展的瓶颈——每增加一个新包，都需要人工审核和手动构建。说白了，以前你想用个新库，得等官方帮你打包，根本没法像在本地开发那样随用随装。\n\n### 转机：PyPI 接管 WASM 分发，标准化是关键\n这次更新的核心在于 PyPI 本身做了改动，支持了 PEP 783 定义的 PyEmscripten 平台。这意味着分发逻辑彻底变了：以后包维护者只需要像构建 Linux 或 macOS wheels 那样，构建一个 `pyemscripten_202*_wasm32` 格式的包上传即可。PyPI 在 4 月 21 号合并的 PR 正式打通了这条路，把分发权交还给了社区，不再依赖 Pyodide 官方的单点维护。\n\n### 实战：用 Luau 语言验证新流程\n为了验证这套流程是否真的好用，作者拿自己的实验项目 `luau-wasm` 开了刀。Luau 是 Roblox 开发的一个基于 Lua 的快速语言，核心是 C++ 写的。作者利用 GitHub Actions 和最新的 `cibuildwheel`，把 Luau 编译成了 WebAssembly。结果很顺利：一个 276KB 的 wheel 文件被成功发布到了 PyPI，名为 `luau_wasm-0.1a0-cp314-cp314-pyemscripten_2026_0_wasm32.whl`。\n\n### 体验：浏览器端动态安装，就像本地一样丝滑\n发布成功只是第一步，真正的爽点在于使用。现在在 Pyodide 的 REPL 里，你只需要两行代码：`await micropip.install(\"luau-wasm\")` 然后 `import luau_wasm`，就能直接在浏览器里运行 Luau 代码。作者还顺手做了一个 Web Demo，加载 Pyodide 后自动从 PyPI 拉取这个包，提供了一个完整的代码编辑器和运行界面，体验非常接近原生开发。\n\n### 现状：已有 28 个包率先吃螃蟹\n新生态的建立需要时间，但目前已经有先行者了。作者通过查询 PyPI 的 BigQuery 公共数据集发现，目前已有 28 个包开始使用新的 `pyemscripten_202*_wasm32` 标签发布。列表里不乏 `onnx`、`pydantic_core`、`typst` 这样的知名项目，说明社区对这种分发方式的接受度很高，技术路径已经跑通了。",
+      "source_name": "simonwillison.net",
+      "score": 15,
+      "depth": 7,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "Pyodide",
+        "WebAssembly",
+        "PyPI",
+        "WASM"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "Mapping SQLite result columns back to their source `table.column`",
+      "title_zh": "SQLite 查询结果列的来源追踪方案",
+      "link": "https://simonwillison.net/2026/Jun/13/sqlite-column-provenance/#atom-everything",
+      "pub_date": "2026-06-13T23:05:00.000Z",
+      "summary": "## 一句话总结\n只要开启 `SQLITE_ENABLE_COLUMN_METADATA` 编译选项，SQLite 就会在内部计算结果列的来源，我们完全可以通过 `apsw` 库或 `ctypes` 桥接把它挖出来。\n\n### 需求很简单：给 SQL 查询结果做个“身份证”\n作者想在 Datasette 里加个功能：针对任意 SQL 查询，不仅要返回结果，还要告诉用户结果里的每一列到底来自哪张表的哪个字段。比如执行 `select users.name, orders.total ...`，程序得能自动识别出第一列源自 `users.name`，第二列源自 `orders.total`。这听起来是个小需求，但难点在于“任意”二字——不仅要处理简单的查询，还得搞定 JOIN 和复杂的 CTE（公用表表达式）。\n\n### 标准库不够用，得找更底层的接口\nPython 自带的 `sqlite3` 模块虽然好用，但它压根没暴露这些元数据信息。作者没死磕标准库，而是把目光投向了 SQLite 的 C 语言底层 API。SQLite 其实早就提供了 `sqlite3_column_table_name()` 这类函数，专门用来获取列的来源信息。前提是，你在编译 SQLite 时得开启 `SQLITE_ENABLE_COLUMN_METADATA` 这个选项。\n\n### 两条路：第三方库或 ctypes 桥接\n既然标准库不给力，作者找到了两条可行的路。第一条路是用 `apsw` 这个第三方库，它对 SQLite 的封装非常完整，直接提供了 `cursor.description_full` 属性，能一步到位拿到列的来源信息。第二条路更硬核一点，用 Python 的 `ctypes` 模块直接去调用 SQLite 的 C 函数。作者写了个 `column_provenance.py` 脚本，演示了如何在不装第三方库的情况下，纯靠标准库把信息“桥接”出来。\n\n### AI 助攻：从 EXPLAIN 输出里找线索\n有意思的是，作者还让 Claude Code (Opus 4.8) 介入了这个问题。除了上面提到的 API 方案，AI 还发现了一种通过解析 `EXPLAIN` 命令输出来实现的方法。虽然文章没细说这个方案的具体逻辑，但这说明除了直接调用 API，通过分析 SQLite 的查询执行计划，理论上也能推导出列的来源关系。\n\n### 结论：这事儿完全可行\n核心思路其实很简单：SQLite 内部已经算好了这些元数据，只是 Python 的默认封装没把它露出来。无论是用 `apsw` 这种现成的轮子，还是用 `ctypes` 自己动手丰衣足食，都能稳定地获取到 `table.column` 信息。这意味着在 Datasette 里实现这个功能，技术上已经没有硬性障碍了。",
+      "source_name": "simonwillison.net",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "SQLite",
+        "column metadata",
+        "apsw",
+        "ctypes"
+      ],
+      "rank": 4
+    },
+    {
       "title": "Human Routers of Machine Words",
       "title_zh": "写作即思考：AI 代写逃避了什么",
       "link": "https://borretti.me/article/human-routers-of-machine-words",
@@ -60,7 +98,26 @@
         "AI-generated content",
         "Weizenbaum"
       ],
-      "rank": 3
+      "rank": 5
+    },
+    {
+      "title": "Plugins case study: Pluggy",
+      "title_zh": "Pluggy 插件系统实现原理与实战",
+      "link": "https://eli.thegreenplace.net/2026/plugins-case-study-pluggy/",
+      "pub_date": "2026-06-14T03:21:00.000Z",
+      "summary": "Pluggy 是从 pytest 项目提取的 Python 插件系统库，通过 HookspecMarker 和 HookimplMarker 装饰器定义和实现 hooks。插件通过 setuptools entry points 自动注册，PluginManager 负责加载和调用。Pluggy 支持签名验证、插件排序（firstresult、tryfirst、trylast）、hook wrappers 等高级特性。作者认为插件框架 API 表面大但功能相对简单，多数项目倾向于自己实现，但 Pluggy 在自动发现、结果收集和插件管理方面提供了实用价值。是否引入需权衡依赖成本与开发投入。",
+      "source_name": "eli.thegreenplace.net",
+      "score": 10,
+      "depth": 6,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "Pluggy",
+        "plugins",
+        "hooks",
+        "pytest"
+      ],
+      "rank": 6
     },
     {
       "title": "RSA munitions T-shirt",
@@ -79,7 +136,26 @@
         "encryption",
         "Perl"
       ],
-      "rank": 4
+      "rank": 7
+    },
+    {
+      "title": "Building a serial and VGA \"everything console\"",
+      "title_zh": "用 IBM 1U 控制台自建便携式串口终端",
+      "link": "https://oldvcr.blogspot.com/2026/06/building-serial-and-vga-everything.html",
+      "pub_date": "2026-06-14T01:26:37.897Z",
+      "summary": "作者将一台二手 IBM 7316-TF3 1U 机架式控制台改造成便携式串口和 VGA 终端。原设备配备 17 英寸 LCD 屏幕和 IBM SK-8845RC 键盘，作者选择 Tattler Solutions 的 VT100 终端模拟器（$86）作为核心，支持 115200bps 串口通信和 VGA 输出。由于终端模拟器的 USB 控制器不支持组合设备，原装 UltraNav 键盘无法使用，改用 $20 的 Perixx 超薄键盘。改造过程中遇到两个主要问题：硅烷金属胶需要一周才能完全固化，以及 Velcro 固定键盘后高度增加导致合盖时触碰屏幕。作者通过安装 Z 型支架和垫片解决高度问题，最终设备可通过 USB/VGA 切换器在终端模式和直连模式间切换，成功连接 POWER9 Blackbird 和 AT&T 3B2/310 等老旧系统。",
+      "source_name": "oldvcr.blogspot.com",
+      "score": 9,
+      "depth": 5,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "serial console",
+        "VT100",
+        "VGA",
+        "DIY"
+      ],
+      "rank": 8
     },
     {
       "title": "Apple’s Private Cloud Compute Is Severely Limited for Third-Party Developers",
@@ -98,7 +174,7 @@
         "Small Business Program",
         "Foundation Models"
       ],
-      "rank": 5
+      "rank": 9
     },
     {
       "title": "Pluralistic: Shareholder supremacy and the precog CEO (13 Jun 2026)",
@@ -116,7 +192,25 @@
         "Milton Friedman",
         "corporate governance"
       ],
-      "rank": 6
+      "rank": 10
+    },
+    {
+      "title": "luau-wasm 0.1a0",
+      "title_zh": "luau-wasm 0.1a0 发布",
+      "link": "https://simonwillison.net/2026/Jun/13/luau-wasm/#atom-everything",
+      "pub_date": "2026-06-13T23:14:30.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "tools",
+      "keywords": [
+        "luau",
+        "webassembly",
+        "wasm"
+      ],
+      "rank": 11
     },
     {
       "title": "Trump’s Name (Set in the Wrong Font, of Course) Has Been Removed From the Kennedy Center",
@@ -133,7 +227,24 @@
         "Kennedy Center",
         "Trump"
       ],
-      "rank": 7
+      "rank": 12
+    },
+    {
+      "title": "Linux distribution packaging and third party 'package' systems",
+      "title_zh": "Linux 发行版与第三方包管理",
+      "link": "https://utcc.utoronto.ca/~cks/space/blog/linux/DistrosAndOtherPackageManagers",
+      "pub_date": "2026-06-14T03:20:52.000Z",
+      "summary": "",
+      "source_name": "utcc.utoronto.ca/~cks",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "engineering",
+      "keywords": [
+        "Linux",
+        "package management"
+      ],
+      "rank": 13
     }
   ]
 }
