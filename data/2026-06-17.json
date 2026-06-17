@@ -1,9 +1,9 @@
 {
   "date": "2026-06-17",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2570,
-  "filtered_articles": 21,
+  "success_feeds": 84,
+  "total_articles": 2590,
+  "filtered_articles": 22,
   "articles": [
     {
       "title": "Would you like a drainer served at the very top of DuckDuckGo?",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "Flax debugging: making a hash of things",
+      "title_zh": "用哈希调试 JAX 参数更新",
+      "link": "https://www.gilesthomas.com/2026/06/hashing-jax-parameters",
+      "pub_date": "2026-06-17T02:40:00.000Z",
+      "summary": "# 一句话总结\n当你在 JAX/Flax NNX 中调试训练循环时，如果怀疑参数没更新，别盯着那 7700 万个浮点数看，直接打印参数数组的 Hash 值就能瞬间识破“原地更新”失效的 Bug。\n\n---\n\n### 世界上最烂的 LLM 是怎么炼成的\n\n作者正在用 JAX 和 Flax NNX 从零手搓一个 LLM，但在调试训练循环时卡住了。为了快速验证流程，他没上复杂的 Transformer 架构，而是搭了个极简模型：输入层做 Token Embedding，直接接一个 Linear 层当输出头。他的目标不是预测下一个 Token，而是让模型“复读”——输入 \"The fat cat...\"，输出也是 \"The fat cat...\"。这本质上是在训练模型在 Embedding 空间和 Vocab 空间之间做可逆投影。代码逻辑看起来很标准，用了 Flax 官方文档“Basic Usage”里的模式，定义了一个 `train_step` 函数，里面计算 Loss、求梯度、更新参数。但跑起来后，Loss 始终纹丝不动。\n\n### Loss 不降，反证了代码写对了一半\n\n问题很明显：Loss 卡在 10.82 不动。有意思的是，这个数字其实非常有信息量。作者用的是 GPT-2 的分词器，词表大小是 50,257。把 Loss 10.82 换算成 Perplexity（即 $e^{10.82}$），大约是 50,011。这跟词表大小几乎一模一样。这意味着模型现在的表现跟“瞎猜”没两样——在 5 万个词里瞎蒙一个，蒙对的概率就是这么低。虽然模型没学到东西，但这反而证明了 Loss 函数写对了。如果代码有 Bug，Loss 很可能是 NaN 或者乱跳，不可能这么稳定地呈现出“完全随机猜测”的特征。既然 Loss 函数没问题，那锅就得甩给梯度或者优化器了。\n\n### 梯度看起来很正常，但参数就是不动\n\n接下来作者怀疑梯度是不是出了问题，比如变成了 0 或者 NaN。为了排查，他先把 `jax.jit` 装饰器去掉（否则 print 只会在编译阶段执行一次），然后打印梯度。打印出来的梯度值看起来很健康，虽然数值很小（比如 -2.68e-06），但在 0.0014 的学习率下，理论上应该能引起参数变化。既然梯度没问题，嫌疑就落到了“管道”上——也就是 `optimizer.update(model, grads)` 这一步。Flax NNX 的 API 跟传统的 JAX 不太一样，它更像 PyTorch，是直接修改对象状态，而不是返回一个新的参数树。这种“原地更新”在 JAX 这种函数式框架里实现起来比较微妙，作者怀疑自己是不是搞砸了什么细节，导致更新操作实际上没生效。\n\n### 用 Hash 代替肉眼，揪出“原地更新”的伪装\n\n现在面临一个尴尬的难题：模型有 7700 万个参数，每次更新的幅度可能在小数点后第九位。直接打印参数数组根本看不出变化，这就像在大海里找一根针。作者灵机一动，想到了一个巧妙的方法：Hash。只要参数值发生哪怕微小的变化，其字节序列的 Hash 值也会天翻地覆。他参考了 GitHub 上的讨论，把 JAX Array 转成 NumPy Array 再转成 bytes，最后计算 Hash。他在训练循环里加了两行代码，分别打印 Embedding 层和 Output 层的 Hash。虽然这种转换会拖慢速度，但在调试阶段完全没问题。\n\n### 装饰器用错，JIT 编译挡住了更新\n\n跑起来一看，真相大白：Loss 没变，Hash 值也没变。这就坐实了参数根本没更新。问题到底出在哪？作者对比了自己的代码和 Flax 官方示例，发现了一个被他忽略的细节。官方示例用的是 `@nnx.jit`，而作者用的是标准的 `@jax.jit`。注释里写得清清楚楚：`@nnx.jit` 提供了“automatic state propagation”（自动状态传播）。说白了，Flax NNX 为了支持这种原地修改参数的写法，必须用定制的 JIT 装饰器来处理状态传递。作者用了标准的 JAX JIT，它默认是纯函数式的，根本不理会 NNX 那套原地修改的副作用，所以优化器更新了半天，其实是在更新一个“孤岛”，真正的模型参数纹丝未动。\n\n### 换个装饰器，世界清静了\n\n把 `@jax.jit` 换成 `@nnx.jit` 后，再次运行，Hash 值开始疯狂跳动，Loss 也开始从 10.82 慢慢往下降。问题解决。这次调试经历不仅修好了一个低级错误，还贡献了一个实用的调试技巧：当你不确定参数是否在更新时，不要盯着数值看，去算它的 Hash。作者总结了一套排查逻辑：先看 Loss 是否合理（排除函数写错），再看梯度是否正常（排除反向传播问题），最后看参数 Hash（确认优化器是否生效）。这套组合拳，以后在调那些深层网络或者遇到梯度消失/爆炸问题时，应该也能派上用场。",
+      "source_name": "gilesthomas.com",
+      "score": 12,
+      "depth": 6,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "JAX",
+        "Flax",
+        "debugging",
+        "hashing"
+      ],
+      "rank": 4
+    },
+    {
       "title": "Partial fraction decomposition",
       "title_zh": "部分分式分解的代数推广",
       "link": "https://www.johndcook.com/blog/2026/06/16/partial-fraction-decomposition/",
@@ -79,7 +98,26 @@
         "rational functions",
         "algebra"
       ],
-      "rank": 4
+      "rank": 5
+    },
+    {
+      "title": "Retrofitting the WM_COPY­DATA message onto Windows 3.1",
+      "title_zh": "WM_COPYDATA 在 Windows 3.1 上的意外兼容",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260616-00/?p=112430",
+      "pub_date": "2026-06-16T14:00:00.000Z",
+      "summary": "WM_COPYDATA 消息最初为 32 位 Windows 设计，用于跨进程传递数据。16 位 Windows 中所有程序共享同一地址空间，进程间可直接传递指针。Win32s 需要在 16 位 Windows 上支持 WM_COPYDATA，但无需额外实现：当发送方和接收方都是 16 位窗口时，COPYDATASTRUCT 结构体指针在两个进程中都有效，Windows 3.1 原本就会原样传递 wParam 和 lParam，因此空序列化恰好是正确行为。这个设计让 WM_COPYDATA 能够无缝回溯到 Windows 3.1。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "WM_COPYDATA",
+        "Win32s",
+        "Windows 3.1",
+        "IPC"
+      ],
+      "rank": 6
     },
     {
       "title": "Quoting Georgi Gerganov",
@@ -98,7 +136,7 @@
         "coding",
         "llama.cpp"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "10Gb/s Ethernet: switching to a Broadcom SFP+ module",
@@ -117,7 +155,7 @@
         "thermal",
         "Broadcom"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Ada Palmer – Machiavelli is the most misunderstood thinker of all time",
@@ -136,7 +174,7 @@
         "Renaissance",
         "politics"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Do not invite big-tech to join your digital autonomy discussion",
@@ -155,7 +193,25 @@
         "sovereignty",
         "lobbying"
       ],
-      "rank": 8
+      "rank": 10
+    },
+    {
+      "title": "— a still that plays",
+      "title_zh": "按需加载 GIF 的 Web Component",
+      "link": "https://simonwillison.net/2026/Jun/17/click-to-play-component/#atom-everything",
+      "pub_date": "2026-06-17T03:56:10.000Z",
+      "summary": "Simon Willison 发布了一个名为 click-to-play 的 Web Component，通过渐进式增强技术将 GIF 转换为静态首帧加点击播放按钮，仅在用户主动点击时才加载完整 GIF。该组件使用自定义元素封装，HTML 标记简洁，适用于需要优化页面加载性能的场景。作者在介绍 Datasette 新行编辑工具的文章中首次使用了该组件，解决了大体积 GIF 影响页面加载的问题。",
+      "source_name": "simonwillison.net",
+      "score": 9,
+      "depth": 5,
+      "novelty": 4,
+      "category": "tools",
+      "keywords": [
+        "Web Component",
+        "progressive enhancement",
+        "GIF optimization"
+      ],
+      "rank": 11
     },
     {
       "title": "datasette-tailscale 0.1a0",
@@ -174,7 +230,7 @@
         "tailscale-rs",
         "plugin"
       ],
-      "rank": 9
+      "rank": 12
     },
     {
       "title": "Checking In on the iOS Continental Fun-Gap Drift",
@@ -193,7 +249,7 @@
         "Apple Intelligence",
         "Fortnite"
       ],
-      "rank": 10
+      "rank": 13
     },
     {
       "title": "New in the App Store: Personalized Recommendations",
@@ -211,7 +267,61 @@
         "personalized recommendations",
         "App Bundles"
       ],
-      "rank": 11
+      "rank": 14
+    },
+    {
+      "title": "datasette 1.0a34",
+      "title_zh": "Datasette 1.0a34 新增行级编辑功能",
+      "link": "https://simonwillison.net/2026/Jun/16/datasette/#atom-everything",
+      "pub_date": "2026-06-16T21:31:24.000Z",
+      "summary": "Datasette 1.0a34 版本新增行级数据编辑功能，用户现在可以在界面中直接插入、编辑和删除数据行。该功能受 Datasette Agent 项目启发，此前 Agent 已支持通过 SQL 写入数据，但主界面仍缺失基础编辑能力。",
+      "source_name": "simonwillison.net",
+      "score": 5,
+      "depth": 3,
+      "novelty": 2,
+      "category": "tools",
+      "keywords": [
+        "Datasette",
+        "UI",
+        "SQL write"
+      ],
+      "rank": 15
+    },
+    {
+      "title": "NetNewsWire Status",
+      "title_zh": "NetNewsWire 开发者退休后的独立开发",
+      "link": "https://simonwillison.net/2026/Jun/17/netnewswire-status/#atom-everything",
+      "pub_date": "2026-06-17T03:36:09.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "NetNewsWire",
+        "open source"
+      ],
+      "rank": 16
+    },
+    {
+      "title": "Why servers running Ubuntu can stall on boot for two minutes",
+      "title_zh": "Ubuntu 服务器启动两分钟卡顿问题",
+      "link": "https://utcc.utoronto.ca/~cks/space/blog/linux/UbuntuNetplanWaitForCarrier",
+      "pub_date": "2026-06-17T02:29:09.000Z",
+      "summary": "",
+      "source_name": "utcc.utoronto.ca/~cks",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "engineering",
+      "keywords": [
+        "Ubuntu",
+        "Netplan",
+        "boot",
+        "network"
+      ],
+      "rank": 17
     }
   ]
 }
