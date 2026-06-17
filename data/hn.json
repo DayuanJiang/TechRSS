@@ -1,6 +1,612 @@
 {
-  "updatedAt": "2026-06-17T19:21:53.079Z",
+  "updatedAt": "2026-06-17T19:34:08.665Z",
   "items": [
+    {
+      "id": 48568502,
+      "by": "schappim",
+      "title": "RFC 10008: The new HTTP Query Method",
+      "url": "https://www.rfc-editor.org/info/rfc10008/",
+      "score": 242,
+      "detailUpdatedAt": 1781723694,
+      "createdAt": 1781696464,
+      "aiSummaryUpdatedAt": 1781724395,
+      "aisummary": {
+        "chinese_title": "RFC 10008：HTTP 新 QUERY 方法，支持幂等带体查询与缓存",
+        "emoji": "🤔",
+        "sarcastic_question": "把 POST 改名成 QUERY，旧代理和 CDN 就会自动乖乖升级吗？"
+      },
+      "classifications": {
+        "topics": [
+          5,
+          6,
+          4
+        ],
+        "facets": [
+          7
+        ],
+        "tags": [
+          "RFC 10008",
+          "HTTP",
+          "QUERY",
+          "GET",
+          "POST",
+          "caching",
+          "query string"
+        ]
+      },
+      "classificationsUpdatedAt": 1781699485,
+      "aiSummary": {
+        "chinese_title": "RFC 10008：HTTP 新 QUERY 方法，支持幂等带体查询与缓存",
+        "emoji": "🤔",
+        "sarcastic_question": "把 POST 改名成 QUERY，旧代理和 CDN 就会自动乖乖升级吗？"
+      },
+      "detail": {
+        "id": 48568502,
+        "by": "schappim",
+        "title": "RFC 10008: The new HTTP Query Method",
+        "url": "https://www.rfc-editor.org/info/rfc10008/",
+        "score": 141,
+        "detailUpdatedAt": 1781707437,
+        "createdAt": 1781696464,
+        "aiSummaryUpdatedAt": 1781709380,
+        "aisummary": {
+          "chinese_title": "RFC 10008 引入 HTTP QUERY：幂等可缓存查询脱离 POST",
+          "discussion_overview": [
+            {
+              "category": "反对：body 进 cache key 语义别扭",
+              "summary": "不少评论认为，把 request body 直接纳入 cache key 会让 QUERY 的语义非常反直觉，尤其当 body 是大型 JSON filter 或 image input 时，缓存键会变成用户可控且可能无限长的数据。为了命中缓存，最现实的方法几乎只能是对 body 做 bitwise compare 或 hash，但这又引出 cache busting、参数排序和额外拷贝等实现问题。有人因此觉得这只是一个非常小众的 use case，更像应该给 POST 加一个 `Vary: request-body` 之类的 header，而不是单独造一个新方法。",
+              "supportid": [
+                "48569166",
+                "48570505",
+                "48570905",
+                "48569454",
+                "48569993"
+              ]
+            },
+            {
+              "category": "反驳：query string 也一样可控，body 只要哈希即可",
+              "summary": "支持者反击说，URL query 本来就是 user-controlled，而且在实践中也参与 cache key，所以“body 可控”并不是 QUERY 独有的问题。浏览器或缓存层完全可以把 body 存成 collision-resistant hash，公共互联网场景也不会真的把整段 body 当作无限长键。比起为 POST 参数做规范化、排序和复制，QUERY 反而更简单；一些人还认为只要缓存是可选的，就可以只对某些 filters 缓存，不必把所有 body 都强制纳入。",
+              "supportid": [
+                "48569456",
+                "48569816",
+                "48570731",
+                "48569482",
+                "48569570",
+                "48570937"
+              ]
+            },
+            {
+              "category": "支持 QUERY：把 safe/idempotent 查询从 POST 中正式分离",
+              "summary": "很多人支持 QUERY，是因为它把“安全、幂等、可缓存、可自动重试”的读请求从 POST 的副作用语义里剥离出来。这样一来，浏览器、代理、CDN、router 和应用服务器都能统一理解：这类请求可以重试、可以进缓存，而且不会弹出“可能重复提交”的警告。典型场景包括 search、GraphQL query 以及超出 URL 长度限制的大查询；如果接口本来就只是读数据，把它宣告成 QUERY 比靠文档约定 POST 幂等更清楚。",
+              "supportid": [
+                "48569367",
+                "48569746",
+                "48568949",
+                "48569045",
+                "48569061",
+                "48570094",
+                "48569880",
+                "48569103",
+                "48570248",
+                "48570536"
+              ]
+            },
+            {
+              "category": "互操作性：GET body 在现实网络里早就不可靠",
+              "summary": "另一条主线是互操作性：GET 带 body 在规范和现实网络里都很脆弱，fetch 甚至不允许这么做，很多 load balancer、reverse proxy、CDN 和其他 intermediary 也可能丢弃或拒绝 body。评论认为，IETF 之所以要单独定义 QUERY，就是为了让标准明确告诉中间层“这是一种安全可重试的查询”，而不是继续依赖非标准行为。还有人提到 HTML forms 的刷新/重提交问题、CORS preflight 以及 3XX redirect 的差异，说明浏览器生态会因为新 method 而更一致。",
+              "supportid": [
+                "48570017",
+                "48570188",
+                "48570935",
+                "48569308",
+                "48569436",
+                "48571191",
+                "48569758",
+                "48569632",
+                "48571058"
+              ]
+            },
+            {
+              "category": "命名与建模：少造资源，多给查询一个接口",
+              "summary": "一部分开发者喜欢这个方向，是因为它减少了资源建模的负担：不必把每一种筛选条件都定义成一个独立 resource，动态组合的查询更像“对现有 resource 做检索”。评论里举了把 Cats 当作 resource、而把“睡超过 20 小时并爱晒太阳的猫”当成 query 的例子，认为 QUERY 让这种 on-the-fly 的集合查询更自然。也有人指出，`QUERY` 这个词容易和 HTTP 里的 query string 混淆，但总体上仍比滥用 `POST /search` 更直观。",
+              "supportid": [
+                "48570475",
+                "48570814",
+                "48570453",
+                "48569003",
+                "48569704"
+              ]
+            },
+            {
+              "category": "RFC 编号与纯文本文档的梗",
+              "summary": "还有一些评论完全在玩 RFC 编号梗：RFC 10008 已经跨过 10000，但关于 RFC 10000 的预测市场因为编号顺序而变得尴尬。也有人纯粹赞赏这份 RFC 的纯文本排版，觉得像老式 FAQ 或 README 一样简洁耐看。这个分支基本不讨论协议细节，更多是社区对 IETF 文档、编号和文本风格的怀旧。",
+              "supportid": [
+                "48568993",
+                "48569204",
+                "48569955",
+                "48569507",
+                "48570755",
+                "48570924",
+                "48571055",
+                "48571107",
+                "48569252"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "幂等（idempotent）",
+              "explanation": "重复执行同一请求不会改变结果，便于自动重试和缓存。"
+            },
+            {
+              "term": "缓存键（cache key）",
+              "explanation": "缓存用来区分不同响应的索引；这场讨论的焦点之一是是否要把 request body 纳入其中。"
+            },
+            {
+              "term": "CORS preflight",
+              "explanation": "浏览器在发送某些非 CORS-safelisted 方法前先发起的 OPTIONS 预检请求。"
+            },
+            {
+              "term": "middlebox（中间盒）",
+              "explanation": "位于客户端与服务器之间的代理、load balancer、CDN 等，可能修改、丢弃或拒绝请求。"
+            }
+          ],
+          "context": "IETF（互联网工程任务组）通过 RFC 10008 引入了 HTTP QUERY method，目标是给那些本质上只读、但需要把较大的 filtering 条件放在 request body 里的请求一个正式语义。这个提案的背景是长期以来 GET 带 body 在浏览器、Fetch API（浏览器的网络请求接口）、load balancer（负载均衡器）、reverse proxy（反向代理）和 CDN（内容分发网络）等中间层里互操作性很差，常常被丢弃或无法透明缓存。评论里反复提到 WebDAV（基于 HTTP 的协作扩展）里的 SEARCH method，以及 HTML forms（HTML 表单），因为 QUERY 既要解决可缓存、可重试的问题，也要让表单提交、刷新和重放行为更符合幂等请求的预期。争议主要集中在：把 body 纳入缓存键是否会让实现复杂化，以及这是否只是少数 CDN、search 或 GraphQL（一个常用于 API 查询的查询语言）场景才需要的工具。",
+          "emoji": "🤔",
+          "sarcastic_question": "都得按 body 算缓存，改叫 QUERY 就突然高级了？"
+        },
+        "classifications": {
+          "topics": [
+            5,
+            6,
+            4
+          ],
+          "facets": [
+            7
+          ],
+          "tags": [
+            "RFC 10008",
+            "HTTP",
+            "QUERY",
+            "GET",
+            "POST",
+            "caching",
+            "query string"
+          ]
+        },
+        "classificationsUpdatedAt": 1781699485,
+        "aiSummary": {
+          "chinese_title": "RFC 10008 引入 HTTP QUERY：幂等可缓存查询脱离 POST",
+          "discussion_overview": [
+            {
+              "category": "反对：body 进 cache key 语义别扭",
+              "summary": "不少评论认为，把 request body 直接纳入 cache key 会让 QUERY 的语义非常反直觉，尤其当 body 是大型 JSON filter 或 image input 时，缓存键会变成用户可控且可能无限长的数据。为了命中缓存，最现实的方法几乎只能是对 body 做 bitwise compare 或 hash，但这又引出 cache busting、参数排序和额外拷贝等实现问题。有人因此觉得这只是一个非常小众的 use case，更像应该给 POST 加一个 `Vary: request-body` 之类的 header，而不是单独造一个新方法。",
+              "supportid": [
+                "48569166",
+                "48570505",
+                "48570905",
+                "48569454",
+                "48569993"
+              ]
+            },
+            {
+              "category": "反驳：query string 也一样可控，body 只要哈希即可",
+              "summary": "支持者反击说，URL query 本来就是 user-controlled，而且在实践中也参与 cache key，所以“body 可控”并不是 QUERY 独有的问题。浏览器或缓存层完全可以把 body 存成 collision-resistant hash，公共互联网场景也不会真的把整段 body 当作无限长键。比起为 POST 参数做规范化、排序和复制，QUERY 反而更简单；一些人还认为只要缓存是可选的，就可以只对某些 filters 缓存，不必把所有 body 都强制纳入。",
+              "supportid": [
+                "48569456",
+                "48569816",
+                "48570731",
+                "48569482",
+                "48569570",
+                "48570937"
+              ]
+            },
+            {
+              "category": "支持 QUERY：把 safe/idempotent 查询从 POST 中正式分离",
+              "summary": "很多人支持 QUERY，是因为它把“安全、幂等、可缓存、可自动重试”的读请求从 POST 的副作用语义里剥离出来。这样一来，浏览器、代理、CDN、router 和应用服务器都能统一理解：这类请求可以重试、可以进缓存，而且不会弹出“可能重复提交”的警告。典型场景包括 search、GraphQL query 以及超出 URL 长度限制的大查询；如果接口本来就只是读数据，把它宣告成 QUERY 比靠文档约定 POST 幂等更清楚。",
+              "supportid": [
+                "48569367",
+                "48569746",
+                "48568949",
+                "48569045",
+                "48569061",
+                "48570094",
+                "48569880",
+                "48569103",
+                "48570248",
+                "48570536"
+              ]
+            },
+            {
+              "category": "互操作性：GET body 在现实网络里早就不可靠",
+              "summary": "另一条主线是互操作性：GET 带 body 在规范和现实网络里都很脆弱，fetch 甚至不允许这么做，很多 load balancer、reverse proxy、CDN 和其他 intermediary 也可能丢弃或拒绝 body。评论认为，IETF 之所以要单独定义 QUERY，就是为了让标准明确告诉中间层“这是一种安全可重试的查询”，而不是继续依赖非标准行为。还有人提到 HTML forms 的刷新/重提交问题、CORS preflight 以及 3XX redirect 的差异，说明浏览器生态会因为新 method 而更一致。",
+              "supportid": [
+                "48570017",
+                "48570188",
+                "48570935",
+                "48569308",
+                "48569436",
+                "48571191",
+                "48569758",
+                "48569632",
+                "48571058"
+              ]
+            },
+            {
+              "category": "命名与建模：少造资源，多给查询一个接口",
+              "summary": "一部分开发者喜欢这个方向，是因为它减少了资源建模的负担：不必把每一种筛选条件都定义成一个独立 resource，动态组合的查询更像“对现有 resource 做检索”。评论里举了把 Cats 当作 resource、而把“睡超过 20 小时并爱晒太阳的猫”当成 query 的例子，认为 QUERY 让这种 on-the-fly 的集合查询更自然。也有人指出，`QUERY` 这个词容易和 HTTP 里的 query string 混淆，但总体上仍比滥用 `POST /search` 更直观。",
+              "supportid": [
+                "48570475",
+                "48570814",
+                "48570453",
+                "48569003",
+                "48569704"
+              ]
+            },
+            {
+              "category": "RFC 编号与纯文本文档的梗",
+              "summary": "还有一些评论完全在玩 RFC 编号梗：RFC 10008 已经跨过 10000，但关于 RFC 10000 的预测市场因为编号顺序而变得尴尬。也有人纯粹赞赏这份 RFC 的纯文本排版，觉得像老式 FAQ 或 README 一样简洁耐看。这个分支基本不讨论协议细节，更多是社区对 IETF 文档、编号和文本风格的怀旧。",
+              "supportid": [
+                "48568993",
+                "48569204",
+                "48569955",
+                "48569507",
+                "48570755",
+                "48570924",
+                "48571055",
+                "48571107",
+                "48569252"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "幂等（idempotent）",
+              "explanation": "重复执行同一请求不会改变结果，便于自动重试和缓存。"
+            },
+            {
+              "term": "缓存键（cache key）",
+              "explanation": "缓存用来区分不同响应的索引；这场讨论的焦点之一是是否要把 request body 纳入其中。"
+            },
+            {
+              "term": "CORS preflight",
+              "explanation": "浏览器在发送某些非 CORS-safelisted 方法前先发起的 OPTIONS 预检请求。"
+            },
+            {
+              "term": "middlebox（中间盒）",
+              "explanation": "位于客户端与服务器之间的代理、load balancer、CDN 等，可能修改、丢弃或拒绝请求。"
+            }
+          ],
+          "context": "IETF（互联网工程任务组）通过 RFC 10008 引入了 HTTP QUERY method，目标是给那些本质上只读、但需要把较大的 filtering 条件放在 request body 里的请求一个正式语义。这个提案的背景是长期以来 GET 带 body 在浏览器、Fetch API（浏览器的网络请求接口）、load balancer（负载均衡器）、reverse proxy（反向代理）和 CDN（内容分发网络）等中间层里互操作性很差，常常被丢弃或无法透明缓存。评论里反复提到 WebDAV（基于 HTTP 的协作扩展）里的 SEARCH method，以及 HTML forms（HTML 表单），因为 QUERY 既要解决可缓存、可重试的问题，也要让表单提交、刷新和重放行为更符合幂等请求的预期。争议主要集中在：把 body 纳入缓存键是否会让实现复杂化，以及这是否只是少数 CDN、search 或 GraphQL（一个常用于 API 查询的查询语言）场景才需要的工具。",
+          "emoji": "🤔",
+          "sarcastic_question": "都得按 body 算缓存，改叫 QUERY 就突然高级了？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nHTTP 新增了 QUERY 方法，专门用来解决“复杂查询必须用 POST，但 POST 既不安全又无法缓存”的尴尬，它像 GET 一样安全可重试，又能像 POST 一样在 Body 里传大数据。\n\n### GET 和 POST 之间的尴尬地带\n大家写 API 时都遇到过这种两难：简单的查询用 GET，但一旦查询参数太长（比如复杂的 SQL 过滤条件或 GraphQL 请求），塞进 URL 不仅难看，还容易超限。那怎么办？很多人为了省事，直接用 POST 来做查询。但这么做有个大坑：HTTP 层面并不知道你这个 POST 是在“查数据”还是在“改数据”，中间件、缓存服务器和爬虫都会默认它是不安全的。这导致 POST 查询无法被常规缓存，网络抖动时也不敢自动重试，因为谁也不想把一个查询请求重复执行两次导致副作用。\n\n### QUERY 方法：语义明确的“带 Body 的 GET”\n为了填补这个空白，RFC 10008 定义了新的 QUERY 方法。说白了，它就是让你能像 POST 一样把复杂的查询内容放在 Request Body 里，同时又明确告诉服务器和中间件：“我是安全的，也是幂等的”。这意味着客户端可以放心地重试失败的请求，不用担心重复扣款或重复下单。服务器在处理 QUERY 时，如果发现 Content-Type 缺失或者不对，必须直接报错，因为 Body 的内容直接定义了查询的语义。\n\n### 缓存和重试的“正确姿势”\n有意思的地方在于它的缓存机制。GET 的缓存键通常只看 URL，但 QUERY 的缓存键必须包含 Body 的内容和相关元数据。这虽然增加了缓存服务器的负担（必须读完 Body 才能算出 Key），但也让复杂的 POST 查询终于能享受到 HTTP 缓存的红利了。为了优化性能，规范甚至允许缓存服务器在生成 Key 时，对 Body 做一些“语义无关”的标准化处理（比如忽略 JSON 属性的顺序），除非客户端明确禁止这样做。\n\n### 给查询结果分配 URI 的设计巧思\nQUERY 还有一个很巧妙的设计，就是它试图把“查询”这个动作也变成一种资源。服务器在返回 200 OK 时，可以通过 `Location` 头返回一个 URI。这个 URI 代表了刚才那个 QUERY 请求的“等效资源”。这意味着客户端下次想查同样的东西，可以直接对这个新 URI 发一个简单的 GET 请求，而不需要再重复发送庞大的 Body。这不仅方便了书签和分享，也让后续的请求处理变得更轻量。\n\n### 重定向与条件请求的细节\n在重定向逻辑上，QUERY 也比 POST 更严谨。遇到 301 或 302 时，POST 往往会被浏览器改成 GET 请求，这很容易出问题；但 QUERY 规范要求必须保持 QUERY 方法不变，或者用 303 明确指示转为 GET。此外，QUERY 也支持条件请求（比如 If-Match），它的判定逻辑是基于“等效资源”的，这让客户端在处理大数据查询时，也能利用 ETag 来节省带宽，避免重复传输大结果集。"
+    },
+    {
+      "id": 48567759,
+      "by": "himata4113",
+      "title": "GLM-5.2 is the new leading open weights model on Artificial Analysis",
+      "url": "https://artificialanalysis.ai/articles/glm-5-2-is-the-new-leading-open-weights-model-on-the-artificial-analysis-intelligence-index",
+      "score": 636,
+      "detailUpdatedAt": 1781723693,
+      "createdAt": 1781692263,
+      "aiSummaryUpdatedAt": 1781724105,
+      "aisummary": {
+        "chinese_title": "GLM-5.2 登顶 open weights 榜：逼近 Opus 但很耗 token",
+        "emoji": "🤔",
+        "sarcastic_question": "都登顶了，先烧45k token算高效吗？"
+      },
+      "classifications": {
+        "topics": [
+          1,
+          10,
+          6
+        ],
+        "facets": [
+          10
+        ],
+        "tags": [
+          "GLM-5.2",
+          "Artificial Analysis",
+          "open weights",
+          "Z.AI",
+          "GPT-5.5",
+          "Opus 4.8",
+          "OpenAI"
+        ]
+      },
+      "classificationsUpdatedAt": 1781693517,
+      "aiSummary": {
+        "chinese_title": "GLM-5.2 登顶 open weights 榜：逼近 Opus 但很耗 token",
+        "emoji": "🤔",
+        "sarcastic_question": "都登顶了，先烧45k token算高效吗？"
+      },
+      "detail": {
+        "id": 48567759,
+        "by": "himata4113",
+        "title": "GLM-5.2 is the new leading open weights model on Artificial Analysis",
+        "url": "https://artificialanalysis.ai/articles/glm-5-2-is-the-new-leading-open-weights-model-on-the-artificial-analysis-intelligence-index",
+        "score": 323,
+        "detailUpdatedAt": 1781702036,
+        "createdAt": 1781692263,
+        "aiSummaryUpdatedAt": 1781702470,
+        "aisummary": {
+          "chinese_title": "GLM-5.2 登顶开源权重榜，争议在效率和成本",
+          "discussion_overview": [
+            {
+              "category": "接近前沿，但真实表现仍有争议",
+              "summary": "不少人把 GLM-5.2 视为真正接近 frontier 的开源权重模型，甚至认为 open-weight 与闭源前沿之间的差距已经缩到几个月。评论里常把它和 Claude Opus/Fable、GPT-5.5、DeepSeek V4、Kimi K2 等放在一起比较，觉得它在 coding 任务上已经进入同一梯队。也有人提醒，榜单分数不一定等于真实体验，长任务、复杂项目和常识性问题上仍可能出现落差。还有人把它解读为中国模型在公开权重赛道继续加速，而欧洲厂商和大学几乎缺席。",
+              "supportid": [
+                "48568360",
+                "48569786",
+                "48568442",
+                "48568681",
+                "48569488",
+                "48568342",
+                "48569041",
+                "48569999"
+              ]
+            },
+            {
+              "category": "Max 版太烧 token，High 更实用",
+              "summary": "最多的抱怨不是能力，而是推理效率。有人在简单数学和代码任务上看到 GLM-5.2 Max 一路思考 15 分钟、消耗约 45k tokens，甚至反复回看同一个决策。很多人认为 High 档更合理，质量下降不大，但 token 用量能少掉 2 到 2.5 倍。对比之下，GPT-5.5 被反复称赞更省 token，而 Claude/Opus/Fable 则常被说会过度规划、陷入“what if”循环，需要用户手动打断。",
+              "supportid": [
+                "48568309",
+                "48568584",
+                "48568640",
+                "48568802",
+                "48568378",
+                "48569134",
+                "48568374",
+                "48568535",
+                "48569066",
+                "48569422"
+              ]
+            },
+            {
+              "category": "价格诱人，但 API 和供应商很不稳",
+              "summary": "GLM-5.2 的最大卖点是便宜，有人直接把它形容成“Opus 级质量、白菜价”，也有人提到低价订阅、无限 token 套餐和更低的 API 费率。问题在于实际体验两极分化：official API、OpenRouter 和第三方 provider 都有人报 rate limit、random errors、timeout 和容量不足。讨论里还反复提到 stealth quantize、8bit/FP8、缓存 token 计费等问题，担心账面价格很低，真实成本却没那么漂亮。于是争论焦点从“模型好不好”变成了“这个 API 值不值得信、provider 会不会坑你”。",
+              "supportid": [
+                "48568360",
+                "48568572",
+                "48568406",
+                "48568445",
+                "48568956",
+                "48569099",
+                "48568483",
+                "48568895",
+                "48569498",
+                "48569024"
+              ]
+            },
+            {
+              "category": "缺少 vision，多模态是短板",
+              "summary": "不少人惊讶 GLM-5.1/5.2 竟然没有 vision input，这在如今的 OpenAI、Anthropic、Gemini、Qwen、Kimi 生态里算少见。对 UI、截图转 HTML/CSS、网页设计和照片分析这类任务，缺少图片输入会明显限制可用性。也有人认为这不是致命缺陷，因为可以让别的 vision model 先读图，再把结果交给 GLM 做主任务，或者直接用 Kimi 之类的多模态模型补位。整体上，大家都承认它很强，但也觉得“text-only”少了一块重要拼图。",
+              "supportid": [
+                "48569360",
+                "48568555",
+                "48568711",
+                "48568714",
+                "48569006",
+                "48569451",
+                "48569772",
+                "48569002",
+                "48568788"
+              ]
+            },
+            {
+              "category": "本地部署与企业私有化的算盘",
+              "summary": "围绕本地部署的讨论更多是现实算账，而不是纯技术兴奋。有人想知道中大型企业是否会为了隐私、合规和数据主权，直接买 GPU 机柜把模型留在内网；回复则指出 70B 到 1T 级别模型需要大量 VRAM、昂贵服务器和高利用率，否则硬件会大半时间闲着。法律、HIPAA/SOC/PCI DSS 这类强合规场景被认为最有动力自建，但多数团队还是更适合用 hosted open model 或直接买商业 SaaS。",
+              "supportid": [
+                "48568791",
+                "48569089",
+                "48569543",
+                "48569406",
+                "48569141",
+                "48568855",
+                "48569097",
+                "48568847",
+                "48568818",
+                "48569967",
+                "48568967",
+                "48568390"
+              ]
+            },
+            {
+              "category": "Agent harness 和工作流配置很关键",
+              "summary": "有人直接在问 GLM-5.2 搭什么 agent harness 最好，也有人分享自己从 opencode、opencode + obra/superpowers，到自定义 skill.md、XML plan 文件、Claude Code 配置的各种折腾经验。评论里反复出现一个共识：模型本身只是一部分，真正影响产出的还有规划、读文档、分阶段实现和何时停止让模型继续“想”。还有人提到用另一个 LLM 帮忙设置环境，或者把工作流改成先计划后实现，能显著降低摩擦。整体看，这一组讨论把“怎么用”放得几乎和“用哪个模型”同等重要。",
+              "supportid": [
+                "48569123",
+                "48569422",
+                "48570001",
+                "48568587",
+                "48570030",
+                "48569805",
+                "48569125"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "open weights（开放权重）",
+              "explanation": "公开模型参数权重，通常可自行下载、部署或微调，但不等同于完整 open source。"
+            },
+            {
+              "term": "reasoning effort（推理强度）",
+              "explanation": "控制模型在回答前花多少“thinking”计算和 token，通常在质量、速度和成本之间取舍。"
+            },
+            {
+              "term": "Pareto frontier（帕累托前沿）",
+              "explanation": "在同等智能下成本最低，或同等成本下智能最高的一组模型点。"
+            },
+            {
+              "term": "MoE（Mixture of Experts，混合专家模型）",
+              "explanation": "只激活部分专家参数来推理的架构，常用来降低计算和推理成本。"
+            },
+            {
+              "term": "KV cache",
+              "explanation": "注意力机制中 key/value 的缓存，用来复用上下文并影响速度、显存和计费。"
+            },
+            {
+              "term": "quantization（量化）",
+              "explanation": "用更低精度表示模型权重或激活以节省显存和算力，通常会带来一定质量损失。"
+            }
+          ],
+          "context": "Artificial Analysis（一个模型基准与排行榜网站）把模型按 coding、输出 token 和成本等维度排序，这条讨论围绕它把 GLM-5.2 排到 open-weight 领先位置展开。GLM-5.2 来自 Z.ai（智谱对外的模型/API 品牌），评论里常把它和 Anthropic Claude Opus/Fable、OpenAI GPT-5.5、DeepSeek V4、Kimi K2、Qwen、MiniMax-M3 等做对比。很多人不只看分数，还关心 reasoning effort（High/xhigh/max 这类强度档位）、是否能直接接入 Claude Code（Anthropic 的代码代理工具），以及 OpenRouter（模型 API 聚合平台）和第三方 provider 的稳定性。另一个背景是 open-weight 模型正在逼近闭源前沿，但是否能补上 vision、多模态和更高的推理效率，仍是大家争论的重点。",
+          "emoji": "🤔",
+          "sarcastic_question": "都开源登顶了，怎么还得先烧满一整桶算力？"
+        },
+        "classifications": {
+          "topics": [
+            1,
+            10,
+            6
+          ],
+          "facets": [
+            10
+          ],
+          "tags": [
+            "GLM-5.2",
+            "Artificial Analysis",
+            "open weights",
+            "Z.AI",
+            "GPT-5.5",
+            "Opus 4.8",
+            "OpenAI"
+          ]
+        },
+        "classificationsUpdatedAt": 1781693517,
+        "aiSummary": {
+          "chinese_title": "GLM-5.2 登顶开源权重榜，争议在效率和成本",
+          "discussion_overview": [
+            {
+              "category": "接近前沿，但真实表现仍有争议",
+              "summary": "不少人把 GLM-5.2 视为真正接近 frontier 的开源权重模型，甚至认为 open-weight 与闭源前沿之间的差距已经缩到几个月。评论里常把它和 Claude Opus/Fable、GPT-5.5、DeepSeek V4、Kimi K2 等放在一起比较，觉得它在 coding 任务上已经进入同一梯队。也有人提醒，榜单分数不一定等于真实体验，长任务、复杂项目和常识性问题上仍可能出现落差。还有人把它解读为中国模型在公开权重赛道继续加速，而欧洲厂商和大学几乎缺席。",
+              "supportid": [
+                "48568360",
+                "48569786",
+                "48568442",
+                "48568681",
+                "48569488",
+                "48568342",
+                "48569041",
+                "48569999"
+              ]
+            },
+            {
+              "category": "Max 版太烧 token，High 更实用",
+              "summary": "最多的抱怨不是能力，而是推理效率。有人在简单数学和代码任务上看到 GLM-5.2 Max 一路思考 15 分钟、消耗约 45k tokens，甚至反复回看同一个决策。很多人认为 High 档更合理，质量下降不大，但 token 用量能少掉 2 到 2.5 倍。对比之下，GPT-5.5 被反复称赞更省 token，而 Claude/Opus/Fable 则常被说会过度规划、陷入“what if”循环，需要用户手动打断。",
+              "supportid": [
+                "48568309",
+                "48568584",
+                "48568640",
+                "48568802",
+                "48568378",
+                "48569134",
+                "48568374",
+                "48568535",
+                "48569066",
+                "48569422"
+              ]
+            },
+            {
+              "category": "价格诱人，但 API 和供应商很不稳",
+              "summary": "GLM-5.2 的最大卖点是便宜，有人直接把它形容成“Opus 级质量、白菜价”，也有人提到低价订阅、无限 token 套餐和更低的 API 费率。问题在于实际体验两极分化：official API、OpenRouter 和第三方 provider 都有人报 rate limit、random errors、timeout 和容量不足。讨论里还反复提到 stealth quantize、8bit/FP8、缓存 token 计费等问题，担心账面价格很低，真实成本却没那么漂亮。于是争论焦点从“模型好不好”变成了“这个 API 值不值得信、provider 会不会坑你”。",
+              "supportid": [
+                "48568360",
+                "48568572",
+                "48568406",
+                "48568445",
+                "48568956",
+                "48569099",
+                "48568483",
+                "48568895",
+                "48569498",
+                "48569024"
+              ]
+            },
+            {
+              "category": "缺少 vision，多模态是短板",
+              "summary": "不少人惊讶 GLM-5.1/5.2 竟然没有 vision input，这在如今的 OpenAI、Anthropic、Gemini、Qwen、Kimi 生态里算少见。对 UI、截图转 HTML/CSS、网页设计和照片分析这类任务，缺少图片输入会明显限制可用性。也有人认为这不是致命缺陷，因为可以让别的 vision model 先读图，再把结果交给 GLM 做主任务，或者直接用 Kimi 之类的多模态模型补位。整体上，大家都承认它很强，但也觉得“text-only”少了一块重要拼图。",
+              "supportid": [
+                "48569360",
+                "48568555",
+                "48568711",
+                "48568714",
+                "48569006",
+                "48569451",
+                "48569772",
+                "48569002",
+                "48568788"
+              ]
+            },
+            {
+              "category": "本地部署与企业私有化的算盘",
+              "summary": "围绕本地部署的讨论更多是现实算账，而不是纯技术兴奋。有人想知道中大型企业是否会为了隐私、合规和数据主权，直接买 GPU 机柜把模型留在内网；回复则指出 70B 到 1T 级别模型需要大量 VRAM、昂贵服务器和高利用率，否则硬件会大半时间闲着。法律、HIPAA/SOC/PCI DSS 这类强合规场景被认为最有动力自建，但多数团队还是更适合用 hosted open model 或直接买商业 SaaS。",
+              "supportid": [
+                "48568791",
+                "48569089",
+                "48569543",
+                "48569406",
+                "48569141",
+                "48568855",
+                "48569097",
+                "48568847",
+                "48568818",
+                "48569967",
+                "48568967",
+                "48568390"
+              ]
+            },
+            {
+              "category": "Agent harness 和工作流配置很关键",
+              "summary": "有人直接在问 GLM-5.2 搭什么 agent harness 最好，也有人分享自己从 opencode、opencode + obra/superpowers，到自定义 skill.md、XML plan 文件、Claude Code 配置的各种折腾经验。评论里反复出现一个共识：模型本身只是一部分，真正影响产出的还有规划、读文档、分阶段实现和何时停止让模型继续“想”。还有人提到用另一个 LLM 帮忙设置环境，或者把工作流改成先计划后实现，能显著降低摩擦。整体看，这一组讨论把“怎么用”放得几乎和“用哪个模型”同等重要。",
+              "supportid": [
+                "48569123",
+                "48569422",
+                "48570001",
+                "48568587",
+                "48570030",
+                "48569805",
+                "48569125"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "open weights（开放权重）",
+              "explanation": "公开模型参数权重，通常可自行下载、部署或微调，但不等同于完整 open source。"
+            },
+            {
+              "term": "reasoning effort（推理强度）",
+              "explanation": "控制模型在回答前花多少“thinking”计算和 token，通常在质量、速度和成本之间取舍。"
+            },
+            {
+              "term": "Pareto frontier（帕累托前沿）",
+              "explanation": "在同等智能下成本最低，或同等成本下智能最高的一组模型点。"
+            },
+            {
+              "term": "MoE（Mixture of Experts，混合专家模型）",
+              "explanation": "只激活部分专家参数来推理的架构，常用来降低计算和推理成本。"
+            },
+            {
+              "term": "KV cache",
+              "explanation": "注意力机制中 key/value 的缓存，用来复用上下文并影响速度、显存和计费。"
+            },
+            {
+              "term": "quantization（量化）",
+              "explanation": "用更低精度表示模型权重或激活以节省显存和算力，通常会带来一定质量损失。"
+            }
+          ],
+          "context": "Artificial Analysis（一个模型基准与排行榜网站）把模型按 coding、输出 token 和成本等维度排序，这条讨论围绕它把 GLM-5.2 排到 open-weight 领先位置展开。GLM-5.2 来自 Z.ai（智谱对外的模型/API 品牌），评论里常把它和 Anthropic Claude Opus/Fable、OpenAI GPT-5.5、DeepSeek V4、Kimi K2、Qwen、MiniMax-M3 等做对比。很多人不只看分数，还关心 reasoning effort（High/xhigh/max 这类强度档位）、是否能直接接入 Claude Code（Anthropic 的代码代理工具），以及 OpenRouter（模型 API 聚合平台）和第三方 provider 的稳定性。另一个背景是 open-weight 模型正在逼近闭源前沿，但是否能补上 vision、多模态和更高的推理效率，仍是大家争论的重点。",
+          "emoji": "🤔",
+          "sarcastic_question": "都开源登顶了，怎么还得先烧满一整桶算力？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nGLM-5.2 凭借 744B 总参数（40B 激活）的架构，在 Intelligence Index 拿到 51 分，成为目前最强的开源权重模型，并在智能与成本的帕累托前沿上占据了一席之地。\n\n### 开源模型的新王座，这次是实打实的\nZ ai 发布的 GLM-5.2 一出手就拿到了 Artificial Analysis Intelligence Index v4.1 的 51 分，直接把之前的开源冠军 MiniMax-M3（44 分）和 DeepSeek V4 Pro（44 分）甩在了身后。有意思的是，它的硬件规格跟上一代 GLM-5.1 完全一样，都是 744B 总参数配合 40B 激活参数，但分数却暴涨了 11 分。这说明这次升级不是靠堆料，而是算法层面的深度优化，让同样的算力发挥出了更大的潜力。\n\n### 科学推理是这次升级的杀手锏\nGLM-5.2 的提升并不是雨露均沾，而是在科学推理上实现了爆发式增长。数据很能说明问题：CritPt 评测涨了 16 个点（达到 21%），HLE 涨了 12 个点（达到 40%），SciCode 也涨了 7 个点（达到 50%）。除此之外，它在长上下文任务（AA-LCR 涨 9 点）和金融领域（tau3 banking 涨 15 点）的表现也相当亮眼。这种针对性的强化，显然是为了解决复杂逻辑和专业知识处理这些硬骨头。\n\n### 真正的突破在于 Agent 能力比肩闭源\n光看基准测试还不够，GLM-5.2 在模拟真实场景的 GDPval-AA v2 评测中拿到了 1524 分，这个成绩非常吓人。它不仅领先所有开源对手，甚至跟 GPT-5.5（xhigh reasoning, 1514 分）打成了平手。GDPval-AA v2 这个基准很严苛，它把人类表现基准线设为 1000，还引入了前沿模型做裁判，并把对话轮次上限提高到了 250 轮。GLM-5.2 能在这里拿高分，说明它做长链路 Agent 任务的能力已经摸到了闭源模型的天花板。\n\n### 想要更强的智能，就得接受更高的 Token 消耗\n但凡事都有代价，GLM-5.2 虽然聪明，却是个“话痨”。在 Intelligence Index 的每个任务中，它平均要输出 43k tokens，其中 37k 都是推理过程。这比 GLM-5.1（26k）和 MiniMax-M3（24k）都要高出一大截。说白了，它是靠“多想多说”来换取更高的准确率。如果你特别在意 Token 效率，这可能会是个槽点；但如果你只在乎结果对不对，这个 trade-off 显然是值得的。\n\n### 成本控制依然在线，性价比依然能打\n虽然 Token 用得多，但 GLM-5.2 依然守住了“智能 vs 成本”的帕累托前沿线。官方定价跟 GLM-5.1 持平，输入 $1.4/1M tokens，输出 $4.4/1M tokens，缓存命中只要 $0.26。折算下来，单次任务成本大约是 $0.46。虽然比 DeepSeek V4 Pro（$0.05）贵不少，但在同等级别的智能水平下，它已经是成本最低的选择了。\n\n### 上下文窗口暴涨，MIT 许可证诚意满满\n除了脑子更好使，GLM-5.2 的“记性”也变好了，上下文窗口直接从 GLM-5.1 的 200K 扩展到了 1M tokens。这意味着它能处理更长的文档或代码库，不用频繁切分。再加上它用的是最宽松的 MIT 许可证，对开发者来说非常友好。目前除了官方 API，DeepInfra、Novita、Siliconflow 等第三方平台也都已经上线了，部署起来没什么门槛。"
+    },
     {
       "id": 48571526,
       "by": "microtonal",
@@ -3337,289 +3943,6 @@
       "articleSummary": "## 一句话总结\n这篇文章展示了一种将神经细胞自动机（NCA）与局部模式生成网络（LPPN）结合的新架构，能在极低分辨率的网格上推理，并通过插值和轻量级 MLP 生成高保真、高分辨率的渲染结果。\n\n### 粗糙网格也能跑出高画质？\n通常我们做神经渲染时，分辨率和计算量是死对头。想画质好，网格就得密，计算量就爆炸；想算得快，网格就得稀疏，画质就糊。这篇文章的核心思路就是“解耦”：把负责逻辑推理的网格做得很粗，把负责画面的细节交给另一个网络。说白了，它不再试图在每个像素上跑神经网络，而是在网格顶点上跑 NCA，剩下的交给插值。\n\n### NCA 只负责“想”，不负责“画”\n在这个架构里，NCA 运行在一个非常粗糙的晶格上，比如 3D 网格的顶点。它的任务不是直接输出颜色，而是维护每个细胞的状态。这些状态随着时间步迭代演化，包含了生成最终图像所需的所有信息。这样做的好处是计算量大大降低，因为细胞数量比像素数量少了好几个数量级。\n\n### 关键在于那个红色的采样点\n那怎么从粗糙的细胞状态变回高清画面呢？这里有个巧妙的设计：采样点。在图中的三角形内部，任意取一个点（红点）。这个点有两个关键属性：一个是它在三角形里的“局部坐标”，另一个是根据周围顶点状态插值出来的“局部平均状态”。这两个信息就是连接低维逻辑和高维画面的桥梁。\n\n### LPPN 是个轻量级的“画师”\n拿到采样点的信息后，就轮到局部模式生成网络（LPPN）出场了。LPPN 其实就是一个共享的轻量级 MLP。它接收刚才提到的局部坐标和插值状态作为输入，直接输出该点的颜色、法线等渲染属性。因为 LPPN 很轻，而且不需要处理全局信息，所以它可以快速处理海量的采样点，实现高分辨率输出。\n\n### 端到端训练让两者完美配合\n有意思的地方在于，NCA 和 LPPN 不是分开训练的，而是联合端到端训练的。这意味着 NCA 会学着去维护那些对 LPPN 最有用的状态信息，而 LPPN 也会学着从这些状态里最好地还原细节。这种分工明确又紧密配合的机制，让整个系统既保留了 NCA 的动态演化能力，又突破了分辨率的瓶颈。"
     },
     {
-      "id": 48568502,
-      "by": "schappim",
-      "title": "RFC 10008: The new HTTP Query Method",
-      "url": "https://www.rfc-editor.org/info/rfc10008/",
-      "score": 141,
-      "detailUpdatedAt": 1781707437,
-      "createdAt": 1781696464,
-      "aiSummaryUpdatedAt": 1781709380,
-      "aisummary": {
-        "chinese_title": "RFC 10008 引入 HTTP QUERY：幂等可缓存查询脱离 POST",
-        "emoji": "🤔",
-        "sarcastic_question": "都得按 body 算缓存，改叫 QUERY 就突然高级了？"
-      },
-      "classifications": {
-        "topics": [
-          5,
-          6,
-          4
-        ],
-        "facets": [
-          7
-        ],
-        "tags": [
-          "RFC 10008",
-          "HTTP",
-          "QUERY",
-          "GET",
-          "POST",
-          "caching",
-          "query string"
-        ]
-      },
-      "classificationsUpdatedAt": 1781699485,
-      "aiSummary": {
-        "chinese_title": "RFC 10008 引入 HTTP QUERY：幂等可缓存查询脱离 POST",
-        "emoji": "🤔",
-        "sarcastic_question": "都得按 body 算缓存，改叫 QUERY 就突然高级了？"
-      },
-      "detail": {
-        "id": 48568502,
-        "by": "schappim",
-        "title": "RFC 10008: The new HTTP Query Method",
-        "url": "https://www.rfc-editor.org/info/rfc10008/",
-        "score": 141,
-        "detailUpdatedAt": 1781707437,
-        "createdAt": 1781696464,
-        "aiSummaryUpdatedAt": 1781709380,
-        "aisummary": {
-          "chinese_title": "RFC 10008 引入 HTTP QUERY：幂等可缓存查询脱离 POST",
-          "discussion_overview": [
-            {
-              "category": "反对：body 进 cache key 语义别扭",
-              "summary": "不少评论认为，把 request body 直接纳入 cache key 会让 QUERY 的语义非常反直觉，尤其当 body 是大型 JSON filter 或 image input 时，缓存键会变成用户可控且可能无限长的数据。为了命中缓存，最现实的方法几乎只能是对 body 做 bitwise compare 或 hash，但这又引出 cache busting、参数排序和额外拷贝等实现问题。有人因此觉得这只是一个非常小众的 use case，更像应该给 POST 加一个 `Vary: request-body` 之类的 header，而不是单独造一个新方法。",
-              "supportid": [
-                "48569166",
-                "48570505",
-                "48570905",
-                "48569454",
-                "48569993"
-              ]
-            },
-            {
-              "category": "反驳：query string 也一样可控，body 只要哈希即可",
-              "summary": "支持者反击说，URL query 本来就是 user-controlled，而且在实践中也参与 cache key，所以“body 可控”并不是 QUERY 独有的问题。浏览器或缓存层完全可以把 body 存成 collision-resistant hash，公共互联网场景也不会真的把整段 body 当作无限长键。比起为 POST 参数做规范化、排序和复制，QUERY 反而更简单；一些人还认为只要缓存是可选的，就可以只对某些 filters 缓存，不必把所有 body 都强制纳入。",
-              "supportid": [
-                "48569456",
-                "48569816",
-                "48570731",
-                "48569482",
-                "48569570",
-                "48570937"
-              ]
-            },
-            {
-              "category": "支持 QUERY：把 safe/idempotent 查询从 POST 中正式分离",
-              "summary": "很多人支持 QUERY，是因为它把“安全、幂等、可缓存、可自动重试”的读请求从 POST 的副作用语义里剥离出来。这样一来，浏览器、代理、CDN、router 和应用服务器都能统一理解：这类请求可以重试、可以进缓存，而且不会弹出“可能重复提交”的警告。典型场景包括 search、GraphQL query 以及超出 URL 长度限制的大查询；如果接口本来就只是读数据，把它宣告成 QUERY 比靠文档约定 POST 幂等更清楚。",
-              "supportid": [
-                "48569367",
-                "48569746",
-                "48568949",
-                "48569045",
-                "48569061",
-                "48570094",
-                "48569880",
-                "48569103",
-                "48570248",
-                "48570536"
-              ]
-            },
-            {
-              "category": "互操作性：GET body 在现实网络里早就不可靠",
-              "summary": "另一条主线是互操作性：GET 带 body 在规范和现实网络里都很脆弱，fetch 甚至不允许这么做，很多 load balancer、reverse proxy、CDN 和其他 intermediary 也可能丢弃或拒绝 body。评论认为，IETF 之所以要单独定义 QUERY，就是为了让标准明确告诉中间层“这是一种安全可重试的查询”，而不是继续依赖非标准行为。还有人提到 HTML forms 的刷新/重提交问题、CORS preflight 以及 3XX redirect 的差异，说明浏览器生态会因为新 method 而更一致。",
-              "supportid": [
-                "48570017",
-                "48570188",
-                "48570935",
-                "48569308",
-                "48569436",
-                "48571191",
-                "48569758",
-                "48569632",
-                "48571058"
-              ]
-            },
-            {
-              "category": "命名与建模：少造资源，多给查询一个接口",
-              "summary": "一部分开发者喜欢这个方向，是因为它减少了资源建模的负担：不必把每一种筛选条件都定义成一个独立 resource，动态组合的查询更像“对现有 resource 做检索”。评论里举了把 Cats 当作 resource、而把“睡超过 20 小时并爱晒太阳的猫”当成 query 的例子，认为 QUERY 让这种 on-the-fly 的集合查询更自然。也有人指出，`QUERY` 这个词容易和 HTTP 里的 query string 混淆，但总体上仍比滥用 `POST /search` 更直观。",
-              "supportid": [
-                "48570475",
-                "48570814",
-                "48570453",
-                "48569003",
-                "48569704"
-              ]
-            },
-            {
-              "category": "RFC 编号与纯文本文档的梗",
-              "summary": "还有一些评论完全在玩 RFC 编号梗：RFC 10008 已经跨过 10000，但关于 RFC 10000 的预测市场因为编号顺序而变得尴尬。也有人纯粹赞赏这份 RFC 的纯文本排版，觉得像老式 FAQ 或 README 一样简洁耐看。这个分支基本不讨论协议细节，更多是社区对 IETF 文档、编号和文本风格的怀旧。",
-              "supportid": [
-                "48568993",
-                "48569204",
-                "48569955",
-                "48569507",
-                "48570755",
-                "48570924",
-                "48571055",
-                "48571107",
-                "48569252"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "幂等（idempotent）",
-              "explanation": "重复执行同一请求不会改变结果，便于自动重试和缓存。"
-            },
-            {
-              "term": "缓存键（cache key）",
-              "explanation": "缓存用来区分不同响应的索引；这场讨论的焦点之一是是否要把 request body 纳入其中。"
-            },
-            {
-              "term": "CORS preflight",
-              "explanation": "浏览器在发送某些非 CORS-safelisted 方法前先发起的 OPTIONS 预检请求。"
-            },
-            {
-              "term": "middlebox（中间盒）",
-              "explanation": "位于客户端与服务器之间的代理、load balancer、CDN 等，可能修改、丢弃或拒绝请求。"
-            }
-          ],
-          "context": "IETF（互联网工程任务组）通过 RFC 10008 引入了 HTTP QUERY method，目标是给那些本质上只读、但需要把较大的 filtering 条件放在 request body 里的请求一个正式语义。这个提案的背景是长期以来 GET 带 body 在浏览器、Fetch API（浏览器的网络请求接口）、load balancer（负载均衡器）、reverse proxy（反向代理）和 CDN（内容分发网络）等中间层里互操作性很差，常常被丢弃或无法透明缓存。评论里反复提到 WebDAV（基于 HTTP 的协作扩展）里的 SEARCH method，以及 HTML forms（HTML 表单），因为 QUERY 既要解决可缓存、可重试的问题，也要让表单提交、刷新和重放行为更符合幂等请求的预期。争议主要集中在：把 body 纳入缓存键是否会让实现复杂化，以及这是否只是少数 CDN、search 或 GraphQL（一个常用于 API 查询的查询语言）场景才需要的工具。",
-          "emoji": "🤔",
-          "sarcastic_question": "都得按 body 算缓存，改叫 QUERY 就突然高级了？"
-        },
-        "classifications": {
-          "topics": [
-            5,
-            6,
-            4
-          ],
-          "facets": [
-            7
-          ],
-          "tags": [
-            "RFC 10008",
-            "HTTP",
-            "QUERY",
-            "GET",
-            "POST",
-            "caching",
-            "query string"
-          ]
-        },
-        "classificationsUpdatedAt": 1781699485,
-        "aiSummary": {
-          "chinese_title": "RFC 10008 引入 HTTP QUERY：幂等可缓存查询脱离 POST",
-          "discussion_overview": [
-            {
-              "category": "反对：body 进 cache key 语义别扭",
-              "summary": "不少评论认为，把 request body 直接纳入 cache key 会让 QUERY 的语义非常反直觉，尤其当 body 是大型 JSON filter 或 image input 时，缓存键会变成用户可控且可能无限长的数据。为了命中缓存，最现实的方法几乎只能是对 body 做 bitwise compare 或 hash，但这又引出 cache busting、参数排序和额外拷贝等实现问题。有人因此觉得这只是一个非常小众的 use case，更像应该给 POST 加一个 `Vary: request-body` 之类的 header，而不是单独造一个新方法。",
-              "supportid": [
-                "48569166",
-                "48570505",
-                "48570905",
-                "48569454",
-                "48569993"
-              ]
-            },
-            {
-              "category": "反驳：query string 也一样可控，body 只要哈希即可",
-              "summary": "支持者反击说，URL query 本来就是 user-controlled，而且在实践中也参与 cache key，所以“body 可控”并不是 QUERY 独有的问题。浏览器或缓存层完全可以把 body 存成 collision-resistant hash，公共互联网场景也不会真的把整段 body 当作无限长键。比起为 POST 参数做规范化、排序和复制，QUERY 反而更简单；一些人还认为只要缓存是可选的，就可以只对某些 filters 缓存，不必把所有 body 都强制纳入。",
-              "supportid": [
-                "48569456",
-                "48569816",
-                "48570731",
-                "48569482",
-                "48569570",
-                "48570937"
-              ]
-            },
-            {
-              "category": "支持 QUERY：把 safe/idempotent 查询从 POST 中正式分离",
-              "summary": "很多人支持 QUERY，是因为它把“安全、幂等、可缓存、可自动重试”的读请求从 POST 的副作用语义里剥离出来。这样一来，浏览器、代理、CDN、router 和应用服务器都能统一理解：这类请求可以重试、可以进缓存，而且不会弹出“可能重复提交”的警告。典型场景包括 search、GraphQL query 以及超出 URL 长度限制的大查询；如果接口本来就只是读数据，把它宣告成 QUERY 比靠文档约定 POST 幂等更清楚。",
-              "supportid": [
-                "48569367",
-                "48569746",
-                "48568949",
-                "48569045",
-                "48569061",
-                "48570094",
-                "48569880",
-                "48569103",
-                "48570248",
-                "48570536"
-              ]
-            },
-            {
-              "category": "互操作性：GET body 在现实网络里早就不可靠",
-              "summary": "另一条主线是互操作性：GET 带 body 在规范和现实网络里都很脆弱，fetch 甚至不允许这么做，很多 load balancer、reverse proxy、CDN 和其他 intermediary 也可能丢弃或拒绝 body。评论认为，IETF 之所以要单独定义 QUERY，就是为了让标准明确告诉中间层“这是一种安全可重试的查询”，而不是继续依赖非标准行为。还有人提到 HTML forms 的刷新/重提交问题、CORS preflight 以及 3XX redirect 的差异，说明浏览器生态会因为新 method 而更一致。",
-              "supportid": [
-                "48570017",
-                "48570188",
-                "48570935",
-                "48569308",
-                "48569436",
-                "48571191",
-                "48569758",
-                "48569632",
-                "48571058"
-              ]
-            },
-            {
-              "category": "命名与建模：少造资源，多给查询一个接口",
-              "summary": "一部分开发者喜欢这个方向，是因为它减少了资源建模的负担：不必把每一种筛选条件都定义成一个独立 resource，动态组合的查询更像“对现有 resource 做检索”。评论里举了把 Cats 当作 resource、而把“睡超过 20 小时并爱晒太阳的猫”当成 query 的例子，认为 QUERY 让这种 on-the-fly 的集合查询更自然。也有人指出，`QUERY` 这个词容易和 HTTP 里的 query string 混淆，但总体上仍比滥用 `POST /search` 更直观。",
-              "supportid": [
-                "48570475",
-                "48570814",
-                "48570453",
-                "48569003",
-                "48569704"
-              ]
-            },
-            {
-              "category": "RFC 编号与纯文本文档的梗",
-              "summary": "还有一些评论完全在玩 RFC 编号梗：RFC 10008 已经跨过 10000，但关于 RFC 10000 的预测市场因为编号顺序而变得尴尬。也有人纯粹赞赏这份 RFC 的纯文本排版，觉得像老式 FAQ 或 README 一样简洁耐看。这个分支基本不讨论协议细节，更多是社区对 IETF 文档、编号和文本风格的怀旧。",
-              "supportid": [
-                "48568993",
-                "48569204",
-                "48569955",
-                "48569507",
-                "48570755",
-                "48570924",
-                "48571055",
-                "48571107",
-                "48569252"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "幂等（idempotent）",
-              "explanation": "重复执行同一请求不会改变结果，便于自动重试和缓存。"
-            },
-            {
-              "term": "缓存键（cache key）",
-              "explanation": "缓存用来区分不同响应的索引；这场讨论的焦点之一是是否要把 request body 纳入其中。"
-            },
-            {
-              "term": "CORS preflight",
-              "explanation": "浏览器在发送某些非 CORS-safelisted 方法前先发起的 OPTIONS 预检请求。"
-            },
-            {
-              "term": "middlebox（中间盒）",
-              "explanation": "位于客户端与服务器之间的代理、load balancer、CDN 等，可能修改、丢弃或拒绝请求。"
-            }
-          ],
-          "context": "IETF（互联网工程任务组）通过 RFC 10008 引入了 HTTP QUERY method，目标是给那些本质上只读、但需要把较大的 filtering 条件放在 request body 里的请求一个正式语义。这个提案的背景是长期以来 GET 带 body 在浏览器、Fetch API（浏览器的网络请求接口）、load balancer（负载均衡器）、reverse proxy（反向代理）和 CDN（内容分发网络）等中间层里互操作性很差，常常被丢弃或无法透明缓存。评论里反复提到 WebDAV（基于 HTTP 的协作扩展）里的 SEARCH method，以及 HTML forms（HTML 表单），因为 QUERY 既要解决可缓存、可重试的问题，也要让表单提交、刷新和重放行为更符合幂等请求的预期。争议主要集中在：把 body 纳入缓存键是否会让实现复杂化，以及这是否只是少数 CDN、search 或 GraphQL（一个常用于 API 查询的查询语言）场景才需要的工具。",
-          "emoji": "🤔",
-          "sarcastic_question": "都得按 body 算缓存，改叫 QUERY 就突然高级了？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nHTTP 新增了 QUERY 方法，专门用来解决“复杂查询必须用 POST，但 POST 既不安全又无法缓存”的尴尬，它像 GET 一样安全可重试，又能像 POST 一样在 Body 里传大数据。\n\n### GET 和 POST 之间的尴尬地带\n大家写 API 时都遇到过这种两难：简单的查询用 GET，但一旦查询参数太长（比如复杂的 SQL 过滤条件或 GraphQL 请求），塞进 URL 不仅难看，还容易超限。那怎么办？很多人为了省事，直接用 POST 来做查询。但这么做有个大坑：HTTP 层面并不知道你这个 POST 是在“查数据”还是在“改数据”，中间件、缓存服务器和爬虫都会默认它是不安全的。这导致 POST 查询无法被常规缓存，网络抖动时也不敢自动重试，因为谁也不想把一个查询请求重复执行两次导致副作用。\n\n### QUERY 方法：语义明确的“带 Body 的 GET”\n为了填补这个空白，RFC 10008 定义了新的 QUERY 方法。说白了，它就是让你能像 POST 一样把复杂的查询内容放在 Request Body 里，同时又明确告诉服务器和中间件：“我是安全的，也是幂等的”。这意味着客户端可以放心地重试失败的请求，不用担心重复扣款或重复下单。服务器在处理 QUERY 时，如果发现 Content-Type 缺失或者不对，必须直接报错，因为 Body 的内容直接定义了查询的语义。\n\n### 缓存和重试的“正确姿势”\n有意思的地方在于它的缓存机制。GET 的缓存键通常只看 URL，但 QUERY 的缓存键必须包含 Body 的内容和相关元数据。这虽然增加了缓存服务器的负担（必须读完 Body 才能算出 Key），但也让复杂的 POST 查询终于能享受到 HTTP 缓存的红利了。为了优化性能，规范甚至允许缓存服务器在生成 Key 时，对 Body 做一些“语义无关”的标准化处理（比如忽略 JSON 属性的顺序），除非客户端明确禁止这样做。\n\n### 给查询结果分配 URI 的设计巧思\nQUERY 还有一个很巧妙的设计，就是它试图把“查询”这个动作也变成一种资源。服务器在返回 200 OK 时，可以通过 `Location` 头返回一个 URI。这个 URI 代表了刚才那个 QUERY 请求的“等效资源”。这意味着客户端下次想查同样的东西，可以直接对这个新 URI 发一个简单的 GET 请求，而不需要再重复发送庞大的 Body。这不仅方便了书签和分享，也让后续的请求处理变得更轻量。\n\n### 重定向与条件请求的细节\n在重定向逻辑上，QUERY 也比 POST 更严谨。遇到 301 或 302 时，POST 往往会被浏览器改成 GET 请求，这很容易出问题；但 QUERY 规范要求必须保持 QUERY 方法不变，或者用 303 明确指示转为 GET。此外，QUERY 也支持条件请求（比如 If-Match），它的判定逻辑是基于“等效资源”的，这让客户端在处理大数据查询时，也能利用 ETag 来节省带宽，避免重复传输大结果集。"
-    },
-    {
       "id": 48559188,
       "by": "root-parent",
       "title": "GPT‑NL: a sovereign language model for the Netherlands",
@@ -4266,329 +4589,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n品牌在 AI 搜索中的“可见度”已成新战场，但盲目堆砌 AI 概念正在劝退用户；真正的赢家是那些既能让 AI 引擎抓取结构化数据，又能为人类提供深度交互体验的网站。\n\n### 互联网正在失去“人味儿”，用户对此很敏感\n过去两年，品牌方都在疯狂追逐 AI 热点，但现实很骨感：高达 74% 的消费者认为现在的互联网比十年前更缺乏人情味。更有意思的是，60% 的用户直言，品牌在营销中刻意强调“AI”反而是一种劝退。用户其实很聪明，他们能迅速识别出屏幕对面是机器还是真人，平均只需 40 分钟就会产生“机器人疲劳感”。这意味着，如果你的内容全是 AI 生成的套话，用户还没来得及判断内容价值，就已经因为感觉“不真诚”而离开了。\n\n### AI 品牌可见度：一个新的、还没赢家的赛道\n那怎么办？品牌方肯定不能无视 AI。这里引入了一个新概念：AI 品牌可见度（AI Brand Visibility）。它不同于传统的 Google 排名，而是指你的品牌在 ChatGPT、Perplexity、Claude 等引擎的回答中被引用的频率。目前这个领域还没有绝对的霸主，甚至连统一的衡量标准都没有。文章里的数据很扎心：61% 的消费者根本叫不出一个“把 AI 用得好”的品牌名字。这其实是个巨大的机会窗口，因为既然没有现成的模板可抄，第一个做对的人就能定义行业标准。\n\n### 别只顾着讨好 AI，把人丢了\n核心思路其实很简单：网站必须同时服务两个“客户”——AI 引擎和人类读者。AI 需要干净、结构化的数据来抓取和引用，但人类读者需要的是值得花时间停留的深度体验。如果为了迎合 AI 把网站搞得全是干巴巴的 SEO 内容，人来了也会走。聪明的做法是让网站成为交互的中心，提供 AI 摘要无法替代的动态体验。说白了，AI 负责把人带进来，网站负责把人留住，这两者缺一不可。\n\n### 测量 AI 可见度：工具生态正在野蛮生长\n既然要优化，就得先测量。但现在的工具市场还处于“战国时代”，没有单一的 Dashboard 能覆盖所有 AI 引擎。文章把现有的解决方案分成了五类。第一类是专门的 AI 引用监控工具（如 Profound, BrightEdge），它们模拟查询并统计引用频率，适合需要专门看“有没有被提到”的团队。第二类是传统 SEO 平台的扩展（如 Semrush, Ahrefs），把 AI 数据叠加在搜索指标上，适合不想换工具的 SEO 团队。这两类工具大多价格不菲，而且通常需要几周的数据积累才有参考价值。\n\n### 从“被看到”到“留下来”：数据链路要打通\n光知道“被引用”还不够，还得知道这些流量到底有没有价值。这就引出了第三类工具：带有 AI 引荐追踪的网站分析平台（如 Parse.ly, GA4）。它们能识别流量来自哪个 AI 引擎，并分析用户后续的行为。这对于证明 AI 策略的 ROI 至关关键——你得搞清楚那些被 AI 推荐来的访客，到底有没有转化。此外，还有把 AI 当作社交媒体一样监听的公关工具（如 Brandwatch），以及适合大厂自建方案的 LLM API 直连模式。\n\n### 选对工具，别在预算会上被砍\n这里有个巧妙的设计：选择工具的逻辑应该基于你想回答的问题。如果你只想知道“有没有被提”，用 AI 监控工具；如果你想知道“提了之后有没有用”，就得看 Web Analytics。目前最主流的组合是“AI 引用监控 + Web Analytics”，前者管曝光，后者管转化。文章最后提醒了一个很现实的点：2027 年的 AI 预算审批会很严，只有那些能拿出数据证明“AI 流量确实带来了生意”的团队，才能保住他们的预算。"
-    },
-    {
-      "id": 48567759,
-      "by": "himata4113",
-      "title": "GLM-5.2 is the new leading open weights model on Artificial Analysis",
-      "url": "https://artificialanalysis.ai/articles/glm-5-2-is-the-new-leading-open-weights-model-on-the-artificial-analysis-intelligence-index",
-      "score": 323,
-      "detailUpdatedAt": 1781702036,
-      "createdAt": 1781692263,
-      "aiSummaryUpdatedAt": 1781702470,
-      "aisummary": {
-        "chinese_title": "GLM-5.2 登顶开源权重榜，争议在效率和成本",
-        "emoji": "🤔",
-        "sarcastic_question": "都开源登顶了，怎么还得先烧满一整桶算力？"
-      },
-      "classifications": {
-        "topics": [
-          1,
-          10,
-          6
-        ],
-        "facets": [
-          10
-        ],
-        "tags": [
-          "GLM-5.2",
-          "Artificial Analysis",
-          "open weights",
-          "Z.AI",
-          "GPT-5.5",
-          "Opus 4.8",
-          "OpenAI"
-        ]
-      },
-      "classificationsUpdatedAt": 1781693517,
-      "aiSummary": {
-        "chinese_title": "GLM-5.2 登顶开源权重榜，争议在效率和成本",
-        "emoji": "🤔",
-        "sarcastic_question": "都开源登顶了，怎么还得先烧满一整桶算力？"
-      },
-      "detail": {
-        "id": 48567759,
-        "by": "himata4113",
-        "title": "GLM-5.2 is the new leading open weights model on Artificial Analysis",
-        "url": "https://artificialanalysis.ai/articles/glm-5-2-is-the-new-leading-open-weights-model-on-the-artificial-analysis-intelligence-index",
-        "score": 323,
-        "detailUpdatedAt": 1781702036,
-        "createdAt": 1781692263,
-        "aiSummaryUpdatedAt": 1781702470,
-        "aisummary": {
-          "chinese_title": "GLM-5.2 登顶开源权重榜，争议在效率和成本",
-          "discussion_overview": [
-            {
-              "category": "接近前沿，但真实表现仍有争议",
-              "summary": "不少人把 GLM-5.2 视为真正接近 frontier 的开源权重模型，甚至认为 open-weight 与闭源前沿之间的差距已经缩到几个月。评论里常把它和 Claude Opus/Fable、GPT-5.5、DeepSeek V4、Kimi K2 等放在一起比较，觉得它在 coding 任务上已经进入同一梯队。也有人提醒，榜单分数不一定等于真实体验，长任务、复杂项目和常识性问题上仍可能出现落差。还有人把它解读为中国模型在公开权重赛道继续加速，而欧洲厂商和大学几乎缺席。",
-              "supportid": [
-                "48568360",
-                "48569786",
-                "48568442",
-                "48568681",
-                "48569488",
-                "48568342",
-                "48569041",
-                "48569999"
-              ]
-            },
-            {
-              "category": "Max 版太烧 token，High 更实用",
-              "summary": "最多的抱怨不是能力，而是推理效率。有人在简单数学和代码任务上看到 GLM-5.2 Max 一路思考 15 分钟、消耗约 45k tokens，甚至反复回看同一个决策。很多人认为 High 档更合理，质量下降不大，但 token 用量能少掉 2 到 2.5 倍。对比之下，GPT-5.5 被反复称赞更省 token，而 Claude/Opus/Fable 则常被说会过度规划、陷入“what if”循环，需要用户手动打断。",
-              "supportid": [
-                "48568309",
-                "48568584",
-                "48568640",
-                "48568802",
-                "48568378",
-                "48569134",
-                "48568374",
-                "48568535",
-                "48569066",
-                "48569422"
-              ]
-            },
-            {
-              "category": "价格诱人，但 API 和供应商很不稳",
-              "summary": "GLM-5.2 的最大卖点是便宜，有人直接把它形容成“Opus 级质量、白菜价”，也有人提到低价订阅、无限 token 套餐和更低的 API 费率。问题在于实际体验两极分化：official API、OpenRouter 和第三方 provider 都有人报 rate limit、random errors、timeout 和容量不足。讨论里还反复提到 stealth quantize、8bit/FP8、缓存 token 计费等问题，担心账面价格很低，真实成本却没那么漂亮。于是争论焦点从“模型好不好”变成了“这个 API 值不值得信、provider 会不会坑你”。",
-              "supportid": [
-                "48568360",
-                "48568572",
-                "48568406",
-                "48568445",
-                "48568956",
-                "48569099",
-                "48568483",
-                "48568895",
-                "48569498",
-                "48569024"
-              ]
-            },
-            {
-              "category": "缺少 vision，多模态是短板",
-              "summary": "不少人惊讶 GLM-5.1/5.2 竟然没有 vision input，这在如今的 OpenAI、Anthropic、Gemini、Qwen、Kimi 生态里算少见。对 UI、截图转 HTML/CSS、网页设计和照片分析这类任务，缺少图片输入会明显限制可用性。也有人认为这不是致命缺陷，因为可以让别的 vision model 先读图，再把结果交给 GLM 做主任务，或者直接用 Kimi 之类的多模态模型补位。整体上，大家都承认它很强，但也觉得“text-only”少了一块重要拼图。",
-              "supportid": [
-                "48569360",
-                "48568555",
-                "48568711",
-                "48568714",
-                "48569006",
-                "48569451",
-                "48569772",
-                "48569002",
-                "48568788"
-              ]
-            },
-            {
-              "category": "本地部署与企业私有化的算盘",
-              "summary": "围绕本地部署的讨论更多是现实算账，而不是纯技术兴奋。有人想知道中大型企业是否会为了隐私、合规和数据主权，直接买 GPU 机柜把模型留在内网；回复则指出 70B 到 1T 级别模型需要大量 VRAM、昂贵服务器和高利用率，否则硬件会大半时间闲着。法律、HIPAA/SOC/PCI DSS 这类强合规场景被认为最有动力自建，但多数团队还是更适合用 hosted open model 或直接买商业 SaaS。",
-              "supportid": [
-                "48568791",
-                "48569089",
-                "48569543",
-                "48569406",
-                "48569141",
-                "48568855",
-                "48569097",
-                "48568847",
-                "48568818",
-                "48569967",
-                "48568967",
-                "48568390"
-              ]
-            },
-            {
-              "category": "Agent harness 和工作流配置很关键",
-              "summary": "有人直接在问 GLM-5.2 搭什么 agent harness 最好，也有人分享自己从 opencode、opencode + obra/superpowers，到自定义 skill.md、XML plan 文件、Claude Code 配置的各种折腾经验。评论里反复出现一个共识：模型本身只是一部分，真正影响产出的还有规划、读文档、分阶段实现和何时停止让模型继续“想”。还有人提到用另一个 LLM 帮忙设置环境，或者把工作流改成先计划后实现，能显著降低摩擦。整体看，这一组讨论把“怎么用”放得几乎和“用哪个模型”同等重要。",
-              "supportid": [
-                "48569123",
-                "48569422",
-                "48570001",
-                "48568587",
-                "48570030",
-                "48569805",
-                "48569125"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "open weights（开放权重）",
-              "explanation": "公开模型参数权重，通常可自行下载、部署或微调，但不等同于完整 open source。"
-            },
-            {
-              "term": "reasoning effort（推理强度）",
-              "explanation": "控制模型在回答前花多少“thinking”计算和 token，通常在质量、速度和成本之间取舍。"
-            },
-            {
-              "term": "Pareto frontier（帕累托前沿）",
-              "explanation": "在同等智能下成本最低，或同等成本下智能最高的一组模型点。"
-            },
-            {
-              "term": "MoE（Mixture of Experts，混合专家模型）",
-              "explanation": "只激活部分专家参数来推理的架构，常用来降低计算和推理成本。"
-            },
-            {
-              "term": "KV cache",
-              "explanation": "注意力机制中 key/value 的缓存，用来复用上下文并影响速度、显存和计费。"
-            },
-            {
-              "term": "quantization（量化）",
-              "explanation": "用更低精度表示模型权重或激活以节省显存和算力，通常会带来一定质量损失。"
-            }
-          ],
-          "context": "Artificial Analysis（一个模型基准与排行榜网站）把模型按 coding、输出 token 和成本等维度排序，这条讨论围绕它把 GLM-5.2 排到 open-weight 领先位置展开。GLM-5.2 来自 Z.ai（智谱对外的模型/API 品牌），评论里常把它和 Anthropic Claude Opus/Fable、OpenAI GPT-5.5、DeepSeek V4、Kimi K2、Qwen、MiniMax-M3 等做对比。很多人不只看分数，还关心 reasoning effort（High/xhigh/max 这类强度档位）、是否能直接接入 Claude Code（Anthropic 的代码代理工具），以及 OpenRouter（模型 API 聚合平台）和第三方 provider 的稳定性。另一个背景是 open-weight 模型正在逼近闭源前沿，但是否能补上 vision、多模态和更高的推理效率，仍是大家争论的重点。",
-          "emoji": "🤔",
-          "sarcastic_question": "都开源登顶了，怎么还得先烧满一整桶算力？"
-        },
-        "classifications": {
-          "topics": [
-            1,
-            10,
-            6
-          ],
-          "facets": [
-            10
-          ],
-          "tags": [
-            "GLM-5.2",
-            "Artificial Analysis",
-            "open weights",
-            "Z.AI",
-            "GPT-5.5",
-            "Opus 4.8",
-            "OpenAI"
-          ]
-        },
-        "classificationsUpdatedAt": 1781693517,
-        "aiSummary": {
-          "chinese_title": "GLM-5.2 登顶开源权重榜，争议在效率和成本",
-          "discussion_overview": [
-            {
-              "category": "接近前沿，但真实表现仍有争议",
-              "summary": "不少人把 GLM-5.2 视为真正接近 frontier 的开源权重模型，甚至认为 open-weight 与闭源前沿之间的差距已经缩到几个月。评论里常把它和 Claude Opus/Fable、GPT-5.5、DeepSeek V4、Kimi K2 等放在一起比较，觉得它在 coding 任务上已经进入同一梯队。也有人提醒，榜单分数不一定等于真实体验，长任务、复杂项目和常识性问题上仍可能出现落差。还有人把它解读为中国模型在公开权重赛道继续加速，而欧洲厂商和大学几乎缺席。",
-              "supportid": [
-                "48568360",
-                "48569786",
-                "48568442",
-                "48568681",
-                "48569488",
-                "48568342",
-                "48569041",
-                "48569999"
-              ]
-            },
-            {
-              "category": "Max 版太烧 token，High 更实用",
-              "summary": "最多的抱怨不是能力，而是推理效率。有人在简单数学和代码任务上看到 GLM-5.2 Max 一路思考 15 分钟、消耗约 45k tokens，甚至反复回看同一个决策。很多人认为 High 档更合理，质量下降不大，但 token 用量能少掉 2 到 2.5 倍。对比之下，GPT-5.5 被反复称赞更省 token，而 Claude/Opus/Fable 则常被说会过度规划、陷入“what if”循环，需要用户手动打断。",
-              "supportid": [
-                "48568309",
-                "48568584",
-                "48568640",
-                "48568802",
-                "48568378",
-                "48569134",
-                "48568374",
-                "48568535",
-                "48569066",
-                "48569422"
-              ]
-            },
-            {
-              "category": "价格诱人，但 API 和供应商很不稳",
-              "summary": "GLM-5.2 的最大卖点是便宜，有人直接把它形容成“Opus 级质量、白菜价”，也有人提到低价订阅、无限 token 套餐和更低的 API 费率。问题在于实际体验两极分化：official API、OpenRouter 和第三方 provider 都有人报 rate limit、random errors、timeout 和容量不足。讨论里还反复提到 stealth quantize、8bit/FP8、缓存 token 计费等问题，担心账面价格很低，真实成本却没那么漂亮。于是争论焦点从“模型好不好”变成了“这个 API 值不值得信、provider 会不会坑你”。",
-              "supportid": [
-                "48568360",
-                "48568572",
-                "48568406",
-                "48568445",
-                "48568956",
-                "48569099",
-                "48568483",
-                "48568895",
-                "48569498",
-                "48569024"
-              ]
-            },
-            {
-              "category": "缺少 vision，多模态是短板",
-              "summary": "不少人惊讶 GLM-5.1/5.2 竟然没有 vision input，这在如今的 OpenAI、Anthropic、Gemini、Qwen、Kimi 生态里算少见。对 UI、截图转 HTML/CSS、网页设计和照片分析这类任务，缺少图片输入会明显限制可用性。也有人认为这不是致命缺陷，因为可以让别的 vision model 先读图，再把结果交给 GLM 做主任务，或者直接用 Kimi 之类的多模态模型补位。整体上，大家都承认它很强，但也觉得“text-only”少了一块重要拼图。",
-              "supportid": [
-                "48569360",
-                "48568555",
-                "48568711",
-                "48568714",
-                "48569006",
-                "48569451",
-                "48569772",
-                "48569002",
-                "48568788"
-              ]
-            },
-            {
-              "category": "本地部署与企业私有化的算盘",
-              "summary": "围绕本地部署的讨论更多是现实算账，而不是纯技术兴奋。有人想知道中大型企业是否会为了隐私、合规和数据主权，直接买 GPU 机柜把模型留在内网；回复则指出 70B 到 1T 级别模型需要大量 VRAM、昂贵服务器和高利用率，否则硬件会大半时间闲着。法律、HIPAA/SOC/PCI DSS 这类强合规场景被认为最有动力自建，但多数团队还是更适合用 hosted open model 或直接买商业 SaaS。",
-              "supportid": [
-                "48568791",
-                "48569089",
-                "48569543",
-                "48569406",
-                "48569141",
-                "48568855",
-                "48569097",
-                "48568847",
-                "48568818",
-                "48569967",
-                "48568967",
-                "48568390"
-              ]
-            },
-            {
-              "category": "Agent harness 和工作流配置很关键",
-              "summary": "有人直接在问 GLM-5.2 搭什么 agent harness 最好，也有人分享自己从 opencode、opencode + obra/superpowers，到自定义 skill.md、XML plan 文件、Claude Code 配置的各种折腾经验。评论里反复出现一个共识：模型本身只是一部分，真正影响产出的还有规划、读文档、分阶段实现和何时停止让模型继续“想”。还有人提到用另一个 LLM 帮忙设置环境，或者把工作流改成先计划后实现，能显著降低摩擦。整体看，这一组讨论把“怎么用”放得几乎和“用哪个模型”同等重要。",
-              "supportid": [
-                "48569123",
-                "48569422",
-                "48570001",
-                "48568587",
-                "48570030",
-                "48569805",
-                "48569125"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "open weights（开放权重）",
-              "explanation": "公开模型参数权重，通常可自行下载、部署或微调，但不等同于完整 open source。"
-            },
-            {
-              "term": "reasoning effort（推理强度）",
-              "explanation": "控制模型在回答前花多少“thinking”计算和 token，通常在质量、速度和成本之间取舍。"
-            },
-            {
-              "term": "Pareto frontier（帕累托前沿）",
-              "explanation": "在同等智能下成本最低，或同等成本下智能最高的一组模型点。"
-            },
-            {
-              "term": "MoE（Mixture of Experts，混合专家模型）",
-              "explanation": "只激活部分专家参数来推理的架构，常用来降低计算和推理成本。"
-            },
-            {
-              "term": "KV cache",
-              "explanation": "注意力机制中 key/value 的缓存，用来复用上下文并影响速度、显存和计费。"
-            },
-            {
-              "term": "quantization（量化）",
-              "explanation": "用更低精度表示模型权重或激活以节省显存和算力，通常会带来一定质量损失。"
-            }
-          ],
-          "context": "Artificial Analysis（一个模型基准与排行榜网站）把模型按 coding、输出 token 和成本等维度排序，这条讨论围绕它把 GLM-5.2 排到 open-weight 领先位置展开。GLM-5.2 来自 Z.ai（智谱对外的模型/API 品牌），评论里常把它和 Anthropic Claude Opus/Fable、OpenAI GPT-5.5、DeepSeek V4、Kimi K2、Qwen、MiniMax-M3 等做对比。很多人不只看分数，还关心 reasoning effort（High/xhigh/max 这类强度档位）、是否能直接接入 Claude Code（Anthropic 的代码代理工具），以及 OpenRouter（模型 API 聚合平台）和第三方 provider 的稳定性。另一个背景是 open-weight 模型正在逼近闭源前沿，但是否能补上 vision、多模态和更高的推理效率，仍是大家争论的重点。",
-          "emoji": "🤔",
-          "sarcastic_question": "都开源登顶了，怎么还得先烧满一整桶算力？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nGLM-5.2 凭借 744B 总参数（40B 激活）的架构，在 Intelligence Index 拿到 51 分，成为目前最强的开源权重模型，并在智能与成本的帕累托前沿上占据了一席之地。\n\n### 开源模型的新王座，这次是实打实的\nZ ai 发布的 GLM-5.2 一出手就拿到了 Artificial Analysis Intelligence Index v4.1 的 51 分，直接把之前的开源冠军 MiniMax-M3（44 分）和 DeepSeek V4 Pro（44 分）甩在了身后。有意思的是，它的硬件规格跟上一代 GLM-5.1 完全一样，都是 744B 总参数配合 40B 激活参数，但分数却暴涨了 11 分。这说明这次升级不是靠堆料，而是算法层面的深度优化，让同样的算力发挥出了更大的潜力。\n\n### 科学推理是这次升级的杀手锏\nGLM-5.2 的提升并不是雨露均沾，而是在科学推理上实现了爆发式增长。数据很能说明问题：CritPt 评测涨了 16 个点（达到 21%），HLE 涨了 12 个点（达到 40%），SciCode 也涨了 7 个点（达到 50%）。除此之外，它在长上下文任务（AA-LCR 涨 9 点）和金融领域（tau3 banking 涨 15 点）的表现也相当亮眼。这种针对性的强化，显然是为了解决复杂逻辑和专业知识处理这些硬骨头。\n\n### 真正的突破在于 Agent 能力比肩闭源\n光看基准测试还不够，GLM-5.2 在模拟真实场景的 GDPval-AA v2 评测中拿到了 1524 分，这个成绩非常吓人。它不仅领先所有开源对手，甚至跟 GPT-5.5（xhigh reasoning, 1514 分）打成了平手。GDPval-AA v2 这个基准很严苛，它把人类表现基准线设为 1000，还引入了前沿模型做裁判，并把对话轮次上限提高到了 250 轮。GLM-5.2 能在这里拿高分，说明它做长链路 Agent 任务的能力已经摸到了闭源模型的天花板。\n\n### 想要更强的智能，就得接受更高的 Token 消耗\n但凡事都有代价，GLM-5.2 虽然聪明，却是个“话痨”。在 Intelligence Index 的每个任务中，它平均要输出 43k tokens，其中 37k 都是推理过程。这比 GLM-5.1（26k）和 MiniMax-M3（24k）都要高出一大截。说白了，它是靠“多想多说”来换取更高的准确率。如果你特别在意 Token 效率，这可能会是个槽点；但如果你只在乎结果对不对，这个 trade-off 显然是值得的。\n\n### 成本控制依然在线，性价比依然能打\n虽然 Token 用得多，但 GLM-5.2 依然守住了“智能 vs 成本”的帕累托前沿线。官方定价跟 GLM-5.1 持平，输入 $1.4/1M tokens，输出 $4.4/1M tokens，缓存命中只要 $0.26。折算下来，单次任务成本大约是 $0.46。虽然比 DeepSeek V4 Pro（$0.05）贵不少，但在同等级别的智能水平下，它已经是成本最低的选择了。\n\n### 上下文窗口暴涨，MIT 许可证诚意满满\n除了脑子更好使，GLM-5.2 的“记性”也变好了，上下文窗口直接从 GLM-5.1 的 200K 扩展到了 1M tokens。这意味着它能处理更长的文档或代码库，不用频繁切分。再加上它用的是最宽松的 MIT 许可证，对开发者来说非常友好。目前除了官方 API，DeepInfra、Novita、Siliconflow 等第三方平台也都已经上线了，部署起来没什么门槛。"
     },
     {
       "id": 48558489,
