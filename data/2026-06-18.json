@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "I hate compilers",
+      "title_zh": "WebAssembly 可重现构建的工程实践",
+      "link": "https://xeiaso.net/notes/2026/anubis-wasm-vendor-binary/",
+      "pub_date": "2026-06-18T00:00:00.000Z",
+      "summary": "## 一句话总结\n为了实现 Anubis 项目中 WebAssembly 到 JavaScript 的降级兼容，作者不得不与编译器、链接器甚至操作系统层面的随机性做斗争，才勉强实现了跨架构的可重现构建。\n\n### 降级兼容的代价是必须自举工具链\nAnubis 项目准备引入基于 WebAssembly 的工作量证明机制，核心目标是让客户端和服务端共用同一份校验逻辑。但现实很骨感：如果用户的浏览器禁用了 WebAssembly 怎么办？为了不把这部分用户拒之门外，作者决定将 WebAssembly 重新编译为 JavaScript 作为降级方案。虽然性能会打折，但至少能跑通。为了确保逻辑绝对一致，作者选用了 Binaryen 项目的 `wasm2js` 工具。但这里有个坑：Linux 发行版自带的版本太老，输出结果和开发环境不一致。为了解决“输入相同字节却得不到相同输出”的终极难题，作者决定在项目仓库里直接捆绑一份自行编译的 `wasm2js`，以此掌控构建的每一个环节。\n\n### 编译器的“时间戳”陷阱\n理论上，只要源代码和编译参数不变，编译输出就应该是确定的。但现实是，编译器内部充满了各种不可控因素。最典型的就是 C/C++ 里的 `__DATE__` 和 `__TIME__` 宏。作者举了个例子，同样的源代码，两次编译生成的二进制文件会因为时间戳的不同而完全不同。对于追求“可重现构建”的开发者来说，这简直是灾难。如果你想让用户信任你提交的二进制文件，就必须保证他们在自己的机器上能编译出字节级完全一致的产物。这意味着必须剔除所有可能引入随机性的因素，无论是显性的时间戳，还是隐性的编译器内部行为。\n\n### 隐形的外部依赖：Clang 背后调用的 wasm-opt\n解决了时间戳问题，新的麻烦又来了。Clang 在构建 WebAssembly 时，会偷偷调用系统 PATH 里的 `wasm-opt` 工具进行优化。这听起来很智能，但在不同环境下简直是噩梦。作者在 ARM 架构的 DGX Spark 上构建时，系统自带的 `wasm-opt` 版本太老（version 108），不支持 WebAssembly Exceptions 扩展，直接导致构建失败；而在 x86_64 的工作站上，Homebrew 安装的版本（version 130）却跑得好好的。为了消除这个环境差异，作者在链接阶段加上了 `--no-wasm-opt` 参数，强制禁用这个隐式调用。虽然牺牲了一点优化空间，但换来了构建过程的可控性。\n\n### 指针地址竟然影响了代码生成顺序\n你以为禁用了外部工具就万事大吉了？并没有。作者发现 Clang 在处理异常处理路径时，生成的代码竟然对内存地址敏感。具体来说，原始指针值泄露到了 `try_table` 块的排序中。这导致每次构建，虽然逻辑代码没变，但字节顺序会微调，最终产物的哈希值总会差那么 29 个字节。更糟糕的是，这种差异在 x86_64 和 ARM64 架构之间表现得尤为明显，因为不同架构的指针遍历顺序不一样。这属于 LLVM 上游的 Bug，作者没能力修，只能想办法绕过去。\n\n### 用禁用 ASLR 和双重校验来妥协\n面对 LLVM 的这个“特性”，作者想出了一个折中方案。首先，在构建脚本中使用 `setarch --addr-no-randomize` 命令，禁用操作系统的地址空间随机化（ASLR），尽量让内存布局稳定下来。其次，接受跨架构无法完全一致的现实，改为“架构内确定性”。作者在受信任的机器上分别为 x86_64 和 ARM64 构建了“黄金版本”，并记录了对应的 SHA256 校验和。在 CI 流水线中，构建任务会根据当前运行的架构，自动去匹配对应的校验和。虽然没能实现跨架构的完美复现，但至少保证了同一架构下的构建是绝对可重现的。",
+      "source_name": "xeiaso.net",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "WebAssembly",
+        "reproducible builds",
+        "binaryen",
+        "wasi-sdk"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Formalizing a ring theorem with Lean 4 and Claude",
       "title_zh": "用 Claude 生成 Lean 4 形式化证明",
       "link": "https://www.johndcook.com/blog/2026/06/17/rings-with-lean-claude/",
@@ -41,7 +60,7 @@
         "formal verification",
         "theorem proving"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "You Got Faster. Your Company Didn’t.",
@@ -60,7 +79,26 @@
         "documentation",
         "team efficiency"
       ],
-      "rank": 3
+      "rank": 4
+    },
+    {
+      "title": "Windows stack limit checking retrospective, follow-up",
+      "title_zh": "Windows 栈探测函数的非常规寄存器调用约定",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260617-00/?p=112436",
+      "pub_date": "2026-06-17T14:00:00.000Z",
+      "summary": "### 一句话总结\n为了解决“还没检查栈空间就不能用栈保存参数”的死循环，Windows 在不同架构上利用非标准的“超易失性”寄存器（如 AArch64 的 x15）来传递 stack probe 参数。\n\n### 核心矛盾：还没检查栈，就没法保存参数\nAaron Giles 在看了 Raymond Chen 关于 ARM64 栈检查的文章后，指出了一个被忽略的细节：为什么要用 `x15` 寄存器传参？这听起来有点反直觉，毕竟 AArch64 的标准调用约定规定参数应该放在 `x0` 到 `x7` 里。但这里有个死锁难题：调用 `stack probe` 函数是为了检查栈空间是否足够，但在检查通过前，你不能触碰栈。如果按常规方式用 `x0` 传参，调用方为了保护原本就在 `x0` 里的参数，就得把它挪到栈上——但这恰恰是还没被检查过的栈。所以，常规路子走不通。\n\n### 破局思路：借用“超易失性”寄存器\n那怎么办？核心思路其实很简单：找个绝对不会用来传参的寄存器来传递“需要检查多少栈空间”这个参数。Windows 团队为此设计了一套自定义调用约定，专门服务于 `stack probe` 函数。这个约定要求参数必须放在“暂存寄存器”里，而且得是那种绝对不会被用来接收入参的寄存器。这样，调用方就不需要保存原有的入参，直接把栈大小塞进去就能调用，完美避开了“动栈前先存栈”的逻辑死结。\n\n### 跨架构的通用解法\n有意思的地方在于，这个设计不是 AArch64 独有的，而是一套贯穿多个架构的通用策略。Raymond Chen 列了一张表，从 8086 到 x86-64，再到 MIPS 和 PowerPC，大家都在干同样的事。比如 x86-32 用 `ecx`（它本身也是参数寄存器），但顺带修改了 `eax`；而 PowerPC 则更干脆，直接用了 `r12`。这些寄存器都有一个共同点：它们在各自的 ABI 里被定义为“超易失性”，通常用于汇编器临时变量或函数胶合代码，绝对不会用来传递函数参数。\n\n### x15 的特殊身份\n回到 AArch64，为什么偏偏是 `x15`？因为在 ARM64 的调用约定里，`x0` 到 `x7` 是参数寄存器，而 `x16` 和 `x17` 是“超易失性”的，通常用于函数调用的胶合代码。`x15` 虽然名义上是临时寄存器，但它并不在标准参数列表里，而且也不像 `x16/x17` 那样有特殊的链接器用途。把它作为 `stack probe` 的专用参数寄存器，既不会破坏调用方的入参，也不会干扰函数调用的底层机制，是个非常安全且巧妙的选择。\n\n### 遗憾的错失机会\n回看历史，有些架构其实还有更优解，但被错过了。比如 MIPS 和 Alpha AXP 架构，它们都有专门的 `at`（assembler temporary）寄存器。这玩意儿天生就是给汇编器做伪指令展开用的，绝对不会用来传参，简直是完美的候选。但 Raymond Chen 猜测，编译器团队可能担心汇编器会在背后偷偷用这个寄存器，为了保险起见，最终还是没敢用它，只能退而求其次选了其他通用临时寄存器。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "stack probe",
+        "calling convention",
+        "AArch64",
+        "Windows"
+      ],
+      "rank": 5
     },
     {
       "title": "Quoting Charity Majors",
@@ -78,7 +116,7 @@
         "economics",
         "engineering discipline"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Pluralistic: The (real) dead economy theory (17 Jun 2026)",
@@ -97,7 +135,7 @@
         "Elon Musk",
         "market valuation"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Summoning the Demon",
@@ -115,7 +153,44 @@
         "regulation",
         "social impact"
       ],
-      "rank": 6
+      "rank": 8
+    },
+    {
+      "title": "Snap Unveils Specs, Its $2,200 AR Glasses, and They’re Fugly",
+      "title_zh": "Snap 发布 2200 美元 AR 眼镜 Specs",
+      "link": "https://www.theverge.com/tech/950492/snap-specs-ar-glasses-launch-date-preorder?view_token=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IlZTMmZYVXprcHciLCJwIjoiL3RlY2gvOTUwNDkyL3NuYXAtc3BlY3MtYXItZ2xhc3Nlcy1sYXVuY2gtZGF0ZS1wcmVvcmRlciIsImV4cCI6MTc4MjE3Nzc0OSwiaWF0IjoxNzgxNzQ1NzQ5fQ.Pdh1hCJafS7ca3UfJ7pPoS-wRpZQ6tEAr7HEVfTOAd8",
+      "pub_date": "2026-06-18T01:33:15.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 7,
+      "depth": 2,
+      "novelty": 5,
+      "category": "tools",
+      "keywords": [
+        "AR glasses",
+        "Snap",
+        "Specs",
+        "wearable"
+      ],
+      "rank": 9
+    },
+    {
+      "title": "Vehicle Motion Cues — a.k.a. Apple’s Weird Anti-Nausea Dots",
+      "title_zh": "Apple 防晕车功能实测",
+      "link": "https://www.theverge.com/tech/942854/apple-vehicle-motion-cues-review-really-work",
+      "pub_date": "2026-06-18T01:15:27.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 7,
+      "depth": 2,
+      "novelty": 5,
+      "category": "other",
+      "keywords": [
+        "Vehicle Motion Cues",
+        "accessibility",
+        "iOS"
+      ],
+      "rank": 10
     },
     {
       "title": "Yours Truly on MacBreak Weekly: Is the New Siri AI Good?",
@@ -133,7 +208,7 @@
         "Apple Intelligence",
         "Private Cloud Compute"
       ],
-      "rank": 7
+      "rank": 11
     },
     {
       "title": "Yours Truly on The Vergecast: ‘# the **Epic** Story of Markdown’",
@@ -151,7 +226,7 @@
         "John Gruber",
         "plain text"
       ],
-      "rank": 8
+      "rank": 12
     },
     {
       "title": "Logic for Programmers v0.15, Livecoding",
@@ -170,7 +245,25 @@
         "CLAVIER-36",
         "TidalCycles"
       ],
-      "rank": 9
+      "rank": 13
+    },
+    {
+      "title": "How to correctly not wait for network carrier in Netplan",
+      "title_zh": "Netplan 网络等待配置",
+      "link": "https://utcc.utoronto.ca/~cks/space/blog/linux/UbuntuNetplanWaitForCarrierII",
+      "pub_date": "2026-06-18T02:02:05.000Z",
+      "summary": "",
+      "source_name": "utcc.utoronto.ca/~cks",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "engineering",
+      "keywords": [
+        "Netplan",
+        "network",
+        "carrier"
+      ],
+      "rank": 14
     }
   ]
 }
