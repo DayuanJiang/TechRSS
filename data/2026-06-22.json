@@ -2,9 +2,28 @@
   "date": "2026-06-22",
   "total_feeds": 92,
   "success_feeds": 84,
-  "total_articles": 2592,
-  "filtered_articles": 9,
+  "total_articles": 2594,
+  "filtered_articles": 13,
   "articles": [
+    {
+      "title": "Expert-aware quantisation: near-Q4 quality at near-Q2 size?",
+      "title_zh": "MoE 模型按专家热度分层量化",
+      "link": "https://martinalderson.com/posts/expert-aware-quantisation/?utm_source=rss&utm_medium=rss&utm_campaign=feed",
+      "pub_date": "2026-06-22T00:00:00.000Z",
+      "summary": "## 一句话总结\n通过 Profiling 识别 MoE 模型中的“热点专家”并对其保留高精度，将“冷门专家”激进量化至 2-bit，能在接近全 Q2 模型（13GB）的体积下，恢复接近全 Q4 模型（20GB）的生成质量。\n\n### 当大厂还在卷 KV Cache，本地玩家却在为显存发愁\n现在的模型量化研究大多集中在 KV Cache 压缩上，这在大规模集群场景下确实合理，因为显存瓶颈往往在 Cache 而非权重。但对于我们这些在本地跑模型的“平民”来说，痛点完全不同：把几十 GB 的权重加载进有限的显存才是最大的难题。目前的量化方案太粗暴了，要么全 Q4，要么全 Q2，缺乏针对性。作者就在想，既然 MoE（混合专家）模型里有很多专家，能不能不搞“一刀切”，而是根据实际使用情况，区别对待这些专家？\n\n### 代码生成任务暴露了 MoE 模型的“偏科”真相\n为了验证这个想法，作者拿 Qwen3.6 35B-A3B 模型跑了个 C++ 编程任务的 Profiling。结果很有意思：在“读代码”时，模型负载非常均衡，Gini 系数接近 0；但在“写代码”时，模型开始严重“偏科”。此时 Gini 系数飙升至 0.61，这意味着 256 个专家里，最活跃的那 32 个专家承担了一半的工作量，而按随机概率它们本该只承担 12.5%。这种极度的不均衡就是机会所在：既然只有一小撮专家在干重活，我们只要保住它们的质量，剩下的“闲人”专家随便压一压也无所谓。\n\n### 给 llama.cpp 做了一场“神经外科手术”\n有了 Profiling 数据，下一步就是动手改造。作者让 Claude Code 对 llama.cpp 进行了一番“神经外科手术”，目的是让它能支持对每个 Expert 使用不同的量化级别。这过程并不轻松，AI 跑了整整 90 分钟才搞定代码修改，还写了个脚本来自动处理量化逻辑。最终实现的效果是：根据 Profiling 结果，把那 64 个最“热”的专家保留高精度，剩下 192 个“冷”专家直接暴力压到 2-bit。\n\n### 数据不会撒谎：乱选专家不如不选\n实验结果非常说明问题。作者做了 A/B 测试：一组是根据 Profiling 选出的热点专家保留精度，另一组是随机选 64 个专家保留精度。结论很清晰——乱选是不行的。比如在 Q8-hot/Q2-cold 的配置下，随机选择的 Perplexity 是 1.667，而基于 Profiling 的选择降到了 1.620。这说明核心思路是对的：必须把有限的比特位花在那些真正干活的专家身上，否则就是浪费。\n\n### 真正的杀手锏：用 Q2 的体积跑出 Q4 的效果\n但这里有个尴尬的发现：全 Q4 量化实在太强了。在代码任务上，全 Q4（20GB）的表现几乎和全 Q8（35GB）持平。所以，作者精心设计的 Q8-hot/Q2-cold 方案（18GB），虽然比随机选择好，但并没有打败全 Q4。真正的胜利出现在更激进的配置上：**Q4-hot/Q2-cold**。这个模型体积只有 14GB（比全 Q2 仅多 1GB），但在读代码时的 Perplexity 达到了 1.635，写代码为 1.477。它填补了全 Q2（2.103）和全 Q4（1.582）之间约 90% 的质量差距。这就是文章标题的由来：以接近 Q2 的体积，实现了接近 Q4 的质量。\n\n### 存储便宜，内存昂贵：未来的模型可能是“按需下载”\n这项研究目前还处于实验阶段，代码实现也比较粗糙，但它指出了一个很有潜力的方向。现在的思路是静态 Profiling，未来完全可以做得更动态。比如，我们可以针对不同领域（写代码、写数学题、写小说）预先生成不同的量化配置文件。当用户在本地运行时，程序检测到任务类型，直接从硬盘下载那个针对该领域优化过的 GGUF 模型。毕竟硬盘存储是相对廉价的，而内存（RAM）是昂贵的。这种“存储换内存”的策略，或许能让本地大模型跑得更聪明、更轻快。",
+      "source_name": "martinalderson.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "MoE",
+        "quantisation",
+        "llama.cpp",
+        "perplexity"
+      ],
+      "rank": 1
+    },
     {
       "title": "Temporary Cloudflare Accounts for AI agents",
       "title_zh": "Cloudflare Workers 支持无需注册的临时部署",
@@ -21,7 +40,7 @@
         "temporary deployment",
         "AI agents"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Everything you say CAN and WILL be used against you",
@@ -40,7 +59,7 @@
         "Anthropic",
         "Terms of Service"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Configuration is a liability, just like code",
@@ -59,7 +78,7 @@
         "technical debt",
         "complexity"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "sqlite-utils 4.0rc1 adds migrations and nested transactions",
@@ -78,7 +97,7 @@
         "transactions",
         "SQLite"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Queens on a prime order board",
@@ -97,7 +116,64 @@
         "prime numbers",
         "cylindrical board"
       ],
-      "rank": 5
+      "rank": 6
+    },
+    {
+      "title": "Consistency, But in Excellence Not Appearance",
+      "title_zh": "视觉一致性与卓越性的设计权衡",
+      "link": "https://blog.jim-nielsen.com/2026/a-consistency-of-excellence/",
+      "pub_date": "2026-06-22T19:00:00.000Z",
+      "summary": "macOS 图标从拟物风格到 Creator Studio 统一风格的演变，展示了视觉一致性如何成为设计系统的主导目标。早期图标在形状、材质和光影上缺乏统一性，但每个图标都追求独特性和标志性；而现代图标通过统一的圆角矩形、受控渐变和简化形态实现了视觉一致性，却失去了个性。系统化设计容易文档化、执行和自动化，但卓越性需要判断力、品味、经验和对语境的敏感度。当一致性成为群体目标时，个体元素失去了成为卓越和标志性存在的能力；反之，如果以卓越性为每个个体元素的目标，卓越本身就会成为一致性的主题，这种基于质量和意图的一致性比表面的视觉相似性更有意义。",
+      "source_name": "blog.jim-nielsen.com",
+      "score": 9,
+      "depth": 4,
+      "novelty": 5,
+      "category": "opinion",
+      "keywords": [
+        "design",
+        "consistency",
+        "macOS",
+        "icons"
+      ],
+      "rank": 7
+    },
+    {
+      "title": "Cybersecurity for the paranoid business traveller",
+      "title_zh": "商务旅行者的网络安全防护指南",
+      "link": "https://shkspr.mobi/blog/2026/06/cybersecurity-for-the-paranoid-business-traveller/",
+      "pub_date": "2026-06-22T11:34:18.000Z",
+      "summary": "商务旅行者面临间谍活动、勒索或国家资助攻击的风险。核心建议包括：拒绝接受任何 USB 存储设备，直接丢弃；使用自带充电器或移动电源，避免公共 USB 充电口；卸载不必要的应用，特别是银行、约会和流媒体应用；避免使用 VPN，因其可能引起注意且在部分国家违法；使用密码管理器的子账户仅携带旅行所需密码，避免短信 MFA；警惕社交工程陷阱，避免与陌生人亲密接触；使用廉价一次性设备如 Chromebook，而非公司配发的加密笔记本。这些措施旨在最小化攻击面，降低设备被入侵或数据泄露的风险。",
+      "source_name": "shkspr.mobi",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "security",
+      "keywords": [
+        "travel security",
+        "USB threats",
+        "VPN",
+        "social engineering"
+      ],
+      "rank": 8
+    },
+    {
+      "title": "AMD Athlon: AMD’s game changing CPU from 1999",
+      "title_zh": "AMD Athlon：1999年首次超越Intel的x86处理器",
+      "link": "https://dfarq.homeip.net/amd-athlon-amds-game-changing-cpu-from-1999/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=amd-athlon-amds-game-changing-cpu-from-1999",
+      "pub_date": "2026-06-22T11:00:54.000Z",
+      "summary": "1999年8月9日，AMD发布Athlon处理器，这是第一款在性能上超越Intel同期最快CPU的非Intel x86处理器。Athlon采用DEC Alpha的EV6总线架构，并联合Motorola开发新制造工艺，成功突破1GHz频率。Intel因专利壁垒迫使其他x86厂商退出市场，但AMD通过独立路线实现性能反超，从1999年1月至2002年1月期间保持或领先Intel的时钟速度。Athlon使AMD首次在高端市场击败Intel，并帮助公司恢复盈利，为后续Athlon 64的64位架构和Intel被迫克隆AMD芯片奠定基础。",
+      "source_name": "dfarq.homeip.net",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "engineering",
+      "keywords": [
+        "AMD Athlon",
+        "x86",
+        "EV6 bus",
+        "Intel"
+      ],
+      "rank": 9
     },
     {
       "title": "The doom justifies the valuation",
@@ -116,7 +192,7 @@
         "Anthropic",
         "GLM-5.2"
       ],
-      "rank": 6
+      "rank": 10
     },
     {
       "title": "Mux — Video for Developers",
@@ -134,7 +210,7 @@
         "streaming",
         "analytics"
       ],
-      "rank": 7
+      "rank": 11
     },
     {
       "title": "Before and After: MacOS 27 Golden Gate Beta 1’s App Icons",
@@ -152,7 +228,7 @@
         "icon design",
         "UI"
       ],
-      "rank": 8
+      "rank": 12
     },
     {
       "title": "sqlite-utils 4.0rc1",
@@ -169,7 +245,7 @@
         "sqlite-utils",
         "release"
       ],
-      "rank": 9
+      "rank": 13
     },
     {
       "title": "Happy Father's Day.",
@@ -187,7 +263,7 @@
         "story",
         "personal"
       ],
-      "rank": 10
+      "rank": 14
     }
   ]
 }
