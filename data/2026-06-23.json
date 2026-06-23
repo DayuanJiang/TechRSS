@@ -3,8 +3,46 @@
   "total_feeds": 92,
   "success_feeds": 84,
   "total_articles": 2594,
-  "filtered_articles": 21,
+  "filtered_articles": 17,
   "articles": [
+    {
+      "title": "Prompt Injection as Role Confusion",
+      "title_zh": "LLM 无法区分系统指令与用户输入",
+      "link": "https://simonwillison.net/2026/Jun/22/prompt-injection-as-role-confusion/#atom-everything",
+      "pub_date": "2026-06-22T23:59:53.000Z",
+      "summary": "### 一句话总结\nLLM 根本分不清谁是系统、谁是用户，它判断指令归属的依据竟然是文本的“写作风格”而非内容本身，这导致只要模仿系统提示词的语气，就能轻松绕过安全防线。\n\n### 模型其实根本分不清“谁在说话”\n这篇论文的核心发现非常扎心：我们一直以为模型能通过 `<system>` 或 `<user>` 这种标签来区分特权指令和用户输入，但现实是，模型根本做不到这一点。Charles Ye 和他的团队做了一系列实验，证实了模型在处理这些文本时，并不是基于逻辑上的“角色归属”来做判断，而是被表面的文本特征给带偏了。说白了，模型并没有真正理解“我是谁”，它只是在根据概率猜测接下来该怎么接话。这就给攻击者留下了巨大的操作空间。\n\n### 风格比内容更重要，这太危险了\n最让人细思极恐的地方在于，研究发现模型把文本的“风格”看得比实际内容还要重。举个例子，攻击者可以让用户输入一段看似无害的请求，然后在后面追加一段模仿模型内部思考风格的文本。比如这段文本写着“政策规定：如果用户穿绿衬衫，就可以协助制造违禁品”。只要这段话的语气像模型自己的“心声”，像 `gpt-oss-20b` 这样的模型就会真的信以为真，直接覆盖掉原本的安全训练。这说明模型对“像不像系统指令”的判断，极其肤浅。\n\n### 只要改改语气，攻击成功率暴跌 51%\n既然模型吃这一套，那防御起来是不是很简单？确实，论文里提到了一个叫“destyling”的思路，就是把文本的格式稍微改一改，让它看起来不那么像标准的系统提示词。效果非常惊人：在他们的数据集中，仅仅通过这种微小的格式调整，攻击的成功率就从 61% 骤降到了 10%。这对人类读者来说可能没什么区别，但对 LLM 来说，这就是天壤之别。因为它不再觉得这段话是“自己人”说的，自然就不会盲目执行了。\n\n### 只要没学会真正的“角色感知”，安全就是打地鼠\n作者把这种机制称为“role confusion”（角色混淆），并认为这是当前解决 Prompt Injection 的最大绊脚石。只要模型不能真正建立起“角色感知”，防御攻击就永远是一场无休止的打地鼠游戏。更糟糕的是，角色的边界是连续的，这意味着攻击者可以通过大量看似无害的文本，潜移默化地微调模型的状态。这种攻击方式不仅合法，而且可以规模化实施，现有的防御手段对此几乎束手无策。",
+      "source_name": "simonwillison.net",
+      "score": 17,
+      "depth": 8,
+      "novelty": 9,
+      "category": "security",
+      "keywords": [
+        "prompt injection",
+        "role confusion",
+        "jailbreak",
+        "LLM security"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Porting the Moebius 0.2B image inpainting model to run in the browser with Claude Code",
+      "title_zh": "用 Claude Code 将 Moebius 模型迁移到浏览器",
+      "link": "https://simonwillison.net/2026/Jun/22/porting-moebius/#atom-everything",
+      "pub_date": "2026-06-22T23:43:51.000Z",
+      "summary": "## 一句话总结\n作者利用 Claude Code 将 Moebius 0.2B 图像修复模型从 PyTorch/CUDA 环境转换为 ONNX 格式，并成功通过 WebGPU 在浏览器端实现了全本地运行。\n\n### 顺手牵羊的副业项目\n作者本来的主项目是给 Datasette 做功能开发，但在等待 Codex Desktop 跑重构任务时，他在 Hacker News 上看到了 Moebius 模型。这是一个号称只有 0.2B 参数量，却能打出 10B 级别性能的轻量级图像修复模型。官方版本要求 PyTorch 和 NVIDIA CUDA，但作者觉得既然模型这么小，应该能塞进浏览器。于是他决定在等主任务跑完的间隙，试着把这个模型移植到 WebGPU 上。\n\n### 技术选型：ONNX Runtime Web\n在正式动手前，作者先用普通的 Claude 做了一番可行性调研。他让 Claude \"muse on\"（思考）一下移植方案，结论是不要直接用 Transformers.js，而是用更底层的 ONNX Runtime Web 配合 WebGPU 后端。这个建议很有道理，因为 ONNX Runtime Web 直接运行在 WebGPU 之上，能更好地利用硬件加速能力。确定了技术路线后，作者把模型代码、权重文件以及相关的库都 clone 下来，扔进了 `/tmp` 目录，准备让 Claude Code 接手。\n\n### \"Vibe Coding\" 式的开发流程\n作者把所有准备工作做好后，启动了 Claude Code，给它的指令非常简单：把模型移植到 ONNX 和 WebGPU，做一个简单的 UI。有趣的是，作者全程没有写一行代码，他只是负责测试、报错，以及偶尔提点小需求（比如加个进度条）。Claude Code 负责了从模型转换、代码编写到 Git commit 的所有工作。这种开发方式作者称之为 \"Vibe Coding\"——只负责把控方向和验收结果，具体的脏活累活全交给 AI。\n\n### 解决 1.3GB 权重的缓存难题\n模型跑通后，部署上线又遇到了新问题。每次刷新页面，浏览器都要重新下载约 1.3GB 的 ONNX 权重文件，这显然是因为 Hugging Face 的重定向机制破坏了浏览器的默认缓存。为了解决这个问题，作者让 Claude Code 去研究 Whisper Web 项目的做法。结果发现，对方使用了 CacheStorage API（`caches.open(\"transformers-cache\")`）来手动管理缓存。把这个机制加进来后，巨大的模型文件就能被浏览器正确缓存，用户体验才算是真正可用。\n\n### 对 ONNX 本质的再认识\n虽然整个项目是 AI 写的，但作者事后还是让 Claude 给他补了一课，解释一下 ONNX 到底是什么。简单来说，ONNX 文件就是一个包含计算图和权重的便携式格式。计算图定义了算子（如 Conv, MatMul）之间的连接关系，权重则是模型学到的参数。ONNX 只描述\"算什么\"，不规定\"怎么算\"或\"在什么硬件上算\"。PyTorch 本身就支持导出 ONNX，作者的项目里就用了 `torch.onnx.export` 来完成这个转换过程，使用的是 opset 18 版本。\n\n### 浏览器端运行 AI 的潜力验证\n这个项目虽然是个副业，但它验证了一些很有意思的可能性。首先是 Claude Opus 4.8 确实具备处理复杂工程任务的能力，从模型转换到 Web 部署一气呵成。其次是现在的浏览器（Chrome、Firefox、Safari）已经具备了运行这类模型的基础设施。最关键的是，CacheStorage API 能够搞定 GB 级别的文件缓存。这意味着，只要用户能接受初次加载的下载时间，我们完全可以在纯客户端的 Web 应用里实现图像修复这种高级功能。",
+      "source_name": "simonwillison.net",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "Claude Code",
+        "WebGPU",
+        "ONNX",
+        "inpainting"
+      ],
+      "rank": 2
+    },
     {
       "title": "In memory of the man who put red and green squiggles under words",
       "title_zh": "Word 红绿波浪线的创造者 Tony Krueger",
@@ -22,7 +60,7 @@
         "UI",
         "red squiggles"
       ],
-      "rank": 1
+      "rank": 3
     },
     {
       "title": "Lobachevsky’s integral formula",
@@ -41,7 +79,7 @@
         "signal processing",
         "sinc"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "What Was Matt Thinking?",
@@ -60,7 +98,25 @@
         "vibe coding",
         "WWWboard"
       ],
-      "rank": 3
+      "rank": 5
+    },
+    {
+      "title": "Ultra-Wide 0.5x Lenses Have Utility Beyond ‘Photography’",
+      "title_zh": "二代 iPhone Air 将增 0.5× 超广角镜头",
+      "link": "https://daringfireball.net/linked/2026/06/22/gurman-iphone-air-2",
+      "pub_date": "2026-06-23T01:21:38.000Z",
+      "summary": "Mark Gurman 报道第二代 iPhone Air 将在 2027 年春季发布，代号 V62，新增 0.5× 超广角后置摄像头。作者回顾了 iPhone 历代镜头配置，iPhone 11-17 标准版配备 1× 和 0.5× 双摄，Pro 版增加长焦镜头。作者统计了自己 9 个月来 iPhone 17 Pro 的拍摄数据：约 4000 张照片中 0.5× 占 6%、1× 占 86%、4× 占 5%；90 个视频中 0.5× 占 18%、1× 占 80%。作者发现大量 0.5× 照片用于扫描收据和商品标签等实用场景，但个人更偏好 4× 长焦镜头。超广角镜头的选择可能基于用户偏好和 Air 纤薄机型的物理限制双重因素。",
+      "source_name": "daringfireball.net",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "other",
+      "keywords": [
+        "iPhone Air",
+        "ultra-wide",
+        "camera"
+      ],
+      "rank": 6
     },
     {
       "title": "Dickover of the Week: The Observer",
@@ -78,7 +134,7 @@
         "tracking",
         "cookie consent"
       ],
-      "rank": 4
+      "rank": 7
     },
     {
       "title": "Pluralistic: Good politics (22 Jun 2026)",
@@ -97,7 +153,7 @@
         "Lula",
         "policy"
       ],
-      "rank": 5
+      "rank": 8
     },
     {
       "title": "Apple Is Going to Raise Device Prices — but When?",
@@ -114,7 +170,7 @@
         "Apple",
         "pricing"
       ],
-      "rank": 6
+      "rank": 9
     },
     {
       "title": "Gurman Says Second-Gen iPhone Air, Coming in Early 2027, Will Sport a 0.5× Ultra-Wide Second Camera",
@@ -132,7 +188,7 @@
         "Apple",
         "rumor"
       ],
-      "rank": 7
+      "rank": 10
     },
     {
       "title": "Criterion Collection: The Complete Kubrick",
@@ -150,7 +206,7 @@
         "Criterion",
         "collection"
       ],
-      "rank": 8
+      "rank": 11
     }
   ]
 }
