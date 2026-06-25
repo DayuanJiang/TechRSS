@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 83,
   "total_articles": 2571,
-  "filtered_articles": 15,
+  "filtered_articles": 17,
   "articles": [
+    {
+      "title": "The case of the DLL that was not present in memory despite not being formally unloaded, part 1",
+      "title_zh": "DLL 被强制卸载导致的递归异常崩溃",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260625-00/?p=112467",
+      "pub_date": "2026-06-25T14:00:00.000Z",
+      "summary": "## 一句话总结\n这是一个典型的“Bucket Spray”案例：某个未知的内存破坏代码强制释放了仍在使用的 DLL 内存，导致系统在异常处理时陷入死循环并栈溢出，而 shell32.dll 只是无辜的背锅侠。\n\n### 看似栈溢出，实则是异常处理的“死亡螺旋”\nshell32 团队收到了一个崩溃报告，dump 文件显示这是一个典型的栈溢出。但有意思的地方在于，堆栈并不是普通的线性增长，而是陷入了 `RtlDispatchException` 和 `KiUserExceptionDispatch` 的无限递归中。说白了就是：程序抛出了一个异常，系统试图分发它，结果在查找异常处理函数的过程中又触发了新的异常，于是重新开始分发。这种“异常处理中又异常”的死循环，最终耗尽了栈空间，导致进程被杀。\n\n### 顺着堆栈往下挖，罪魁祸首指向 combase\n为了找到最初的那个异常，作者一路滚到了堆栈的最底部。那里显示 shell32 正在调用 `combase!CoTaskMemFree`。通过检查 `KiUserExceptionDispatch` 传递给 `RtlDispatchException` 的参数，作者确认了最初的异常代码是 `0xC0000005`（访问冲突）。更具体的信息显示，这是一次“尝试执行不可执行地址”的错误，而这个不可执行的地址，恰恰就是 `combase!CoTaskMemFree` 所在的位置。\n\n### 内存明明被释放了，加载器却以为它还在\n这就很奇怪了，`combase!CoTaskMemFree` 是系统代码，怎么会不可执行？作者用 `!address` 命令一看，发现包含该函数的整块内存区域状态已经是 `MEM_FREE` 了，也就是说物理内存已经被释放了。但如果你问加载器（Loader）这个地址属于谁，`!dlls` 命令却信誓旦旦地说这是 `combase.dll`，而且加载计数是 `0xFFFFFFFF`（意味着被 Pin 住了，永远不会被卸载）。这里有个矛盾：加载器认为 DLL 还在，但内存实际上已经没了。\n\n### 谁动了我的内存？不是 FreeLibrary 干的\n既然加载器没卸载它，那内存是怎么没的？核心思路其实很简单：肯定不是通过正常的 `FreeLibrary`，而是有人直接调用了 `VirtualFree`。作者推测，这很可能是一个内存破坏 Bug：某个代码块原本想释放自己管理的内存，结果因为变量未初始化或者被覆盖，把“待释放地址”写成了 `combase.dll` 的基址。于是，这个倒霉的系统 DLL 就被不明不白地“物理删除”了。\n\n### 并不是只有 shell32 遇到了鬼\n如果这个推测成立，那就不应该只有 shell32 遇到这个问题。作者分析了最近 100 个崩溃样本，发现虽然堆栈里报错的 DLL 各不相同（有的报在 shell32，有的报在 gdi32full），但模式完全一致：都是在 `DLL_PROCESS_DETACH` 阶段，试图调用一个已经被强制移除的 DLL。这些崩溃加起来占了总崩溃数的 46%。这证实了这是一个“Bucket Spray”现象：同一个根本原因（某处代码乱释放内存），炸出了各种不同的崩溃表象。对 shell32 团队来说，好消息是他们不用背锅了；坏消息是，真凶至今逍遥法外。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "DLL",
+        "crash dump",
+        "exception handling",
+        "memory corruption"
+      ],
+      "rank": 1
+    },
     {
       "title": "US Subways Build Too Many Cross Passages",
       "title_zh": "美国地铁横向通道间距标准推高建设成本",
@@ -22,7 +41,7 @@
         "cross-passages",
         "fire safety"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Incircles and Excircles of Pythagorean triangles",
@@ -41,7 +60,41 @@
         "excircle",
         "geometry"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "Apple Raises Prices on Most Products by 15–25 Percent, but Not iPhones, Watches, or AirPods",
+      "title_zh": "Apple 大幅涨价 Mac 和 iPad",
+      "link": "https://www.wsj.com/tech/apple-raises-prices-on-macs-ipads-by-200-or-more-on-some-models-a7463f99?st=zse57R",
+      "pub_date": "2026-06-25T16:58:16.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Apple",
+        "pricing"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "Raymond’s hot take on Hainanese chicken",
+      "title_zh": "Raymond Chen 谈海南鸡饭",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260625-01/?p=112469",
+      "pub_date": "2026-06-25T14:00:01.000Z",
+      "summary": "",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "humor",
+        "food"
+      ],
+      "rank": 5
     }
   ]
 }
