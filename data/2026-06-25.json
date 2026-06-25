@@ -1,10 +1,29 @@
 {
   "date": "2026-06-25",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2571,
-  "filtered_articles": 14,
+  "success_feeds": 82,
+  "total_articles": 2551,
+  "filtered_articles": 15,
   "articles": [
+    {
+      "title": "Scrutineer: scanning open source without flooding maintainers",
+      "title_zh": "Scrutineer：避免维护者过载的 AI 安全扫描工具",
+      "link": "https://nesbitt.io/2026/06/25/scrutineer.html",
+      "pub_date": "2026-06-25T10:00:00.000Z",
+      "summary": "## 一句话总结\nScrutineer 并不是一个简单的 AI 漏洞扫描器，而是一个把“发现漏洞”变成“发布修复补丁”的自动化工作流，它通过层层验证和上下文分析，确保只有高质量的报告才会送到维护者手中，从而避免用垃圾邮件淹没开源社区。\n\n### AI 扫描的真正瓶颈不是漏报，是误报\n大模型（LLM）确实让找漏洞变得既快又便宜，但这带来了一个新问题：噪音太多了。如果你直接把模型生成的报告扔给维护者，哪怕只有 10% 是误报，也足以耗尽社区志愿者的精力，导致严重的 Burnout。作者之前拿 AI 扫描 curl 项目时就发现，大部分输出都违反了披露政策，真正有价值的漏洞被埋在了一堆废话里。所以，Scrutineer 的核心设计哲学不是“尽可能多地发现问题”，而是“在报告给任何人之前，先在内部把噪音过滤掉”。\n\n### 把扫描逻辑变成可插拔的“技能”\nScrutineer 的架构设计非常巧妙，它把扫描逻辑拆解成了一个个独立的“Skills”。每个技能就是一个包含 `SKILL.md`、JSON Schema 和脚本的目录。你添加一个仓库后，`triage` 技能会先运行，根据配置并行调度其他技能。因为技能只是磁盘上的文件，修改扫描策略就像编辑 Markdown 一样简单，不需要重新编译代码。这种设计让工具极具扩展性，想加一种新的扫描类型，只需往 `skills/` 目录里丢一个新文件夹即可。\n\n### 不只找漏洞，先搞清楚“什么不算漏洞”\n在真正开始审计代码前，`threat-model` 技能会先推导项目的“安全契约”。它会明确项目假设了什么、保证什么、以及哪些代码是 Out of Scope 的。更重要的是，它会直接读取项目现有的 `SECURITY.md`，把维护者认为“不是问题”的内容提取出来。这样，后续的 `security-deep-dive` 审计就能专注于项目真正承诺防御的部分，而不是对着文档里已经声明不负责的地方瞎报。\n\n### 审计的核心是“溯源”，而不是“猜疑”\n`security-deep-dive` 是整个工具的大脑，它分两阶段运行。第一阶段先建立代码库中所有 Sink（如执行命令、读写文件等危险点）的清单；第二阶段才逐个分析，看是否有 Hostile Input 能从信任边界一路传导到这些 Sink。这种“先盘点，再追踪”的策略保证了结果的可复现性。它只审计项目自身的逻辑，不依赖依赖库的已知 CVE，确保每一个发现都是针对当前代码库的实质性漏洞。\n\n### 自动化补丁生成，但绝不乱改代码\n发现漏洞后，`patch` 技能会尝试生成修复补丁。它的设计非常克制：只做最小化的修改，复用项目现有的校验逻辑，甚至还会尝试写回归测试。如果它搞不清危险路径和正常路径的区别，它会选择拒绝生成，而不是瞎猜。生成的补丁会经过 `git apply --check` 验证，并以 `.patch` 文件的形式供分析师下载。这里的关键是，Scrutineer 不会自动提交 PR，它只是给分析师提供一个高质量的起点，最终还得人来把关。\n\n### 评估修复影响，避免好心办坏事\n修好 Bug 却搞坏了下游依赖，这是维护者最怕的事。`breaking-change` 技能就是为了解决这个问题。它会静态分析补丁对公共 API 的影响，然后检查那些重度依赖该包的项目，看它们是否可能调用到受影响的符号。如果信息不足，它会老老实实返回 `unknown`，而不是自信地给出错误结论。这个判断往往决定了一个补丁是能快速发布，还是会被无限期搁置。\n\n### 从“发现”到“发布”的完整闭环\nScrutineer 的野心不止于扫描，它还管后续的跟踪。`release-watch` 技能会监控上游的发布情况，因为虽然代码合入了，但用户能用的只有 Tagged Release。它会检查每个 Tag 是否包含了修复的 Commit，直到确认修复真正对外发布。配合 `maintainers` 技能（它能分析 Git 历史、CODEOWNERS 甚至 ecosyste.ms 的数据来找到对的人），整个流程从扫描、验证、联系到发布 advisory，形成了一个完整的闭环。\n\n### 数据驱动与人工把关的双重保险\n这个工具并不是要取代人，而是辅助人。所有的发现默认都是“未验证”状态，高危漏洞会先经过一个廉价的分类器过滤，再由人工进行独立验证。只有当人确认无误后，报告才会通过 GitHub Private Vulnerability Reporting 发送给维护者，而且附带了经过验证的补丁。此外，Scrutineer 还能导入 SARIF 或其他扫描器的结果，甚至上传 SBOM 来触发扫描，最终输出标准的 OSV 或 CSAF 格式。它现在已经在 Alpha-Omega 资助的团队中投入使用，并且 MIT 协议开源，支持本地运行，你可以直接用 Docker 跑起来，接上 Claude API 就能用了。",
+      "source_name": "nesbitt.io",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "LLM",
+        "vulnerability scanning",
+        "open source security",
+        "disclosure workflow"
+      ],
+      "rank": 1
+    },
     {
       "title": "WebKit in Safari 27 Beta",
       "title_zh": "Safari 27 beta：可自定义 select 与 JSPI 支持",
@@ -22,7 +41,7 @@
         "CSS",
         "WebAssembly"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Thoughts on Role Confusion",
@@ -41,7 +60,7 @@
         "jailbreak",
         "embeddings"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "How to Write an Effective Software Design Document",
@@ -60,7 +79,7 @@
         "architecture",
         "engineering"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "[Sponsor] WorkOS: Agents Need Auth. There’s Now a Spec for It.",
@@ -79,7 +98,7 @@
         "agents",
         "authentication"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "simonw/browser-compat-db",
@@ -98,7 +117,7 @@
         "GitHub Actions",
         "Datasette"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "WebKit Always Enables the Copy Menu Item in Every App",
@@ -117,7 +136,7 @@
         "validateMenuItem",
         "document.execCommand"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Pluralistic: Jailbreaking isn't theft (25 Jun 2026)",
@@ -136,7 +155,26 @@
         "anticircumvention",
         "Apple"
       ],
-      "rank": 7
+      "rank": 8
+    },
+    {
+      "title": "Consecutive Pythagorean triangle sides",
+      "title_zh": "包含连续整数的毕达哥拉斯三元组",
+      "link": "https://www.johndcook.com/blog/2026/06/25/consecutive-pythagorean/",
+      "pub_date": "2026-06-25T12:00:14.000Z",
+      "summary": "寻找包含连续整数的毕达哥拉斯三元组有两种情况：两直角边连续（a+1=b）或斜边与长边连续（b+1=c）。对于 a+1=b 的情况，George Osborne 证明了短边满足递推关系 u_{n+2}=6u_{n+1}-u_n+2，初始条件为 u_0=0、u_1=1，该序列对应 OEIS A001652。通过求解线性递推得到通项公式 u_n=(1+√2)/4·(3+2√2)^n+(1-√2)/4·(3-2√2)^n-1/2。对于 b+1=c 的情况，利用欧几里得公式 a=m²-n²、b=2mn、c=m²+n²，由 c-b=1 推导出 (m-n)²=1，即 m=n+1，因此所有可能的 b 值由 2n(n+1) 给出，其中 n>1。",
+      "source_name": "johndcook.com",
+      "score": 10,
+      "depth": 7,
+      "novelty": 3,
+      "category": "engineering",
+      "keywords": [
+        "Pythagorean triples",
+        "recurrence relation",
+        "Euclid's formula",
+        "number theory"
+      ],
+      "rank": 9
     },
     {
       "title": "Quoting Tom MacWright",
@@ -155,7 +193,7 @@
         "resume",
         "anonymity"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "\"No way to prevent this\" say users of only language where this regularly happens",
@@ -174,7 +212,7 @@
         "memory safety",
         "C"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "The Star Trek lemma",
@@ -192,7 +230,7 @@
         "geometry",
         "theorem"
       ],
-      "rank": 10
+      "rank": 12
     },
     {
       "title": "VA Linux’s transformation after leaving the hardware business",
@@ -210,7 +248,7 @@
         "Sourceforge",
         "business transformation"
       ],
-      "rank": 11
+      "rank": 13
     },
     {
       "title": "Designed in California: An Apple History Podcast",
@@ -228,7 +266,7 @@
         "Apple",
         "history"
       ],
-      "rank": 12
+      "rank": 14
     },
     {
       "title": "Some things on 'systemctl kexec' as compared to 'kexec -e'",
@@ -246,7 +284,7 @@
         "systemctl",
         "linux"
       ],
-      "rank": 13
+      "rank": 15
     }
   ]
 }
