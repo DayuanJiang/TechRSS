@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 83,
   "total_articles": 2571,
-  "filtered_articles": 18,
+  "filtered_articles": 17,
   "articles": [
     {
       "title": "The next big breakthrough will be AIs learning on the job",
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "The case of the DLL that was not present in memory despite not being formally unloaded, part 2",
+      "title_zh": "单字节错误导致 DLL 被意外卸载",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260626-00/?p=112472",
+      "pub_date": "2026-06-26T14:00:00.000Z",
+      "summary": "## 一句话总结\n看似诡异的“DLL 内存消失”崩溃，其实只是同一个内存破坏 Bug 写入 `01` 字节后，意外将句柄伪装成数据文件模块导致的连锁反应。\n\n### 两个看似无关的崩溃其实是同一件事\n上回我们聊到一个奇怪的崩溃：DLL 明明没被卸载，却在内存里凭空消失了。正当我为此头疼时，同事那边有了新发现。他发现这个进程里的大多数崩溃，都有一个共同特征——“某个数据结构被莫名其妙地写入了单个字节 `01`”。这个线索像一把钥匙，瞬间把两边看似无关的现象串在了一起。原来，我遇到的 DLL 消失问题，很可能只是这个“到处乱写 `01`”的 Bug 造成的另一种症状。\n\n### HMODULE 的最低位藏着致命的陷阱\n这里有个关键的技术细节：Windows 用 `HMODULE` 的最低位（bit 0）来标记模块是如何加载的。如果最低位是 `1`，说明这是通过 `LOAD_LIBRARY_AS_DATAFILE` 加载的数据文件模块。那如果那个乱写的 `01` 字节，恰好覆盖了一个正常 `HMODULE` 的最低位呢？原本指向代码 DLL 的句柄，瞬间就被伪装成了一个“数据文件模块句柄”。这就是那个内存破坏 Bug 引发的蝴蝶效应。\n\n### 一次错误的“清理”直接卸载了代码内存\n当进程结束清理资源时，组件（比如 `wil::unique_hmodule` 这样的 RAII 封装）会尽职尽责地调用 `FreeLibrary` 来释放这些句柄。`FreeLibrary` 一看最低位是 `1`，就信以为真，以为这是个数据文件模块。于是，它按照卸载数据文件的逻辑执行操作——直接把 DLL 从内存中 Unmap 掉了。最坑的地方在于，作为数据文件加载时，DLL 并没有被加入“代码模块列表”，所以卸载时也不会从那个列表里移除。这就造成了一种“精神分裂”的状态：系统认为 DLL 还在，但物理内存已经没了。\n\n### 根本原因还是那个未知的内存破坏\n所以，之前那个“DLL 在内存中消失”的谜题解开了。它不是被谁恶意卸载了，而是因为一个 bit 的翻转，导致系统误判了模块类型，执行了错误的 Unmap 操作。这再次证明了那个“到处乱写 `01`”的 Bug 破坏力极大。好消息是，所有这些乱七八糟的崩溃最终都指向了同一个根因；坏消息是，我们还是得去抓这个极其难缠的内存破坏 Bug。\n\n### 为什么这个 Bug 藏了这么久？\n更有意思的是，这个 Bug 至今还没定位到源头。我们甚至不确定是系统组件的问题，还是第三方程序自己的锅。不过，因为它只在一个特定的进程里出现，且波及多个模块，大概率是那个程序本身有问题。而且，看调用栈就知道，崩溃总是发生在进程退出的时候。这解释了为什么它能潜伏这么久：程序都关了，用户早就不在乎它是正常退出还是崩溃退出了，没人会报修。\n\n### 并不是每个故事都有完美结局\n这就是技术现实的残酷之处。虽然我们完美地复现并解释了崩溃的原理，把所有线索都收束到了一个点上，但真正的罪魁祸首——那个写入 `01` 字节的代码——依然逍遥法外。有时候，你把逻辑链推得再完美，如果找不到源头，故事也只能在这里画上一个遗憾的句号。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "DLL",
+        "HMODULE",
+        "memory corruption",
+        "FreeLibrary"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Incident Report: CVE-2026-LGTM",
       "title_zh": "AI 代码审查代理陷入争议循环的虚构事故报告",
       "link": "https://simonwillison.net/2026/Jun/26/incident-report/#atom-everything",
@@ -60,7 +79,7 @@
         "incident report",
         "satire"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Quoting Dean W. Ball",
@@ -79,7 +98,7 @@
         "economics",
         "geopolitics"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Blink if you’re human",
@@ -98,7 +117,7 @@
         "disclosure",
         "centaur"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Quoting OpenAI",
@@ -117,7 +136,7 @@
         "model release",
         "pricing"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Apple’s Full Statement on Yesterday’s Price Increases",
@@ -136,7 +155,7 @@
         "memory shortage",
         "AI data centers"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Quoting Timothy B. Lee",
@@ -154,7 +173,7 @@
         "prompt engineering",
         "learning curve"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "The Price-Hiked Apple TV 4K Is 4 Years Old",
@@ -172,7 +191,7 @@
         "hardware",
         "pricing"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Premium: Notes From The Bubble, Volume 1",
@@ -190,7 +209,26 @@
         "AI hype",
         "opinion"
       ],
-      "rank": 10
+      "rank": 11
+    },
+    {
+      "title": "★ Om",
+      "title_zh": "John Gruber 悼念挚友 Om Malik",
+      "link": "https://daringfireball.net/2026/06/om",
+      "pub_date": "2026-06-26T23:22:50.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "opinion",
+      "keywords": [
+        "Om Malik",
+        "memorial",
+        "tech journalism",
+        "friendship"
+      ],
+      "rank": 12
     },
     {
       "title": "This Week on The Analog Antiquarian",
@@ -207,7 +245,7 @@
         "blog",
         "navigation"
       ],
-      "rank": 11
+      "rank": 13
     }
   ]
 }
