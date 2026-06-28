@@ -23,6 +23,25 @@
         "Manchester encoding"
       ],
       "rank": 1
+    },
+    {
+      "title": "PuffPal, an App for Accessing Cannabis Clubs, Leaked 1 Million Users’ Passports",
+      "title_zh": "PuffPal 泄露 98.5 万用户护照",
+      "link": "https://www.theverge.com/tech/947157/passports-data-breach-cannabis-club-systems-nefos-puffpal?view_token=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjdjV0Y5TTBuM0ciLCJwIjoiL3RlY2gvOTQ3MTU3L3Bhc3Nwb3J0cy1kYXRhLWJyZWFjaC1jYW5uYWJpcy1jbHViLXN5c3RlbXMtbmVmb3MtcHVmZnBhbCIsImV4cCI6MTc4MzA5NDY0NiwiaWF0IjoxNzgyNjYyNjQ2fQ.7SjX6B8AAGhzsdrtD5asJWBwzQvTDUD31hWte7K1oec",
+      "pub_date": "2026-06-28T17:21:42.000Z",
+      "summary": "## 一句话总结\n一家为大麻俱乐部提供 SaaS 服务的公司，因将近百万用户的护照、驾照等敏感证件直接存储在可预测的公开 URL 上，且 API 毫无鉴权机制，导致了极其严重的数据泄露事故。\n\n### 随便改个 URL，就能遍历百万人的护照\n这事儿起因于安全研究员 Sammy Azdoufal 的一次常规测试。他发现 PuffPal 这款 App 的逻辑简直简单到令人发指：只要修改 URL 中的 `user_id`，就能遍历查看所有用户的资料。更离谱的是，用户的护照、驾照等证件照片，就赤裸裸地挂在像 `https://ccsnubev2.com/v8/images/_{club}/ID/{user_id}-front.jpg` 这样的公网地址上。没有任何密码，也没有访问控制，只要你知道链接，就能看到包括德国、西班牙甚至美国在内的 98.5 万人的身份证明。这不仅仅是隐私泄露，这是把整个数据库的钥匙挂在了大门上。\n\n### 为了方便入场，把所有隐私都交给了云端\n为什么这么多敏感数据会集中在一个地方？这得从西班牙大麻俱乐部的运营模式说起。按照规定，会员每次入场都要核验身份，为了省事，一家叫 Cannabis Club Systems (CCS) 的爱尔兰公司提供了一套 SaaS 系统。前台把你的证件和自拍上传到云端，以后你来了直接刷脸或者扫二维码就行。这个名为 PuffPal 的 App 本意是优化体验，结果却把包括名人、政要在内的 30,000 名美国游客和全球用户的详细数据（住址、电话、甚至消费偏好）全部集中到了一个并不安全的桶里。\n\n### 逆向 App 发现：Stripe 密钥明文，鉴权形同虚设\nAzdoufal 在逆向分析了 PuffPal App 后，发现的安全漏洞简直能写进教科书。最基础的问题是把 Stripe 支付平台的 Secret Key 硬编码在 App 里，相当于把收银机的钥匙贴在机身上。而在 API 设计上，系统完全没有校验调用者的身份。攻击者不需要破解密码，只需要通过简单的 ID 枚举，就能拉取任意用户的完整档案。这种“通过不安全 ID 引用”的漏洞，本该是任何初级开发者都能避免的低级错误。\n\n### 厂商的第一次修复：为了业务，竟然把漏洞重新打开\n更有意思的是厂商的应对过程。在媒体介入后，CCS 起初确实把证件图片加上了保护。但没过几天，因为俱乐部抱怨图片无法正常显示，影响入场效率，CCS 竟然把刚刚加上的锁又给拆了。这种“为了业务连续性牺牲安全性”的操作，直接导致 Azdoufal 的护照在所谓的“修复”后再次裸奔。这暴露出的不是技术问题，而是管理层对安全风险的极度漠视，直到面临巨大的舆论压力才真正重视起来。\n\n### 图片锁了，接口还在裸奔\n即便在图片被强制锁定后，真正的噩梦还没结束。Azdoufal 发现，虽然你看不到图片了，但通过一个简单的 POST 请求，依然能获取到所有的文本信息。只要在命令行里带上 `user_id` 和俱乐部名称，服务器就会乖乖吐出护照号、电话、住址等所有敏感字段。这说明厂商之前的修复完全是“头痛医头”，根本没有对后端 API 进行系统的鉴权审计，直到被再次点名，这个接口才被彻底关闭。\n\n### 外包背锅与 GDPR 的巨额罚单\n事后，CCS 的联合创始人 Andreas Nilsen 承认了问题的严重性，并表示将承担所有罚款和通知责任。他解释说，PuffPal App 和这些漏洞 API 是外包给一家叫 9Series 的印度公司开发的，现在他们已经解除了合作关系。但这在法律上站不住脚，根据 GDPR（欧盟通用数据保护条例），数据控制者必须在 72 小时内上报违规行为，而他们显然已经错过了这个窗口期。Nilsen 也坦言，巨额罚款已经在路上了。\n\n### 教训：别把用户的身份证当成公开资源\n这起事故和之前的 UK Visa Portal 泄露事件如出一辙，核心问题都是将敏感资源暴露在可预测的公共 URL 上，且缺乏有效的访问控制列表（ACL）。对于开发者来说，这再次敲响了警钟：永远不要信任客户端的请求，永远不要把密钥硬编码在代码里，更不要为了所谓的“用户体验”而牺牲最基本的安全鉴权。现在，CCS 关停了整个 PuffPal 系统，并承诺在独立安全研究员验证前绝不重启，但这近百万用户的隐私，恐怕已经无法挽回了。",
+      "source_name": "daringfireball.net",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "data breach",
+        "PuffPal",
+        "GDPR",
+        "vulnerability"
+      ],
+      "rank": 2
     }
   ]
 }
