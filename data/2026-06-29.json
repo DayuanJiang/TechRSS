@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "Unbundling the standard library",
+      "title_zh": "标准库解绑与漏洞公告格式困境",
+      "link": "https://nesbitt.io/2026/06/29/unbundling-the-standard-library.html",
+      "pub_date": "2026-06-29T10:00:00.000Z",
+      "summary": "# 一句话总结\n标准库与编译器的边界正在模糊，这种“解绑”趋势虽然解决了发版节奏和维护负担的问题，但也让漏洞通告和依赖管理陷入了“双重身份”的混乱状态。\n\n### 零依赖的幻象与边界的移动\n故事从 Haskell 社区的一个小插曲开始。Dan Burton 的 `composition` 包曾以“零依赖”著称，连 `base` 都不用。但 GHC 10.2 打破了这个神话：编译器开始通过 `GHC.Essentials` 模块隐式引入 `base`，让“零依赖”变成了一个无法维持的“礼貌虚构”。这揭示了一个核心问题：所谓的标准库边界，本质上只是编译器内部实现与外部库的一条分界线。当这条线移动时（比如 GHC 引入 `ghc-internal`），原本清晰的依赖关系就会变得模糊。作者意识到，这不仅是语言设计的问题，更直接改变了我们定义和追踪安全漏洞的方式。\n\n### 漏洞通告的格式困境\n边界移动带来的最大麻烦，是安全通告（Advisory）不知道该怎么写。以 Ruby 的 `rexml` 漏洞（CVE-2024-35176）为例，修复补丁作为 gem 发布了，但 Ruby 3.3.2 的安装包里依然内置着旧版本。这时候，CVE 是该挂在 gem 名下，还是 Ruby 版本名下？如果是前者，SBOM 扫描 `Gemfile.lock` 根本发现不了内置库的问题；如果是后者，用户就没法通过简单的 `gem update` 修复。相比之下，Python 和 Node 的旧模式是把漏洞直接绑定到运行时版本号上（如 CPython 3.7.x），虽然笨重，但至少路径清晰。现在的混乱在于，同一个库既在运行时里，又在包仓库里，工具不知道该信哪一个。\n\n### 标准库的三种生存状态\n为了理清现状，作者把各语言的标准库分成了三类。第一类是“内置型”，如 Python 的 `stdlib`、Go 的 `stdlib` 和 Node 的 `http`，它们随编译器分发，没有独立的版本号，也不在包管理器里出现。第二类是“包管理型”，如 Haskell 的 `base`、Kotlin 的 `kotlin-stdlib` 和 Deno 的 `@std/*`，它们本质上就是普通的包，有版本号，也会出现在依赖树里。第三类最麻烦，是“双重生命型”（Dual-life），如 Ruby 的 default gems、Perl 的 dual-life 模块和 Julia 的 stdlib。它们既在运行时里有一份拷贝，又在注册中心里有一个同名包，这种“脚踏两条船”的状态是后续所有麻烦的根源。\n\n### 不可逆转的解绑趋势\n尽管有麻烦，但把标准库从运行时剥离出去已成定局。Ruby 正在把大量模块从 stdlib 迁移到 bundled gems，Python 通过 PEP 594 移除了 19 个“死电池”模块，Java 11 把 Java EE 模块踢出了 JDK。甚至 ASP.NET Core 还走过回头路：它一开始作为 NuGet 包分发，结果因为依赖图太大、冲突太多，在 2.1 版本又被重新塞回了运行时。现在的趋势很明显：语言核心团队只想维护极小的 runtime，把其他东西都扔到包管理器里去。这样既能加快修复速度（不用等大版本发布），又能把维护责任甩出去（没人维护的模块就自生自灭）。\n\n### 解绑的真正动力\n为什么要这么做？核心动力有两个。首先是“解耦发版节奏”。Dart 把 `dart:html` 迁移到 `package:web`，是因为手写绑定跟不上浏览器 API 的变化；Julia 允许 `DelimitedFiles` 从注册表升级，也是为了修复 bug 时不用重发整个 Julia 安装包。其次是“甩锅”。Python 移除 `cgi` 和 `telnetlib`，是因为它们过时了且没人维护；Ruby 把 gem 变成 bundled，意味着如果以后没人修，那也不是 ruby-core 的问题了。虽然官方文档里很少提，但这种迁移对安全扫描器其实是利好——因为漏洞描述终于可以从“升级运行时”变成“升级某个具体的包版本”。\n\n### 双重身份带来的技术债\n但在过渡期完成前，双重身份就是安全工具的噩梦。.NET 的 `System.Text.Json` 既是 NuGet 包又是运行时组件，所以 CVE 通告必须同时列出 NuGet 版本范围和 .NET 版本范围。Go 更是搞了个 `stdlib` 伪模块来处理这种情况，因为 `golang.org/x/net` 和标准库里的代码是同一份。要解决这个问题，工具需要知道极其复杂的元数据：对于某个特定的运行时版本，内置的库是哪个版本？如果两边都有，运行时到底加载哪一个？目前只有 Perl 的 `Module::CoreList` 和 Ruby 的 `stdgems.org` 在尝试记录这些映射，其他生态基本还在靠猜。\n\n### 缺失的元数据拼图\n归根结底，现在的漏洞格式（如 purl）根本无法区分“Ruby 3.3.2 内置的 rexml”和“PyPI 上安装的 rexml”。要真正解决这个问题，我们需要一个通用的映射表，记录每个运行时版本对应的内置库版本、注册表坐标、以及加载优先级。作者查了一圈，发现只有 Perl 和 Ruby 有部分工具支持，Python、Java 和 Dart 都是一片空白。在标准库大规模“解绑”的浪潮下，如果没有这套元数据基础设施，SBOM 扫描和漏洞修复将继续在“漏报”和“误报”之间反复横跳。",
+      "source_name": "nesbitt.io",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "standard library",
+        "CVE",
+        "SBOM",
+        "package manager"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Auth.md — an Open Protocol for Agent Registration From WorkOS",
       "title_zh": "Auth.md：AI 代理注册用户的开放协议",
       "link": "https://workos.com/auth-md?utm_source=daringfireball&utm_medium=newsletter&utm_campaign=q22026",
@@ -60,7 +79,7 @@
         "OAuth",
         "identity"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Notes from Bryan Cantrill’s “Intelligence is not Enough”",
@@ -79,7 +98,7 @@
         "teamwork",
         "AI"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Quoting Jon Udell",
@@ -97,7 +116,7 @@
         "human-in-the-loop",
         "software development"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Hack Your Summer",
@@ -115,7 +134,7 @@
         "mentorship",
         "students"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Daniel Agee: ‘Remembering Om’",
@@ -134,7 +153,7 @@
         "photography",
         "memorial"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Matt Mullenweg: ‘All Roads Lead to Om’",
@@ -152,7 +171,7 @@
         "memorial",
         "personal"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "The New York Times: ‘Om Malik, Whose Blog Shaped How Silicon Valley Saw Itself, Dies at 59’",
@@ -169,7 +188,7 @@
         "Om Malik",
         "GigaOM"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "I turned my prologue into a short video",
@@ -186,7 +205,7 @@
         "video",
         "content"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "There's a plague of Googlebot impersonation going on (in June 2026)",
@@ -204,7 +223,7 @@
         "impersonation",
         "security"
       ],
-      "rank": 11
+      "rank": 12
     }
   ]
 }
