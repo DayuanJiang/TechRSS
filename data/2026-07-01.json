@@ -2,8 +2,8 @@
   "date": "2026-07-01",
   "total_feeds": 92,
   "success_feeds": 83,
-  "total_articles": 2574,
-  "filtered_articles": 21,
+  "total_articles": 2579,
+  "filtered_articles": 23,
   "articles": [
     {
       "title": "The AI Industry Is Losing",
@@ -44,6 +44,44 @@
       "rank": 2
     },
     {
+      "title": "Writing an LLM from scratch, part 34a -- building a JAX training loop for an LLM training run",
+      "title_zh": "用 JAX 从零构建 LLM 训练循环",
+      "link": "https://www.gilesthomas.com/2026/06/llm-from-scratch-34a-building-a-jax-training-loop-for-an-llm-training-run",
+      "pub_date": "2026-06-30T19:00:00.000Z",
+      "summary": "### 一句话总结\n这篇文章记录了作者如何用 JAX（配合 Flax NNX 和 Optax）从零搭建一个训练循环，并通过构建一个“输入即输出”的极简 A-to-A 模型，来验证整个训练管线是否通畅。\n\n### 选对工具栈：JAX 生态里的“黄金搭档”\n作者这次的目标很明确：不用 PyTorch，改用 JAX 重写一个能达到 GPT-2 small 水平的 LLM。但他没有直接用纯 JAX，因为那太底层了，连线性层和优化器都得自己造。为了贴近工业界的实战写法，他选择了 JAX 官方推荐的组合：用 **Flax NNX** 处理神经网络组件，用 **Optax** 搞定优化。有意思的是，作者发现 NNX 的 API 风格跟 PyTorch 出奇地像，除了处理随机数的方式有点 JAX 的特色外，上手难度并不大。这让他决定跳过冗长的教程，直接上手写代码。\n\n### 极简验证：先跑通一个“复读机”模型\n为了确保训练循环没问题，作者没有一上来就堆 Transformer 层，而是设计了一个极简的“A-to-A 模型”。说白了，这个模型只有 Embedding 层和输出层，中间没有任何复杂的注意力机制。它的任务也很简单：输入 \"The fat cat\"，预测目标也是 \"The fat cat\"，而不是常规的下一个词预测。作者的逻辑很清晰：如果这个简单的模型能把 Loss 降到接近 0，那就证明数据加载、梯度计算和参数更新这套流程是通的。这比直接调试一个复杂的全量模型要高效得多。\n\n### 数据加载的坑：JAX 的内存“归属权”问题\n在移植 PyTorch 的训练代码时，作者遇到了 JAX 特有的坑。起初，数据直接被加载到了 GPU 显存里，结果直接 OOM（显存溢出）。他虽然设法把数据强行留在了系统内存里，但发现迭代速度慢得离谱——取一个 batch 竟然要 1.2 秒。核心原因在于 JAX 的设备管理机制：数据虽然在内存里，但没被“提交”给 CPU，导致每次迭代都要发生不必要的拷贝。解决办法很硬核：显式调用 `jax.device_put` 把数据“钉”在 CPU 上。这一改，数据加载耗时从 1.2 秒降到了 0.001 秒，性能提升立竿见影。\n\n### 搭建训练骨架：为未来的扩展留好接口\n在具体的 `train` 函数实现上，作者采取了一种“由简入繁”的策略。虽然代码里保留了 `gradient_accumulation_steps`（梯度累积）和 `world_size`（多卡训练）的变量，但目前的实现其实是单卡、无梯度累积的直跑模式。这种“占位符”式的写法很聪明，它让现在的代码结构具备了未来扩展的潜力。比如，优化器直接封装了 Optax 的 AdamW，配置参数通过 JSON 文件外置，这些都是为了方便后续调整超参数和切换到真正的 LLM 训练做准备。",
+      "source_name": "gilesthomas.com",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "JAX",
+        "Flax NNX",
+        "Optax",
+        "training loop"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "Have your agent record video demos of its work with shot-scraper video",
+      "title_zh": "shot-scraper video：让 AI 代理自动录制演示视频",
+      "link": "https://simonwillison.net/2026/Jun/30/shot-scraper-video/#atom-everything",
+      "pub_date": "2026-06-30T16:54:26.000Z",
+      "summary": "## 一句话总结\nshot-scraper 1.10 新增了 `video` 命令，让 AI Agent 能通过 YAML 配置文件自动生成高质量的产品演示视频，这得益于 Playwright 1.61 刚刚解锁的高精度录屏能力。\n\n### 让 AI Agent \"自证清白\"的最好方式是录屏\n作者一直有个执念：AI 编写的代码到底能不能跑通？光看测试报告不够，最好的证明是让它自己录个演示视频。以前这事儿很难搞，但最新的 `shot-scraper 1.10` 发布了一个 `video` 命令，专门解决这个问题。它接受一个 `storyboard.yml` 文件，用 Playwright 驱动浏览器跑一遍流程，顺便把视频录下来。文章里展示了一个例子，演示 Datasette 如何从粘贴的 CSV 数据创建新表，整个过程完全由 GPT-5.5 生成的脚本控制。\n\n### 用 YAML 描述操作逻辑，比写代码更像\"讲故事\"\n这个命令的核心在于那个 YAML 配置文件。说白了，它把\"启动服务器、打开网页、点击按钮、等待加载\"这一系列动作，翻译成了结构化的配置。比如，你可以定义 `server` 字段用 `uv` 启动本地服务，在 `scenes` 里一步步写 `click`、`fill`、`wait_for`。这里有个巧妙的设计：作者甚至注入了一段 JavaScript 来模拟 `navigator.clipboard`，这样 Agent 就能绕过浏览器安全限制，模拟\"复制粘贴\"操作了。这种声明式的写法，让 AI Agent 理解和生成操作脚本变得非常自然。\n\n### 依赖文档即代码，让 Agent 学会使用新工具\n有意思的地方在于，这个功能从设计到实现，大部分工作其实是 GPT-5.5 做的。作者只给了一个 Prompt，让 Agent 先去跑 `shot-scraper video --help`。因为作者把文档写得足够详细，`--help` 的输出本身就相当于一份 `SKILL.md`，Agent 读完就能立刻上手干活。它不仅生成了复杂的 YAML 脚本，还用 Pydantic 定义了数据结构来校验格式。这种\"文档即代码\"的思路，让人类开发者只需要审查文档和设计，具体的代码实现交给 Agent 就行。\n\n### 被 Playwright 的录屏精度卡了两年\n这个功能看着简单，其实作者早在 2024 年 2 月就提了 Issue，但一直被技术细节卡住。最早的问题是 Playwright 录出来的视频带着调试用的边框，不适合做演示。后来边框问题解决了，又出现了视频开头有几帧白屏的 Bug。最头疼的是，Playwright 之前的录屏机制把视频宽度死死定在 800px，想改都没法改。直到 Playwright Python 1.61.0 发布，引入了新的 `screencast` 机制并支持自定义分辨率，作者才终于被\"解封\"，把功能做完了。\n\n### 人机协作的新范式：AI 负责填坑，人类负责把关\n这其实是一个典型的现代开发案例：没有 AI 辅助，这种费时费力的\"锦上添花\"功能大概率会烂在 Issue 列表里。作者坦言，如果不是有 Agent 帮忙写代码、写文档，他根本没时间在多个项目之间切换去搞定这个需求。现在的流程变成了：人类定目标、审查文档和设计，AI 负责实现细节和填充逻辑。这种模式下，像 `shot-scraper video` 这种需要大量样板代码和细致配置的功能，开发门槛被大大降低了。",
+      "source_name": "simonwillison.net",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "tools",
+      "keywords": [
+        "shot-scraper",
+        "Playwright",
+        "coding agent",
+        "video recording"
+      ],
+      "rank": 4
+    },
+    {
       "title": "Silver Rectangles and the Ways of Kings",
       "title_zh": "Silver ratio 与 Delannoy 数的数学关联",
       "link": "https://www.johndcook.com/blog/2026/06/30/silver-kings/",
@@ -60,7 +98,7 @@
         "generating function",
         "asymptotic"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "A compatibility note on the abuse of Windows window class extra bytes",
@@ -79,7 +117,26 @@
         "SetClassWord",
         "GWW_CB_CLSEXTRA"
       ],
-      "rank": 4
+      "rank": 6
+    },
+    {
+      "title": "CMA Consultation on Mobile App Steering and NFC Access",
+      "title_zh": "英国 CMA 拟解除 Apple/Google 支付引导限制",
+      "link": "https://www.gov.uk/government/news/cma-consults-on-new-requirements-for-apple-and-googles-mobile-platforms",
+      "pub_date": "2026-06-30T16:33:55.000Z",
+      "summary": "英国竞争与市场管理局（CMA）就移动平台新要求征求公众意见，拟解除 Apple 和 Google 对应用开发者引导用户至平台外支付的限制。CMA 提出基于证据的框架，要求引导费用低于当前应用商店抽成，节省成本应传递给英国消费者或用于开发者创新。同时，CMA 正在设计开放 NFC 访问的要求，允许英国金融科技公司在 iOS 应用内支持非接触交易，包括数字钱包、账户间支付、数字货币和稳定币等未来支付方式，以及数字 ID 和车钥匙等非金融用途。CMA 正就 NFC 访问的技术实现方式和定价征求开发者意见，反馈截止日期为 2026 年 7 月 21 日。这是英国数字市场竞争制度启动 18 个月以来的最新进展，此前 CMA 已对 Google 搜索实施 3 项行为要求，并通过 Apple 和 Google 的承诺在移动领域获得即时改善。",
+      "source_name": "daringfireball.net",
+      "score": 8,
+      "depth": 3,
+      "novelty": 5,
+      "category": "other",
+      "keywords": [
+        "CMA",
+        "steering",
+        "NFC",
+        "app store"
+      ],
+      "rank": 7
     },
     {
       "title": "U.K. Regulator Considers Requiring App Store to Allow Steering to the Web, and iOS NFC to Be Open",
@@ -97,7 +154,7 @@
         "App Store",
         "regulation"
       ],
-      "rank": 5
+      "rank": 8
     },
     {
       "title": "Weekly Update 510: Live From Mallorca with Scott Helme",
@@ -116,7 +173,26 @@
         "Claude Code",
         "phishing"
       ],
-      "rank": 6
+      "rank": 9
+    },
+    {
+      "title": "The AI Compass",
+      "title_zh": "AI 态度光谱测试：30 种原型",
+      "link": "https://simonwillison.net/2026/Jun/30/the-ai-compass/#atom-everything",
+      "pub_date": "2026-06-30T17:39:23.000Z",
+      "summary": "The AI Compass 是一个政治光谱风格的 AI 态度测试，包含 29 道关于 AI 和 AI 伦理的问题，最终将用户归类到 30 种原型中。作者被归类为 \"The Garage Tinkerer\"（车库创客），原型描述为：运行本地模型、构建小工具、享受技术乐趣，不关心争论，只关心让技术做有趣的事情。项目以单页 React 应用实现，使用 `<script type=\"text/babel\">` 技巧避免构建步骤，代码在 GitHub 开源。",
+      "source_name": "simonwillison.net",
+      "score": 7,
+      "depth": 2,
+      "novelty": 5,
+      "category": "tools",
+      "keywords": [
+        "AI ethics",
+        "quiz",
+        "React",
+        "local models"
+      ],
+      "rank": 10
     },
     {
       "title": "Notes from June 2026",
@@ -134,7 +210,24 @@
         "personal",
         "notes"
       ],
-      "rank": 7
+      "rank": 11
+    },
+    {
+      "title": "shot-scraper 1.10",
+      "title_zh": "shot-scraper 1.10 发布简讯",
+      "link": "https://simonwillison.net/2026/Jun/30/shot-scraper/#atom-everything",
+      "pub_date": "2026-06-30T15:10:14.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "tools",
+      "keywords": [
+        "shot-scraper",
+        "release"
+      ],
+      "rank": 12
     }
   ]
 }
