@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2614,
-  "filtered_articles": 12,
+  "filtered_articles": 10,
   "articles": [
     {
       "title": "megawatts by microwave",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "sqlite-utils 4.0rc2, mostly written by Claude Fable (for about $149.25)",
+      "title_zh": "Claude Fable 完成 sqlite-utils 4.0rc2 审查",
+      "link": "https://simonwillison.net/2026/Jul/5/sqlite-utils-fable/#atom-everything",
+      "pub_date": "2026-07-05T01:00:48.000Z",
+      "summary": "### 一句话总结\n作者利用 Claude Fable 在 30 个文件中进行了 1321 行代码变更，不仅修复了 `delete_where()` 导致数据丢失的严重 Bug，还重构了整个事务模型，并通过 GPT-5.5 交叉审查确保了 `db.query()` 的行为一致性，最终以约 149 美元的成本完成了 sqlite-utils 4.0rc2 的发布。\n\n### 险些酿成大祸的数据丢失 Bug\n这次发布的起因其实是一次\"临终关怀\"，因为作者的 Max 订阅马上就要到期了，他决定在最后时刻让 Claude Fable 帮忙审查一下 4.0 的稳定版。这一审不要紧，直接揪出了一个如果不修就会导致数据丢失的严重 Bug。问题出在 `Table.delete_where()` 方法上，它直接执行了 `DELETE` 语句却没包在 `atomic()` 事务里。这会导致连接状态一直卡在 `in_transaction=True`，后续所有的写入操作虽然看起来成功了，但连接一关就全没了。作者坦言，幸好没发 4.0 正式版，虽然这 Bug 能在 4.0.1 修，但要是带着这种问题上线，心里肯定不踏实。\n\n### 事务模型的重构与文档先行\n为了彻底解决这类问题，Fable 和作者花了 37 个提示词，对 30 个文件进行了大刀阔斧的修改，核心就是重构事务处理逻辑。现在的设计非常清晰：所有写入数据库的方法，像 `insert()`、`upsert()`、`delete()` 这些，默认都在自己的事务里运行，方法一结束就自动提交。用户根本不需要手动调 `commit()`，也不用担心关库导致数据丢失。只有两种情况需要你操心事务：要么是你想把几个操作绑在一起原子执行，用 `db.atomic()`；要么是你自己想手动管理事务，用 `db.begin()`。这种\"自动提交\"的设计，把以前那种隐式事务导致的各种坑都填平了。\n\n### 兼容性陷阱：Python 3.12 的 autocommit\n有意思的是，作者在审查 Fable 写的文档时，发现了一个自己都没想到的细节。文档里提到，Python 3.12 新增的 `autocommit` 模式会导致库的行为异常。作者一测试才发现，这不仅仅是\"行为不同\"，简直是灾难——整个测试套件几乎全挂了。因为在这种模式下，`commit()` 和 `rollback()` 的语义完全变了，导致库里的所有写入操作在连接关闭时都被静默丢弃。为了不让这个新特性破坏现有代码，他们专门做了处理，确保库在遇到这种连接时直接报错，而不是让数据莫名其妙地消失。\n\n### 双模型互审：GPT-5.5 捉住了漏网之鱼\n代码改完后，作者并没有直接发布，而是用 GPT-5.5 对 Fable 的工作进行了一次交叉审查。这听起来有点像\"玄学\"，但事实证明非常有用。GPT-5.5 确实发现了两个棘手的边缘情况：一个是 `db.query(\"update ...\")` 会先提交数据再报错，这明显违反了直觉；另一个是 `INSERT ... RETURNING` 的提交时机不对，如果不遍历完生成器，事务就不会提交。Fable 确认了这两个问题后，迅速修复了它们。这一步让作者对 SQLite 事务语义的边缘情况有了更深的理解，也证明了让不同模型互相\"找茬\"是提高代码质量的有效手段。\n\n### 149 美元的开发账单与自动化红利\n整个折腾下来，作者算了一笔账，如果按 API 原价付费，这次开发大概要花 149.25 美元。虽然他现在用的是订阅制，但这笔钱花得相当值，毕竟包含了 34 次提交和大量的代码审查。还有一个很棒的副作用是，Fable 在开发过程中自动维护了 Changelog。作者以前都是手写发布笔记，但他发现 AI 生成的这些笔记既无聊又准确，简直比他自己写的还好。这种机械性、准确性的写作工作，确实非常适合扔给 AI 来做，让开发者能把精力集中在更核心的逻辑上。",
+      "source_name": "simonwillison.net",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "Claude Fable",
+        "sqlite-utils",
+        "transaction handling",
+        "code review"
+      ],
+      "rank": 4
+    },
+    {
       "title": "Building a World Map with only 500 bytes",
       "title_zh": "445 字节生成 ASCII 世界地图",
       "link": "https://simonwillison.net/2026/Jul/4/building-a-world-map-with-only-500-bytes/#atom-everything",
@@ -79,7 +98,7 @@
         "ASCII",
         "JavaScript"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Combined 1D and 2D Barcodes",
@@ -98,7 +117,7 @@
         "barcode",
         "error correction"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "From the DF Archive: ‘Electron and the Decline of Native Apps’",
@@ -117,7 +136,26 @@
         "macOS",
         "HIG"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "What buffer size (OpenSSH) ssh seems to use for streaming output",
+      "title_zh": "OpenSSH 输出流缓冲区大小测试",
+      "link": "https://utcc.utoronto.ca/~cks/space/blog/sysadmin/OpenSSHStdoutIOSize",
+      "pub_date": "2026-07-04T23:27:08.000Z",
+      "summary": "",
+      "source_name": "utcc.utoronto.ca/~cks",
+      "score": 8,
+      "depth": 5,
+      "novelty": 3,
+      "category": "engineering",
+      "keywords": [
+        "OpenSSH",
+        "buffer size",
+        "stdout",
+        "streaming"
+      ],
+      "rank": 8
     },
     {
       "title": "Fantastical 4.1.15 Adds Calendar Mirroring",
@@ -135,7 +173,7 @@
         "calendar mirroring",
         "sync"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Day One Journal",
@@ -154,7 +192,7 @@
         "AI",
         "Day One"
       ],
-      "rank": 8
+      "rank": 10
     }
   ]
 }
