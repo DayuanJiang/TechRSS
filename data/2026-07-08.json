@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2616,
-  "filtered_articles": 16,
+  "filtered_articles": 13,
   "articles": [
+    {
+      "title": "Content addressing in package managers",
+      "title_zh": "包管理器中的内容寻址全景",
+      "link": "https://nesbitt.io/2026/07/07/content-addressing-in-package-managers.html",
+      "pub_date": "2026-07-07T10:00:00.000Z",
+      "summary": "## 一句话总结\n这篇文章梳理了包管理器如何利用内容寻址——即用内容的哈希值而非名称或位置来标识数据——来解决从文件去重、构建缓存到供应链安全的一系列工程难题。\n\n### 从文件级去重到全局共享的存储设计\n内容寻址最直观的应用其实是省空间。pnpm 就是个典型例子，它把所有依赖包的文件存放在一个共享的磁盘 store 里，文件名就是内容哈希，然后通过硬链接把各个项目的 `node_modules` 指向这些文件。这样一来，十个项目依赖同一个版本的 React，磁盘上其实只有一份物理文件。OCI 镜像（也就是 Docker 镜像）也是类似的思路，它把每一层存成 sha256 的 blob，推送镜像时如果底层已经存在，就只传新增的部分。这种设计不仅解决了存储浪费，还天然具备了去重的能力，无论内容来自哪里，只要字节一样，哈希就一样，存储路径也就一样。\n\n### 锁文件里的哈希：锁定的不只是版本，更是内容\n往上走一层，内容寻址就成了我们熟悉的“锁文件”。不管是 npm 的 `integrity` 字段、Cargo 的 `Cargo.lock`，还是 Go 的 `go.sum`，核心逻辑都一样：记录整个发布包的哈希值。这么做的好处是，你不仅锁定了版本号，还锁定了具体的字节内容。哪怕有人在 Registry 上偷偷替换了同版本的包，只要哈希对不上，客户端就会拒绝安装。这种机制把哈希同时用作查找键和完整性校验，让客户端在没有任何先验状态的情况下，也能安全地从不可信的源下载代码。\n\n### 用哈希链条给整个仓库打快照\n有意思的地方在于，这种哈希逻辑可以一直往上延伸，覆盖整个仓库索引。像 Debian 的 `Release` 文件，它记录了 `Packages` 文件的哈希，而 `Packages` 文件又记录了每个 `.deb` 的哈希，这就形成了一个三层哈希链。只要信任顶部的签名，就能递归验证仓库里的每一个字节。Nixpkgs 和 Homebrew 的 Tap 因为基于 Git，天然就拥有这种特性：Git 的 commit SHA-1 就是整个仓库状态的内容寻址快照。TUF (The Update Framework) 则是通过 `snapshot.json` 和 `timestamp.json` 显式地实现了类似机制，确保你拿到的索引列表是没被篡改过的。\n\n### 构建缓存的终极形态：输入即地址\n除了分发，构建系统也是内容寻址的重度用户。Bazel 和 Buck 会把命令行、环境变量和所有输入文件的哈希算出一个“action digest”，直接作为远程缓存的 Key。这意味着，只要输入没变，就能直接复用上一次的构建结果，根本不用重新编译。Nix 更是激进，它的“输入寻址”模式直接根据构建描述和输入的哈希来计算输出路径。这种设计让构建结果变得完全可预测：同样的输入，永远得到同样的输出路径，彻底消除了“在我机器上能跑”的玄学问题。\n\n### 压缩格式和时间戳：哈希一致性的隐形杀手\n但理论很丰满，现实却很骨感。如果你直接对一个 tar 包做哈希，可能会遇到坑：gzip 的压缩级别、文件的时间戳、甚至打包机器的时区，都会改变最终的字节流。GitHub 曾因为改了 `git archive` 的 gzip 算法，导致大量基于源码包哈希的构建工具瞬间失效。为了解决这个问题，Go 的 `go.sum` 选择了忽略压缩格式，直接对解压后的文件树做哈希；而 Nix 则定义了自己的 NAR 格式，通过标准化序列化、抹去时间戳来保证同一棵目录树一定能算出相同的哈希。这告诉我们，要做真正的内容寻址，必须先定义清楚“什么才算内容”。\n\n### 哈希不仅是校验，更是寻址和去重的钥匙\n最后，作者总结了哈希在工程实践中的四个核心用途。最基础的是“校验”，下载完比一下哈希，防止文件被篡改；进阶的是“寻址”，像 OCI image `@sha256:...` 那样直接用哈希去拉取数据，让请求本身就包含了校验逻辑。再往上是“去重”，利用哈希作为存储键，在 pnpm store 或 IPFS 中实现单副本存储。最后是“构建缓存”，用输入哈希来决定是否命中缓存。这四个用途层层递进，把哈希从一个简单的安全校验码，变成了现代软件分发架构的基石。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "content addressing",
+        "package managers",
+        "hash",
+        "deduplication"
+      ],
+      "rank": 1
+    },
     {
       "title": "Pluralistic: How US states and international trustbusters can beat Big Tech (07 Jul 2026)",
       "title_zh": "美国各州如何联手国际监管对抗科技巨头",
@@ -22,7 +41,158 @@
         "enforcement",
         "Marshall Plan"
       ],
-      "rank": 1
+      "rank": 2
+    },
+    {
+      "title": "tencent/Hy3",
+      "title_zh": "腾讯发布 295B 参数 MoE 模型 Hy3",
+      "link": "https://simonwillison.net/2026/Jul/6/hy3/#atom-everything",
+      "pub_date": "2026-07-06T23:57:35.000Z",
+      "summary": "## 一句话总结\n腾讯开源了一个 295B 总参数、仅激活 21B 的 MoE 模型 Hy3，它在保持极低推理成本的同时，性能能打 2-5 倍参数量的旗舰模型，而且支持 256K 长上下文。\n\n### 巨无霸身板，轻量级推理\nHy3 的参数规模达到了惊人的 295B，但你千万别被这个数字吓跑。这其实是一个 Mixture-of-Experts (MoE) 架构，意味着它每次推理只激活其中的一小部分。具体来说，它每次只动用 21B active parameters，外加 3.8B 的 MTP layer parameters。说白了，这就是用大模型的“知识广度”换取了小模型的“推理速度”，让你在消费级硬件上也能跑大模型。\n\n### 从 Preview 到正式版的实战进化\n这个模型不是一拍脑袋做出来的，而是经过了实战的千锤百炼。早在四月底，腾讯就放出了 Hy3 Preview 版本，并收集了 50 多个产品的真实反馈。基于这些反馈，团队在 Post-training 阶段使用了更高质量的数据进行了 Scale up。这解释了为什么 Hy3 能在同类模型中脱颖而出——它不是在实验室里刷榜刷出来的，而是为了解决实际业务问题调优出来的。\n\n### 性能越级打击旗舰模型\n那效果到底怎么样呢？官方给出的数据非常有侵略性。Hy3 不仅在同等规模的模型中表现最好，甚至能跟那些参数量是其 2 到 5 倍的开源旗舰模型掰手腕。对于开发者来说，这意味着你不需要为了追求极致性能而去部署那些动辄几百亿全参数激活的庞然大物，Hy3 提供了一个性价比极高的替代方案。\n\n### 256K 长文本与 FP8 量化支持\n除了性价比，Hy3 在长文本处理上也给足了诚意。它的 Context length 支持到了 256K，这对于需要处理长文档或大量代码上下文的场景非常关键。部署方面，Hugging Face 上提供了全量版（598GB）和 FP8 量化版（300GB）。FP8 量化版把体积压缩了一半，这对显存资源紧张的团队来说，绝对是个能大幅降低部署门槛的利好消息。\n\n### 开源协议与免费试玩\n最后聊聊怎么用。Hy3 采用了 Apache 2.0 协议，这对商业应用非常友好，不用担心版权陷阱。如果你想先体验一下效果再决定是否部署，OpenRouter 上目前提供免费试用（截止到 7 月 21 日）。从博主生成的“鹈鹕骑自行车” SVG 图片来看，模型对复杂指令的理解和多模态生成能力都相当在线，值得你花点时间去跑一跑。",
+      "source_name": "simonwillison.net",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "Hy3",
+        "MoE",
+        "Tencent",
+        "open-source"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "Let AI Burn",
+      "title_zh": "让 AI 行业自生自灭",
+      "link": "https://www.wheresyoured.at/let-ai-burn/",
+      "pub_date": "2026-07-07T17:09:10.000Z",
+      "summary": "## 一句话总结\nAI 行业本质上是一个由科技巨头缺乏增长点、VC 资金空转和媒体炒作共同吹起的巨大泡沫，它既不像 2008 年的金融业那样关乎经济命脉，也不像互联网泡沫那样留下了有用的基础设施，因此应该让它彻底崩盘，而不是救助。\n\n### AI 行业不仅没救，而且根本不重要\n作者开篇就态度鲜明地反对任何形式的救助，认为 AI 行业对社会毫无贡献，纯粹是科技界江郎才尽后的产物。这和 2008 年的金融危机完全不同，金融业当时是“大而不能倒”，但 AI 行业在经济上其实是可有可无的。它的所谓“相关性”完全取决于背后的炒作力度，一旦失去资金支持，这些公司脆弱得和任何一家初创公司没什么两样。说白了，这就是一个靠 Silicon Valley、主流媒体和糟糕的股市共同制造出来的“同意的假象”。\n\n### 所谓的营收，大多是左手倒右手的游戏\n数据最能说明问题。OpenAI 和 Anthropic 今年第一季度的营收加起来虽然看起来不错，但作者指出，整个 AI 行业至少 70% 的营收其实来自于这两家公司对算力的疯狂支出。这形成了一个怪圈：VC 给 AI 公司注资，AI 公司把钱交给云厂商，云厂商再拿去买 NVIDIA 的显卡或建数据中心。这种“循环融资”掩盖了一个残酷的事实：这些公司根本不赚钱，而且现在连那些被迫使用 AI 的客户都在削减开支，因为 ROI 实在太差。\n\n### 科技巨头砸钱，是因为真的没别的路可走了\n那为什么 Microsoft、Google 这些巨头还要在 2026 年计划砸下 7650 亿美元，2027 年甚至要超过 1 万亿美元？核心原因很尴尬：他们没有下一个“杀手级应用”了。Google 找不到下一个搜索，Microsoft 没有下一个 Office，Meta 没有下一个 Facebook。他们急需一个故事来支撑股价，而 AI 就是那个完美的借口。有意思的是，没有一家巨头愿意单独披露 AI 的具体营收，他们只希望你看到巨额的 Capex，然后自己脑补“这么多钱肯定不会错”。\n\n### 别指望 AI 泡沫能像互联网泡沫那样留下遗产\n很多人喜欢把现在的 AI 热和 2000 年的 Dot Com 泡沫做对比，认为就算泡沫破裂，至少留下了像光纤电缆这样的基础设施。但作者认为这完全是两码事。当年的光纤过剩是因为误判了需求，但互联网连接的需求是真实存在的，而且随着技术进步（如 DWDM），光纤的效用一直在增加。现在的 AI GPU 呢？它们除了跑生成式 AI，几乎干不了别的事。当泡沫破裂，这些昂贵的显卡既不会便宜到普通人能用，也不像光纤那样有通用的用途。\n\n### 真正的危机在于，AI 已经无处不在却毫无用处\n互联网泡沫时期，只有一半的美国成年人上网，网速慢得要死，基础设施的建设确实是在为未来的爆发做铺垫。但现在的 AI 已经铺天盖地了，不管你愿不愿意，你的 Facebook、Google 账号里都被塞进了 AI 功能。这种强制性的普及并没有带来生产力的飞跃，反而制造了成本高昂、准确率存疑的“伪智能”。作者认为，这种为了维持股价而进行的资本错配，最终只会留下一堆废弃的数据中心和无法变现的芯片。",
+      "source_name": "wheresyoured.at",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "AI bubble",
+        "OpenAI",
+        "Anthropic",
+        "NVIDIA"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "Blog about things you don't understand yet",
+      "title_zh": "通过写作学习：博客作为思考工具",
+      "link": "https://seangoedecke.com/blog-about-things-you-dont-understand-yet/",
+      "pub_date": "2026-07-07T00:00:00.000Z",
+      "summary": "## 一句话总结\n写博客不是为了展示已知，而是通过“提出争议性观点”这个强制约束，倒逼自己在写作、研究和反馈中把不懂的东西彻底搞懂。\n\n### 每篇文章其实都是两次学习\n作者有个很硬核的标准：如果写完一篇文章没学到新东西，那这文章就不值得发。通常每篇文章至少包含两次学习：一次是选题时的初衷，另一次是写作过程中的意外发现。比如他在写 o3 Geoguessr 时，本想探讨 AI Prompt 失效，结果发现新版 OpenAI 模型反而丢失了地理定位能力；写 C2PA 时，不仅搞懂了 PKI 和本地私钥管理，还推翻了自己最初的假设。这种“写着写着就发现了新大陆”的状态，正是高质量技术博客的魅力所在。\n\n### 必须要有一个值得反驳的观点\n核心思路其实很简单：**每篇文章都必须有一个明确的观点，而且这个观点最好得有点争议性**。作者从不发那种“碎碎念”或者单纯附和别人的文章，如果写出来的东西没人能反驳，那就直接废稿。这听起来很激进，但好处显而易见：争议性是一个强制函数，它逼着你去挖掘最有趣的角度，并做足研究来防御可能的批评。这比那种“随心所欲地表达自我”的建议要实用得多，因为限制反而能降低选择的难度，就像写诗有了格律反而更容易下笔一样。\n\n### 写作是检验理解深度的试金石\n说白了，你以为你懂了，和你能把这事说明白，完全是两码事。写作是理清思路的最佳方式，当你试图把脑子里的想法压缩成文字时，逻辑的漏洞会立刻暴露出来。作者经常写着写着就停下来：“等等，这好像不对劲？”甚至很多时候，他的结论和开头完全相反，比如关于 AI 数据中心冷却、预测市场内幕交易等话题，写到最后观点都变了。这其实是好事，说明你在真正地思考和研究。正因为如此，他专门挑那些自己一知半解但想搞懂的话题写，比如 LLM steering、区块链、C2PA 等。\n\n### 外行写科普有时比专家更有效\n有人可能会问：让非专家去写科普是不是不负责任？作者给出了三个理由。第一，专家容易高估公众背景，且往往内化了太多“理所当然”的知识，反而讲不清楚“为什么要解决这个问题”；而初学者更擅长把问题讲清楚。第二，大众共识有时就是错的，稍微做点研究就能辟谣，比如他曾论证 LLM 耗水数据被夸大、Apple 的“思维错觉”论文测错了指标等。第三，他在 About 页面公开了真实履历，读者能自行判断其权威性，不存在刻意欺诈。\n\n### 反馈是学习闭环的最后一块拼图\n写博客的另一个巨大价值是能获得反馈，哪怕是负面的。如果你决定公开发表，脸皮得厚一点，尤其是当你还在学习阶段就抛出争议性观点时，互联网上的批评可能会很刺耳。但如果你不想面对陌生人，现在的 LLM 也能提供不错的反馈。虽然 LLM 有时会让你过度保守或给出错误建议，但在技术细节上，它们能精准指出你误解的地方，而且比 Hacker News 上的评论员要友善得多。\n\n### 两个指标判断你的写作是否有效\n如果你想尝试这种“以写促学”的方法，作者建议关注两个指标。第一，你在写作过程中是否频繁改变主意？如果没有，说明你研究得还不够深。第二，你的初稿结论是否比开头更精炼、更有力？如果没有，说明你没从写作中学到东西，这稿子就可以扔了。即使不公开发布，仅把文章丢给 LLM 审阅，也能获得巨大的技术提升。",
+      "source_name": "seangoedecke.com",
+      "score": 12,
+      "depth": 5,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "writing",
+        "learning",
+        "blogging",
+        "feedback"
+      ],
+      "rank": 5
+    },
+    {
+      "title": "How did Windows 95 decide that a setup program ran?",
+      "title_zh": "Windows 95 如何识别安装程序",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260707-00/?p=112508",
+      "pub_date": "2026-07-07T14:00:00.000Z",
+      "summary": "Windows 95 通过检测可执行文件名是否包含 \"setup\"、\"install\"、\"inst\" 等关键字来判断程序是否为安装程序。关键字列表包含多种语言的变体，其中 \"install\" 与 \"inst\" 存在冗余。如果文件名不匹配，系统还会检查可执行文件路径是否包含 \"Setup\"。文件版本检查会被延迟到下次启动，因为部分安装程序会通过 ExitWindowsExec 退出到 MS-DOS 执行批处理文件替换文件。多媒体驱动通过 INF 文件安装后会触发实时文件检查，这是多媒体团队发现驱动程序经常覆盖系统 DLL 后提出的特殊需求。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Windows 95",
+        "setup detection",
+        "file versioning",
+        "ExitWindowsExec"
+      ],
+      "rank": 6
+    },
+    {
+      "title": "A full body MRI earns you a year of smoking",
+      "title_zh": "全身 MRI 的收益相当于一年吸烟",
+      "link": "https://entropicthoughts.com/full-body-mri-earns-you-a-base-jump",
+      "pub_date": "2026-07-06T22:00:00.000Z",
+      "summary": "",
+      "source_name": "entropicthoughts.com",
+      "score": 9,
+      "depth": 5,
+      "novelty": 4,
+      "category": "other",
+      "keywords": [
+        "MRI",
+        "QALY",
+        "micromorts",
+        "risk"
+      ],
+      "rank": 7
+    },
+    {
+      "title": "Kort geding aandeelhouders Solvinity",
+      "title_zh": "Solvinity 股东起诉政府案庭审观察",
+      "link": "https://berthub.eu/articles/posts/kort-geding-aandeelhouder-solvinity/",
+      "pub_date": "2026-07-07T09:20:00.000Z",
+      "summary": "",
+      "source_name": "berthub.eu",
+      "score": 6,
+      "depth": 3,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "DigiD",
+        "legal",
+        "acquisition",
+        "Dutch"
+      ],
+      "rank": 8
+    },
+    {
+      "title": "OS 27 Developer Beta 3 Enables New ‘Pace’ and ‘Expressivity’ Sliders for Siri’s New Voices",
+      "title_zh": "iOS 27 Siri 新增语速和情感表达调节",
+      "link": "https://techcrunch.com/2026/07/06/you-can-now-customize-siris-pace-and-expressivity-in-the-latest-ios-27-beta/",
+      "pub_date": "2026-07-07T15:22:26.000Z",
+      "summary": "iOS 27 开发者测试版 3 为新版 Siri 启用了 \"Pace\" 和 \"Expressivity\" 两个语音控制滑块，允许用户调整 AI 助手的语速和情感表达强度。这是 Apple 围绕生成式 AI 重构 Siri 的一部分，用户可以在选择不同口音的语音后，通过滑块微调语速快慢和类人情感程度。调整时 Siri 会朗读示例语句如 \"You have one new message\" 供用户预览效果。ChatGPT 在 2025 年 12 月已推出类似功能，并额外支持调整温暖度和热情度，以及配置友好、专业、坦诚或古怪等基础风格。新版 Siri 深度集成于 iOS 27，支持语音、Dynamic Island 下滑、侧边按钮点击和独立 Siri App 多种触发方式。部分用户反馈更新后失去新版 Siri 访问权限或设备重新开始数据索引。",
+      "source_name": "daringfireball.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "tools",
+      "keywords": [
+        "Siri",
+        "iOS 27",
+        "voice customization",
+        "beta"
+      ],
+      "rank": 9
+    },
+    {
+      "title": "Using Linux tc to limit the outgoing bandwidth of a web server",
+      "title_zh": "Linux tc 限制服务器带宽",
+      "link": "https://utcc.utoronto.ca/~cks/space/blog/linux/TcLimitServiceBandwidth",
+      "pub_date": "2026-07-07T03:05:39.000Z",
+      "summary": "",
+      "source_name": "utcc.utoronto.ca/~cks",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "engineering",
+      "keywords": [
+        "Linux",
+        "tc",
+        "bandwidth"
+      ],
+      "rank": 10
     }
   ]
 }
