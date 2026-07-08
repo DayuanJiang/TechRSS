@@ -1,10 +1,29 @@
 {
   "date": "2026-07-09",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2596,
-  "filtered_articles": 14,
+  "success_feeds": 83,
+  "total_articles": 2554,
+  "filtered_articles": 17,
   "articles": [
+    {
+      "title": "Writing an LLM from scratch, part 34b -- from bigrams to GPT-2, one component at a time (in JAX)",
+      "title_zh": "用 JAX 从零构建并训练 GPT-2 small",
+      "link": "https://www.gilesthomas.com/2026/07/llm-from-scratch-34b-building-and-training-gpt-2-small-in-jax",
+      "pub_date": "2026-07-08T18:45:00.000Z",
+      "summary": "# 一句话总结\n作者用 JAX 从零手搓 GPT-2 Small，通过一条“每加一个组件性能就提升一点”的渐进式路径，最终训练出了一个在测试集 Loss 上超越原版 PyTorch 实现甚至原始 GPT-2 权重的模型。\n\n### 从“复读机”到“统计学家”的跨越\n故事的起点是一个极其简陋的 A-to-A 模型，它做的事情就是把输入原封不动地吐出来。这听起来没用，但验证了 JAX 训练循环的稳定性。为了迈向真正的 LLM，作者做了一个简单的改动：把训练目标从“预测当前 Token”改成“预测下一个 Token”。这本质上是在训练一个基于 Token 级别的 Bigram 模型（二元语法）。虽然它只有 7700 万参数，远小于完整 Bigram 表所需的 25 亿参数，但结果出人意料——Loss 从初始的 10.82 稳步降到了 5.9 左右。这说明即便没有复杂的 Transformer 结构，模型也能学会像手机输入法一样的简单统计规律，为后续搭建复杂架构打下了坚实的基线。\n\n### 搭建积木前的清单检查\n有了基线模型，接下来的问题就是如何把它变成真正的 GPT-2。作者列了一份清晰的改造清单：除了已有的 Embedding 和输出层，还需要加上位置编码、多层 Transformer Block 以及最后的 LayerNorm。在 Transformer Block 内部，又包含了 LayerNorm、多头注意力机制（MHA）和前馈神经网络（MLP），以及残差连接。面对这一堆组件，作者没有一股脑全塞进去，而是选择了一个最不起眼但影响深远的技术点作为突破口：LayerNorm。他的逻辑很直接，这个组件在架构中出现了三次（Block 头尾各一次，输出层一次），如果它能稳定训练并降低 Loss，那就是个好的开始。\n\n### LayerNorm 的实现与广播陷阱\nLayerNorm 的核心作用是稳定训练，通过把数据限制在均值为 0、方差为 1 的分布来加速收敛。作者没有直接调现成的 API，而是决定手写实现以加深理解。在 JAX 中实现这个逻辑并不难，利用 `mean` 和 `std` 函数对最后一个维度（Embedding 维度）进行操作即可。但这里有个经典的广播陷阱：直接计算均值会减少维度，导致无法与原始张量相减。作者通过 `keepdims=True` 参数巧妙地解决了这个问题，保持了张量的形状为 `(batch, seq_len, 1)`，从而顺利实现了归一化操作。这一步虽然基础，但确保了后续数据流的正确性。\n\n### 渐进式验证的胜利\n这篇文章最精彩的地方在于它的验证策略。作者没有等到模型全部写完才开始训练，而是每添加一个组件（如 LayerNorm、Attention 等）就跑一下训练，观察 Loss 是否下降。这种“小步快跑”的方式让他发现了一条清晰的优化路径：几乎每一个新组件的加入都带来了性能的提升，避免了因为组件间相互依赖导致的“加了 A 反而变差，必须同时加 B”的混乱局面。最终，这个纯 JAX 实现的模型在 RTX 3090 上训练了 37 小时 15 分钟，虽然使用的是全精度 32-bit 浮点数（比 PyTorch 版本的 AMP 慢），但最终效果却更胜一筹。\n\n### 最终结果：青出于蓝\n数据不会说谎。最终的 JAX 模型在保留测试集上的 Loss 达到了 3.418784，不仅低于作者之前 PyTorch 实现的 3.538161，甚至比原始 GPT-2 Small 论文中的 3.499677 还要低。这是一个相当硬核的成果，证明了从零构建并优化模型的可行性。虽然在指令微调（Instruction Fine-tuning）任务上，OpenAI 的原始权重依然具有优势，但在纯语言建模能力上，这个手搓版本已经实现了超越。这也再次印证了一个观点：理解底层原理并精心调优，往往比单纯调用现成库更能挖掘模型的潜力。",
+      "source_name": "gilesthomas.com",
+      "score": 16,
+      "depth": 9,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "GPT-2",
+        "JAX",
+        "training",
+        "multi-head attention"
+      ],
+      "rank": 1
+    },
     {
       "title": "The Special Value Pi 4 was extremely short-lived",
       "title_zh": "Raspberry Pi 4 降频版实测与硬件分选揭秘",
@@ -22,7 +41,7 @@
         "DVFS",
         "benchmark"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "The other kind of control flow guard check: The combined validate and call",
@@ -41,7 +60,45 @@
         "x86-64",
         "AArch64"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "The Decline of Deviance 2",
+      "title_zh": "繁荣如何扼杀了叛逆精神",
+      "link": "https://www.experimental-history.com/p/the-decline-of-deviance-2",
+      "pub_date": "2026-07-08T16:10:54.000Z",
+      "summary": "## 一句话总结\n社会越繁荣，人们越不敢越界，而互联网通过加速策略趋同、消除选择摩擦和追求全球市场，把这种“平庸”推向了极致。\n\n### 别只盯着烂片，先看看我们白捡的胜利\n很多人觉得现在的文化全是《蜘蛛侠2》这种续集，简直烂透了，觉得这是时代的悲哀。但作者提醒我们，这种观点只看到了硬币的一面。回想 1995 年，一半高中生喝酒、35% 吸烟、40% 试过大麻，甚至 10% 带武器去学校，犯罪率也是历史高点。30 年过去了，这些糟糕的数据几乎全都莫名其妙地消失了，而且我们并没有为此投入什么有效的“神操作”。这就像你突然继承了一笔巨额遗产，但你不仅没高兴，反而还在抱怨钱不够花。我们太容易忽视这种因为社会繁荣而自动获得的“免费”安全感，转而去纠结文化创新不够多。\n\n### 互联网不是凶手，它只是个加速器\n很多人把锅甩给互联网，说是数字全景监狱让大家都不敢乱来了，或者是算法把文化搞平了。但作者用数据打脸了这种观点：大多数美国人直到 2007 年才用上宽带，Instagram 2010 年才上线，智能手机普及更是 2012 年以后的事。而“越轨行为”的下降趋势，早在 90 年代就开始了，时间线对不上。所以互联网不是罪魁祸首，它更像是一个事后从犯。它真正的作用，是加速了三个原本就存在的趋势：文化蟹化、去摩擦化和扁平地球问题。\n\n### 策略进化太快，大家都变成了“螃蟹”\n自然界有一种“蟹化”现象，不同物种最后都进化成了螃蟹的样子，因为这种形态最稳。文化也一样，当信息传播速度从马匹变成光纤，策略的迭代速度就快得惊人。以前一个招数能用几十年，现在像在推特上，几天就过时了。这就像全世界几十亿人每天都在玩《狼人杀》，所有有效的套路很快被试完，最后大家都收敛到那几种最稳妥、最无聊的“纳什均衡”策略上。互联网给每个文化趋势装上了火箭助推器，让我们还没来得及探索出龙虾或袋鼠的形态，就已经全部变成了螃蟹。\n\n### 没有摩擦的世界，就是平庸的温床\n以前我们不得不忍受很多“摩擦”：买 CD 只能听那几首主打歌，看杂志要忍受无聊的广告。这些被迫的接触，其实给了我们接触意外惊喜的机会。Komar 和 Melamid 这两位俄罗斯艺术家做过实验，按大众的“喜好”画出来的画全是俗气的风景画，而按大众“最讨厌”的元素画出来的画，反而更有艺术张力。这说明了一个残酷的真相：如果你只给人们他们嘴上说想要的东西，他们只会吸食“垃圾食品”。艺术的作用本该是拉伸我们的欲望，而不是仅仅满足它。但在互联网这种零摩擦的环境里，算法只会无限投喂你喜欢的猴子吃瓜视频，让你永远待在舒适区里。\n\n### 想讨好所有人，就只能生产垃圾\n以前大家以为互联网能带来“长尾效应”，小众文化能活得很滋润。但现实是，一旦你发现可以触达任何人，你就忍不住想去触达所有人。这就是“扁平地球问题”：你想赚 80 亿人的钱，就得照顾 80 亿人的口味，结果只能取悦“最大公约数”。好莱坞为了过审，甚至愿意删掉晾衣绳这种“落后”镜头，或者修改《搏击俱乐部》的结局。这种为了全球市场而进行的自我阉割，导致我们在立项阶段就杀死了所有可能冒犯少数人的创新。既然能卖给所有人，为什么要卖给那一小撮懂行的人呢？\n\n### 总结一下，这不仅是技术问题，更是人性问题\n所以，我们并不是真的失去了创造力，而是因为社会变好了，大家输不起，所以不敢冒险；加上互联网把竞争速度拉得太快，导致策略迅速收敛；再加上零摩擦的推荐机制和全球市场的贪婪，把文化推向了最平庸的中间地带。这不仅仅是技术算法的锅，更是我们在安逸环境中做出的必然选择。想要打破这个局面，可能得我们主动去寻找那些让我们“不舒服”的东西，而不是等着算法把喂到嘴边。",
+      "source_name": "experimental-history.com",
+      "score": 12,
+      "depth": 5,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "deviance",
+        "cultural stagnation",
+        "prosperity",
+        "cultural carcinization"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "The ELIZA Archaeology Project",
+      "title_zh": "ELIZA 考古项目：首个聊天机器人的历史重现",
+      "link": "https://findingeliza.org/",
+      "pub_date": "2026-07-08T17:20:44.000Z",
+      "summary": "ELIZA Archaeology Project 是一个跨学科研究项目，致力于挖掘和重现 1960 年代 MIT 的 ELIZA 聊天机器人历史。项目提供了 ELIZA 的精确重新实现版本，可在线体验，并计划详细解析原始代码的工作原理。研究团队由学者、艺术家和程序员组成，正在撰写《Inventing ELIZA: How the First Chatbot Shaped the Future of AI》一书，探讨 ELIZA 对人机交互范式的影响、Joseph Weizenbaum 从创造者到 AI 警示者的转变，以及 ELIZA 在文学和电影中的文化投射。",
+      "source_name": "daringfireball.net",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "ai-ml",
+      "keywords": [
+        "ELIZA",
+        "chatbot",
+        "history",
+        "code analysis"
+      ],
+      "rank": 5
     },
     {
       "title": "App Icon Conventions From the Original Macintosh",
@@ -60,7 +117,7 @@
         "design",
         "UI history"
       ],
-      "rank": 3
+      "rank": 6
     },
     {
       "title": "[Sponsor] WorkOS Pipes: More Context Makes for Smarter Products",
@@ -79,7 +136,45 @@
         "integrations",
         "agents"
       ],
-      "rank": 4
+      "rank": 7
+    },
+    {
+      "title": "My Conversation With ELIZA",
+      "title_zh": "ELIZA 1966 原版 DOCTOR 脚本在线实现",
+      "link": "https://sites.google.com/view/elizaarchaeology/try-eliza?authuser=0",
+      "pub_date": "2026-07-08T17:33:05.000Z",
+      "summary": "这是一个 ELIZA 的在线交互式实现，基于 Joseph Weizenbaum 1966 年的原始 DOCTOR 脚本。用户可以输入语句与 ELIZA 对话，系统会返回与 1966 年原始版本相同的回复。实现包含多个调试命令，如 *trace 显示回复生成过程、** 显示转换规则、*key 查看关键词规则等，支持加载自定义脚本、保存对话记录、调整字体大小和 CRT 效果。所有对话仅在本地处理，不会传输到任何服务器。",
+      "source_name": "daringfireball.net",
+      "score": 5,
+      "depth": 3,
+      "novelty": 2,
+      "category": "tools",
+      "keywords": [
+        "ELIZA",
+        "DOCTOR script",
+        "interactive",
+        "Weizenbaum"
+      ],
+      "rank": 8
+    },
+    {
+      "title": "Family Feud: Mac-assed Mac App Edition",
+      "title_zh": "大公司做不出优秀 Mac 应用",
+      "link": "https://blog.jim-nielsen.com/2026/mac-assed-family-feud/",
+      "pub_date": "2026-07-08T19:00:00.000Z",
+      "summary": "",
+      "source_name": "blog.jim-nielsen.com",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "opinion",
+      "keywords": [
+        "mac app",
+        "electron",
+        "anthropic",
+        "claude"
+      ],
+      "rank": 9
     }
   ]
 }
