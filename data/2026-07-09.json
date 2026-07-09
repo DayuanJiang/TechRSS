@@ -1,8 +1,8 @@
 {
   "date": "2026-07-09",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2616,
+  "success_feeds": 84,
+  "total_articles": 2606,
   "filtered_articles": 24,
   "articles": [
     {
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "Unboxed: Zig",
+      "title_zh": "Zig 包管理器：哈希锁定依赖的设计与权衡",
+      "link": "https://nesbitt.io/2026/07/09/unboxed-zig.html",
+      "pub_date": "2026-07-09T10:00:00.000Z",
+      "summary": "## 一句话总结\nZig 的包管理器通过“去中心化 URL + 内容寻址 Hash”彻底抛弃了中央注册表，用 `build.zig.zon` 锁定依赖身份，把构建脚本和元数据严格分离，在极致的确定性和去中心化治理之间走出了一条独特的路。\n\n### 依赖管理的核心逻辑：Hash 才是身份证，URL 只是快递员\nZig 的设计哲学非常硬核：它不搞中央注册表，也不搞版本范围解析，而是直接让你在 `build.zig.zon` 文件里写死依赖的 URL 和 Hash。这听起来很原始，但核心思路其实很简单：**包的身份由 Hash 决定，URL 只是获取它的众多镜像之一**。这意味着同一个包可以从 GitHub 下载，也可以从你的私有服务器下载，只要解压后的内容 Hash 对得上，它就是那个包。这种设计让 Zig 绕过了所有关于“包名所有权”的治理难题，因为没人能抢注一个 Hash，也没人能冒充一段已经被验证过的二进制内容。\n\n### 构建脚本的巧妙设计：把“数据”和“代码”彻底切分\n为了解决安全性问题，Zig 把包的元数据和构建逻辑拆成了两个文件：`build.zig.zon` 和 `build.zig`。`.zon` 是 Zig Object Notation，它是 Zig 语法的子集，**只允许字面量和结构体，禁止任何表达式或函数调用**。说白了，`.zon` 就是“死数据”，解析它不需要执行任何代码，这就保证了读取依赖清单是绝对安全的。而真正的构建逻辑写在 `build.zig` 里，它是完整的 Zig 代码，会被编译并执行。这种分离让 Zig 在安全性和灵活性之间找到了平衡：元数据不可变且安全，构建逻辑图灵完备且强大。\n\n### 构建时的“大统一”：所有依赖的脚本都在同一个进程里跑\n有意思的地方在于 Zig 的构建执行方式。当你运行 `zig build` 时，它不会像 npm 或 Cargo 那样为每个依赖单独起一个子进程跑构建脚本。相反，它把你的 `build.zig` 和所有依赖的 `build.zig` **编译成同一个可执行文件**，然后在同一个进程中运行。这就像把所有依赖的构建逻辑“链接”在了一起。这样做的好处是性能极高，且依赖之间可以直接调用 API；坏处是如果某个依赖的构建脚本里有死循环或恶意代码，它会直接搞挂你的整个构建环境，而且目前没法像 Rust 那样通过 flag 禁用依赖脚本的执行。\n\n### 去中心化治理的代价：没有“撤销键”，也没有“一键更新”\n因为没有中央注册表，Zig 把治理权完全交给了源代码托管商（比如 GitHub）。这带来了一个棘手的问题：一旦你把某个 Hash 写进了 `build.zig.zon`，它就被永久锁定了。如果上游发现了一个严重漏洞并修复了，除非你的直接依赖更新了它的 `build.zig.zon`，否则你无法获得这个修复。Zig 计划引入类似 Go 的“最小版本选择”（MVS）来解决这个问题，但在 0.16 版本里，你唯一的办法是用 `--fork` 参数手动替换，或者把修复好的包放进自己的代码库。这种设计让每一次构建都高度可复现，但也让安全补丁的传播路径变得非常依赖上游的配合。\n\n### 那个独一无二的 Fingerprint：给包一个永久的“基因”\nZig 引入了一个其他包管理器都没有的概念：`fingerprint`。这是一个 64 位整数，由随机 ID 和包名的校验和组合而成。它的作用是给包一个独立于 URL 的永久身份。即便你把项目从 GitHub 迁移到 GitLab，或者换了名字，只要 `fingerprint` 不变，Zig 就认为它是同一个包。配合 `--fork` 参数，你可以轻松地在整个依赖树中替换掉某个特定指纹的包，这在调试或给第三方库打补丁时非常方便。不过，Zig 官方也警告说，如果你 fork 了别人的项目却保留原来的 `fingerprint`，会被视为“恶意接管身份”。\n\n### 现状与挑战：为了确定性牺牲了便利性\n总的来说，Zig 的包管理器走的是一条极端的“确定性优先”路线。它没有复杂的版本冲突解析算法，也没有中央索引服务，所有依赖关系在写代码的那一刻就完全确定了。这种风格和 Nix、Guix 很像，都是显式依赖，但 Zig 更贴近源代码开发流程。对于习惯了 `npm install` 自动解决冲突的开发者来说，这可能显得有点繁琐；但对于那些需要极致可复现性、或者想在离线环境构建复杂 C/C++ 项目的团队来说，这种“笨拙”的诚实反而是一种巨大的优势。",
+      "source_name": "nesbitt.io",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "tools",
+      "keywords": [
+        "Zig",
+        "package manager",
+        "content hash",
+        "supply chain"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Agents are monads (but not that kind)",
       "title_zh": "Agent 的本质是状态而非权重",
       "link": "https://xeiaso.net/blog/2026/hyle-pneuma/",
@@ -60,7 +79,7 @@
         "monad",
         "Leibniz"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "The Special Value Pi 4 was extremely short-lived",
@@ -79,7 +98,7 @@
         "DVFS",
         "benchmark"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "The other kind of control flow guard check: The combined validate and call",
@@ -98,7 +117,7 @@
         "x86-64",
         "AArch64"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "The Decline of Deviance 2",
@@ -117,7 +136,7 @@
         "prosperity",
         "cultural carcinization"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "poppy the training box, part 1: the beginnings",
@@ -136,7 +155,7 @@
         "hardware",
         "GPT-2"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "The ELIZA Archaeology Project",
@@ -155,7 +174,7 @@
         "history",
         "code analysis"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Mac Apps Can Escape From Squircle Jail If They’re Not in the Mac App Store",
@@ -174,7 +193,7 @@
         "app icons",
         "Mac App Store"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "‘PARRY Encounters the DOCTOR’ — Chatbot on Chatbot Action Circa 1973",
@@ -193,7 +212,7 @@
         "ELIZA",
         "chatbot"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Quoting Kenton Varda",
@@ -211,7 +230,7 @@
         "code review",
         "PR description"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Introducing GPT‑Live",
@@ -230,7 +249,7 @@
         "voice mode",
         "OpenAI"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "★ What’s Good for the iOS Goose Is Often Not Good for the MacOS Gander",
@@ -249,7 +268,7 @@
         "design",
         "HIG"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "App Icon Conventions From the Original Macintosh",
@@ -268,7 +287,7 @@
         "design",
         "UI history"
       ],
-      "rank": 14
+      "rank": 15
     },
     {
       "title": "[Sponsor] WorkOS Pipes: More Context Makes for Smarter Products",
@@ -287,7 +306,7 @@
         "integrations",
         "agents"
       ],
-      "rank": 15
+      "rank": 16
     },
     {
       "title": "My Conversation With ELIZA",
@@ -306,7 +325,7 @@
         "interactive",
         "Weizenbaum"
       ],
-      "rank": 16
+      "rank": 17
     },
     {
       "title": "Family Feud: Mac-assed Mac App Edition",
@@ -325,7 +344,7 @@
         "anthropic",
         "claude"
       ],
-      "rank": 17
+      "rank": 18
     },
     {
       "title": "The console wars have been lost",
@@ -344,7 +363,7 @@
         "PlayStation",
         "console wars"
       ],
-      "rank": 18
+      "rank": 19
     },
     {
       "title": "Pluralistic: Post-political (09 Jul 2026)",
@@ -362,7 +381,7 @@
         "human rights",
         "property rights"
       ],
-      "rank": 19
+      "rank": 20
     },
     {
       "title": "‘Searching for SmarterChild’ Kickstarter",
@@ -380,7 +399,7 @@
         "documentary",
         "Kickstarter"
       ],
-      "rank": 20
+      "rank": 21
     },
     {
       "title": "BMCs and a surprising USB network device on your server",
@@ -398,7 +417,7 @@
         "USB",
         "networking"
       ],
-      "rank": 21
+      "rank": 22
     }
   ]
 }
