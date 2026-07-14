@@ -1,0 +1,46 @@
+{
+  "date": "2026-07-15",
+  "total_feeds": 92,
+  "success_feeds": 84,
+  "total_articles": 2520,
+  "filtered_articles": 14,
+  "articles": [
+    {
+      "title": "Presigned URLs are technically a security vuln",
+      "title_zh": "Presigned URLs：故意的重放攻击",
+      "link": "https://www.tigrisdata.com/blog/presigned-urls-security-vuln/",
+      "pub_date": "2026-07-14T00:00:00.000Z",
+      "summary": "## 一句话总结\nPresigned URL 本质上是一个被刻意利用的“重放攻击”，它通过牺牲短期内的可复用性，换取了无需状态维护的临时授权能力。\n\n### 重放攻击是安全大忌，但传统的防御方案代价太高\n在分布式系统中，重放攻击是必须要防的。如果攻击者截获了你的请求签名，哪怕是一年前签发的，理论上他们现在也能重放这个请求去搞破坏。教科书式的防御方案是引入 Nonce（随机数），确保每个签名只用一次。但这会引入巨大的分布式系统复杂性：你必须在所有节点间同步维护一个巨大的 Nonce 集合，还要处理数据一致性问题。为了防重放，把原本轻量级的 Auth 检查变成了沉重的状态读写，这在高并发场景下简直是得不偿失。\n\n### 既然时间无法倒流，那就用它来做天然的 Nonce\n既然维护全局 Nonce 这么难，有没有什么不需要协调、大家又能天然达成一致的东西？有，就是时钟。像 AWS SigV4 这样的协议，直接把时间戳签进了请求里。只要服务器和客户端的时钟误差在允许范围内（比如 15 分钟），签名就有效；一旦时间过期，签名自动作废。这种设计让验证过程完全变成了无状态的，服务器只需要看看系统时钟就行，不需要去查数据库。这比维护一个几百万条记录的 Nonce 黑名单要优雅得多，也高效得多。\n\n### Presigned URL 把“弱点”变成了“特性”\n有意思的地方在于，Presigned URL 实际上是利用了 SigV4 防重放机制的一个“漏洞”。它把原本应该放在 HTTP Header 里的认证信息，全部编码到了 URL 参数里。这意味着，任何拿着这个 URL 的人，都不需要知道你的 Secret Key，就能在有效期内发起请求。这听起来像是把你的钥匙扔在了地上，但因为这把钥匙有时效性（比如 1 小时后自动销毁），所以它是安全的。说白了，这就是一个你主动发起的、受控的重放攻击。\n\n### 签名覆盖了所有关键操作，防止权限升级\n你可能会担心，万一别人拿到这个 URL，能不能把它改一改去删我的库？放心不了。签名算法（HMAC-SHA256）保证了 URL 里的每一个字符——包括 HTTP 方法（GET/PUT）、路径、查询参数——都被绑定了。攻击者只要改动其中任何一个比特，签名就对不上了。所以，一个用于下载 `moby-dick.txt` 的 Presigned URL，只能被用来下载这个文件，没法被“武器化”成删除操作。这就是所谓的“Capability Grant”：持有即授权，但权限被严格锁死。\n\n### 这种便利也是有代价的，撤销几乎不可能\n当然，这种设计也有它的副作用。最头疼的是“撤销”问题。一旦你把 Presigned URL 发出去了，在它过期之前，你几乎没法单方面废除它，除非你把整个 Access Key 给废了，但这会误伤所有用这个 Key 生成的其他链接。此外，虽然 URL 有过期时间，但在有效期内，它可以被无限次重放。如果你用它来做防盗链，只能限制链接的寿命，不能限制调用次数。这意味着如果有人恶意刷你的流量，账单还是得你来付。\n\n### 总结：只要控制好有效期，这就是个完美的设计\n归根结底，Presigned URL 是一个权衡的艺术。它利用时间作为唯一的 Nonce，把复杂的分布式状态管理问题转化为了简单的时钟检查，实现了完全无状态的临时授权。虽然它牺牲了即时撤销的能力，也允许了有限次的重放，但对于对象存储这种场景来说，用“短期有效”换取“极简架构”是一笔划算的买卖。只要你在设计服务时时刻记得这些链接会“自爆”，它就是你手里最锋利的工具。",
+      "source_name": "xeiaso.net",
+      "score": 14,
+      "depth": 7,
+      "novelty": 7,
+      "category": "security",
+      "keywords": [
+        "presigned URLs",
+        "SigV4",
+        "replay attacks",
+        "capability grants"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "I'm still alive",
+      "title_zh": "新书《Logic for Programmers》即将出版",
+      "link": "https://buttondown.com/hillelwayne/archive/im-still-alive/",
+      "pub_date": "2026-07-14T16:15:07.000Z",
+      "summary": "",
+      "source_name": "buttondown.com/hillelwayne",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "book",
+        "formal methods",
+        "conference"
+      ],
+      "rank": 2
+    }
+  ]
+}
