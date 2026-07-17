@@ -1,10 +1,29 @@
 {
   "date": "2026-07-18",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2522,
+  "success_feeds": 83,
+  "total_articles": 2502,
   "filtered_articles": 22,
   "articles": [
+    {
+      "title": "Plumbing Homebrew into the vulnerability ecosystem",
+      "title_zh": "Homebrew 内置 CVE 扫描的完整实现",
+      "link": "https://nesbitt.io/2026/07/17/plumbing-homebrew-into-the-vulnerability-ecosystem.html",
+      "pub_date": "2026-07-17T10:00:00.000Z",
+      "summary": "## 一句话总结\n这篇文章讲的是作者如何把一个第三方 Ruby gem (`brew-vulns`) 打造成 Homebrew 官方内置的漏洞扫描工具，期间通过修改 DSL、注册 PURL/OSV 规范、自建 Advisory Database 以及重写核心依赖，彻底打通了 Homebrew 与全球漏洞生态系统的“最后一公里”。\n\n### 从玩具脚本到生产级工具的阵痛\n一切始于作者发布的一个名为 `brew-vulns` 的 gem，它能调用 `osv.dev` API 检查本地安装包的漏洞。起初这只是个个人项目，但当它被并入 Homebrew 官方组织并开始扫描 `homebrew-core` 里全部 8,400 个 formula 时，真实世界的边缘 case 就暴露出来了。比如，OSV 的某些 malformed range 会悄悄放过漏洞版本，这显然不行，于是作者把 range evaluation 改为了 fail-closed（宁可误报不可漏报）。还有终端转义字符污染输出、API 分页请求无限制导致 CI 挂起等问题，都在这一阶段被硬编码限制和特定的 exit code 逐一解决。这告诉我们，跑通测试和跑通全量数据完全是两码事。\n\n### 补丁也是漏洞修复的关键一环\nHomebrew 有个特殊之处：很多 formula 会在上游 tarball 之上打补丁，其中不乏修复 CVE 的安全补丁。如果只看上游版本号，这些包会被误报为有漏洞，但实际上用户安装的 bottle 已经是安全的。为了解决这个问题，作者给 Homebrew 提了两个 PR：一是让 `brew info --json` 输出补丁列表，二是允许补丁声明它解决了哪些 CVE。于是 DSL 里多了 `resolves` 和 `type` 字段，这直接让 1,191 个补丁“浮出水面”。现在，只要扫描结果匹配到 `resolves` 列表，就会被标记为已修复，不再计入漏洞数。这不仅是功能增强，更是为了准确反映真实的安全状况。\n\n### 自动化补丁标注的“碰壁”与转向\n有了 DSL，下一步就是给历史存量补丁打标签。作者原本想通过 URL heuristics（比如看补丁 URL 里有没有 commit hash）来自动推断，但现实很骨感：采样发现 GitHub commit 类型的补丁几乎没有一个是修 CVE 的，大部分只是构建修复。盲目 grep CVE 字符串风险太大，容易把“未修复 CVE”的注释当成已修复。于是策略变了：先跑扫描，只对那些被真实漏洞命中的 formula 进行人工标注。结果扫了一圈，发现大部分补丁确实跟 CVE 无关，只找到了 `nvi` 和 `glibc` 等少数几个真正的修复。更有意思的是，很多 C 库的 CVE 在 NVD 里只有元数据，没有关联到具体的 package，导致即便推导逻辑再完美，召回率也被上游数据质量卡了脖子。\n\n### 为了被主流生态接纳，必须“造标准”\n为了让 Homebrew 的漏洞数据能被 `osv.dev` 和其他 SBOM 工具读懂，作者不得不去推动行业标准的变更。首先是 `package-url (purl)` 规范，Homebrew 的 formula 名字里带 `@`（如 `openssl@3`），而 `@` 在 purl 里又是版本分隔符，这就冲突了。最终通过 percent-encoding（`%40`）解决了这个问题，`pkg:brew/openssl%403` 正式落地。其次是 OSV Schema，注册了 `Homebrew` 生态系统和 `BREW-` 前缀。最硬的骨头是版本比较，Homebrew 的版本规则（带 `_N` 修订号）非常复杂，作者不得不把 Ruby 的版本比较逻辑移植成 Python 提交给 osv.dev，这样服务端才能正确判断某个版本是否在受影响范围内。\n\n### 自建 Advisory Database 与数据闭环\n在等待 osv.dev 官方 ingest 的同时，作者直接建了一个 `Homebrew/advisory-database` 仓库，用来存放符合 OSV 规范的 JSON 漏洞记录。这里有个细节：仓库名字不能带 `homebrew-` 前缀，否则 CI action 会误以为它是一个 tap 并尝试 tap 它，导致失败。数据生成方面，为了避免每次都装 gem，作者在 Homebrew 核心里加了一个隐藏命令 `brew generate-vulns-advisories`。生成逻辑也很讲究，不能简单写“当前版本已修复”，而是要遍历 git 历史，找到引入补丁的最早版本号，确保历史版本的准确性。这套流程现在通过 GitHub Actions 每天自动跑，生成 PR 并自动合并。\n\n### 为了内置，不得不重写所有依赖\n最后一步是将这个 gem 合并进 `Homebrew/brew` 主仓库。最大的挑战是依赖管理：Homebrew 的命令目录不允许 lazy-load 外部 gem，为了一个子命令给所有用户增加 5 个 gem 的依赖显然不可接受。于是，作者开启了“去依赖”模式：`purl` gem 只用了一次，直接删掉逻辑；`sbom` 和 `sarif-ruby` 涉及的输出格式暂时砍掉，未来直接手写 JSON；`vers` gem 被重写为一个简单的 `Semver` 模块，因为 Homebrew 自带的 `Version` 类对 SemVer 的处理不符合标准（比如 pre-release 排序）；最复杂的 `cvss-suite` gem 被重写为 `CVSS` 模块，实现了 v3.0/v3.1 的评分算法，而 v4.0 因为太复杂暂时 fallback 到 v3。这一系列操作虽然繁琐，但保证了 `brew vulns` 成为一个轻量、原生且高效的内置工具。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "Homebrew",
+        "CVE",
+        "OSV",
+        "SBOM"
+      ],
+      "rank": 1
+    },
     {
       "title": "The Life and Times of Maxis, Part 2: SimWorld",
       "title_zh": "Maxis 的兴衰史：从 SimHealth 到 EA 收购",
@@ -22,7 +41,7 @@
         "SimIsle",
         "EA"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "ArtfulType: Markdown Writing App for the 68K Macintosh",
@@ -41,7 +60,7 @@
         "Retro68",
         "BlueSCSI"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "LLM cliché highlighter",
@@ -60,7 +79,7 @@
         "browser tool",
         "pattern detection"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Google and Epic Give Up Fighting — Third-Party Android App Stores Are Coming Next Week",
@@ -79,7 +98,7 @@
         "antitrust",
         "Android"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "BBEdit 16",
@@ -98,7 +117,26 @@
         "image text search",
         "performance"
       ],
-      "rank": 5
+      "rank": 6
+    },
+    {
+      "title": "MG Siegler: ‘OpenAI Makes ChatGPT ChatGPT Again’",
+      "title_zh": "ChatGPT Mac 应用快速回滚，恢复聊天主入口",
+      "link": "https://spyglass.org/chatgpt-brings-back-chatgpt/",
+      "pub_date": "2026-07-17T19:48:53.000Z",
+      "summary": "OpenAI 在一周内快速回滚了 ChatGPT Mac 应用的 UI 改动，将 'ChatGPT Work' 从主界面移除，恢复了以聊天为核心的默认体验。此前更新将聊天功能埋入侧边栏，主界面改为类似 Claude Code 的编程工作区，引发用户强烈反弹。新版本恢复了 'Message ChatGPT' 的主入口，Work 和 Codex 变为次要选项，同时带回 Projects、Recents 和 Temporary Chats 等功能。应用仍基于 Electron 构建，性能和内存占用问题未解决，但至少恢复了可用性。作者认为 OpenAI 过度聚焦于模仿 Anthropic 的代码和代理功能，忽视了十亿普通聊天用户的需求，反映出产品团队对用户群体的理解偏差。",
+      "source_name": "daringfireball.net",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "opinion",
+      "keywords": [
+        "ChatGPT",
+        "UI",
+        "OpenAI",
+        "Claude"
+      ],
+      "rank": 7
     },
     {
       "title": "Visualizing Medical Code Hierarchy",
@@ -117,7 +155,7 @@
         "treemap",
         "squarify"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Linus Torvalds: ‘AI Is a Tool, Just Like Other Tools We Use. And It’s Clearly a Useful One.’",
@@ -136,7 +174,25 @@
         "Linus Torvalds",
         "open source"
       ],
-      "rank": 7
+      "rank": 9
+    },
+    {
+      "title": "OpenAI Starts Cleaning Up the Utter Mess It Made of ChatGPT",
+      "title_zh": "ChatGPT 桌面应用 UI 改版",
+      "link": "https://x.com/thsottiaux/status/2077928427936710901",
+      "pub_date": "2026-07-17T19:10:43.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "tools",
+      "keywords": [
+        "ChatGPT",
+        "desktop app",
+        "UI"
+      ],
+      "rank": 10
     }
   ]
 }
