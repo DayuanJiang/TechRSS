@@ -1,6 +1,462 @@
 {
-  "updatedAt": "2026-07-18T06:12:53.850Z",
+  "updatedAt": "2026-07-18T08:51:34.353Z",
   "items": [
+    {
+      "id": 48950122,
+      "by": "surprisetalk",
+      "title": "Learning a few things about running SQLite",
+      "url": "https://jvns.ca/blog/2026/07/17/learning-about-running-sqlite/",
+      "score": 233,
+      "detailUpdatedAt": 1784360590,
+      "createdAt": 1784315462,
+      "aiSummaryUpdatedAt": 1784360997,
+      "aisummary": {
+        "chinese_title": "SQLite 实战：查询计划、批量删除、备份与何时换 Postgres",
+        "emoji": "🤓",
+        "sarcastic_question": "一边猜一边写博客，也算学懂SQLite了？"
+      },
+      "classifications": {
+        "topics": [
+          6,
+          4
+        ],
+        "facets": [
+          5
+        ],
+        "tags": [
+          "SQLite",
+          "backups",
+          "batching",
+          "query plan",
+          "jvns"
+        ]
+      },
+      "classificationsUpdatedAt": 1784319687,
+      "aiSummary": {
+        "chinese_title": "SQLite 实战：查询计划、批量删除、备份与何时换 Postgres",
+        "emoji": "🤓",
+        "sarcastic_question": "一边猜一边写博客，也算学懂SQLite了？"
+      },
+      "detail": {
+        "id": 48950122,
+        "by": "surprisetalk",
+        "title": "Learning a few things about running SQLite",
+        "url": "https://jvns.ca/blog/2026/07/17/learning-about-running-sqlite/",
+        "score": 129,
+        "detailUpdatedAt": 1784330041,
+        "createdAt": 1784315462,
+        "aiSummaryUpdatedAt": 1784331056,
+        "aisummary": {
+          "chinese_title": "SQLite 运维：query plan、批量删除与备份实战",
+          "discussion_overview": [
+            {
+              "category": "query plan 与索引统计",
+              "summary": "有评论提到 SQLite CLI 的 `.expert` 模式能直接根据查询给出推荐索引，这让“先学会读 query plan”这件事变得没那么必要。另一些人补充，`sqlite_stat1` 和 `sqlite_stat4` 这类统计信息会喂给 planner，用来估算索引选择性和扫描代价。也有人认为更大的数据库并不是更“聪明”，只是把不良查询隐藏得更久；SQLite 的好处反而是把性能问题更早暴露出来。",
+              "supportid": [
+                "48951282",
+                "48951230",
+                "48951497",
+                "48951459",
+                "48951848"
+              ]
+            },
+            {
+              "category": "大批量 DELETE/UPDATE 必须分批",
+              "summary": "讨论里几乎形成共识：删除或更新上百万、上千万行时，不能指望一条 SQL 直接跑完，否则很容易把磁盘、CPU、replica 或 undo log 一起打爆。有人举出 MySQL row-based replication、Oracle undo、甚至 Cassandra 的例子，说明这不是 SQLite 独有的问题，而是所有数据库在大规模变更时都会遇到的运维常识。具体做法包括分批提交、在批次之间加延迟、先 `SELECT` 预加载 `rowids` 再删、以及利用数据按插入顺序在文件中的物理布局。还有人强调 partitioning（分区）往往是最省事的方案，因为直接丢弃旧分区比逐行删除快得多。",
+              "supportid": [
+                "48951513",
+                "48951600",
+                "48952340",
+                "48951912",
+                "48952170",
+                "48952833"
+              ]
+            },
+            {
+              "category": "SQLite 也能上服务器？",
+              "summary": "一派观点仍然认为 SQLite 最适合本地系统，一旦涉及网络、并发请求和多写者，就该换 Postgres（开源关系数据库）。反方则指出，这种说法已经过时了一半：通过分片、读写分离、多个数据库文件协作查询，SQLite 也可以被组织成服务器端架构。评论还引用 SQLite 官方的使用说明，强调它本来就面向本地数据存储，但并不等于不能服务更高流量；甚至还有人提到 Turso（SQLite 托管/兼容服务）这类方案。",
+              "supportid": [
+                "48951878",
+                "48952008",
+                "48952428",
+                "48952853",
+                "48953216"
+              ]
+            },
+            {
+              "category": "备份、压缩与监控",
+              "summary": "备份这条线讨论得很具体：有人用 `sqlite3 -readonly` 导出 `.dump`，再通过 `zstd --rsyncable` 压缩，以便既节省空间又方便增量同步。也有人列出 `VACUUM INTO`、`.backup`、`sqlite3_rsync`、`litestream` 等不会明显阻塞写入的备份方式，前提是写库启用了 WAL（write-ahead logging）。另一个焦点是监控备份是否真的按时成功，而不是只看脚本有没有退出；所谓 dead man's switch，就是如果在设定时间内没有新的成功备份记录，就自动报警。还有人分享了给 AWS（云服务）生成最小权限 S3 凭证的工具，以及用 Restic（备份工具）配合 Cloudflare R2（S3 兼容对象存储）的做法。",
+              "supportid": [
+                "48951162",
+                "48951714",
+                "48952329",
+                "48951526",
+                "48951905",
+                "48951857",
+                "48951822",
+                "48952786"
+              ]
+            },
+            {
+              "category": "应用层 ORM/工具也可能是瓶颈",
+              "summary": "有人怀疑慢删除并不是 SQLite 本身的问题，而是 ORM 在一条条遍历对象调用 delete，而不是直接按 ID 列表做 bulk delete。还有人建议干脆把清理逻辑放到 SQLite CLI 里跑，减少 Python 代码参与。补充工具方面，则提到 Django（一个 Python Web 框架）的 silk 和 debug toolbar 可以自动给出性能报告，帮助先定位到底是哪一层在拖慢清理任务。",
+              "supportid": [
+                "48951921",
+                "48951920",
+                "48951562"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "WAL",
+              "explanation": "write-ahead logging，SQLite 的写前日志模式，通常能改善读写并发，也常用于无阻塞备份。"
+            },
+            {
+              "term": "dead man's switch",
+              "explanation": "一种监控方式：如果规定时间内没有发生“成功事件”（这里是备份成功），就触发告警。"
+            },
+            {
+              "term": "partitioning",
+              "explanation": "把大表拆成多个分区，便于快速删除旧数据或缩小热点数据范围。"
+            },
+            {
+              "term": "rowid",
+              "explanation": "SQLite 的内部行标识；先预加载 rowid 再批量删除，通常比逐行处理更稳。"
+            }
+          ],
+          "context": "这篇文章讲的是在实际运行 SQLite（嵌入式关系数据库）时踩到的几个坑：清理旧数据、做备份、看查询计划，以及处理写入并发。评论区补充了 SQLite CLI 的 `.expert`、WAL（write-ahead logging）、`rowid` 批量删除和 partitioning（分区）等具体做法，基本把话题扩展成一堂数据库运维课。备份部分则围绕 `.dump`、`VACUUM INTO`、`backup API`、`litestream`、`zstd` 以及 AWS（云服务）/Cloudflare R2（S3 兼容对象存储）如何配合使用展开。另一些人则讨论 SQLite 适合本地应用还是也能上服务器，提到分片、读写分离、Turso（SQLite 托管/兼容服务）和 SQLite 官方对适用场景的说明。",
+          "emoji": "🛠️",
+          "sarcastic_question": "不会读 query plan，就敢说自己在跑 SQLite 了？"
+        },
+        "classifications": {
+          "topics": [
+            6,
+            4
+          ],
+          "facets": [
+            5
+          ],
+          "tags": [
+            "SQLite",
+            "backups",
+            "batching",
+            "query plan",
+            "jvns"
+          ]
+        },
+        "classificationsUpdatedAt": 1784319687,
+        "aiSummary": {
+          "chinese_title": "SQLite 运维：query plan、批量删除与备份实战",
+          "discussion_overview": [
+            {
+              "category": "query plan 与索引统计",
+              "summary": "有评论提到 SQLite CLI 的 `.expert` 模式能直接根据查询给出推荐索引，这让“先学会读 query plan”这件事变得没那么必要。另一些人补充，`sqlite_stat1` 和 `sqlite_stat4` 这类统计信息会喂给 planner，用来估算索引选择性和扫描代价。也有人认为更大的数据库并不是更“聪明”，只是把不良查询隐藏得更久；SQLite 的好处反而是把性能问题更早暴露出来。",
+              "supportid": [
+                "48951282",
+                "48951230",
+                "48951497",
+                "48951459",
+                "48951848"
+              ]
+            },
+            {
+              "category": "大批量 DELETE/UPDATE 必须分批",
+              "summary": "讨论里几乎形成共识：删除或更新上百万、上千万行时，不能指望一条 SQL 直接跑完，否则很容易把磁盘、CPU、replica 或 undo log 一起打爆。有人举出 MySQL row-based replication、Oracle undo、甚至 Cassandra 的例子，说明这不是 SQLite 独有的问题，而是所有数据库在大规模变更时都会遇到的运维常识。具体做法包括分批提交、在批次之间加延迟、先 `SELECT` 预加载 `rowids` 再删、以及利用数据按插入顺序在文件中的物理布局。还有人强调 partitioning（分区）往往是最省事的方案，因为直接丢弃旧分区比逐行删除快得多。",
+              "supportid": [
+                "48951513",
+                "48951600",
+                "48952340",
+                "48951912",
+                "48952170",
+                "48952833"
+              ]
+            },
+            {
+              "category": "SQLite 也能上服务器？",
+              "summary": "一派观点仍然认为 SQLite 最适合本地系统，一旦涉及网络、并发请求和多写者，就该换 Postgres（开源关系数据库）。反方则指出，这种说法已经过时了一半：通过分片、读写分离、多个数据库文件协作查询，SQLite 也可以被组织成服务器端架构。评论还引用 SQLite 官方的使用说明，强调它本来就面向本地数据存储，但并不等于不能服务更高流量；甚至还有人提到 Turso（SQLite 托管/兼容服务）这类方案。",
+              "supportid": [
+                "48951878",
+                "48952008",
+                "48952428",
+                "48952853",
+                "48953216"
+              ]
+            },
+            {
+              "category": "备份、压缩与监控",
+              "summary": "备份这条线讨论得很具体：有人用 `sqlite3 -readonly` 导出 `.dump`，再通过 `zstd --rsyncable` 压缩，以便既节省空间又方便增量同步。也有人列出 `VACUUM INTO`、`.backup`、`sqlite3_rsync`、`litestream` 等不会明显阻塞写入的备份方式，前提是写库启用了 WAL（write-ahead logging）。另一个焦点是监控备份是否真的按时成功，而不是只看脚本有没有退出；所谓 dead man's switch，就是如果在设定时间内没有新的成功备份记录，就自动报警。还有人分享了给 AWS（云服务）生成最小权限 S3 凭证的工具，以及用 Restic（备份工具）配合 Cloudflare R2（S3 兼容对象存储）的做法。",
+              "supportid": [
+                "48951162",
+                "48951714",
+                "48952329",
+                "48951526",
+                "48951905",
+                "48951857",
+                "48951822",
+                "48952786"
+              ]
+            },
+            {
+              "category": "应用层 ORM/工具也可能是瓶颈",
+              "summary": "有人怀疑慢删除并不是 SQLite 本身的问题，而是 ORM 在一条条遍历对象调用 delete，而不是直接按 ID 列表做 bulk delete。还有人建议干脆把清理逻辑放到 SQLite CLI 里跑，减少 Python 代码参与。补充工具方面，则提到 Django（一个 Python Web 框架）的 silk 和 debug toolbar 可以自动给出性能报告，帮助先定位到底是哪一层在拖慢清理任务。",
+              "supportid": [
+                "48951921",
+                "48951920",
+                "48951562"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "WAL",
+              "explanation": "write-ahead logging，SQLite 的写前日志模式，通常能改善读写并发，也常用于无阻塞备份。"
+            },
+            {
+              "term": "dead man's switch",
+              "explanation": "一种监控方式：如果规定时间内没有发生“成功事件”（这里是备份成功），就触发告警。"
+            },
+            {
+              "term": "partitioning",
+              "explanation": "把大表拆成多个分区，便于快速删除旧数据或缩小热点数据范围。"
+            },
+            {
+              "term": "rowid",
+              "explanation": "SQLite 的内部行标识；先预加载 rowid 再批量删除，通常比逐行处理更稳。"
+            }
+          ],
+          "context": "这篇文章讲的是在实际运行 SQLite（嵌入式关系数据库）时踩到的几个坑：清理旧数据、做备份、看查询计划，以及处理写入并发。评论区补充了 SQLite CLI 的 `.expert`、WAL（write-ahead logging）、`rowid` 批量删除和 partitioning（分区）等具体做法，基本把话题扩展成一堂数据库运维课。备份部分则围绕 `.dump`、`VACUUM INTO`、`backup API`、`litestream`、`zstd` 以及 AWS（云服务）/Cloudflare R2（S3 兼容对象存储）如何配合使用展开。另一些人则讨论 SQLite 适合本地应用还是也能上服务器，提到分片、读写分离、Turso（SQLite 托管/兼容服务）和 SQLite 官方对适用场景的说明。",
+          "emoji": "🛠️",
+          "sarcastic_question": "不会读 query plan，就敢说自己在跑 SQLite 了？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nSQLite 虽然号称“生产环境可用”，但要想跑得顺，你还得学会用 `ANALYZE` 优化查询计划，用小批量写入规避锁竞争，甚至得用 Litestream 这种增量备份工具来替代传统的全量快照。\n\n### 4000 行数据查 5 秒？原来是缺了统计信息\n作者在 Django 项目里用 SQLite 的 FTS5 做全文搜索，结果在一个只有 4000 行的表上，查询竟然耗时 5 秒。这显然不正常，毕竟计算机没那么慢。问题的根源在于查询优化器“瞎了”：它没有足够的数据分布信息，选了一个极其糟糕的执行计划，作者怀疑这导致了某种“意外的二次方”复杂度。解决办法很简单，就是跑一下 `ANALYZE` 命令。这个命令会收集表和索引的统计信息，让查询规划器能做出正确的判断。执行后，查询时间瞬间从 5 秒降到了 0.05 秒，效果立竿见影。\n\n### 清理数据引发的连锁崩溃\nSQLite 的并发写入能力有限，这在做数据清理时成了大坑。作者尝试删除大量无用行（比如 `django-tasks-db` 里的已完成任务），结果 DELETE 操作耗时超过了 5 秒。因为数据库被锁住，另一个 Worker 进程尝试写入时超时，直接导致进程崩溃，甚至把 VM 都拖垮了。这其实暴露了 SQLite 单写入者的局限性：一旦有长事务运行，其他写入者只能排队或失败。作者目前的妥协方案是把清理操作拆成小批次执行，确保单次操作不会超时。他也开始理解为什么高并发场景下大家更倾向于选 Postgres 这种支持多写入者的数据库了。\n\n### ORM 暴力使用暂时还没翻车\n虽然遇到了查询慢和锁表的问题，但作者对 Django ORM 的使用其实相当“粗放”。他基本上没怎么关注过查询性能，完全依赖 ORM 自动生成的 SQL。好在数据量很小（大约 10000 行），而且预期未来也不会大幅增长，所以这种“佛系”用法目前还能撑得住。这其实也说明了一个事实：在数据规模可控的前提下，SQLite 配合 ORM 的性能瓶颈往往不在数据库本身，而在于是否触发了特定的边缘情况（比如缺少统计信息）。\n\n### 从全量备份到 Litestream 的增量流\n备份 SQLite 也是个技术活。作者一开始用 `VACUUM INTO` 导出干净的数据文件，配合 gzip 压缩，再用 restic 上传到 S3。但这个方案有个致命伤：导出和压缩过程太占内存，经常导致进程被 OOM Killer 杀掉，还得手动去 restic 解锁。为了解决这个问题，他尝试了 Litestream。这是一个专门为 SQLite 设计的增量备份工具，能实时捕捉 WAL 文件的变更并同步到 S3。配置好后，它就在后台默默干活，不再需要频繁的全量导出，既省心又省资源。\n\n### 一个项目拆成三个文件\n在另一个名为“Mess with DNS”的项目里，作者用了一个更激进的策略：把表拆分到三个不同的数据库文件里。因为这些表之间其实没有强关联，没必要挤在一个文件里。这样做的好处显而易见：不同模块的读写操作互不干扰，锁竞争的概率大大降低。这个项目已经用 SQLite 稳定运行了 4 年，从 Postgres 迁移过来后效果很好。这提示我们，不要把 SQLite 只当成一个单体的黑盒，合理利用“多数据库”特性，能有效规避单文件的并发瓶颈。"
+    },
+    {
+      "id": 48896149,
+      "by": "subinalex",
+      "title": "Vāgdhenu: A Sanskrit Chanting TTS System",
+      "url": "https://prathosh.in/vagdhenu/",
+      "score": 133,
+      "detailUpdatedAt": 1784358791,
+      "createdAt": 1784334064,
+      "aiSummaryUpdatedAt": 1784359210,
+      "aisummary": {
+        "chinese_title": "Vāgdhenu：古典 Sanskrit 吟诵 TTS 与机械化争议",
+        "emoji": "🤔",
+        "sarcastic_question": "连诵经都能AI代劳，活人还剩什么位置和体面？"
+      },
+      "classifications": {
+        "topics": [
+          1,
+          11,
+          5
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "Vāgdhenu",
+          "Sanskrit",
+          "TTS",
+          "Chanting",
+          "prathosh.in"
+        ]
+      },
+      "classificationsUpdatedAt": 1784350283,
+      "aiSummary": {
+        "chinese_title": "Vāgdhenu：古典 Sanskrit 吟诵 TTS 与机械化争议",
+        "emoji": "🤔",
+        "sarcastic_question": "连诵经都能AI代劳，活人还剩什么位置和体面？"
+      },
+      "detail": {
+        "id": 48896149,
+        "by": "subinalex",
+        "title": "Vāgdhenu: A Sanskrit Chanting TTS System",
+        "url": "https://prathosh.in/vagdhenu/",
+        "score": 133,
+        "detailUpdatedAt": 1784358791,
+        "createdAt": 1784334064,
+        "aiSummaryUpdatedAt": 1784359210,
+        "aisummary": {
+          "chinese_title": "Vāgdhenu：古典 Sanskrit 吟诵 TTS 与机械化争议",
+          "discussion_overview": [
+            {
+              "category": "学习与诵读辅助",
+              "summary": "不少评论把它看成学习和练习 Sanskrit 的实用工具，而不是单纯的演示项目。对不熟悉长词、复辅音和吟诵规则的人来说，先听一版参考唱诵会更容易跟读、记忆和校正发音。有人还把它想象成 śloka / stotra 整段输入、Santhai 练习，甚至是家庭仪式里的备用朗诵。也有人强调，这类工具能让古老语言和唱诵更容易被接近和保存。",
+              "supportid": [
+                "48954688",
+                "48955347",
+                "48954408",
+                "48954282",
+                "48955362",
+                "48955471"
+              ]
+            },
+            {
+              "category": "仪式自动化与传统边界",
+              "summary": "另一条主线是：唱诵能不能被自动化。支持者认为，大多数人并不真的理解 sloka，自动诵读至少能降低请人、等人和安排仪式的成本，还能覆盖一些需要临时找人的家庭场景。反对者则强调，宗教仪式依赖真实的人在场、熟悉的 priests，以及现场传承的分量；他们担心一旦从录音到直播再到生成式 chanting，最后只剩更廉价的 AI slop。整体上，这组评论不是单纯否定工具，而是在争论它会不会重写传统的边界。",
+              "supportid": [
+                "48955345",
+                "48955865",
+                "48955385",
+                "48955525",
+                "48955360",
+                "48955473"
+              ]
+            },
+            {
+              "category": "语音学与经验报告定位",
+              "summary": "评论者反复强调，Sanskrit chanting 不是普通 TTS 能直接覆盖的场景。它需要处理长元音、终止 visarga、retroflex 和 aspirated consonants、密集辅音连写，以及诗律中的长短与重音；而 Hindi 等北方语言又常受 schwa deletion 影响。有人认为实现时最好有 phoneme 层或 IPA 支持，并借助 Kannada/Telugu 这类更完整保留 Sanskrit 音系的书写系统。贴出的论文引言还说明，作者把这件事定位为 experience report：不是宣称新模型，而是总结如何在开放权重 backbone 上把一个低资源、专门音高轮廓的 chant pipeline 做到可部署。",
+              "supportid": [
+                "48954505",
+                "48954739",
+                "48955283",
+                "48955546",
+                "48955776",
+                "48955684"
+              ]
+            },
+            {
+              "category": "实现质量与产品细节",
+              "summary": "很多人对成品质量的评价高于网页外观。有人一开始被所谓 vibe-coded 的界面劝退，但实际听感和说明文档让他们改观；另一些人注意到项目只用了约 5.3 小时的单声线微调数据，却能做出相当稳的结果。与此同时，细节问题也很明显，比如 mixed IAST-HK transliteration、visarga 听起来像回声、UX 不够顺手，以及在英文输入下出现发音错误。还有人明确希望它能更方便地整段粘贴 stotra，或者提供可本地安装版本。",
+              "supportid": [
+                "48954574",
+                "48954632",
+                "48955382",
+                "48955564",
+                "48954193",
+                "48955268",
+                "48955854"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "parāyaṇa",
+              "explanation": "古典 Sanskrit 的吟诵式朗诵体，强调按固定节奏和音高唱诵，而不是普通阅读语气。"
+            },
+            {
+              "term": "visarga",
+              "explanation": "Sanskrit 词尾常见的送气/回响音，在 chant 里通常需要被持续保留。"
+            },
+            {
+              "term": "schwa deletion",
+              "explanation": "部分北印度语言中弱读元音被省略的现象，会让 Sanskrit 发音映射更难。"
+            },
+            {
+              "term": "Vedic recitation（吠陀诵读）",
+              "explanation": "比 classical Sanskrit 更复杂的传统诵读体系，涉及更细的音高和韵律控制。"
+            },
+            {
+              "term": "IPA（International Phonetic Alphabet）",
+              "explanation": "国际音标，用于精确标注和控制发音，适合这类语音系统建模。"
+            }
+          ],
+          "context": "Vāgdhenu 是一个面向 classical Sanskrit chant 的 TTS / chant synthesis 项目，作者把它写成一篇 experience report，而不是宣称训练了一个全新模型。它基于现成的 open TTS backbone（例如 IndicT5 这类面向印度语言的模型），要解决的是 parāyaṇa 这种吟诵式朗诵所需的音长、visarga、复辅音和诗律控制，而普通 read speech TTS 并不擅长这些。评论里补充说，项目训练数据很少，却已经在两个真实部署中使用，并公开了 code、weights、data 和 live demo。这场讨论也牵涉到 Sanskrit、Hindi 与 Vedic recitation 的差异，以及这类工具究竟是在帮助练习和保存传统，还是会把宗教诵唱进一步产品化。",
+          "emoji": "🤔",
+          "sarcastic_question": "连诵经都能AI代劳，活人还剩什么位置和体面？"
+        },
+        "classifications": {
+          "topics": [
+            1,
+            11,
+            5
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "Vāgdhenu",
+            "Sanskrit",
+            "TTS",
+            "Chanting",
+            "prathosh.in"
+          ]
+        },
+        "classificationsUpdatedAt": 1784350283,
+        "aiSummary": {
+          "chinese_title": "Vāgdhenu：古典 Sanskrit 吟诵 TTS 与机械化争议",
+          "discussion_overview": [
+            {
+              "category": "学习与诵读辅助",
+              "summary": "不少评论把它看成学习和练习 Sanskrit 的实用工具，而不是单纯的演示项目。对不熟悉长词、复辅音和吟诵规则的人来说，先听一版参考唱诵会更容易跟读、记忆和校正发音。有人还把它想象成 śloka / stotra 整段输入、Santhai 练习，甚至是家庭仪式里的备用朗诵。也有人强调，这类工具能让古老语言和唱诵更容易被接近和保存。",
+              "supportid": [
+                "48954688",
+                "48955347",
+                "48954408",
+                "48954282",
+                "48955362",
+                "48955471"
+              ]
+            },
+            {
+              "category": "仪式自动化与传统边界",
+              "summary": "另一条主线是：唱诵能不能被自动化。支持者认为，大多数人并不真的理解 sloka，自动诵读至少能降低请人、等人和安排仪式的成本，还能覆盖一些需要临时找人的家庭场景。反对者则强调，宗教仪式依赖真实的人在场、熟悉的 priests，以及现场传承的分量；他们担心一旦从录音到直播再到生成式 chanting，最后只剩更廉价的 AI slop。整体上，这组评论不是单纯否定工具，而是在争论它会不会重写传统的边界。",
+              "supportid": [
+                "48955345",
+                "48955865",
+                "48955385",
+                "48955525",
+                "48955360",
+                "48955473"
+              ]
+            },
+            {
+              "category": "语音学与经验报告定位",
+              "summary": "评论者反复强调，Sanskrit chanting 不是普通 TTS 能直接覆盖的场景。它需要处理长元音、终止 visarga、retroflex 和 aspirated consonants、密集辅音连写，以及诗律中的长短与重音；而 Hindi 等北方语言又常受 schwa deletion 影响。有人认为实现时最好有 phoneme 层或 IPA 支持，并借助 Kannada/Telugu 这类更完整保留 Sanskrit 音系的书写系统。贴出的论文引言还说明，作者把这件事定位为 experience report：不是宣称新模型，而是总结如何在开放权重 backbone 上把一个低资源、专门音高轮廓的 chant pipeline 做到可部署。",
+              "supportid": [
+                "48954505",
+                "48954739",
+                "48955283",
+                "48955546",
+                "48955776",
+                "48955684"
+              ]
+            },
+            {
+              "category": "实现质量与产品细节",
+              "summary": "很多人对成品质量的评价高于网页外观。有人一开始被所谓 vibe-coded 的界面劝退，但实际听感和说明文档让他们改观；另一些人注意到项目只用了约 5.3 小时的单声线微调数据，却能做出相当稳的结果。与此同时，细节问题也很明显，比如 mixed IAST-HK transliteration、visarga 听起来像回声、UX 不够顺手，以及在英文输入下出现发音错误。还有人明确希望它能更方便地整段粘贴 stotra，或者提供可本地安装版本。",
+              "supportid": [
+                "48954574",
+                "48954632",
+                "48955382",
+                "48955564",
+                "48954193",
+                "48955268",
+                "48955854"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "parāyaṇa",
+              "explanation": "古典 Sanskrit 的吟诵式朗诵体，强调按固定节奏和音高唱诵，而不是普通阅读语气。"
+            },
+            {
+              "term": "visarga",
+              "explanation": "Sanskrit 词尾常见的送气/回响音，在 chant 里通常需要被持续保留。"
+            },
+            {
+              "term": "schwa deletion",
+              "explanation": "部分北印度语言中弱读元音被省略的现象，会让 Sanskrit 发音映射更难。"
+            },
+            {
+              "term": "Vedic recitation（吠陀诵读）",
+              "explanation": "比 classical Sanskrit 更复杂的传统诵读体系，涉及更细的音高和韵律控制。"
+            },
+            {
+              "term": "IPA（International Phonetic Alphabet）",
+              "explanation": "国际音标，用于精确标注和控制发音，适合这类语音系统建模。"
+            }
+          ],
+          "context": "Vāgdhenu 是一个面向 classical Sanskrit chant 的 TTS / chant synthesis 项目，作者把它写成一篇 experience report，而不是宣称训练了一个全新模型。它基于现成的 open TTS backbone（例如 IndicT5 这类面向印度语言的模型），要解决的是 parāyaṇa 这种吟诵式朗诵所需的音长、visarga、复辅音和诗律控制，而普通 read speech TTS 并不擅长这些。评论里补充说，项目训练数据很少，却已经在两个真实部署中使用，并公开了 code、weights、data 和 live demo。这场讨论也牵涉到 Sanskrit、Hindi 与 Vedic recitation 的差异，以及这类工具究竟是在帮助练习和保存传统，还是会把宗教诵唱进一步产品化。",
+          "emoji": "🤔",
+          "sarcastic_question": "连诵经都能AI代劳，活人还剩什么位置和体面？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nVāgdhenu 通过重训练 flow-matching TTS 骨干网络，并配合一套精细的梵语语音学处理管线，成功解决了复杂连读音和韵律检测难题，将梵语吟诵的 MOS 分数提升到了 4.6。\n\n### 通用 TTS 模型搞不定梵语吟诵\n直接拿现有的 TTS 模型来读梵语行不通，因为梵语吟诵对发音细节的要求极高。之前的架构在处理密集的连读音时经常出错，尤其是那些卷舌送气音，根本发不出来。而且，梵语有很多独特的语音现象，比如 visarga sandhi（送气音连读）中的 jihvāmūlīya 和 upadhmānīya 这两个特殊同位音，普通模型根本识别不了。如果连基础发音都搞不定，更别提还要还原吟诵特有的韵律感了。\n\n### 绕开印地语陷阱，用卡纳达语做中转\n为了解决输入端的乱码问题，作者设计了一个很巧妙的脚本感知前端。如果直接用 Devanagari（天城体）输入，模型往往会错误地应用印地语的 schwa-deletion 规则，导致发音变味。所以，系统会把梵语文本路由到 Kannada orthography（卡纳达语正字法）进行处理，因为卡纳达语能完美保留梵语的元音结构。这一步确保了三个咝音、完整的卷舌音系列以及 homorganic anusvara（同部位鼻音）都能被准确区分，不会在预处理阶段就丢掉信息。\n\n### 5 小时高质量数据胜过海量噪声\n模型选用了 flow-matching TTS 作为骨干，但核心在于它是在一个专门录制的数据集上重训练的。这个数据集只有大约 5 小时，是由一位说话者精心录制的梵语吟诵语料。相比海量数据，这种“少而精”的数据更能捕捉到吟诵的精髓。随后，作者还进行了 voice-steering（语音导向）重训练，并专门微调了神经声码器，让声音在吟诵的音域内听起来更自然、更有穿透力。\n\n### 韵律检测与半参考规则\n光有声音还不够，梵语吟诵必须严格遵循 vṛtta（韵律）。系统内置了一套韵律感知机制，能自动检测诗句的格律。检测到韵律后，系统会根据“半参考规则”来选择匹配的参考音频。这意味着模型不是在瞎读，而是根据诗句的节奏模式来调整语调。这也是为什么它能把像 vasantatilakā 或 śārdūlavikrīḍita 这样复杂的格律读得抑扬顿挫的原因。\n\n### 实战效果：4.6 分 MOS 与大规模部署\n这一套组合拳打下来，效果非常显著。在专家评测中，该模型的 MOS（平均意见分）达到了 4.6 左右，这是一个非常高的分数。更重要的是，它成功生成了两个大规模语料库：一个是包含 5,183 首诗节的《Mahābhārata Tātparya Nirṇaya》，另一个是包含约 18,000 首诗节的《Śrīmad Bhāgavatam》。这些数据不仅证明了系统的稳定性，还直接支撑了配套的移动应用和教学工具。"
+    },
     {
       "id": 48952439,
       "by": "hmm37",
@@ -2090,237 +2546,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n科学家首次在宜居带内的类地岩石行星 LHS 1140 b 上探测到了大气层，这标志着我们在寻找系外生命的征途上迈出了关键一步。\n\n### 宜居带里的岩石行星终于有“气”了\n天文学家在系外行星探索上一直有个“大满贯”清单：不仅要找到岩石行星，还得它在宜居带，最重要的是——得有大气层。以前我们虽然发现了 6000 多颗系外行星，甚至找到了不少处于“金发姑娘区”（温度适宜）的岩石行星，但它们要么是光秃秃的石头，要么数据模棱两可。这次哈佛团队的研究之所以被称为“big deal”，是因为他们终于在 LHS 1140 b 上确认了大气层的存在。这是人类第一次在距离地球 48 光年外、围绕红矮星运行的岩石行星上抓住了这个关键特征。\n\n### 虽然只发现了氦气，但意义不凡\n目前通过 JWST（詹姆斯·韦伯太空望远镜）的数据，研究人员在 LHS 1140 b 的大气层中明确探测到了氦气。说实话，单靠氦气肯定没法孕育生命，它主要存在于行星大气的上层。但这里有个核心逻辑：既然能探测到氦气，说明这层大气是真实存在的，而且没有被恒星风吹散。这就像你走进一间屋子，虽然只闻到了油漆味，但至少证明屋子是密封的，没有漏风。这意味着这颗行星有能力维持住大气环境，为寻找更复杂的生命维持气体（如水蒸气或二氧化碳）打下了基础。\n\n### 为什么 LHS 1140 b 能脱颖而出\n你可能会问，之前不是也闹得沸沸扬扬说 K2-18b 发现了生命迹象吗？有意思的地方在于，K2-18b 虽然之前被探测到可能存在二甲基硫醚（一种在地球上与海洋生物有关的气体），但 NASA 2025 年的重新分析显示那个信号太弱，而且这种气体完全可以通过非生物过程形成。相比之下，LHS 1140 b 的优势在于它是一颗更纯粹的“超级地球”（Large rocky planet），而不是像 K2-18b 那种“亚海王星”。它的岩石成分和宜居带位置，让它成为了目前最像地球的候选者之一。\n\n### 排除干扰后的精准捕获\n这次发现还得益于 LHS 1140 b 所在系统的特殊性。它围绕的是一颗比太阳小且冷的红矮星，这种恒星虽然活跃，但 LHS 1140 b 的轨道位置恰到好处。研究团队在《Science》发表的论文中指出，他们通过光谱分析排除了其他干扰因素，确认了信号来自行星本身。相比之下，著名的 TRAPPIST-1 系统虽然也有七颗岩石行星，但韦伯望远镜已经排除了 TRAPPIST-1 d 拥有类地大气的可能，TRAPPIST-1 e 的数据又让人抓狂，始终没有定论。\n\n### 下一步：往大气深处挖\n现在的发现只是个开始。既然已经确认了大气层的存在，接下来的重点就是分析大气的下层成分。Dr. David Charbonneau 强调，这就像是在敲门，现在门缝开了一条缝，我们得看看屋里到底有什么。如果未来能在更深层探测到水蒸气或氧气，那才是真正的重磅新闻。虽然现在还没找到外星人，但 LHS 1140 b 至少给了我们一个明确的信号：宇宙中像地球一样拥有保护性大气的岩石世界，并不是孤例。"
-    },
-    {
-      "id": 48950122,
-      "by": "surprisetalk",
-      "title": "Learning a few things about running SQLite",
-      "url": "https://jvns.ca/blog/2026/07/17/learning-about-running-sqlite/",
-      "score": 129,
-      "detailUpdatedAt": 1784330041,
-      "createdAt": 1784315462,
-      "aiSummaryUpdatedAt": 1784331056,
-      "aisummary": {
-        "chinese_title": "SQLite 运维：query plan、批量删除与备份实战",
-        "emoji": "🛠️",
-        "sarcastic_question": "不会读 query plan，就敢说自己在跑 SQLite 了？"
-      },
-      "classifications": {
-        "topics": [
-          6,
-          4
-        ],
-        "facets": [
-          5
-        ],
-        "tags": [
-          "SQLite",
-          "backups",
-          "batching",
-          "query plan",
-          "jvns"
-        ]
-      },
-      "classificationsUpdatedAt": 1784319687,
-      "aiSummary": {
-        "chinese_title": "SQLite 运维：query plan、批量删除与备份实战",
-        "emoji": "🛠️",
-        "sarcastic_question": "不会读 query plan，就敢说自己在跑 SQLite 了？"
-      },
-      "detail": {
-        "id": 48950122,
-        "by": "surprisetalk",
-        "title": "Learning a few things about running SQLite",
-        "url": "https://jvns.ca/blog/2026/07/17/learning-about-running-sqlite/",
-        "score": 129,
-        "detailUpdatedAt": 1784330041,
-        "createdAt": 1784315462,
-        "aiSummaryUpdatedAt": 1784331056,
-        "aisummary": {
-          "chinese_title": "SQLite 运维：query plan、批量删除与备份实战",
-          "discussion_overview": [
-            {
-              "category": "query plan 与索引统计",
-              "summary": "有评论提到 SQLite CLI 的 `.expert` 模式能直接根据查询给出推荐索引，这让“先学会读 query plan”这件事变得没那么必要。另一些人补充，`sqlite_stat1` 和 `sqlite_stat4` 这类统计信息会喂给 planner，用来估算索引选择性和扫描代价。也有人认为更大的数据库并不是更“聪明”，只是把不良查询隐藏得更久；SQLite 的好处反而是把性能问题更早暴露出来。",
-              "supportid": [
-                "48951282",
-                "48951230",
-                "48951497",
-                "48951459",
-                "48951848"
-              ]
-            },
-            {
-              "category": "大批量 DELETE/UPDATE 必须分批",
-              "summary": "讨论里几乎形成共识：删除或更新上百万、上千万行时，不能指望一条 SQL 直接跑完，否则很容易把磁盘、CPU、replica 或 undo log 一起打爆。有人举出 MySQL row-based replication、Oracle undo、甚至 Cassandra 的例子，说明这不是 SQLite 独有的问题，而是所有数据库在大规模变更时都会遇到的运维常识。具体做法包括分批提交、在批次之间加延迟、先 `SELECT` 预加载 `rowids` 再删、以及利用数据按插入顺序在文件中的物理布局。还有人强调 partitioning（分区）往往是最省事的方案，因为直接丢弃旧分区比逐行删除快得多。",
-              "supportid": [
-                "48951513",
-                "48951600",
-                "48952340",
-                "48951912",
-                "48952170",
-                "48952833"
-              ]
-            },
-            {
-              "category": "SQLite 也能上服务器？",
-              "summary": "一派观点仍然认为 SQLite 最适合本地系统，一旦涉及网络、并发请求和多写者，就该换 Postgres（开源关系数据库）。反方则指出，这种说法已经过时了一半：通过分片、读写分离、多个数据库文件协作查询，SQLite 也可以被组织成服务器端架构。评论还引用 SQLite 官方的使用说明，强调它本来就面向本地数据存储，但并不等于不能服务更高流量；甚至还有人提到 Turso（SQLite 托管/兼容服务）这类方案。",
-              "supportid": [
-                "48951878",
-                "48952008",
-                "48952428",
-                "48952853",
-                "48953216"
-              ]
-            },
-            {
-              "category": "备份、压缩与监控",
-              "summary": "备份这条线讨论得很具体：有人用 `sqlite3 -readonly` 导出 `.dump`，再通过 `zstd --rsyncable` 压缩，以便既节省空间又方便增量同步。也有人列出 `VACUUM INTO`、`.backup`、`sqlite3_rsync`、`litestream` 等不会明显阻塞写入的备份方式，前提是写库启用了 WAL（write-ahead logging）。另一个焦点是监控备份是否真的按时成功，而不是只看脚本有没有退出；所谓 dead man's switch，就是如果在设定时间内没有新的成功备份记录，就自动报警。还有人分享了给 AWS（云服务）生成最小权限 S3 凭证的工具，以及用 Restic（备份工具）配合 Cloudflare R2（S3 兼容对象存储）的做法。",
-              "supportid": [
-                "48951162",
-                "48951714",
-                "48952329",
-                "48951526",
-                "48951905",
-                "48951857",
-                "48951822",
-                "48952786"
-              ]
-            },
-            {
-              "category": "应用层 ORM/工具也可能是瓶颈",
-              "summary": "有人怀疑慢删除并不是 SQLite 本身的问题，而是 ORM 在一条条遍历对象调用 delete，而不是直接按 ID 列表做 bulk delete。还有人建议干脆把清理逻辑放到 SQLite CLI 里跑，减少 Python 代码参与。补充工具方面，则提到 Django（一个 Python Web 框架）的 silk 和 debug toolbar 可以自动给出性能报告，帮助先定位到底是哪一层在拖慢清理任务。",
-              "supportid": [
-                "48951921",
-                "48951920",
-                "48951562"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "WAL",
-              "explanation": "write-ahead logging，SQLite 的写前日志模式，通常能改善读写并发，也常用于无阻塞备份。"
-            },
-            {
-              "term": "dead man's switch",
-              "explanation": "一种监控方式：如果规定时间内没有发生“成功事件”（这里是备份成功），就触发告警。"
-            },
-            {
-              "term": "partitioning",
-              "explanation": "把大表拆成多个分区，便于快速删除旧数据或缩小热点数据范围。"
-            },
-            {
-              "term": "rowid",
-              "explanation": "SQLite 的内部行标识；先预加载 rowid 再批量删除，通常比逐行处理更稳。"
-            }
-          ],
-          "context": "这篇文章讲的是在实际运行 SQLite（嵌入式关系数据库）时踩到的几个坑：清理旧数据、做备份、看查询计划，以及处理写入并发。评论区补充了 SQLite CLI 的 `.expert`、WAL（write-ahead logging）、`rowid` 批量删除和 partitioning（分区）等具体做法，基本把话题扩展成一堂数据库运维课。备份部分则围绕 `.dump`、`VACUUM INTO`、`backup API`、`litestream`、`zstd` 以及 AWS（云服务）/Cloudflare R2（S3 兼容对象存储）如何配合使用展开。另一些人则讨论 SQLite 适合本地应用还是也能上服务器，提到分片、读写分离、Turso（SQLite 托管/兼容服务）和 SQLite 官方对适用场景的说明。",
-          "emoji": "🛠️",
-          "sarcastic_question": "不会读 query plan，就敢说自己在跑 SQLite 了？"
-        },
-        "classifications": {
-          "topics": [
-            6,
-            4
-          ],
-          "facets": [
-            5
-          ],
-          "tags": [
-            "SQLite",
-            "backups",
-            "batching",
-            "query plan",
-            "jvns"
-          ]
-        },
-        "classificationsUpdatedAt": 1784319687,
-        "aiSummary": {
-          "chinese_title": "SQLite 运维：query plan、批量删除与备份实战",
-          "discussion_overview": [
-            {
-              "category": "query plan 与索引统计",
-              "summary": "有评论提到 SQLite CLI 的 `.expert` 模式能直接根据查询给出推荐索引，这让“先学会读 query plan”这件事变得没那么必要。另一些人补充，`sqlite_stat1` 和 `sqlite_stat4` 这类统计信息会喂给 planner，用来估算索引选择性和扫描代价。也有人认为更大的数据库并不是更“聪明”，只是把不良查询隐藏得更久；SQLite 的好处反而是把性能问题更早暴露出来。",
-              "supportid": [
-                "48951282",
-                "48951230",
-                "48951497",
-                "48951459",
-                "48951848"
-              ]
-            },
-            {
-              "category": "大批量 DELETE/UPDATE 必须分批",
-              "summary": "讨论里几乎形成共识：删除或更新上百万、上千万行时，不能指望一条 SQL 直接跑完，否则很容易把磁盘、CPU、replica 或 undo log 一起打爆。有人举出 MySQL row-based replication、Oracle undo、甚至 Cassandra 的例子，说明这不是 SQLite 独有的问题，而是所有数据库在大规模变更时都会遇到的运维常识。具体做法包括分批提交、在批次之间加延迟、先 `SELECT` 预加载 `rowids` 再删、以及利用数据按插入顺序在文件中的物理布局。还有人强调 partitioning（分区）往往是最省事的方案，因为直接丢弃旧分区比逐行删除快得多。",
-              "supportid": [
-                "48951513",
-                "48951600",
-                "48952340",
-                "48951912",
-                "48952170",
-                "48952833"
-              ]
-            },
-            {
-              "category": "SQLite 也能上服务器？",
-              "summary": "一派观点仍然认为 SQLite 最适合本地系统，一旦涉及网络、并发请求和多写者，就该换 Postgres（开源关系数据库）。反方则指出，这种说法已经过时了一半：通过分片、读写分离、多个数据库文件协作查询，SQLite 也可以被组织成服务器端架构。评论还引用 SQLite 官方的使用说明，强调它本来就面向本地数据存储，但并不等于不能服务更高流量；甚至还有人提到 Turso（SQLite 托管/兼容服务）这类方案。",
-              "supportid": [
-                "48951878",
-                "48952008",
-                "48952428",
-                "48952853",
-                "48953216"
-              ]
-            },
-            {
-              "category": "备份、压缩与监控",
-              "summary": "备份这条线讨论得很具体：有人用 `sqlite3 -readonly` 导出 `.dump`，再通过 `zstd --rsyncable` 压缩，以便既节省空间又方便增量同步。也有人列出 `VACUUM INTO`、`.backup`、`sqlite3_rsync`、`litestream` 等不会明显阻塞写入的备份方式，前提是写库启用了 WAL（write-ahead logging）。另一个焦点是监控备份是否真的按时成功，而不是只看脚本有没有退出；所谓 dead man's switch，就是如果在设定时间内没有新的成功备份记录，就自动报警。还有人分享了给 AWS（云服务）生成最小权限 S3 凭证的工具，以及用 Restic（备份工具）配合 Cloudflare R2（S3 兼容对象存储）的做法。",
-              "supportid": [
-                "48951162",
-                "48951714",
-                "48952329",
-                "48951526",
-                "48951905",
-                "48951857",
-                "48951822",
-                "48952786"
-              ]
-            },
-            {
-              "category": "应用层 ORM/工具也可能是瓶颈",
-              "summary": "有人怀疑慢删除并不是 SQLite 本身的问题，而是 ORM 在一条条遍历对象调用 delete，而不是直接按 ID 列表做 bulk delete。还有人建议干脆把清理逻辑放到 SQLite CLI 里跑，减少 Python 代码参与。补充工具方面，则提到 Django（一个 Python Web 框架）的 silk 和 debug toolbar 可以自动给出性能报告，帮助先定位到底是哪一层在拖慢清理任务。",
-              "supportid": [
-                "48951921",
-                "48951920",
-                "48951562"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "WAL",
-              "explanation": "write-ahead logging，SQLite 的写前日志模式，通常能改善读写并发，也常用于无阻塞备份。"
-            },
-            {
-              "term": "dead man's switch",
-              "explanation": "一种监控方式：如果规定时间内没有发生“成功事件”（这里是备份成功），就触发告警。"
-            },
-            {
-              "term": "partitioning",
-              "explanation": "把大表拆成多个分区，便于快速删除旧数据或缩小热点数据范围。"
-            },
-            {
-              "term": "rowid",
-              "explanation": "SQLite 的内部行标识；先预加载 rowid 再批量删除，通常比逐行处理更稳。"
-            }
-          ],
-          "context": "这篇文章讲的是在实际运行 SQLite（嵌入式关系数据库）时踩到的几个坑：清理旧数据、做备份、看查询计划，以及处理写入并发。评论区补充了 SQLite CLI 的 `.expert`、WAL（write-ahead logging）、`rowid` 批量删除和 partitioning（分区）等具体做法，基本把话题扩展成一堂数据库运维课。备份部分则围绕 `.dump`、`VACUUM INTO`、`backup API`、`litestream`、`zstd` 以及 AWS（云服务）/Cloudflare R2（S3 兼容对象存储）如何配合使用展开。另一些人则讨论 SQLite 适合本地应用还是也能上服务器，提到分片、读写分离、Turso（SQLite 托管/兼容服务）和 SQLite 官方对适用场景的说明。",
-          "emoji": "🛠️",
-          "sarcastic_question": "不会读 query plan，就敢说自己在跑 SQLite 了？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nSQLite 虽然号称“生产环境可用”，但要想跑得顺，你还得学会用 `ANALYZE` 优化查询计划，用小批量写入规避锁竞争，甚至得用 Litestream 这种增量备份工具来替代传统的全量快照。\n\n### 4000 行数据查 5 秒？原来是缺了统计信息\n作者在 Django 项目里用 SQLite 的 FTS5 做全文搜索，结果在一个只有 4000 行的表上，查询竟然耗时 5 秒。这显然不正常，毕竟计算机没那么慢。问题的根源在于查询优化器“瞎了”：它没有足够的数据分布信息，选了一个极其糟糕的执行计划，作者怀疑这导致了某种“意外的二次方”复杂度。解决办法很简单，就是跑一下 `ANALYZE` 命令。这个命令会收集表和索引的统计信息，让查询规划器能做出正确的判断。执行后，查询时间瞬间从 5 秒降到了 0.05 秒，效果立竿见影。\n\n### 清理数据引发的连锁崩溃\nSQLite 的并发写入能力有限，这在做数据清理时成了大坑。作者尝试删除大量无用行（比如 `django-tasks-db` 里的已完成任务），结果 DELETE 操作耗时超过了 5 秒。因为数据库被锁住，另一个 Worker 进程尝试写入时超时，直接导致进程崩溃，甚至把 VM 都拖垮了。这其实暴露了 SQLite 单写入者的局限性：一旦有长事务运行，其他写入者只能排队或失败。作者目前的妥协方案是把清理操作拆成小批次执行，确保单次操作不会超时。他也开始理解为什么高并发场景下大家更倾向于选 Postgres 这种支持多写入者的数据库了。\n\n### ORM 暴力使用暂时还没翻车\n虽然遇到了查询慢和锁表的问题，但作者对 Django ORM 的使用其实相当“粗放”。他基本上没怎么关注过查询性能，完全依赖 ORM 自动生成的 SQL。好在数据量很小（大约 10000 行），而且预期未来也不会大幅增长，所以这种“佛系”用法目前还能撑得住。这其实也说明了一个事实：在数据规模可控的前提下，SQLite 配合 ORM 的性能瓶颈往往不在数据库本身，而在于是否触发了特定的边缘情况（比如缺少统计信息）。\n\n### 从全量备份到 Litestream 的增量流\n备份 SQLite 也是个技术活。作者一开始用 `VACUUM INTO` 导出干净的数据文件，配合 gzip 压缩，再用 restic 上传到 S3。但这个方案有个致命伤：导出和压缩过程太占内存，经常导致进程被 OOM Killer 杀掉，还得手动去 restic 解锁。为了解决这个问题，他尝试了 Litestream。这是一个专门为 SQLite 设计的增量备份工具，能实时捕捉 WAL 文件的变更并同步到 S3。配置好后，它就在后台默默干活，不再需要频繁的全量导出，既省心又省资源。\n\n### 一个项目拆成三个文件\n在另一个名为“Mess with DNS”的项目里，作者用了一个更激进的策略：把表拆分到三个不同的数据库文件里。因为这些表之间其实没有强关联，没必要挤在一个文件里。这样做的好处显而易见：不同模块的读写操作互不干扰，锁竞争的概率大大降低。这个项目已经用 SQLite 稳定运行了 4 年，从 Postgres 迁移过来后效果很好。这提示我们，不要把 SQLite 只当成一个单体的黑盒，合理利用“多数据库”特性，能有效规避单文件的并发瓶颈。"
     },
     {
       "id": 48947717,
@@ -14294,273 +14519,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n通过引入智能 Proxy 层和负载均衡，将 768 台分片数据库服务器对应用层抽象为单一连接字符串，从而在解决单机写入瓶颈和存储上限的同时，让应用无需关心底层的数据分布逻辑。\n\n### 单机数据库的物理天花板：再强的硬件也挡不住这三个硬伤\n大多数应用起步时都是经典的“客户端-应用服务器-数据库”架构，但随着数据量突破几 TB，单纯升级硬件（垂直扩展）和加只读副本（Read Replicas）就开始失效了。这背后的理论支撑是通用可扩展性定律（USL）：资源竞争会导致性能增长亚线性，而跨节点协调的不一致性最终会让性能不升反降。虽然像 OpenAI 那样搞 50 个只读副本能缓解读压力，但写入操作依然只能卡在主库的 WAL（Write-Ahead Log）这一个瓶颈上。更麻烦的是，副本只是数据的拷贝，并不增加总存储容量，而且对 PB 级数据的单体库做备份，动辄几天的传输时间也是完全不可接受的。\n\n### 分片是唯一的出路，但代价是引入了巨大的复杂性\n既然单机扛不住，那就只能把数据拆分到多台服务器上，这就是分片。比如要存 1 PB 数据，我们可以搞 256 个分片，每个分片配 1 主 2 从，这就需要 768 台服务器。这确实解决了写入瓶颈和容量问题，但随之而来的是一堆让人头秃的难题：数据该怎么拆？查询该往哪发？跨分片的聚合查询怎么处理？如果让应用层自己去感知这 768 台服务器，业务代码会变得极其复杂且难以维护。所以，核心诉求很明确：我们要享受分片的性能红利，但又要让应用觉得它还在连一台普通的数据库。\n\n### 关键设计：引入一个懂 SQL 语法和拓扑结构的 Proxy 层\n为了屏蔽底层复杂性，架构中引入了一个关键组件——Proxy 层（也就是 Router）。它和 PgBouncer 这种只做连接池的简单代理不同，它必须是一个“懂业务”的中间件。当应用发起写入时，Proxy 会根据预设的分片策略（比如对 ID 列进行 Hash），计算出这条数据该去哪个分片，然后转发过去。对于读取操作，如果查询条件里包含分片键（如 `WHERE id = 4`），Proxy 直接把请求路由到对应分片；但如果是范围查询（如 `WHERE id BETWEEN 3 AND 5`），数据可能散落在多个分片，Proxy 就得把请求拆解发往所有相关分片，最后在内部把结果聚合起来再返回给应用。这意味着 Proxy 内部必须实现完整的 SQL 解析器和查询规划器，技术门槛相当高。\n\n### 用 JSON 配置文件告诉 Proxy 数据是如何分布的\nProxy 并不是天生就知道你的表结构，它需要一张“地图”。在 Neki 或 Vitess 这类系统中，这张地图是通过 JSON 配置文件（VSchema）来描述的。配置里会明确定义哪个表通过哪一列进行分片，使用的是 Hash 还是 Range 策略。比如配置里指定 `user` 表按 `id` 列 Hash，Proxy 就会在收到数据时自动计算 Hash 值并路由。这种基于文本和 JSON 的配置方式非常灵活，甚至可以让 AI Agent 来辅助生成和优化，大大降低了运维的负担。\n\n### 用网络负载均衡（NLB）把多个 Proxy 包装成一个入口\n当规模达到 768 台服务器、每秒百万级查询时，单个 Proxy 肯定会成为新的瓶颈，所以我们必须部署一个 Proxy 集群（比如 10 个或 100 个）。但应用还是只想连一个地址，这时候就需要在网络层加一个 NLB（Network Load Balancer）。NLB 的任务很简单：对外暴露唯一的 IP 和端口，对内把进来的连接均匀分发给后端的 Proxy 集群。虽然为了极致低延迟可以绕过 NLB 让应用直连 Proxy，但在大多数场景下，NLB 提供了最完美的“单数据库”假象。\n\n### 最终效果：应用只管连，底层复杂度全透明\n把所有组件串起来，整个流程就顺畅了：应用配置一个数据库域名，DNS 解析到 NLB 的 IP，NLB 把连接分发给某个 Proxy，Proxy 负责把 SQL 语句精准地路由到后端的 768 台服务器。对于应用开发者来说，他依然是在处理一个标准的数据库连接，完全感知不到背后发生了复杂的计算、路由和数据聚合。这种架构让分片技术变得触手可及，通常建议在数据量达到几 TB、开始出现备份慢或写入瓶颈时就可以引入，而不是等到非得 PB 级时才动手。"
-    },
-    {
-      "id": 48883036,
-      "by": "speckx",
-      "title": "Teardown: A Generic 7-Port USB 3.0 Hub That Wasn't",
-      "url": "https://goughlui.com/2026/07/09/teardown-a-generic-7-port-usb-3-0-hub-that-wasnt/",
-      "score": 128,
-      "detailUpdatedAt": 1784211245,
-      "createdAt": 1784185864,
-      "aiSummaryUpdatedAt": 1784211976,
-      "aisummary": {
-        "chinese_title": "廉价 7 口 USB Hub 拆解：虚标 USB3、白牌和怪异兼容",
-        "emoji": "🙃",
-        "sarcastic_question": "把3.0印上壳就算USB3.0了？"
-      },
-      "classifications": {
-        "topics": [
-          7,
-          6
-        ],
-        "facets": [
-          10
-        ],
-        "tags": [
-          "USB 3.0",
-          "7-port USB hub",
-          "teardown",
-          "goughlui.com"
-        ]
-      },
-      "classificationsUpdatedAt": 1784191900,
-      "aiSummary": {
-        "chinese_title": "廉价 7 口 USB Hub 拆解：虚标 USB3、白牌和怪异兼容",
-        "emoji": "🙃",
-        "sarcastic_question": "把3.0印上壳就算USB3.0了？"
-      },
-      "detail": {
-        "id": 48883036,
-        "by": "speckx",
-        "title": "Teardown: A Generic 7-Port USB 3.0 Hub That Wasn't",
-        "url": "https://goughlui.com/2026/07/09/teardown-a-generic-7-port-usb-3-0-hub-that-wasnt/",
-        "score": 128,
-        "detailUpdatedAt": 1784211245,
-        "createdAt": 1784185864,
-        "aiSummaryUpdatedAt": 1784211976,
-        "aisummary": {
-          "chinese_title": "廉价 7 口 USB Hub 拆解：虚标 USB3、白牌和怪异兼容",
-          "discussion_overview": [
-            {
-              "category": "便宜/贵价都可能翻车",
-              "summary": "有人觉得这类产品证明了“便宜买垃圾”并不意味着“贵就靠谱”。电动工具、家用小电器等例子被拿来说明，很多品牌只是把同样的偷料手法包装得更好看：plastic gears、缩水 motor driver、容易坏的 switch。也有人提到，偶尔会因为成本控制失手反而做出可靠产品，所以低价反而增加“撞对良心设计”的概率。另一些评论把可靠信息来源指向 Project Farm 之类非赞助测评，以及只看具体问题的 2 到 4 星评价；还有人提醒不少老品牌其实早被同一家公司并购，差别更多在营销而不是做工。",
-              "supportid": [
-                "48931785",
-                "48932872",
-                "48934739",
-                "48933754",
-                "48932588"
-              ]
-            },
-            {
-              "category": "虚标规格与价格骗局",
-              "summary": "评论里最集中的是对虚标参数的厌恶：这款 hub 的“3.0”可能只是型号而不是协议，市场上还充斥着只有一个 3.0 口的“USB 3.0 hub”。有人拆过自行车灯，标称 2600mAh 但里面只有 1700mAh cell，类似的电池容量从 2500/3500mAh 一路膨胀到 9999mAh、1,000,000mAh。Flashlight 的“1 million lumens”和 2TB USB stick 低价骗局也被拿来类比，意思是这些数字已经完全脱离物理现实。很多人认为问题不只是价格低，而是卖家明知规格不符还继续宣传，平台和监管都该承担责任。",
-              "supportid": [
-                "48934778",
-                "48932530",
-                "48934252",
-                "48934600",
-                "48931354",
-                "48932003",
-                "48933609",
-                "48932679",
-                "48932474",
-                "48931889",
-                "48932084",
-                "48932167"
-              ]
-            },
-            {
-              "category": "同壳不同芯的白牌供应链",
-              "summary": "不少人指出，这类 no-name 设备的麻烦在于外壳和配色可以完全一样，但内部 PCB、controller 甚至同一 revision 的器件都能被随时换掉。于是你在 AliExpress 上看到的 5 个一模一样的 hub，可能只有最便宜那个用的是另一块板；反过来，外观不同的产品也可能塞着相同的 PCB。还有人提到 Chinese 订单和国际物流会经过多国转运、拆包和重打包，进一步让制造商、进口商和最终卖家之间的边界变得模糊。对消费者来说，靠外观图和商品名几乎无法判断真实内核，只能碰运气或看拆机。",
-              "supportid": [
-                "48933062",
-                "48933546",
-                "48933064",
-                "48931361",
-                "48931906",
-                "48932194",
-                "48932069",
-                "48933052",
-                "48933328"
-              ]
-            },
-            {
-              "category": "USB hub 的工程边界",
-              "summary": "有人强调，hub 和 dock 本来就不是简单货，尤其是层层串接的 nested hub chips 很容易碰到 USB 的最大嵌套深度限制。更高端的 Thunderbolt dock 虽然能力更强，但要同时看主机端口、线材、dock 本体、末端设备和供电设计，任何一环出问题都会掉盘、失联或死机。评论里还提到长而细的 cable、plastic chassis 和外接电源 backfeed 主机等设计风险，认为真正稳的产品往往会用短粗线缆、metal chassis 和更明确的电源隔离。也有人说，价格高的 branded USB C hub 和 Thunderbolt station 并不保证零问题，只是故障形式更高级、更难排查。",
-              "supportid": [
-                "48931598",
-                "48932149",
-                "48932325",
-                "48933015",
-                "48933336",
-                "48934015",
-                "48932977",
-                "48931884",
-                "48931903",
-                "48933088"
-              ]
-            },
-            {
-              "category": "残次品的特殊用途",
-              "summary": "尽管大家骂它差，这个 hub 也被一些人当成“刚好有用”的工具。它把一个 USB3 直通给主机，剩下端口做低速扩展，正适合接 dongle、UART adapter、security key 之类不吃带宽的东西，而不用浪费笔记本的高性能口。另一些人说它反而在 MCU flashing、Kobo 这类对 USB 协商很挑剔的场景里更容易“工作”，甚至 power buttons 也很适合给 dev board 断电。还有人把它当成充电站或实验台上的电源分配器用，默认接受它“能用但不优雅”的现实。",
-              "supportid": [
-                "48934407",
-                "48931527",
-                "48932068",
-                "48932309",
-                "48934680",
-                "48933532"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "market for lemons（柠檬市场）",
-              "explanation": "信息不对称导致劣质品更容易充斥市场、好产品反而难被识别的经济现象。"
-            },
-            {
-              "term": "white-label（白牌）",
-              "explanation": "同一批代工产品被不同卖家贴上不同品牌出售，外观相似但内部可能不同。"
-            },
-            {
-              "term": "PCB rev.",
-              "explanation": "电路板版本号；同一产品不同 revision 可能更换芯片、器件或走线。"
-            },
-            {
-              "term": "Thunderbolt dock",
-              "explanation": "通过 Thunderbolt 连接的高速扩展坞，通常比普通 USB hub 更贵也更复杂。"
-            },
-            {
-              "term": "backfeeding",
-              "explanation": "外接电源通过 hub 反向给主机端口送电；有时方便，但也可能带来风险。"
-            }
-          ],
-          "context": "这篇拆解围绕一款看似普通的 7 口 USB Hub，结果发现它把 USB 3.0 当成了包装卖点，但实际电路和端口能力并不匹配。评论把它放进更大的白牌电子市场背景里：AliExpress、Amazon 贴牌货和本地进口商常常共用外壳，却在 PCB、controller 和供电上做不同缩水。USB hub 不是纯粹的“多几个口”这么简单，协议兼容、线材长度、散热、外接电源和主机协商都可能导致掉盘或断连。很多讨论还延伸到 Thunderbolt dock（通过 Thunderbolt 连接的高速扩展坞）、USB-OTG（让设备在主机/从机之间切换的连接方式）、HID 和 micro-controller flashing，说明大家买这类设备往往是为了非常具体的兼容性需求。",
-          "emoji": "🙃",
-          "sarcastic_question": "把3.0印上壳就算USB3.0了？"
-        },
-        "classifications": {
-          "topics": [
-            7,
-            6
-          ],
-          "facets": [
-            10
-          ],
-          "tags": [
-            "USB 3.0",
-            "7-port USB hub",
-            "teardown",
-            "goughlui.com"
-          ]
-        },
-        "classificationsUpdatedAt": 1784191900,
-        "aiSummary": {
-          "chinese_title": "廉价 7 口 USB Hub 拆解：虚标 USB3、白牌和怪异兼容",
-          "discussion_overview": [
-            {
-              "category": "便宜/贵价都可能翻车",
-              "summary": "有人觉得这类产品证明了“便宜买垃圾”并不意味着“贵就靠谱”。电动工具、家用小电器等例子被拿来说明，很多品牌只是把同样的偷料手法包装得更好看：plastic gears、缩水 motor driver、容易坏的 switch。也有人提到，偶尔会因为成本控制失手反而做出可靠产品，所以低价反而增加“撞对良心设计”的概率。另一些评论把可靠信息来源指向 Project Farm 之类非赞助测评，以及只看具体问题的 2 到 4 星评价；还有人提醒不少老品牌其实早被同一家公司并购，差别更多在营销而不是做工。",
-              "supportid": [
-                "48931785",
-                "48932872",
-                "48934739",
-                "48933754",
-                "48932588"
-              ]
-            },
-            {
-              "category": "虚标规格与价格骗局",
-              "summary": "评论里最集中的是对虚标参数的厌恶：这款 hub 的“3.0”可能只是型号而不是协议，市场上还充斥着只有一个 3.0 口的“USB 3.0 hub”。有人拆过自行车灯，标称 2600mAh 但里面只有 1700mAh cell，类似的电池容量从 2500/3500mAh 一路膨胀到 9999mAh、1,000,000mAh。Flashlight 的“1 million lumens”和 2TB USB stick 低价骗局也被拿来类比，意思是这些数字已经完全脱离物理现实。很多人认为问题不只是价格低，而是卖家明知规格不符还继续宣传，平台和监管都该承担责任。",
-              "supportid": [
-                "48934778",
-                "48932530",
-                "48934252",
-                "48934600",
-                "48931354",
-                "48932003",
-                "48933609",
-                "48932679",
-                "48932474",
-                "48931889",
-                "48932084",
-                "48932167"
-              ]
-            },
-            {
-              "category": "同壳不同芯的白牌供应链",
-              "summary": "不少人指出，这类 no-name 设备的麻烦在于外壳和配色可以完全一样，但内部 PCB、controller 甚至同一 revision 的器件都能被随时换掉。于是你在 AliExpress 上看到的 5 个一模一样的 hub，可能只有最便宜那个用的是另一块板；反过来，外观不同的产品也可能塞着相同的 PCB。还有人提到 Chinese 订单和国际物流会经过多国转运、拆包和重打包，进一步让制造商、进口商和最终卖家之间的边界变得模糊。对消费者来说，靠外观图和商品名几乎无法判断真实内核，只能碰运气或看拆机。",
-              "supportid": [
-                "48933062",
-                "48933546",
-                "48933064",
-                "48931361",
-                "48931906",
-                "48932194",
-                "48932069",
-                "48933052",
-                "48933328"
-              ]
-            },
-            {
-              "category": "USB hub 的工程边界",
-              "summary": "有人强调，hub 和 dock 本来就不是简单货，尤其是层层串接的 nested hub chips 很容易碰到 USB 的最大嵌套深度限制。更高端的 Thunderbolt dock 虽然能力更强，但要同时看主机端口、线材、dock 本体、末端设备和供电设计，任何一环出问题都会掉盘、失联或死机。评论里还提到长而细的 cable、plastic chassis 和外接电源 backfeed 主机等设计风险，认为真正稳的产品往往会用短粗线缆、metal chassis 和更明确的电源隔离。也有人说，价格高的 branded USB C hub 和 Thunderbolt station 并不保证零问题，只是故障形式更高级、更难排查。",
-              "supportid": [
-                "48931598",
-                "48932149",
-                "48932325",
-                "48933015",
-                "48933336",
-                "48934015",
-                "48932977",
-                "48931884",
-                "48931903",
-                "48933088"
-              ]
-            },
-            {
-              "category": "残次品的特殊用途",
-              "summary": "尽管大家骂它差，这个 hub 也被一些人当成“刚好有用”的工具。它把一个 USB3 直通给主机，剩下端口做低速扩展，正适合接 dongle、UART adapter、security key 之类不吃带宽的东西，而不用浪费笔记本的高性能口。另一些人说它反而在 MCU flashing、Kobo 这类对 USB 协商很挑剔的场景里更容易“工作”，甚至 power buttons 也很适合给 dev board 断电。还有人把它当成充电站或实验台上的电源分配器用，默认接受它“能用但不优雅”的现实。",
-              "supportid": [
-                "48934407",
-                "48931527",
-                "48932068",
-                "48932309",
-                "48934680",
-                "48933532"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "market for lemons（柠檬市场）",
-              "explanation": "信息不对称导致劣质品更容易充斥市场、好产品反而难被识别的经济现象。"
-            },
-            {
-              "term": "white-label（白牌）",
-              "explanation": "同一批代工产品被不同卖家贴上不同品牌出售，外观相似但内部可能不同。"
-            },
-            {
-              "term": "PCB rev.",
-              "explanation": "电路板版本号；同一产品不同 revision 可能更换芯片、器件或走线。"
-            },
-            {
-              "term": "Thunderbolt dock",
-              "explanation": "通过 Thunderbolt 连接的高速扩展坞，通常比普通 USB hub 更贵也更复杂。"
-            },
-            {
-              "term": "backfeeding",
-              "explanation": "外接电源通过 hub 反向给主机端口送电；有时方便，但也可能带来风险。"
-            }
-          ],
-          "context": "这篇拆解围绕一款看似普通的 7 口 USB Hub，结果发现它把 USB 3.0 当成了包装卖点，但实际电路和端口能力并不匹配。评论把它放进更大的白牌电子市场背景里：AliExpress、Amazon 贴牌货和本地进口商常常共用外壳，却在 PCB、controller 和供电上做不同缩水。USB hub 不是纯粹的“多几个口”这么简单，协议兼容、线材长度、散热、外接电源和主机协商都可能导致掉盘或断连。很多讨论还延伸到 Thunderbolt dock（通过 Thunderbolt 连接的高速扩展坞）、USB-OTG（让设备在主机/从机之间切换的连接方式）、HID 和 micro-controller flashing，说明大家买这类设备往往是为了非常具体的兼容性需求。",
-          "emoji": "🙃",
-          "sarcastic_question": "把3.0印上壳就算USB3.0了？"
-        }
-      },
-      "articleSummary": "# 一句话总结\n这所谓的“7口 USB 3.0 Hub”其实是个伪装产品：它只把 USB 3.0 信号透传给第一个口，剩下六个口全是 USB 2.0，而且电源设计还有烧电脑的风险。\n\n### 便宜没好货，但没想到是“挂羊头卖狗肉”\n作者在 AliExpress 上趁着促销想买个多口 Hub，本以为现在的 USB 3.0 技术很成熟，随便买个便宜货也能用。结果到手一看，这不到 5 美元的产品全塑料机身，连个品牌标都没有，电源接口也没标电压。虽然外观看着像那么回事，但拆开之后才发现，这根本不是什么 USB 3.0 Hub，而是一个精心设计的“伪装者”。\n\n### 所谓的 7 口 USB 3.0，其实只有 1 口是真的\n拆开外壳，真相大白：PCB 上只有最上面的一个端口是完整的 USB 3.0 接口（9 针），其余六个端口只有 4 针，也就是标准的 USB 2.0。说白了，这玩意儿就是个 USB 3.0 延长线，后面并联了一个 USB 2.0 Hub。这种设计纯粹是为了省成本，利用蓝色的 USB 接口外观来欺骗消费者，让你以为插上就能享受高速传输。\n\n### 为了省钱，连基本的电气安全都不要了\n更离谱的是它的做工。USB 2.0 接口的金属外壳居然完全没有焊接，这意味着插拔几次后焊盘就会断裂。唯一的那个 USB 3.0 接口也没焊满，强度堪忧。核心芯片用了两颗廉价的 HS8836A（4 口 USB 2.0 Hub），这种芯片不需要外部晶振，能省则省。而且它是单事务翻译器（STT），所有低速设备共享带宽，接多了鼠标键盘可能会卡顿。\n\n### 电源设计存在致命缺陷，可能会烧坏电脑\n最让人后背发凉的是电源电路的设计。外接电源接口直接和 USB 输入端的 VBUS 连在了一起，完全没有利用插座内部的开关进行隔离。这意味着，如果你插了外接电源，电流会直接倒灌回电脑的主板 USB 口。这种“Backfeed”设计在 20 年前就知道有问题，现在居然还能出现在市售产品上，简直是灾难。\n\n### 电脑诚实地识别了它，但买家却被评论骗了\n插上电脑后，Windows 毫不客气地识别出了两个级联的 USB 2.0 Hub，只有第一个口通过 USB 3.0 通道工作。作者感叹，虽然自己作为技术宅自以为能看穿商家的套路，但面对 600 多个 4.7 星的好评，还是失算了。大概率那些给好评的普通用户根本没意识到自己买了个“假” 3.0 Hub，甚至还觉得能用就行。这大概就是劣币驱逐良币的现实版吧。"
     }
   ]
 }
