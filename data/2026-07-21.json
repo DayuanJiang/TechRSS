@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2525,
-  "filtered_articles": 15,
+  "filtered_articles": 16,
   "articles": [
+    {
+      "title": "–end-of-options",
+      "title_zh": "Git 参数注入漏洞与包管理器的防护困境",
+      "link": "https://nesbitt.io/2026/07/21/end-of-options.html",
+      "pub_date": "2026-07-21T10:00:00.000Z",
+      "summary": "## 一句话总结\nGit 的 `--end-of-options` 标志是为了解决参数注入漏洞而生的，但受限于老旧 Git 版本的兼容性包袱，绝大多数包管理器至今仍无法采用这个“正确”的修复方案。\n\n---\n\n### 连 LLM 都像是在瞎编的“新”标志\n\n作者在研究一个包管理器 CVE 时，偶然发现了一个看起来像 LLM 幻觉的 Git 标志：`--end-of-options`。这东西虽然听起来很陌生，但它是真实存在的，早在 2019 年 11 月发布的 Git 2.24.0 中就已经加入了。之所以存在这个略显冗长的标志，是因为 Git 早就把 Unix 中通用的 `--` 给“挪作他用”了。在大多数 Unix 工具里，`--` 标志着选项解析的结束，但在 Git 里，`--` 被用来区分 Revision（提交哈希、分支名）和 Pathspec（文件路径）。这就导致了一个尴尬的局面：如果脚本里运行 `git log \"$rev\"`，而变量 `$rev` 恰好以横杠开头，Git 还是会把它误判成选项，从而埋下安全隐患。\n\n### 为什么不能直接用标准的双横线\n\n这里有个容易混淆的细节：在 Git 里，`--` 和 `--end-of-options` 扮演的角色完全不同，不能混为一谈。`git clone -- \"$url\"` 能正常工作，是因为 `clone` 子命令遵循 POSIX 标准，这里的 `--` 就是用来结束选项解析的。但在 `git log` 或 `git checkout` 这种命令里，`--` 的作用是分隔“版本”和“文件路径”。如果你在 `git checkout \"$ref\" --` 中，`$ref` 以横杠开头，Git 还是会先尝试把它当选项解析，然后才去看后面的 `--`。想要安全地传递一个不受信任的 Revision，正确的写法其实是 `git log --end-of-options \"$rev\" -- \"$path\"`，让两个标志各司其职。\n\n### 参数注入：没有 Shell 也能被攻击\n\n这种参数误判导致的漏洞有个专门的代号叫 CWE-88（Argument Injection）。有意思的地方在于，这和我们常说的命令注入还不一样，它根本不需要 Shell 参与。很多开发者以为只要不用 `system()`、改用 `exec` 直接传递 argv 数组就安全了，但如果数组里的某个参数被 Git 解析成了选项（比如 `--upload-pack=`），攻击者就能在 Git 进程上下文里执行任意命令。2017 年的那一波 CVE（涉及 Git、Mercurial、SVN 等）就是典型案例，攻击者只需在 URL 的 hostname 里塞入 `-oProxyCommand=`，就能绕过层层检查直接接管 SSH 连接。\n\n### 包管理器是重灾区，但修复很慢\n\n包管理器简直就是这种漏洞的活靶子，因为它们天天都在处理不受信任的 Git URL 和 Ref。作者调查了 19 个主流包管理器，发现除了 Cargo 和 Poetry 这种用库的实现外，剩下 17 个都是直接 fork `git` 二进制文件。这导致了一长串的 CVE 列表，涉及 Bundler、Composer、Poetry、pip、Go 等知名工具。虽然理论上 `--end-of-options` 是完美的解药，但在作者调查时，只有 Go 的 `cmd/go` 在 2026 年的补丁里正确使用了它。绝大多数工具要么还在用简单的 `--`，要么只是检查参数是否以横杠开头——这些手段要么不完整，要么只是权宜之计。\n\n### 被老旧系统拖累的“正确方案”\n\n那为什么大家不直接升级到 `--end-of-options`？核心原因还是“兼容性”这个老大难问题。`--end-of-options` 是 Git 2.24.0 才有的，而且不同子命令支持的时间还不一样：`git rev-parse` 要到 2.30.0 才支持，而 `git checkout` 和 `git reset` 更是拖到了 2024 年 2 月的 2.43.1 版本。很多包管理器必须支持 Ubuntu 18.04 或 Amazon Linux 2 这种企业级系统，这些系统自带的 Git 版本都很老。Composer 就明确表示，因为要支持老版本 Git，所以没法用这个标志，只能退而求其次去拒绝以横杠开头的分支名。\n\n### 彻底甩掉包袱：用库还是死磕版本？\n\n面对这种进退两难的局面，业界其实分了两派。一派是像 Cargo、Poetry、Jujutsu 这样，直接使用 libgit2、gitoxide 或 dulwich 等 Git 库。这样做的好处是没有 argv 边界，从根本上杜绝了参数注入；坏处是维护成本高，得时刻盯着上游 Git 的安全补丁同步过来。另一派则是像 Homebrew 这样，不得不硬着头皮提升最低 Git 版本要求。作者最后也给 Homebrew 提了个 PR，建议把最低 Git 版本提升到 2.30.0，并在 `clone` 和 `rev-parse` 中加上 `--end-of-options`。至于 `checkout` 这种需要 2.43.1 的命令，因为版本要求太新，暂时只能先放着不动了。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "git",
+        "argument injection",
+        "CVE",
+        "package manager"
+      ],
+      "rank": 1
+    },
     {
       "title": "‘Who’s Afraid of Chinese Models?’",
       "title_zh": "中国模型冲击下的 AI 边际成本回归",
@@ -22,7 +41,7 @@
         "distillation",
         "commodity markets"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Pluralistic: Dealing with dickovers (21 Jul 2026) dickovers",
@@ -41,7 +60,7 @@
         "Adblock Plus",
         "Reader Mode"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Kuiper Q-Q plot: are these the same?",
@@ -60,7 +79,7 @@
         "distribution",
         "hypothesis testing"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "[Sponsor] WorkOS MCP: Manage Your Auth Platform From Any AI Agent",
@@ -79,7 +98,7 @@
         "auth",
         "agent"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Who’s Afraid of Chinese Models?",
@@ -98,7 +117,7 @@
         "open source",
         "copyright"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Reverse-engineering is cheap now",
@@ -117,7 +136,26 @@
         "automation",
         "ROI"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "The First Microsoft Product",
+      "title_zh": "Microsoft首个产品Altair Basic的开发与授权",
+      "link": "https://dfarq.homeip.net/the-first-microsoft-product/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=the-first-microsoft-product",
+      "pub_date": "2026-07-21T11:00:47.000Z",
+      "summary": "1975年1月2日，Microsoft发布首个产品Altair Basic，这是为MITS Altair 8800计算机开发的编程语言。开发过程中，Gates和Allen从未见过真实硬件，Paul Allen在DEC PDP-10上编写了Altair模拟器进行测试，Monte Davidoff负责实现浮点运算功能。Paul Allen携带纸带飞往MITS现场演示，代码首次在真实硬件上运行成功。关键商业决策是保留向其他机器移植的权利，采用授权而非出售版权的模式。到1975年底，MITS售出价值16,005美元的软件。Apple II、Commodore PET 2001和TRS-80 Model 1等1977年推出的计算机均预装或很快运行Microsoft Basic，Microsoft按销量收取版税。1978年，23岁的Gates成为百万富翁。2025年1月，为庆祝Microsoft成立50周年，Bill Gates发布了Altair Basic原始源代码扫描件。",
+      "source_name": "dfarq.homeip.net",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "Altair Basic",
+        "Microsoft",
+        "emulator",
+        "licensing"
+      ],
+      "rank": 8
     },
     {
       "title": "Why I Stopped \"Creating Content\"",
@@ -135,7 +173,7 @@
         "language",
         "business jargon"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Expensive Is Just a Brand Now",
@@ -154,7 +192,7 @@
         "pricing",
         "consumer"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Weekly Update 513: Clauding The Home Network",
@@ -172,7 +210,7 @@
         "home automation",
         "troubleshooting"
       ],
-      "rank": 9
+      "rank": 11
     }
   ]
 }
