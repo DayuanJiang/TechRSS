@@ -1,9 +1,9 @@
 {
   "date": "2026-07-24",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2532,
-  "filtered_articles": 16,
+  "success_feeds": 83,
+  "total_articles": 2487,
+  "filtered_articles": 13,
   "articles": [
     {
       "title": "Interview with a Maintainer",
@@ -101,6 +101,25 @@
       "rank": 5
     },
     {
+      "title": "Making an agile version of a Windows Runtime delegate in C++/WinRT, part 5",
+      "title_zh": "C++/WinRT 敏捷委托的析构上下文问题",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260724-00/?p=112562",
+      "pub_date": "2026-07-24T14:00:00.000Z",
+      "summary": "## 一句话总结\n把非 agile 的 delegate 包装成 agile 版本时，不仅要管调用时的上下文切换，还得管销毁时的上下文归属，否则析构函数跑错线程会直接崩。\n\n### 之前的方案有个隐蔽的 Bug\n在上一篇文章里，我们通过检查 `INoMarshal` 接口，成功阻止了 delegate 在错误的线程上被调用。代码逻辑看起来很严密：如果当前上下文不匹配，直接抛出 `CO_E_NOT_SUPPORTED`。但仔细想想，我们只解决了“调用”的问题，却忽略了“销毁”的隐患。Lambda 捕获的 delegate 对象最终会在某个时刻析构，而这个时刻完全可能发生在错误的线程上。\n\n### 销毁比调用更危险\n这可不是个小问题。很多非 agile 的 delegate 为了性能，引用计数并没有用线程安全的原子操作。更糟糕的是，如果这次释放刚好把引用计数降到了零，delegate 的析构函数就会在错误的线程上跑。这会导致难以调试的崩溃或内存破坏。说白了，我们不仅要保证 delegate 在对的线程被用，还得保证它在对的线程死。\n\n### 借助 std::unique_ptr 的状态化 deleter\n那怎么办？核心思路其实很简单：利用 `std::unique_ptr` 自定义 deleter 的特性。我们可以写一个 `in_context_deleter`，它在构造时记录下当前的 COM 上下文。当这个智能指针需要销毁内存时，deleter 会通过 `IContextCallback::ContextCallback` 切换回原始上下文，然后再执行释放操作。这样，无论 `unique_ptr` 在哪里被销毁，真正的 `Release` 永远发生在正确的上下文里。\n\n### 实现细节里的乾坤\n这个 deleter 的实现挺巧妙。它把原始指针包装在 `ComCallData` 里，通过回调函数传给目标上下文。在回调内部，我们用 `winrt::IUnknown` 接管这个裸指针，利用它的析构函数来执行 `Release`。因为 `IContextCallback` 已经帮我们完成了线程切换，所以这里的析构是绝对安全的。\n\n### 包装逻辑的最终形态\n有了这个 deleter，`make_agile_delegate` 的逻辑就更完善了。对于 `INoMarshal` 类型的 delegate，我们先把它“拆”成裸 ABI 指针，塞进带自定义 deleter 的 `unique_ptr` 里。Lambda 捕获这个智能指针，调用时再临时把它“拼”回 delegate 对象。这样既保证了调用时的上下文检查，又把对象的生命周期管理交给了 deleter，确保万无一失。\n\n### 真的结束了吗？\n看起来逻辑已经闭环了：Agile 对象直接返回，NoMarshal 对象用智能指针包装上下文，普通对象用 `agile_ref`。但 Raymond 在文末留了个扣子——“No!”。看来这个方案虽然解决了销毁上下文的问题，但在实际代码里可能还有别的坑，或者有更优雅的写法。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "C++/WinRT",
+        "delegate",
+        "marshaling",
+        "context"
+      ],
+      "rank": 6
+    },
+    {
       "title": "Making an agile version of a Windows Runtime delegate in C++/WinRT, part 4",
       "title_zh": "用 CoGetContextToken 优化 agile delegate 上下文检查",
       "link": "https://devblogs.microsoft.com/oldnewthing/20260723-00/?p=112560",
@@ -117,7 +136,7 @@
         "CoGetContextToken",
         "Windows Runtime"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "★ The Ads on Apple News Continue to Suck, but at Least There Are a Lot of Them",
@@ -136,7 +155,7 @@
         "advertising",
         "user experience"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Flighty New Connection Assistant Feature",
@@ -154,7 +173,7 @@
         "connection assistant",
         "gate predictions"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Have you read it?",
@@ -172,7 +191,7 @@
         "content quality",
         "authorship"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "David Bunnell, vintage computer magazine publisher",
@@ -191,7 +210,7 @@
         "Macworld",
         "computer magazines"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "John Dvorak Drops Dead at 80",
@@ -208,7 +227,7 @@
         "John C. Dvorak",
         "obituary"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Bond Movie Filming Locations Map",
@@ -225,7 +244,7 @@
         "map",
         "film locations"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "Bond Movie Filming Locations Map",
@@ -243,7 +262,7 @@
         "bond",
         "locations"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "John Dvorak on Computer Chronicles in 1987 to Discuss the Then-New IBM PS/2",
@@ -261,7 +280,7 @@
         "history",
         "video"
       ],
-      "rank": 14
+      "rank": 15
     },
     {
       "title": "Book Review: Foreign Fruit - A Personal History of the Orange by Katie Goh ★⯪☆☆☆",
@@ -279,7 +298,7 @@
         "citrus",
         "autobiography"
       ],
-      "rank": 15
+      "rank": 16
     }
   ]
 }
