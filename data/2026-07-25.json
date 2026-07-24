@@ -6,6 +6,25 @@
   "filtered_articles": 20,
   "articles": [
     {
+      "title": "Benchmarking Qwen 3.6 35B MoE (3B active) on an RTX 3090",
+      "title_zh": "RTX 3090 上 Qwen 3.6 35B MoE 推理基准测试",
+      "link": "https://www.gilesthomas.com/2026/07/benchmarking-qwen-3-6-35b-moe-rtx-3090",
+      "pub_date": "2026-07-24T23:30:00.000Z",
+      "summary": "### 一句话总结\n在 RTX 3090 上跑 Qwen 3.6 35B MoE 模型，核心在于通过编译 CUDA 版本的 Llama.cpp 并合理分层卸载，在显存瓶颈和推理速度之间找到最佳平衡点。\n\n### 显存不够用，MoE 也没法“偷懒”\nQwen 3.6 35B 是个 Mixture of Experts (MoE) 模型，总参数 35B，但每次推理只激活 3B。乍一看你会觉得，既然只激活 3B，那显存占用应该很低吧？但这里有个陷阱：MoE 只能省计算，不能省显存。因为推理时 Prompt 是并行处理的，每一层都可能用到不同的专家，你没法预知要用哪个，所以必须把所有参数都加载进显存。再加上 Embedding 层和输出层就占了 10 亿参数，留给 Transformer 核心计算的显存其实非常紧张。这就导致在 24GB 显存的 3090 上，必须得用量化模型。\n\n### 量化不是简单的降精度，而是“有损压缩”\n为了把模型塞进显存，作者选用了 Unsloth 的 `UD-IQ4_NL_XL` 4-bit 量化版本。这里有个很有意思的认知纠偏：量化并不是简单地把 FP16 变成 FP4 来算，更像是一种“有损压缩”。权重在显存里是以压缩格式存的，计算时再实时解压回 BF16。这解释了为什么老显卡不支持原生 FP4 计算也能跑量化模型——因为数学运算依然是高精度的，只是存储压缩了。这种机制让 RTX 3090 这种不支持低精度计算的显卡也能跑大模型，但解压过程本身会带来开销。\n\n### 默认的 Vulkan 后端虽然通用，但性能拉胯\n作者一开始用的是 Arch Linux 仓库里的默认包，结果发现它底层用的是 Vulkan 而不是 CUDA。虽然 Vulkan 通用性好，但在 Nvidia 显卡上性能和兼容性都不如原生 CUDA。测试结果显示，用 Vulkan 后端把模型全跑在 GPU 上，生成速度只有 120 tok/s，Prompt 处理速度 2800 tok/s，而且因为显存被占满，Context Window 只能开到 5 万（原生支持 26 万）。为了跑满上下文，作者尝试把前 12 层的 FFN 卸载到 CPU，速度直接跌到了 65 tok/s，这显然没法用。\n\n### 手撸 CUDA 版本，性能提升立竿见影\n既然现成的包不行，作者决定自己编译源码开启 CUDA 支持。这一步是整个优化的关键：切换到 CUDA 后端后，全 GPU 模式下生成速度提升到了 140 tok/s，Prompt 处理飙到了 3300 tok/s。更重要的是，由于 CUDA 对显存的管理更高效，为了跑满 26 万的上下文长度，只需要卸载 10 层的 FFN 到 CPU。在这种“部分卸载”的配置下，生成速度依然能维持在 89 tok/s，Prompt 处理 1100 tok/s。相比于 Vulkan 版本的 65 tok/s，这个提升非常可观。\n\n### 3090 的显存依然是硬伤\n虽然通过优化，RTX 3090 的表现已经不错，但 24GB 显存依然是硬伤。作者的朋友用 32GB 显存的 Intel Arc B70 Pro 跑同样的量化模型，不需要任何卸载就能跑满上下文，不过生成速度只有 50-80 tok/s，还不如 3090 的“CUDA+卸载”方案。这说明 3090 的算力优势依然存在，但显存瓶颈迫使你必须做更精细的分层卸载策略。如果你有钱上 RTX 5090（32GB 显存加更强算力），那自然能兼得鱼和熊掌。\n\n### 一个容易被忽视的细节：多模态组件\n最后有个很实用的小技巧：Qwen 3.6 是个多模态模型，默认会加载视觉相关的组件。如果你只做文本任务，可以在 Llama.cpp 里加上 `--no-mmproj` 参数。这能关掉视觉映射组件，从而释放一部分显存。虽然作者在测试中没用到这招，但对于显存捉襟见肘的 3090 用户来说，这可能是能不能跑起来、或者能不能开更大上下文的关键。",
+      "source_name": "gilesthomas.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "Qwen",
+        "MoE",
+        "Llama.cpp",
+        "inference"
+      ],
+      "rank": 1
+    },
+    {
       "title": "Premium: The Hater’s Guide To Oracle (Part 2)",
       "title_zh": "Oracle 的 AI 豪赌与十年衰退",
       "link": "https://www.wheresyoured.at/premium-the-haters-guide-to-oracle-part-2/",
@@ -22,7 +41,7 @@
         "free cashflow",
         "OpenAI"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Dickover of the Week: Tomtoc",
@@ -41,7 +60,7 @@
         "modal",
         "popovers"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "★ Regarding Ad Blockers and Daring Fireball",
@@ -60,7 +79,7 @@
         "content filtering",
         "privacy"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Becoming Skilled at Making Documents",
@@ -79,7 +98,7 @@
         "documentation",
         "agent skills"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Index 01 Is In Mass Production!",
@@ -97,7 +116,7 @@
         "smart ring",
         "voice recording"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Sixers Sign LeBron James",
@@ -115,7 +134,7 @@
         "LeBron James",
         "Sixers"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Sixers Sign LeBron James",
@@ -133,7 +152,7 @@
         "NBA",
         "Sixers"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "This Week on The Analog Antiquarian",
@@ -150,7 +169,7 @@
         "blog",
         "navigation"
       ],
-      "rank": 8
+      "rank": 9
     }
   ]
 }
