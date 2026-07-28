@@ -1,0 +1,66 @@
+{
+  "date": "2026-07-29",
+  "total_feeds": 92,
+  "success_feeds": 84,
+  "total_articles": 2509,
+  "filtered_articles": 19,
+  "articles": [
+    {
+      "title": "The inliner is yielding benefits for ZJIT",
+      "title_zh": "ZJIT 内联优化器带来 35-139 倍性能提升",
+      "link": "https://bernsteinbear.com/blog/zjit-inliner-invokeblock/?utm_source=rss",
+      "pub_date": "2026-07-28T00:00:00.000Z",
+      "summary": "### 一句话总结\nZJIT 通过将 `Array#each` 等核心库方法**内联**到调用方，把原本无法优化的通用调用变成了针对特定 Block 的直接调用，从而解决了核心方法因 Block 类型过多而无法特化的性能难题。\n\n### 从 Smalltalk 到 YARV 的 Block 代价\nRuby 的 `each` 写法深受 Smalltalk 影响，本质是向对象发送消息并附带一个 Block。在 CRuby 的 YARV 字节码层面，这体现为 `send` 指令配合一个特殊的 Block 参数。虽然开发者写起来很优雅，但底层实现上，`Array#each` 长期以来是用 C 写的。这对解释器来说很快，但对 JIT 编译器来说就是个黑盒——它根本看不懂 C 代码里发生了什么，也就没法做任何激进的优化。\n\n### 为了让 JIT \"看懂\"，核心方法开始 Ruby 化\n既然 C 代码阻碍了优化，Ruby 社区这几年开始尝试把核心库方法用 Ruby 重写。比如 `Array#each`，现在就变成了包含 `Primitive.attr!` 注解的 Ruby 代码。这么做的好处是，JIT 终于可以像分析普通业务代码一样分析核心库了。ZJIT 可以基于观察到的类型信息，生成包含类型守卫和特化操作的 HIR（高级中间表示），比如把通用的 `length` 方法调用直接变成读取数组内存长度的指令。\n\n### 核心库的\"多态\"困境\nJIT 的核心逻辑是\"观察、假设、特化\"，这在单态调用时效果拔群，但遇到了 `Array#each` 这种通用方法就傻眼了。因为整个应用到处都在调用 `Array#each`，每次传进去的 Block 都不一样，导致 `Array#each` 内部面对的是成千上万种不同的 Block 形状。这种\"超多态\"场景让 JIT 无法在 `Array#each` 内部做任何有效的假设和缓存，代码局部性在这里似乎失效了。\n\n### 代码局部性其实藏在调用方\n虽然 `Array#each` 本身是混乱的，但每个调用 `Array#each` 的地方（比如 `method_a`）却是非常稳定的——它总是传同一个 Block。ZJIT 团队意识到，与其在 `each` 内部纠结，不如把目光上移一层。只要能拿到调用方的上下文，就能知道当前具体是哪个 Block 在执行。YJIT 选择了\"拆分\"技术，而作为方法 JIT 的 ZJIT，则选择了更经典的**内联**策略。\n\n### 用内联把黑盒变成白盒\nZJIT 的做法很直接：把 `Array#each` 的 HIR 直接拷贝到调用方（如 `method_a`）的 HIR 里。这一下子就把局面打开了。原本在 `each` 内部不知道该调用哪个 Block，内联后，编译器清楚地看到 `method_a` 传的就是那个特定的 Block。于是，原本动态的 `invokeblock` 指令被替换成了 `InvokeBlockIseqDirect`，整个循环结构也完全暴露出来，变成了可以直接优化的控制流。",
+      "source_name": "bernsteinbear.com",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "ZJIT",
+        "inliner",
+        "Ruby",
+        "JIT"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Inverse factorial improved",
+      "title_zh": "阶乘逆函数算法改进：从二分法到牛顿法",
+      "link": "https://www.johndcook.com/blog/2026/07/28/inverse-factorial-improved/",
+      "pub_date": "2026-07-28T14:11:30.000Z",
+      "summary": "John Cook 改进了两年前实现的阶乘逆函数算法。原实现使用二分法求解 log Γ(y) = log x，新版本改用牛顿法，利用 Stirling 近似提供初值，并利用 log Γ 在正实轴上的凸性保证收敛性。牛顿法使用 digamma 函数作为导数，相比二分法更快。新实现还移除了自动取整逻辑，让用户自行决定取整方式，并允许显式指定收敛容差而非使用 SciPy 默认值。这些改进使算法在处理超大数值时更灵活、更高效。",
+      "source_name": "johndcook.com",
+      "score": 10,
+      "depth": 6,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "factorial",
+        "Newton's method",
+        "gamma function",
+        "numerical optimization"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Does every question mark deserve a Betteridge?",
+      "title_zh": "Betteridge 定律的适用边界与标题党",
+      "link": "https://dynomight.net/betteridge/",
+      "pub_date": "2026-07-28T00:00:00.000Z",
+      "summary": "Betteridge 定律指出任何以问号结尾的标题都可以用“不”来回答，常被用作攻击标题党的武器。文章通过八个问题拆解这一定律的适用边界，指出真正的问题不在于答案是“是”还是“不”，而在于标题是否暗示了一个文章并未证实的有趣可能性。现代互联网奖励过度自信，迫使创作者使用挑衅性标题而非审慎提问，这反而抑制了对复杂问题的全面探讨。标题的核心功能应是准确传达内容，而非迎合注意力经济。",
+      "source_name": "dynomight.net",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "opinion",
+      "keywords": [
+        "Betteridge's law",
+        "titles",
+        "writing",
+        "attention economy"
+      ],
+      "rank": 3
+    }
+  ]
+}
