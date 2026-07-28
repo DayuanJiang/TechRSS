@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 84,
   "total_articles": 2509,
-  "filtered_articles": 15,
+  "filtered_articles": 17,
   "articles": [
+    {
+      "title": "Why npm Dependency Trees Are So Big",
+      "title_zh": "npm 依赖树臃肿的根源：解析策略差异",
+      "link": "https://nesbitt.io/2026/07/28/why-npm-dependency-trees-are-so-big.html",
+      "pub_date": "2026-07-28T10:00:00.000Z",
+      "summary": "## 一句话总结\nnpm 依赖树之所以臃肿，是因为它的解析机制默认用“多副本共存”来消除版本冲突，这移除了库作者维护兼容性的压力，却把巨大的安装体积和安全审计成本甩给了每一个使用者。\n\n### Rails 升级引发的“人肉”协调机制\n在 Ruby 世界里，每次 Rails 大版本升级都会引发一场生态系统的“蝴蝶效应”。当你运行 `bundle update rails` 时，Bundler 会拒绝安装，只要依赖树中有一个 gem 限制了 ActiveSupport 只能使用旧版本。这时候，错误信息会精准地指出是哪个 gem 搞的鬼，用户就会去提 issue。于是，原本与此无关的维护者被迫放宽版本范围并发布新版本。这种机制之所以能运转，是因为 Bundler 强制整个应用共享每个 gem 的单一版本。任何版本约束都是对共享资源的占用，寻找满足所有约束的版本组合在数学上是 NP-complete 问题。如果找不到解，Bundler 就会报错，把冲突摊在桌面上让大家解决。\n\n### npm 的底层逻辑：文件路径即隔离\n那 npm 是怎么做的呢？它完全绕过了“冲突”这个环节，核心原因在于 JavaScript 的模块加载机制。Ruby、Python 和 JVM 通常默认一个进程内只加载一个库版本，而 Node.js 的模块解析是基于文件路径的。只要两个同名包位于不同的 `node_modules` 目录下，它们就是两个完全不同的文件，互不干扰。Node 加载时只看谁离引用它的代码最近。虽然 npm 理论上也可以像 Bundler 那样强制统一版本，但它选择了更省事的方案：当两个包依赖同一个库的不同版本时，npm 直接给它们各装一份。这意味着在 npm 里，版本约束几乎没有成本，你锁死版本也不会导致下游安装失败。\n\n### 没有报错，就没有维护的动力\n这种设计带来一个很有意思的后果：因为永远不会因为版本冲突报错，库作者根本没有动力去维护宽松的依赖范围。你的版本选择永远不会和别人冲突，所以你不需要和其他维护者沟通兼容性问题，也没动力去审视依赖树里到底堆积了什么。这就助长了“微包”习惯，因为依赖一个只有十行代码的包和依赖一个大包一样“免费”。但代价是显而易见的：2017 年的数据显示，npm 的依赖网络已经是七大生态中最大且增长最快的。安装一个平均水平的 npm 包，意味着你要信任 79 个其他包和 39 个维护者。每个重复的副本都会被安装、打包，并增加你需要审计的攻击面。\n\n### 当副本太多导致状态分裂\n当然，多副本共存也不是万能的，一旦涉及到模块级状态就会出问题。每个副本都有自己的单例，如果对象从一个副本传到了另一个副本，`instanceof` 检查就会失败。最著名的例子就是 React，如果一个应用里存在两个 React 副本，Hooks 就会直接挂掉。为了解决这个问题，npm 引入了 `peerDependencies`，声明这个包必须和树的其他部分共享同一个版本。但在很长一段时间里，npm 对此只是给个警告。直到 npm 7 开始强制执行，导致大量的 `ERESOLVE` 错误，用户怨声载道，最后 npm 不得不加了个 `--legacy-peer-deps` 标志把冲突检查关掉。\n\n### Cargo 的双重标准：在严格与宽松间走钢丝\nCargo 的设计则显得更加老练，它实际上同时运行了两套逻辑。在 Semver 兼容的范围内（比如 1.x），它像 Bundler 一样行为：所有依赖 `bitflags` 1.x 的 crate 共享同一个版本。如果无法统一（比如一个锁死 `=1.2.3`，另一个需要更新的补丁），解析器会回溯并报错，而不是安装两份。但一旦遇到不兼容的范围（比如 1.x 和 2.x），它就切换到 npm 模式：让两个版本在同一个构建中共存，互不干扰。加上 caret 语法对 0.x 版本的严格限制，Rust 生态中很大一部分实际上是在享受 npm 式的“宽松”。\n\n### 生态文化的分野：协作 vs 隔离\n这种技术选择深刻塑造了社区文化。在“严格”的一侧，Rust 的基础 crate（如 serde）会常年停留在 1.x，因为破坏性更新会迫使所有依赖者分裂版本。为了平滑过渡，Rust 社区甚至发明了“semver trick”这种通过旧版本 re-export 新版本来欺骗解析器的骚操作。而在“宽松”的一侧，现实数据很残酷：一个基本的 Rocket web 项目可能依赖 172 个 crate，其中 `base64`、`syn` 等库可能同时存在两个不兼容的主版本。说白了，依赖树能长多大，完全取决于解析器允许它长多大。Bundler 靠强制共享倒逼开发者协作，而 npm 靠无限副本把问题藏了起来，直到树大到没人搬得动。",
+      "source_name": "nesbitt.io",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "npm",
+        "dependency resolution",
+        "Cargo",
+        "semver"
+      ],
+      "rank": 1
+    },
     {
       "title": "WorkOS MCP",
       "title_zh": "WorkOS 将 Dashboard 管理能力开放给 AI 代理",
@@ -22,7 +41,7 @@
         "agents",
         "OAuth"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Hiding data in permutations",
@@ -41,7 +60,7 @@
         "cryptography",
         "SymPy"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "The real AI risk is inside the labs",
@@ -60,7 +79,7 @@
         "frontier labs",
         "security"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Counting permutations with roots",
@@ -79,7 +98,26 @@
         "permutations",
         "generating function"
       ],
-      "rank": 4
+      "rank": 5
+    },
+    {
+      "title": "Pluralistic: Discernment (28 Jul 2026)",
+      "title_zh": "AI 依赖判断力，不能取代教师",
+      "link": "https://pluralistic.net/2026/07/28/hitl-ers/",
+      "pub_date": "2026-07-28T10:44:03.000Z",
+      "summary": "LLM 的有用性取决于使用者的领域知识水平。作者以 Terrence Tao 与 ChatGPT 讨论 Jacobian 猜想为例，指出自己作为非数学专家无法判断对话质量——这正是问题所在。如果让不懂某领域的人用 AI 学习该领域，他们无法区分正确输出和错误输出，只会被误导。作者自己使用本地 LLM 做拼写检查，因为他对写作有足够判断力，能识别并拒绝错误建议；而 Microsoft 365 Word 的 AI 建议被他评估为 1:100 的良莠比，接受 10% 就会让作品变差。AI 作为教学工具是危险的，因为学生正在学习过程中，恰恰缺乏判断力。教师可以用 AI 生成试卷（因为他们有判断力验证题目质量），但绝不能让学生直接从 AI 学习。AI 是一项正常技术，有时有用，有时有害，核心原则是：只有具备判断力的专家才能从 LLM 中获得有用信息。用 AI 取代教师就像因为人人都有瘟疫就取消医生一样荒谬。",
+      "source_name": "pluralistic.net",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "opinion",
+      "keywords": [
+        "LLM",
+        "discernment",
+        "education",
+        "hallucination"
+      ],
+      "rank": 6
     },
     {
       "title": "Making an agile version of a Windows Runtime delegate in C++/WinRT, part 6",
@@ -98,7 +136,7 @@
         "deleter",
         "Windows Runtime"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Can the Tide of AI Investment Life All Boats on the Web?",
@@ -117,7 +155,7 @@
         "accessibility",
         "assistive technology"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "moonshotai/Kimi-K3",
@@ -136,7 +174,26 @@
         "license",
         "Moonshot AI"
       ],
-      "rank": 7
+      "rank": 9
+    },
+    {
+      "title": "IBM PS/2 E: The first Energy Star computer",
+      "title_zh": "IBM PS/2 E：首款 Energy Star 电脑",
+      "link": "https://dfarq.homeip.net/ibm-ps-2-e-the-first-energy-star-computer/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=ibm-ps-2-e-the-first-energy-star-computer",
+      "pub_date": "2026-07-28T11:00:46.000Z",
+      "summary": "IBM 于 1993 年 6 月 29 日推出首款 Energy Star 认证电脑 PS/2 E，功耗仅 24 瓦，无需风扇，体积为 305mm x 305mm x 70mm。为实现低功耗，IBM 采用了混合技术方案，包括从 ThinkPad 笔记本借用技术，使用 486SLC2 处理器（50MHz、16KB L1 缓存、16 位内存总线）、ISA 总线而非 Microchannel、无二级缓存。该机配备 3.5 英寸软驱、2.5 英寸 IDE 硬盘（123MB）、单个 ISA 插槽或 PCMCIA 扩展卡。PS/2 E 可运行 DOS 5.02 和 Windows 3.1 或 OS/2 2.1，但性能落后于同期 486DX2 机器约 50%，且难以运行 Windows NT 等 32 位操作系统。IBM 在 1993 年下半年售出约 25,000 台后停产。Infoworld 1994 年测试显示，PS/2 E 虽功耗最低，但其他 Energy Star 兼容 PC 价格低 500 美元且性能快近 50%，导致其市场竞争力不足。",
+      "source_name": "dfarq.homeip.net",
+      "score": 9,
+      "depth": 5,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "Energy Star",
+        "IBM PS/2",
+        "486SLC2",
+        "power consumption"
+      ],
+      "rank": 10
     },
     {
       "title": "Printing floating point numbers in binary",
@@ -155,7 +212,7 @@
         "hex",
         "Python"
       ],
-      "rank": 8
+      "rank": 11
     },
     {
       "title": "An opinionated guide to which AI to use to do stuff",
@@ -174,7 +231,26 @@
         "Claude",
         "computer access"
       ],
-      "rank": 9
+      "rank": 12
+    },
+    {
+      "title": "Google Calendar \"Unable to launch event\" - caused by missing DTSTAMP",
+      "title_zh": "Google Calendar 导入失败因缺少 DTSTAMP",
+      "link": "https://shkspr.mobi/blog/2026/07/google-calendar-unable-to-launch-event-caused-by-missing-dtstamp/",
+      "pub_date": "2026-07-28T11:34:15.000Z",
+      "summary": "Google Calendar 在导入 .ics 日历邀请时出现 \"Unable to launch event\" 错误，根本原因是文件缺少 DTSTAMP 属性。作者通过 iCal validator 验证了数十个损坏的邀请文件，发现它们都缺失了 RFC5545 规范中强制要求的 DTSTAMP 字段。添加该字段后，Google Calendar 即可正常导入。损坏的文件在 iOS 设备和部分 Android 日历应用中可以正常工作，但始终在 Google Calendar 中失败。Google 官方文档对 iCal 格式的说明过于模糊，未明确列出必需的事件详情字段，且缺乏有效的产品反馈渠道。",
+      "source_name": "shkspr.mobi",
+      "score": 8,
+      "depth": 4,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "iCal",
+        "Google Calendar",
+        "DTSTAMP",
+        "RFC5545"
+      ],
+      "rank": 13
     },
     {
       "title": "★ Ads in Software Are Like Stickers on Laptops",
@@ -193,7 +269,7 @@
         "ads",
         "product design"
       ],
-      "rank": 10
+      "rank": 14
     },
     {
       "title": "[Sponsor] Introducing Agent Fone",
@@ -212,7 +288,7 @@
         "personal AI",
         "app generation"
       ],
-      "rank": 11
+      "rank": 15
     },
     {
       "title": "‘Always Choose the Good Soap’",
@@ -231,7 +307,7 @@
         "ads",
         "user experience"
       ],
-      "rank": 12
+      "rank": 16
     },
     {
       "title": "Fa Fa",
@@ -249,7 +325,7 @@
         "browser",
         "habit"
       ],
-      "rank": 13
+      "rank": 17
     }
   ]
 }
