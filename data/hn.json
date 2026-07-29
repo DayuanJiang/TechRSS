@@ -1,6 +1,1642 @@
 {
-  "updatedAt": "2026-07-29T07:46:53.695Z",
+  "updatedAt": "2026-07-29T10:44:03.137Z",
   "items": [
+    {
+      "id": 49085666,
+      "by": "garyhtou",
+      "title": "Zig's Incremental Compilation Internals",
+      "url": "https://mlugg.co.uk/posts/incremental-compilation-internals/",
+      "score": 244,
+      "detailUpdatedAt": 1785318200,
+      "createdAt": 1785255019,
+      "aiSummaryUpdatedAt": 1785318622,
+      "aisummary": {
+        "chinese_title": "Zig 增量编译内核：语义缓存、单编译单元与 Rust/内存安全争论",
+        "emoji": "🤔",
+        "sarcastic_question": "编译器都快了，还要先开Rust圣战吗？"
+      },
+      "classifications": {
+        "topics": [
+          4,
+          6
+        ],
+        "facets": [
+          5
+        ],
+        "tags": [
+          "Zig",
+          "incremental compilation",
+          "Rust",
+          "LLVM",
+          "GHC",
+          "Haskell",
+          "C"
+        ]
+      },
+      "classificationsUpdatedAt": 1785259554,
+      "aiSummary": {
+        "chinese_title": "Zig 增量编译内核：语义缓存、单编译单元与 Rust/内存安全争论",
+        "emoji": "🤔",
+        "sarcastic_question": "编译器都快了，还要先开Rust圣战吗？"
+      },
+      "detail": {
+        "id": 49085666,
+        "by": "garyhtou",
+        "title": "Zig's Incremental Compilation Internals",
+        "url": "https://mlugg.co.uk/posts/incremental-compilation-internals/",
+        "score": 141,
+        "detailUpdatedAt": 1785273196,
+        "createdAt": 1785255019,
+        "aiSummaryUpdatedAt": 1785273932,
+        "aisummary": {
+          "chinese_title": "Zig 增量编译：debug 版限制与 Rust 安全争论",
+          "discussion_overview": [
+            {
+              "category": "Zig 设计为增量编译而生",
+              "summary": "评论者普遍认可 Zig 的工具链工作，尤其是把编译器内部结构朝着更容易做 incremental compilation 的方向调整。有人指出 semantic analysis 是最难增量化的部分，因此语言设计本身会直接影响能否把改动局部化；Zig 这些年对设计做出的取舍，正是为了让这件事更可行。也有人提到 Rust 其实也有增量编译，但在一个已成熟的大型 codebase 上继续重构到更彻底的模型非常困难。GHC（Glasgow Haskell Compiler，Haskell 编译器）的文件级增量被反复拿来作为可借鉴的参考。",
+              "supportid": [
+                "49086705",
+                "49086956",
+                "49087037"
+              ]
+            },
+            {
+              "category": "Rust 慢编译更多来自架构而非安全检查",
+              "summary": "不少人反对把 Rust 的慢编译简单归因于安全检查，认为真正拖慢的是 proc macros、name resolution、monomorphized generics，以及先产出 library 再链接成 binary 的传统流水线。proc macros 因为可能带副作用，即使做 incremental compilation 也常常要反复展开；而很多中间产物最后又会被丢弃，造成大量无用工作。有人提出 hint-mostly-unused、gc-sections、按需编译或更细的阶段划分，希望把“只编译最终需要的东西”做得更彻底。也有人说 C++ 的 REPL、hot reloading 和 binary libraries 说明更快的迭代并非幻想，只是 Rust 目前没有把它放在首要目标里。",
+              "supportid": [
+                "49086755",
+                "49086769",
+                "49087034",
+                "49087153",
+                "49087612",
+                "49087275",
+                "49088050",
+                "49088630",
+                "49087260"
+              ]
+            },
+            {
+              "category": "memory safety 的门槛之争",
+              "summary": "围绕 memory safety 的争论几乎成了主线：一边认为真正重要的是能否把 safe code 和 unsafe escape hatch 明确分开，因此 Rust、Java 这类语言更像是有清晰边界的安全语言，而 Zig/C 没有这种分界。另一边则反对把某一种妥协说成 table stakes，认为不同程序对低级控制、复杂度、编译时间和可验证性的取舍完全不同，Zig 的空间安全提升也有现实价值。Fil-C（一个试图用运行时检查提升 C 安全性的项目）被拿来反复比较，有人认可方向，有人批评它把“runtime trap”和“compile-time prevention”混为一谈，并且宣传方式带有对立情绪。还有人指出它目前更像 engineering demo，离可直接上生产还有距离。",
+              "supportid": [
+                "49087137",
+                "49087230",
+                "49087186",
+                "49087290",
+                "49087483",
+                "49087726",
+                "49087952",
+                "49088315",
+                "49089357",
+                "49088033",
+                "49088294",
+                "49089847"
+              ]
+            },
+            {
+              "category": "当前只覆盖自托管 debug 后端",
+              "summary": "当前版本的限制也被多次提醒：这套 incremental compilation 只作用于 Zig 的 self-hosted codegen backend，而且还没有完整 optimization passes，所以现在基本只覆盖 debug builds。评论里提到 interprocedural 优化，尤其是 inlining，会天然削弱增量编译的收益，因此即使未来扩展到 release builds，也很可能只能开放部分优化。混合 C/Zig 项目目前不对 C 源码提供同等缓存，因为 Zig 只缓存 Zig AIR，不保存 C 的编译信息。关于 C 编译本身，讨论提到 arocc/translate-c 和逐步摆脱 LLVM 依赖的计划，但这些路线还没有完全定型。",
+              "supportid": [
+                "49086148",
+                "49086793",
+                "49086355",
+                "49086988",
+                "49087554",
+                "49088036",
+                "49089188",
+                "49089538",
+                "49086354"
+              ]
+            },
+            {
+              "category": "共享库方案与二进制 patching 权衡",
+              "summary": "有人对文章里的巨大 debug binary 设计提出异议，觉得更简单的办法是拆成很多小 shared libraries，再由主程序链接。支持者担心这样更不容易因为 ctrl+C、patch 失败或主二进制损坏而出问题，并且更符合递进式构建的思路。反对者则用实测提醒，shared library 太多会让 dynamic linker 开销迅速上升：1000 个库的启动时间已经明显变差，100 个也不算轻。最终大家更倾向于把它当成工程权衡，而不是一个可以无成本替换的架构。",
+              "supportid": [
+                "49087883",
+                "49088119",
+                "49088111"
+              ]
+            },
+            {
+              "category": "编译速度本身就是生产力",
+              "summary": "很多人借这个话题重申 compilation speed 本身就是长期被低估的生产力因素。有人回忆 Java 当年能吸引大量 C++ 开发者，重要原因之一就是编译更快、迭代更顺；Go 的存在也常被概括为对快速编译的追求。还有人提到 Modula-2 和 Object Pascal 之所以令人怀念，除了语言特性，编译器跑得快也是关键。这个角度把 Zig 的工作看成一种把开发体验重新摆上台面的工程实践。",
+              "supportid": [
+                "49086505",
+                "49087753",
+                "49087282",
+                "49086995"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "incremental compilation",
+              "explanation": "增量编译，只重新编译受改动影响的部分，以缩短反馈周期。"
+            },
+            {
+              "term": "semantic analysis",
+              "explanation": "语义分析，编译器解析名字、类型和作用域关系的阶段，最难做成增量化之一。"
+            },
+            {
+              "term": "proc macros",
+              "explanation": "Rust 的过程宏，能在编译期运行代码并生成或改写 AST，灵活但常影响编译速度。"
+            },
+            {
+              "term": "borrow checking",
+              "explanation": "Rust 的借用检查，用静态分析约束引用、生命周期和别名，防止许多内存错误。"
+            },
+            {
+              "term": "unsafe blocks",
+              "explanation": "Rust 中显式标记的不安全代码区域，用来隔离需要绕过静态检查的操作。"
+            },
+            {
+              "term": "Zig AIR",
+              "explanation": "Zig 的抽象中间表示（Abstract Intermediate Representation），用于缓存和复用编译信息。"
+            },
+            {
+              "term": "comptime",
+              "explanation": "Zig 的编译期执行机制，允许在编译阶段运行代码并生成结果。"
+            },
+            {
+              "term": "monomorphized generics",
+              "explanation": "泛型单态化，把泛型按具体类型展开成专门代码，常增加编译和代码生成成本。"
+            },
+            {
+              "term": "inlining",
+              "explanation": "内联，把函数体展开到调用处；有利于性能，但会削弱增量编译的复用效果。"
+            },
+            {
+              "term": "LLVM",
+              "explanation": "常用的编译器后端/基础设施，功能强但会让自托管和增量流程更复杂。"
+            }
+          ],
+          "context": "这篇讨论围绕 Zig（一个强调显式控制和高性能的系统编程语言）的 incremental compilation 内部实现展开，核心是缓存 Zig AIR（Zig 的抽象中间表示）并尽量把语义分析局部化。评论区很快把话题扩展到 Rust（强调 memory safety 的系统编程语言）和 Java（JVM 语言）的编译速度与安全模型对比，争论焦点从“能编译多快”变成“安全边界怎么定义”。有人补充说 Rust 的慢编译主要来自 proc macros、monomorphized generics 和传统 library/binary 流水线，而不是安全检查本身；也有人指出 Zig 目前主要只在 self-hosted 后端和 debug builds 上可用，release 优化、C 混编和更完整的后端支持还在推进。对比里还反复提到 GHC（Glasgow Haskell Compiler，Haskell 编译器）的文件级增量、LLVM（常用编译器后端）和 Fil-C（试图提升 C 安全性的项目）等背景。",
+          "emoji": "🤔",
+          "sarcastic_question": "编译都慢成这样了，还指望谁耐心等你优雅？"
+        },
+        "classifications": {
+          "topics": [
+            4,
+            6
+          ],
+          "facets": [
+            5
+          ],
+          "tags": [
+            "Zig",
+            "incremental compilation",
+            "Rust",
+            "LLVM",
+            "GHC",
+            "Haskell",
+            "C"
+          ]
+        },
+        "classificationsUpdatedAt": 1785259554,
+        "aiSummary": {
+          "chinese_title": "Zig 增量编译：debug 版限制与 Rust 安全争论",
+          "discussion_overview": [
+            {
+              "category": "Zig 设计为增量编译而生",
+              "summary": "评论者普遍认可 Zig 的工具链工作，尤其是把编译器内部结构朝着更容易做 incremental compilation 的方向调整。有人指出 semantic analysis 是最难增量化的部分，因此语言设计本身会直接影响能否把改动局部化；Zig 这些年对设计做出的取舍，正是为了让这件事更可行。也有人提到 Rust 其实也有增量编译，但在一个已成熟的大型 codebase 上继续重构到更彻底的模型非常困难。GHC（Glasgow Haskell Compiler，Haskell 编译器）的文件级增量被反复拿来作为可借鉴的参考。",
+              "supportid": [
+                "49086705",
+                "49086956",
+                "49087037"
+              ]
+            },
+            {
+              "category": "Rust 慢编译更多来自架构而非安全检查",
+              "summary": "不少人反对把 Rust 的慢编译简单归因于安全检查，认为真正拖慢的是 proc macros、name resolution、monomorphized generics，以及先产出 library 再链接成 binary 的传统流水线。proc macros 因为可能带副作用，即使做 incremental compilation 也常常要反复展开；而很多中间产物最后又会被丢弃，造成大量无用工作。有人提出 hint-mostly-unused、gc-sections、按需编译或更细的阶段划分，希望把“只编译最终需要的东西”做得更彻底。也有人说 C++ 的 REPL、hot reloading 和 binary libraries 说明更快的迭代并非幻想，只是 Rust 目前没有把它放在首要目标里。",
+              "supportid": [
+                "49086755",
+                "49086769",
+                "49087034",
+                "49087153",
+                "49087612",
+                "49087275",
+                "49088050",
+                "49088630",
+                "49087260"
+              ]
+            },
+            {
+              "category": "memory safety 的门槛之争",
+              "summary": "围绕 memory safety 的争论几乎成了主线：一边认为真正重要的是能否把 safe code 和 unsafe escape hatch 明确分开，因此 Rust、Java 这类语言更像是有清晰边界的安全语言，而 Zig/C 没有这种分界。另一边则反对把某一种妥协说成 table stakes，认为不同程序对低级控制、复杂度、编译时间和可验证性的取舍完全不同，Zig 的空间安全提升也有现实价值。Fil-C（一个试图用运行时检查提升 C 安全性的项目）被拿来反复比较，有人认可方向，有人批评它把“runtime trap”和“compile-time prevention”混为一谈，并且宣传方式带有对立情绪。还有人指出它目前更像 engineering demo，离可直接上生产还有距离。",
+              "supportid": [
+                "49087137",
+                "49087230",
+                "49087186",
+                "49087290",
+                "49087483",
+                "49087726",
+                "49087952",
+                "49088315",
+                "49089357",
+                "49088033",
+                "49088294",
+                "49089847"
+              ]
+            },
+            {
+              "category": "当前只覆盖自托管 debug 后端",
+              "summary": "当前版本的限制也被多次提醒：这套 incremental compilation 只作用于 Zig 的 self-hosted codegen backend，而且还没有完整 optimization passes，所以现在基本只覆盖 debug builds。评论里提到 interprocedural 优化，尤其是 inlining，会天然削弱增量编译的收益，因此即使未来扩展到 release builds，也很可能只能开放部分优化。混合 C/Zig 项目目前不对 C 源码提供同等缓存，因为 Zig 只缓存 Zig AIR，不保存 C 的编译信息。关于 C 编译本身，讨论提到 arocc/translate-c 和逐步摆脱 LLVM 依赖的计划，但这些路线还没有完全定型。",
+              "supportid": [
+                "49086148",
+                "49086793",
+                "49086355",
+                "49086988",
+                "49087554",
+                "49088036",
+                "49089188",
+                "49089538",
+                "49086354"
+              ]
+            },
+            {
+              "category": "共享库方案与二进制 patching 权衡",
+              "summary": "有人对文章里的巨大 debug binary 设计提出异议，觉得更简单的办法是拆成很多小 shared libraries，再由主程序链接。支持者担心这样更不容易因为 ctrl+C、patch 失败或主二进制损坏而出问题，并且更符合递进式构建的思路。反对者则用实测提醒，shared library 太多会让 dynamic linker 开销迅速上升：1000 个库的启动时间已经明显变差，100 个也不算轻。最终大家更倾向于把它当成工程权衡，而不是一个可以无成本替换的架构。",
+              "supportid": [
+                "49087883",
+                "49088119",
+                "49088111"
+              ]
+            },
+            {
+              "category": "编译速度本身就是生产力",
+              "summary": "很多人借这个话题重申 compilation speed 本身就是长期被低估的生产力因素。有人回忆 Java 当年能吸引大量 C++ 开发者，重要原因之一就是编译更快、迭代更顺；Go 的存在也常被概括为对快速编译的追求。还有人提到 Modula-2 和 Object Pascal 之所以令人怀念，除了语言特性，编译器跑得快也是关键。这个角度把 Zig 的工作看成一种把开发体验重新摆上台面的工程实践。",
+              "supportid": [
+                "49086505",
+                "49087753",
+                "49087282",
+                "49086995"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "incremental compilation",
+              "explanation": "增量编译，只重新编译受改动影响的部分，以缩短反馈周期。"
+            },
+            {
+              "term": "semantic analysis",
+              "explanation": "语义分析，编译器解析名字、类型和作用域关系的阶段，最难做成增量化之一。"
+            },
+            {
+              "term": "proc macros",
+              "explanation": "Rust 的过程宏，能在编译期运行代码并生成或改写 AST，灵活但常影响编译速度。"
+            },
+            {
+              "term": "borrow checking",
+              "explanation": "Rust 的借用检查，用静态分析约束引用、生命周期和别名，防止许多内存错误。"
+            },
+            {
+              "term": "unsafe blocks",
+              "explanation": "Rust 中显式标记的不安全代码区域，用来隔离需要绕过静态检查的操作。"
+            },
+            {
+              "term": "Zig AIR",
+              "explanation": "Zig 的抽象中间表示（Abstract Intermediate Representation），用于缓存和复用编译信息。"
+            },
+            {
+              "term": "comptime",
+              "explanation": "Zig 的编译期执行机制，允许在编译阶段运行代码并生成结果。"
+            },
+            {
+              "term": "monomorphized generics",
+              "explanation": "泛型单态化，把泛型按具体类型展开成专门代码，常增加编译和代码生成成本。"
+            },
+            {
+              "term": "inlining",
+              "explanation": "内联，把函数体展开到调用处；有利于性能，但会削弱增量编译的复用效果。"
+            },
+            {
+              "term": "LLVM",
+              "explanation": "常用的编译器后端/基础设施，功能强但会让自托管和增量流程更复杂。"
+            }
+          ],
+          "context": "这篇讨论围绕 Zig（一个强调显式控制和高性能的系统编程语言）的 incremental compilation 内部实现展开，核心是缓存 Zig AIR（Zig 的抽象中间表示）并尽量把语义分析局部化。评论区很快把话题扩展到 Rust（强调 memory safety 的系统编程语言）和 Java（JVM 语言）的编译速度与安全模型对比，争论焦点从“能编译多快”变成“安全边界怎么定义”。有人补充说 Rust 的慢编译主要来自 proc macros、monomorphized generics 和传统 library/binary 流水线，而不是安全检查本身；也有人指出 Zig 目前主要只在 self-hosted 后端和 debug builds 上可用，release 优化、C 混编和更完整的后端支持还在推进。对比里还反复提到 GHC（Glasgow Haskell Compiler，Haskell 编译器）的文件级增量、LLVM（常用编译器后端）和 Fil-C（试图提升 C 安全性的项目）等背景。",
+          "emoji": "🤔",
+          "sarcastic_question": "编译都慢成这样了，还指望谁耐心等你优雅？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nZig 通过精细的依赖图追踪和直接二进制热补丁，将增量编译的耗时压缩到了毫秒级，让大型项目的代码修改能像脚本语言一样即时生效。\n\n### 毫秒级重构并非魔法，而是架构设计的红利\nZig 团队最近把增量编译从概念验证变成了日常可用的生产力工具。简单来说，当你修改代码时，编译器不再傻傻地重编整个项目，而是精准定位变动的函数，重新编译后直接把机器码“补丁”进二进制文件里。效果非常惊人：在一个名为 Fizzy 的像素编辑器项目上，初次构建耗时 5 秒，但随后的每一次代码修改，重编都在 50–70ms 内完成。这种体验目前需要 Zig 的 `master` 分支（0.17.0 才会合并进正式版），因为它依赖一些最新的 Linker 特性。\n\n### 文件处理阶段：利用纯函数特性实现极速缓存\n编译的第一阶段是处理源文件，包括 Parse 和 AstGen，产出 ZIR（Zig Intermediate Representation）。这部分的优化思路很直接：因为每个文件的处理都是“纯函数”，不依赖外部状态，所以天然适合并行。更重要的是，得益于 Zig 的 Data-oriented design，ZIR 可以直接通过 `writev/readv` 系统调用读写磁盘，根本不需要复杂的序列化过程。这意味着我们可以轻松地把 ZIR 缓存在磁盘上，下次编译时只处理文件哈希变化的部分。这也是为什么很多用户感觉 Zig 只有第一次编译慢，后续几乎秒开。\n\n### 语义分析：增量编译最难啃的骨头\n真正的挑战在于语义分析，也就是类型检查和 `comptime` 求值。这是编译器最复杂的部分，也是 Zig 语言设计为了迁就增量编译而做过特殊调整的地方。核心思路是把编译工作拆解成独立的“分析单元”，比如 struct 的内存布局、变量的类型、const 的值或者函数体。这些单元之间通过依赖图连接，比如函数体依赖它用到的全局变量的类型。只要搞清楚谁依赖谁，当某个源码变更时，我们就能顺着图精准地找到哪些单元需要重新分析，而不是牵一发而动全身。\n\n### 依赖图如何精准定位“脏”数据\n为了实现这种精准定位，Zig 不仅记录单元间的依赖，还记录单元对“源码区域”的依赖。ZIR 会为每个声明生成哈希值，分析单元就依赖这些哈希。比如你把 `const lucky_number = 42` 改成 `43`，编译器会发现对应的源码哈希变了，于是标记依赖它的单元失效。接着，编译器重新分析这个常量的值，发现值确实变了，再继续顺着图标记依赖这个值的函数体（如 `testLuck` 和 `getSomething`）为失效。这种级联更新非常高效，只会在真正受影响的代码路径上传播。\n\n### 代码生成：从 AIR 到 MIR 的并行转化\n语义分析完成后产出 AIR，下一步就是代码生成，将其转化为接近机器指令的 MIR。好消息是，这一步和文件处理一样，也是“令人尴尬的并行”。只要不涉及跨函数优化（如内联），不同函数的代码生成之间完全不共享状态。我们可以把需要处理的函数扔进线程池队列，并行跑满所有 CPU 核心。当然，这里有个小细节需要注意控制队列大小，防止内存占用爆炸，但整体架构非常适合增量更新。\n\n### 最终目标：直接修改内存中的二进制文件\n虽然原文在代码生成部分截断了，但结合开头提到的“patch the resulting bytes into the output binary”，我们可以推导出最后一步：Linker 的增量更新。传统的增量编译可能只是重生成对象文件，但 Zig 的做法更激进——它直接在内存中修改已有的二进制输出。因为前面的步骤已经保证了只有极少数函数的机器码发生了变化，所以直接替换这些字节段是可行的。这省去了重新链接的巨大开销，也是 Zig 能把重编时间控制在几十毫秒内的关键秘诀。"
+    },
+    {
+      "id": 49091379,
+      "by": "phil294",
+      "title": "ReFrame – The EPaper Camera",
+      "url": "https://reframe.camera/",
+      "score": 123,
+      "detailUpdatedAt": 1785316398,
+      "createdAt": 1785285621,
+      "aiSummaryUpdatedAt": 1785318310,
+      "aisummary": {
+        "chinese_title": "ReFrame 电子纸相机：15 秒显影、抖动美学与“少功能”之争",
+        "emoji": "🎞️",
+        "sarcastic_question": "把相机做得更弱，真的叫创新吗，还是卖怀旧？"
+      },
+      "classifications": {
+        "topics": [
+          7,
+          11
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "ReFrame",
+          "EPaper",
+          "e-ink",
+          "dithering",
+          "camera",
+          "Polaroid"
+        ]
+      },
+      "classificationsUpdatedAt": 1785293741,
+      "aiSummary": {
+        "chinese_title": "ReFrame 电子纸相机：15 秒显影、抖动美学与“少功能”之争",
+        "emoji": "🎞️",
+        "sarcastic_question": "把相机做得更弱，真的叫创新吗，还是卖怀旧？"
+      },
+      "detail": {
+        "id": 49091379,
+        "by": "phil294",
+        "title": "ReFrame – The EPaper Camera",
+        "url": "https://reframe.camera/",
+        "score": 123,
+        "detailUpdatedAt": 1785316398,
+        "createdAt": 1785285621,
+        "aiSummaryUpdatedAt": 1785318310,
+        "aisummary": {
+          "chinese_title": "ReFrame 电子纸相机：15 秒显影、抖动美学与“少功能”之争",
+          "discussion_overview": [
+            {
+              "category": "艺术化限制与怀旧体验",
+              "summary": "很多人喜欢这个概念，哪怕它在实用性上很不划算。15 秒显影、一次只拍一张、没有即时预览，让它更像 digital Polaroid，也把拍摄节奏强行放慢。有人认为这种约束会让人更认真构图，少拍但更有意识，而且它还是 open source。还有人把它和低保真、老式游戏画面、低技术设备的怀旧感联系起来，甚至设想把这种噪点纹理拿去做 motion graphics 或 music visualizer。",
+              "supportid": [
+                "49095097",
+                "49092606",
+                "49092018",
+                "49092048",
+                "49092223",
+                "49093010",
+                "49093459"
+              ]
+            },
+            {
+              "category": "dithering 与画质算法优化",
+              "summary": "讨论另一焦点是图像处理本身，尤其是 dithering 是否做得足够好。有评论认为在 color e-paper 上还能通过更好的抖动算法减少噪点，或者尝试不同的 color space conversion。也有人想先看未加 dithering 的原图，判断到底是算法本身、色彩映射还是屏幕限制导致了那种颗粒感。相关链接把这种效果和 newspaper halftone、低保真 JPEG、以及专门做抖动风格的图像项目放在一起比较。",
+              "supportid": [
+                "49093696",
+                "49092842",
+                "49093782"
+              ]
+            },
+            {
+              "category": "硬件体验：续航、取景与显示行为",
+              "summary": "也有很多人从硬件体验角度提问题。因为照片要等大约 15 秒才“显影”，又没有 live preview，大家觉得一个 optical viewfinder 会更实用。续航、电池消耗和长时间拍摄时的散热表现被反复追问，说明这台机器更像是一个要背出门的原型而不是纯概念演示。ePaper 在断电后还能保留画面、以及有人把 color e-ink 当成更适合孩子、刺激更低的屏幕，也被视为这个设计的加分点。",
+              "supportid": [
+                "49095005",
+                "49093173",
+                "49092652",
+                "49093855",
+                "49092163",
+                "49092212"
+              ]
+            },
+            {
+              "category": "质疑“降级设备”与艺术性反驳",
+              "summary": "最直接的反对意见是：把设备故意做得更弱，最后是不是只是在制造 e-waste。支持者则把这种做法解释为艺术上的 restriction，认为黑白绘画、极简主义、低保真录音和各种“给自己加限制”的创作方式都很常见。还有人指出，很多人手里其实都有历史上最强的相机，却只拿来拍平庸照片；让工具改变使用习惯，本身就可能有价值。因此争论的核心不是参数，而是创作工具到底该追求效率，还是追求一种被限制后的新体验。",
+              "supportid": [
+                "49091990",
+                "49092587",
+                "49092843",
+                "49094904",
+                "49094201"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "dithering（抖动）",
+              "explanation": "用有限颜色或灰阶通过点阵噪点模拟更丰富层次的图像处理方法。"
+            },
+            {
+              "term": "ePaper / e-ink（电子纸 / 电子墨水屏）",
+              "explanation": "一种低功耗显示技术，断电后也能保留画面，常见于阅读器和这类相机。"
+            },
+            {
+              "term": "lo-fi（低保真）",
+              "explanation": "故意保留噪点、失真或简化细节，以换取风格、情绪或创作空间。"
+            }
+          ],
+          "context": "ReFrame 是一款把拍到的照片显示在 ePaper（电子纸/电子墨水屏）上的相机，照片会经过约 15 秒处理后才逐步显现，而且屏幕在断电后仍会保留图像，直到拍下一张才被刷新。它把拍照体验刻意做慢、做少，像把 digital Polaroid 和胶片时代的等待感搬回数码时代，因此很容易引出“限制是否能激发创作”的讨论。评论里反复提到 dithering（抖动）、lo-fi（低保真）和 color space conversion（色彩空间转换），因为这种屏幕本身就会放大图像处理和显示方式的重要性。这个话题也和极简主义、低刺激界面、以及把通用设备改造成有明确风格的创作工具有关。",
+          "emoji": "🎞️",
+          "sarcastic_question": "把相机做得更弱，真的叫创新吗，还是卖怀旧？"
+        },
+        "classifications": {
+          "topics": [
+            7,
+            11
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "ReFrame",
+            "EPaper",
+            "e-ink",
+            "dithering",
+            "camera",
+            "Polaroid"
+          ]
+        },
+        "classificationsUpdatedAt": 1785293741,
+        "aiSummary": {
+          "chinese_title": "ReFrame 电子纸相机：15 秒显影、抖动美学与“少功能”之争",
+          "discussion_overview": [
+            {
+              "category": "艺术化限制与怀旧体验",
+              "summary": "很多人喜欢这个概念，哪怕它在实用性上很不划算。15 秒显影、一次只拍一张、没有即时预览，让它更像 digital Polaroid，也把拍摄节奏强行放慢。有人认为这种约束会让人更认真构图，少拍但更有意识，而且它还是 open source。还有人把它和低保真、老式游戏画面、低技术设备的怀旧感联系起来，甚至设想把这种噪点纹理拿去做 motion graphics 或 music visualizer。",
+              "supportid": [
+                "49095097",
+                "49092606",
+                "49092018",
+                "49092048",
+                "49092223",
+                "49093010",
+                "49093459"
+              ]
+            },
+            {
+              "category": "dithering 与画质算法优化",
+              "summary": "讨论另一焦点是图像处理本身，尤其是 dithering 是否做得足够好。有评论认为在 color e-paper 上还能通过更好的抖动算法减少噪点，或者尝试不同的 color space conversion。也有人想先看未加 dithering 的原图，判断到底是算法本身、色彩映射还是屏幕限制导致了那种颗粒感。相关链接把这种效果和 newspaper halftone、低保真 JPEG、以及专门做抖动风格的图像项目放在一起比较。",
+              "supportid": [
+                "49093696",
+                "49092842",
+                "49093782"
+              ]
+            },
+            {
+              "category": "硬件体验：续航、取景与显示行为",
+              "summary": "也有很多人从硬件体验角度提问题。因为照片要等大约 15 秒才“显影”，又没有 live preview，大家觉得一个 optical viewfinder 会更实用。续航、电池消耗和长时间拍摄时的散热表现被反复追问，说明这台机器更像是一个要背出门的原型而不是纯概念演示。ePaper 在断电后还能保留画面、以及有人把 color e-ink 当成更适合孩子、刺激更低的屏幕，也被视为这个设计的加分点。",
+              "supportid": [
+                "49095005",
+                "49093173",
+                "49092652",
+                "49093855",
+                "49092163",
+                "49092212"
+              ]
+            },
+            {
+              "category": "质疑“降级设备”与艺术性反驳",
+              "summary": "最直接的反对意见是：把设备故意做得更弱，最后是不是只是在制造 e-waste。支持者则把这种做法解释为艺术上的 restriction，认为黑白绘画、极简主义、低保真录音和各种“给自己加限制”的创作方式都很常见。还有人指出，很多人手里其实都有历史上最强的相机，却只拿来拍平庸照片；让工具改变使用习惯，本身就可能有价值。因此争论的核心不是参数，而是创作工具到底该追求效率，还是追求一种被限制后的新体验。",
+              "supportid": [
+                "49091990",
+                "49092587",
+                "49092843",
+                "49094904",
+                "49094201"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "dithering（抖动）",
+              "explanation": "用有限颜色或灰阶通过点阵噪点模拟更丰富层次的图像处理方法。"
+            },
+            {
+              "term": "ePaper / e-ink（电子纸 / 电子墨水屏）",
+              "explanation": "一种低功耗显示技术，断电后也能保留画面，常见于阅读器和这类相机。"
+            },
+            {
+              "term": "lo-fi（低保真）",
+              "explanation": "故意保留噪点、失真或简化细节，以换取风格、情绪或创作空间。"
+            }
+          ],
+          "context": "ReFrame 是一款把拍到的照片显示在 ePaper（电子纸/电子墨水屏）上的相机，照片会经过约 15 秒处理后才逐步显现，而且屏幕在断电后仍会保留图像，直到拍下一张才被刷新。它把拍照体验刻意做慢、做少，像把 digital Polaroid 和胶片时代的等待感搬回数码时代，因此很容易引出“限制是否能激发创作”的讨论。评论里反复提到 dithering（抖动）、lo-fi（低保真）和 color space conversion（色彩空间转换），因为这种屏幕本身就会放大图像处理和显示方式的重要性。这个话题也和极简主义、低刺激界面、以及把通用设备改造成有明确风格的创作工具有关。",
+          "emoji": "🎞️",
+          "sarcastic_question": "把相机做得更弱，真的叫创新吗，还是卖怀旧？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nreFrame 是一台基于 Raspberry Pi Zero 和彩色 ePaper 屏幕的开源相机，它通过 15 秒的物理显影过程，强迫你把每一次快门都当成一次不可撤销的郑重创作。\n\n### 用物理限制对抗“快门泛滥”\n现在的数码相机太方便了，按一下就是几百张，结果就是没人愿意回头看。reFrame 想解决这个问题，它的核心思路是“慢”。这玩意儿装了一块 4 英寸的 eInk Spectra 6 彩色电子纸屏幕，只有六个原色。因为屏幕本身刷新慢，作者干脆顺势而为，把它设计成一次只能存一张图的相机。这种设计不是为了省电，而是为了让你在按下快门前多想几秒——毕竟屏幕上那张图，除非你拍新的，否则它就永远在那儿。\n\n### 像报纸网点一样的数字显影\n电子纸只有六种颜色，要显示彩色照片怎么办？这就用到了抖动算法。照片在显示前会被处理成类似报纸半调网点或者老游戏画面的风格。有意思的地方在于，这个过程不是瞬间完成的。按下快门后，你需要等 15 秒。屏幕利用电荷物理移动墨水粒子，你会看着颜色一点点浮现出来，就像看着一张拍立得慢慢显影。这种视觉反馈本身就是体验的一部分，给照片增加了一种独特的“印刷质感”。\n\n### 关机也不丢图的电子相框\nePaper 的特性是断电后画面依然保持。这意味着 reFrame 不用的时候，就是一台完美的桌面相框。你拍的最后一张照片会一直停留在屏幕上，不需要任何电力维持。作者特意强调，清除屏幕的唯一办法就是拍一张新照片。这种“覆盖式”的存储逻辑，让每一张照片都变得极其珍贵，你没法简单地按个删除键就假装一切没发生过。\n\n### 全开源的极客玩具\n虽然看着像概念艺术品，但 reFrame 其实是个硬核的 DIY 项目。硬件清单非常简单：Raspberry Pi Zero、Pi Camera 3、那块 4 英寸的 Spectra 6 屏幕加上电池。所有的硬件和软件都是开源的，3D 打印的外壳文件也在 GitHub 上。作者甚至还把这相机寄给了四个专业摄影师去实测。虽然现在买不到现成的，但如果你手痒，完全可以照着 GitHub 上的指南自己焊一台。当然，照片也是会保存的，你可以通过 Web Dashboard 下载原始图和处理后的抖动版本。"
+    },
+    {
+      "id": 49092112,
+      "by": "marvinborner",
+      "title": "Multiple Mouse Cursors in Wayland",
+      "url": "https://blinry.org/multi-seat-wayland/",
+      "score": 123,
+      "detailUpdatedAt": 1785316403,
+      "createdAt": 1785293420,
+      "aiSummaryUpdatedAt": 1785318050,
+      "aisummary": {
+        "chinese_title": "Wayland 多光标/多座位协作输入",
+        "emoji": "🤔",
+        "sarcastic_question": "Wayland 连屏幕共享都折腾不明白，还谈什么两光标协作？"
+      },
+      "classifications": {
+        "topics": [
+          6,
+          4,
+          5
+        ],
+        "facets": [
+          9
+        ],
+        "tags": [
+          "Wayland",
+          "multi-cursor",
+          "multi-seat",
+          "compositor",
+          "systemd-logind",
+          "XDG_SESSION_ID",
+          "DRM",
+          "PointerEvents",
+          "Niri",
+          "RDP"
+        ]
+      },
+      "classificationsUpdatedAt": 1785295255,
+      "aiSummary": {
+        "chinese_title": "Wayland 多光标/多座位协作输入",
+        "emoji": "🤔",
+        "sarcastic_question": "Wayland 连屏幕共享都折腾不明白，还谈什么两光标协作？"
+      },
+      "detail": {
+        "id": 49092112,
+        "by": "marvinborner",
+        "title": "Multiple Mouse Cursors in Wayland",
+        "url": "https://blinry.org/multi-seat-wayland/",
+        "score": 123,
+        "detailUpdatedAt": 1785316403,
+        "createdAt": 1785293420,
+        "aiSummaryUpdatedAt": 1785318050,
+        "aisummary": {
+          "chinese_title": "Wayland 多光标/多座位协作输入",
+          "discussion_overview": [
+            {
+              "category": "双鼠标、双键盘的实际工作流",
+              "summary": "不少人把这个功能理解成更强的个人工作流优化，而不是多人同时抢同一个鼠标。有人为了减轻手部疲劳，已经在用两只鼠标轮流切换；也有人想把 split keyboard、trackball、TrackPoint 组合起来，让左右手或不同设备各管一部分操作。还有人设想把光标位置做成可切换的“栈”，或者把一个大桌面切成多个工作区，让每个光标停在不同位置并可随时跳转。更激进的想象是把它用于本地多人游戏、协作绘图或同机双开程序。",
+              "supportid": [
+                "49095116",
+                "49093341",
+                "49094013",
+                "49093485",
+                "49093887",
+                "49094838",
+                "49093358",
+                "49094509",
+                "49093719"
+              ]
+            },
+            {
+              "category": "seat 与焦点模型的硬约束",
+              "summary": "评论里反复强调，Wayland 的 seat 不是简单的“多一个 cursor”，而是一整套输入上下文：指针位置、焦点窗口、键盘归属、进入/离开事件都要一起处理。现有 GUI toolkit 和应用通常默认只有一个 active window，因此多 seat 会把 GTK、Qt 这类 API 的假设打碎。有人补充说 pointer 位置和 keyboard focus 本来就可以分离，但如果要支持多座位协作，连拖拽、焦点切换和控制组件的归属都得重新设计。也有人认为这些问题有一部分可以在库层解决，但绝不是加个参数就能结束。",
+              "supportid": [
+                "49094829",
+                "49092823",
+                "49094426",
+                "49093187",
+                "49093593",
+                "49092910",
+                "49094915"
+              ]
+            },
+            {
+              "category": "X11/Wayland 的现有实现与历史",
+              "summary": "有评论把它放进更长的历史线里看：X11 早就有 Multi-Pointer X（MPX），也能用 xinput create-master 搞出第二个 master pointer，但这种做法很脆弱，容易触发应用崩溃或把输入状态弄乱。Wayland 这边则已经有人在 compositor 层做 multi-seat，比如 sway（一个支持 tiling 的 Wayland compositor）可以把不同键鼠绑定到不同 seat，Niri（一个 Wayland compositor）和 Stilch（一个实验性 Wayland compositor）也在探索显示器拆分、合并和多指针相关的布局。讨论里还纠正了标题：真正的议题更像 multi-player Wayland，而不是单纯的“多鼠标”。整体看，能力并非不存在，而是分散在协议、compositor 和应用兼容性之中。",
+              "supportid": [
+                "49092715",
+                "49093613",
+                "49093780",
+                "49092832",
+                "49095018",
+                "49093022",
+                "49093808",
+                "49093895",
+                "49094710"
+              ]
+            },
+            {
+              "category": "触屏、手写板与独立指针",
+              "summary": "另一大类用例不是双鼠标，而是触屏、手写板和 tablet 工具希望和主鼠标分家。有人把 touchscreen 单独分到另一个 seat，这样可以一边用键盘写笔记，一边用手指滚动文档，光标和窗口焦点都不乱跳。也有人指出 Wayland 的 touch 和 tablet 协议本来就能把设备挂到 seat 上，只是兼容旧应用时常会有模拟指针的行为，导致用户感到像是出现了两个 cursor。数位板相关的“双 cursor”现象也被拿来讨论到底是 bug 还是设计如此。",
+              "supportid": [
+                "49093416",
+                "49094896",
+                "49095059",
+                "49093579",
+                "49092844",
+                "49092955",
+                "49094141",
+                "49095066"
+              ]
+            },
+            {
+              "category": "pointer inertia 与替代输入",
+              "summary": "光标惯性成了另一个意外热门的话题。支持者觉得在 trackpad、Steam Deck 这种手感设备上，flick 后继续滑行很自然，像手机滚动一样；反对者担心会损失精确定位，除非它只在松手后的 flick 手势里生效。有人补充说 Steam Deck 的实现更像是 firmware 里的手势逻辑，而不是对所有移动都加物理惯性。还有人顺势把 controllers、语音输入和单设备工作流也拉进来，认为这类替代输入方式在很多场景下更像未来。",
+              "supportid": [
+                "49093938",
+                "49094865",
+                "49094093",
+                "49094125",
+                "49094881",
+                "49094143",
+                "49094326",
+                "49094796",
+                "49094012",
+                "49094384"
+              ]
+            },
+            {
+              "category": "屏幕共享与远程会话的生态吐槽",
+              "summary": "讨论还不断外溢到 Wayland 生态的现实问题，尤其是 screen sharing 和 remote desktop。有人用“你能有两个 cursor，却还得靠 PipeWire 和祈祷来屏幕共享”来嘲讽 Wayland 的优先级，另一边则反驳说在常见桌面上共享屏幕其实已经正常工作，问题多半出在缺少 dbus、portals 或 PipeWire 配置。更长的分支把话题引向 systemd-logind（systemd 的登录/会话管理组件）和 Fast User Switching，主张图形会话应该能在物理 seat 和远程 seat 之间迁移。这个分支说明大家真正关心的是完整的桌面会话模型，而不是某一个协议细节。",
+              "supportid": [
+                "49093131",
+                "49093265",
+                "49093596",
+                "49094120",
+                "49094353",
+                "49093736",
+                "49093002",
+                "49094171",
+                "49095033",
+                "49093650"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "seat（Wayland 输入座位）",
+              "explanation": "一组被当作同一用户上下文处理的输入设备及其焦点状态。"
+            },
+            {
+              "term": "multi-seat（多座位）",
+              "explanation": "把不同键鼠、触屏或其他输入设备分配给不同 seat，让多个用户或工作流并行操作。"
+            },
+            {
+              "term": "compositor（Wayland 合成器）",
+              "explanation": "Wayland 桌面核心组件，负责绘制画面、输入分发和焦点管理。"
+            },
+            {
+              "term": "MPX（Multi-Pointer X）",
+              "explanation": "X11 的多指针扩展，可在同一屏幕上出现多个独立 cursor。"
+            },
+            {
+              "term": "libinput（Linux 输入处理库）",
+              "explanation": "Wayland/X11 上常用的输入事件处理库，管理鼠标、触控板、触屏等设备。"
+            },
+            {
+              "term": "PipeWire（Linux 音视频管线）",
+              "explanation": "Linux 上的媒体管线框架，Wayland 的屏幕共享和录屏经常依赖它。"
+            },
+            {
+              "term": "systemd-logind（会话管理器）",
+              "explanation": "systemd 里的登录与 seat 管理组件，负责图形会话和设备归属。"
+            },
+            {
+              "term": "pointer inertia（指针惯性）",
+              "explanation": "光标在松手后继续滑行一段距离的交互效果。"
+            }
+          ],
+          "context": "这篇文章围绕 Wayland（Linux 上的新一代显示协议）里的 seat 模型，讨论的不只是“多个鼠标”，而是一个 seat 里键盘、鼠标、触屏和焦点如何共同工作。评论里提到 X11（X Window System）的 Multi-Pointer X（MPX，多指针扩展）和 xinput create-master 这种老方案，也提到某些 Wayland compositor（Wayland 合成器）已经能把不同键鼠分给不同 seat。原文更接近“multi-player Wayland”：让两个人或两套工作流在同一台机器上并行操作，而不是单纯把 cursor 数量加到 2。讨论还延伸到 touchscreen、digitizer tablet、screen sharing、remote desktop 以及 systemd-logind（systemd 的登录/会话管理组件）等桌面基础设施，说明这其实是整套桌面输入与会话架构的问题。",
+          "emoji": "🤔",
+          "sarcastic_question": "Wayland 连屏幕共享都折腾不明白，还谈什么两光标协作？"
+        },
+        "classifications": {
+          "topics": [
+            6,
+            4,
+            5
+          ],
+          "facets": [
+            9
+          ],
+          "tags": [
+            "Wayland",
+            "multi-cursor",
+            "multi-seat",
+            "compositor",
+            "systemd-logind",
+            "XDG_SESSION_ID",
+            "DRM",
+            "PointerEvents",
+            "Niri",
+            "RDP"
+          ]
+        },
+        "classificationsUpdatedAt": 1785295255,
+        "aiSummary": {
+          "chinese_title": "Wayland 多光标/多座位协作输入",
+          "discussion_overview": [
+            {
+              "category": "双鼠标、双键盘的实际工作流",
+              "summary": "不少人把这个功能理解成更强的个人工作流优化，而不是多人同时抢同一个鼠标。有人为了减轻手部疲劳，已经在用两只鼠标轮流切换；也有人想把 split keyboard、trackball、TrackPoint 组合起来，让左右手或不同设备各管一部分操作。还有人设想把光标位置做成可切换的“栈”，或者把一个大桌面切成多个工作区，让每个光标停在不同位置并可随时跳转。更激进的想象是把它用于本地多人游戏、协作绘图或同机双开程序。",
+              "supportid": [
+                "49095116",
+                "49093341",
+                "49094013",
+                "49093485",
+                "49093887",
+                "49094838",
+                "49093358",
+                "49094509",
+                "49093719"
+              ]
+            },
+            {
+              "category": "seat 与焦点模型的硬约束",
+              "summary": "评论里反复强调，Wayland 的 seat 不是简单的“多一个 cursor”，而是一整套输入上下文：指针位置、焦点窗口、键盘归属、进入/离开事件都要一起处理。现有 GUI toolkit 和应用通常默认只有一个 active window，因此多 seat 会把 GTK、Qt 这类 API 的假设打碎。有人补充说 pointer 位置和 keyboard focus 本来就可以分离，但如果要支持多座位协作，连拖拽、焦点切换和控制组件的归属都得重新设计。也有人认为这些问题有一部分可以在库层解决，但绝不是加个参数就能结束。",
+              "supportid": [
+                "49094829",
+                "49092823",
+                "49094426",
+                "49093187",
+                "49093593",
+                "49092910",
+                "49094915"
+              ]
+            },
+            {
+              "category": "X11/Wayland 的现有实现与历史",
+              "summary": "有评论把它放进更长的历史线里看：X11 早就有 Multi-Pointer X（MPX），也能用 xinput create-master 搞出第二个 master pointer，但这种做法很脆弱，容易触发应用崩溃或把输入状态弄乱。Wayland 这边则已经有人在 compositor 层做 multi-seat，比如 sway（一个支持 tiling 的 Wayland compositor）可以把不同键鼠绑定到不同 seat，Niri（一个 Wayland compositor）和 Stilch（一个实验性 Wayland compositor）也在探索显示器拆分、合并和多指针相关的布局。讨论里还纠正了标题：真正的议题更像 multi-player Wayland，而不是单纯的“多鼠标”。整体看，能力并非不存在，而是分散在协议、compositor 和应用兼容性之中。",
+              "supportid": [
+                "49092715",
+                "49093613",
+                "49093780",
+                "49092832",
+                "49095018",
+                "49093022",
+                "49093808",
+                "49093895",
+                "49094710"
+              ]
+            },
+            {
+              "category": "触屏、手写板与独立指针",
+              "summary": "另一大类用例不是双鼠标，而是触屏、手写板和 tablet 工具希望和主鼠标分家。有人把 touchscreen 单独分到另一个 seat，这样可以一边用键盘写笔记，一边用手指滚动文档，光标和窗口焦点都不乱跳。也有人指出 Wayland 的 touch 和 tablet 协议本来就能把设备挂到 seat 上，只是兼容旧应用时常会有模拟指针的行为，导致用户感到像是出现了两个 cursor。数位板相关的“双 cursor”现象也被拿来讨论到底是 bug 还是设计如此。",
+              "supportid": [
+                "49093416",
+                "49094896",
+                "49095059",
+                "49093579",
+                "49092844",
+                "49092955",
+                "49094141",
+                "49095066"
+              ]
+            },
+            {
+              "category": "pointer inertia 与替代输入",
+              "summary": "光标惯性成了另一个意外热门的话题。支持者觉得在 trackpad、Steam Deck 这种手感设备上，flick 后继续滑行很自然，像手机滚动一样；反对者担心会损失精确定位，除非它只在松手后的 flick 手势里生效。有人补充说 Steam Deck 的实现更像是 firmware 里的手势逻辑，而不是对所有移动都加物理惯性。还有人顺势把 controllers、语音输入和单设备工作流也拉进来，认为这类替代输入方式在很多场景下更像未来。",
+              "supportid": [
+                "49093938",
+                "49094865",
+                "49094093",
+                "49094125",
+                "49094881",
+                "49094143",
+                "49094326",
+                "49094796",
+                "49094012",
+                "49094384"
+              ]
+            },
+            {
+              "category": "屏幕共享与远程会话的生态吐槽",
+              "summary": "讨论还不断外溢到 Wayland 生态的现实问题，尤其是 screen sharing 和 remote desktop。有人用“你能有两个 cursor，却还得靠 PipeWire 和祈祷来屏幕共享”来嘲讽 Wayland 的优先级，另一边则反驳说在常见桌面上共享屏幕其实已经正常工作，问题多半出在缺少 dbus、portals 或 PipeWire 配置。更长的分支把话题引向 systemd-logind（systemd 的登录/会话管理组件）和 Fast User Switching，主张图形会话应该能在物理 seat 和远程 seat 之间迁移。这个分支说明大家真正关心的是完整的桌面会话模型，而不是某一个协议细节。",
+              "supportid": [
+                "49093131",
+                "49093265",
+                "49093596",
+                "49094120",
+                "49094353",
+                "49093736",
+                "49093002",
+                "49094171",
+                "49095033",
+                "49093650"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "seat（Wayland 输入座位）",
+              "explanation": "一组被当作同一用户上下文处理的输入设备及其焦点状态。"
+            },
+            {
+              "term": "multi-seat（多座位）",
+              "explanation": "把不同键鼠、触屏或其他输入设备分配给不同 seat，让多个用户或工作流并行操作。"
+            },
+            {
+              "term": "compositor（Wayland 合成器）",
+              "explanation": "Wayland 桌面核心组件，负责绘制画面、输入分发和焦点管理。"
+            },
+            {
+              "term": "MPX（Multi-Pointer X）",
+              "explanation": "X11 的多指针扩展，可在同一屏幕上出现多个独立 cursor。"
+            },
+            {
+              "term": "libinput（Linux 输入处理库）",
+              "explanation": "Wayland/X11 上常用的输入事件处理库，管理鼠标、触控板、触屏等设备。"
+            },
+            {
+              "term": "PipeWire（Linux 音视频管线）",
+              "explanation": "Linux 上的媒体管线框架，Wayland 的屏幕共享和录屏经常依赖它。"
+            },
+            {
+              "term": "systemd-logind（会话管理器）",
+              "explanation": "systemd 里的登录与 seat 管理组件，负责图形会话和设备归属。"
+            },
+            {
+              "term": "pointer inertia（指针惯性）",
+              "explanation": "光标在松手后继续滑行一段距离的交互效果。"
+            }
+          ],
+          "context": "这篇文章围绕 Wayland（Linux 上的新一代显示协议）里的 seat 模型，讨论的不只是“多个鼠标”，而是一个 seat 里键盘、鼠标、触屏和焦点如何共同工作。评论里提到 X11（X Window System）的 Multi-Pointer X（MPX，多指针扩展）和 xinput create-master 这种老方案，也提到某些 Wayland compositor（Wayland 合成器）已经能把不同键鼠分给不同 seat。原文更接近“multi-player Wayland”：让两个人或两套工作流在同一台机器上并行操作，而不是单纯把 cursor 数量加到 2。讨论还延伸到 touchscreen、digitizer tablet、screen sharing、remote desktop 以及 systemd-logind（systemd 的登录/会话管理组件）等桌面基础设施，说明这其实是整套桌面输入与会话架构的问题。",
+          "emoji": "🤔",
+          "sarcastic_question": "Wayland 连屏幕共享都折腾不明白，还谈什么两光标协作？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nWayland 协议层对多鼠标支持非常完善，但要让多人在同一个桌面上流畅协作，还得看具体的 Compositor（窗口管理器）和 GUI 库给不给力。\n\n### 多人协作的“逻辑座”到底是个啥？\n作者花三周时间研究了 Linux 下 Wayland 的多鼠标支持，核心概念是“逻辑座”。这跟传统的“物理座”不一样，物理座是一台主机接多套显示器键鼠互不干扰；而逻辑座是多人共用一个屏幕，每个人有独立的鼠标和键盘，光标都在同一个桌面上跑。这种模式对结对编程或者本地多人游戏特别有用，不用搞复杂的同步算法，两个人就能直接在同一个应用里操作。\n\n### Wayland 协议层其实早就准备好了\n有意思的地方在于，Wayland 的核心协议对多座的支持是“深度集成”的。不像 X11 需要额外的 MPX 扩展，Wayland 天生就把输入事件和 `wl_seat` 绑定在一起。每个鼠标或键盘事件都带着 `wl_pointer` 或 `wl_keyboard` 对象，这些对象又归属于特定的 `wl_seat`。这意味着应用层理论上很容易就能区分出这个点击是来自“玩家 A”还是“玩家 B”，甚至连座位的插拔事件都能监听到。\n\n### Compositor 层：Weston 和 Sway 表现不错\n协议有了，还得看 Compositor（合成器/窗口管理器）怎么实现。Weston 作为参考实现，支持多光标独立移动，甚至支持“按座聚焦”——不同座位的键盘可以同时操作不同的窗口。不过它配置起来很麻烦，得手写 udev 规则来给设备打标签。Sway（i3 的 Wayland 版）支持也很好，配置更简单，用命令行就能把设备分配给不同的座位。但有个 Bug：如果你把设备从一个座位挪到另一个，它不会替换，而是直接叠加——导致一个鼠标同时控制两个光标。\n\n### River 和 Niri：一个灵活，一个待开发\nRiver 这个 Compositor 很有意思，它把窗口管理逻辑剥离出来了，允许你自己写。它提供了 `river-input-management-v1` 协议，让用户可以动态管理设备和座位，作者还为此专门写了个 Rust 工具。而作者日常使用的 Niri 目前还没官方支持，作者自己 fork 代码硬写了一个多座分支，但目前只支持两个座位，而且设备名是写死的，离生产可用还有距离。\n\n### GUI 库层：GTK 很强但有个坑，SDL 刚起步\n到了应用层，GTK 的表现让人惊喜。它的事件对象直接有 `get_seat` 方法，能轻松区分输入来源。但作者发现了个大坑：GTK 似乎检测不到运行时新增的座位，这意味着你得先把所有鼠标键盘插好，再启动程序，否则新设备就没反应。SDL 从 v3.3.4 版本开始支持多座，事件里的 `which` 字段能区分不同设备，但在绝对鼠标模式下拿不到座位信息，只能靠设备名来猜，稍微有点笨拙。\n\n### 现状总结：地基打好了，装修还在继续\n总的来说，Wayland 的多座支持现状是“底层很稳，中层参差，上层缺应用”。核心协议 5 星满分，Weston 和 Sway 这种主流 Compositor 也能打 4 分，但像 Niri 这种新秀还没跟上。工具库层面 GTK 和 SDL 基本够用，但细节上还有不少 Bug 需要修。作者这次还顺带发布了一些修补工具和小程序，希望能吸引更多开发者来完善这个“多人同屏”的体验。"
+    },
+    {
+      "id": 49093434,
+      "by": "zdw",
+      "title": "User Interfaces of the Demo Scene",
+      "url": "https://www.datagubbe.se/scenegui/",
+      "score": 164,
+      "detailUpdatedAt": 1785316394,
+      "createdAt": 1785302421,
+      "aiSummaryUpdatedAt": 1785317697,
+      "aisummary": {
+        "chinese_title": "Demo Scene 的 Tracker 与怪趣味 UI",
+        "emoji": "🎛️",
+        "sarcastic_question": "难道所有个性都该被HIG抹平吗？"
+      },
+      "classifications": {
+        "topics": [
+          11,
+          4,
+          7
+        ],
+        "facets": [
+          9
+        ],
+        "tags": [
+          "Demo Scene",
+          "User interfaces",
+          "Trackers",
+          "68k asm",
+          "Sine tables",
+          "X-Copy",
+          "C64",
+          "Amiga",
+          "Chiptune",
+          "Disk magazine"
+        ]
+      },
+      "classificationsUpdatedAt": 1785307855,
+      "aiSummary": {
+        "chinese_title": "Demo Scene 的 Tracker 与怪趣味 UI",
+        "emoji": "🎛️",
+        "sarcastic_question": "难道所有个性都该被HIG抹平吗？"
+      },
+      "detail": {
+        "id": 49093434,
+        "by": "zdw",
+        "title": "User Interfaces of the Demo Scene",
+        "url": "https://www.datagubbe.se/scenegui/",
+        "score": 164,
+        "detailUpdatedAt": 1785316394,
+        "createdAt": 1785302421,
+        "aiSummaryUpdatedAt": 1785317697,
+        "aisummary": {
+          "chinese_title": "Demo Scene 的 Tracker 与怪趣味 UI",
+          "discussion_overview": [
+            {
+              "category": "Tracker 的高密度音乐工作流",
+              "summary": "很多人把 FastTracker II、ImpulseTracker 这类 tracker 视为最直观、最有手感的音乐软件。它们虽然界面很小，但功能集中，常见操作几乎都在键盘快捷键里完成，熟练后效率非常高。有人回忆自己会手动复制音轨、错开几个 tick 再降音量来做 echo，说明这些工具在声音设计上并不“简陋”。也有人提到 ScreamTracker、Renoise 和 Ableton Live，认为 tracker 精神一直延续到后来的 DAW 里。",
+              "supportid": [
+                "49094886",
+                "49094562",
+                "49094249",
+                "49094616",
+                "49094563",
+                "49094692",
+                "49093653",
+                "49094888",
+                "49094670"
+              ]
+            },
+            {
+              "category": "DOS / 8 位时代的奇特界面",
+              "summary": "不少评论怀念标准化之前那种颜色夸张、风格各异的 DOS 界面。有人提到 C64 磁盘杂志里用飞船射击菜单项的设计，也有人回忆 X-Copy 的紫色界面、磁盘碎片整理体验，以及 Virus Protector 删除病毒时播放的短旋律。还有人举出 .werkkzeug3 这种可视化编辑器，认为它像是 node-based shader editor 的另类答案。整体上，这些例子都在强调早期软件并不追求统一，而是靠奇招、声音和交互记忆点取胜。",
+              "supportid": [
+                "49094939",
+                "49093699",
+                "49093953",
+                "49094386",
+                "49094990",
+                "49094588",
+                "49095019"
+              ]
+            },
+            {
+              "category": "性能、可用性与个性化的取舍",
+              "summary": "讨论里有一条很清楚的分歧：高性能和开发者效率并不一定与“好看”冲突，但会受屏幕尺寸、分辨率和时代习惯强烈限制。有人指出 80、90 年代很多工具本来就是单页式布局，所有功能挤在一屏里，虽然看起来密集，但学会后几乎一步就能触达。也有人强调当时很多作者只是爱玩的少年，cool factor 往往压过正式的 usability 规范。与现代整齐划一的界面相比，这些老工具更像一种带有性格的“巴洛克”风格。",
+              "supportid": [
+                "49093838",
+                "49094021",
+                "49094662",
+                "49093914"
+              ]
+            },
+            {
+              "category": "底层优化与术语细节",
+              "summary": "技术向的评论把话题拉回到 Amiga 和 68k asm 的老派优化。有人提到预先计算的 lookup table、sine table 能省下很多 clock cycles，甚至以为大家都会自己生成这些表。也有人补充自己通常是手写表格，复杂时才用算法来算。另一个小插曲是对 sinus 这个词的来源解释：许多欧洲语言仍保留拉丁词根，所以软件命名里常见 sinus 而不是英语里的 sine。",
+              "supportid": [
+                "49094022",
+                "49094099",
+                "49093831",
+                "49094085"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "tracker",
+              "explanation": "一种以 pattern、sample 和快捷键为核心的音乐编曲软件，常见于 DOS 和 Amiga 时代。"
+            },
+            {
+              "term": "demoscene",
+              "explanation": "围绕 demo、实时效果和极限压缩而形成的程序、视觉和音乐亚文化。"
+            },
+            {
+              "term": "DAW",
+              "explanation": "Digital Audio Workstation，数字音频工作站，用于录音、编曲和编辑音乐的软件。"
+            },
+            {
+              "term": "lookup table",
+              "explanation": "把复杂计算预先算好并存起来，运行时直接读取，以换取更高性能的做法。"
+            },
+            {
+              "term": "sine table / sinus table",
+              "explanation": "存储正弦值的查表数据，常用于图形和音频效果的快速计算。"
+            }
+          ],
+          "context": "这篇讨论围绕一篇介绍 demo scene（演示场景）界面的文章展开，背景是 80、90 年代的 Amiga、DOS、C64（Commodore 64）等平台。评论里最热的主题是音乐 tracker（以 pattern 和 sample 为核心的编曲器），尤其是 FastTracker II（DOS 时代的音乐 tracker）、ImpulseTracker 和 ScreamTracker 这些界面高度压缩但操作极快的工具。另一条线索是那些带有强烈个性的老式程序界面：磁盘复制器、病毒清除工具、disk magazine（磁盘杂志）菜单，以及 .werkkzeug3（制作 .kkrieger 的可视化工具）之类的 demo 圈软件。整场讨论把创意、性能、低分辨率限制和不统一但有性格的 UI 放在一起比较，也延伸到 lookup table、sine table 和 68k asm（Motorola 68000 汇编）这些底层优化话题。",
+          "emoji": "🎛️",
+          "sarcastic_question": "难道所有个性都该被HIG抹平吗？"
+        },
+        "classifications": {
+          "topics": [
+            11,
+            4,
+            7
+          ],
+          "facets": [
+            9
+          ],
+          "tags": [
+            "Demo Scene",
+            "User interfaces",
+            "Trackers",
+            "68k asm",
+            "Sine tables",
+            "X-Copy",
+            "C64",
+            "Amiga",
+            "Chiptune",
+            "Disk magazine"
+          ]
+        },
+        "classificationsUpdatedAt": 1785307855,
+        "aiSummary": {
+          "chinese_title": "Demo Scene 的 Tracker 与怪趣味 UI",
+          "discussion_overview": [
+            {
+              "category": "Tracker 的高密度音乐工作流",
+              "summary": "很多人把 FastTracker II、ImpulseTracker 这类 tracker 视为最直观、最有手感的音乐软件。它们虽然界面很小，但功能集中，常见操作几乎都在键盘快捷键里完成，熟练后效率非常高。有人回忆自己会手动复制音轨、错开几个 tick 再降音量来做 echo，说明这些工具在声音设计上并不“简陋”。也有人提到 ScreamTracker、Renoise 和 Ableton Live，认为 tracker 精神一直延续到后来的 DAW 里。",
+              "supportid": [
+                "49094886",
+                "49094562",
+                "49094249",
+                "49094616",
+                "49094563",
+                "49094692",
+                "49093653",
+                "49094888",
+                "49094670"
+              ]
+            },
+            {
+              "category": "DOS / 8 位时代的奇特界面",
+              "summary": "不少评论怀念标准化之前那种颜色夸张、风格各异的 DOS 界面。有人提到 C64 磁盘杂志里用飞船射击菜单项的设计，也有人回忆 X-Copy 的紫色界面、磁盘碎片整理体验，以及 Virus Protector 删除病毒时播放的短旋律。还有人举出 .werkkzeug3 这种可视化编辑器，认为它像是 node-based shader editor 的另类答案。整体上，这些例子都在强调早期软件并不追求统一，而是靠奇招、声音和交互记忆点取胜。",
+              "supportid": [
+                "49094939",
+                "49093699",
+                "49093953",
+                "49094386",
+                "49094990",
+                "49094588",
+                "49095019"
+              ]
+            },
+            {
+              "category": "性能、可用性与个性化的取舍",
+              "summary": "讨论里有一条很清楚的分歧：高性能和开发者效率并不一定与“好看”冲突，但会受屏幕尺寸、分辨率和时代习惯强烈限制。有人指出 80、90 年代很多工具本来就是单页式布局，所有功能挤在一屏里，虽然看起来密集，但学会后几乎一步就能触达。也有人强调当时很多作者只是爱玩的少年，cool factor 往往压过正式的 usability 规范。与现代整齐划一的界面相比，这些老工具更像一种带有性格的“巴洛克”风格。",
+              "supportid": [
+                "49093838",
+                "49094021",
+                "49094662",
+                "49093914"
+              ]
+            },
+            {
+              "category": "底层优化与术语细节",
+              "summary": "技术向的评论把话题拉回到 Amiga 和 68k asm 的老派优化。有人提到预先计算的 lookup table、sine table 能省下很多 clock cycles，甚至以为大家都会自己生成这些表。也有人补充自己通常是手写表格，复杂时才用算法来算。另一个小插曲是对 sinus 这个词的来源解释：许多欧洲语言仍保留拉丁词根，所以软件命名里常见 sinus 而不是英语里的 sine。",
+              "supportid": [
+                "49094022",
+                "49094099",
+                "49093831",
+                "49094085"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "tracker",
+              "explanation": "一种以 pattern、sample 和快捷键为核心的音乐编曲软件，常见于 DOS 和 Amiga 时代。"
+            },
+            {
+              "term": "demoscene",
+              "explanation": "围绕 demo、实时效果和极限压缩而形成的程序、视觉和音乐亚文化。"
+            },
+            {
+              "term": "DAW",
+              "explanation": "Digital Audio Workstation，数字音频工作站，用于录音、编曲和编辑音乐的软件。"
+            },
+            {
+              "term": "lookup table",
+              "explanation": "把复杂计算预先算好并存起来，运行时直接读取，以换取更高性能的做法。"
+            },
+            {
+              "term": "sine table / sinus table",
+              "explanation": "存储正弦值的查表数据，常用于图形和音频效果的快速计算。"
+            }
+          ],
+          "context": "这篇讨论围绕一篇介绍 demo scene（演示场景）界面的文章展开，背景是 80、90 年代的 Amiga、DOS、C64（Commodore 64）等平台。评论里最热的主题是音乐 tracker（以 pattern 和 sample 为核心的编曲器），尤其是 FastTracker II（DOS 时代的音乐 tracker）、ImpulseTracker 和 ScreamTracker 这些界面高度压缩但操作极快的工具。另一条线索是那些带有强烈个性的老式程序界面：磁盘复制器、病毒清除工具、disk magazine（磁盘杂志）菜单，以及 .werkkzeug3（制作 .kkrieger 的可视化工具）之类的 demo 圈软件。整场讨论把创意、性能、低分辨率限制和不统一但有性格的 UI 放在一起比较，也延伸到 lookup table、sine table 和 68k asm（Motorola 68000 汇编）这些底层优化话题。",
+          "emoji": "🎛️",
+          "sarcastic_question": "难道所有个性都该被HIG抹平吗？"
+        }
+      },
+      "articleSummary": "### 一句话总结\nDemo Scene 的工具 UI 看起来像是一群叛逆的极客在硬件极限下搞出来的“行为艺术”：为了极致的性能和炫酷的视觉，他们彻底牺牲了易用性，甚至把“难用”变成了一种独特的亚文化审美。\n\n---\n\n### 为了在 7 MHz 的 CPU 上作弊，他们造出了“布谷鸟钟”\nDemo 圈最核心的矛盾在于：要在 7 MHz 这种甚至不如计算器的算力上，跑出看似不可能的实时 3D 动画。怎么办？核心思路其实很简单——“作弊”。也就是所谓的 precalc（预计算），把复杂的数学运算提前算好存成查找表，运行时直接查表。Elite Sinus Producer 就是干这个的，专门用来生成正弦波路径数据。有意思的地方在于它的交互设计：按下 F 键选中菜单，不仅会高亮选项，还会大声播放布谷鸟钟的叫声。这种毫无必要的音效反馈，奠定了 Demo 工具“为了酷而酷”的基调。\n\n### 当“保存”成了奢望，崩溃后的代码抢救成了刚需\n在 Amiga 这种没有内存保护的机器上写 Demo，崩溃是家常便饭。对于开发者来说，最痛的不是代码写得烂，而是忘了保存就崩了。于是诞生了像 Save Our Sources 这种“死后验尸”工具。它的逻辑非常硬核：利用内存残留数据，在机器 Warm Reboot 后，直接从内存里把刚才崩掉的 Seka 汇编源码“抠”出来。这种工具的存在，本身就是对当时开发环境恶劣程度的最好注脚——既然系统不保护你，那就自己动手救自己。\n\n### 汇编器与 Ripper：在内存的荒原上狩猎\nDemo 开发离不开汇编器，Seka 和 Asm-One 是当时的绝对主流。它们虽然脱胎于商业软件，但被 Scener 改得面目全非，衍生版本之多堪比 Unix 家族。除了写代码，还得会“偷”资源。Multi-Ripper 这种工具就是专门用来在内存里翻找游戏退出后残留的图片、音乐或 Sprite 数据。这其实反映了当时的一个潜规则：资源复用和逆向工程，是 Demo 创作中不可或缺的一环。\n\n### Tracker：把音乐编程化，哪怕按钮反人类\nDemo 音乐的制作工具是 Tracker，它更像是一个编程编辑器而非传统的五线谱软件。从 Karsten Obarski 的 Ultimate Soundtracker 开始，到 NoiseTracker 和 ProTracker，这个家族极其庞大。但它们的 UI 设计简直是在挑战人类极限。比如 ProTracker 的文件选择器，那个垂直放置的“EXIT”按钮，居然被夹在上下滚动的箭头中间。这种设计显然不是为了效率，更像是一种只有圈内人才能心领神会的“默契”。\n\n### 磁盘复制器：为了绕过文件系统，只能硬核读写\nDemo 和盗版软件为了防拷贝，往往不使用标准的文件系统，而是直接写软盘的磁道。Commodore 自带的复制工具根本搞不定，于是 X-Copy 和 D-Copy 应运而生。这些工具的界面上通常有一个巨大的网格，代表软盘上的每一个磁道。复制过程不仅可视化，还会在结束时播放“Boing”的声音。这种把枯燥的底层读写操作游戏化的设计，极大地缓解了等待时的焦虑。\n\n### 压缩与 BBS：在窄带时代里挤牙膏\n在软盘容量只有 880KB 的年代，Titanics Cruncher 这种压缩工具是刚需。它用非对称压缩算法换取更小的体积，代价是加载时需要解压。而在互联网普及前，BBS 是交流的主战场。为了在 ANSI 字符界面下展示个性，Digital Intelligence 的 Ansi-Editor 这种工具虽然界面怪异（比如底部工具栏的颜色根本点不动），但依然被广泛用来制作那些花里胡哨的 BBS 菜单。\n\n### 无论是杀毒还是画图，UI 必须要“带感”\n哪怕是杀毒软件这种严肃工具，在 Demo 圈也长得不正经。比如 SCA 杀毒软件，界面设计得夸张且充满攻击性。还有像 FuckPaint 这种像素画软件，光看名字就知道它不是给正经设计师用的。甚至连 Diskmag（磁盘杂志）RAW，都早在 Web 2.0 之前就用上了高光质感的 UI。说白了就是，在这个圈子里，工具不仅要好用，更重要的是必须看起来“很极客”。"
+    },
+    {
+      "id": 49093569,
+      "by": "Error6571",
+      "title": "More Tailscale tricks for your jailbroken Kindle",
+      "url": "https://tailscale.com/blog/jailbroken-kindle-proxy-tun-modes",
+      "score": 167,
+      "detailUpdatedAt": 1785316393,
+      "createdAt": 1785301820,
+      "aiSummaryUpdatedAt": 1785317419,
+      "aisummary": {
+        "chinese_title": "Kindle 越狱后装 KOReader/Tailscale：暗黑模式、DRM 与隐私争议",
+        "emoji": "🔧",
+        "sarcastic_question": "为了看书，先越狱再折腾 Tailscale 吗？"
+      },
+      "classifications": {
+        "topics": [
+          6,
+          3,
+          7
+        ],
+        "facets": [
+          5
+        ],
+        "tags": [
+          "Tailscale",
+          "Kindle",
+          "WireGuard",
+          "proxy",
+          "tun",
+          "jailbreak"
+        ]
+      },
+      "classificationsUpdatedAt": 1785308452,
+      "aiSummary": {
+        "chinese_title": "Kindle 越狱后装 KOReader/Tailscale：暗黑模式、DRM 与隐私争议",
+        "emoji": "🔧",
+        "sarcastic_question": "为了看书，先越狱再折腾 Tailscale 吗？"
+      },
+      "detail": {
+        "id": 49093569,
+        "by": "Error6571",
+        "title": "More Tailscale tricks for your jailbroken Kindle",
+        "url": "https://tailscale.com/blog/jailbroken-kindle-proxy-tun-modes",
+        "score": 167,
+        "detailUpdatedAt": 1785316393,
+        "createdAt": 1785301820,
+        "aiSummaryUpdatedAt": 1785317419,
+        "aisummary": {
+          "chinese_title": "Kindle 越狱后装 KOReader/Tailscale：暗黑模式、DRM 与隐私争议",
+          "discussion_overview": [
+            {
+              "category": "KOReader 很强，但界面门槛高",
+              "summary": "支持者把 KOReader 看成电子书阅读器里的“终极可调”方案：排版、字体、前光、同步和插件都能按个人习惯细调，而且用了之后很难再回到原厂阅读体验。有人明确说它在电池续航上并没有想象中的负担，甚至在多个设备上都能稳定使用。反对者则集中吐槽它的菜单层级太深，设置分散在不同图标和子菜单里，连关闭 hyphenation 都要翻找很久。和原厂 Kindle 或 Kobo 默认阅读器相比，他们更喜欢少选项、直接能读的“库视图”而不是 file explorer 视图。",
+              "supportid": [
+                "49094189",
+                "49094579",
+                "49094623",
+                "49094719",
+                "49094478"
+              ]
+            },
+            {
+              "category": "Kindle 越狱的直接收益",
+              "summary": "很多评论把越狱的价值说得很现实：旧 Paperwhite 也能拿到 dark mode，而且 KOReader 往往比 Kindle 原生软件更快更顺手。有人提到插件可以处理 DRM 电子书借阅，自己也因此重新把图书馆借书流程用起来。除此之外，SSH server、字典、前光切换、字体定制、WiFi 传书等功能，都被当成“原厂固件故意不给”的实用提升。另一个关键点是，KOReader 通常只是从原厂系统里启动的一个入口，不会替换固件，所以想回到原生界面也很容易。",
+              "supportid": [
+                "49094228",
+                "49094703",
+                "49094447",
+                "49094586",
+                "49094711",
+                "49094392",
+                "49094632"
+              ]
+            },
+            {
+              "category": "Tailscale 的隐私与网络绕过争论",
+              "summary": "围绕 Tailscale 的讨论主要落在 metadata 和控制面信任上。有人提醒给 tailscaled 加 `--no-logs-no-support`，否则连接的 host、端口和时间戳等行为数据仍可能被收集；更彻底的方案是自建控制面，把官方服务完全移出链路。另一些人则把话题引到 WireGuard 在某些国家或网络里会被封、需要 wg-obfuscator、AmneziaWG 或 sing-box 之类伪装方案。还有人补充，移动漫游流量常会先回到本国出口，所以在海外用 Tailscale 并不一定直接暴露当地网络环境。",
+              "supportid": [
+                "49093871",
+                "49094438",
+                "49093907",
+                "49093934",
+                "49094633",
+                "49093973",
+                "49094117",
+                "49094137",
+                "49094582"
+              ]
+            },
+            {
+              "category": "跨设备阅读生态与厂商信任",
+              "summary": "评论把话题扩展到更完整的电子书生态：KOReader 不只在 Kindle 和 Kobo 上可用，在 Remarkable 2、Android 上也有人长期使用，Librera 也被视为 Android 端的可替代方案。有人强调，真正好用的玩法往往是把阅读器和 Calibre、Syncthing、云存储、自建 OPDS 书库串起来，甚至再加上 Hardcover 之类的进度同步插件。也有人直接提出希望文章补上 Calibre、Nextcloud、Home Assistant 这类真实场景，因为只讲设备技巧不够完整。另一条线则是对 Boox 这类设备的信任问题：有人担心它会接入家里网络，也有人批评其长期不公开 Linux kernel source，质疑其 GPL 合规性。",
+              "supportid": [
+                "49094371",
+                "49094510",
+                "49094981",
+                "49094831",
+                "49094222",
+                "49094214",
+                "49094581",
+                "49094541"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "KOReader",
+              "explanation": "一个开源、可高度自定义的电子书阅读器，支持多种设备和插件。"
+            },
+            {
+              "term": "Tailscale",
+              "explanation": "基于 WireGuard 的组网/VPN 服务，用来把设备连接成私有网络。"
+            },
+            {
+              "term": "WireGuard",
+              "explanation": "一种轻量级 VPN 协议，速度快，但在某些网络环境里可能被识别或阻断。"
+            },
+            {
+              "term": "Calibre",
+              "explanation": "电子书管理、转换和推送工具，常用于整理书库并传书到阅读器。"
+            },
+            {
+              "term": "KEPUB",
+              "explanation": "Kobo 的增强型 EPUB 格式，支持更好的分页、阅读时间估算等功能。"
+            },
+            {
+              "term": "Syncthing",
+              "explanation": "点对点文件同步工具，可用于同步书籍或阅读进度。"
+            },
+            {
+              "term": "DRM",
+              "explanation": "数字版权管理，用于限制电子书复制、转发或借阅的保护机制。"
+            }
+          ],
+          "context": "这篇文章讲的是在 jailbroken Kindle 上部署 Tailscale（一个基于 WireGuard 的组网服务），让旧电子书阅读器像内网节点一样连回家里的资源。评论区很快把重点转到 KOReader（一个开源、可高度自定义的电子书阅读器），因为它能在 Kindle、Kobo、Remarkable 2、Android 等设备上补足 dark mode、排版、字体和插件能力。很多人特别在意一点：Kindle 越狱通常只是多了一个从原厂系统启动 KOReader 的入口，并不会替换固件，所以仍能随时回到原生阅读器。围绕网络部分，大家又讨论了 Tailscale 的 metadata 收集、自建控制面 headscale（一个自托管的 Tailscale 控制面替代方案），以及在某些网络环境里对 WireGuard 流量的封锁与伪装。整条讨论还延伸到 Calibre（电子书管理和转换工具）、Syncthing（点对点文件同步工具）和自建书库，说明这类玩法本质上是在把阅读器纳入整个个人自托管工作流。",
+          "emoji": "🔧",
+          "sarcastic_question": "为了看书，先越狱再折腾 Tailscale 吗？"
+        },
+        "classifications": {
+          "topics": [
+            6,
+            3,
+            7
+          ],
+          "facets": [
+            5
+          ],
+          "tags": [
+            "Tailscale",
+            "Kindle",
+            "WireGuard",
+            "proxy",
+            "tun",
+            "jailbreak"
+          ]
+        },
+        "classificationsUpdatedAt": 1785308452,
+        "aiSummary": {
+          "chinese_title": "Kindle 越狱后装 KOReader/Tailscale：暗黑模式、DRM 与隐私争议",
+          "discussion_overview": [
+            {
+              "category": "KOReader 很强，但界面门槛高",
+              "summary": "支持者把 KOReader 看成电子书阅读器里的“终极可调”方案：排版、字体、前光、同步和插件都能按个人习惯细调，而且用了之后很难再回到原厂阅读体验。有人明确说它在电池续航上并没有想象中的负担，甚至在多个设备上都能稳定使用。反对者则集中吐槽它的菜单层级太深，设置分散在不同图标和子菜单里，连关闭 hyphenation 都要翻找很久。和原厂 Kindle 或 Kobo 默认阅读器相比，他们更喜欢少选项、直接能读的“库视图”而不是 file explorer 视图。",
+              "supportid": [
+                "49094189",
+                "49094579",
+                "49094623",
+                "49094719",
+                "49094478"
+              ]
+            },
+            {
+              "category": "Kindle 越狱的直接收益",
+              "summary": "很多评论把越狱的价值说得很现实：旧 Paperwhite 也能拿到 dark mode，而且 KOReader 往往比 Kindle 原生软件更快更顺手。有人提到插件可以处理 DRM 电子书借阅，自己也因此重新把图书馆借书流程用起来。除此之外，SSH server、字典、前光切换、字体定制、WiFi 传书等功能，都被当成“原厂固件故意不给”的实用提升。另一个关键点是，KOReader 通常只是从原厂系统里启动的一个入口，不会替换固件，所以想回到原生界面也很容易。",
+              "supportid": [
+                "49094228",
+                "49094703",
+                "49094447",
+                "49094586",
+                "49094711",
+                "49094392",
+                "49094632"
+              ]
+            },
+            {
+              "category": "Tailscale 的隐私与网络绕过争论",
+              "summary": "围绕 Tailscale 的讨论主要落在 metadata 和控制面信任上。有人提醒给 tailscaled 加 `--no-logs-no-support`，否则连接的 host、端口和时间戳等行为数据仍可能被收集；更彻底的方案是自建控制面，把官方服务完全移出链路。另一些人则把话题引到 WireGuard 在某些国家或网络里会被封、需要 wg-obfuscator、AmneziaWG 或 sing-box 之类伪装方案。还有人补充，移动漫游流量常会先回到本国出口，所以在海外用 Tailscale 并不一定直接暴露当地网络环境。",
+              "supportid": [
+                "49093871",
+                "49094438",
+                "49093907",
+                "49093934",
+                "49094633",
+                "49093973",
+                "49094117",
+                "49094137",
+                "49094582"
+              ]
+            },
+            {
+              "category": "跨设备阅读生态与厂商信任",
+              "summary": "评论把话题扩展到更完整的电子书生态：KOReader 不只在 Kindle 和 Kobo 上可用，在 Remarkable 2、Android 上也有人长期使用，Librera 也被视为 Android 端的可替代方案。有人强调，真正好用的玩法往往是把阅读器和 Calibre、Syncthing、云存储、自建 OPDS 书库串起来，甚至再加上 Hardcover 之类的进度同步插件。也有人直接提出希望文章补上 Calibre、Nextcloud、Home Assistant 这类真实场景，因为只讲设备技巧不够完整。另一条线则是对 Boox 这类设备的信任问题：有人担心它会接入家里网络，也有人批评其长期不公开 Linux kernel source，质疑其 GPL 合规性。",
+              "supportid": [
+                "49094371",
+                "49094510",
+                "49094981",
+                "49094831",
+                "49094222",
+                "49094214",
+                "49094581",
+                "49094541"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "KOReader",
+              "explanation": "一个开源、可高度自定义的电子书阅读器，支持多种设备和插件。"
+            },
+            {
+              "term": "Tailscale",
+              "explanation": "基于 WireGuard 的组网/VPN 服务，用来把设备连接成私有网络。"
+            },
+            {
+              "term": "WireGuard",
+              "explanation": "一种轻量级 VPN 协议，速度快，但在某些网络环境里可能被识别或阻断。"
+            },
+            {
+              "term": "Calibre",
+              "explanation": "电子书管理、转换和推送工具，常用于整理书库并传书到阅读器。"
+            },
+            {
+              "term": "KEPUB",
+              "explanation": "Kobo 的增强型 EPUB 格式，支持更好的分页、阅读时间估算等功能。"
+            },
+            {
+              "term": "Syncthing",
+              "explanation": "点对点文件同步工具，可用于同步书籍或阅读进度。"
+            },
+            {
+              "term": "DRM",
+              "explanation": "数字版权管理，用于限制电子书复制、转发或借阅的保护机制。"
+            }
+          ],
+          "context": "这篇文章讲的是在 jailbroken Kindle 上部署 Tailscale（一个基于 WireGuard 的组网服务），让旧电子书阅读器像内网节点一样连回家里的资源。评论区很快把重点转到 KOReader（一个开源、可高度自定义的电子书阅读器），因为它能在 Kindle、Kobo、Remarkable 2、Android 等设备上补足 dark mode、排版、字体和插件能力。很多人特别在意一点：Kindle 越狱通常只是多了一个从原厂系统启动 KOReader 的入口，并不会替换固件，所以仍能随时回到原生阅读器。围绕网络部分，大家又讨论了 Tailscale 的 metadata 收集、自建控制面 headscale（一个自托管的 Tailscale 控制面替代方案），以及在某些网络环境里对 WireGuard 流量的封锁与伪装。整条讨论还延伸到 Calibre（电子书管理和转换工具）、Syncthing（点对点文件同步工具）和自建书库，说明这类玩法本质上是在把阅读器纳入整个个人自托管工作流。",
+          "emoji": "🔧",
+          "sarcastic_question": "为了看书，先越狱再折腾 Tailscale 吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nKindle 上的 Tailscale 不再只是个能连上的 SSH 入口，通过引入代理模式和 KOReader 插件，它现在能真正让电子书应用穿透网络限制，直连你的私有服务。\n\n### 从“能连上”到“能用上”的跨越\n之前在越狱 Kindle 上跑 Tailscale，虽然能进 tailnet，但体验其实挺残缺的。因为 Kindle 系统限制，Tailscale 只能跑在 userspace 模式，没法接管系统的网络路由层。这就导致了一个尴尬的局面：你能 SSH 进 Kindle，但 Kindle 里的应用（比如 KOReader）想访问 tailnet 里的 Calibre 服务器时，系统根本不知道怎么路由那个 `100.x.y.z` 的 IP，连接直接失败。说白了，Tailscale 在那跑着，但应用根本用不上。\n\n### 用代理模式绕过系统路由限制\n那怎么办？既然改不了系统路由表，开发者就想了个“曲线救国”的办法。新版的 KUAL 插件引入了 **Proxy Mode**，把 Tailscale 的流量封装成一个本地代理。你只需要把 KOReader 的代理设置指向 `127.0.0.1:1055`，流量就会先发给本地的 `tailscaled` 守护进程，再由它转发到 tailnet。这个设计很巧妙，它绕过了 Kindle 原生网络栈的无能，让应用能通过 SOCKS5 或 HTTP CONNECT 协议，顺畅地访问内网资源。\n\n### 让 Kindle 变身“极客终端”\n一旦网络通了，Kindle 能干的事就远不止看书了。你可以直接连上自建的 Calibre 或 Wallabag 服务器推书，甚至用蓝牙键盘配合 `kterm`，把 Kindle 当成一个超低功耗的 SSH 终端。虽然用 E-ink 屏幕当终端体验不算好，但这种把“最弱的电脑”变成“最安全的瘦客户机”的极客感，确实挺让人上瘾的。\n\n### KOReader 插件的独立方案\n如果你不需要全设备级别的 Tailscale，只想在 KOReader 里用，还有个更轻量的方案。开发者专门写了个 **KOReader 插件**，它不依赖 KUAL，直接在 KOReader 内部构建代理环境。这个方案不仅支持 Kindle，还兼容 Kobo 和 PocketBook，适用范围更广。安装也很直接，把插件扔进去，填个 Auth Key，就能在 KOReader 里直接开启代理，配合 SyncThing 插件还能同步文件。\n\n### 硬件兼容性的最后提醒\n不过，这些骚操作依然高度依赖你的设备型号和越狱状态。作者提到他手里的第 11 代 Kindle 就跟这个插件不太兼容。所以，虽然现在的方案已经比最早的 userspace 模式好用太多，但在动手之前，还是得做好心理准备：这毕竟是社区代码，跑在非常不官方的设备状态上，耐心是必须的。"
+    },
+    {
+      "id": 49055816,
+      "by": "vinhnx",
+      "title": "Teach yourself programming in ten years (1998)",
+      "url": "https://www.norvig.com/21-days.html",
+      "score": 127,
+      "detailUpdatedAt": 1785314598,
+      "createdAt": 1785286222,
+      "aiSummaryUpdatedAt": 1785315032,
+      "aisummary": {
+        "chinese_title": "Norvig《十年学编程》再热议：AI时代还要手写代码吗",
+        "emoji": "😕",
+        "sarcastic_question": "十年学编程，最后先练成了喂AI写代码？"
+      },
+      "classifications": {
+        "topics": [
+          4,
+          1
+        ],
+        "facets": [
+          5,
+          9
+        ],
+        "tags": [
+          "Teach Yourself Programming",
+          "Peter Norvig",
+          "AI",
+          "LLMs",
+          "vibe coding"
+        ]
+      },
+      "classificationsUpdatedAt": 1785293444,
+      "aiSummary": {
+        "chinese_title": "Norvig《十年学编程》再热议：AI时代还要手写代码吗",
+        "emoji": "😕",
+        "sarcastic_question": "十年学编程，最后先练成了喂AI写代码？"
+      },
+      "detail": {
+        "id": 49055816,
+        "by": "vinhnx",
+        "title": "Teach yourself programming in ten years (1998)",
+        "url": "https://www.norvig.com/21-days.html",
+        "score": 127,
+        "detailUpdatedAt": 1785314598,
+        "createdAt": 1785286222,
+        "aiSummaryUpdatedAt": 1785315032,
+        "aisummary": {
+          "chinese_title": "Norvig《十年学编程》再热议：AI时代还要手写代码吗",
+          "discussion_overview": [
+            {
+              "category": "AI写代码的实用性与边界",
+              "summary": "很多人把 LLM 看成实用的增效工具，但前提是使用者本身懂架构、测试和调试。有人举例说，脚本、unit tests、模板化 CRUD 或临时小工具让模型写会很快，可一旦进入核心设计、复杂 bug 或长期维护，先想清楚再亲手写代码往往更省时间。讨论里反复出现 token 成本和排错成本的对比：真正贵的不是一两美元，而是把错误逻辑带进系统后花数小时甚至数天修复。也有人强调，AI 更像是帮助缩小 blast radius 的工具，而不是替代工程判断。",
+              "supportid": [
+                "49094347",
+                "49094529",
+                "49094784",
+                "49094714",
+                "49094790",
+                "49094817",
+                "49094441",
+                "49094570",
+                "49094693",
+                "49093724",
+                "49092640",
+                "49092795",
+                "49094157",
+                "49094617",
+                "49094816",
+                "49094158"
+              ]
+            },
+            {
+              "category": "编程手艺感正在流失",
+              "summary": "另一组评论更像是在哀叹编程的“手艺”被稀释了。以前人们会为了乐趣去学新语言、读源码、观察变量命名和注释风格，如今这些探索过程被 AI 压缩后，很多人觉得学习的新鲜感和理解他人作品的愉悦感都少了。有人把这种变化类比成摄影取代绘画、工业化取代手工艺，认为代码开始像批量生成的商品，而不是需要耐心打磨的作品。也有人说，哪怕在职场上不再有优势，手写代码仍可以作为业余爱好继续，只是那种“学会就能增值”的回报感变弱了。",
+              "supportid": [
+                "49092790",
+                "49094861",
+                "49093379",
+                "49093121",
+                "49093925",
+                "49093468",
+                "49094857",
+                "49093937",
+                "49093882",
+                "49093741",
+                "49094197",
+                "49093199",
+                "49094656"
+              ]
+            },
+            {
+              "category": "岗位与工作流被AI重塑",
+              "summary": "不少人把焦点放到岗位和工作流的重组上。评论里有人直接怀疑 prompt engineer 到底是不是新职业，还是只是把需求转述给模型的管理者角色；也有人担心公司推行 AI-first 后，PR、commit message 甚至整个产出链条都被 Claude 包办。更现实的担忧是，真正会读代码、审代码、承担责任的人会越来越少，而不会写代码的人却越来越敢把东西推上生产。还有人提到 CS 招生变化和实习生对前 AI 时代程序员的崇拜，说明行业门槛和身份感正在重排。",
+              "supportid": [
+                "49094269",
+                "49094705",
+                "49093463",
+                "49094717",
+                "49092612",
+                "49093714",
+                "49092608",
+                "49092703",
+                "49092968",
+                "49093280",
+                "49092462",
+                "49093805",
+                "49093965"
+              ]
+            },
+            {
+              "category": "文章出处考证与HN复读",
+              "summary": "这篇文章本身也被当成了一个有趣的考古对象。有人用 Wayback Machine 追到最早能找到的 1998 年版本，也有人指出后来的修订里出现了 Khan Academy 和 Go 这类更晚近的参考，所以标题标注年份才会让人困惑。HN 上的老用户还说它几乎每隔几年就会被重新贴一次，像一项固定仪式。于是它不只是一个教程，而是一个能反复检验时代变化的参照物。",
+              "supportid": [
+                "49093775",
+                "49094234",
+                "49094631",
+                "49091621",
+                "49092353",
+                "49092548",
+                "49092711",
+                "49092737",
+                "49092604"
+              ]
+            },
+            {
+              "category": "长期学习、烧毁与自学动力",
+              "summary": "另一条线索是“怎么把这条路走十年”。有人提醒，能长期写程序最重要的是心理稳定和不过度燃烧自己，尤其是如果白天已经在写代码，晚上不碰也很正常。也有人主张保留一点不用 AI 的手写练习，把它当成兴趣或训练，而不是一定要拿来变现。老读者则回忆，这篇文章曾和《How to Become a Hacker》以及 Norvig 的 Scheme 解释器教程一起，帮他们建立起自学和长期投入的节奏感。",
+              "supportid": [
+                "49092425",
+                "49092734",
+                "49092808",
+                "49092710",
+                "49093090"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "LLM",
+              "explanation": "Large Language Model（大语言模型），可根据自然语言生成、改写和解释代码。"
+            },
+            {
+              "term": "vibe coding",
+              "explanation": "主要靠 AI 生成代码、开发者边提示边迭代的编程方式。"
+            },
+            {
+              "term": "hand-coding",
+              "explanation": "不依赖 AI，自己逐行编写并理解代码。"
+            },
+            {
+              "term": "black-box coding",
+              "explanation": "把 AI 当黑箱使用，只看输出结果，不完全掌握内部实现。"
+            }
+          ],
+          "context": "这篇老文出自 Peter Norvig（Google 研究员、AI 领域学者），核心是用十年尺度看待编程学习，而不是指望速成。HN 评论里有人用 Wayback Machine（网页历史存档工具）追到最早的 1998 版本，也有人指出后来修订版加入了 Khan Academy（在线教育平台）和 Go（Google 推出的编程语言）等更晚近的例子。如今它被拿来和 LLM（大语言模型）时代的 vibe coding（依赖模型生成代码的工作流）放在一起讨论：学习编程还意味着什么，手写代码、读源码、调试和架构判断是否仍是核心能力。很多人还把它和《How to Become a Hacker》、Scheme 解释器实现等自学材料并列，视作早期程序员的成长指南。",
+          "emoji": "😕",
+          "sarcastic_question": "十年学编程，最后先练成了喂AI写代码？"
+        },
+        "classifications": {
+          "topics": [
+            4,
+            1
+          ],
+          "facets": [
+            5,
+            9
+          ],
+          "tags": [
+            "Teach Yourself Programming",
+            "Peter Norvig",
+            "AI",
+            "LLMs",
+            "vibe coding"
+          ]
+        },
+        "classificationsUpdatedAt": 1785293444,
+        "aiSummary": {
+          "chinese_title": "Norvig《十年学编程》再热议：AI时代还要手写代码吗",
+          "discussion_overview": [
+            {
+              "category": "AI写代码的实用性与边界",
+              "summary": "很多人把 LLM 看成实用的增效工具，但前提是使用者本身懂架构、测试和调试。有人举例说，脚本、unit tests、模板化 CRUD 或临时小工具让模型写会很快，可一旦进入核心设计、复杂 bug 或长期维护，先想清楚再亲手写代码往往更省时间。讨论里反复出现 token 成本和排错成本的对比：真正贵的不是一两美元，而是把错误逻辑带进系统后花数小时甚至数天修复。也有人强调，AI 更像是帮助缩小 blast radius 的工具，而不是替代工程判断。",
+              "supportid": [
+                "49094347",
+                "49094529",
+                "49094784",
+                "49094714",
+                "49094790",
+                "49094817",
+                "49094441",
+                "49094570",
+                "49094693",
+                "49093724",
+                "49092640",
+                "49092795",
+                "49094157",
+                "49094617",
+                "49094816",
+                "49094158"
+              ]
+            },
+            {
+              "category": "编程手艺感正在流失",
+              "summary": "另一组评论更像是在哀叹编程的“手艺”被稀释了。以前人们会为了乐趣去学新语言、读源码、观察变量命名和注释风格，如今这些探索过程被 AI 压缩后，很多人觉得学习的新鲜感和理解他人作品的愉悦感都少了。有人把这种变化类比成摄影取代绘画、工业化取代手工艺，认为代码开始像批量生成的商品，而不是需要耐心打磨的作品。也有人说，哪怕在职场上不再有优势，手写代码仍可以作为业余爱好继续，只是那种“学会就能增值”的回报感变弱了。",
+              "supportid": [
+                "49092790",
+                "49094861",
+                "49093379",
+                "49093121",
+                "49093925",
+                "49093468",
+                "49094857",
+                "49093937",
+                "49093882",
+                "49093741",
+                "49094197",
+                "49093199",
+                "49094656"
+              ]
+            },
+            {
+              "category": "岗位与工作流被AI重塑",
+              "summary": "不少人把焦点放到岗位和工作流的重组上。评论里有人直接怀疑 prompt engineer 到底是不是新职业，还是只是把需求转述给模型的管理者角色；也有人担心公司推行 AI-first 后，PR、commit message 甚至整个产出链条都被 Claude 包办。更现实的担忧是，真正会读代码、审代码、承担责任的人会越来越少，而不会写代码的人却越来越敢把东西推上生产。还有人提到 CS 招生变化和实习生对前 AI 时代程序员的崇拜，说明行业门槛和身份感正在重排。",
+              "supportid": [
+                "49094269",
+                "49094705",
+                "49093463",
+                "49094717",
+                "49092612",
+                "49093714",
+                "49092608",
+                "49092703",
+                "49092968",
+                "49093280",
+                "49092462",
+                "49093805",
+                "49093965"
+              ]
+            },
+            {
+              "category": "文章出处考证与HN复读",
+              "summary": "这篇文章本身也被当成了一个有趣的考古对象。有人用 Wayback Machine 追到最早能找到的 1998 年版本，也有人指出后来的修订里出现了 Khan Academy 和 Go 这类更晚近的参考，所以标题标注年份才会让人困惑。HN 上的老用户还说它几乎每隔几年就会被重新贴一次，像一项固定仪式。于是它不只是一个教程，而是一个能反复检验时代变化的参照物。",
+              "supportid": [
+                "49093775",
+                "49094234",
+                "49094631",
+                "49091621",
+                "49092353",
+                "49092548",
+                "49092711",
+                "49092737",
+                "49092604"
+              ]
+            },
+            {
+              "category": "长期学习、烧毁与自学动力",
+              "summary": "另一条线索是“怎么把这条路走十年”。有人提醒，能长期写程序最重要的是心理稳定和不过度燃烧自己，尤其是如果白天已经在写代码，晚上不碰也很正常。也有人主张保留一点不用 AI 的手写练习，把它当成兴趣或训练，而不是一定要拿来变现。老读者则回忆，这篇文章曾和《How to Become a Hacker》以及 Norvig 的 Scheme 解释器教程一起，帮他们建立起自学和长期投入的节奏感。",
+              "supportid": [
+                "49092425",
+                "49092734",
+                "49092808",
+                "49092710",
+                "49093090"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "LLM",
+              "explanation": "Large Language Model（大语言模型），可根据自然语言生成、改写和解释代码。"
+            },
+            {
+              "term": "vibe coding",
+              "explanation": "主要靠 AI 生成代码、开发者边提示边迭代的编程方式。"
+            },
+            {
+              "term": "hand-coding",
+              "explanation": "不依赖 AI，自己逐行编写并理解代码。"
+            },
+            {
+              "term": "black-box coding",
+              "explanation": "把 AI 当黑箱使用，只看输出结果，不完全掌握内部实现。"
+            }
+          ],
+          "context": "这篇老文出自 Peter Norvig（Google 研究员、AI 领域学者），核心是用十年尺度看待编程学习，而不是指望速成。HN 评论里有人用 Wayback Machine（网页历史存档工具）追到最早的 1998 版本，也有人指出后来修订版加入了 Khan Academy（在线教育平台）和 Go（Google 推出的编程语言）等更晚近的例子。如今它被拿来和 LLM（大语言模型）时代的 vibe coding（依赖模型生成代码的工作流）放在一起讨论：学习编程还意味着什么，手写代码、读源码、调试和架构判断是否仍是核心能力。很多人还把它和《How to Become a Hacker》、Scheme 解释器实现等自学材料并列，视作早期程序员的成长指南。",
+          "emoji": "😕",
+          "sarcastic_question": "十年学编程，最后先练成了喂AI写代码？"
+        }
+      },
+      "articleSummary": "# 一句话总结\n编程没有速成捷径，真正的专家需要通过 10 年（约 10,000 小时）的刻意练习来打磨，这比任何 24 小时入门书都管用。\n\n### 24 小时学会编程？别逗了\n书店里充斥着《24 小时自学 Java》这类书，仿佛编程是件能速成的事。作者 Peter Norvig 直接戳穿了这种泡沫：所谓的 \"24 小时\"，顶多让你学会一点语法皮毛，甚至只是用 C++ 的语法写出 Basic 风格的代码。这种浅尝辄止的学习不仅无法让你理解语言的设计哲学，正如 Alan Perlis 所说，\"不能改变你编程思维的语言就不值得学\"。这种书教给你的只是完成特定任务的工具，而非编程本身的技艺。\n\n### 真正的门槛是 10 年，而不是 24 天\n那到底要多久？研究数据表明，无论是国际象棋、音乐创作还是编程，要达到专家级别都需要大约 10 年的时间。这不是简单的重复劳动，而是 \"刻意练习\"（Deliberate Practice）：不断挑战略高于当前能力的任务，并在事后分析修正错误。即便是莫扎特这样的神童，也是在 4 岁展露天赋后，经过了 13 年的打磨才创作出世界级的名作。Malcolm Gladwell 后来普及的 \"10,000 小时定律\" 也是基于同样的逻辑，天赋只是入场券，时间积累才是硬道理。\n\n### 核心心法：刻意练习与实战\n既然时间省不了，那该怎么花这 10 年？作者给出的第一条建议就是保持兴趣并动手去写。单纯看书没用，必须通过 \"Learning by doing\" 来构建经验。更重要的是，这种练习必须是有针对性的，要有明确的难度梯度、及时的反馈和纠错机会。就像 Eric Raymond 说的，\"光研究画笔和颜料成不了画家\"，计算机科学教育无法替代亲手写代码带来的体感。\n\n### 想要进阶？去混圈子，去维护烂代码\n除了写代码，你还得学会 \"读\" 代码和 \"聊\" 代码。与其他程序员交流、阅读别人的源码，其价值远超任何教科书。作者建议你在项目中既要做最强的人，去锻炼领导力；也要做最弱的人，去观察高手如何处理难题。更有意思的是，他强烈建议你去接手别人的遗留代码。这种 \"在别人之后工作\" 的经历，会倒逼你思考如何设计才能让代码更易维护，这是新手最缺乏的视角。\n\n### 计算机科学里，真的有 \"计算机\"\n很多程序员容易陷入语言特性的细节，而忽略了底层的硬件现实。作者提醒我们，要记住 \"Computer Science\" 里有 \"Computer\"。你需要对数字保持敏感：CPU 执行一条指令是 1 纳秒，从内存读取是 100 纳秒，而磁盘寻址要 8,000,000 纳秒。如果你不理解这几百万倍的性能差异，写出来的程序在高并发场景下肯定会崩。这种对底层成本的直觉，是区分码农和架构师的关键分水岭。\n\n### 语言只是工具，思维才是王道\n至于学什么语言，作者的建议很务实：跟着朋友学，选个简单的。不要一开始就陷入 C++ 或 Java 的复杂性泥潭，选个容易上手的语言先建立信心。但他同时也建议，在职业生涯中至少掌握六种不同范式的语言（如面向对象的 Java、函数式的 Lisp、并发的 Go 等）。这能让你跳出单一思维的局限，理解不同编程范式的优劣，从而在面对复杂问题时能拿出最合适的工具，而不是手里只有一把锤子。"
+    },
     {
       "id": 49085798,
       "by": "apetuskey",
@@ -3752,327 +5388,6 @@
           "sarcastic_question": "Lisp 都赢了，文档和部署也会自愈吗？"
         }
       }
-    },
-    {
-      "id": 49085666,
-      "by": "garyhtou",
-      "title": "Zig's Incremental Compilation Internals",
-      "url": "https://mlugg.co.uk/posts/incremental-compilation-internals/",
-      "score": 141,
-      "detailUpdatedAt": 1785273196,
-      "createdAt": 1785255019,
-      "aiSummaryUpdatedAt": 1785273932,
-      "aisummary": {
-        "chinese_title": "Zig 增量编译：debug 版限制与 Rust 安全争论",
-        "emoji": "🤔",
-        "sarcastic_question": "编译都慢成这样了，还指望谁耐心等你优雅？"
-      },
-      "classifications": {
-        "topics": [
-          4,
-          6
-        ],
-        "facets": [
-          5
-        ],
-        "tags": [
-          "Zig",
-          "incremental compilation",
-          "Rust",
-          "LLVM",
-          "GHC",
-          "Haskell",
-          "C"
-        ]
-      },
-      "classificationsUpdatedAt": 1785259554,
-      "aiSummary": {
-        "chinese_title": "Zig 增量编译：debug 版限制与 Rust 安全争论",
-        "emoji": "🤔",
-        "sarcastic_question": "编译都慢成这样了，还指望谁耐心等你优雅？"
-      },
-      "detail": {
-        "id": 49085666,
-        "by": "garyhtou",
-        "title": "Zig's Incremental Compilation Internals",
-        "url": "https://mlugg.co.uk/posts/incremental-compilation-internals/",
-        "score": 141,
-        "detailUpdatedAt": 1785273196,
-        "createdAt": 1785255019,
-        "aiSummaryUpdatedAt": 1785273932,
-        "aisummary": {
-          "chinese_title": "Zig 增量编译：debug 版限制与 Rust 安全争论",
-          "discussion_overview": [
-            {
-              "category": "Zig 设计为增量编译而生",
-              "summary": "评论者普遍认可 Zig 的工具链工作，尤其是把编译器内部结构朝着更容易做 incremental compilation 的方向调整。有人指出 semantic analysis 是最难增量化的部分，因此语言设计本身会直接影响能否把改动局部化；Zig 这些年对设计做出的取舍，正是为了让这件事更可行。也有人提到 Rust 其实也有增量编译，但在一个已成熟的大型 codebase 上继续重构到更彻底的模型非常困难。GHC（Glasgow Haskell Compiler，Haskell 编译器）的文件级增量被反复拿来作为可借鉴的参考。",
-              "supportid": [
-                "49086705",
-                "49086956",
-                "49087037"
-              ]
-            },
-            {
-              "category": "Rust 慢编译更多来自架构而非安全检查",
-              "summary": "不少人反对把 Rust 的慢编译简单归因于安全检查，认为真正拖慢的是 proc macros、name resolution、monomorphized generics，以及先产出 library 再链接成 binary 的传统流水线。proc macros 因为可能带副作用，即使做 incremental compilation 也常常要反复展开；而很多中间产物最后又会被丢弃，造成大量无用工作。有人提出 hint-mostly-unused、gc-sections、按需编译或更细的阶段划分，希望把“只编译最终需要的东西”做得更彻底。也有人说 C++ 的 REPL、hot reloading 和 binary libraries 说明更快的迭代并非幻想，只是 Rust 目前没有把它放在首要目标里。",
-              "supportid": [
-                "49086755",
-                "49086769",
-                "49087034",
-                "49087153",
-                "49087612",
-                "49087275",
-                "49088050",
-                "49088630",
-                "49087260"
-              ]
-            },
-            {
-              "category": "memory safety 的门槛之争",
-              "summary": "围绕 memory safety 的争论几乎成了主线：一边认为真正重要的是能否把 safe code 和 unsafe escape hatch 明确分开，因此 Rust、Java 这类语言更像是有清晰边界的安全语言，而 Zig/C 没有这种分界。另一边则反对把某一种妥协说成 table stakes，认为不同程序对低级控制、复杂度、编译时间和可验证性的取舍完全不同，Zig 的空间安全提升也有现实价值。Fil-C（一个试图用运行时检查提升 C 安全性的项目）被拿来反复比较，有人认可方向，有人批评它把“runtime trap”和“compile-time prevention”混为一谈，并且宣传方式带有对立情绪。还有人指出它目前更像 engineering demo，离可直接上生产还有距离。",
-              "supportid": [
-                "49087137",
-                "49087230",
-                "49087186",
-                "49087290",
-                "49087483",
-                "49087726",
-                "49087952",
-                "49088315",
-                "49089357",
-                "49088033",
-                "49088294",
-                "49089847"
-              ]
-            },
-            {
-              "category": "当前只覆盖自托管 debug 后端",
-              "summary": "当前版本的限制也被多次提醒：这套 incremental compilation 只作用于 Zig 的 self-hosted codegen backend，而且还没有完整 optimization passes，所以现在基本只覆盖 debug builds。评论里提到 interprocedural 优化，尤其是 inlining，会天然削弱增量编译的收益，因此即使未来扩展到 release builds，也很可能只能开放部分优化。混合 C/Zig 项目目前不对 C 源码提供同等缓存，因为 Zig 只缓存 Zig AIR，不保存 C 的编译信息。关于 C 编译本身，讨论提到 arocc/translate-c 和逐步摆脱 LLVM 依赖的计划，但这些路线还没有完全定型。",
-              "supportid": [
-                "49086148",
-                "49086793",
-                "49086355",
-                "49086988",
-                "49087554",
-                "49088036",
-                "49089188",
-                "49089538",
-                "49086354"
-              ]
-            },
-            {
-              "category": "共享库方案与二进制 patching 权衡",
-              "summary": "有人对文章里的巨大 debug binary 设计提出异议，觉得更简单的办法是拆成很多小 shared libraries，再由主程序链接。支持者担心这样更不容易因为 ctrl+C、patch 失败或主二进制损坏而出问题，并且更符合递进式构建的思路。反对者则用实测提醒，shared library 太多会让 dynamic linker 开销迅速上升：1000 个库的启动时间已经明显变差，100 个也不算轻。最终大家更倾向于把它当成工程权衡，而不是一个可以无成本替换的架构。",
-              "supportid": [
-                "49087883",
-                "49088119",
-                "49088111"
-              ]
-            },
-            {
-              "category": "编译速度本身就是生产力",
-              "summary": "很多人借这个话题重申 compilation speed 本身就是长期被低估的生产力因素。有人回忆 Java 当年能吸引大量 C++ 开发者，重要原因之一就是编译更快、迭代更顺；Go 的存在也常被概括为对快速编译的追求。还有人提到 Modula-2 和 Object Pascal 之所以令人怀念，除了语言特性，编译器跑得快也是关键。这个角度把 Zig 的工作看成一种把开发体验重新摆上台面的工程实践。",
-              "supportid": [
-                "49086505",
-                "49087753",
-                "49087282",
-                "49086995"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "incremental compilation",
-              "explanation": "增量编译，只重新编译受改动影响的部分，以缩短反馈周期。"
-            },
-            {
-              "term": "semantic analysis",
-              "explanation": "语义分析，编译器解析名字、类型和作用域关系的阶段，最难做成增量化之一。"
-            },
-            {
-              "term": "proc macros",
-              "explanation": "Rust 的过程宏，能在编译期运行代码并生成或改写 AST，灵活但常影响编译速度。"
-            },
-            {
-              "term": "borrow checking",
-              "explanation": "Rust 的借用检查，用静态分析约束引用、生命周期和别名，防止许多内存错误。"
-            },
-            {
-              "term": "unsafe blocks",
-              "explanation": "Rust 中显式标记的不安全代码区域，用来隔离需要绕过静态检查的操作。"
-            },
-            {
-              "term": "Zig AIR",
-              "explanation": "Zig 的抽象中间表示（Abstract Intermediate Representation），用于缓存和复用编译信息。"
-            },
-            {
-              "term": "comptime",
-              "explanation": "Zig 的编译期执行机制，允许在编译阶段运行代码并生成结果。"
-            },
-            {
-              "term": "monomorphized generics",
-              "explanation": "泛型单态化，把泛型按具体类型展开成专门代码，常增加编译和代码生成成本。"
-            },
-            {
-              "term": "inlining",
-              "explanation": "内联，把函数体展开到调用处；有利于性能，但会削弱增量编译的复用效果。"
-            },
-            {
-              "term": "LLVM",
-              "explanation": "常用的编译器后端/基础设施，功能强但会让自托管和增量流程更复杂。"
-            }
-          ],
-          "context": "这篇讨论围绕 Zig（一个强调显式控制和高性能的系统编程语言）的 incremental compilation 内部实现展开，核心是缓存 Zig AIR（Zig 的抽象中间表示）并尽量把语义分析局部化。评论区很快把话题扩展到 Rust（强调 memory safety 的系统编程语言）和 Java（JVM 语言）的编译速度与安全模型对比，争论焦点从“能编译多快”变成“安全边界怎么定义”。有人补充说 Rust 的慢编译主要来自 proc macros、monomorphized generics 和传统 library/binary 流水线，而不是安全检查本身；也有人指出 Zig 目前主要只在 self-hosted 后端和 debug builds 上可用，release 优化、C 混编和更完整的后端支持还在推进。对比里还反复提到 GHC（Glasgow Haskell Compiler，Haskell 编译器）的文件级增量、LLVM（常用编译器后端）和 Fil-C（试图提升 C 安全性的项目）等背景。",
-          "emoji": "🤔",
-          "sarcastic_question": "编译都慢成这样了，还指望谁耐心等你优雅？"
-        },
-        "classifications": {
-          "topics": [
-            4,
-            6
-          ],
-          "facets": [
-            5
-          ],
-          "tags": [
-            "Zig",
-            "incremental compilation",
-            "Rust",
-            "LLVM",
-            "GHC",
-            "Haskell",
-            "C"
-          ]
-        },
-        "classificationsUpdatedAt": 1785259554,
-        "aiSummary": {
-          "chinese_title": "Zig 增量编译：debug 版限制与 Rust 安全争论",
-          "discussion_overview": [
-            {
-              "category": "Zig 设计为增量编译而生",
-              "summary": "评论者普遍认可 Zig 的工具链工作，尤其是把编译器内部结构朝着更容易做 incremental compilation 的方向调整。有人指出 semantic analysis 是最难增量化的部分，因此语言设计本身会直接影响能否把改动局部化；Zig 这些年对设计做出的取舍，正是为了让这件事更可行。也有人提到 Rust 其实也有增量编译，但在一个已成熟的大型 codebase 上继续重构到更彻底的模型非常困难。GHC（Glasgow Haskell Compiler，Haskell 编译器）的文件级增量被反复拿来作为可借鉴的参考。",
-              "supportid": [
-                "49086705",
-                "49086956",
-                "49087037"
-              ]
-            },
-            {
-              "category": "Rust 慢编译更多来自架构而非安全检查",
-              "summary": "不少人反对把 Rust 的慢编译简单归因于安全检查，认为真正拖慢的是 proc macros、name resolution、monomorphized generics，以及先产出 library 再链接成 binary 的传统流水线。proc macros 因为可能带副作用，即使做 incremental compilation 也常常要反复展开；而很多中间产物最后又会被丢弃，造成大量无用工作。有人提出 hint-mostly-unused、gc-sections、按需编译或更细的阶段划分，希望把“只编译最终需要的东西”做得更彻底。也有人说 C++ 的 REPL、hot reloading 和 binary libraries 说明更快的迭代并非幻想，只是 Rust 目前没有把它放在首要目标里。",
-              "supportid": [
-                "49086755",
-                "49086769",
-                "49087034",
-                "49087153",
-                "49087612",
-                "49087275",
-                "49088050",
-                "49088630",
-                "49087260"
-              ]
-            },
-            {
-              "category": "memory safety 的门槛之争",
-              "summary": "围绕 memory safety 的争论几乎成了主线：一边认为真正重要的是能否把 safe code 和 unsafe escape hatch 明确分开，因此 Rust、Java 这类语言更像是有清晰边界的安全语言，而 Zig/C 没有这种分界。另一边则反对把某一种妥协说成 table stakes，认为不同程序对低级控制、复杂度、编译时间和可验证性的取舍完全不同，Zig 的空间安全提升也有现实价值。Fil-C（一个试图用运行时检查提升 C 安全性的项目）被拿来反复比较，有人认可方向，有人批评它把“runtime trap”和“compile-time prevention”混为一谈，并且宣传方式带有对立情绪。还有人指出它目前更像 engineering demo，离可直接上生产还有距离。",
-              "supportid": [
-                "49087137",
-                "49087230",
-                "49087186",
-                "49087290",
-                "49087483",
-                "49087726",
-                "49087952",
-                "49088315",
-                "49089357",
-                "49088033",
-                "49088294",
-                "49089847"
-              ]
-            },
-            {
-              "category": "当前只覆盖自托管 debug 后端",
-              "summary": "当前版本的限制也被多次提醒：这套 incremental compilation 只作用于 Zig 的 self-hosted codegen backend，而且还没有完整 optimization passes，所以现在基本只覆盖 debug builds。评论里提到 interprocedural 优化，尤其是 inlining，会天然削弱增量编译的收益，因此即使未来扩展到 release builds，也很可能只能开放部分优化。混合 C/Zig 项目目前不对 C 源码提供同等缓存，因为 Zig 只缓存 Zig AIR，不保存 C 的编译信息。关于 C 编译本身，讨论提到 arocc/translate-c 和逐步摆脱 LLVM 依赖的计划，但这些路线还没有完全定型。",
-              "supportid": [
-                "49086148",
-                "49086793",
-                "49086355",
-                "49086988",
-                "49087554",
-                "49088036",
-                "49089188",
-                "49089538",
-                "49086354"
-              ]
-            },
-            {
-              "category": "共享库方案与二进制 patching 权衡",
-              "summary": "有人对文章里的巨大 debug binary 设计提出异议，觉得更简单的办法是拆成很多小 shared libraries，再由主程序链接。支持者担心这样更不容易因为 ctrl+C、patch 失败或主二进制损坏而出问题，并且更符合递进式构建的思路。反对者则用实测提醒，shared library 太多会让 dynamic linker 开销迅速上升：1000 个库的启动时间已经明显变差，100 个也不算轻。最终大家更倾向于把它当成工程权衡，而不是一个可以无成本替换的架构。",
-              "supportid": [
-                "49087883",
-                "49088119",
-                "49088111"
-              ]
-            },
-            {
-              "category": "编译速度本身就是生产力",
-              "summary": "很多人借这个话题重申 compilation speed 本身就是长期被低估的生产力因素。有人回忆 Java 当年能吸引大量 C++ 开发者，重要原因之一就是编译更快、迭代更顺；Go 的存在也常被概括为对快速编译的追求。还有人提到 Modula-2 和 Object Pascal 之所以令人怀念，除了语言特性，编译器跑得快也是关键。这个角度把 Zig 的工作看成一种把开发体验重新摆上台面的工程实践。",
-              "supportid": [
-                "49086505",
-                "49087753",
-                "49087282",
-                "49086995"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "incremental compilation",
-              "explanation": "增量编译，只重新编译受改动影响的部分，以缩短反馈周期。"
-            },
-            {
-              "term": "semantic analysis",
-              "explanation": "语义分析，编译器解析名字、类型和作用域关系的阶段，最难做成增量化之一。"
-            },
-            {
-              "term": "proc macros",
-              "explanation": "Rust 的过程宏，能在编译期运行代码并生成或改写 AST，灵活但常影响编译速度。"
-            },
-            {
-              "term": "borrow checking",
-              "explanation": "Rust 的借用检查，用静态分析约束引用、生命周期和别名，防止许多内存错误。"
-            },
-            {
-              "term": "unsafe blocks",
-              "explanation": "Rust 中显式标记的不安全代码区域，用来隔离需要绕过静态检查的操作。"
-            },
-            {
-              "term": "Zig AIR",
-              "explanation": "Zig 的抽象中间表示（Abstract Intermediate Representation），用于缓存和复用编译信息。"
-            },
-            {
-              "term": "comptime",
-              "explanation": "Zig 的编译期执行机制，允许在编译阶段运行代码并生成结果。"
-            },
-            {
-              "term": "monomorphized generics",
-              "explanation": "泛型单态化，把泛型按具体类型展开成专门代码，常增加编译和代码生成成本。"
-            },
-            {
-              "term": "inlining",
-              "explanation": "内联，把函数体展开到调用处；有利于性能，但会削弱增量编译的复用效果。"
-            },
-            {
-              "term": "LLVM",
-              "explanation": "常用的编译器后端/基础设施，功能强但会让自托管和增量流程更复杂。"
-            }
-          ],
-          "context": "这篇讨论围绕 Zig（一个强调显式控制和高性能的系统编程语言）的 incremental compilation 内部实现展开，核心是缓存 Zig AIR（Zig 的抽象中间表示）并尽量把语义分析局部化。评论区很快把话题扩展到 Rust（强调 memory safety 的系统编程语言）和 Java（JVM 语言）的编译速度与安全模型对比，争论焦点从“能编译多快”变成“安全边界怎么定义”。有人补充说 Rust 的慢编译主要来自 proc macros、monomorphized generics 和传统 library/binary 流水线，而不是安全检查本身；也有人指出 Zig 目前主要只在 self-hosted 后端和 debug builds 上可用，release 优化、C 混编和更完整的后端支持还在推进。对比里还反复提到 GHC（Glasgow Haskell Compiler，Haskell 编译器）的文件级增量、LLVM（常用编译器后端）和 Fil-C（试图提升 C 安全性的项目）等背景。",
-          "emoji": "🤔",
-          "sarcastic_question": "编译都慢成这样了，还指望谁耐心等你优雅？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nZig 通过精细的依赖图追踪和直接二进制热补丁，将增量编译的耗时压缩到了毫秒级，让大型项目的代码修改能像脚本语言一样即时生效。\n\n### 毫秒级重构并非魔法，而是架构设计的红利\nZig 团队最近把增量编译从概念验证变成了日常可用的生产力工具。简单来说，当你修改代码时，编译器不再傻傻地重编整个项目，而是精准定位变动的函数，重新编译后直接把机器码“补丁”进二进制文件里。效果非常惊人：在一个名为 Fizzy 的像素编辑器项目上，初次构建耗时 5 秒，但随后的每一次代码修改，重编都在 50–70ms 内完成。这种体验目前需要 Zig 的 `master` 分支（0.17.0 才会合并进正式版），因为它依赖一些最新的 Linker 特性。\n\n### 文件处理阶段：利用纯函数特性实现极速缓存\n编译的第一阶段是处理源文件，包括 Parse 和 AstGen，产出 ZIR（Zig Intermediate Representation）。这部分的优化思路很直接：因为每个文件的处理都是“纯函数”，不依赖外部状态，所以天然适合并行。更重要的是，得益于 Zig 的 Data-oriented design，ZIR 可以直接通过 `writev/readv` 系统调用读写磁盘，根本不需要复杂的序列化过程。这意味着我们可以轻松地把 ZIR 缓存在磁盘上，下次编译时只处理文件哈希变化的部分。这也是为什么很多用户感觉 Zig 只有第一次编译慢，后续几乎秒开。\n\n### 语义分析：增量编译最难啃的骨头\n真正的挑战在于语义分析，也就是类型检查和 `comptime` 求值。这是编译器最复杂的部分，也是 Zig 语言设计为了迁就增量编译而做过特殊调整的地方。核心思路是把编译工作拆解成独立的“分析单元”，比如 struct 的内存布局、变量的类型、const 的值或者函数体。这些单元之间通过依赖图连接，比如函数体依赖它用到的全局变量的类型。只要搞清楚谁依赖谁，当某个源码变更时，我们就能顺着图精准地找到哪些单元需要重新分析，而不是牵一发而动全身。\n\n### 依赖图如何精准定位“脏”数据\n为了实现这种精准定位，Zig 不仅记录单元间的依赖，还记录单元对“源码区域”的依赖。ZIR 会为每个声明生成哈希值，分析单元就依赖这些哈希。比如你把 `const lucky_number = 42` 改成 `43`，编译器会发现对应的源码哈希变了，于是标记依赖它的单元失效。接着，编译器重新分析这个常量的值，发现值确实变了，再继续顺着图标记依赖这个值的函数体（如 `testLuck` 和 `getSomething`）为失效。这种级联更新非常高效，只会在真正受影响的代码路径上传播。\n\n### 代码生成：从 AIR 到 MIR 的并行转化\n语义分析完成后产出 AIR，下一步就是代码生成，将其转化为接近机器指令的 MIR。好消息是，这一步和文件处理一样，也是“令人尴尬的并行”。只要不涉及跨函数优化（如内联），不同函数的代码生成之间完全不共享状态。我们可以把需要处理的函数扔进线程池队列，并行跑满所有 CPU 核心。当然，这里有个小细节需要注意控制队列大小，防止内存占用爆炸，但整体架构非常适合增量更新。\n\n### 最终目标：直接修改内存中的二进制文件\n虽然原文在代码生成部分截断了，但结合开头提到的“patch the resulting bytes into the output binary”，我们可以推导出最后一步：Linker 的增量更新。传统的增量编译可能只是重生成对象文件，但 Zig 的做法更激进——它直接在内存中修改已有的二进制输出。因为前面的步骤已经保证了只有极少数函数的机器码发生了变化，所以直接替换这些字节段是可行的。这省去了重新链接的巨大开销，也是 Zig 能把重编时间控制在几十毫秒内的关键秘诀。"
     },
     {
       "id": 49080664,
@@ -13330,1484 +14645,6 @@
         }
       },
       "articleSummary": "## 一句话总结\nBun 声称用 11 天、16.5 万美元完成了 Rust 重写，但真相是项目至今无法发布，且隐形的 CI/CD 和人力成本正在将总开销推向 80 万美元，这更像是一场为了支撑估值的营销秀。\n\n### 所谓的“11 天重写”，其实只是个开始\n2026 年 7 月 8 日，Bun 的创始人 Jarred Summner 宣布了一个惊人的消息：他们在 5 月 3 日到 14 日期间，花了 16.5 万美元调用 Anthropic 的 API，仅用 11 天就把 Bun 重写成了 Rust。这听起来像是 AI 编程的终极胜利，每天 1.5 万美元的账单似乎也证明了“金钱换速度”的可行性。但文章作者对此保持怀疑，毕竟这正好发生在 Bun 被 Anthropic 收购之后，很难不让人联想到这是一场为了证明自家 AI 能力的“狗粮”计划。\n\n### 完成了代码合并，却发不出一个版本\n既然代码已经合并到 `main` 分支了，那总该有个新版本吧？但作者查了 Git 记录发现，截至 7 月 27 日，距离合并过去六周了，依然没有任何 Release Tag。上一次发布版本还是 5 月 12 日，这意味着 Bun 已经停滞了 11 周，上一次出现这种长达六周的发布空档还要追溯到 2022 年底。这显然不是一个“顺利完成重写”的项目该有的状态，更像是掉进了一个巨大的技术泥潭。\n\n### 2475 个未合并的 PR，才是真实的现状\n如果只看主分支，你可能觉得一切正常，但看看 `robobun`（也就是 Claude AI 账号）提交的 Pull Requests，场面就非常壮观了。7 月 9 日时有 1277 个开放 PR，到了 7 月 27 日这个数字涨到了 2475 个。作者算了一笔账，Buildkite 的 CI/CD 流水线跑完一个检查大约需要 40 到 90 分钟。如果要把这些 PR 全部跑完并合并，就算机器 24 小时连轴转，也需要 86 天。这哪里是重写完了，分明是背了一身还不完的技术债。\n\n### 16.5 万美元只是冰山一角，隐形成本惊人\n官方宣称的 16.5 万美元只是 API 调用费，这其实只是账面上的显性成本。作者发现，很多 PR 是由 Anthropic 的员工直接提交的，这意味着还有大量的人力成本没算进去。更重要的是，那个 2477 个 PR 排队的 Buildkite 集群，其计算成本也是一笔巨款。如果算上这些隐形的 CI/CD 开销和持续的人力投入，即便按每天 1 万美元保守估计，整个重写项目的总成本正在逼近 80 万美元。\n\n### AI 并没有魔法，只是把工作转移了\n有意思的地方在于，作者通过数据分析发现，重写开始后 Claude 的使用量确实出现了巨大的峰值，而且 Anthropic 员工的参与度也在直线上升。虽然员工们最初还保持着周末休息的节奏，但最近似乎也开始加班加点地冲刺。这说明所谓的“AI 自动重写”根本不是无人值守的魔法，而是需要大量工程师配合、调试和修补的半成品。AI 确实写了代码，但把这些代码变成可用的软件，依然离不开昂贵的人力算力。\n\n### 别被估值故事冲昏了头脑\n作者并不是一个 AI 原教旨主义者，他甚至做过自己最自豪的 ML 项目，但他反感现在这种为了支撑高估值而无限吹嘘 AI 能力的风气。从 Anthropic 的 C 编译器到 Cursor 的 FastRender 浏览器，再到这次的 Bun 重写，很多项目在热度过后都陷入了沉寂。对于开发者来说，最务实的问题不是“AI 是否取代人类”，而是这几十万美元砸下去，连个可用的版本都发不出来，这笔生意到底划不划算。"
-    },
-    {
-      "id": 49009706,
-      "by": "speckx",
-      "title": "Magnolias Are So Old That They're Pollinated by Beetles, Not Bees",
-      "url": "https://mymodernmet.com/magnolia-ancient-flowers-beetles/",
-      "score": 241,
-      "detailUpdatedAt": 1785176000,
-      "createdAt": 1785146426,
-      "aiSummaryUpdatedAt": 1785176720,
-      "aisummary": {
-        "chinese_title": "木兰传粉靠甲虫，“非蜜蜂”说法引争议",
-        "emoji": "🪲",
-        "sarcastic_question": "蜜蜂连木兰的授粉工位都被开除了？"
-      },
-      "classifications": {
-        "topics": [
-          8
-        ],
-        "facets": [],
-        "tags": [
-          "Magnolias",
-          "Beetles",
-          "Bees",
-          "Pollination",
-          "Ants",
-          "Mosquitoes",
-          "Honeybees",
-          "mymodernmet"
-        ]
-      },
-      "classificationsUpdatedAt": 1785149768,
-      "aiSummary": {
-        "chinese_title": "木兰传粉靠甲虫，“非蜜蜂”说法引争议",
-        "emoji": "🪲",
-        "sarcastic_question": "蜜蜂连木兰的授粉工位都被开除了？"
-      },
-      "detail": {
-        "id": 49009706,
-        "by": "speckx",
-        "title": "Magnolias Are So Old That They're Pollinated by Beetles, Not Bees",
-        "url": "https://mymodernmet.com/magnolia-ancient-flowers-beetles/",
-        "score": 134,
-        "detailUpdatedAt": 1785159795,
-        "createdAt": 1785146426,
-        "aiSummaryUpdatedAt": 1785161138,
-        "aisummary": {
-          "chinese_title": "木兰甲虫授粉？评论质疑标题夸大，蜜蜂也常来",
-          "discussion_overview": [
-            {
-              "category": "标题夸大与证据不足",
-              "summary": "有人指出这篇内容像是把旧文重新包装，真正的新信息并不多。也有评论直接怀疑“木兰不是 bees 而是 beetles”说得太绝对，因为自己在木兰上也常看到 bees。还有人根据文中提到的 flightless beetles 推测，它们可能长期待在同一棵树上，反而不利于跨树的 gene exchange。整体质疑集中在：标题很强，但证据未必同样强。",
-              "supportid": [
-                "49068690",
-                "49069380",
-                "49067112",
-                "49067273"
-              ]
-            },
-            {
-              "category": "非蜜蜂授粉很常见",
-              "summary": "有评论强调，bees 只是众多 pollinator 之一，wasps、flies、moths、butterflies、birds、bats 都可能参与授粉。举例里既有 hummingbird hawk-moth（蜂鸟鹰蛾，一种飞行时像蜂鸟的天蛾），也有 pawpaw（Asimina triloba，一种北美果树）依赖 house flies。mountain mint（山薄荷类植物）也被提到会吸引 beetles、bees、flies、wasps、mosquitoes、moths、butterflies 等一长串访客。这组评论想表达的是，授粉生态远比“bee = 默认答案”复杂得多。",
-              "supportid": [
-                "49009960",
-                "49068240",
-                "49068322",
-                "49068879",
-                "49069237",
-                "49068932",
-                "49067994",
-                "49068301",
-                "49068953",
-                "49067169",
-                "49067630",
-                "49068263",
-                "49067157"
-              ]
-            },
-            {
-              "category": "花访客≠授粉者",
-              "summary": "评论里特意区分了“来花上取食”和“真正授粉”。nectar robbing 指昆虫只取 nectar，却不把 pollen 带到另一朵花，因此并不帮助 sexual reproduction。有人还拿狗身上粘满种子的例子说明，seed dispersal 不是 pollination，seed 也不是 gamete。花的形状，以及 stamen 和 pistil 的位置，正是为了提高真正的 pollen transfer。",
-              "supportid": [
-                "49068374",
-                "49068574",
-                "49069414",
-                "49068967",
-                "49068370"
-              ]
-            },
-            {
-              "category": "进化时间线支持木兰叙事",
-              "summary": "另一条线索从演化时间线解释为什么“甲虫授粉木兰”并不离谱。angiosperms（被子植物）出现在 Cretaceous，而 Hymenoptera（膜翅目）和 Diptera（双翅目）更早；bees 又是后来才从 wasp-like Hymenoptera 演化出来。按这个顺序，早期开花植物先由 beetles 等昆虫帮助传播 pollen，是合理的假设，只是帖子本身还需要更强的 substantiation。有人顺带把 magnolia、Ginkgo（银杏）和 Equisetum（木贼属）并列成“living fossils（活化石）”，强调它们的古老谱系。",
-              "supportid": [
-                "49067584",
-                "49068536",
-                "49069658",
-                "49068031"
-              ]
-            },
-            {
-              "category": "蜂类多样性与蜘蛛智力闲谈",
-              "summary": "评论后半段转到 bees 的 intelligence：有人认为 bees 很会适应不同 flower，但也有人补充，这说法更像 honeybees，而不是所有 wild bees。随后又提到 southern Brazil 的 stingless bees（无刺蜂）和 solitary bees（独居蜂）很多都被误解得太少样。话题再滑向 jumping spiders（跳蛛）是否比 bees 更聪明、spiders 是否算 insects，甚至有人翻出 Aristotle 对“insects”的古义。这个分支基本是在借木兰帖讨论 arthropod 的认知差异和分类边界。",
-              "supportid": [
-                "49067112",
-                "49067296",
-                "49068434",
-                "49068637",
-                "49067596",
-                "49068177",
-                "49068941",
-                "49068404",
-                "49067693",
-                "49068617",
-                "49069735",
-                "49067412",
-                "49068926"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "angiosperms（被子植物）",
-              "explanation": "会开花并形成果实和种子的植物大类，木兰属于较早分支。"
-            },
-            {
-              "term": "Hymenoptera（膜翅目）",
-              "explanation": "包含 wasps、bees、ants 的昆虫类群，评论用来讨论蜜蜂的演化来源。"
-            },
-            {
-              "term": "Diptera（双翅目）",
-              "explanation": "flies 所属的昆虫目，许多种类也会参与授粉。"
-            },
-            {
-              "term": "nectar robbing（盗蜜）",
-              "explanation": "只取 nectar、不把 pollen 带到另一朵花的行为。"
-            },
-            {
-              "term": "dioecy（雌雄异株）",
-              "explanation": "雄花和雌花分布在不同植株上的繁殖方式。"
-            },
-            {
-              "term": "self-incompatible（自交不亲和）",
-              "explanation": "植物自身花粉无法完成有效受精，通常需要异株花粉。"
-            }
-          ],
-          "context": "这条帖子讨论一篇科普文：木兰（magnolia）被说成是非常古老的开花植物，因为它们的花结构和气味更像在吸引 beetles（甲虫）而不是 bees（蜜蜂）。评论区先质疑文章像是把旧文重新包装，随后补充说木兰在现实中也常有 bees 造访，所以标题里的“not bees”未必成立。讨论随之扩展到 pollination ecology：不同植物可能依赖 flies、moths、wasps、birds、bats，甚至蚂蚁，而像 pawpaw（Asimina triloba，一种北美果树）和 mountain mint（山薄荷类植物）都是典型例子。还有人把话题带到 angiosperms（被子植物）、Hymenoptera（膜翅目）和 Diptera（双翅目）的演化时间线，以及 nectar robbing（盗蜜）、dioecy（雌雄异株）等更细的植物学概念。个别评论还分享了木兰香气、种子冷层积发芽的园艺经验，并把它和 Ginkgo（银杏）等“living fossils（活化石）”联系起来。",
-          "emoji": "🤔",
-          "sarcastic_question": "蜜蜂只是来打卡，标题就把它们直接开除了？"
-        },
-        "classifications": {
-          "topics": [
-            8
-          ],
-          "facets": [],
-          "tags": [
-            "Magnolias",
-            "Beetles",
-            "Bees",
-            "Pollination",
-            "Ants",
-            "Mosquitoes",
-            "Honeybees",
-            "mymodernmet"
-          ]
-        },
-        "classificationsUpdatedAt": 1785149768,
-        "aiSummary": {
-          "chinese_title": "木兰甲虫授粉？评论质疑标题夸大，蜜蜂也常来",
-          "discussion_overview": [
-            {
-              "category": "标题夸大与证据不足",
-              "summary": "有人指出这篇内容像是把旧文重新包装，真正的新信息并不多。也有评论直接怀疑“木兰不是 bees 而是 beetles”说得太绝对，因为自己在木兰上也常看到 bees。还有人根据文中提到的 flightless beetles 推测，它们可能长期待在同一棵树上，反而不利于跨树的 gene exchange。整体质疑集中在：标题很强，但证据未必同样强。",
-              "supportid": [
-                "49068690",
-                "49069380",
-                "49067112",
-                "49067273"
-              ]
-            },
-            {
-              "category": "非蜜蜂授粉很常见",
-              "summary": "有评论强调，bees 只是众多 pollinator 之一，wasps、flies、moths、butterflies、birds、bats 都可能参与授粉。举例里既有 hummingbird hawk-moth（蜂鸟鹰蛾，一种飞行时像蜂鸟的天蛾），也有 pawpaw（Asimina triloba，一种北美果树）依赖 house flies。mountain mint（山薄荷类植物）也被提到会吸引 beetles、bees、flies、wasps、mosquitoes、moths、butterflies 等一长串访客。这组评论想表达的是，授粉生态远比“bee = 默认答案”复杂得多。",
-              "supportid": [
-                "49009960",
-                "49068240",
-                "49068322",
-                "49068879",
-                "49069237",
-                "49068932",
-                "49067994",
-                "49068301",
-                "49068953",
-                "49067169",
-                "49067630",
-                "49068263",
-                "49067157"
-              ]
-            },
-            {
-              "category": "花访客≠授粉者",
-              "summary": "评论里特意区分了“来花上取食”和“真正授粉”。nectar robbing 指昆虫只取 nectar，却不把 pollen 带到另一朵花，因此并不帮助 sexual reproduction。有人还拿狗身上粘满种子的例子说明，seed dispersal 不是 pollination，seed 也不是 gamete。花的形状，以及 stamen 和 pistil 的位置，正是为了提高真正的 pollen transfer。",
-              "supportid": [
-                "49068374",
-                "49068574",
-                "49069414",
-                "49068967",
-                "49068370"
-              ]
-            },
-            {
-              "category": "进化时间线支持木兰叙事",
-              "summary": "另一条线索从演化时间线解释为什么“甲虫授粉木兰”并不离谱。angiosperms（被子植物）出现在 Cretaceous，而 Hymenoptera（膜翅目）和 Diptera（双翅目）更早；bees 又是后来才从 wasp-like Hymenoptera 演化出来。按这个顺序，早期开花植物先由 beetles 等昆虫帮助传播 pollen，是合理的假设，只是帖子本身还需要更强的 substantiation。有人顺带把 magnolia、Ginkgo（银杏）和 Equisetum（木贼属）并列成“living fossils（活化石）”，强调它们的古老谱系。",
-              "supportid": [
-                "49067584",
-                "49068536",
-                "49069658",
-                "49068031"
-              ]
-            },
-            {
-              "category": "蜂类多样性与蜘蛛智力闲谈",
-              "summary": "评论后半段转到 bees 的 intelligence：有人认为 bees 很会适应不同 flower，但也有人补充，这说法更像 honeybees，而不是所有 wild bees。随后又提到 southern Brazil 的 stingless bees（无刺蜂）和 solitary bees（独居蜂）很多都被误解得太少样。话题再滑向 jumping spiders（跳蛛）是否比 bees 更聪明、spiders 是否算 insects，甚至有人翻出 Aristotle 对“insects”的古义。这个分支基本是在借木兰帖讨论 arthropod 的认知差异和分类边界。",
-              "supportid": [
-                "49067112",
-                "49067296",
-                "49068434",
-                "49068637",
-                "49067596",
-                "49068177",
-                "49068941",
-                "49068404",
-                "49067693",
-                "49068617",
-                "49069735",
-                "49067412",
-                "49068926"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "angiosperms（被子植物）",
-              "explanation": "会开花并形成果实和种子的植物大类，木兰属于较早分支。"
-            },
-            {
-              "term": "Hymenoptera（膜翅目）",
-              "explanation": "包含 wasps、bees、ants 的昆虫类群，评论用来讨论蜜蜂的演化来源。"
-            },
-            {
-              "term": "Diptera（双翅目）",
-              "explanation": "flies 所属的昆虫目，许多种类也会参与授粉。"
-            },
-            {
-              "term": "nectar robbing（盗蜜）",
-              "explanation": "只取 nectar、不把 pollen 带到另一朵花的行为。"
-            },
-            {
-              "term": "dioecy（雌雄异株）",
-              "explanation": "雄花和雌花分布在不同植株上的繁殖方式。"
-            },
-            {
-              "term": "self-incompatible（自交不亲和）",
-              "explanation": "植物自身花粉无法完成有效受精，通常需要异株花粉。"
-            }
-          ],
-          "context": "这条帖子讨论一篇科普文：木兰（magnolia）被说成是非常古老的开花植物，因为它们的花结构和气味更像在吸引 beetles（甲虫）而不是 bees（蜜蜂）。评论区先质疑文章像是把旧文重新包装，随后补充说木兰在现实中也常有 bees 造访，所以标题里的“not bees”未必成立。讨论随之扩展到 pollination ecology：不同植物可能依赖 flies、moths、wasps、birds、bats，甚至蚂蚁，而像 pawpaw（Asimina triloba，一种北美果树）和 mountain mint（山薄荷类植物）都是典型例子。还有人把话题带到 angiosperms（被子植物）、Hymenoptera（膜翅目）和 Diptera（双翅目）的演化时间线，以及 nectar robbing（盗蜜）、dioecy（雌雄异株）等更细的植物学概念。个别评论还分享了木兰香气、种子冷层积发芽的园艺经验，并把它和 Ginkgo（银杏）等“living fossils（活化石）”联系起来。",
-          "emoji": "🤔",
-          "sarcastic_question": "蜜蜂只是来打卡，标题就把它们直接开除了？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nMagnolia（木兰）之所以靠甲虫而不是蜜蜂授粉，是因为它们早在 1 亿年前就进化出来了，那时候蜜蜂还没出现，这种古老的花卉结构其实是为了适应甲虫这种“笨拙”的合作伙伴而设计的。\n\n### 为什么是甲虫？因为蜜蜂还没“出生”\n你有没有仔细观察过 Magnolia（木兰）树？你会发现，在花丛里忙活的通常是甲虫，而不是我们熟悉的蜜蜂。这其实不是巧合，而是一个时间线问题。说白了，木兰太老了，它们已经在地球上存在了超过 1 亿年。那时候恐龙还在到处溜达，蜜蜂和蝴蝶这些现代授粉者根本还没进化出来。相比之下，甲虫的历史更久远，大约有 3 亿年。所以在那个年代，甲虫是唯一可用的“外包团队”，木兰只能和它们建立合作关系。\n\n### 花朵结构是为甲虫“量身定制”的\n这种古老的合作关系，直接决定了木兰的“架构设计”。因为甲虫主要靠嗅觉而不是视觉导航，木兰的花瓣颜色通常比较素雅，不像现代花卉那样鲜艳。更有意思的是它的形状：木兰的花很大，而且像个碗一样张开。这完全是为了方便甲虫爬进去。核心思路其实很简单：既然合作伙伴是甲虫，那就得把入口修得宽敞点，还得靠气味（模拟发酵水果的味道）来吸引它们，而不是靠颜色。\n\n### 厚实的花瓣是为了抗造\n这里有个巧妙的设计：木兰的花瓣不是那种娇嫩的类型，而是非常厚实、像皮革一样坚韧。这可不是为了好看，而是为了生存。甲虫的授粉方式非常粗暴，它们在花里钻来钻去寻找食物，动作既笨拙又粗鲁。如果花瓣像普通花朵那样脆弱，早就被甲虫折腾烂了。这种厚实的结构，本质上是一种防御机制，确保花朵在甲虫的“破坏性测试”下还能存活并完成授粉。\n\n### 甲虫的“笨办法”反而成了最稳定的方案\n从技术角度看，甲虫的授粉效率并不高，甚至可以说是个“Happy Accident”（快乐的意外）。它们不会像蜜蜂那样悬停采蜜，也没有复杂的授粉行为。甲虫就是单纯地在花里乱钻，为了吃而把花瓣弄得一团糟。但在这个过程中，它们身上沾满了花粉，然后带到下一朵花里。虽然这套方案看起来很原始，不够优雅，但它经受住了时间的考验。木兰靠着这套“简单粗暴”的接口，一直繁衍到了今天。"
-    },
-    {
-      "id": 49069132,
-      "by": "surprisetalk",
-      "title": "Should you wash your solar panels?",
-      "url": "https://incoherency.co.uk/blog/stories/should-you-wash-your-solar-panels.html",
-      "score": 155,
-      "detailUpdatedAt": 1785174200,
-      "createdAt": 1785159620,
-      "aiSummaryUpdatedAt": 1785174660,
-      "aisummary": {
-        "chinese_title": "太阳能板要不要洗：脏污收益、热效应、卖房信号",
-        "emoji": "⚠️",
-        "sarcastic_question": "洗一洗太阳能板就能把收益吹成翻倍神话吗？"
-      },
-      "classifications": {
-        "topics": [
-          7,
-          9,
-          10
-        ],
-        "facets": [
-          5,
-          9
-        ],
-        "tags": [
-          "solar panels",
-          "solar panel cleaning",
-          "feed-in tariff",
-          "UK",
-          "dust",
-          "rain",
-          "grounding",
-          "water spray"
-        ]
-      },
-      "classificationsUpdatedAt": 1785163307,
-      "aiSummary": {
-        "chinese_title": "太阳能板要不要洗：脏污收益、热效应、卖房信号",
-        "emoji": "⚠️",
-        "sarcastic_question": "洗一洗太阳能板就能把收益吹成翻倍神话吗？"
-      },
-      "detail": {
-        "id": 49069132,
-        "by": "surprisetalk",
-        "title": "Should you wash your solar panels?",
-        "url": "https://incoherency.co.uk/blog/stories/should-you-wash-your-solar-panels.html",
-        "score": 155,
-        "detailUpdatedAt": 1785174200,
-        "createdAt": 1785159620,
-        "aiSummaryUpdatedAt": 1785174660,
-        "aisummary": {
-          "chinese_title": "太阳能板要不要洗：脏污收益、热效应、卖房信号",
-          "discussion_overview": [
-            {
-              "category": "实测增益差异很大",
-              "summary": "评论里最核心的分歧是：清洗到底能带来多少真实增益。有些人说 19 年几乎没洗过，峰值输出依然和装机时差不多；也有人在多年未清洗后首次清洁，看到 10% 甚至 35% 到 40% 的提升。还有船载阵列在盐雾、灰尘和鸟粪下清洗后明显变好，说明在脏污严重的场景里清洗确实有用。整体看，是否值得洗不是抽象问题，而是强烈依赖当地环境和使用方式。",
-              "supportid": [
-                "49072890",
-                "49070688",
-                "49069873",
-                "49071892",
-                "49072924"
-              ]
-            },
-            {
-              "category": "环境与污渍来源差异",
-              "summary": "很多人强调，面板脏不脏主要看你住在哪里。西南干旱地区灰尘积得快，PNW 会有树液和针叶花粉，海边还有盐雾和海鸥粪便，鸟粪和局部阴影甚至比普通灰尘更伤发电。轻雨往往只是把灰尘打湿并糊成泥，只有持续降雨或人工清洗才真的有效。也有人提醒，屋顶坡度、树枝遮挡和局部积尘会让“该不该洗”变成非常地域化的问题。",
-              "supportid": [
-                "49072053",
-                "49070710",
-                "49070058",
-                "49070142",
-                "49072044",
-                "49070072",
-                "49069965",
-                "49070407",
-                "49072728",
-                "49070488"
-              ]
-            },
-            {
-              "category": "降温、失配与阵列设计",
-              "summary": "不少评论指出，清洗后的提升不一定全是因为污垢被去掉。水会把面板降温，而太阳能板温度一高效率就会下降，所以喷洗后先看到一波提升很正常。串式逆变器场景里，最脏或最弱的一块板会拖累整串，清洗后整串输出就可能被放大感知。东/西向布置、倾角和 tracking system（跟踪支架）也会改变发电曲线，因此单看前后对比很容易把冷却效应、失配和真正的清洁收益混在一起。",
-              "supportid": [
-                "49070093",
-                "49071357",
-                "49070405",
-                "49069884",
-                "49070016",
-                "49070149",
-                "49070522",
-                "49070041"
-              ]
-            },
-            {
-              "category": "维护成本与电气安全",
-              "summary": "另一个反复出现的观点是：屋顶阵列不是不能洗，而是维护风险更高。很多人说地面阵列用长杆、微纤维海绵和肥皂水就够了，但屋顶上加了梯子和延长工具后，清洗者本身就是最大风险。还有人提醒，某些地区可能要求 scaffolding，随便上屋顶并不现实。更重要的是电气安全：如果摸到面板有“发麻”感，那更像 ground fault、接地或 bonding 问题，而不是普通脏污可以解释的。",
-              "supportid": [
-                "49069591",
-                "49071144",
-                "49072401",
-                "49072253",
-                "49070082",
-                "49069568",
-                "49069865",
-                "49070741",
-                "49071501"
-              ]
-            },
-            {
-              "category": "并网、储能与政策账",
-              "summary": "很多人把问题从“物理上洗不洗”转成“经济上值不值”。离网系统里，额外 2% 到 5% 的提升可能根本用不上；但如果你靠太阳能全年供电、储能有限，或者在卖电和峰谷调度，清洗就更有意义。讨论还延伸到 net metering（净计量）、feed-in tariff（上网电价补贴）和 NEM2.0 这类政策：一旦升级会影响原有合约或补贴，哪怕多一点发电也可能不划算。也有人提到 battery（储能电池）、ESS+PV、grid interconnect fee 和许可成本，说明真正麻烦的往往不是洗，而是整个制度把增量收益压低了。",
-              "supportid": [
-                "49072689",
-                "49070581",
-                "49072667",
-                "49071322",
-                "49072697",
-                "49072160",
-                "49072563",
-                "49071677",
-                "49069831",
-                "49069720",
-                "49069833",
-                "49070505",
-                "49070097",
-                "49069924",
-                "49069619"
-              ]
-            },
-            {
-              "category": "卖房时的清洁信号",
-              "summary": "不少评论把清洗面板类比成房屋出售前的 staging（售房陈列）。重点不是面板能多发多少电，而是干净整洁会让买家更相信这套房子被认真维护过。评论里还举了门把手、油漆、caulk、园艺和照片布置等例子，认为这些低成本改动会显著改善第一印象。脏污、宠物尿渍或东拼西补的外观则会放大信息不对称，让买家怀疑背后还有别的隐藏问题。",
-              "supportid": [
-                "49069645",
-                "49070172",
-                "49070007",
-                "49070123",
-                "49070373",
-                "49070193",
-                "49070467",
-                "49070428",
-                "49070249",
-                "49072632",
-                "49070346",
-                "49070626",
-                "49072349",
-                "49070686",
-                "49070472",
-                "49070297",
-                "49072268",
-                "49070049"
-              ]
-            },
-            {
-              "category": "清洗服务与营销泡沫",
-              "summary": "还有一派评论明显更怀疑这门生意本身。有人说社媒上已经出现了把太阳能板清洗包装成高利润 door-to-door 服务的套路，靠“保护你的投资”来卖高价。对 20% 之类的提升，很多人都很不信任，认为如果真有这么神，面板厂早就自己把 nano coating 或 nano glass 做进工厂了。整体上，这部分讨论把话题从维修问题拉向了营销夸张和价格泡沫。",
-              "supportid": [
-                "49071326",
-                "49070239",
-                "49072981",
-                "49072519",
-                "49071504",
-                "49072579"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "string inverter（串式逆变器）",
-              "explanation": "把多块面板串联后统一逆变的设备；串内最弱的组件会拖累整串输出。"
-            },
-            {
-              "term": "net metering（净计量）",
-              "explanation": "并网发电与用电相互抵扣的结算方式，常见于住宅光伏。"
-            },
-            {
-              "term": "NEM2.0",
-              "explanation": "加州的第二代净计量政策，影响自发自用和卖电收益。"
-            },
-            {
-              "term": "feed-in tariff",
-              "explanation": "按发电量给予固定或优惠回购价的上网电价机制。"
-            },
-            {
-              "term": "solar tracker（太阳能跟踪支架）",
-              "explanation": "让面板随太阳角度转动的支架系统，用来提高发电量。"
-            },
-            {
-              "term": "home staging",
-              "explanation": "房屋售卖前的清洁、布置和视觉优化，用来提升买家观感。"
-            },
-            {
-              "term": "ground fault（接地故障）",
-              "explanation": "电流异常流向机壳或地线的故障，可能带来触电风险。"
-            }
-          ],
-          "context": "这条讨论围绕“太阳能板要不要洗”展开，但大家实际在算的是脏污、温度和系统配置会把发电量拉高或拉低多少。评论里有人拿自己 19 年几乎没清洗的屋顶光伏阵列、清洗后提升 10% 的船载系统，以及多年未洗后首次清洁提升 35% 到 40% 的案例来对比，说明结果非常依赖地点和污垢类型。很多人还把话题扩展到 battery（储能电池）、net metering（净计量）和 feed-in tariff（上网电价补贴）等政策，因为这些因素决定额外发电到底值不值钱。另一些评论则把问题延伸到 home staging（售房陈列）和电气安全，提醒屋顶 PV 系统不仅关乎收益，也关乎信任、接地故障和触电风险。",
-          "emoji": "⚠️",
-          "sarcastic_question": "洗一洗太阳能板就能把收益吹成翻倍神话吗？"
-        },
-        "classifications": {
-          "topics": [
-            7,
-            9,
-            10
-          ],
-          "facets": [
-            5,
-            9
-          ],
-          "tags": [
-            "solar panels",
-            "solar panel cleaning",
-            "feed-in tariff",
-            "UK",
-            "dust",
-            "rain",
-            "grounding",
-            "water spray"
-          ]
-        },
-        "classificationsUpdatedAt": 1785163307,
-        "aiSummary": {
-          "chinese_title": "太阳能板要不要洗：脏污收益、热效应、卖房信号",
-          "discussion_overview": [
-            {
-              "category": "实测增益差异很大",
-              "summary": "评论里最核心的分歧是：清洗到底能带来多少真实增益。有些人说 19 年几乎没洗过，峰值输出依然和装机时差不多；也有人在多年未清洗后首次清洁，看到 10% 甚至 35% 到 40% 的提升。还有船载阵列在盐雾、灰尘和鸟粪下清洗后明显变好，说明在脏污严重的场景里清洗确实有用。整体看，是否值得洗不是抽象问题，而是强烈依赖当地环境和使用方式。",
-              "supportid": [
-                "49072890",
-                "49070688",
-                "49069873",
-                "49071892",
-                "49072924"
-              ]
-            },
-            {
-              "category": "环境与污渍来源差异",
-              "summary": "很多人强调，面板脏不脏主要看你住在哪里。西南干旱地区灰尘积得快，PNW 会有树液和针叶花粉，海边还有盐雾和海鸥粪便，鸟粪和局部阴影甚至比普通灰尘更伤发电。轻雨往往只是把灰尘打湿并糊成泥，只有持续降雨或人工清洗才真的有效。也有人提醒，屋顶坡度、树枝遮挡和局部积尘会让“该不该洗”变成非常地域化的问题。",
-              "supportid": [
-                "49072053",
-                "49070710",
-                "49070058",
-                "49070142",
-                "49072044",
-                "49070072",
-                "49069965",
-                "49070407",
-                "49072728",
-                "49070488"
-              ]
-            },
-            {
-              "category": "降温、失配与阵列设计",
-              "summary": "不少评论指出，清洗后的提升不一定全是因为污垢被去掉。水会把面板降温，而太阳能板温度一高效率就会下降，所以喷洗后先看到一波提升很正常。串式逆变器场景里，最脏或最弱的一块板会拖累整串，清洗后整串输出就可能被放大感知。东/西向布置、倾角和 tracking system（跟踪支架）也会改变发电曲线，因此单看前后对比很容易把冷却效应、失配和真正的清洁收益混在一起。",
-              "supportid": [
-                "49070093",
-                "49071357",
-                "49070405",
-                "49069884",
-                "49070016",
-                "49070149",
-                "49070522",
-                "49070041"
-              ]
-            },
-            {
-              "category": "维护成本与电气安全",
-              "summary": "另一个反复出现的观点是：屋顶阵列不是不能洗，而是维护风险更高。很多人说地面阵列用长杆、微纤维海绵和肥皂水就够了，但屋顶上加了梯子和延长工具后，清洗者本身就是最大风险。还有人提醒，某些地区可能要求 scaffolding，随便上屋顶并不现实。更重要的是电气安全：如果摸到面板有“发麻”感，那更像 ground fault、接地或 bonding 问题，而不是普通脏污可以解释的。",
-              "supportid": [
-                "49069591",
-                "49071144",
-                "49072401",
-                "49072253",
-                "49070082",
-                "49069568",
-                "49069865",
-                "49070741",
-                "49071501"
-              ]
-            },
-            {
-              "category": "并网、储能与政策账",
-              "summary": "很多人把问题从“物理上洗不洗”转成“经济上值不值”。离网系统里，额外 2% 到 5% 的提升可能根本用不上；但如果你靠太阳能全年供电、储能有限，或者在卖电和峰谷调度，清洗就更有意义。讨论还延伸到 net metering（净计量）、feed-in tariff（上网电价补贴）和 NEM2.0 这类政策：一旦升级会影响原有合约或补贴，哪怕多一点发电也可能不划算。也有人提到 battery（储能电池）、ESS+PV、grid interconnect fee 和许可成本，说明真正麻烦的往往不是洗，而是整个制度把增量收益压低了。",
-              "supportid": [
-                "49072689",
-                "49070581",
-                "49072667",
-                "49071322",
-                "49072697",
-                "49072160",
-                "49072563",
-                "49071677",
-                "49069831",
-                "49069720",
-                "49069833",
-                "49070505",
-                "49070097",
-                "49069924",
-                "49069619"
-              ]
-            },
-            {
-              "category": "卖房时的清洁信号",
-              "summary": "不少评论把清洗面板类比成房屋出售前的 staging（售房陈列）。重点不是面板能多发多少电，而是干净整洁会让买家更相信这套房子被认真维护过。评论里还举了门把手、油漆、caulk、园艺和照片布置等例子，认为这些低成本改动会显著改善第一印象。脏污、宠物尿渍或东拼西补的外观则会放大信息不对称，让买家怀疑背后还有别的隐藏问题。",
-              "supportid": [
-                "49069645",
-                "49070172",
-                "49070007",
-                "49070123",
-                "49070373",
-                "49070193",
-                "49070467",
-                "49070428",
-                "49070249",
-                "49072632",
-                "49070346",
-                "49070626",
-                "49072349",
-                "49070686",
-                "49070472",
-                "49070297",
-                "49072268",
-                "49070049"
-              ]
-            },
-            {
-              "category": "清洗服务与营销泡沫",
-              "summary": "还有一派评论明显更怀疑这门生意本身。有人说社媒上已经出现了把太阳能板清洗包装成高利润 door-to-door 服务的套路，靠“保护你的投资”来卖高价。对 20% 之类的提升，很多人都很不信任，认为如果真有这么神，面板厂早就自己把 nano coating 或 nano glass 做进工厂了。整体上，这部分讨论把话题从维修问题拉向了营销夸张和价格泡沫。",
-              "supportid": [
-                "49071326",
-                "49070239",
-                "49072981",
-                "49072519",
-                "49071504",
-                "49072579"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "string inverter（串式逆变器）",
-              "explanation": "把多块面板串联后统一逆变的设备；串内最弱的组件会拖累整串输出。"
-            },
-            {
-              "term": "net metering（净计量）",
-              "explanation": "并网发电与用电相互抵扣的结算方式，常见于住宅光伏。"
-            },
-            {
-              "term": "NEM2.0",
-              "explanation": "加州的第二代净计量政策，影响自发自用和卖电收益。"
-            },
-            {
-              "term": "feed-in tariff",
-              "explanation": "按发电量给予固定或优惠回购价的上网电价机制。"
-            },
-            {
-              "term": "solar tracker（太阳能跟踪支架）",
-              "explanation": "让面板随太阳角度转动的支架系统，用来提高发电量。"
-            },
-            {
-              "term": "home staging",
-              "explanation": "房屋售卖前的清洁、布置和视觉优化，用来提升买家观感。"
-            },
-            {
-              "term": "ground fault（接地故障）",
-              "explanation": "电流异常流向机壳或地线的故障，可能带来触电风险。"
-            }
-          ],
-          "context": "这条讨论围绕“太阳能板要不要洗”展开，但大家实际在算的是脏污、温度和系统配置会把发电量拉高或拉低多少。评论里有人拿自己 19 年几乎没清洗的屋顶光伏阵列、清洗后提升 10% 的船载系统，以及多年未洗后首次清洁提升 35% 到 40% 的案例来对比，说明结果非常依赖地点和污垢类型。很多人还把话题扩展到 battery（储能电池）、net metering（净计量）和 feed-in tariff（上网电价补贴）等政策，因为这些因素决定额外发电到底值不值钱。另一些评论则把问题延伸到 home staging（售房陈列）和电气安全，提醒屋顶 PV 系统不仅关乎收益，也关乎信任、接地故障和触电风险。",
-          "emoji": "⚠️",
-          "sarcastic_question": "洗一洗太阳能板就能把收益吹成翻倍神话吗？"
-        }
-      },
-      "articleSummary": "# 一句话总结\n清洗太阳能板确实能提升 2%-5% 的发电效率，但受限于老旧的 \"feed-in tariff\" 政策，升级硬件反而会导致收益下降。\n\n### 实验设计的核心难点在于排除天气干扰\n作者家里有个 16 块板子的小型太阳能电站，分为两组（每组 8 块）接入逆变器。为了验证清洗到底有没有用，他没有直接看发电量，因为云层遮挡和太阳角度变化会严重干扰数据。他的思路很巧妙：利用两组面板的**输出功率比**作为基准。因为两组面板在同一环境下受天气影响是一致的，只要清洗其中一组，观察这个比率的变化，就能把环境因素剥离出去。\n\n### 数据波动揭示了意想不到的物理现象\n实验开始时，两组面板的功率比非常稳定。但随着清洗进行，数据出现了一些奇怪的波动：洗第一块板时功率比反而下降了，洗完后功率比上升，等所有板子都洗完、水干了之后，功率比又掉下去了。作者推测这可能和 \"毛玻璃效应\" 有关——湿润时玻璃透光率高，水蒸发干燥后表面可能又变得微浊，甚至可能需要抛光才能达到最佳透光率。\n\n### 清洗带来的收益其实相当有限\n抛开数据波动看整体趋势，清洗面板确实带来了约 2%-5% 的发电量提升。换算成钱，每年大概能多赚 £60-£150。虽然这个收益会随着灰尘积累在未来几年逐渐归零，但考虑到清洗成本不高，这事儿还是值得一做的。不过要注意，如果你的面板比作者的更脏，提升空间会更大；如果只是像文中那样 \"可见的灰尘\"，收益就比较有限。\n\n### 清洗过程中的 \"触电\" 惊魂\n在清洗过程中，作者手指感觉到了一阵 \"刺痛\"。起初他以为是手指里的刺，后来发现即使拔了刺，在湿面板上操作时依然有针刺感。这让他意识到自己可能真的在 \"触电\"。ChatGPT 告诉他，这可能是因为无变压器逆变器存在 \"电容性泄漏\"。虽然电流不大，但下次清洗他决定还是等天黑断电后再操作，安全第一。\n\n### 升级硬件的账不能只算技术成本\n既然清洗收益有限，那直接升级 15 年前的老设备行不行？现在的面板效率更高，花 £5000 升级能提升 60% 的发电量，3 年就能回本，听起来很诱人。但这里有个巨大的坑：作者的老系统享受着极其优厚的 \"feed-in tariff\"（上网电价补贴），不仅单价高，而且是按 \"发电量\" 补贴，而不是按 \"上网量\"。\n\n### 扭曲的政策激励成了技术升级的阻碍\n如果现在升级系统，新增的发电容量将不再享受旧政策，只能按现在低得多的费率结算。更要命的是，旧政策允许他 \"自发自用\" 的同时还能拿补贴，而新政策没这好事。这就是市场扭曲激励的阴阳两面：当年的安装激励，变成了今天的升级阻碍。所以，尽管技术升级在账面上划算，但在政策套利面前，保持现状才是最优解。"
-    },
-    {
-      "id": 49063175,
-      "by": "maxloh",
-      "title": "Scriptc by Vercel: TypeScript-to-Native compiler, no JavaScript engine in binary",
-      "url": "https://github.com/vercel-labs/scriptc",
-      "score": 248,
-      "detailUpdatedAt": 1785172401,
-      "createdAt": 1785121219,
-      "aiSummaryUpdatedAt": 1785173401,
-      "aisummary": {
-        "chinese_title": "Vercel Scriptc：TypeScript 原生编译器引争议，主打无 JS engine 二进制",
-        "emoji": "🤨",
-        "sarcastic_question": "先 vibecode 出编译器，再等人接盘吗？"
-      },
-      "classifications": {
-        "topics": [
-          4,
-          6,
-          5
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "Scriptc",
-          "Vercel",
-          "TypeScript",
-          "TypeScript compiler",
-          "JavaScript engine",
-          "Porffor"
-        ]
-      },
-      "classificationsUpdatedAt": 1785121860,
-      "aiSummary": {
-        "chinese_title": "Vercel Scriptc：TypeScript 原生编译器引争议，主打无 JS engine 二进制",
-        "emoji": "🤨",
-        "sarcastic_question": "先 vibecode 出编译器，再等人接盘吗？"
-      },
-      "detail": {
-        "id": 49063175,
-        "by": "maxloh",
-        "title": "Scriptc by Vercel: TypeScript-to-Native compiler, no JavaScript engine in binary",
-        "url": "https://github.com/vercel-labs/scriptc",
-        "score": 142,
-        "detailUpdatedAt": 1785139994,
-        "createdAt": 1785121219,
-        "aiSummaryUpdatedAt": 1785140400,
-        "aisummary": {
-          "chinese_title": "Vercel Scriptc：TypeScript 原生编译器遭疑 AI 速成与 QuickJS 回退",
-          "discussion_overview": [
-            {
-              "category": "AI 速成与公关式发布的怀疑",
-              "summary": "不少评论认为这个项目很像“AI slop”加营销包装：README 里充满明显的 Claude 风格措辞，代码仓库又出现极大的单次提交和短时间内的海量代码落地。有人直接把这种做法和 Vercel Labs 过去常见的“先造势、后冷处理”模式联系起来，怀疑它更像为了保持曝光而发布的实验项目，而不是能落地的产品。也有人指出，仓库看起来像主要由一个人靠 coding agents 推出来的，这让人对代码质量和评审流程更不放心。整体情绪是：即使代码可能能跑，大家也不愿把它当成可信的工程成果。",
-              "supportid": [
-                "49066065",
-                "49064704",
-                "49064726",
-                "49064884",
-                "49064869",
-                "49065397",
-                "49065434",
-                "49065499",
-                "49066172",
-                "49066220"
-              ]
-            },
-            {
-              "category": "架构、性能与编译可信度争议",
-              "summary": "另一大焦点是技术路线本身是否靠谱。评论者集中质疑 QuickJS / quickjs-ng 在性能敏感场景里并不合适，尤其是把数字统一成浮点数、把整数优化往后拖、以及对 `any` 或过于动态的代码直接回退到解释器，这些都被认为会伤害编译器的核心目标。还有人对 90 万行级别的代码量、缺乏可信 benchmark、以及可能依赖 reference counting 的边界成本表示强烈怀疑。支持者则认为它至少有测试、架构看起来并非完全混乱，而且对某些脚本内嵌到 container image 之类的场景可能已经够用。",
-              "supportid": [
-                "49064594",
-                "49064632",
-                "49066381",
-                "49064734",
-                "49064811",
-                "49064840",
-                "49064961",
-                "49065056",
-                "49065194",
-                "49065769",
-                "49066035",
-                "49064644",
-                "49064986",
-                "49064899",
-                "49065601"
-              ]
-            },
-            {
-              "category": "实际用途：小而快的原生二进制",
-              "summary": "支持者认为这个项目的价值在于把 TypeScript 变成可单独分发的 native binary，不必再带上完整的 Node.js、tsx 或 esbuild 链路。有人把它和 Electron 生态的臃肿对比，希望它能让简单工具、notes app 或内部脚本更轻、更易部署。还有人提到它可能适合新写的 TypeScript 子集、嵌入到 container image 的脚本、甚至通过 FFI 连接到 C++ 应用并扩展到 Android/iOS。反对者则提醒：如果你从零开始、又几乎不用 npm 依赖，直接用 Rust、Go 或 AssemblyScript 可能更自然。",
-              "supportid": [
-                "49066110",
-                "49065764",
-                "49066206",
-                "49066057",
-                "49065967",
-                "49066081",
-                "49065231",
-                "49065698",
-                "49064557",
-                "49065296"
-              ]
-            },
-            {
-              "category": "历史前例与生态约束",
-              "summary": "很多评论把它放进更长的历史里看，而不是当成全新突破。有人提到 Porforr、Pry、AssemblyScript、GCJ、GraalVM Native、Bun 的 `build --compile`，共同结论是“把语言编成原生”并不新，难点一直在生态和兼容性。TypeScript 之所以受欢迎，很大一部分来自 npm 生态，而现实是大量包仍然是 JavaScript 加 `.d.ts`，真正要原生化时很容易碰到 untyped 依赖、包发布方式和调试链路的问题。也有人指出 Deno / JSR 这种源码分发模型更接近“真正的 TS”，但距离主流 npm 世界还有很大差距。",
-              "supportid": [
-                "49064680",
-                "49064696",
-                "49064756",
-                "49065280",
-                "49066550",
-                "49066236",
-                "49066540",
-                "49066132",
-                "49066169",
-                "49064594"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "QuickJS / quickjs-ng",
-              "explanation": "QuickJS 是一个体积很小的 JavaScript 引擎；quickjs-ng 是其分支。评论里把它当作 Scriptc 在遇到动态代码时的回退执行器，也有人质疑它的性能。"
-            },
-            {
-              "term": "Test262",
-              "explanation": "JavaScript 标准兼容性测试套件，用来衡量引擎或编译器对语言规范的实现程度。评论中用它来衡量类似项目的完成度。"
-            },
-            {
-              "term": "GraalVM Native",
-              "explanation": "GraalVM 的原生镜像/AOT 方案，可以把 Java 应用编成原生可执行文件。它常被拿来类比 Scriptc 这种“语言到原生”的路线。"
-            },
-            {
-              "term": "GCJ",
-              "explanation": "GNU Compiler for Java，早期的 Java Ahead-of-Time 编译方案。评论用它说明“编成原生”这条路历史很长，但生态支持往往更难。"
-            },
-            {
-              "term": "AssemblyScript",
-              "explanation": "一种面向 WebAssembly 的 TypeScript 风格语言/子集，常用于在更可控的范围内获得接近原生的部署形态。"
-            },
-            {
-              "term": "FFI",
-              "explanation": "Foreign Function Interface，用于让不同语言之间互相调用。讨论中有人关心 Scriptc 是否能通过 FFI 连接现有 C++ 应用或移动端目标。"
-            }
-          ],
-          "context": "Vercel（前端和开发者工具公司）发布了 Scriptc，一个实验性 TypeScript-to-native compiler，目标是不在最终二进制里携带完整的 JavaScript engine。它声称能把一部分“足够静态”的 TypeScript 直接编成原生代码，而对更动态的代码则可以回退到 quickjs-ng（QuickJS 的一个分支，轻量级 JavaScript 引擎）。这类想法并不新，评论把它和 Porforr、Pry、AssemblyScript，以及更早的 GCJ（Java 的 AOT 编译器）和 GraalVM Native（GraalVM 的原生镜像方案）放在一起比较。争议的核心是：TypeScript 的 npm 生态里大量包仍然是未严格类型化的 JavaScript，再加上仓库里大量疑似 AI 生成代码和超大 commit，让人怀疑它究竟是在解决真实问题，还是在制造一波技术话题。",
-          "emoji": "🤨",
-          "sarcastic_question": "先用 AI 砸出 90 万行，再谈可用编译器？"
-        },
-        "classifications": {
-          "topics": [
-            4,
-            6,
-            5
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "Scriptc",
-            "Vercel",
-            "TypeScript",
-            "TypeScript compiler",
-            "JavaScript engine",
-            "Porffor"
-          ]
-        },
-        "classificationsUpdatedAt": 1785121860,
-        "aiSummary": {
-          "chinese_title": "Vercel Scriptc：TypeScript 原生编译器遭疑 AI 速成与 QuickJS 回退",
-          "discussion_overview": [
-            {
-              "category": "AI 速成与公关式发布的怀疑",
-              "summary": "不少评论认为这个项目很像“AI slop”加营销包装：README 里充满明显的 Claude 风格措辞，代码仓库又出现极大的单次提交和短时间内的海量代码落地。有人直接把这种做法和 Vercel Labs 过去常见的“先造势、后冷处理”模式联系起来，怀疑它更像为了保持曝光而发布的实验项目，而不是能落地的产品。也有人指出，仓库看起来像主要由一个人靠 coding agents 推出来的，这让人对代码质量和评审流程更不放心。整体情绪是：即使代码可能能跑，大家也不愿把它当成可信的工程成果。",
-              "supportid": [
-                "49066065",
-                "49064704",
-                "49064726",
-                "49064884",
-                "49064869",
-                "49065397",
-                "49065434",
-                "49065499",
-                "49066172",
-                "49066220"
-              ]
-            },
-            {
-              "category": "架构、性能与编译可信度争议",
-              "summary": "另一大焦点是技术路线本身是否靠谱。评论者集中质疑 QuickJS / quickjs-ng 在性能敏感场景里并不合适，尤其是把数字统一成浮点数、把整数优化往后拖、以及对 `any` 或过于动态的代码直接回退到解释器，这些都被认为会伤害编译器的核心目标。还有人对 90 万行级别的代码量、缺乏可信 benchmark、以及可能依赖 reference counting 的边界成本表示强烈怀疑。支持者则认为它至少有测试、架构看起来并非完全混乱，而且对某些脚本内嵌到 container image 之类的场景可能已经够用。",
-              "supportid": [
-                "49064594",
-                "49064632",
-                "49066381",
-                "49064734",
-                "49064811",
-                "49064840",
-                "49064961",
-                "49065056",
-                "49065194",
-                "49065769",
-                "49066035",
-                "49064644",
-                "49064986",
-                "49064899",
-                "49065601"
-              ]
-            },
-            {
-              "category": "实际用途：小而快的原生二进制",
-              "summary": "支持者认为这个项目的价值在于把 TypeScript 变成可单独分发的 native binary，不必再带上完整的 Node.js、tsx 或 esbuild 链路。有人把它和 Electron 生态的臃肿对比，希望它能让简单工具、notes app 或内部脚本更轻、更易部署。还有人提到它可能适合新写的 TypeScript 子集、嵌入到 container image 的脚本、甚至通过 FFI 连接到 C++ 应用并扩展到 Android/iOS。反对者则提醒：如果你从零开始、又几乎不用 npm 依赖，直接用 Rust、Go 或 AssemblyScript 可能更自然。",
-              "supportid": [
-                "49066110",
-                "49065764",
-                "49066206",
-                "49066057",
-                "49065967",
-                "49066081",
-                "49065231",
-                "49065698",
-                "49064557",
-                "49065296"
-              ]
-            },
-            {
-              "category": "历史前例与生态约束",
-              "summary": "很多评论把它放进更长的历史里看，而不是当成全新突破。有人提到 Porforr、Pry、AssemblyScript、GCJ、GraalVM Native、Bun 的 `build --compile`，共同结论是“把语言编成原生”并不新，难点一直在生态和兼容性。TypeScript 之所以受欢迎，很大一部分来自 npm 生态，而现实是大量包仍然是 JavaScript 加 `.d.ts`，真正要原生化时很容易碰到 untyped 依赖、包发布方式和调试链路的问题。也有人指出 Deno / JSR 这种源码分发模型更接近“真正的 TS”，但距离主流 npm 世界还有很大差距。",
-              "supportid": [
-                "49064680",
-                "49064696",
-                "49064756",
-                "49065280",
-                "49066550",
-                "49066236",
-                "49066540",
-                "49066132",
-                "49066169",
-                "49064594"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "QuickJS / quickjs-ng",
-              "explanation": "QuickJS 是一个体积很小的 JavaScript 引擎；quickjs-ng 是其分支。评论里把它当作 Scriptc 在遇到动态代码时的回退执行器，也有人质疑它的性能。"
-            },
-            {
-              "term": "Test262",
-              "explanation": "JavaScript 标准兼容性测试套件，用来衡量引擎或编译器对语言规范的实现程度。评论中用它来衡量类似项目的完成度。"
-            },
-            {
-              "term": "GraalVM Native",
-              "explanation": "GraalVM 的原生镜像/AOT 方案，可以把 Java 应用编成原生可执行文件。它常被拿来类比 Scriptc 这种“语言到原生”的路线。"
-            },
-            {
-              "term": "GCJ",
-              "explanation": "GNU Compiler for Java，早期的 Java Ahead-of-Time 编译方案。评论用它说明“编成原生”这条路历史很长，但生态支持往往更难。"
-            },
-            {
-              "term": "AssemblyScript",
-              "explanation": "一种面向 WebAssembly 的 TypeScript 风格语言/子集，常用于在更可控的范围内获得接近原生的部署形态。"
-            },
-            {
-              "term": "FFI",
-              "explanation": "Foreign Function Interface，用于让不同语言之间互相调用。讨论中有人关心 Scriptc 是否能通过 FFI 连接现有 C++ 应用或移动端目标。"
-            }
-          ],
-          "context": "Vercel（前端和开发者工具公司）发布了 Scriptc，一个实验性 TypeScript-to-native compiler，目标是不在最终二进制里携带完整的 JavaScript engine。它声称能把一部分“足够静态”的 TypeScript 直接编成原生代码，而对更动态的代码则可以回退到 quickjs-ng（QuickJS 的一个分支，轻量级 JavaScript 引擎）。这类想法并不新，评论把它和 Porforr、Pry、AssemblyScript，以及更早的 GCJ（Java 的 AOT 编译器）和 GraalVM Native（GraalVM 的原生镜像方案）放在一起比较。争议的核心是：TypeScript 的 npm 生态里大量包仍然是未严格类型化的 JavaScript，再加上仓库里大量疑似 AI 生成代码和超大 commit，让人怀疑它究竟是在解决真实问题，还是在制造一波技术话题。",
-          "emoji": "🤨",
-          "sarcastic_question": "先用 AI 砸出 90 万行，再谈可用编译器？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nVercel 的 scriptc 是一个零运行时的 TypeScript 编译器，它通过静态分析将代码编译为原生二进制文件，在保持 Node.js 行为一致性的同时，实现了毫秒级启动和极低的内存占用。\n\n### TypeScript 的二进制化之路：不要引擎，只要原生\n很多开发者都想摆脱 Node.js 运行时的沉重负担，但现有的解决方案往往要在性能和兼容性之间做取舍。scriptc 的核心思路非常直接：它不使用 V8 或任何 JavaScript 引擎，而是直接把 TypeScript 编译成原生的二进制可执行文件。这意味着你写的是普通的 TypeScript，不需要加注解，也不用学新的方言，但最终产物是一个独立的二进制文件。比如编译一个斐波那契数列程序，产物只有 178KB，启动时间仅需 2ms，这和动辄几十 MB、几十 ms 启动的 Node.js 相比完全是两个量级。\n\n### 静态分析是核心，但动态兼容也没落下\n那它是怎么做到的呢？关键在于 scriptc 认为，绝大多数 TypeScript 代码其实比生态系统假设的要“静态”得多。它会逐个构造分析你的代码，判断哪些可以静态编译。默认情况下，所有能静态编译的都会变成原生代码；对于那些实在静态不了的（比如 npm 依赖包里的 JS 代码），你可以开启 `--dynamic` 模式。这时它会嵌入一个轻量级的 QuickJS 引擎（约 620KB）来处理这部分动态代码。最巧妙的设计在于边界检查：任何从动态代码传回静态代码的值都会经过严格的运行时验证，一旦类型撒谎，直接抛出 TypeError，绝不会让内存崩溃。\n\n### 兼容性不是妥协，而是靠“字节级”对齐硬刚\n把 TS 编译成原生不难，难的是让它跑起来和 Node.js 一模一样。scriptc 在语言特性上覆盖了真实程序会用到的几乎所有东西：类、闭包、泛型（单态化）、async/await（基于栈式协程）、异常处理等。标准库方面，它甚至手写实现了 Node.js 的 API 表面，包括 `fs`、`net`、`http`、`tls`（内置了 mbedTLS）以及 `fetch`。为了保证正确性，它采用了“差分测试”：800 多个测试用例必须同时在 Node.js 和原生二进制下运行，输出要字节级一致。连数字格式化这种细节都经过了百万级 double 值的模糊测试，确保和 Node.js 完全一致。\n\n### 性能炸裂，但安全底线守得很死\n这种架构带来的性能收益是显而易见的。在 Apple M 系列芯片上，scriptc 的启动时间约为 2.4ms，而 Node.js 需要 47ms；内存占用通常只有 1-4MB，Node.js 则需要 67-116MB。二进制体积方面，纯静态编译仅需 170-200KB，即便带上动态依赖和引擎也就 3MB 左右，远小于 Go 的 2MB 和 Node SEA 的 60-100MB。但性能并不是唯一的考量，安全性同样重要。整个测试集都会在 AddressSanitizer 下重跑，进行引用计数审计，任何内存泄漏或 use-after-free 都会导致构建失败，确保了原生代码的内存安全。\n\n### 架构设计：TypeScript 到 LLVM 的翻译官\n从架构上看，scriptc 的 pipeline 很清晰：前端使用 TypeScript Compiler API 进行解析和类型检查，然后降级为类型化的中间表示（IR）。这个 IR 是整个系统的核心接口，后端可以选择 LLVM（默认代码生成器）或者 C（参考后端）。C 后端还有一个好处是可读性极强，你可以通过 `--backend c` 看到带有源码行注释的 C 代码。运行时则是由 C 编写的，包含了引用计数的值、栈式协程、事件循环以及服务器栈，并且是按需链接的——你没用到的功能不会被打包进二进制文件里。\n\n### 给开发者的逃生通道\n当然，总有一些边缘情况是标准编译搞不定的。scriptc 提供了几个“逃生舱”：`comptime(() => ...)` 允许你在编译时运行 TypeScript 代码，把结果烘焙进二进制；`--ffi` 让你通过 TypeScript 声明直接调用 C ABI 的系统库；还有 Checked Casts，比如 `JSON.parse(...) as Config`，它会在运行时验证 JSON 结构，如果类型不匹配会给出精确的错误路径。这些设计让 scriptc 既保持了静态编译的高效，又给了开发者足够的灵活性去处理底层逻辑或不确定的数据。"
-    },
-    {
-      "id": 49067301,
-      "by": "Ralfp",
-      "title": "Removing React.js from the codebase and adapting Htmx for UI interactivity",
-      "url": "https://misago-project.org/t/removing-reactjs-from-the-codebase-and-adapting-htmx-for-ui-interactivity/1267/",
-      "score": 139,
-      "detailUpdatedAt": 1785170595,
-      "createdAt": 1785156619,
-      "aiSummaryUpdatedAt": 1785171630,
-      "aisummary": {
-        "chinese_title": "移除 React 改用 HTMX：内容型站点与复杂交互的边界争论",
-        "emoji": "⚔️",
-        "sarcastic_question": "连CRUD都要先上React才算现代吗？"
-      },
-      "classifications": {
-        "topics": [
-          5,
-          4
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "htmx",
-          "React.js",
-          "Misago",
-          "server-side rendering",
-          "Vue.js"
-        ]
-      },
-      "classificationsUpdatedAt": 1785157244,
-      "aiSummary": {
-        "chinese_title": "移除 React 改用 HTMX：内容型站点与复杂交互的边界争论",
-        "emoji": "⚔️",
-        "sarcastic_question": "连CRUD都要先上React才算现代吗？"
-      },
-      "detail": {
-        "id": 49067301,
-        "by": "Ralfp",
-        "title": "Removing React.js from the codebase and adapting Htmx for UI interactivity",
-        "url": "https://misago-project.org/t/removing-reactjs-from-the-codebase-and-adapting-htmx-for-ui-interactivity/1267/",
-        "score": 139,
-        "detailUpdatedAt": 1785170595,
-        "createdAt": 1785156619,
-        "aiSummaryUpdatedAt": 1785171630,
-        "aisummary": {
-          "chinese_title": "移除 React 改用 HTMX：内容型站点与复杂交互的边界争论",
-          "discussion_overview": [
-            {
-              "category": "HTMX适合内容型页面与论坛",
-              "summary": "不少评论认为，论坛、CRUD 页面和大多数内容展示站本来就以 HTML/CSS 为主，HTMX 只是把局部刷新、分页和实时更新补进来。对于这类页面，服务器直接返回 HTML 片段通常就够了，配合 SSE 还能做到接近客户端应用的体验。有人举了无限滚动和筛选列表的例子，说明很多看似“SPA 才能做”的交互，其实用 HTMX 也能很简洁地实现。真正更麻烦的部分通常是 WYSIWYG 编辑器、引用高亮这类细节，但这些可以交给少量 JS 或 web component。",
-              "supportid": [
-                "49069320",
-                "49071024",
-                "49071305",
-                "49071179",
-                "49071525"
-              ]
-            },
-            {
-              "category": "复杂状态与高交互仍需更多JS",
-              "summary": "另一派则强调，HTMX 一旦碰到强客户端状态同步的场景就会开始吃力。聊天消息和通知角标、可排序列表、地图、文本编辑器、音乐播放器这些例子被反复提起，核心问题不是交互多少，而是本地状态和依赖关系有多复杂。有人认为这时需要的是更完整的组件模型，或者至少要承认自己已经在写一部分前端逻辑，而不是纯粹的 HTMX。也有人承认可以用 SSE、局部 JS 或外接库补洞，但这说明它更适合“内容驱动”而不是“状态驱动”的应用。",
-              "supportid": [
-                "49069149",
-                "49069698",
-                "49070986",
-                "49071812",
-                "49072132",
-                "49069135",
-                "49071257"
-              ]
-            },
-            {
-              "category": "React/SPA与HTMX的性能争论",
-              "summary": "围绕性能的争论最激烈：支持 HTMX 的人强调首屏体积、Hydration 成本和慢网速下的真实体验，认为静态 HTML 或可缓存的 HTML 片段在 Lighthouse 和手机上往往更占优。有人甚至提到把 React 换成纯缓存 HTML 后，用户中途取消加载的情况明显减少。反对者则反驳说 SPA 只在首次加载时拿一次资源，后续导航和更新不必整页往返，而且同一套数据 API 还能同时服务 Web、移动端和第三方消费者。双方也在高流量场景上互相挑战：一边说服务器生成 HTML 会越来越贵，另一边说 React 也有 React.hydrate 和长期缓存，并不必然更慢。",
-              "supportid": [
-                "49068556",
-                "49068952",
-                "49069064",
-                "49069721",
-                "49069652",
-                "49069745",
-                "49069411",
-                "49070378",
-                "49070956",
-                "49072278",
-                "49070079"
-              ]
-            },
-            {
-              "category": "混合架构与实际落地经验",
-              "summary": "很多实战经验并不是“纯 HTMX”，而是把它放进混合栈里：Django 模板配少量 React/Vue，Hono 做后端，或者用 Alpine Ajax、Alpine.js、Leafletjs 这类小工具补足局部交互。有人把 HTMX 用到 PWA 里，配 manifest.json、Web Push 和移动端桌面入口，目标是尽量接近原生体验，同时保留服务器渲染的简单性。还有人提到，当响应太大时，把表单状态留在本地，只回传结果列表，会比整页一起刷回更快。整体思路是保留服务器为主、客户端为辅的结构，只在真正需要的地方加一点 JS。",
-              "supportid": [
-                "49069374",
-                "49070394",
-                "49070625",
-                "49071082",
-                "49071014",
-                "49071318",
-                "49070892",
-                "49070605",
-                "49070445",
-                "49072139",
-                "49071812"
-              ]
-            },
-            {
-              "category": "HTMX是新路线还是旧思想翻版",
-              "summary": "评论区还有一条更抽象的争论：HTMX 到底是把 Web 的 hypermedia 本质重新拉回来，还是新瓶装旧酒。批评者把它类比成 Angular 1.0、PHP+JS、XAML/BPEL，认为把“小代码块”塞进属性里最后还是会回到逃生舱和维护地狱。支持者则强调 Web 本来就是 hypermedia，HTMX 只是把 HTML 的表达能力往前推，并且还希望把这些思路标准化进 HTML 规范。甚至连 HTMX 团队是否适合参与标准讨论，评论区也明显分裂。",
-              "supportid": [
-                "49068817",
-                "49069010",
-                "49069578",
-                "49071822",
-                "49072182",
-                "49069339",
-                "49071285",
-                "49069301",
-                "49069064"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "HTMX",
-              "explanation": "通过 HTML 属性触发异步请求、局部更新页面的 hypermedia-driven 库。"
-            },
-            {
-              "term": "SPA",
-              "explanation": "Single-Page Application，首屏后主要在客户端切换视图和更新状态的应用形态。"
-            },
-            {
-              "term": "MPA",
-              "explanation": "Multi-Page Application，每次导航通常由服务器返回完整新页面的传统 Web 形态。"
-            },
-            {
-              "term": "SSE",
-              "explanation": "Server-Sent Events，服务器向浏览器单向持续推送更新的机制。"
-            },
-            {
-              "term": "SSR",
-              "explanation": "Server-Side Rendering，先由服务器生成 HTML，再交给浏览器渲染。"
-            },
-            {
-              "term": "Hydration",
-              "explanation": "SSR 页面到达浏览器后，由客户端 JS 接管事件处理和状态的过程。"
-            },
-            {
-              "term": "PWA",
-              "explanation": "Progressive Web App，可安装、接近原生体验的网页应用模式。"
-            },
-            {
-              "term": "Locality of Behaviour（LoB）",
-              "explanation": "把结构、样式和行为尽量放在同一处的前端组织方式，便于维护。"
-            }
-          ],
-          "context": "这篇帖子讨论的是把一个现有代码库里的 React.js 拿掉，改用 HTMX（一个通过 HTML 属性直接触发异步请求、做局部刷新和渐进增强的库）来做 UI 交互。评论区很快把它扩展成一场关于 SPA、SSR、partial rendering、SSE 和 PWA 的老争论：哪些场景只是 CRUD 页面，哪些场景已经需要完整客户端状态管理。很多人拿 Django（Python 后端框架）、Hono（轻量 JavaScript/TypeScript Web 框架）、Alpine.js（轻量前端交互库）和 Web Component 举例，说明“少量 JS + 服务器渲染”可以走多远。也有人提醒，越靠近聊天、通知、编辑器、地图这种依赖同步状态的功能，越容易从 HTMX 滑向更完整的组件框架。",
-          "emoji": "⚔️",
-          "sarcastic_question": "连CRUD都要先上React才算现代吗？"
-        },
-        "classifications": {
-          "topics": [
-            5,
-            4
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "htmx",
-            "React.js",
-            "Misago",
-            "server-side rendering",
-            "Vue.js"
-          ]
-        },
-        "classificationsUpdatedAt": 1785157244,
-        "aiSummary": {
-          "chinese_title": "移除 React 改用 HTMX：内容型站点与复杂交互的边界争论",
-          "discussion_overview": [
-            {
-              "category": "HTMX适合内容型页面与论坛",
-              "summary": "不少评论认为，论坛、CRUD 页面和大多数内容展示站本来就以 HTML/CSS 为主，HTMX 只是把局部刷新、分页和实时更新补进来。对于这类页面，服务器直接返回 HTML 片段通常就够了，配合 SSE 还能做到接近客户端应用的体验。有人举了无限滚动和筛选列表的例子，说明很多看似“SPA 才能做”的交互，其实用 HTMX 也能很简洁地实现。真正更麻烦的部分通常是 WYSIWYG 编辑器、引用高亮这类细节，但这些可以交给少量 JS 或 web component。",
-              "supportid": [
-                "49069320",
-                "49071024",
-                "49071305",
-                "49071179",
-                "49071525"
-              ]
-            },
-            {
-              "category": "复杂状态与高交互仍需更多JS",
-              "summary": "另一派则强调，HTMX 一旦碰到强客户端状态同步的场景就会开始吃力。聊天消息和通知角标、可排序列表、地图、文本编辑器、音乐播放器这些例子被反复提起，核心问题不是交互多少，而是本地状态和依赖关系有多复杂。有人认为这时需要的是更完整的组件模型，或者至少要承认自己已经在写一部分前端逻辑，而不是纯粹的 HTMX。也有人承认可以用 SSE、局部 JS 或外接库补洞，但这说明它更适合“内容驱动”而不是“状态驱动”的应用。",
-              "supportid": [
-                "49069149",
-                "49069698",
-                "49070986",
-                "49071812",
-                "49072132",
-                "49069135",
-                "49071257"
-              ]
-            },
-            {
-              "category": "React/SPA与HTMX的性能争论",
-              "summary": "围绕性能的争论最激烈：支持 HTMX 的人强调首屏体积、Hydration 成本和慢网速下的真实体验，认为静态 HTML 或可缓存的 HTML 片段在 Lighthouse 和手机上往往更占优。有人甚至提到把 React 换成纯缓存 HTML 后，用户中途取消加载的情况明显减少。反对者则反驳说 SPA 只在首次加载时拿一次资源，后续导航和更新不必整页往返，而且同一套数据 API 还能同时服务 Web、移动端和第三方消费者。双方也在高流量场景上互相挑战：一边说服务器生成 HTML 会越来越贵，另一边说 React 也有 React.hydrate 和长期缓存，并不必然更慢。",
-              "supportid": [
-                "49068556",
-                "49068952",
-                "49069064",
-                "49069721",
-                "49069652",
-                "49069745",
-                "49069411",
-                "49070378",
-                "49070956",
-                "49072278",
-                "49070079"
-              ]
-            },
-            {
-              "category": "混合架构与实际落地经验",
-              "summary": "很多实战经验并不是“纯 HTMX”，而是把它放进混合栈里：Django 模板配少量 React/Vue，Hono 做后端，或者用 Alpine Ajax、Alpine.js、Leafletjs 这类小工具补足局部交互。有人把 HTMX 用到 PWA 里，配 manifest.json、Web Push 和移动端桌面入口，目标是尽量接近原生体验，同时保留服务器渲染的简单性。还有人提到，当响应太大时，把表单状态留在本地，只回传结果列表，会比整页一起刷回更快。整体思路是保留服务器为主、客户端为辅的结构，只在真正需要的地方加一点 JS。",
-              "supportid": [
-                "49069374",
-                "49070394",
-                "49070625",
-                "49071082",
-                "49071014",
-                "49071318",
-                "49070892",
-                "49070605",
-                "49070445",
-                "49072139",
-                "49071812"
-              ]
-            },
-            {
-              "category": "HTMX是新路线还是旧思想翻版",
-              "summary": "评论区还有一条更抽象的争论：HTMX 到底是把 Web 的 hypermedia 本质重新拉回来，还是新瓶装旧酒。批评者把它类比成 Angular 1.0、PHP+JS、XAML/BPEL，认为把“小代码块”塞进属性里最后还是会回到逃生舱和维护地狱。支持者则强调 Web 本来就是 hypermedia，HTMX 只是把 HTML 的表达能力往前推，并且还希望把这些思路标准化进 HTML 规范。甚至连 HTMX 团队是否适合参与标准讨论，评论区也明显分裂。",
-              "supportid": [
-                "49068817",
-                "49069010",
-                "49069578",
-                "49071822",
-                "49072182",
-                "49069339",
-                "49071285",
-                "49069301",
-                "49069064"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "HTMX",
-              "explanation": "通过 HTML 属性触发异步请求、局部更新页面的 hypermedia-driven 库。"
-            },
-            {
-              "term": "SPA",
-              "explanation": "Single-Page Application，首屏后主要在客户端切换视图和更新状态的应用形态。"
-            },
-            {
-              "term": "MPA",
-              "explanation": "Multi-Page Application，每次导航通常由服务器返回完整新页面的传统 Web 形态。"
-            },
-            {
-              "term": "SSE",
-              "explanation": "Server-Sent Events，服务器向浏览器单向持续推送更新的机制。"
-            },
-            {
-              "term": "SSR",
-              "explanation": "Server-Side Rendering，先由服务器生成 HTML，再交给浏览器渲染。"
-            },
-            {
-              "term": "Hydration",
-              "explanation": "SSR 页面到达浏览器后，由客户端 JS 接管事件处理和状态的过程。"
-            },
-            {
-              "term": "PWA",
-              "explanation": "Progressive Web App，可安装、接近原生体验的网页应用模式。"
-            },
-            {
-              "term": "Locality of Behaviour（LoB）",
-              "explanation": "把结构、样式和行为尽量放在同一处的前端组织方式，便于维护。"
-            }
-          ],
-          "context": "这篇帖子讨论的是把一个现有代码库里的 React.js 拿掉，改用 HTMX（一个通过 HTML 属性直接触发异步请求、做局部刷新和渐进增强的库）来做 UI 交互。评论区很快把它扩展成一场关于 SPA、SSR、partial rendering、SSE 和 PWA 的老争论：哪些场景只是 CRUD 页面，哪些场景已经需要完整客户端状态管理。很多人拿 Django（Python 后端框架）、Hono（轻量 JavaScript/TypeScript Web 框架）、Alpine.js（轻量前端交互库）和 Web Component 举例，说明“少量 JS + 服务器渲染”可以走多远。也有人提醒，越靠近聊天、通知、编辑器、地图这种依赖同步状态的功能，越容易从 HTMX 滑向更完整的组件框架。",
-          "emoji": "⚔️",
-          "sarcastic_question": "连CRUD都要先上React才算现代吗？"
-        }
-      },
-      "articleSummary": "### 一句话总结\nMisago 论坛通过移除 React.js，回归服务端渲染并引入 HTMX，彻底解决了双倍维护成本和性能臃肿的问题，将核心 JS 体积减少了近 20%。\n\n### 曾经的“双轨制”带来了无尽的维护噩梦\nMisago 之前的架构虽然能跑，但维护起来简直是折磨。每次请求页面，Django 不仅要渲染 HTML，还得把同样的数据序列化成 JSON 塞进页面里。等 JavaScript 下载完，React 再读这个 JSON，把刚渲染好的 HTML 全部替换一遍。这就导致所有页面都得写两遍：Django 写一遍模板，React 再写一遍组件。开发者想改个 UI，经常发现自己改了模板却没生效，因为被 React 覆盖了。更别提插件开发者，为了插个 HTML 必须同时懂 Django 模板和 React 组件，还得配置复杂的构建步骤，门槛极高。\n\n### 全盘 SPA 化并不是论坛软件的解药\n面对这些问题，作者其实考虑过两个“现代”方案：要么彻底抛弃 Django 模板只留 SEO 用，把 UI 全做成 React SPA；要么上 Next.js 或 Remix 这种 SSR 框架。但冷静下来想，论坛软件真的需要那么重的客户端交互吗？大部分操作无非是删帖、翻页、投票，这些功能在 React 出现前就靠服务端渲染跑得好好的。用户其实并不反感整页刷新，反倒是为了追求“无刷新”而引入的几百 KB JavaScript，在老旧手机上把性能拖得死慢，完全是本末倒置。\n\n### HTMX 的核心思路：只替换需要变动的 HTML 岛屿\n最终作者选了个看似“复古”实则高效的方案：HTMX。说白了，HTMX 就是把以前 jQuery 时代 `$.get` 换 HTML 的那套逻辑声明化了。你不需要写 API，也不需要序列化 JSON，只需要在 Django 模板里给某个区域（比如帖子列表）加个标记。当用户切换分类时，HTMX 会请求后端，后端只返回这一小块新的 HTML，直接把旧的那块换掉。这样既保留了 Django 的服务端渲染能力，又实现了局部动态更新，而且完全不需要 React介入。\n\n### 管理后台和迁移策略：稳扎稳打的去 React 化\n有意思的是，作者决定连管理后台也不做成 SPA 了。现在的 Django View 配合 Form 已经能自动搞定 90% 的工作，强行上 React 反而是自找麻烦。整个迁移过程不会搞“大爆炸”式重写，而是分模块逐步替换。比如先把导航栏换成 HTMX，再换帖子列表。虽然中间会有个过渡期，某些页面（比如用户设置）会短暂退化为传统的多页应用（MPA），点击按钮会整页刷新，但这对于论坛场景来说完全是可以接受的代价。\n\n### 实战数据：JS 体积显著下降，性能立竿见影\n说一千道一万，不如看数据。在移除 React 之前，Misago 的 `misago.js` 高达 615kb（124kb gzipped），再加上 679kb 的 `vendor.js` 和翻译文件，首屏负担极重。随着作者开始动手，先是把“论坛选项”页改为 Django + HTMX，JS 体积就降了 17kb。接着重写了核心的“帖子列表”功能，`misago.js` 缩水到了 530kb（99kb gzipped）。这还只是个开始，随着更多模块被剥离，预计性能还会有更大的提升空间。"
-    },
-    {
-      "id": 49060724,
-      "by": "tosh",
-      "title": "Introduction to Data-Oriented Design [pdf]",
-      "url": "https://www.gamedevs.org/uploads/introduction-to-data-oriented-design.pdf",
-      "score": 230,
-      "detailUpdatedAt": 1785168804,
-      "createdAt": 1785094225,
-      "aiSummaryUpdatedAt": 1785170443,
-      "aisummary": {
-        "chinese_title": "DOD：数据优先、ECS与反OOP争议",
-        "emoji": "🤔",
-        "sarcastic_question": "把对象拆成数组，就算是架构哲学了吗？"
-      },
-      "classifications": {
-        "topics": [
-          4,
-          7
-        ],
-        "facets": [
-          13,
-          5
-        ],
-        "tags": [
-          "Data-Oriented Design",
-          "C++",
-          "array programming",
-          "Struct of Arrays",
-          "Mike Acton",
-          "Andrew Kelley"
-        ]
-      },
-      "classificationsUpdatedAt": 1785101753,
-      "aiSummary": {
-        "chinese_title": "DOD：数据优先、ECS与反OOP争议",
-        "emoji": "🤔",
-        "sarcastic_question": "把对象拆成数组，就算是架构哲学了吗？"
-      },
-      "detail": {
-        "id": 49060724,
-        "by": "tosh",
-        "title": "Introduction to Data-Oriented Design [pdf]",
-        "url": "https://www.gamedevs.org/uploads/introduction-to-data-oriented-design.pdf",
-        "score": 127,
-        "detailUpdatedAt": 1785121996,
-        "createdAt": 1785094225,
-        "aiSummaryUpdatedAt": 1785123292,
-        "aisummary": {
-          "chinese_title": "Data-Oriented Design：先定数据、再谈算法与ECS",
-          "discussion_overview": [
-            {
-              "category": "数据优先：先定义数据形状再写算法",
-              "summary": "评论者反复强调，DoD 的关键不是某个框架，而是先把数据流和数据结构想清楚，再让算法围绕这些数据形状展开。不同应用的数据形状完全不同：physics engine 可能要处理可动态增删的 spatial hash，3D renderer 更像在大块矩阵和 vertex buffer 上顺序工作，游戏则同时有长生命周期和短生命周期对象。有人认为这种写法的认知负担更低，因为读 struct 定义比读充满状态切换的函数更容易，也更容易发现 bug。也有人把它总结成一种 KISS 式顿悟：先接受“数据决定问题”，很多设计选择才会自然浮现。",
-              "supportid": [
-                "49061815",
-                "49064700",
-                "49063290",
-                "49062037"
-              ]
-            },
-            {
-              "category": "ECS：用模式还是用框架",
-              "summary": "一派人主张不要上来就找“ECS system”，而是直接按 ECS 思维组织数据，比如粒子就是一组 positions 和 velocities 数组，没必要额外套一层大框架。另一派则指出，真实的 ECS 框架处理了很多细节，尤其是 runtime composition，而且性能通常也比朴素实现更好，所以它并不能被一个简单的粒子结构体替代。争议核心在于哪些抽象是真正必要的，哪些只是过度泛化；如果问题本身不需要 runtime composition，过早泛化就会滑向另一种 OOP。还有人干脆把这种“只要能做就硬泛化”的做法批评为 nerd trapped。",
-              "supportid": [
-                "49062949",
-                "49063452",
-                "49063546",
-                "49064246",
-                "49064337",
-                "49063845"
-              ]
-            },
-            {
-              "category": "DoD 不只是数组：布局、批处理与数据库",
-              "summary": "有人质疑 DoD 是否只是 array programming，回应则列出更广的实践：用 index 代替 pointer、把 boolean 挪到结构外、用 SoA、对 sparse data 用 hash map、以及用编码或 tag 替代 polymorphism。还有人把 relational database 的 schema 设计也视为 DoD：先按访问模式组织数据，再用批处理避免 N+1 query 这种每行一次的额外开销。讨论里还多次提到 hot vs cold data、cache locality 和 memory bandwidth，说明它更像“硬件和访问模式感知”的设计，而不只是把一切改成数组。",
-              "supportid": [
-                "49061421",
-                "49061563",
-                "49061939",
-                "49061654",
-                "49062037",
-                "49062673",
-                "49063465",
-                "49064761"
-              ]
-            },
-            {
-              "category": "适用范围争议：高性能场景 vs 大多数业务软件",
-              "summary": "不少人认为 DoD 最适合 memory bandwidth、cache 和并行处理真的成瓶颈的场景，典型就是 game engine、middleware 和 AAA 游戏。对大多数商业软件来说，性能往往只需要“够用”，传统 OO 代码虽然不够 cache-friendly，但通常更容易交付，也更能应对不断变化的需求。有人甚至把 DoD 视为一种 premature optimization：如果数据量不大，强行重构布局可能得不偿失。也有反方强调，很多团队其实是在用 batching 掩盖问题，而不是回头审视为什么一开始会加载那么多数据。",
-              "supportid": [
-                "49062676",
-                "49062986",
-                "49063530",
-                "49063780"
-              ]
-            },
-            {
-              "category": "LLM skill 与 Acton 风格提示",
-              "summary": "讨论里还插入了 Mike Acton 发布的 Data-Oriented Programming LLM skill，有人怀疑这是不是 AI 生成的提示文件。另一种看法是，Acton 的名字和观点在训练语料里已经很常见，只要在 prompt 里写“你在为 Mike Acton 工作”，LLM 就可能被 nudged 到更符合他风格的代码原则。于是出现了“spooky Acton at a distance”之类的玩笑，把 LLM 提示工程和 Acton 的编程哲学连在了一起。也有人顺手提到，希望把更多 LLM 训练在这类材料和 Handmade Hero（一个从零手写游戏开发过程的项目）上。",
-              "supportid": [
-                "49062520",
-                "49063493",
-                "49063819",
-                "49063876",
-                "49064794",
-                "49063954"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "Data-Oriented Design (DoD)",
-              "explanation": "以数据布局、访问顺序和处理方式为中心的设计方法，优先考虑缓存、带宽和批处理效率。"
-            },
-            {
-              "term": "ECS (Entity-Component-System)",
-              "explanation": "一种把实体、组件和系统分离的架构，常用于游戏开发，强调组合而非继承。"
-            },
-            {
-              "term": "SoA (Struct of Arrays)",
-              "explanation": "把同类字段拆成多个数组存储，便于顺序访问和向量化处理。"
-            },
-            {
-              "term": "AoS (Array of Structs)",
-              "explanation": "把每个对象作为一个 struct 存放，结构直观，但在某些访问模式下缓存效率较差。"
-            },
-            {
-              "term": "N+1 query problem",
-              "explanation": "数据库里常见的性能问题：先查一批记录，再对每条记录单独发查询，导致额外开销爆炸。"
-            },
-            {
-              "term": "cache locality",
-              "explanation": "让程序尽量连续、重复地访问相近内存，以提高 CPU cache 命中率。"
-            },
-            {
-              "term": "runtime composition",
-              "explanation": "运行时按需组合数据和行为的能力，常被拿来与固定的继承层次对比。"
-            }
-          ],
-          "context": "这份 PDF 讨论的是 Mike Acton（C++/游戏引擎领域的倡导者）提出的 Data-Oriented Design 思路，相关内容也常见于他在 CppCon（C++ Conference）上的演讲。DoD 的核心是先看数据如何存储、谁会读取、以什么顺序访问，再决定结构和算法，而不是先搭建面向对象层次。评论里频繁提到 ECS（Entity-Component-System，一种把组件数据和系统逻辑分离的架构）、SoA/AoS、cache、memory bandwidth、SIMD 等硬件因素，说明这个话题本质上是在讨论“怎样让代码更贴近机器”。讨论还延伸到 relational database（关系型数据库）的 schema 设计、N+1 query，以及把类似原则用于 LLM 提示词或训练材料的玩笑。",
-          "emoji": "🤔",
-          "sarcastic_question": "需求天天变，先定数据结构就能永不返工？"
-        },
-        "classifications": {
-          "topics": [
-            4,
-            7
-          ],
-          "facets": [
-            13,
-            5
-          ],
-          "tags": [
-            "Data-Oriented Design",
-            "C++",
-            "array programming",
-            "Struct of Arrays",
-            "Mike Acton",
-            "Andrew Kelley"
-          ]
-        },
-        "classificationsUpdatedAt": 1785101753,
-        "aiSummary": {
-          "chinese_title": "Data-Oriented Design：先定数据、再谈算法与ECS",
-          "discussion_overview": [
-            {
-              "category": "数据优先：先定义数据形状再写算法",
-              "summary": "评论者反复强调，DoD 的关键不是某个框架，而是先把数据流和数据结构想清楚，再让算法围绕这些数据形状展开。不同应用的数据形状完全不同：physics engine 可能要处理可动态增删的 spatial hash，3D renderer 更像在大块矩阵和 vertex buffer 上顺序工作，游戏则同时有长生命周期和短生命周期对象。有人认为这种写法的认知负担更低，因为读 struct 定义比读充满状态切换的函数更容易，也更容易发现 bug。也有人把它总结成一种 KISS 式顿悟：先接受“数据决定问题”，很多设计选择才会自然浮现。",
-              "supportid": [
-                "49061815",
-                "49064700",
-                "49063290",
-                "49062037"
-              ]
-            },
-            {
-              "category": "ECS：用模式还是用框架",
-              "summary": "一派人主张不要上来就找“ECS system”，而是直接按 ECS 思维组织数据，比如粒子就是一组 positions 和 velocities 数组，没必要额外套一层大框架。另一派则指出，真实的 ECS 框架处理了很多细节，尤其是 runtime composition，而且性能通常也比朴素实现更好，所以它并不能被一个简单的粒子结构体替代。争议核心在于哪些抽象是真正必要的，哪些只是过度泛化；如果问题本身不需要 runtime composition，过早泛化就会滑向另一种 OOP。还有人干脆把这种“只要能做就硬泛化”的做法批评为 nerd trapped。",
-              "supportid": [
-                "49062949",
-                "49063452",
-                "49063546",
-                "49064246",
-                "49064337",
-                "49063845"
-              ]
-            },
-            {
-              "category": "DoD 不只是数组：布局、批处理与数据库",
-              "summary": "有人质疑 DoD 是否只是 array programming，回应则列出更广的实践：用 index 代替 pointer、把 boolean 挪到结构外、用 SoA、对 sparse data 用 hash map、以及用编码或 tag 替代 polymorphism。还有人把 relational database 的 schema 设计也视为 DoD：先按访问模式组织数据，再用批处理避免 N+1 query 这种每行一次的额外开销。讨论里还多次提到 hot vs cold data、cache locality 和 memory bandwidth，说明它更像“硬件和访问模式感知”的设计，而不只是把一切改成数组。",
-              "supportid": [
-                "49061421",
-                "49061563",
-                "49061939",
-                "49061654",
-                "49062037",
-                "49062673",
-                "49063465",
-                "49064761"
-              ]
-            },
-            {
-              "category": "适用范围争议：高性能场景 vs 大多数业务软件",
-              "summary": "不少人认为 DoD 最适合 memory bandwidth、cache 和并行处理真的成瓶颈的场景，典型就是 game engine、middleware 和 AAA 游戏。对大多数商业软件来说，性能往往只需要“够用”，传统 OO 代码虽然不够 cache-friendly，但通常更容易交付，也更能应对不断变化的需求。有人甚至把 DoD 视为一种 premature optimization：如果数据量不大，强行重构布局可能得不偿失。也有反方强调，很多团队其实是在用 batching 掩盖问题，而不是回头审视为什么一开始会加载那么多数据。",
-              "supportid": [
-                "49062676",
-                "49062986",
-                "49063530",
-                "49063780"
-              ]
-            },
-            {
-              "category": "LLM skill 与 Acton 风格提示",
-              "summary": "讨论里还插入了 Mike Acton 发布的 Data-Oriented Programming LLM skill，有人怀疑这是不是 AI 生成的提示文件。另一种看法是，Acton 的名字和观点在训练语料里已经很常见，只要在 prompt 里写“你在为 Mike Acton 工作”，LLM 就可能被 nudged 到更符合他风格的代码原则。于是出现了“spooky Acton at a distance”之类的玩笑，把 LLM 提示工程和 Acton 的编程哲学连在了一起。也有人顺手提到，希望把更多 LLM 训练在这类材料和 Handmade Hero（一个从零手写游戏开发过程的项目）上。",
-              "supportid": [
-                "49062520",
-                "49063493",
-                "49063819",
-                "49063876",
-                "49064794",
-                "49063954"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "Data-Oriented Design (DoD)",
-              "explanation": "以数据布局、访问顺序和处理方式为中心的设计方法，优先考虑缓存、带宽和批处理效率。"
-            },
-            {
-              "term": "ECS (Entity-Component-System)",
-              "explanation": "一种把实体、组件和系统分离的架构，常用于游戏开发，强调组合而非继承。"
-            },
-            {
-              "term": "SoA (Struct of Arrays)",
-              "explanation": "把同类字段拆成多个数组存储，便于顺序访问和向量化处理。"
-            },
-            {
-              "term": "AoS (Array of Structs)",
-              "explanation": "把每个对象作为一个 struct 存放，结构直观，但在某些访问模式下缓存效率较差。"
-            },
-            {
-              "term": "N+1 query problem",
-              "explanation": "数据库里常见的性能问题：先查一批记录，再对每条记录单独发查询，导致额外开销爆炸。"
-            },
-            {
-              "term": "cache locality",
-              "explanation": "让程序尽量连续、重复地访问相近内存，以提高 CPU cache 命中率。"
-            },
-            {
-              "term": "runtime composition",
-              "explanation": "运行时按需组合数据和行为的能力，常被拿来与固定的继承层次对比。"
-            }
-          ],
-          "context": "这份 PDF 讨论的是 Mike Acton（C++/游戏引擎领域的倡导者）提出的 Data-Oriented Design 思路，相关内容也常见于他在 CppCon（C++ Conference）上的演讲。DoD 的核心是先看数据如何存储、谁会读取、以什么顺序访问，再决定结构和算法，而不是先搭建面向对象层次。评论里频繁提到 ECS（Entity-Component-System，一种把组件数据和系统逻辑分离的架构）、SoA/AoS、cache、memory bandwidth、SIMD 等硬件因素，说明这个话题本质上是在讨论“怎样让代码更贴近机器”。讨论还延伸到 relational database（关系型数据库）的 schema 设计、N+1 query，以及把类似原则用于 LLM 提示词或训练材料的玩笑。",
-          "emoji": "🤔",
-          "sarcastic_question": "需求天天变，先定数据结构就能永不返工？"
-        }
-      }
     }
   ]
 }
