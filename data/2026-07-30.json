@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "Making an agile version of a Windows Runtime delegate in C++/WinRT, part 8",
+      "title_zh": "C++/WinRT lambda 捕获顺序导致的资源泄漏",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260729-00/?p=112570",
+      "pub_date": "2026-07-29T14:00:00.000Z",
+      "summary": "## 一句话总结\nC++ Lambda 捕获初始化顺序的不确定性，会导致资源管理出现隐蔽的泄漏风险，解决思路是确保资源获取与 RAII 对象构造的原子性。\n\n### Lambda 捕获顺序是个隐形坑\n上次我们解决了 deleter 构造函数抛异常导致的引用泄漏问题，但代码里其实还藏着另一个雷。问题出在 Lambda 的捕获初始化上。根据 C++ 标准 `[expr.prim.lambda.capture]`，Lambda 捕获成员的声明顺序是未指定的，这意味着它们的构造顺序也是未指定的。在我们的代码里，`p`（持有原始指针）和 `token`（调用 `get_context_token()`）的初始化顺序是不确定的。如果 `get_context_token()` 在 `unique_ptr` 构造之前抛出异常，那个原始指针 `p` 就会变成孤儿，导致引用泄漏。\n\n### 先把资源关进 unique_ptr 才安全\n为了堵住这个漏洞，最直接的思路是在创建 Lambda 之前，先把原始指针塞进 `unique_ptr` 里。我们在 Lambda 外部先构造好 `std::unique_ptr<void, in_context_deleter> up`，确保资源一旦生成就立刻被管理起来。这样，后续无论 `get_context_token()` 还是其他操作抛出异常，`up` 的析构函数都能保证正确释放资源。这虽然解决了安全问题，但作者觉得有点“笨重”，因为引入了一个额外的临时对象，它的析构函数在大多数情况下其实是在做空检查。\n\n### 用 Copy Elision 省掉临时对象\n既然不想引入额外的 `unique_ptr`，能不能利用编译器的优化机制？作者尝试了一个更巧妙的方案：利用 Copy Elision（复制消除）。他写了一个内部的 `make` Lambda，在里面构造 `unique_ptr` 并直接返回。然后在外层 Lambda 的捕获列表中调用这个 `make` 函数。根据 C++ 的规则，这个返回值会被直接构造在捕获成员的内存里，完全省去了临时对象的构造和析构开销。这既保证了异常安全，又维持了高性能，属于比较硬核的写法。\n\n### 最简单的方案往往最有效\n不过，回头想想，既然我们之前为了 deleter 的安全选择了“提前构造”，为什么不把 token 也提前构造呢？作者最终给出的方案非常简单：在 Lambda 生成之前，先调用 `auto token = get_context_token();`。这样，所有可能抛异常的操作（deleter 构造和 token 获取）都在 `unique_ptr` 创建之前完成。一旦进入 `unique_ptr` 的构造行，后续就是异常安全的了。这种写法虽然不如 Copy Elision 那么炫技，但逻辑清晰，维护成本最低，是工程上的优选。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "C++/WinRT",
+        "lambda",
+        "exception safety",
+        "resource leak"
+      ],
+      "rank": 4
+    },
+    {
       "title": "Superlogical",
       "title_zh": "Mitchell Hashimoto 创业做终端复用器",
       "link": "https://mitchellh.com/writing/superlogical",
@@ -79,7 +98,7 @@
         "libghostty",
         "multiplexer"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Logic for Programmers is Done",
@@ -98,7 +117,7 @@
         "math",
         "software"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Pastebot 3",
@@ -116,7 +135,25 @@
         "macos",
         "productivity"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "Apple Upgrade — New Program With Klarna for Leasing iPhones, Macs, iPads, and More for Near-Zero Interest",
+      "title_zh": "Apple 推出 Klarna 租赁计划",
+      "link": "https://www.apple.com/newsroom/2026/07/apple-upgrade-launches-in-the-united-states/",
+      "pub_date": "2026-07-29T16:51:15.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 1,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "Apple Upgrade",
+        "Klarna",
+        "leasing"
+      ],
+      "rank": 8
     }
   ]
 }
