@@ -25,6 +25,44 @@
       "rank": 1
     },
     {
+      "title": "So you want to use plants to reduce CO₂",
+      "title_zh": "用室内植物中和 CO₂ 的物理极限",
+      "link": "https://dynomight.net/plants/",
+      "pub_date": "2026-07-30T00:00:00.000Z",
+      "summary": "## 一句话总结\n想靠室内植物完全抵消你呼出的 CO₂？理论上行得通，但你需要一个功率 5000-10000 瓦、每天长出 4.6 公斤生物质的工业级农场，所以还是直接开窗吧。\n\n### 物理极限下的能量账本\n人每天呼出约 1 公斤 CO₂，植物要把它转化掉，本质上是个能量问题。根据化学反应式，转化 1 摩尔 CO₂ 至少需要 477 千焦能量。假设植物有 100% 的理想效率，这相当于需要 132.5 瓦的持续光照。这听起来不多，也就两个老式灯泡的功率，但别急，这只是物理学的理论下限。\n\n### 现实中的植物并不是永动机\n现实中的植物受限于光合作用的物理机制（Z-scheme），每转化一个 CO₂ 分子需要 8 个光子。为了效率最大化，我们选用波长 680nm 的纯红光（1.8 eV），这把能耗推高到了 386 瓦。再加上约 30% 的光子会被反射或未被叶绿素捕获，以及植物自身呼吸作用消耗掉约 40% 的葡萄糖，实际需要的功率飙升到了 918 瓦。\n\n### 住进“红灯区”的代价\n918 瓦听起来还能接受？但这可是纯粹的辐射能量。换算成老式白炽灯，这相当于 765 个灯泡同时对着你照。考虑到 LED 灯的电光转换效率只有 50%，且为了视觉效果和光损，实际功耗会轻松达到 5000-10000 瓦。这基本上相当于在房间里开了五台全功率的取暖器，你不仅是在种花，简直是在生活在一个桑拿房里。\n\n### 叶绿素也有“带宽”限制\n就算你舍得交电费，植物也“吃”不进无限的光。叶绿素处理光子需要时间，存在一个饱和点（PPFD）。典型的耐阴室内植物每平方米叶片只能吸收约 52 瓦的光能。要处理那 918 瓦的光，你至少需要 17.6 平方米的叶片面积。想象一下一堵 4.2 米见方的墙，必须密不透风地铺满叶子，不能有一点缝隙，这是绝对的物理下限。\n\n### 碳去哪儿了是个大问题\n解决了光和面积，最尴尬的问题来了：碳得有地方去。你每天呼出的 1 公斤 CO₂ 含有 273 克纯碳。植物要把它存起来，必须长出新的组织。考虑到干植物物质只有 50% 是碳，且植物通常含有大量水分（干湿比约 1:8.5），这意味着你的花园每天必须长出 4.6 公斤的新植物。\n\n### 最后的结论：开窗吧\n每天长 4.6 公斤植物是什么概念？一个月就是 140 公斤。如果你不把这些植物砍下来扔掉，碳还是会回到大气中。所以，除非你打算在家里搞个工业级农场并定期处理成吨的废料，否则植物对降低 CO₂ 的贡献微乎其微。作者的建议很直接：与其折腾植物，不如直接把窗户打开。",
+      "source_name": "dynomight.net",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "other",
+      "keywords": [
+        "photosynthesis",
+        "CO2",
+        "energy efficiency",
+        "physics"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Why do OpenAI's GPT-2 weights beat mine?  Part two: the bugfix",
+      "title_zh": "GPT-2 复现实验中的 eval bug 修复",
+      "link": "https://www.gilesthomas.com/2026/07/why-do-openai-gpt2-weights-beat-mine-2-the-bugfix",
+      "pub_date": "2026-07-30T19:00:00.000Z",
+      "summary": "## 一句话总结\n修复了一个导致模型参数未正确保存的引用传递 Bug 后，虽然基准线数据发生了变化，但核心结论依然成立：OpenAI 的 GPT-2 权重在指令遵循能力上依然优于作者自己训练的模型。\n\n### 修复前的乌龙：你以为保存了快照，其实只存了个指针\n\n作者在复现实验时，原本想实现一个标准的 Early Stop 机制：在验证集 Loss 下降时保存模型参数，一旦 Loss 开始回升，就回退到上一个表现最好的参数。代码逻辑看起来没毛病，每次 Loss 下降就执行 `last_params = model.state_dict()`，最后再 `load_state_dict` 回去。但问题在于，PyTorch 的 `state_dict()` 返回的不是深拷贝，而是指向模型参数的引用。这意味着 `last_params` 一直跟着模型实时变动，所谓的\"回退\"其实是空操作，模型最终加载的是过拟合后的参数，而不是 Loss 最低时的那个版本。修复办法简单粗暴：引入 `copy` 模块的 `deepcopy`，确保存下来的是真正的快照。\n\n### 顺手修了个看不见的坑：评估数据量用少了\n\n在排查代码时，作者还发现评估脚本只用了数据集的前 5 个 batch。这段代码最初是从《Build a Large Language Model (from Scratch)》这本书里借用的，当时为了追求速度只能跑少量数据。但在作者的实验场景下，评估频率没那么高，完全有条件用全量验证集。既然要因为 Bug 重新跑一遍所有实验，不如顺手把这个数据量的限制也去掉，让评估结果更精准、更可靠。\n\n### 修正后的排名：有人欢喜有人愁\n\n修复 Bug 并全量重跑后，基准线发生了显著变化。最引人注目的是两个 JAX 模型（\"no MHA bias\" 系列），排名从原来的第 11 和第 15 名跃升至第 3 和第 8 名。作者怀疑这不仅是评估数据量增加带来的稳定性提升，更可能是因为之前在 PyTorch 评估代码中错误配置了 JAX 模型的 Dropout。这次修正后，这两个模型可能因为得到了正确的训练或评估配置而表现更好。同时，OpenAI 的模型依然稳坐前二，GPT-2 medium 继续领跑，说明之前的优势并非由 Bug 造成的假象。\n\n### 那些\"受益\"于 Bug 的模型\n\n有趣的是，并不是所有模型排名都上升了。`1xrtx3090-stacked-interventions`、`Cloud FineWeb, 8x B200` 和 `Local FineWeb train` 这三个模型在修复后排名大幅下滑。作者提出了一个颇具玩味的假设：这些模型之前可能是在\"作弊\"。因为之前的 Bug 导致模型实际上是在过拟合的状态下进行评估的，而过拟合有时恰好能在这个特定的评估集中碰巧拿到更高的分数。现在 Bug 修了，恢复了真正的 Early Stop，这种\"虚假的繁荣\"也就随之消失了。\n\n### 评估分数的\"噪音\"与真相\n\n在解读数据时，作者特意提醒读者不要过分纠结于具体的分数数值。比如 OpenAI medium 从 41.62 涨到 42.41，这种小幅波动很可能只是 LLM-as-a-judge（这里用的是 GPT 5.5）的主观\"噪音\"。同一个回答，评委可能心情好给 95 分，心情不好给 90 分。真正重要的是相对排名，因为所有模型都在同一个 Prompt 下被比较，相对优劣是稳定的。只要 OpenAI 没掉出前两名，那个核心谜题就依然存在。\n\n### 谜题未解，但地基已稳\n\n这次修复虽然没有解释\"为什么 OpenAI 的权重更强\"，但这恰恰是好消息——至少排除了\"是因为我代码写错了才导致 OpenAI 赢\"这个最尴尬的可能性。现在的基准线是可信的，实验逻辑是闭环的。虽然像 Dropout 配置、验证集 Loss 波动与过拟合的关系等细节还值得深挖，但作者决定就此打住，因为继续纠结评估细节边际效益递减。接下来，终于可以在这个稳固的基础上，尝试调整模型架构或训练策略，去真正缩小与 OpenAI 的差距了。",
+      "source_name": "gilesthomas.com",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "ai-ml",
+      "keywords": [
+        "GPT-2",
+        "instruction following",
+        "PyTorch",
+        "LLM-as-a-judge"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Looking for the Catch in Apple Upgrade",
       "title_zh": "Apple 租赁计划背后的消费陷阱",
       "link": "https://www.theatlantic.com/technology/2026/07/apple-lease-upgrade-program/688106/",
@@ -41,7 +79,7 @@
         "subscription",
         "consumer"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "The Differences Between the New ‘Apple Upgrade’ and the Old ‘iPhone Upgrade Program’",
@@ -60,7 +98,25 @@
         "leasing",
         "AppleCare"
       ],
-      "rank": 3
+      "rank": 5
+    },
+    {
+      "title": "Quoting Bruce Schneier",
+      "title_zh": "Bruce Schneier：区分健身任务与工作任务",
+      "link": "https://simonwillison.net/2026/Jul/30/bruce-schneier/#atom-everything",
+      "pub_date": "2026-07-30T18:25:26.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "opinion",
+      "keywords": [
+        "critical thinking",
+        "AI",
+        "education"
+      ],
+      "rank": 6
     }
   ]
 }
