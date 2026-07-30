@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "Wheels, Bottles and Images",
+      "title_zh": "三大二进制分发系统的架构趋同",
+      "link": "https://nesbitt.io/2026/07/30/wheels-bottles-images.html",
+      "pub_date": "2026-07-30T10:00:00.000Z",
+      "summary": "## 一句话总结\nPython Wheels、Homebrew Bottles 和 OCI Images 这三种二进制分发格式，本质上都是基于不可变校验和文件的客户端分发系统，它们正在底层存储和签名机制上趋同，但在依赖模型和平台标签的语义上依然保留着各自的生态壁垒。\n\n### 把 Go 二进制文件伪装成 Python 包？\n故事得从 Simon Willison 的一个\"骚操作\"说起。他把一个 Go 编写的 CLI 工具打包成了 Python wheel，里面其实不含任何 Python 代码，就是针对不同平台预编译好的二进制文件。这招之所以能成，是因为 wheel 的核心机制就是一个带校验和的压缩包，只要平台标签对得上，pip 就能乖乖下载。这引发了社区的一个争议：PyPI 到底该不该存这种跟 Python 毫无关系的二进制文件？但抛开合规性不谈，这个操作无意中揭示了现代包分发系统的本质：它们其实都是通用的二进制投递服务。\n\n### 三个生态，同一套底层逻辑\n如果你把 Python 的 wheel、Homebrew 的 bottle 和 Docker 的 OCI image 放在一起看，会发现它们的架构惊人地相似。说白了，它们都是通过 HTTP 下载一个带校验和的静态文件，不管是 zip 还是 tar.gz，服务器端都不做任何转换，只管存，客户端自己挑。这种设计让 CDN 缓存变得极其便宜且安全。而且，它们的索引和存储都是分离的：PyPI 指向 `files.pythonhosted.org`，Homebrew 把瓶子从 Bintray 搬到了 GitHub Packages，镜像也能无缝切换。这种\"内容寻址\"的不可变文件，是三者共同的地基。\n\n### 客户端挑活儿，服务器端不管事\n有意思的地方在于，这三个系统都把\"选择正确版本\"的活儿甩给了客户端。pip 会根据当前解释器的版本去匹配 wheel 的 tag，brew 会根据操作系统和架构选 bottle，就连 OCI 镜像，虽然 registry 里存了结构化的平台数据，但最终也是客户端拉取 index 后自己决定下哪个 manifest。这种设计的好处是服务端逻辑极简，不需要维护复杂的动态解析逻辑。至于标签里到底填了什么——是 CPU 架构、操作系统版本，还是 ABI 细节——虽然写法各不相同，但描述的维度其实是一模一样的。\n\n### 依赖模型决定了它们长得不一样\n虽然底座很像，但\"上半身\"的差异就很大了。Wheel 和 bottle 都活在依赖图里：pip 要解析依赖树，brew 也要先算好 formula 树才能安装。但 OCI image 没有依赖模型，它就是一层层叠上去的，运行时缺啥就得在打包时全塞进去。这就导致 wheel 和 bottle 可以\"裸奔\"，只带自己的核心逻辑，依赖库交给宿主机或包管理器解决；而 image 则是个\"大胖子\"，除了内核什么都有，连用户空间都得自给自足。\n\n### Homebrew 和 Helm 正在\"寄生\"容器仓库\n既然底层逻辑这么像，那能不能复用基础设施？Homebrew 已经这么干了，从 2021 年开始，它的 bottle 就直接存放在 OCI registry（比如 ghcr.io）里。它巧妙地利用 OCI 的 annotation 字段，存了标准 schema 里没有的 glibc 版本和 CPU 变体信息。Helm Charts 也跟进用了同一套。这说明 OCI registry 的通用性极强，只要不触碰它未定义的依赖解析逻辑，把它当成一个支持内容寻址的通用对象存储来用，完全没问题。\n\n### 签名机制正在统一为 sigstore\n除了存储，安全机制也在趋同。现在这三者都在用 sigstore 来做构建证明。PyPI 去年底支持了 PEP 740，GitHub Actions 默认就能带签名；Homebrew 的 CI 也在给所有 bottle 签名；Docker 镜像早就用 cosign 把签名推到 registry 里了。虽然存储位置不太一样——有的在索引旁，有的在 registry 里，有的在 GitHub API——但思路都是一样的：用不可变的元数据来证明\"这个包确实是我构建的\"。\n\n### GPU 标签是最后的\"巴别塔\"\n既然基础设施能复用，那为什么还要搞三套标准？核心难点在于\"标签语法\"和\"依赖解析\"，这恰恰是 OCI 故意留白的。现在最大的痛点是 GPU 支持。现有的标签体系里都没法很好地描述 CUDA 版本，导致 PyPI 上经常没法 host CUDA wheel。Python 社区正在搞 PEP 817 和 PEP 825，试图通过插件机制在安装时检测 GPU 和 SIMD。这背后反映的问题是：虽然大家都在用类似的轮子，但只要各生态对\"平台\"的定义（特别是硬件加速层）还没统一，真正的跨生态二进制分发就还有最后一公里要走。",
+      "source_name": "nesbitt.io",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "wheels",
+        "OCI",
+        "binary distribution",
+        "sigstore"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Why compute might get 10x+ more expensive in coming years",
       "title_zh": "AI 算力价格未来可能上涨 10 倍",
       "link": "https://www.dwarkesh.com/p/why-compute-might-get-10x-more-expensive",
@@ -60,7 +79,7 @@
         "AI labs",
         "economics"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Count Those Underscores",
@@ -79,7 +98,7 @@
         "law enforcement",
         "username error"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Why do OpenAI's GPT-2 weights beat mine?",
@@ -98,7 +117,7 @@
         "loss landscape",
         "overtraining"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Making an agile version of a Windows Runtime delegate in C++/WinRT, part 8",
@@ -117,7 +136,7 @@
         "exception safety",
         "resource leak"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Quoting Matthew Green",
@@ -136,7 +155,7 @@
         "AI",
         "cryptography"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Adding a custom MCP server to Claude and ChatGPT",
@@ -155,7 +174,7 @@
         "ChatGPT",
         "integration"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Superlogical",
@@ -174,7 +193,7 @@
         "libghostty",
         "multiplexer"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "The AI Aesthetic",
@@ -193,7 +212,7 @@
         "streaming text",
         "shimmering text"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Logic for Programmers is Done",
@@ -212,7 +231,7 @@
         "math",
         "software"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Pastebot 3",
@@ -230,7 +249,7 @@
         "macos",
         "productivity"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "Apple Upgrade — New Program With Klarna for Leasing iPhones, Macs, iPads, and More for Near-Zero Interest",
@@ -248,7 +267,7 @@
         "Klarna",
         "leasing"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "Quoting D. Richard Hipp",
@@ -267,7 +286,7 @@
         "COBOL",
         "AI"
       ],
-      "rank": 14
+      "rank": 15
     }
   ]
 }
