@@ -1,8 +1,8 @@
 {
   "date": "2026-07-31",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2536,
+  "success_feeds": 84,
+  "total_articles": 2516,
   "filtered_articles": 20,
   "articles": [
     {
@@ -139,6 +139,25 @@
       "rank": 7
     },
     {
+      "title": "Making an agile version of a Windows Runtime delegate in C++/WinRT, part 9",
+      "title_zh": "三种 C++ WinRT 实现的 delegate 行为差异",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260730-00/?p=112573",
+      "pub_date": "2026-07-30T14:00:00.000Z",
+      "summary": "# 一句话总结\n为了实现一个完美的 Agile Delegate，作者对比了 C++/WinRT、C++/CX 和 WRL 三种实现策略，发现它们在“是否优化”、“何时创建 Agile 引用”以及“如何处理非可序列化对象”上存在巨大差异，最终给出了一个兼顾性能与兼容性的权衡方案。\n\n---\n\n### 正文\n\n### 花了一半时间处理“不可序列化”的边缘情况\n这系列文章写到现在，你可能觉得核心难点在于性能优化。但实际上，作者透露了一个惊人的数据：超过一半的时间都花在处理那些声明了“不可序列化”的 delegate 上。这听起来很反直觉，毕竟 Windows Runtime 的主要目的是跨线程调用，而不可序列化的对象天生就不支持这种操作。但现实中的代码库往往充满了历史包袱，如何优雅地处理这些“异类”，直接决定了你的实现是只能跑 Demo，还是能上生产环境。\n\n### C++/WinRT 的“一刀切”：宁可错杀，不可放过\n先来看看官方的 C++/WinRT 是怎么做的。它的实现里有一个针对 `IAgileObject` 的优化路径，这很好。但问题在于，对于那些不是 agile 的对象，它直接尝试创建 `agile_ref`，完全不去检查对象是否实现了 `INoMarshal`。这意味着什么？意味着如果你把一个声明了“不可序列化”的 delegate 当作事件处理器传进去，C++/WinRT 会直接拒绝它。这种做法简单粗暴，虽然保证了安全，但也把很多本来可以在单线程环境下正常工作的代码路给堵死了。\n\n### C++/CX 的“懒加载”：用不到就不报错\n相比之下，C++/CX 的处理方式就圆滑得多。它采用了“懒加载”策略：只有当 wrapper 真的被跨线程调用时，才会去尝试创建 agile reference。如果原始 delegate 是不可序列化的，这时候才会抛出 `CO_E_NOT_SUPPORTED`。这种设计的好处显而易见：如果你的代码始终在同一个 apartment 里运行，即便对象是不可序列化的，也能相安无事。说白了，这是一种“不碰不炸”的妥协，把错误的触发推迟到了真正需要跨线程的那一瞬间。\n\n### WRL 的“老实人”做法：总是急切创建\n再看看 WRL，它的策略就有点“老实过头”了。代码注释里虽然写着“可以考虑优化 `IAgileObject`”，但实际上并没有做。它总是急切地创建 agile reference，没有任何懒加载机制。这就导致了一个尴尬的后果：只要原始 delegate 是不可序列化的，你就根本没法把它添加到一个 agile 的事件源里。不管你最后会不会跨线程用它，初始化阶段就直接挂了。这在某些场景下显得过于严格，缺乏灵活性。\n\n### 我们的方案：取长补短，按需定制\n分析了这三家的优缺点后，作者给出了自己版本的实现策略。从对比表格来看，作者的选择非常明确：既要像 C++/WinRT 那样优化 agile delegates，又要像 C++/CX 那样支持“非 agile 使用”。具体来说，对于不可序列化的 delegate，作者采用了和 C++/CX 一样的逻辑——如果你只在单线程环境下用，我就允许你注册；一旦你想跨线程用，再拒绝你。这种“按需分配”的策略，是在性能和兼容性之间找到的最佳平衡点。\n\n### 最终的选择：没有银弹，只有取舍\n有意思的地方在于，作者最后也承认，也许我们做得太复杂了。如果你不需要处理那些边缘情况，完全可以把这部分支持砍掉，代码会简单很多。技术选型往往就是这样，没有完美的银弹，只有最适合当下场景的取舍。通过这张详细的对比表，你可以清楚地看到每种实现背后的 trade-off，然后决定你的项目到底需要哪一种行为。毕竟，过度设计也是一种浪费。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "C++/WinRT",
+        "Windows Runtime",
+        "delegate",
+        "agile reference"
+      ],
+      "rank": 8
+    },
+    {
       "title": "llm-chat-completions-server 0.1a0",
       "title_zh": "LLM 模型转为 OpenAI 兼容 API 服务",
       "link": "https://simonwillison.net/2026/Jul/30/llm-chat-completions-server/#atom-everything",
@@ -155,7 +174,7 @@
         "deduplication",
         "content-addressable"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "llm 0.32rc1",
@@ -174,7 +193,7 @@
         "content-addressable",
         "gpt-5.6"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Looking for the Catch in Apple Upgrade",
@@ -193,7 +212,7 @@
         "subscription",
         "consumer"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "BI Slop",
@@ -212,7 +231,7 @@
         "ChatGPT",
         "mandatory training"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "llm 0.32rc2",
@@ -231,7 +250,7 @@
         "CLI",
         "OpenAI endpoint"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "The Differences Between the New ‘Apple Upgrade’ and the Old ‘iPhone Upgrade Program’",
@@ -250,7 +269,7 @@
         "leasing",
         "AppleCare"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "Quoting Bruce Schneier",
@@ -268,7 +287,7 @@
         "AI",
         "education"
       ],
-      "rank": 14
+      "rank": 15
     },
     {
       "title": "Apple Releases iOS and MacOS 26.6, MacOS 15.7.8, and More",
@@ -287,7 +306,7 @@
         "security updates",
         "Spotlight"
       ],
-      "rank": 15
+      "rank": 16
     },
     {
       "title": "Rogue Amoeba: Unobtrusive Update Notifications",
@@ -306,7 +325,7 @@
         "UX",
         "Mac apps"
       ],
-      "rank": 16
+      "rank": 17
     },
     {
       "title": "Mark Zuckerberg: ‘The AI Future Is for Everyone’",
@@ -324,7 +343,7 @@
         "open source",
         "Meta"
       ],
-      "rank": 17
+      "rank": 18
     }
   ]
 }
