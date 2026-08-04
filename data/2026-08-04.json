@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2538,
-  "filtered_articles": 21,
+  "filtered_articles": 18,
   "articles": [
+    {
+      "title": "brew install actions/checkout",
+      "title_zh": "用 Homebrew 修复 GitHub Actions 的包管理缺陷",
+      "link": "https://nesbitt.io/2026/08/04/brew-install-actions-checkout.html",
+      "pub_date": "2026-08-04T10:00:00.000Z",
+      "summary": "## 一句话总结\n这篇文章提出了一种利用 Homebrew 的审核机制和 OCI 存储来构建 GitHub Actions 受信注册中心的方案，通过将 Action 转化为 Formula 并在构建时重写依赖，解决了 Actions 缺乏 Lockfile 和传递性可见性的安全痛点。\n\n### GitHub Actions 的安全盲区：从发布到执行之间缺了道门\nGitHub Actions 虽然推出了 `gh-actions-lock` 和不可变 Action，但本质上还是没解决一个核心问题：作者打个 tag，Runner 就直接执行，中间没有任何人工审核环节。Homebrew 却不一样，它维护了 15 年的受信索引，任何包的更新都要经过 `brew audit` 和人工 Review。更有意思的是，Homebrew 的 Bottle 和 GitHub 的不可变 Action 现在都存在 `ghcr.io` 上，用的都是 OCI manifest。既然底层存储和审核流程都现成的，作者就琢磨：能不能用 Homebrew 的零件，拼出一个更安全的 GitHub Actions 注册中心？\n\n### 用 Formula 锁死 Action 的内容哈希\n核心思路其实很简单：把每个 GitHub Action 当成一个 Homebrew Formula 来管理。在 Formula 里，不仅要把 Action 的源码 URL 锁死到具体的 SHA-256 哈希值，还要声明它的依赖。对于普通的 JavaScript Action，这就像处理普通的 npm 包一样，直接下载 tarball 并校验哈希就行。Homebrew 正在把安装逻辑迁移到声明式步骤，这意味着以后安装 Action 甚至不需要执行 Ruby 代码，直接解析 JSON 配置就能搞定。这样一来，`actions/checkout` 什么时候更新、更新了什么代码，都得过 Homebrew 的 PR 流程，而不是作者随手打个 tag。\n\n### 复合 Action 的依赖重写：消灭运行时解析\n最棘手的是复合 Action，因为它内部的 `action.yml` 也有 `uses:` 字段，Runner 会在运行时动态解析，这导致外层锁定了版本，内层却可能偷偷变。Homebrew 的解法是在构建时做“手术”：把 Formula 里的 `depends_on` 声明为依赖，然后在 `install` 阶段用 `inreplace` 把 `action.yml` 里的 `uses: actions/cache@v4` 强行替换成本地路径 `uses: ./.brew-actions/actions-cache`。这样生成的 Bottle 里就没有任何浮动引用了，`brew deps --tree` 能直接打印出完整的依赖树。如果上游 Action 想改依赖，必须提交 PR 修改 Formula，过不了 Review 就伤不到下游用户。\n\n### Runner 的妥协：用本地路径绕过限制\n理想很丰满，但 GitHub Runner 并不支持“从磁盘安装包”这种模式。目前的 Runner 只有三种 Action 来源：仓库、容器注册表和脚本。为了在现有 Runner 上跑起来，作者搞了个“曲线救国”的方案：先写一个 Setup Action，用 `brew bundle` 把需要的 Action 装到当前目录下的 `.brew-actions` 里，然后 Workflow 里用 `uses: ./.brew-actions/xxx` 来引用。虽然这多了一步下载 Setup Action 的开销，而且 `checkout` 这种最早运行的步骤还是得用老办法，但它证明了这套流程是通的。对于自托管 Runner，甚至可以直接利用 `ACTIONS_RUNNER_ACTION_ARCHIVE_CACHE` 目录，把 Homebrew 装好的包扔进去当缓存用。\n\n### 终极形态：把 Tap 嵌入 GitHub 的解析器\n现在的 Setup Action 只是个原型，真正的终极方案是让 GitHub 官方集成这个逻辑。GitHub 可以在组织设置里加一个选项，允许指定一个自定义的 Tap 索引。当你写 `uses: actions/checkout@v4` 时，GitHub 的解析器不再去查 Git ref，而是去查这个 Tap 索引，直接返回 OCI manifest 的 digest。因为依赖在打包时已经重写并解析了，整个传递性依赖树只需要一次索引查询加上 N 次内容寻址的拉取。这就像 Linux 发行版切换软件源一样，你可以选择用 GitHub 默认的源，也可以切换到一个审核更严格的社区源或内部源。\n\n### 原型实测：70 个关键 Action 暴露了 61 个安全问题\n为了验证可行性，作者抓取了 ecosyste.ms 上 70 个最关键的 Action 生成了 Formula。跑下来看，55 个是 JS Action，9 个是复合 Action，6 个是 Docker Action。作者还顺手接入了安全扫描工具 `zizmor`，结果触目惊心：70 个 Action 里扫出了 61 个问题，其中 45 个是高危漏洞，主要集中在模板注入和未引用的依赖上。更有趣的是，那 6 个 Docker Action 竟然有 5 个还在用 tag 而不是 digest 引用镜像。这个原型不仅证明了技术路径可行，还顺手给现有的 Action 生态做了一次全面的安全体检。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "GitHub Actions",
+        "Homebrew",
+        "supply chain security",
+        "immutable actions"
+      ],
+      "rank": 1
+    },
     {
       "title": "Why smarter AI models could drive up compute prices 10x",
       "title_zh": "更智能的 AI 可能推高算力价格 10 倍",
@@ -22,7 +41,7 @@
         "marginal value",
         "demand elasticity"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Om Malik’s Final Essay: ‘The Myth, the Mythos and the Man’",
@@ -41,7 +60,7 @@
         "safety",
         "narrative"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "[Sponsor] MCP vs. REST: The Right Way to Connect Agents to Your API",
@@ -60,7 +79,7 @@
         "LLM agents",
         "OAuth 2.1"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Agentic coding techniques",
@@ -79,7 +98,7 @@
         "LLM skills",
         "GitHub PAT"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "The Information on Apple’s Unusual Use of iCloud for Confidential Work",
@@ -98,7 +117,7 @@
         "data leakage",
         "OpenAI"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Creating a fake agile wrapper that is technically agile but is not useful outside its home apartment, part 1",
@@ -117,7 +136,7 @@
         "GIT",
         "apartment"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Devtools must be open source (exe.dev)",
@@ -136,7 +155,7 @@
         "developer tools",
         "Claude"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Quoting Steve Yegge",
@@ -155,7 +174,7 @@
         "agent",
         "self-modification"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Don't be a meat proxy",
@@ -173,7 +192,7 @@
         "AI",
         "workflow"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Quoting David Crawshaw's prompt",
@@ -192,7 +211,7 @@
         "rebase",
         "cron"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "★ Why Apple Requires a Cellular Account Through a Big Three Carrier to Lease an iPhone",
@@ -211,7 +230,7 @@
         "fraud",
         "MVNO"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "TerminalWidget 1.0",
@@ -230,7 +249,7 @@
         "macOS",
         "Shortcuts"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "Relative velocity and closing speed",
@@ -249,7 +268,7 @@
         "vector projection",
         "physics simulation"
       ],
-      "rank": 13
+      "rank": 14
     },
     {
       "title": "Truth Social Launches Paid Early Access to Trump Posts",
@@ -268,7 +287,7 @@
         "SEC",
         "API"
       ],
-      "rank": 14
+      "rank": 15
     },
     {
       "title": "Ulysses S. Grant on the Future Dividing Line",
@@ -287,7 +306,7 @@
         "civil war",
         "fact check"
       ],
-      "rank": 15
+      "rank": 16
     },
     {
       "title": "John Ternus Has Rehired Former Hardware VP Laura Legros",
@@ -305,7 +324,7 @@
         "John Ternus",
         "Laura Legros"
       ],
-      "rank": 16
+      "rank": 17
     }
   ]
 }
