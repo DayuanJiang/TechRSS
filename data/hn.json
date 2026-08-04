@@ -1,6 +1,684 @@
 {
-  "updatedAt": "2026-08-04T17:09:51.706Z",
+  "updatedAt": "2026-08-04T18:25:14.217Z",
   "items": [
+    {
+      "id": 49166874,
+      "by": "cimi_",
+      "title": "Keyv and friends compromised in active Shai-Hulud supply chain attack",
+      "url": "https://www.aikido.dev/blog/keyv-and-friends-compromised-in-npm-supply-chain-attack",
+      "score": 141,
+      "detailUpdatedAt": 1785863597,
+      "createdAt": 1785849624,
+      "aiSummaryUpdatedAt": 1785864611,
+      "aisummary": {
+        "chinese_title": "Keyv 被攻破引爆 Shai-Hulud npm 供应链蠕虫",
+        "emoji": "⚠️",
+        "sarcastic_question": "依赖都自动执行了，还谈什么安全？"
+      },
+      "classifications": {
+        "topics": [
+          3,
+          4,
+          6
+        ],
+        "facets": [
+          8
+        ],
+        "tags": [
+          "Keyv",
+          "Shai-Hulud",
+          "npm",
+          "supply-chain attack",
+          "pre-install hooks",
+          "GitHub",
+          "pnpm",
+          "safedep.io",
+          "aikido.dev"
+        ]
+      },
+      "classificationsUpdatedAt": 1785853260,
+      "aiSummary": {
+        "chinese_title": "Keyv 被攻破引爆 Shai-Hulud npm 供应链蠕虫",
+        "emoji": "⚠️",
+        "sarcastic_question": "依赖都自动执行了，还谈什么安全？"
+      },
+      "detail": {
+        "id": 49166874,
+        "by": "cimi_",
+        "title": "Keyv and friends compromised in active Shai-Hulud supply chain attack",
+        "url": "https://www.aikido.dev/blog/keyv-and-friends-compromised-in-npm-supply-chain-attack",
+        "score": 141,
+        "detailUpdatedAt": 1785863597,
+        "createdAt": 1785849624,
+        "aiSummaryUpdatedAt": 1785864611,
+        "aisummary": {
+          "chinese_title": "Keyv 被攻破引爆 Shai-Hulud npm 供应链蠕虫",
+          "discussion_overview": [
+            {
+              "category": "攻击规模与横向扩散",
+              "summary": "评论普遍把这次事件视为一次很大的供应链爆炸，而不是单个包的孤立污染。有人引用更新数据说已有数百个包、上千个版本被波及，累计月安装量超过 20 亿；也有人提醒这个数字里可能包含大量 CI 安装，但 CI 往往持有最敏感的密钥。更令人担心的是，恶意代码不是只停在首次感染，而是会把受影响维护者的其它仓库和包继续当作传播点，导致清理后仍可能出现连锁感染。",
+              "supportid": [
+                "49171729",
+                "49169797",
+                "49170201",
+                "49168572",
+                "49168961",
+                "49169046",
+                "49169809"
+              ]
+            },
+            {
+              "category": "禁用 install hooks 与权限隔离",
+              "summary": "很多人主张先对新增的 `preinstall`/`postinstall` hook 一刀切拦截，至少把默认风险先压下去；有人补充 pnpm 和 npm v12 已经默认阻挡这类脚本。反对者指出，攻击者完全可以把 dropper 藏到 `index.js` 或别的 import-time 入口里，所以禁掉 hook 只是必要但不充分，不是终局解。更实用的方案是把构建、测试、发布拆成不同 workflow：无密钥的 job 只产出 artifact，带 API keys 的 job 只负责发布；同时用容器、VM、Deno（支持按路径授权的运行时）或能力声明、`cargo-vet` 这类工具做更细的权限边界。",
+              "supportid": [
+                "49168993",
+                "49169055",
+                "49171612",
+                "49169520",
+                "49169538",
+                "49170697",
+                "49170415",
+                "49169748",
+                "49170299",
+                "49170079",
+                "49170243",
+                "49170684",
+                "49170925",
+                "49171234",
+                "49170266",
+                "49170716",
+                "49169927",
+                "49169530"
+              ]
+            },
+            {
+              "category": "排查与清理手段",
+              "summary": "有人在问怎么在海量 `node_modules` 或 pnpm store 里快速查出中招痕迹，大家给出了 `fd`、`find`、`grep` 组合命令，重点盯 `setup.mjs`、`Math_Symbol.js` 以及 `package.json` 里的 `preinstall: node setup.mjs`。一条详细说明指出，`setup.mjs` 会先静默下载 Bun（JavaScript runtime），再执行一个高度混淆的 728KB `Math_Symbol.js`，后者负责窃取环境变量里的凭据并外传到公开 GitHub 仓库。也有人提醒别被同名文件误伤：正常包里也可能有很小的 `Math_Symbol.js`，所以文件大小和上下文都要一起看。",
+              "supportid": [
+                "49169136",
+                "49171746",
+                "49170143",
+                "49171741",
+                "49169585",
+                "49170543",
+                "49171734",
+                "49169656"
+              ]
+            },
+            {
+              "category": "NPM 生态与默认安全争论",
+              "summary": "讨论很快转向 npm（JavaScript 包管理器）本身是否太容易被这种攻击利用。支持者认为 JS/TS 缺少标准库，逼着项目引入大量小包，再加上历史上的 install scripts 和默认工作流，天然放大了攻击面；有人甚至拿 React 项目动辄数万依赖作例子。反驳者则强调 lockfile、`npm ci`、pnpm 的默认行为以及现代包管理器已经在减少风险，问题不在 npm 独有，而是在各生态里谁更愿意默认信任代码。也有人把 Ruby、crates.io、Debian packages 拿来比较，认为“谁更糟”更多是文化和使用方式，而不只是工具本身。",
+              "supportid": [
+                "49170321",
+                "49170797",
+                "49171626",
+                "49170937",
+                "49171116",
+                "49171833",
+                "49171245",
+                "49171260",
+                "49170917",
+                "49171250"
+              ]
+            },
+            {
+              "category": "GitHub/仓库风控",
+              "summary": "有评论希望 GitHub（代码托管平台）能在公开仓库里对明显可疑的发布行为做自动分类和临时锁定，避免恶意仓库被当作 rendezvous point。还有人提到 GitHub 已经宣布过 npm publish-time 的一些防护，但仍觉得 release feature 和手工打 tar 包的流程太容易被滥用。也出现了对平台甚至情报机构的阴谋论式猜测，反映出大家对现有仓库治理能力并不信任。",
+              "supportid": [
+                "49168489",
+                "49169324",
+                "49169189",
+                "49169107",
+                "49169284"
+              ]
+            },
+            {
+              "category": "补丁窗口、自动更新与 AI 怀疑",
+              "summary": "另一条线在讨论修补节奏：现在 CVE 公布到攻击落地的时间可能只剩小时级，所以团队既要快速打补丁，又要给新依赖留出冷静期。有人批评 CI 里自动拉新版本的做法，把“每次构建都重新下载并自动升级”视为最危险的模式之一，因为它让供应链投毒能在无人审核时直接进入流水线。与此同时，也有人怀疑安全厂商在利用这类事件制造恐慌卖产品，并认为让 ChatGPT/Claude 去审查发布包的方案“药比病更毒”。",
+              "supportid": [
+                "49170539",
+                "49171220",
+                "49171534",
+                "49171498",
+                "49170088",
+                "49171810",
+                "49169639",
+                "49169919"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Shai-Hulud",
+              "explanation": "此次 npm 供应链蠕虫攻击的代号，会借助被污染包继续扩散。"
+            },
+            {
+              "term": "preinstall/postinstall hooks",
+              "explanation": "npm 包在安装前/后自动执行的脚本钩子，常被用来触发恶意代码。"
+            },
+            {
+              "term": "CI/CD",
+              "explanation": "自动化构建、测试和部署流水线，若含密钥会成为高价值攻击面。"
+            },
+            {
+              "term": "lockfile",
+              "explanation": "锁定依赖版本的文件，用于可复现安装并减少自动升级。"
+            }
+          ],
+          "context": "这次讨论围绕 Keyv（一个 Node.js 键值存储库）及其相关 npm（JavaScript 包管理器）包被 Shai-Hulud 供应链蠕虫攻破展开。攻击者在受影响版本中加入 `setup.mjs` 和 `Math_Symbol.js`，再用 `preinstall` 让 `npm install` 自动执行，随后下载 Bun（JavaScript runtime）去跑更大的恶意载荷。载荷会从环境变量、CI/CD（持续集成/持续部署）等位置窃取凭据、加密后外传到公开 GitHub 仓库，并继续感染其他维护者的包，因此被视为会横向传播的供应链事件。评论区进一步延伸到 npm 默认安全、install scripts、lockfile、pnpm 以及如何在 `node_modules` 里快速排查痕迹。",
+          "emoji": "⚠️",
+          "sarcastic_question": "依赖都自动执行了，还谈什么安全？"
+        },
+        "classifications": {
+          "topics": [
+            3,
+            4,
+            6
+          ],
+          "facets": [
+            8
+          ],
+          "tags": [
+            "Keyv",
+            "Shai-Hulud",
+            "npm",
+            "supply-chain attack",
+            "pre-install hooks",
+            "GitHub",
+            "pnpm",
+            "safedep.io",
+            "aikido.dev"
+          ]
+        },
+        "classificationsUpdatedAt": 1785853260,
+        "aiSummary": {
+          "chinese_title": "Keyv 被攻破引爆 Shai-Hulud npm 供应链蠕虫",
+          "discussion_overview": [
+            {
+              "category": "攻击规模与横向扩散",
+              "summary": "评论普遍把这次事件视为一次很大的供应链爆炸，而不是单个包的孤立污染。有人引用更新数据说已有数百个包、上千个版本被波及，累计月安装量超过 20 亿；也有人提醒这个数字里可能包含大量 CI 安装，但 CI 往往持有最敏感的密钥。更令人担心的是，恶意代码不是只停在首次感染，而是会把受影响维护者的其它仓库和包继续当作传播点，导致清理后仍可能出现连锁感染。",
+              "supportid": [
+                "49171729",
+                "49169797",
+                "49170201",
+                "49168572",
+                "49168961",
+                "49169046",
+                "49169809"
+              ]
+            },
+            {
+              "category": "禁用 install hooks 与权限隔离",
+              "summary": "很多人主张先对新增的 `preinstall`/`postinstall` hook 一刀切拦截，至少把默认风险先压下去；有人补充 pnpm 和 npm v12 已经默认阻挡这类脚本。反对者指出，攻击者完全可以把 dropper 藏到 `index.js` 或别的 import-time 入口里，所以禁掉 hook 只是必要但不充分，不是终局解。更实用的方案是把构建、测试、发布拆成不同 workflow：无密钥的 job 只产出 artifact，带 API keys 的 job 只负责发布；同时用容器、VM、Deno（支持按路径授权的运行时）或能力声明、`cargo-vet` 这类工具做更细的权限边界。",
+              "supportid": [
+                "49168993",
+                "49169055",
+                "49171612",
+                "49169520",
+                "49169538",
+                "49170697",
+                "49170415",
+                "49169748",
+                "49170299",
+                "49170079",
+                "49170243",
+                "49170684",
+                "49170925",
+                "49171234",
+                "49170266",
+                "49170716",
+                "49169927",
+                "49169530"
+              ]
+            },
+            {
+              "category": "排查与清理手段",
+              "summary": "有人在问怎么在海量 `node_modules` 或 pnpm store 里快速查出中招痕迹，大家给出了 `fd`、`find`、`grep` 组合命令，重点盯 `setup.mjs`、`Math_Symbol.js` 以及 `package.json` 里的 `preinstall: node setup.mjs`。一条详细说明指出，`setup.mjs` 会先静默下载 Bun（JavaScript runtime），再执行一个高度混淆的 728KB `Math_Symbol.js`，后者负责窃取环境变量里的凭据并外传到公开 GitHub 仓库。也有人提醒别被同名文件误伤：正常包里也可能有很小的 `Math_Symbol.js`，所以文件大小和上下文都要一起看。",
+              "supportid": [
+                "49169136",
+                "49171746",
+                "49170143",
+                "49171741",
+                "49169585",
+                "49170543",
+                "49171734",
+                "49169656"
+              ]
+            },
+            {
+              "category": "NPM 生态与默认安全争论",
+              "summary": "讨论很快转向 npm（JavaScript 包管理器）本身是否太容易被这种攻击利用。支持者认为 JS/TS 缺少标准库，逼着项目引入大量小包，再加上历史上的 install scripts 和默认工作流，天然放大了攻击面；有人甚至拿 React 项目动辄数万依赖作例子。反驳者则强调 lockfile、`npm ci`、pnpm 的默认行为以及现代包管理器已经在减少风险，问题不在 npm 独有，而是在各生态里谁更愿意默认信任代码。也有人把 Ruby、crates.io、Debian packages 拿来比较，认为“谁更糟”更多是文化和使用方式，而不只是工具本身。",
+              "supportid": [
+                "49170321",
+                "49170797",
+                "49171626",
+                "49170937",
+                "49171116",
+                "49171833",
+                "49171245",
+                "49171260",
+                "49170917",
+                "49171250"
+              ]
+            },
+            {
+              "category": "GitHub/仓库风控",
+              "summary": "有评论希望 GitHub（代码托管平台）能在公开仓库里对明显可疑的发布行为做自动分类和临时锁定，避免恶意仓库被当作 rendezvous point。还有人提到 GitHub 已经宣布过 npm publish-time 的一些防护，但仍觉得 release feature 和手工打 tar 包的流程太容易被滥用。也出现了对平台甚至情报机构的阴谋论式猜测，反映出大家对现有仓库治理能力并不信任。",
+              "supportid": [
+                "49168489",
+                "49169324",
+                "49169189",
+                "49169107",
+                "49169284"
+              ]
+            },
+            {
+              "category": "补丁窗口、自动更新与 AI 怀疑",
+              "summary": "另一条线在讨论修补节奏：现在 CVE 公布到攻击落地的时间可能只剩小时级，所以团队既要快速打补丁，又要给新依赖留出冷静期。有人批评 CI 里自动拉新版本的做法，把“每次构建都重新下载并自动升级”视为最危险的模式之一，因为它让供应链投毒能在无人审核时直接进入流水线。与此同时，也有人怀疑安全厂商在利用这类事件制造恐慌卖产品，并认为让 ChatGPT/Claude 去审查发布包的方案“药比病更毒”。",
+              "supportid": [
+                "49170539",
+                "49171220",
+                "49171534",
+                "49171498",
+                "49170088",
+                "49171810",
+                "49169639",
+                "49169919"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Shai-Hulud",
+              "explanation": "此次 npm 供应链蠕虫攻击的代号，会借助被污染包继续扩散。"
+            },
+            {
+              "term": "preinstall/postinstall hooks",
+              "explanation": "npm 包在安装前/后自动执行的脚本钩子，常被用来触发恶意代码。"
+            },
+            {
+              "term": "CI/CD",
+              "explanation": "自动化构建、测试和部署流水线，若含密钥会成为高价值攻击面。"
+            },
+            {
+              "term": "lockfile",
+              "explanation": "锁定依赖版本的文件，用于可复现安装并减少自动升级。"
+            }
+          ],
+          "context": "这次讨论围绕 Keyv（一个 Node.js 键值存储库）及其相关 npm（JavaScript 包管理器）包被 Shai-Hulud 供应链蠕虫攻破展开。攻击者在受影响版本中加入 `setup.mjs` 和 `Math_Symbol.js`，再用 `preinstall` 让 `npm install` 自动执行，随后下载 Bun（JavaScript runtime）去跑更大的恶意载荷。载荷会从环境变量、CI/CD（持续集成/持续部署）等位置窃取凭据、加密后外传到公开 GitHub 仓库，并继续感染其他维护者的包，因此被视为会横向传播的供应链事件。评论区进一步延伸到 npm 默认安全、install scripts、lockfile、pnpm 以及如何在 `node_modules` 里快速排查痕迹。",
+          "emoji": "⚠️",
+          "sarcastic_question": "依赖都自动执行了，还谈什么安全？"
+        }
+      },
+      "articleSummary": "### 一句话总结\n攻击者劫持了拥有数十亿下载量的 `keyv` 维护者账号，植入蠕虫并利用 GitHub Actions 的合法签名发布恶意版本，随后通过窃取的凭证自动感染了 400 多个其他 npm 包和 GitHub 仓库，导致超过 20 亿次的月下载量受到影响。\n\n### 攻击者拿下了 npm 生态的“主动脉”\n这次攻击的起点非常致命，因为目标不是某个冷门库，而是 `keyv` 及其相关的一整套缓存工具库。这些库的月下载量加起来是个天文数字，比如 `flat-cache` 有 5.8 亿，`file-entry-cache` 有 5.7 亿。攻击者直接拿下了维护者的 GitHub 账号，把恶意代码推送到 `main` 分支并立刻发了新版本。最要命的是，这些带毒的包都经过了 GitHub Actions 签名，拥有完美的 provenance（来源证明），这意味着传统的供应链防御手段会误以为这些包是“安全可信”的。\n\n### 伪装成构建脚本的“特洛伊木马”\n这波攻击的手法其实很直接：每个受害包都被植入了 `setup.mjs` 和 `Math_Symbol.js` 两个文件，并在 `package.json` 里加了 `\"preinstall\": \"node setup.mjs\"`。只要你运行 `npm install`，这个脚本就会在安装完成前自动执行。`setup.mjs` 本身是个经过高度混淆的下载器，它会默默下载 Bun 运行时，并用它来执行那个 728 KB 的核心载荷 `Math_Symbol.js`。之所以用 Bun 而不是 Node，很可能是为了规避某些基于 Node.js 行为特征的安全检测。\n\n### 这是一个无孔不入的“凭证吸尘器”\n`Math_Symbol.js` 的功能简直是个噩梦，它几乎把开发者机器上能想到的秘密都扫了一遍。它不仅偷 npm 和 GitHub 的 Token，甚至直接读取 GitHub Actions runner 的进程内存来获取 OIDC Token。云服务方面，它通过环境变量、配置文件甚至直接调用 AWS Secrets Manager 和 Kubernetes API 来拿凭证。更绝的是，它还跑了一个通用的文件系统扫描器，用 200 多个 glob pattern 搜 `.env`、SSH 密钥、Terraform 状态文件甚至 KeePass 数据库。为了确保偷到的东西能用，它甚至会把偷到的 npm token 拿去 `registry.npmjs.org` 做一次实时验证。\n\n### 数据被加密后藏在了眼皮底下\n偷到数据后，攻击者并没有急着发回自己的服务器，而是用 RSA 公钥把整个数据包加密，然后上传到公开的 GitHub 仓库。这些仓库的描述都写着 \"Shai-Hulud: Here We Go Again\"，目前已经有约 1300 个这样的仓库。这种设计非常狡猾：因为数据是加密的，只有攻击者能解密，所以即便 GitHub 或安全研究人员发现了这些仓库，看到的也只是一堆乱码，无法直接确认受害内容。如果 GitHub 上传失败，它还会从一个以太坊智能合约里动态获取备用域名，确保 C2 服务器随时可以切换，根本不需要修改恶意代码。\n\n### 蠕虫机制让攻击实现了“指数级传播”\n这不仅仅是个偷数据的木马，它还是个能自我复制的蠕虫，这才是最可怕的地方。它利用偷到的 npm token，自动列出该账号有发布权限的所有包，修改版本号、植入恶意脚本后重新发布。这就是为什么短短时间内就有 400 多个包（包括 Deliveroo、Picsart 等大厂的包）被感染。对于 GitHub 仓库，它利用偷到的 `ghs_` token，向最近的 50 个分支提交恶意代码，把 payload 藏在 `.vscode/tasks.json` 或 `.claude/settings.json` 里。这样，开发者只要一打开 IDE 或用 Claude Code，恶意代码就会在不需要 `npm install` 的情况下自动运行。\n\n### 社区传播的变种特征需要特别留意\n如果你在排查这次事件，有个细节能帮你区分是初始攻击还是社区传播的“二代”感染。初始攻击者植入的文件叫 `Math_Symbol.js`，而通过蠕虫自动传播到其他维护者包里时，文件名变成了 `math_init.js`。虽然功能一样，但这个文件名的差异是判断攻击路径的关键证据。目前受影响的包版本列表已经很长了，建议直接检查 IOCs（Hash 值）里的 SHA-256，或者看 `package.json` 里是否多出了可疑的 `preinstall` 脚本。"
+    },
+    {
+      "id": 49167448,
+      "by": "surprisetalk",
+      "title": "Xbox goes down. You can't play games you own on disc",
+      "url": "https://birchtree.me/blog/xbox-goes-down-you-cant-play-games-you-own-on-disc/",
+      "score": 393,
+      "detailUpdatedAt": 1785863600,
+      "createdAt": 1785845420,
+      "aiSummaryUpdatedAt": 1785864335,
+      "aisummary": {
+        "chinese_title": "Xbox宕机：实体盘游戏也被微软账号/DRM锁死",
+        "emoji": "😡",
+        "sarcastic_question": "买了实体盘，还得先给微软磕头登录吗？"
+      },
+      "classifications": {
+        "topics": [
+          9,
+          6,
+          3
+        ],
+        "facets": [
+          8,
+          9
+        ],
+        "tags": [
+          "Xbox",
+          "DRM",
+          "game preservation",
+          "physical media",
+          "GOG",
+          "Steam",
+          "piracy",
+          "e-waste"
+        ]
+      },
+      "classificationsUpdatedAt": 1785847548,
+      "aiSummary": {
+        "chinese_title": "Xbox宕机：实体盘游戏也被微软账号/DRM锁死",
+        "emoji": "😡",
+        "sarcastic_question": "买了实体盘，还得先给微软磕头登录吗？"
+      },
+      "detail": {
+        "id": 49167448,
+        "by": "surprisetalk",
+        "title": "Xbox goes down. You can't play games you own on disc",
+        "url": "https://birchtree.me/blog/xbox-goes-down-you-cant-play-games-you-own-on-disc/",
+        "score": 289,
+        "detailUpdatedAt": 1785856395,
+        "createdAt": 1785845420,
+        "aiSummaryUpdatedAt": 1785858028,
+        "aisummary": {
+          "chinese_title": "Xbox 光盘版也要联网授权，微软账户与 DRM 引爆众怒",
+          "discussion_overview": [
+            {
+              "category": "Xbox/Microsoft 账户登录地狱",
+              "summary": "大量评论都在吐槽 Microsoft/Xbox 的登录链路：装上 Halo: The Master Chief Collection（《光环：士官长合集》）后，仍要先过 Microsoft account（微软账户）登录、填生日和邮箱、收验证码、过验证码，甚至反复失败卡死。有人提到《Minecraft》在 Mojang 被微软收购后强制迁移账号，最后又被要求绑定手机号，等于先买后锁。还有人说连分屏/本地多人都被迫登录，原本主机应该是“插碟就玩”的体验被层层账户验证彻底破坏。",
+              "supportid": [
+                "49169099",
+                "49169154",
+                "49169225",
+                "49169465",
+                "49169349",
+                "49169490",
+                "49169436",
+                "49169660",
+                "49170041",
+                "49169986",
+                "49169730"
+              ]
+            },
+            {
+              "category": "微软软件与治理问题",
+              "summary": "讨论很快扩展到对 Microsoft 整体产品文化的批评。评论者把 Azure（微软云平台）形容成充满重定向、tenant 绑定错误和离谱流程的烂摊子，Office on the web 也被说成像未经打磨的半成品。有人认为问题来自 QA 被裁、外包和管理层把客户当测试员，而不是单纯的技术难度。另一些人则把核心原因归结为 monopoly（垄断）和 lock-in（锁定）激励：产品能卖出去靠的是渠道和捆绑，不是质量。",
+              "supportid": [
+                "49169079",
+                "49169393",
+                "49170151",
+                "49169463",
+                "49169103",
+                "49169204",
+                "49170258",
+                "49170028",
+                "49169441",
+                "49170145",
+                "49169943",
+                "49169315"
+              ]
+            },
+            {
+              "category": "购买权、所有权与立法诉求",
+              "summary": "不少评论把焦点从“光盘还是数字”拉回到“所有权”本身。大家反复强调，真正要的是离线使用、备份、转移、转售和传给下一代的权利；如果只是 license，就应该直接叫 license 或 lease。有人主张把这种权利写进法律，避免平台和发行商随时撤回访问权，也有人指出电影、音乐、电子书早就同样在滑向可撤销授权。少数人也承认数字转售很难，但认为至少 1-4 和 6 应该保留。",
+              "supportid": [
+                "49169451",
+                "49168575",
+                "49168577",
+                "49168766",
+                "49168691",
+                "49167645",
+                "49168010",
+                "49167793",
+                "49168830",
+                "49168646",
+                "49169526",
+                "49168185",
+                "49167610",
+                "49169785"
+              ]
+            },
+            {
+              "category": "备份、模拟器、盗版与社区保全",
+              "summary": "另一派更务实：既然官方平台随时会失效，就把保存和使用权交给社区。有人推荐 GOG（主打 DRM-free 的数字商店）、Heroic Launcher（第三方开源启动器）、Steam 备份、cronjob 自动下载补丁，甚至直接用 Xemu（原版 OG Xbox 模拟器）和 archive.org 上的镜像。也有人直言，既然厂商可以靠“买了不算拥有”来加锁，盗版和破解在道德上就更容易被合理化，尤其是在旧游戏、停售内容或服务已关停时。还有人提到复古硬件、私人服务器和 reverse engineering，认为这才是长期保存游戏的现实路线。",
+              "supportid": [
+                "49169940",
+                "49167629",
+                "49167822",
+                "49168110",
+                "49169411",
+                "49170233",
+                "49167644",
+                "49169385",
+                "49167836",
+                "49169691",
+                "49169340",
+                "49167821",
+                "49167742",
+                "49169168",
+                "49167704"
+              ]
+            },
+            {
+              "category": "光盘并不等于完整可玩",
+              "summary": "也有不少评论认为，光盘本身并不能解决问题，现代游戏早就被更新、DLC、在线校验和服务端逻辑拆成了碎片。有人举例说如今大作动辄上百 GB，光盘可能只放得下启动器或半个游戏；《Baldur's Gate 3》、Gran Turismo 和 Final Fantasy XIV 都已经逼近或超过单盘容量。还有人指出，Denuvo（常见 anti-tamper/DRM）和各类上线验证会让离线和长期可玩性继续恶化，所以“有盘”并不等于“能独立运行”。",
+              "supportid": [
+                "49169105",
+                "49169262",
+                "49169507",
+                "49168948",
+                "49170308",
+                "49169487",
+                "49169521",
+                "49168763",
+                "49169155",
+                "49168102",
+                "49168393",
+                "49170069"
+              ]
+            },
+            {
+              "category": "少数反驳：并非所有 Xbox/Steam 都这么糟",
+              "summary": "也有人觉得这场批评有些夸张，至少在 Xbox 和 Steam 这类平台上，平时体验并没有帖子里说得那么糟。有人表示 Xbox 账户和手柄、存档、publisher profile 的联动其实很顺，出问题更多是偶发故障或第三方登录；Steam 也常能离线运行，真正的麻烦多半来自游戏自己的 DRM 或 Denuvo，而不是平台本身。还有人提醒别把 Microsoft、Sony 和 Valve 混成一锅，某些 PlayStation 光盘和主机在离线使用上确实更接近“能插就玩”。",
+              "supportid": [
+                "49169665",
+                "49169901",
+                "49168050",
+                "49167785",
+                "49170069",
+                "49169905",
+                "49167752",
+                "49169134"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "DRM",
+              "explanation": "数字版权管理，用来限制复制、离线运行、转移或修改软件/媒体的技术。"
+            },
+            {
+              "term": "Denuvo",
+              "explanation": "常见的 anti-tamper/DRM 方案，常被拿来讨论破解难度、离线限制和兼容性问题。"
+            },
+            {
+              "term": "DMCA",
+              "explanation": "美国《数字千年版权法》，其中反规避条款常被用来限制绕过技术保护措施。"
+            },
+            {
+              "term": "GOG",
+              "explanation": "主打 DRM-free 游戏的数字商店，支持离线安装包下载。"
+            },
+            {
+              "term": "Proton",
+              "explanation": "Valve 提供的 Windows 兼容层，让很多 Windows 游戏能在 Linux 上运行。"
+            },
+            {
+              "term": "Xemu",
+              "explanation": "原版 OG Xbox 的开源模拟器，可用于运行老 Xbox 游戏。"
+            },
+            {
+              "term": "Heroic Launcher",
+              "explanation": "第三方开源游戏启动器，常用于管理 GOG/Epic 游戏。"
+            }
+          ],
+          "context": "这篇帖子讨论的是一次 Xbox（微软游戏主机）服务中断：原本放在光盘里的游戏，在启动阶段仍要经过在线授权、账户登录或许可校验，因此连“我买了实体盘”也不能保证能玩。评论里反复提到 Halo: The Master Chief Collection（《光环：士官长合集》）被迫登录 Microsoft account（微软账户）、填写个人信息和验证码，以及 Minecraft（《我的世界》）在 Mojang 被微软收购后强制迁移账号的糟糕体验。讨论也借机延伸到游戏保存、DRM（数字版权管理）、Denuvo（常见防篡改/DRM 方案）和 DMCA（美国数字千年版权法的反规避条款），以及 Steam（PC 数字发行平台）和 GOG（主打 DRM-free 的商店）这样的替代渠道。对很多人来说，这不只是一次故障，而是“买了东西却不能确保以后还能用”的更大争论。",
+          "emoji": "🤦",
+          "sarcastic_question": "买了光盘，还得先向微软请示一次能不能玩吗？"
+        },
+        "classifications": {
+          "topics": [
+            9,
+            6,
+            3
+          ],
+          "facets": [
+            8,
+            9
+          ],
+          "tags": [
+            "Xbox",
+            "DRM",
+            "game preservation",
+            "physical media",
+            "GOG",
+            "Steam",
+            "piracy",
+            "e-waste"
+          ]
+        },
+        "classificationsUpdatedAt": 1785847548,
+        "aiSummary": {
+          "chinese_title": "Xbox 光盘版也要联网授权，微软账户与 DRM 引爆众怒",
+          "discussion_overview": [
+            {
+              "category": "Xbox/Microsoft 账户登录地狱",
+              "summary": "大量评论都在吐槽 Microsoft/Xbox 的登录链路：装上 Halo: The Master Chief Collection（《光环：士官长合集》）后，仍要先过 Microsoft account（微软账户）登录、填生日和邮箱、收验证码、过验证码，甚至反复失败卡死。有人提到《Minecraft》在 Mojang 被微软收购后强制迁移账号，最后又被要求绑定手机号，等于先买后锁。还有人说连分屏/本地多人都被迫登录，原本主机应该是“插碟就玩”的体验被层层账户验证彻底破坏。",
+              "supportid": [
+                "49169099",
+                "49169154",
+                "49169225",
+                "49169465",
+                "49169349",
+                "49169490",
+                "49169436",
+                "49169660",
+                "49170041",
+                "49169986",
+                "49169730"
+              ]
+            },
+            {
+              "category": "微软软件与治理问题",
+              "summary": "讨论很快扩展到对 Microsoft 整体产品文化的批评。评论者把 Azure（微软云平台）形容成充满重定向、tenant 绑定错误和离谱流程的烂摊子，Office on the web 也被说成像未经打磨的半成品。有人认为问题来自 QA 被裁、外包和管理层把客户当测试员，而不是单纯的技术难度。另一些人则把核心原因归结为 monopoly（垄断）和 lock-in（锁定）激励：产品能卖出去靠的是渠道和捆绑，不是质量。",
+              "supportid": [
+                "49169079",
+                "49169393",
+                "49170151",
+                "49169463",
+                "49169103",
+                "49169204",
+                "49170258",
+                "49170028",
+                "49169441",
+                "49170145",
+                "49169943",
+                "49169315"
+              ]
+            },
+            {
+              "category": "购买权、所有权与立法诉求",
+              "summary": "不少评论把焦点从“光盘还是数字”拉回到“所有权”本身。大家反复强调，真正要的是离线使用、备份、转移、转售和传给下一代的权利；如果只是 license，就应该直接叫 license 或 lease。有人主张把这种权利写进法律，避免平台和发行商随时撤回访问权，也有人指出电影、音乐、电子书早就同样在滑向可撤销授权。少数人也承认数字转售很难，但认为至少 1-4 和 6 应该保留。",
+              "supportid": [
+                "49169451",
+                "49168575",
+                "49168577",
+                "49168766",
+                "49168691",
+                "49167645",
+                "49168010",
+                "49167793",
+                "49168830",
+                "49168646",
+                "49169526",
+                "49168185",
+                "49167610",
+                "49169785"
+              ]
+            },
+            {
+              "category": "备份、模拟器、盗版与社区保全",
+              "summary": "另一派更务实：既然官方平台随时会失效，就把保存和使用权交给社区。有人推荐 GOG（主打 DRM-free 的数字商店）、Heroic Launcher（第三方开源启动器）、Steam 备份、cronjob 自动下载补丁，甚至直接用 Xemu（原版 OG Xbox 模拟器）和 archive.org 上的镜像。也有人直言，既然厂商可以靠“买了不算拥有”来加锁，盗版和破解在道德上就更容易被合理化，尤其是在旧游戏、停售内容或服务已关停时。还有人提到复古硬件、私人服务器和 reverse engineering，认为这才是长期保存游戏的现实路线。",
+              "supportid": [
+                "49169940",
+                "49167629",
+                "49167822",
+                "49168110",
+                "49169411",
+                "49170233",
+                "49167644",
+                "49169385",
+                "49167836",
+                "49169691",
+                "49169340",
+                "49167821",
+                "49167742",
+                "49169168",
+                "49167704"
+              ]
+            },
+            {
+              "category": "光盘并不等于完整可玩",
+              "summary": "也有不少评论认为，光盘本身并不能解决问题，现代游戏早就被更新、DLC、在线校验和服务端逻辑拆成了碎片。有人举例说如今大作动辄上百 GB，光盘可能只放得下启动器或半个游戏；《Baldur's Gate 3》、Gran Turismo 和 Final Fantasy XIV 都已经逼近或超过单盘容量。还有人指出，Denuvo（常见 anti-tamper/DRM）和各类上线验证会让离线和长期可玩性继续恶化，所以“有盘”并不等于“能独立运行”。",
+              "supportid": [
+                "49169105",
+                "49169262",
+                "49169507",
+                "49168948",
+                "49170308",
+                "49169487",
+                "49169521",
+                "49168763",
+                "49169155",
+                "49168102",
+                "49168393",
+                "49170069"
+              ]
+            },
+            {
+              "category": "少数反驳：并非所有 Xbox/Steam 都这么糟",
+              "summary": "也有人觉得这场批评有些夸张，至少在 Xbox 和 Steam 这类平台上，平时体验并没有帖子里说得那么糟。有人表示 Xbox 账户和手柄、存档、publisher profile 的联动其实很顺，出问题更多是偶发故障或第三方登录；Steam 也常能离线运行，真正的麻烦多半来自游戏自己的 DRM 或 Denuvo，而不是平台本身。还有人提醒别把 Microsoft、Sony 和 Valve 混成一锅，某些 PlayStation 光盘和主机在离线使用上确实更接近“能插就玩”。",
+              "supportid": [
+                "49169665",
+                "49169901",
+                "49168050",
+                "49167785",
+                "49170069",
+                "49169905",
+                "49167752",
+                "49169134"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "DRM",
+              "explanation": "数字版权管理，用来限制复制、离线运行、转移或修改软件/媒体的技术。"
+            },
+            {
+              "term": "Denuvo",
+              "explanation": "常见的 anti-tamper/DRM 方案，常被拿来讨论破解难度、离线限制和兼容性问题。"
+            },
+            {
+              "term": "DMCA",
+              "explanation": "美国《数字千年版权法》，其中反规避条款常被用来限制绕过技术保护措施。"
+            },
+            {
+              "term": "GOG",
+              "explanation": "主打 DRM-free 游戏的数字商店，支持离线安装包下载。"
+            },
+            {
+              "term": "Proton",
+              "explanation": "Valve 提供的 Windows 兼容层，让很多 Windows 游戏能在 Linux 上运行。"
+            },
+            {
+              "term": "Xemu",
+              "explanation": "原版 OG Xbox 的开源模拟器，可用于运行老 Xbox 游戏。"
+            },
+            {
+              "term": "Heroic Launcher",
+              "explanation": "第三方开源游戏启动器，常用于管理 GOG/Epic 游戏。"
+            }
+          ],
+          "context": "这篇帖子讨论的是一次 Xbox（微软游戏主机）服务中断：原本放在光盘里的游戏，在启动阶段仍要经过在线授权、账户登录或许可校验，因此连“我买了实体盘”也不能保证能玩。评论里反复提到 Halo: The Master Chief Collection（《光环：士官长合集》）被迫登录 Microsoft account（微软账户）、填写个人信息和验证码，以及 Minecraft（《我的世界》）在 Mojang 被微软收购后强制迁移账号的糟糕体验。讨论也借机延伸到游戏保存、DRM（数字版权管理）、Denuvo（常见防篡改/DRM 方案）和 DMCA（美国数字千年版权法的反规避条款），以及 Steam（PC 数字发行平台）和 GOG（主打 DRM-free 的商店）这样的替代渠道。对很多人来说，这不只是一次故障，而是“买了东西却不能确保以后还能用”的更大争论。",
+          "emoji": "🤦",
+          "sarcastic_question": "买了光盘，还得先向微软请示一次能不能玩吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n现在的实体游戏盘本质上只是个数字许可证，一旦服务器宕机，即便手里有盘你也玩不了，这彻底打破了“买盘即买断”的幻想。\n\n### 实体游戏的旧日荣光\n作者提到，当索尼宣布放弃实体盘时，他并没有像很多人那样愤怒。这倒不是因为他支持索尼的决定，而是因为他早就意识到，现在的实体媒体早已不是当年的样子了。几年前他买了一台 Analog Pocket，插上 20 年前的 Game Boy 卡带，立刻就能玩，体验和当年一模一样。在这种模式下，虽然法律上你拥有的只是许可证，但在实际体验上，你真正“拥有”这款游戏。不需要任天堂的授权，没有网络验证，只要硬件还在，游戏就能一直运行。\n\n### 现代实体盘的虚假安全感\n但现在的 Xbox 实体盘完全是另一码事。这次 Xbox 发生的大规模宕机事件，不仅让数字版游戏无法启动，甚至连插着实体盘的用户也被挡在了门外。这赤裸裸地揭示了一个事实：即便你手里捏着那张塑料盘，你依然没有真正的控制权。无论是微软、索尼还是任天堂，他们都有能力——或者像这次一样因为故障——阻止你玩手里的实体游戏。这不再是理论上的风险，而是已经发生的现实。\n\n### 所谓“实体”其实全是数字\n更有意思的地方在于，现在的“实体游戏”其实根本不是从盘上运行的。当你把光盘塞进光驱，主机并不是像以前那样直接读取盘片数据，而是要把游戏安装到内部硬盘里。而且，为了让游戏能正常运行，系统通常还会强制下载一堆更新补丁。说白了，那张盘只是一个用来验证身份的物理钥匙，或者说是个超慢速的安装包，真正的游戏内容依然完全依赖数字分发和在线服务。\n\n### PC 平台的另一种活法\n作者最后把目光转向了 PC 平台。虽然 PC 游戏早就全面数字化了，但社区发展出了一套维护游戏访问权限的有效手段。这也是作者近年来逐渐转向 PC 游戏的重要原因之一。相比之下，主机平台这种高度封闭、依赖在线验证的架构，让“买盘”这种看似传统的所有权形式变得毫无意义。当网络成为必需品，无论你是买数字版还是实体版，本质上都是在租用服务。"
+    },
     {
       "id": 49166491,
       "by": "askvictor",
@@ -1035,373 +1713,6 @@
         }
       },
       "articleSummary": "抱歉，我无法完成这项任务。\n\n你提供的待分析文章内容实际上是一个 **\"Performing security verification\"（安全验证页面）**，而不是关于亚马逊文明或人口统计学的技术文章。\n\n因为原文只有安全验证的提示信息，没有任何实质性的技术内容、数据或逻辑可供分析，所以我无法按照你的要求提取精髓或撰写博客。\n\n如果你有具体的文章链接或正文文本，请提供给我，我很乐意为你进行解读。"
-    },
-    {
-      "id": 49167448,
-      "by": "surprisetalk",
-      "title": "Xbox goes down. You can't play games you own on disc",
-      "url": "https://birchtree.me/blog/xbox-goes-down-you-cant-play-games-you-own-on-disc/",
-      "score": 289,
-      "detailUpdatedAt": 1785856395,
-      "createdAt": 1785845420,
-      "aiSummaryUpdatedAt": 1785858028,
-      "aisummary": {
-        "chinese_title": "Xbox 光盘版也要联网授权，微软账户与 DRM 引爆众怒",
-        "emoji": "🤦",
-        "sarcastic_question": "买了光盘，还得先向微软请示一次能不能玩吗？"
-      },
-      "classifications": {
-        "topics": [
-          9,
-          6,
-          3
-        ],
-        "facets": [
-          8,
-          9
-        ],
-        "tags": [
-          "Xbox",
-          "DRM",
-          "game preservation",
-          "physical media",
-          "GOG",
-          "Steam",
-          "piracy",
-          "e-waste"
-        ]
-      },
-      "classificationsUpdatedAt": 1785847548,
-      "aiSummary": {
-        "chinese_title": "Xbox 光盘版也要联网授权，微软账户与 DRM 引爆众怒",
-        "emoji": "🤦",
-        "sarcastic_question": "买了光盘，还得先向微软请示一次能不能玩吗？"
-      },
-      "detail": {
-        "id": 49167448,
-        "by": "surprisetalk",
-        "title": "Xbox goes down. You can't play games you own on disc",
-        "url": "https://birchtree.me/blog/xbox-goes-down-you-cant-play-games-you-own-on-disc/",
-        "score": 289,
-        "detailUpdatedAt": 1785856395,
-        "createdAt": 1785845420,
-        "aiSummaryUpdatedAt": 1785858028,
-        "aisummary": {
-          "chinese_title": "Xbox 光盘版也要联网授权，微软账户与 DRM 引爆众怒",
-          "discussion_overview": [
-            {
-              "category": "Xbox/Microsoft 账户登录地狱",
-              "summary": "大量评论都在吐槽 Microsoft/Xbox 的登录链路：装上 Halo: The Master Chief Collection（《光环：士官长合集》）后，仍要先过 Microsoft account（微软账户）登录、填生日和邮箱、收验证码、过验证码，甚至反复失败卡死。有人提到《Minecraft》在 Mojang 被微软收购后强制迁移账号，最后又被要求绑定手机号，等于先买后锁。还有人说连分屏/本地多人都被迫登录，原本主机应该是“插碟就玩”的体验被层层账户验证彻底破坏。",
-              "supportid": [
-                "49169099",
-                "49169154",
-                "49169225",
-                "49169465",
-                "49169349",
-                "49169490",
-                "49169436",
-                "49169660",
-                "49170041",
-                "49169986",
-                "49169730"
-              ]
-            },
-            {
-              "category": "微软软件与治理问题",
-              "summary": "讨论很快扩展到对 Microsoft 整体产品文化的批评。评论者把 Azure（微软云平台）形容成充满重定向、tenant 绑定错误和离谱流程的烂摊子，Office on the web 也被说成像未经打磨的半成品。有人认为问题来自 QA 被裁、外包和管理层把客户当测试员，而不是单纯的技术难度。另一些人则把核心原因归结为 monopoly（垄断）和 lock-in（锁定）激励：产品能卖出去靠的是渠道和捆绑，不是质量。",
-              "supportid": [
-                "49169079",
-                "49169393",
-                "49170151",
-                "49169463",
-                "49169103",
-                "49169204",
-                "49170258",
-                "49170028",
-                "49169441",
-                "49170145",
-                "49169943",
-                "49169315"
-              ]
-            },
-            {
-              "category": "购买权、所有权与立法诉求",
-              "summary": "不少评论把焦点从“光盘还是数字”拉回到“所有权”本身。大家反复强调，真正要的是离线使用、备份、转移、转售和传给下一代的权利；如果只是 license，就应该直接叫 license 或 lease。有人主张把这种权利写进法律，避免平台和发行商随时撤回访问权，也有人指出电影、音乐、电子书早就同样在滑向可撤销授权。少数人也承认数字转售很难，但认为至少 1-4 和 6 应该保留。",
-              "supportid": [
-                "49169451",
-                "49168575",
-                "49168577",
-                "49168766",
-                "49168691",
-                "49167645",
-                "49168010",
-                "49167793",
-                "49168830",
-                "49168646",
-                "49169526",
-                "49168185",
-                "49167610",
-                "49169785"
-              ]
-            },
-            {
-              "category": "备份、模拟器、盗版与社区保全",
-              "summary": "另一派更务实：既然官方平台随时会失效，就把保存和使用权交给社区。有人推荐 GOG（主打 DRM-free 的数字商店）、Heroic Launcher（第三方开源启动器）、Steam 备份、cronjob 自动下载补丁，甚至直接用 Xemu（原版 OG Xbox 模拟器）和 archive.org 上的镜像。也有人直言，既然厂商可以靠“买了不算拥有”来加锁，盗版和破解在道德上就更容易被合理化，尤其是在旧游戏、停售内容或服务已关停时。还有人提到复古硬件、私人服务器和 reverse engineering，认为这才是长期保存游戏的现实路线。",
-              "supportid": [
-                "49169940",
-                "49167629",
-                "49167822",
-                "49168110",
-                "49169411",
-                "49170233",
-                "49167644",
-                "49169385",
-                "49167836",
-                "49169691",
-                "49169340",
-                "49167821",
-                "49167742",
-                "49169168",
-                "49167704"
-              ]
-            },
-            {
-              "category": "光盘并不等于完整可玩",
-              "summary": "也有不少评论认为，光盘本身并不能解决问题，现代游戏早就被更新、DLC、在线校验和服务端逻辑拆成了碎片。有人举例说如今大作动辄上百 GB，光盘可能只放得下启动器或半个游戏；《Baldur's Gate 3》、Gran Turismo 和 Final Fantasy XIV 都已经逼近或超过单盘容量。还有人指出，Denuvo（常见 anti-tamper/DRM）和各类上线验证会让离线和长期可玩性继续恶化，所以“有盘”并不等于“能独立运行”。",
-              "supportid": [
-                "49169105",
-                "49169262",
-                "49169507",
-                "49168948",
-                "49170308",
-                "49169487",
-                "49169521",
-                "49168763",
-                "49169155",
-                "49168102",
-                "49168393",
-                "49170069"
-              ]
-            },
-            {
-              "category": "少数反驳：并非所有 Xbox/Steam 都这么糟",
-              "summary": "也有人觉得这场批评有些夸张，至少在 Xbox 和 Steam 这类平台上，平时体验并没有帖子里说得那么糟。有人表示 Xbox 账户和手柄、存档、publisher profile 的联动其实很顺，出问题更多是偶发故障或第三方登录；Steam 也常能离线运行，真正的麻烦多半来自游戏自己的 DRM 或 Denuvo，而不是平台本身。还有人提醒别把 Microsoft、Sony 和 Valve 混成一锅，某些 PlayStation 光盘和主机在离线使用上确实更接近“能插就玩”。",
-              "supportid": [
-                "49169665",
-                "49169901",
-                "49168050",
-                "49167785",
-                "49170069",
-                "49169905",
-                "49167752",
-                "49169134"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "DRM",
-              "explanation": "数字版权管理，用来限制复制、离线运行、转移或修改软件/媒体的技术。"
-            },
-            {
-              "term": "Denuvo",
-              "explanation": "常见的 anti-tamper/DRM 方案，常被拿来讨论破解难度、离线限制和兼容性问题。"
-            },
-            {
-              "term": "DMCA",
-              "explanation": "美国《数字千年版权法》，其中反规避条款常被用来限制绕过技术保护措施。"
-            },
-            {
-              "term": "GOG",
-              "explanation": "主打 DRM-free 游戏的数字商店，支持离线安装包下载。"
-            },
-            {
-              "term": "Proton",
-              "explanation": "Valve 提供的 Windows 兼容层，让很多 Windows 游戏能在 Linux 上运行。"
-            },
-            {
-              "term": "Xemu",
-              "explanation": "原版 OG Xbox 的开源模拟器，可用于运行老 Xbox 游戏。"
-            },
-            {
-              "term": "Heroic Launcher",
-              "explanation": "第三方开源游戏启动器，常用于管理 GOG/Epic 游戏。"
-            }
-          ],
-          "context": "这篇帖子讨论的是一次 Xbox（微软游戏主机）服务中断：原本放在光盘里的游戏，在启动阶段仍要经过在线授权、账户登录或许可校验，因此连“我买了实体盘”也不能保证能玩。评论里反复提到 Halo: The Master Chief Collection（《光环：士官长合集》）被迫登录 Microsoft account（微软账户）、填写个人信息和验证码，以及 Minecraft（《我的世界》）在 Mojang 被微软收购后强制迁移账号的糟糕体验。讨论也借机延伸到游戏保存、DRM（数字版权管理）、Denuvo（常见防篡改/DRM 方案）和 DMCA（美国数字千年版权法的反规避条款），以及 Steam（PC 数字发行平台）和 GOG（主打 DRM-free 的商店）这样的替代渠道。对很多人来说，这不只是一次故障，而是“买了东西却不能确保以后还能用”的更大争论。",
-          "emoji": "🤦",
-          "sarcastic_question": "买了光盘，还得先向微软请示一次能不能玩吗？"
-        },
-        "classifications": {
-          "topics": [
-            9,
-            6,
-            3
-          ],
-          "facets": [
-            8,
-            9
-          ],
-          "tags": [
-            "Xbox",
-            "DRM",
-            "game preservation",
-            "physical media",
-            "GOG",
-            "Steam",
-            "piracy",
-            "e-waste"
-          ]
-        },
-        "classificationsUpdatedAt": 1785847548,
-        "aiSummary": {
-          "chinese_title": "Xbox 光盘版也要联网授权，微软账户与 DRM 引爆众怒",
-          "discussion_overview": [
-            {
-              "category": "Xbox/Microsoft 账户登录地狱",
-              "summary": "大量评论都在吐槽 Microsoft/Xbox 的登录链路：装上 Halo: The Master Chief Collection（《光环：士官长合集》）后，仍要先过 Microsoft account（微软账户）登录、填生日和邮箱、收验证码、过验证码，甚至反复失败卡死。有人提到《Minecraft》在 Mojang 被微软收购后强制迁移账号，最后又被要求绑定手机号，等于先买后锁。还有人说连分屏/本地多人都被迫登录，原本主机应该是“插碟就玩”的体验被层层账户验证彻底破坏。",
-              "supportid": [
-                "49169099",
-                "49169154",
-                "49169225",
-                "49169465",
-                "49169349",
-                "49169490",
-                "49169436",
-                "49169660",
-                "49170041",
-                "49169986",
-                "49169730"
-              ]
-            },
-            {
-              "category": "微软软件与治理问题",
-              "summary": "讨论很快扩展到对 Microsoft 整体产品文化的批评。评论者把 Azure（微软云平台）形容成充满重定向、tenant 绑定错误和离谱流程的烂摊子，Office on the web 也被说成像未经打磨的半成品。有人认为问题来自 QA 被裁、外包和管理层把客户当测试员，而不是单纯的技术难度。另一些人则把核心原因归结为 monopoly（垄断）和 lock-in（锁定）激励：产品能卖出去靠的是渠道和捆绑，不是质量。",
-              "supportid": [
-                "49169079",
-                "49169393",
-                "49170151",
-                "49169463",
-                "49169103",
-                "49169204",
-                "49170258",
-                "49170028",
-                "49169441",
-                "49170145",
-                "49169943",
-                "49169315"
-              ]
-            },
-            {
-              "category": "购买权、所有权与立法诉求",
-              "summary": "不少评论把焦点从“光盘还是数字”拉回到“所有权”本身。大家反复强调，真正要的是离线使用、备份、转移、转售和传给下一代的权利；如果只是 license，就应该直接叫 license 或 lease。有人主张把这种权利写进法律，避免平台和发行商随时撤回访问权，也有人指出电影、音乐、电子书早就同样在滑向可撤销授权。少数人也承认数字转售很难，但认为至少 1-4 和 6 应该保留。",
-              "supportid": [
-                "49169451",
-                "49168575",
-                "49168577",
-                "49168766",
-                "49168691",
-                "49167645",
-                "49168010",
-                "49167793",
-                "49168830",
-                "49168646",
-                "49169526",
-                "49168185",
-                "49167610",
-                "49169785"
-              ]
-            },
-            {
-              "category": "备份、模拟器、盗版与社区保全",
-              "summary": "另一派更务实：既然官方平台随时会失效，就把保存和使用权交给社区。有人推荐 GOG（主打 DRM-free 的数字商店）、Heroic Launcher（第三方开源启动器）、Steam 备份、cronjob 自动下载补丁，甚至直接用 Xemu（原版 OG Xbox 模拟器）和 archive.org 上的镜像。也有人直言，既然厂商可以靠“买了不算拥有”来加锁，盗版和破解在道德上就更容易被合理化，尤其是在旧游戏、停售内容或服务已关停时。还有人提到复古硬件、私人服务器和 reverse engineering，认为这才是长期保存游戏的现实路线。",
-              "supportid": [
-                "49169940",
-                "49167629",
-                "49167822",
-                "49168110",
-                "49169411",
-                "49170233",
-                "49167644",
-                "49169385",
-                "49167836",
-                "49169691",
-                "49169340",
-                "49167821",
-                "49167742",
-                "49169168",
-                "49167704"
-              ]
-            },
-            {
-              "category": "光盘并不等于完整可玩",
-              "summary": "也有不少评论认为，光盘本身并不能解决问题，现代游戏早就被更新、DLC、在线校验和服务端逻辑拆成了碎片。有人举例说如今大作动辄上百 GB，光盘可能只放得下启动器或半个游戏；《Baldur's Gate 3》、Gran Turismo 和 Final Fantasy XIV 都已经逼近或超过单盘容量。还有人指出，Denuvo（常见 anti-tamper/DRM）和各类上线验证会让离线和长期可玩性继续恶化，所以“有盘”并不等于“能独立运行”。",
-              "supportid": [
-                "49169105",
-                "49169262",
-                "49169507",
-                "49168948",
-                "49170308",
-                "49169487",
-                "49169521",
-                "49168763",
-                "49169155",
-                "49168102",
-                "49168393",
-                "49170069"
-              ]
-            },
-            {
-              "category": "少数反驳：并非所有 Xbox/Steam 都这么糟",
-              "summary": "也有人觉得这场批评有些夸张，至少在 Xbox 和 Steam 这类平台上，平时体验并没有帖子里说得那么糟。有人表示 Xbox 账户和手柄、存档、publisher profile 的联动其实很顺，出问题更多是偶发故障或第三方登录；Steam 也常能离线运行，真正的麻烦多半来自游戏自己的 DRM 或 Denuvo，而不是平台本身。还有人提醒别把 Microsoft、Sony 和 Valve 混成一锅，某些 PlayStation 光盘和主机在离线使用上确实更接近“能插就玩”。",
-              "supportid": [
-                "49169665",
-                "49169901",
-                "49168050",
-                "49167785",
-                "49170069",
-                "49169905",
-                "49167752",
-                "49169134"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "DRM",
-              "explanation": "数字版权管理，用来限制复制、离线运行、转移或修改软件/媒体的技术。"
-            },
-            {
-              "term": "Denuvo",
-              "explanation": "常见的 anti-tamper/DRM 方案，常被拿来讨论破解难度、离线限制和兼容性问题。"
-            },
-            {
-              "term": "DMCA",
-              "explanation": "美国《数字千年版权法》，其中反规避条款常被用来限制绕过技术保护措施。"
-            },
-            {
-              "term": "GOG",
-              "explanation": "主打 DRM-free 游戏的数字商店，支持离线安装包下载。"
-            },
-            {
-              "term": "Proton",
-              "explanation": "Valve 提供的 Windows 兼容层，让很多 Windows 游戏能在 Linux 上运行。"
-            },
-            {
-              "term": "Xemu",
-              "explanation": "原版 OG Xbox 的开源模拟器，可用于运行老 Xbox 游戏。"
-            },
-            {
-              "term": "Heroic Launcher",
-              "explanation": "第三方开源游戏启动器，常用于管理 GOG/Epic 游戏。"
-            }
-          ],
-          "context": "这篇帖子讨论的是一次 Xbox（微软游戏主机）服务中断：原本放在光盘里的游戏，在启动阶段仍要经过在线授权、账户登录或许可校验，因此连“我买了实体盘”也不能保证能玩。评论里反复提到 Halo: The Master Chief Collection（《光环：士官长合集》）被迫登录 Microsoft account（微软账户）、填写个人信息和验证码，以及 Minecraft（《我的世界》）在 Mojang 被微软收购后强制迁移账号的糟糕体验。讨论也借机延伸到游戏保存、DRM（数字版权管理）、Denuvo（常见防篡改/DRM 方案）和 DMCA（美国数字千年版权法的反规避条款），以及 Steam（PC 数字发行平台）和 GOG（主打 DRM-free 的商店）这样的替代渠道。对很多人来说，这不只是一次故障，而是“买了东西却不能确保以后还能用”的更大争论。",
-          "emoji": "🤦",
-          "sarcastic_question": "买了光盘，还得先向微软请示一次能不能玩吗？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n现在的实体游戏盘本质上只是个数字许可证，一旦服务器宕机，即便手里有盘你也玩不了，这彻底打破了“买盘即买断”的幻想。\n\n### 实体游戏的旧日荣光\n作者提到，当索尼宣布放弃实体盘时，他并没有像很多人那样愤怒。这倒不是因为他支持索尼的决定，而是因为他早就意识到，现在的实体媒体早已不是当年的样子了。几年前他买了一台 Analog Pocket，插上 20 年前的 Game Boy 卡带，立刻就能玩，体验和当年一模一样。在这种模式下，虽然法律上你拥有的只是许可证，但在实际体验上，你真正“拥有”这款游戏。不需要任天堂的授权，没有网络验证，只要硬件还在，游戏就能一直运行。\n\n### 现代实体盘的虚假安全感\n但现在的 Xbox 实体盘完全是另一码事。这次 Xbox 发生的大规模宕机事件，不仅让数字版游戏无法启动，甚至连插着实体盘的用户也被挡在了门外。这赤裸裸地揭示了一个事实：即便你手里捏着那张塑料盘，你依然没有真正的控制权。无论是微软、索尼还是任天堂，他们都有能力——或者像这次一样因为故障——阻止你玩手里的实体游戏。这不再是理论上的风险，而是已经发生的现实。\n\n### 所谓“实体”其实全是数字\n更有意思的地方在于，现在的“实体游戏”其实根本不是从盘上运行的。当你把光盘塞进光驱，主机并不是像以前那样直接读取盘片数据，而是要把游戏安装到内部硬盘里。而且，为了让游戏能正常运行，系统通常还会强制下载一堆更新补丁。说白了，那张盘只是一个用来验证身份的物理钥匙，或者说是个超慢速的安装包，真正的游戏内容依然完全依赖数字分发和在线服务。\n\n### PC 平台的另一种活法\n作者最后把目光转向了 PC 平台。虽然 PC 游戏早就全面数字化了，但社区发展出了一套维护游戏访问权限的有效手段。这也是作者近年来逐渐转向 PC 游戏的重要原因之一。相比之下，主机平台这种高度封闭、依赖在线验证的架构，让“买盘”这种看似传统的所有权形式变得毫无意义。当网络成为必需品，无论你是买数字版还是实体版，本质上都是在租用服务。"
     },
     {
       "id": 49167113,
@@ -14440,191 +14751,6 @@
         }
       },
       "articleSummary": "# 一句话总结\n一个原本封闭的 20 年老牌操作系统，通过分阶段开源、拥抱廉价硬件（如 Raspberry Pi）和社区驱动的开发模式，不仅活了下来，还正准备迈向 64-bit Arm 的“登月计划”。\n\n---\n\n### 从“不可想象”到代码公开\n故事始于 2006 年，那时候把一个专有操作系统开源简直是天方夜谭。Castle 公司和 RISC OS Open Ltd (ROOL) 签署了共享源代码协议，并在次年首次向公众发布了源代码。这不仅是形式上的开放，更是为了打破僵局，让社区能直接参与维护。早期的进展虽然缓慢，只能分批次释放代码，但这种“敢为天下先”的举措迅速赢得了社区的认可，甚至让 ROOL 拿到了 Drobe 大奖。\n\n### 基础设施与廉价硬件的胜利\n光有代码还不够，还得有现代化的开发工具和跑得起的硬件。ROOL 很快建立了 Nightly autobuilds（每日自动构建）系统，让代码提交后能自动编译测试，这极大地提升了开发效率。与此同时，Jeffrey Lee 将系统移植到了 BeagleBoard 上，这是迈向廉价硬件的关键一步。紧接着，RISC OS Pi 的发布更是引爆了流量——因为 Raspberry Pi 这种信用卡大小的电脑，让新一代开发者能以极低的成本接触到这个系统，直接把官网流量挤爆了。\n\n### 用真金白银投票的 Bounty 机制\n社区怎么参与？ROOL 搞了个很聪明的 Bounty Scheme（赏金计划）。说白了就是让用户众筹，用钱包投票决定优先开发什么功能。比如大家想要 SD 卡支持，就凑钱把这个需求顶上去。这种模式不仅解决了“做什么”的难题，还让开发者有了实实在在的动力。到了 2012 年，配合 SD/MMC 文件系统的发布，整个生态开始有了现代操作系统的雏形，也为后续的稳定版发布打下了基础。\n\n### 终于等到真正的开源协议\n虽然代码早就放出来了，但早期的授权并不算真正的自由。直到 2018 年，也就是第 13 个年头，RISC OS 才终于被重新授权为 Apache 2.0 协议。这意味着任何人都可以自由地使用、修改甚至商用。同年，ROOL 把整个代码库（包含 106,000 多次提交）全部搬到了公共 GitLab 上。这一招非常关键，它彻底降低了贡献门槛，让“提交 Pull Request”变得像喝水一样自然。\n\n### 现代化工具链与硬件适配\n老系统要生存，必须跟上硬件的步伐。这几年，ROOL 紧跟 Raspberry Pi 的迭代，迅速适配了 Pi 2、Pi 4 甚至 Pi 400。更重要的是，系统补齐了现代开发必备的工具：原生的 Git 客户端、SparkFS 归档工具以及 NVMe 固态硬盘支持。这些看似琐碎的功能，其实是留住开发者的根本——谁愿意在一个连 Git 都得靠模拟器的系统上写代码呢？RISC OS 5.30 的发布，标志着它已经能在七个硬件平台上稳定运行。\n\n### 下一站：64-bit 的“登月计划”\n回顾这 20 年，最大的挑战其实才刚刚开始：32-bit Arm 芯片迟早会停产。为了生存，ROOL 在第 19 年抛出了“Moonshots initiative”（登月计划）。这不再是修修补补，而是要全职投入多年工程，把整个系统迁移到 64-bit Arm 架构上。目前，8GB Pi 的内存限制已经被突破，古老的 Fortran 编译器也从备份带里重见天日。这不仅是技术的升级，更是一场关于生死的豪赌。"
-    },
-    {
-      "id": 49093845,
-      "by": "dango2506",
-      "title": "Folding Paper Globes",
-      "url": "https://foldingglobes.com/globes",
-      "score": 122,
-      "detailUpdatedAt": 1785705200,
-      "createdAt": 1785681029,
-      "aiSummaryUpdatedAt": 1785707083,
-      "aisummary": {
-        "chinese_title": "折纸地球仪：投影优化、真彩配色与边界争议",
-        "emoji": "🗺️",
-        "sarcastic_question": "先把地球画歪一遍，再说这是还原真实吗？"
-      },
-      "classifications": {
-        "topics": [
-          11,
-          9
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "paper globes",
-          "foldingglobes.com",
-          "political maps",
-          "borders",
-          "icosahedron",
-          "AI",
-          "Earth"
-        ]
-      },
-      "classificationsUpdatedAt": 1785689793,
-      "aiSummary": {
-        "chinese_title": "折纸地球仪：投影优化、真彩配色与边界争议",
-        "emoji": "🗺️",
-        "sarcastic_question": "先把地球画歪一遍，再说这是还原真实吗？"
-      },
-      "detail": {
-        "id": 49093845,
-        "by": "dango2506",
-        "title": "Folding Paper Globes",
-        "url": "https://foldingglobes.com/globes",
-        "score": 122,
-        "detailUpdatedAt": 1785705200,
-        "createdAt": 1785681029,
-        "aiSummaryUpdatedAt": 1785707083,
-        "aisummary": {
-          "chinese_title": "折纸地球仪：投影优化、真彩配色与边界争议",
-          "discussion_overview": [
-            {
-              "category": "投影与几何优化",
-              "summary": "评论里最热的一条线索是如何用更好的投影和多面体，让同一张纸做出更大的 globe、同时尽量减少失真。有人提议把 icosahedron（20 面体）旋转 14°，据说能从同一张纸上多做出约 10% 的球体。也有人推荐 interrupted sinusoidal（中断正弦投影）或 AirOcean projection（另一种地图投影），认为默认方案太“锯齿”，并指出如果先用 Mercator projection（墨卡托投影）再切割重组，就等于把失真叠了两次。",
-              "supportid": [
-                "49146055",
-                "49146369",
-                "49146151",
-                "49146485"
-              ]
-            },
-            {
-              "category": "成品展示缺失",
-              "summary": "不少人最直接的抱怨是：页面展示了展开图，却几乎不展示折好后的实体效果。有人明确表示想看最终成品照，因为只有知道折起来是什么样，才好判断值不值得打印、裁切和粘贴。还有人认为页面不展示成品要么很奇怪，要么说明最终效果并不理想。这个反馈反映出用户对可视化样张的需求非常强。",
-              "supportid": [
-                "49145754",
-                "49147288",
-                "49145766",
-                "49147312"
-              ]
-            },
-            {
-              "category": "真实地球外观",
-              "summary": "另一组评论把焦点放在“像不像从太空看到的地球”上，尤其是 true color Earth（真实色彩地球）和云层。有人指出现有地球仪都缺少这种效果，于是自己用 gores（传统地球仪常见的弧形拼片）而不是 icosahedron 来逼近球面，还用 Claude 帮忙写脚本生成展开图。也有人补充说，所谓“真实颜色”本身就很难统一，因为不同卫星和 Blue Marble 图像的色彩校准差异很大，接近地平线的气氛散射也很难在纸质地球仪上复现。还有人更直白地吐槽，只有陆地没有水的版本会显得有点误导。",
-              "supportid": [
-                "49145895",
-                "49145122"
-              ]
-            },
-            {
-              "category": "政治地图与教育用途",
-              "summary": "有家长和教师取向的评论希望它能直接生成政治 globe，也就是带国家、首都或至少边界的版本，方便孩子学习。随后有人指出网站其实已经提供 custom globe builder（自定义地球仪生成器）和只画边界的选项，只是没有把卫星图与边界预设组合在一起。讨论进一步扩展到现代地图应用：它们很擅长道路、卫星影像和地形，却不擅长只看政治边界、隐藏道路并显示国家名。另有评论强调，边界在争议地区会很麻烦，尤其学校场景下往往要遵循各国自己的官方版本。",
-              "supportid": [
-                "49144988",
-                "49146459",
-                "49145702",
-                "49145453",
-                "49147304",
-                "49146879"
-              ]
-            },
-            {
-              "category": "替代工具与 DIY 工作流",
-              "summary": "评论还给出了不少替代方案，说明这类需求并不只靠一个网站解决。有人推荐 Flexify（一个老牌 Photoshop 插件），甚至提到它可配合 NASA 的 equirectangular planetary maps（等距圆柱投影行星地图）做教学项目。也有人用 Python 库 pydymax 从 360 照片生成 isosphere（近似球体），强调命令行和脚本化工作流更灵活。还有人提到 ObservableHQ（在线数据可视化笔记本平台）上的 AirOcean projection 实验，展示了自己用 Javascript 从零重投影矢量瓦片的做法。",
-              "supportid": [
-                "49147348",
-                "49146943",
-                "49146485"
-              ]
-            }
-          ],
-          "terminologies": [],
-          "context": "FoldingGlobes.com 这类工具的核心，是把地图、国家边界或自定义地点生成可打印的纸质地球仪展开图，用户再裁切、折叠、粘贴成球体。评论主要围绕地图投影和几何外形的取舍展开，例如 icosahedron（20 面体）、gores（传统地球仪常见的弧形拼片）以及 Mercator projection（墨卡托投影，一种高纬度面积失真的常见投影）。有人在意成品是否真的像从太空看到的地球，是否能保留 true color Earth（真实色彩地球）和云层；也有人更关心政治地图、边界和学校里可用的版本。与此同时，Flexify（Photoshop 插件）、pydymax（Python 工具）和 ObservableHQ（在线数据/可视化笔记本平台）上的实验表明，这既是手工制作题目，也是地图可视化与投影算法的爱好者话题。",
-          "emoji": "🗺️",
-          "sarcastic_question": "先把地球画歪一遍，再说这是还原真实吗？"
-        },
-        "classifications": {
-          "topics": [
-            11,
-            9
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "paper globes",
-            "foldingglobes.com",
-            "political maps",
-            "borders",
-            "icosahedron",
-            "AI",
-            "Earth"
-          ]
-        },
-        "classificationsUpdatedAt": 1785689793,
-        "aiSummary": {
-          "chinese_title": "折纸地球仪：投影优化、真彩配色与边界争议",
-          "discussion_overview": [
-            {
-              "category": "投影与几何优化",
-              "summary": "评论里最热的一条线索是如何用更好的投影和多面体，让同一张纸做出更大的 globe、同时尽量减少失真。有人提议把 icosahedron（20 面体）旋转 14°，据说能从同一张纸上多做出约 10% 的球体。也有人推荐 interrupted sinusoidal（中断正弦投影）或 AirOcean projection（另一种地图投影），认为默认方案太“锯齿”，并指出如果先用 Mercator projection（墨卡托投影）再切割重组，就等于把失真叠了两次。",
-              "supportid": [
-                "49146055",
-                "49146369",
-                "49146151",
-                "49146485"
-              ]
-            },
-            {
-              "category": "成品展示缺失",
-              "summary": "不少人最直接的抱怨是：页面展示了展开图，却几乎不展示折好后的实体效果。有人明确表示想看最终成品照，因为只有知道折起来是什么样，才好判断值不值得打印、裁切和粘贴。还有人认为页面不展示成品要么很奇怪，要么说明最终效果并不理想。这个反馈反映出用户对可视化样张的需求非常强。",
-              "supportid": [
-                "49145754",
-                "49147288",
-                "49145766",
-                "49147312"
-              ]
-            },
-            {
-              "category": "真实地球外观",
-              "summary": "另一组评论把焦点放在“像不像从太空看到的地球”上，尤其是 true color Earth（真实色彩地球）和云层。有人指出现有地球仪都缺少这种效果，于是自己用 gores（传统地球仪常见的弧形拼片）而不是 icosahedron 来逼近球面，还用 Claude 帮忙写脚本生成展开图。也有人补充说，所谓“真实颜色”本身就很难统一，因为不同卫星和 Blue Marble 图像的色彩校准差异很大，接近地平线的气氛散射也很难在纸质地球仪上复现。还有人更直白地吐槽，只有陆地没有水的版本会显得有点误导。",
-              "supportid": [
-                "49145895",
-                "49145122"
-              ]
-            },
-            {
-              "category": "政治地图与教育用途",
-              "summary": "有家长和教师取向的评论希望它能直接生成政治 globe，也就是带国家、首都或至少边界的版本，方便孩子学习。随后有人指出网站其实已经提供 custom globe builder（自定义地球仪生成器）和只画边界的选项，只是没有把卫星图与边界预设组合在一起。讨论进一步扩展到现代地图应用：它们很擅长道路、卫星影像和地形，却不擅长只看政治边界、隐藏道路并显示国家名。另有评论强调，边界在争议地区会很麻烦，尤其学校场景下往往要遵循各国自己的官方版本。",
-              "supportid": [
-                "49144988",
-                "49146459",
-                "49145702",
-                "49145453",
-                "49147304",
-                "49146879"
-              ]
-            },
-            {
-              "category": "替代工具与 DIY 工作流",
-              "summary": "评论还给出了不少替代方案，说明这类需求并不只靠一个网站解决。有人推荐 Flexify（一个老牌 Photoshop 插件），甚至提到它可配合 NASA 的 equirectangular planetary maps（等距圆柱投影行星地图）做教学项目。也有人用 Python 库 pydymax 从 360 照片生成 isosphere（近似球体），强调命令行和脚本化工作流更灵活。还有人提到 ObservableHQ（在线数据可视化笔记本平台）上的 AirOcean projection 实验，展示了自己用 Javascript 从零重投影矢量瓦片的做法。",
-              "supportid": [
-                "49147348",
-                "49146943",
-                "49146485"
-              ]
-            }
-          ],
-          "terminologies": [],
-          "context": "FoldingGlobes.com 这类工具的核心，是把地图、国家边界或自定义地点生成可打印的纸质地球仪展开图，用户再裁切、折叠、粘贴成球体。评论主要围绕地图投影和几何外形的取舍展开，例如 icosahedron（20 面体）、gores（传统地球仪常见的弧形拼片）以及 Mercator projection（墨卡托投影，一种高纬度面积失真的常见投影）。有人在意成品是否真的像从太空看到的地球，是否能保留 true color Earth（真实色彩地球）和云层；也有人更关心政治地图、边界和学校里可用的版本。与此同时，Flexify（Photoshop 插件）、pydymax（Python 工具）和 ObservableHQ（在线数据/可视化笔记本平台）上的实验表明，这既是手工制作题目，也是地图可视化与投影算法的爱好者话题。",
-          "emoji": "🗺️",
-          "sarcastic_question": "先把地球画歪一遍，再说这是还原真实吗？"
-        }
-      },
-      "articleSummary": "### 一句话总结\n这篇文章实际上是一个项目展示页，核心信息非常简单：它提供了一个名为 \"Folding Paper Globes\" 的工具，所有生成的地球仪数据均来自开放授权（Openly licensed）的数据源。\n\n### 这是一个关于数据透明度的项目\n这并不是一篇探讨复杂算法的技术论文，而是一个名为 \"Folding Paper Globes\" 的项目介绍页。作者开门见山地强调了数据的来源问题。对于开发者来说，数据来源的合规性往往比渲染技术更让人头疼。这个项目直接承诺，每一个地球仪主题都是基于开放授权数据构建的。\n\n### 数据来源的可追溯性\n有意思的地方在于，作者并没有把数据来源藏在 Terms of Service 里，而是选择在每一个具体的主题页面上进行标注。这意味着如果你使用了某个特定主题的地球仪，你可以直接在那个页面找到具体的数据出处。这种设计对于需要严格遵循版权规定的项目来说，非常实用。\n\n### MapScaping 的实验性产物\n这个项目是由 MapScaping 发起的。如果你关注地理信息可视化领域，应该对这个名字不陌生。他们通常专注于地图相关的教育和内容。这个 \"Folding Paper Globes\" 看起来是他们在探索纸质地球仪生成方式上的一个实验性产品，试图把数字地图数据转化为物理世界的折叠模型。\n\n### 商业化与免费资源的结合\n页面导航栏里暴露了他们的商业模式：既有 \"Free Globes\" 免费专区，也有 \"Pricing\" 付费选项。这说明项目不仅仅是一个玩具，而是试图通过提供高质量的折叠模型来变现。对于开发者而言，这意味着你可以先试用免费资源，确认数据质量和生成效果符合需求后，再考虑付费获取更高级的主题。\n\n### 极简的技术呈现\n说实话，整个页面几乎没有涉及任何技术实现细节。没有提到 WebGL 的库，也没有讲投影算法或纸张折叠的几何计算。它纯粹是在展示结果和数据的合规性。如果你是想找 \"如何把球体映射到平面纸网\" 的代码实现，这里可能找不到答案；但如果你需要现成的、合规的地球仪数据，这里正好对口。"
     }
   ]
 }
