@@ -1,9 +1,9 @@
 {
   "date": "2026-08-05",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2493,
-  "filtered_articles": 16,
+  "success_feeds": 85,
+  "total_articles": 2538,
+  "filtered_articles": 17,
   "articles": [
     {
       "title": "New release of LLM adds support for reasoning traces, OpenAI Responses, server-side tools, and smarter logging",
@@ -25,6 +25,44 @@
       "rank": 1
     },
     {
+      "title": "Creating a fake agile wrapper that is technically agile but is not useful outside its home apartment, part 2",
+      "title_zh": "实现 fake agile wrapper 的尝试与失败",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260804-00/?p=112586",
+      "pub_date": "2026-08-04T14:00:00.000Z",
+      "summary": "## 一句话总结\n作者试图用 Global Interface Table (GIT) 实现一个仅限本 Apartment 使用的“伪 Agile 引用”，结果发现 GIT 拒绝注册不可序列化的对象，导致方案在最后一步功亏一篑。\n\n### 智能指针的类型适配与成员设计\n为了实现这个“伪 Agile 引用”，作者首先定义了一个模板结构 `fake_agile_ref`。核心思路是兼容 C++/WinRT 的两种类型：如果是投影类型，它本身就是智能指针；如果是 COM 接口，就用 `com_ptr` 包装。这个类内部维护了几个关键成员：`m_context` 和 `m_token` 用于识别当前的 Apartment；`m_git` 和 `m_cookie` 用于在全局接口表（GIT）中注册对象；还有一个 `m_raw` 保存原始对象的裸指针。这种设计是为了在对象存活期间持有引用，同时能在访问时校验环境。\n\n### 构造函数里的初始化逻辑\n构造函数的逻辑很直观：拿到智能指针里的原始指针后，如果不为空，就捕获当前上下文和 Token，并创建 GIT 实例。最关键的一步是调用 `RegisterInterfaceInGlobal`，把原始对象注册到 GIT 里并拿到 `m_cookie`。这样做的好处是，只要这个 `fake_agile_ref` 还在，GIT 就会帮我们 hold 住这个对象，防止它被意外释放。如果传入的是空指针，`m_cookie` 保持为 0，表示这是一个空引用。\n\n### 遵循 Rule of Five 的资源管理\n既然管理了 GIT 的资源，就必须遵守 Rule of Five。作者实现了移动构造函数和移动赋值运算符，直接把源对象的成员“偷”过来，把源对象置空。拷贝操作被隐式删除了，因为 GIT 的 cookie 没法简单复制。析构函数里，如果 `m_cookie` 不为 0，就调用 `RevokeInterfaceFromGlobal` 释放 GIT 中的引用。这里作者提了个细节：本来想用 `unique_ptr` 的自定义 deleter，但 cookie 不是指针，只能手动写析构函数。\n\n### 访问对象时的严格校验\n最精彩的逻辑在 `get()` 方法里。首先检查是否为空，然后比较当前的 `context_token` 和保存的 `m_token`。如果不匹配，直接抛出 `CO_E_NOT_SUPPORTED` 异常，这和标准 `agile_ref` 的行为一致。如果匹配，说明我们在正确的 Apartment 里，而且 GIT 的 cookie 已经保证了对象还活着，所以直接用 `m_raw` 指针构造返回值。作者特意指出，这里不用去 GIT 里查表，直接用裸指针性能更好。\n\n### 针对委托的封装与 CTAD 支持\n为了让这个类更好用，作者还加了类型推导指南（CTAD），让编译器能自动推断模板参数 `T`。接着，他写了一个 `make_agile_delegate` 工厂函数，试图用 `fake_agile_ref` 来包装那些不可序列化的委托。逻辑是：如果对象本身实现了 `IAgileObject`，直接返回；如果实现了 `INoMarshal`，就用我们的伪 agile 引用包装；否则，用标准的 `agile_ref`。看起来逻辑严丝合缝，准备大干一场。\n\n### 现实打脸：GIT 也不收不可序列化的对象\n但现实是残酷的。当你把这个代码跑起来，传入一个不可序列化的委托时，程序会在 `RegisterInterfaceInGlobal` 那一行崩溃。原因很简单：GIT 本身就拒绝注册那些声明了“不可序列化”的对象。这就像你费尽心思造了一把万能钥匙，结果发现锁芯根本不允许任何钥匙插入。作者原本想绕过系统的限制，结果发现系统底层的限制比想象中还要死。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "COM",
+        "agile_ref",
+        "IGlobalInterfaceTable",
+        "C++/WinRT"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Purely functional digital circuit simulator (SICP 3.3)",
+      "title_zh": "用纯函数式 Haskell 重构 SICP 电路模拟器",
+      "link": "https://entropicthoughts.com/sicp-3-3-pure-digital-circuit-simulator",
+      "pub_date": "2026-08-04T22:00:00.000Z",
+      "summary": "## 一句话总结\n这篇文章展示了如何用 Haskell 的纯函数式思想重构 SICP 中原本依赖可变状态的电路模拟器，核心思路是用“事件列表”代替“全局状态机”，把电路变成一个处理变更流的管道。\n\n### 电路模拟的纯函数化困境\nSICP 原书里的电路模拟器是典型的面向对象写法，充满了隐藏的可变状态和消息传递，甚至用了一个全局变量来做调度。作者之前虽然在 Haskell 里复现了这套逻辑，但总觉得不够优雅，毕竟在纯函数式语言里搞可变状态有点“违和”。于是作者决定推倒重来，试图用纯函数的方式重新实现。这里最大的挑战在于：电路里的导线是有“身份”的，不能因为信号变了，导线就变成另一个对象。虽然理论上可以用持久化数据结构每次重构整个电路，但作者为了简单，还是决定保留导线的身份标识。\n\n### 用字符串身份代替对象引用\n为了解决导线身份问题，作者定义了一个 `Wire` 类型，本质上就是一个字符串。这听起来很原始，但很有效。电路的状态不再分散在各个导线对象里，而是集中在一个 `Map Wire Signal` 里维护。也就是说，以前是“每个导线对象自己记着自己的信号”，现在是“有一个总账本记录所有导线的信号”。这种设计让状态变得不可变且透明，每次状态更新其实就是生成一个新的 Map。为了描述信号的变化，作者还定义了 `Change` 类型，记录了时间、导线和新信号，这成了整个模拟系统的核心数据载体。\n\n### 把逻辑门变成变更处理器\n有了数据结构，接下来就是怎么定义电路。作者把一个电路定义为一个组件列表，而每个组件本质上是一个函数：接收一个 `Change` 和当前的 `WireState`，返回下游的 `Change` 列表。比如 `inverter`（非门），它只监听输入端的变化，一旦检测到输入变了，就计算输出值，并生成一个带有延时的新 Change。`and_gate`（与门）和 `or_gate`（或门）逻辑类似，只是需要查看两个输入端的状态。这种设计非常巧妙，因为它把逻辑门变成了纯粹的“变化响应器”，完全不需要内部状态，只依赖输入参数。\n\n### 像搭积木一样组装复杂电路\n因为 `Circuit` 本质上就是一个函数列表，所以组合电路变得异常简单——直接把列表拼起来就行。作者展示了半加器和全加器的实现，代码看起来就像是电路图的直接翻译。比如全加器里，先实例化两个半加器，再用一个或门把进位信号连起来。这种写法不仅直观，而且完全符合函数式组合的思想。你不需要像在 OOP 里那样小心翼翼地维护对象间的引用关系，只需要声明“这个门的输出连到那个门的输入”，剩下的交给数据流去处理。\n\n### 核心算法：事件驱动的传播循环\n电路搭好了，怎么跑起来？核心在于 `propagate` 函数。这是一个递归循环，它维护一个待处理的事件列表。每次循环取出最早发生的事件，更新 `WireState`，然后把这个事件扔给电路里的所有组件处理，产生新的下游事件。这些新事件会被排序后插回待处理列表。有意思的是，作者加了一个优化：如果某个事件实际上没有改变导线的信号值（比如已经是 High 了又设为 High），就直接忽略。这个循环会一直跑，直到事件列表为空，意味着电路达到了稳定状态。\n\n### 告别副作用，拥抱数据流\n这种纯函数式实现带来的最大好处是调试变得极其简单。以前 SICP 里需要专门的 `probe` 过程来监控导线，现在因为 `propagate` 函数返回的是所有变更的列表，你只需要事后过滤这个列表就能看到任何导线的历史状态。作者测试了半加器，结果和预期完全一致。更有意思的是，对于那种永远不会稳定的电路（比如环形振荡器），这种基于 Generator 的实现也能轻松处理，因为它可以无限地产生变更流，而不会因为副作用导致程序崩溃。整个重构过程证明了，即使是看似强依赖状态的模拟器，用纯函数式思维也能写出更清晰、更易维护的代码。",
+      "source_name": "entropicthoughts.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Haskell",
+        "pure functional",
+        "circuit simulator",
+        "SICP"
+      ],
+      "rank": 3
+    },
+    {
       "title": "PipeNetwork/minimax-h3-mlx",
       "title_zh": "MiniMax-H3 移植到 Apple Silicon",
       "link": "https://simonwillison.net/2026/Aug/4/minimax-h3-mlx/#atom-everything",
@@ -41,7 +79,7 @@
         "multimodal",
         "video generation"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "llm-anthropic 0.26",
@@ -60,7 +98,7 @@
         "tool calls",
         "thinking"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "★ OpenAI Responds to Apple’s Lawsuit and Motion for Preliminary Injunction: ‘Apple Is Getting This Wrong’",
@@ -79,7 +117,7 @@
         "trade secrets",
         "lawsuit"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Apple Seeks Preliminary Injunction Against OpenAI in Trade Secrets Case",
@@ -98,7 +136,7 @@
         "trade secrets",
         "injunction"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "llm 0.32",
@@ -116,7 +154,7 @@
         "release",
         "announcement"
       ],
-      "rank": 6
+      "rank": 8
     }
   ]
 }
