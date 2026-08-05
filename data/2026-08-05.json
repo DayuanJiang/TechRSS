@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 83,
   "total_articles": 2501,
-  "filtered_articles": 16,
+  "filtered_articles": 17,
   "articles": [
     {
       "title": "New release of LLM adds support for reasoning traces, OpenAI Responses, server-side tools, and smarter logging",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "How Compiler Explorer Runs on AWS in 2026",
+      "title_zh": "Compiler Explorer 的 AWS 架构演进",
+      "link": "http://xania.org/202608/how-compiler-explorer-runs-on-aws?utm_source=feed&utm_medium=rss",
+      "pub_date": "2026-08-05T15:19:00.000Z",
+      "summary": "# 一句话总结\nCompiler Explorer 通过全量使用 AWS Spot 实例、自研的 CEFS 编译器镜像系统以及精细的 CDN 分层架构，将每月 500 万次编译的成本控制在 3,600 美元左右，同时解决了海量编译器文件的存储与延迟难题。\n\n### 静态资源与编译请求的分流策略\n\n当你访问 Godbolt.org 时，请求首先会撞上 AWS 的 WAF 和 CloudFront。这里有个巧妙的设计：他们搞了两个 CloudFront 分发，一个专门负责 `static.ce-cdn.net` 下的重型静态资源，比如那个体积庞大的 Monaco 编辑器；另一个才处理 `godbolt.org` 的动态请求。这样做的好处显而易见，JS 库和字体可以被 CDN 缓存在离用户最近的地方，而真正的编译请求则直接穿透到后端。至于 WAF 的限流策略，他们没搞什么复杂的指纹识别，直接把阈值拉得极高，因为之前吃过亏——一整个教室的学生通过同一个 NAT 出去上课，看起来就像一个疯狂攻击的 IP，把真正的用户给封了。\n\n### 一个 ALB 背后的多环境混部\n\n流量穿过 CDN 后，会落到同一个 Application Load Balancer (ALB) 上。这个 ALB 就像个交通指挥官，根据 URL 路径把请求分发到不同的 Auto Scaling Group。大部分流量去了生产环境，但 `/beta*`、`/winprod*` 乃至 `/gpu*` 这种带前缀的路径，则被精准地导向 Windows 实例、Graviton ARM 机器或者带显卡的节点。部署方式也升级成了蓝绿部署，以前那种用 `ce` 工具一台台滚动重启的方式虽然能用，但一旦发布挂了，回滚起来慢得让人抓狂；现在直接切流量，有问题秒级回滚，心里踏实多了。\n\n### 用 Spot 实例把成本打下来\n\n生产环境几乎全是 Spot 实例，这可是省钱的利器，比按需实例便宜了 60% 到 90%。敢这么玩是因为他们把状态都外置了——S3、DynamoDB 和共享文件系统，实例随时可以被 AWS 收回也没关系。为了平衡价格和稳定性，他们指定了 `m5` 到 `i4i` 等五个系列的 16 种机型，并采用 `price-capacity-optimized` 策略，让 AWS 自动挑那个既便宜又不容易被踢掉的机型。扩缩容逻辑也极其简单粗暴：只要平均 CPU 负载超过阈值就加机器。他们试过更复杂的队列指标，但发现还是这种原生支持的最省心。\n\n### 编译器存储的极致优化：从 SquashFS 到 CEFS\n\n真正的技术难点在于怎么管理那 6,000 个永不删除的编译器版本。早期直接用 EFS 挂载 NFS，结果 C++ 那种海量小头文件的读取方式把延迟搞崩了。他们尝试过把每个编译器打包成 SquashFS 镜像，虽然解决了延迟，但启动时要挂载 2,000 多个镜像，耗时 50 秒，还把内核内存吃满了。最终的解决方案是 CEFS：把镜像按内容寻址打包成大约 20GB 的束，通过 autofs 按需挂载。这一招把镜像数量降到了 121 个，启动时间缩到了 20 秒，存储空间也从一年前的 3.9TB 降到了 2.2TB，效果立竿见影。\n\n### 每天自建 94 个编译版本\n\n为了支持各种前沿特性，他们每晚都要从源码构建 94 个编译器版本，包括 GCC 和 Clang 的 trunk 分支。GitHub 自带的 Runner 算力不够，他们直接在 EC2 上用 `terraform-aws-github-runner` 自建了 Runner。这部分是成本的大头，每次有人要求加一个新的编译器支持，账单就会往上跳一跳。虽然费钱，但这正是 Compiler Explorer 的核心价值——让那些几十年前的代码和最新的实验性分支都能在今天跑起来。\n\n### 尚未上线的异步架构\n\n虽然现在的同步模式跑得挺好，但他们已经搞了个叫 CE Router 的异步架构，准备把“接收请求”和“执行编译”拆开。思路是：Router 收到请求查 DynamoDB，把任务扔进 SQS 队列，结果通过 API Gateway WebSocket 推回浏览器。这能解决编译机必须同时处理 HTTP 连接的耦合问题。不过这玩意儿还没正式上线，因为中间踩了个坑：API Gateway 的 WebSocket 帧限制是 32KB，SQS 消息限制是 256KB，稍微大点的汇编代码就超限了。最后只能搞个兜底逻辑：太大的东西先存 S3，只传个 Key 过去。\n\n### 真实世界的运行数据\n\n不看数据你可能没概念，今年 7 月他们处理了 523 万次编译，过去一年累计 7870 万次。最热门的编译器是 GCC 16.1 (C++)，占了总量的 26%。流量从 2024 年的月均 1400 万跌下来，一半是因为他们把自动编译的延迟从 750ms 调到了 2 秒，大大减少了无效请求；另一半原因就不得而知了，因为他们坚持不追踪用户，连 Cookie 都不用。这一整套架构跑下来，每月 AWS 账单约 3,600 美元，平均每次编译成本不到 0.007 美分，性价比相当高。",
+      "source_name": "xania.org",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "AWS",
+        "spot instances",
+        "EFS",
+        "SquashFS"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Creating a fake agile wrapper that is technically agile but is not useful outside its home apartment, part 2",
       "title_zh": "实现 fake agile wrapper 的尝试与失败",
       "link": "https://devblogs.microsoft.com/oldnewthing/20260804-00/?p=112586",
@@ -41,7 +60,7 @@
         "IGlobalInterfaceTable",
         "C++/WinRT"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Purely functional digital circuit simulator (SICP 3.3)",
@@ -60,7 +79,7 @@
         "circuit simulator",
         "SICP"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "PipeNetwork/minimax-h3-mlx",
@@ -79,7 +98,7 @@
         "multimodal",
         "video generation"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "llm-anthropic 0.26",
@@ -98,7 +117,7 @@
         "tool calls",
         "thinking"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "★ OpenAI Responds to Apple’s Lawsuit and Motion for Preliminary Injunction: ‘Apple Is Getting This Wrong’",
@@ -117,7 +136,7 @@
         "trade secrets",
         "lawsuit"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Pluralistic: Google is a scammer's paradise (05 Aug 2026)",
@@ -136,7 +155,26 @@
         "search",
         "fraud"
       ],
-      "rank": 7
+      "rank": 8
+    },
+    {
+      "title": "Enumerating trees and circles",
+      "title_zh": "有根树与非重叠圆的计数对应",
+      "link": "https://www.johndcook.com/blog/2026/08/05/enumerating-trees-and-circles/",
+      "pub_date": "2026-08-05T14:49:35.000Z",
+      "summary": "n 个节点的有根树数量与 n-1 个非重叠圆的配置数量相同，两者存在自然的对应关系。有根树可用多重集表示，叶子节点记为 ()，嵌套括号表示父子关系。移除最外层括号并将剩余括号连接成圆，嵌套括号对应同心圆，这种对应关系在恰当的符号表示下显得直观。",
+      "source_name": "johndcook.com",
+      "score": 9,
+      "depth": 5,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "rooted trees",
+        "enumeration",
+        "multisets",
+        "combinatorics"
+      ],
+      "rank": 9
     },
     {
       "title": "Apple Seeks Preliminary Injunction Against OpenAI in Trade Secrets Case",
@@ -155,7 +193,26 @@
         "trade secrets",
         "injunction"
       ],
-      "rank": 8
+      "rank": 10
+    },
+    {
+      "title": "Incentives are for losers",
+      "title_zh": "激励机制是失败者的游戏",
+      "link": "https://www.experimental-history.com/p/incentives-are-for-losers",
+      "pub_date": "2026-08-05T14:54:40.000Z",
+      "summary": "",
+      "source_name": "experimental-history.com",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "opinion",
+      "keywords": [
+        "incentives",
+        "moral development",
+        "integrity",
+        "values"
+      ],
+      "rank": 11
     },
     {
       "title": "Gadget Review: T2 Max plug-in Thermal Camera ★★★⯪☆",
@@ -173,7 +230,26 @@
         "T2 Max",
         "review"
       ],
-      "rank": 9
+      "rank": 12
+    },
+    {
+      "title": "Hacker News Thread on OpenAI’s ‘Apple Is Getting This Wrong’ Post",
+      "title_zh": "OpenAI 针对苹果诉讼的公开回应引发争议",
+      "link": "https://news.ycombinator.com/item?id=49164649",
+      "pub_date": "2026-08-05T14:57:47.000Z",
+      "summary": "OpenAI 在官方博客发布针对 Apple 诉讼的公开回应，包含 iMessage 截图和邮件往来等证据。文章采用非正式语调，指责 Apple 律师混淆两个亚洲姓氏发错邮件、员工离职后仍可通过个人 iCloud 访问公司数据。Hacker News 讨论普遍认为这种在诉讼期间公开证据的做法极不专业，暴露了 OpenAI 内部 PR 和法律决策的混乱。多位评论者指出 Apple 要求员工使用个人 iCloud 账户处理工作文件是严重的安全缺陷，但也质疑 OpenAI 发布此文的动机和时机。",
+      "source_name": "daringfireball.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "opinion",
+      "keywords": [
+        "OpenAI",
+        "Apple",
+        "lawsuit",
+        "PR"
+      ],
+      "rank": 13
     },
     {
       "title": "Ebay’s 1995 debut",
@@ -191,7 +267,7 @@
         "history",
         "Auctionweb"
       ],
-      "rank": 10
+      "rank": 14
     },
     {
       "title": "Committing to creativity",
@@ -210,7 +286,7 @@
         "motivation",
         "AI"
       ],
-      "rank": 11
+      "rank": 15
     },
     {
       "title": "llm 0.32",
@@ -228,7 +304,7 @@
         "release",
         "announcement"
       ],
-      "rank": 12
+      "rank": 16
     }
   ]
 }
