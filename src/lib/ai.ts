@@ -1,10 +1,15 @@
-import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
+import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import type { Article } from './types';
 
-const bedrock = createAmazonBedrock({ region: 'us-east-1' });
-const MODEL_ID = 'zai.glm-4.7';
+// OpenAI models on Bedrock are only served via the OpenAI-compatible endpoint,
+// not the regular Bedrock runtime (Converse API).
+const bedrock = createOpenAI({
+  baseURL: 'https://bedrock-mantle.us-east-2.api.aws/openai/v1',
+  apiKey: process.env.AWS_BEARER_TOKEN_BEDROCK,
+});
+const MODEL_ID = 'openai.gpt-5.6-terra';
 const MAX_CONCURRENT = 10;
 
 const articleResultSchema = z.object({
@@ -154,11 +159,7 @@ export async function summarizeArticle(title: string, content: string): Promise<
 
 # 写作风格
 
-- **像写博客，不像写报告**。用自然的叙事节奏，有铺垫、有展开、有收尾。可以用问句引入（"那怎么办？"），用转折制造节奏（"但问题是……"、"有意思的地方在于……"）。
-- **说人话**。"说白了就是……"、"核心思路其实很简单：……"、"这里有个巧妙的设计：……" 这些表达都可以用。但不要刻意卖萌或堆砌口语词。
-- **不要罗列，要讲逻辑链**。读者要的不是"文章提到了 A、B、C"，而是"因为 A 行不通，所以作者尝试了 B，结果发现 C 才是关键"。
-- **保留关键技术细节和数据**。具体的数字、模型名、benchmark 结果、架构选择不能丢。这些是读者判断是否值得读原文的依据。
-
+- **像写博客，不像写报告**。用自然的叙事节奏，有铺垫、有展开、有收尾。
 # 输出结构
 
 ## 一句话总结
@@ -168,10 +169,8 @@ export async function summarizeArticle(title: string, content: string): Promise<
 这是主体，占全文 80% 以上。按文章的逻辑线索，用连贯的段落把故事讲完。
 
 要求：
-- 分 4-8 个段落，每段有小标题（用 ### ）。小标题要有信息量，不要写"背景介绍"这种废话标题，写"遗留代码的真正难题不是代码烂，是没人敢动"。
-- 段落之间要有逻辑衔接，读者能感受到"问题→尝试→发现→方案→效果"的叙事弧线。
+- 分几个段落，每段有小标题（用 ### ）。小标题要有信息量，不要写"背景介绍"这种废话标题，写"遗留代码的真正难题不是代码烂，是没人敢动"。
 - 每段 5-8 句话，宁短勿长。如果一句话超过 40 字，拆成两句。
-- **保留 why**：不光讲"做了什么"，更要讲"为什么这么做"、"这样做的好处是什么"。
 
 ---
 
@@ -185,8 +184,7 @@ export async function summarizeArticle(title: string, content: string): Promise<
 标题：${title}
 
 ${truncated}`,
-      maxOutputTokens: 4096,
-      temperature: 0.3,
+      maxOutputTokens: 4096 * 4,
     });
     return text?.trim() || null;
   } catch (e) {
@@ -211,8 +209,7 @@ export async function processArticles(articles: Article[]): Promise<Map<number, 
           model: bedrock(MODEL_ID),
           output: Output.object({ schema: articleResultSchema }),
           prompt: buildPrompt({ title: article.title, content: article.content, sourceName: article.sourceName, link: article.link }),
-          maxOutputTokens: 4096,
-          temperature: 0.3,
+          maxOutputTokens: 4096 * 4,
         });
         if (output) {
           allResults.set(index, {
