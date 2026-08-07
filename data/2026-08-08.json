@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2538,
-  "filtered_articles": 23,
+  "filtered_articles": 25,
   "articles": [
     {
       "title": "The Life and Times of Maxis, Part 3: The Sims",
@@ -25,6 +25,44 @@
       "rank": 1
     },
     {
+      "title": "Meta: Introducing Muse Code and Muse Spark 1.2",
+      "title_zh": "Meta 发布 Muse Code 与 Spark 1.2 编码代理",
+      "link": "https://research.meta.ai/blog/introducing-muse-code-and-muse-spark-1-2",
+      "pub_date": "2026-08-07T18:05:03.000Z",
+      "summary": "## 一句话总结\n\nMeta 推出的 Muse Code + Muse Spark 1.2，核心不是单纯发布一个更强的 coding model，而是把模型、终端 agent runtime、持久子代理和长程训练一起打磨成能连续工作 24 小时、执行上千次工具调用的软件工程系统。\n\n## 正文\n\n### 这次发布的重点，是“模型能干活”而不只是“模型会写代码”\n\nMeta 这次发布了处于 beta 阶段的终端 coding agent：Muse Code。它由新模型 Muse Spark 1.2 驱动，并通过 Meta Model API 提供更广泛的全球访问。表面上看，这是一个“在终端里帮你改代码”的产品。  \n但文章真正想强调的是，Muse Code 面向的不是补全几行函数，或者回答一次代码问题。它试图处理的是大型 repository 中的复杂工程任务：先理解代码库，再规划改动，写代码，最后验证结果。  \n这类任务的难点从来不只是生成代码。更麻烦的是任务跨度长、上下文会膨胀、过程会失败，而且每一步都可能改变后续决策。  \n所以 Meta 的答案不是只堆大模型能力，而是把 agent runtime 设计、模型训练和工具链一起做成闭环。说白了，模型负责推理和行动，runtime 负责让它在漫长、脆弱的执行过程中不掉队。\n\n### 常驻的后台 subagent，解决的是反复“重新理解问题”的浪费\n\n传统 agent 往往是在需要时临时启动子代理：主 agent 遇到难题，分派一个任务，等结果回来，再继续下一步。这样的模式看起来直接，但在大型工程任务里有个明显问题：每次新 agent 启动，都要重新收集信息、重新理解上下文。  \nMuse Code 采用了不同做法。它保留一个简单的主 agent loop，同时配备一组 async background agents。这些专门的后台 agent 在整个 session 期间持续存在，而不是为单个任务临时创建。  \n这样设计的价值在于，后台 agent 可以持续推进下一步工作，也可以自行决定什么时候把发现同步给主 agent。它们不需要反复从头摸清 repository、任务目标和已有进展。  \n对于多步骤任务，这会减少冗余的信息收集，降低延迟，也减少用户必须不断介入“纠偏”的次数。文章没有把它包装成复杂的多智能体编排系统，反而强调它仍然围绕一个简单 agent loop 运作。  \n有意思的地方在于，持久化 subagent 的目标并非单纯并行，而是保存工作状态。复杂任务里，知道“之前已经查过什么、尝试过什么、为什么没用”，往往比再开一个新 agent 更重要。\n\n### Event log 让长任务不怕崩，runtime 才有资格谈 autonomy\n\n如果 agent 要运行几个小时，甚至一整天，崩溃恢复就不是边缘功能，而是基础能力。Muse Code 的 runtime 因此采用本地 event log：每一次模型调用、工具执行、用户审批和文件编辑，都会追加写入日志。  \n这份日志是整个系统的 single source of truth。也就是说，agent 的执行过程不是依赖模糊的内存状态，而是有完整、可追溯的事件序列。  \nMeta 给出的两个关键属性是 replay-exact 和 restart-safe。前者意味着运行过程可以精确重放，后者意味着即使进程崩溃，系统也能从准确的中断位置恢复。  \n这听起来像工程细节，但它直接决定 agent 是否能承担 long-running task。没有可靠恢复机制，模型哪怕能力再强，也可能因为一次工具超时、终端异常或运行中断而丢失几个小时的工作。  \n因此，Muse Code 的设计逻辑很清楚：先把执行状态变得可靠，再让 agent 去处理长期任务。否则所谓 autonomous coding，本质上只是一次容易中断的长对话。\n\n### `/plan`、`/grill` 和 `/goal` 把“会做”变成“按目标做完”\n\nMuse Code 还内置了几种默认 skills，其中 `/plan` 会把任务转成需要审批的计划，`/grill` 会持续拷问和压力测试这个计划，`/goal` 则让 agent 围绕给定目标推进直到完成。  \n这组设计说明 Meta 对 coding agent 的理解并不止于“给 prompt，出 patch”。复杂开发任务常常先死在计划阶段：模型过早动手、遗漏依赖、选择错误路径，之后即使局部代码写得正确，也很难补救。  \n所以 `/plan` 先把执行路径显式化，并让用户在关键点审批。接着 `/grill` 不接受一个看上去合理的计划，而是试图找出其中站不住脚的地方。  \n最后 `/goal` 的作用是维持方向感。长任务里，agent 很容易被局部错误、工具输出或新发现带偏，最终做了很多工作，却偏离了原始目标。  \n文章展示的例子也刻意跨出了传统代码输入：用户把一段房屋航拍视频的 mp4 文件送进终端，Muse Code 解析视频后，生成一个视觉丰富的度假屋营销与预订页面。这里要表达的是，agent 的输入、工具和产物可以覆盖完整 workflow，而非局限于文本代码文件。\n\n### Muse Spark 1.2 的训练重点，是长程工程能力而不是单轮 benchmark\n\n作为底层模型，Muse Spark 1.2 是 Muse Spark 1.1 的 coding-focused 更新。Meta 称它提升了 code generation、复杂 debugging、codebase understanding 和端到端开发 workflow 能力，同时仍保留 general agent 方面的表现。  \n模型能力的提升来自两个方向：一是显著扩大 coding task 的训练计算量，二是增加训练环境的多样性。后者尤其重要，因为真实工程任务不是单一题型。模型必须在不同 repository、工具、失败模式和目标约束下维持行为稳定。  \nMeta 还把 Muse Spark 1.2 与 Muse Code 共同训练。训练中包括 rejection-sampled harness trajectories，以及围绕 goals、context compaction 和 subagents 的 recipe optimization，并将 Muse Code 的工具集纳入训练。  \n原因很直接：模型若只在抽象 benchmark 上训练，到了真实 harness 里未必会正确调用工具、处理压缩后的上下文，或与子代理协作。共同训练的目标，就是让模型和运行环境彼此适配。  \n换句话说，Meta 不把 harness 当成模型之外的壳。Muse Code 的行为模式本身——目标管理、上下文压缩、工具使用和 subagent 协作——都进入了 Muse Spark 1.2 的训练对象。\n\n### 真正的考题，是让 agent 在几百上千步之后还不偏航\n\nMuse Spark 1.2 被大量训练在 long-horizon coding task 上，包括完整 repository 生成、大型 end-to-end 项目和 auto-research。这里的核心挑战不是某一步能否写对，而是模型能否在非常长的行动链中持续积累进展。  \nMeta 提到三个支撑手段：planning 用于安排工作顺序，goal conditioning 用于保持目标方向，context compaction 则用于在上下文有限时保留继续推进所需的知识。  \n这三者缺一个都容易出问题。没有 plan，agent 容易在局部任务中乱跳；没有 goal conditioning，长链路会逐渐偏离最初目标；没有 compaction，上下文越积越多，关键信息反而被淹没。  \n文章还披露了一条 self-improvement 路线：先用 Muse Spark 1.1 生成高难度 coding environment 和 instruction-following template，再让模型对候选解是否满足要求进行评分。  \n这就形成了一个可扩展的数据生成闭环。上一代模型负责制造更难的训练场景和评价信号，Muse Spark 1.2 再从中学习如何更精确地遵循复杂指令。Meta 的结论是，这让 1.2 相比 1.1 在复杂 instruction following 上更准确。\n\n### 1,000+ 次工具调用的 GPU kernel 优化，才是这套系统的压力测试\n\n为了验证长程能力，Meta 让模型执行 GPU kernel 的迭代优化任务。单次实验可超过 1,000 次 tool call，最长运行 24 小时。  \n任务流程很符合真实 kernel optimization：模型需要写 Triton 代码、编译、profile，然后根据结果继续修改，逐步提高相对 baseline 的性能。测试覆盖 NVIDIA Hopper GPU 上的 KDA 和 MLA kernels。  \n这里有一个重要约束：baseline 是 FLA 的 Triton KDA 实现，但模型禁止直接导入 FLA 等第三方 kernel library。也就是说，模型不能靠包一层现成实现“刷分”，而必须把算法理解转化成自己的 Triton kernel 优化。  \nMuse Spark 1.2 最终采用了 chunk-parallel preparation kernel 加 sequential inter-chunk scan 的组合。它同时使用常规的 fusion 和 tiling，并加入 KDA 特定优化，例如把 gated cumulative decay 重新居中到每个 chunk 的中点。  \n这类案例的价值不在于一次性生成一个漂亮 kernel，而在于模型能否在长达上千次的“编译—测试—分析—修改”循环里持续取得性能增益。文章称，Muse Spark 1.2 在这种 agentic coding 环境中，仍能相对给定 baseline 获得显著改进。  \n\n最终，Muse Code 和 Muse Spark 1.2 想证明的是：coding agent 的下一阶段竞争，不再只是代码生成质量，而是谁能让模型在可靠 runtime 中长期执行、恢复失败、保持目标，并在真实工具反馈中不断迭代。",
+      "source_name": "daringfireball.net",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "tools",
+      "keywords": [
+        "Muse Code",
+        "Muse Spark 1.2",
+        "coding agents",
+        "GPU kernels"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Premium: The Hater's Guide To NVIDIA (Part 2)",
+      "title_zh": "NVIDIA 如何借 neocloud 转移 GPU 融资风险",
+      "link": "https://www.wheresyoured.at/premium-the-haters-guide-to-nvidia-part-2/",
+      "pub_date": "2026-08-07T17:30:26.000Z",
+      "summary": "## 一句话总结\n\n作者认为，NVIDIA 的真正风险不在 GPU 技术本身，而在于它正通过投资、租赁承诺和融资背书，扶持一批专门替自己买 GPU 的 neocloud，把需求、债务和建设风险转移给市场。\n\n## 正文\n\n### NVIDIA 不像 Enron，但它学会了把风险交给别人\n\n过去一年，市场不断把 NVIDIA 与 Enron 相提并论。作者承认，这个类比不能照搬。NVIDIA 并没有被指控像 Enron 那样，用 SPV 隐藏巨额债务或直接实施财务欺诈。问题在于，它采用了一种更现代、也更精巧的做法。它不直接借钱给客户购买自己的产品，却帮助客户获得足以购买这些产品的资金。说白了，NVIDIA 没有把风险写进自己的资产负债表，但它在设计一套让别人替它承担风险的交易结构。\n\n### neocloud 是“间接 vendor financing”的核心载体\n\nLucent 当年的 vendor financing 很直接：公司把钱借给客户，客户再拿这些钱买 Lucent 的设备。NVIDIA 的路径则绕了一圈。它投资 CoreWeave、Nebius、IREN 等 neocloud，参与早期融资、担任 IPO 锚定投资者，甚至在上市后继续下注。与此同时，NVIDIA 还会成为这些公司的客户，签下 GPU 租赁或数据中心容量协议。这样一来，CoreWeave 们就能拿着 NVIDIA 的订单和信用背书，向银行与资产管理机构借出数百亿美元，再回头购买 NVIDIA GPU。\n\n### 这套循环里，NVIDIA 卖芯片，别人背债\n\n作者用一个虚构对话把机制讲得很透：NVIDIA 投资一家建设数据中心的公司，这家公司用借来的钱买 NVIDIA GPU；NVIDIA 再承诺未来租用这些 GPU。由于 NVIDIA 的资产负债表足够强，这份租赁承诺本身就能帮助 neocloud 获得融资。于是，NVIDIA 每签一份新合同，客户就可能募集更多债务，NVIDIA 也就能卖出更多 GPU。CoreWeave 获得了扩张所需的资金，投行获得了交易费用，NVIDIA 获得了确定的销售额。真正承担利用率、定价、建设延期和债务偿付风险的，却是 neocloud 及其债权人和股东。\n\n### NVIDIA 的小额股权，能撬动巨额外部资本\n\n这套模式最关键的地方，是 NVIDIA 自己不需要投入与项目规模对等的资本。以澳大利亚 startup Firmus 为例，它最近获得了 20 亿美元融资，投资者包括 NVIDIA、Jane Street 和 BlackRock，其中相当一部分资金预计会流向 NVIDIA GPU。Firmus 此前还获得过 NVIDIA 参与的 3 亿美元融资，并在今年拿到由 Blackstone 牵头的 100 亿美元债务额度。作者认为，NVIDIA 的股权参与以及双方不断公布的合作关系，显著提升了 Firmus 的融资能力和债务信用。类似地，有行业人士称 Nebius 一度面临严重财务困难，最终靠 NVIDIA 提供硬件和 revenue-sharing 模式才得以续命，只是这类分成协议往往更有利于 NVIDIA。\n\n### 交易的驱动力不是技术护城河，而是 GPU 供给和 AI 叙事\n\n有意思的是，作者直到这里都几乎没有讨论 LLM 或 AI 技术本身。因为在他看来，这些融资交易的核心并非某家 neocloud 有什么独特技术能力，而是它能否持续部署更多 NVIDIA GPU。文章援引的判断是，hyperscaler 至少 70% 的相关收入来自 OpenAI 和 Anthropic；CoreWeave 的主要客户也集中在 Microsoft、Google、Anthropic、NVIDIA 自身和 Meta。也就是说，市场需求高度集中于少数 AI lab，neocloud 更多是在向同一批客户转售同一种算力。GPU 性能提升当然存在，但作者质疑 NVIDIA 所宣称的每代 10 倍到 25 倍“operating cost savings”究竟如何落地，也质疑这些指标对最大客户到底意味着什么。\n\n### “更强一代”必须不断出现，哪怕衡量方式并不清晰\n\n作者并非否认 NVIDIA 有大量优秀工程师，也不否认其 GPU 和软件栈具备技术价值。问题是，在一个必须维持高速收入增长的体系里，每一代新产品都需要被包装成足以支撑更高价格和更大建设规模的理由。例如，SemiAnalysis 曾称新系统相对 GB200 NVL72 实现了每 MW 5.4 倍性能、每美元 5 倍性能，但这一比较基于 DeepSeek R1 这样的较旧开源模型。指标本身未必错误，但它未必能直接说明真实客户的经济回报。作者的判断是，NVIDIA 需要持续制造“更大、更强、更多”的预期，以证明更昂贵的 72-GPU 机架和所谓 “AI factories” 的合理性。技术进步在这里不只是产品竞争力，也是维持资本开支叙事的燃料。\n\n### 作者认为 NVIDIA 更像 GE Capital，而不只是芯片公司\n\n因此，文章提出了一个比 Enron 更贴切的类比：Jack Welch 时代的 GE，以及 GE Capital。GE Capital 当年不仅租赁设备，还会承担客户债务、直接投资客户，以确保客户持续购买 GE 的产品。到 2001 年，GE Capital 营收达到 4250 亿美元，约占 GE 总营收的一半，GE 因而越来越像一家大型、缺乏充分监管的银行。作者认为，NVIDIA 的模式更简单，因为它主要卖 GPU；但也正因为产品和增长预期高度集中，它必须以惊人的速度持续扩大销售。于是，NVIDIA 开始越来越像 GE Capital：不是单纯等待客户采购，而是主动通过资本、信用和长期承诺制造需求。\n\n### 从 GPU 制造商到“AI 的最后贷款人”\n\n文章最后列举了这种趋势的最新例子：据 FT 报道，NVIDIA 签署了最高可能达到 500 亿美元的 Texas 数据中心租赁承诺，并据称正讨论为俄亥俄州一个理论中的 10GW 数据中心提供高达 2500 亿美元的 compute cost backstop。NVIDIA 的 AA- 信用评级是这类交易的重要筹码，因为它可以先锁定电力和容量，再确保自己的产品被部署。作者没有指控 NVIDIA 存在不当会计或违法行为，也明确区分了这种模式与 GE 后来引发 SEC 调查、罚款和财报重述的问题。但他认为，NVIDIA 对循环融资的依赖，以及“不惜一切继续卖出更多 GPU”的倾向，已经值得高度警惕。它如今不只是 semiconductor manufacturer，也同时扮演 venture capitalist、需求担保人，以及某种意义上的 AI 基础设施“最后贷款人”。",
+      "source_name": "wheresyoured.at",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "NVIDIA",
+        "neoclouds",
+        "CoreWeave",
+        "vendor financing"
+      ],
+      "rank": 3
+    },
+    {
       "title": "‘Google’s Top AI Brains Are Leaving to Launch Discovery Loop’",
       "title_zh": "Jeff Dean离开Google创办自动科研公司",
       "link": "https://www.wired.com/story/jeff-dean-google-discovery-loop-startup/?ref=spyglass.org",
@@ -41,7 +79,7 @@
         "Google DeepMind",
         "automated science"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "8 Predictions for the Era of Continual Learning",
@@ -60,7 +98,26 @@
         "model lock-in",
         "inference batching"
       ],
-      "rank": 3
+      "rank": 5
+    },
+    {
+      "title": "Leadership Shake-Up at Google DeepMind",
+      "title_zh": "Google DeepMind 交棒：Koray 接管 Gemini",
+      "link": "https://blog.google/company-news/inside-google/message-ceo/next-chapter-ai-momentum/",
+      "pub_date": "2026-08-07T17:23:17.000Z",
+      "summary": "Google 重组 DeepMind 领导层：Demis Hassabis 转任 Alphabet 首席科学家及 GDM 主席，Koray Kavukcuoglu 升任 SVP、接管 Gemini 模型、前沿研究与开发者团队。公告同时称 Gemini App 月活超 9.5 亿、Gemma 下载超 9 亿，Jeff Dean 将离职创办公益公司。此举把日常模型竞争交给 Koray，并让 Hassabis 聚焦 AGI 治理和 Isomorphic Labs 的药物研发。",
+      "source_name": "daringfireball.net",
+      "score": 8,
+      "depth": 2,
+      "novelty": 6,
+      "category": "ai-ml",
+      "keywords": [
+        "Google DeepMind",
+        "Demis Hassabis",
+        "Koray Kavukcuoglu",
+        "Gemini"
+      ],
+      "rank": 6
     },
     {
       "title": "★ App Store Rejection of the Week: Dark Hours",
@@ -79,7 +136,26 @@
         "App Review",
         "astronomy"
       ],
-      "rank": 4
+      "rank": 7
+    },
+    {
+      "title": "App Store Review Times Are Failing to Meet the AI-Driven Influx of Submissions",
+      "title_zh": "AI 应用洪峰拖慢 App Store 审核",
+      "link": "https://macaw.social/@mergesort/117055390966724799",
+      "pub_date": "2026-08-07T17:45:22.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 6,
+      "depth": 2,
+      "novelty": 4,
+      "category": "opinion",
+      "keywords": [
+        "App Store",
+        "app review",
+        "AI-generated apps",
+        "submission backlog"
+      ],
+      "rank": 8
     },
     {
       "title": "The Tokenpocalypse Is Here: Companies Are Scrambling To Stop Spending So Much on AI",
@@ -98,7 +174,7 @@
         "markdown",
         "Accenture"
       ],
-      "rank": 5
+      "rank": 9
     }
   ]
 }
