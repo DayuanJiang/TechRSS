@@ -1,9 +1,9 @@
 {
   "date": "2026-08-08",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2538,
-  "filtered_articles": 24,
+  "success_feeds": 84,
+  "total_articles": 2513,
+  "filtered_articles": 27,
   "articles": [
     {
       "title": "The Life and Times of Maxis, Part 3: The Sims",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "A quick(ish) Chinchilla check",
+      "title_zh": "小型 GPT-2 实测 Chinchilla 缩放收益",
+      "link": "https://www.gilesthomas.com/2026/08/chinchilla-check",
+      "pub_date": "2026-08-07T19:00:00.000Z",
+      "summary": "## 一句话总结\n\n这次小规模实验基本验证了 Chinchilla heuristic：在近似相同训练 FLOPs 下，把 163M 模型的参数量和训练 token 一起扩大，比把原模型训练到 40 tokens/parameter 更好，但优势只有约 1%，离“压倒性胜利”很远。\n\n## 正文\n\n### 从“多喂数据”到“该不该长大”\n\n作者此前训练了几组 GPT-2 风格模型，每个约 163M parameters。它们没有停在常说的 Chinchilla-optimal 20 tokens/parameter，而是吃到了 40 tokens/parameter。结果并不意外：模型继续训练后，held-out test loss 确实下降了。`jax-gpt2-2x-chinchilla` 的 loss 是 3.324953，而正常训练量的 `jax-gpt2-chinchilla` 是 3.418784。问题不在于 overtraining 有没有用，而在于同样的 compute，是否有更划算的花法。\n\nChinchilla 的答案是：模型参数量和训练 token 应当等比例扩张。也就是说，若 token 翻倍，parameter count 也应翻倍。DeepMind 那篇著名论文训练了 400 多个模型，规模从 70M 到 16B+ parameters，训练 token 从 5B 到 500B。论文没有直接写下“20 tokens/parameter”这条公式，但从 Table 3 的估算值中，可以得到这个广泛传播的近似规则。说白了，163M 模型多吃一倍数据当然会更好，但如果没有部署端的模型大小限制，更优的选择应该是“更大的模型 + 更多的数据”。\n\n### 真正难的不是翻倍，而是把模型恰好放大\n\n作者想复用与“40 tokens/parameter”实验近似相同的 compute。因为 training compute 大致同时正比于 parameters 和 tokens，所以目标是把两者各增加约 √2，而不是各自翻倍。由 163,009,536 parameters 出发，目标模型大小约为 230,530,296 parameters，对应训练 4,610,605,920 tokens。听起来只是改几个超参数，但 GPT-2 的架构缩放没有这么整齐。层数、embedding dimension 和 attention heads 彼此耦合，尤其原 GPT-2 的 head 数始终是 `d_emb / 64`。\n\n作者还遇到了一个小模型中特别显著的问题：embedding 和 output head 占参数的比例很高。原 GPT-2 使用 weight tying，而他的实现没有，所以 embedding matrix 和输出 head 不共享参数。这使得同样的层数与 hidden size，参数规模会和 GPT-2 论文中的数字明显不同。更麻烦的是，`d_emb` 必须是 64 的倍数，调节粒度很粗。最终他没有找到一条漂亮的缩放公式，只在 spreadsheet 里试出了两个接近目标的候选架构。\n\n### 两个候选模型，把“精确缩放”变成夹逼实验\n\n第一个候选 `slightly-larger` 使用 15 layers、`d_emb=896`、14 个 MHA heads，共 235,621,120 parameters，比目标大 2.21%。第二个 `slightly-smaller` 使用 14 layers、相同的 `d_emb=896` 和 14 heads，共 225,978,368 parameters，比目标小 1.97%。如果把 `d_emb` 从 896 再降一级到 832，模型会直接小 9.25%。这说明 Chinchilla 的“等比例放大”在离散架构超参数上并不是一个按钮，而是一道工程题。作者也谨慎承认，自己无法保证这两个架构就是正确的缩放方式。\n\n接下来还不能只看 parameter count，因为不同参数的训练 FLOPs 并不完全相同。尤其在这种小模型中，embedding 参数占比高，attention、MLP、embedding 和 sequence length 的 FLOPs 贡献不能粗暴混为一谈。作者依据 Chinchilla paper Appendix F 的公式，写了一个 FLOP calculator，根据模型和训练配置估算单 epoch training FLOPs。计算后，原始 2x-token overtraining 的训练量是约 `7.0899e18` FLOPs。`slightly-larger` 是约 `7.4197e18`，高 4.6%；`slightly-smaller` 是约 `6.8044e18`，低 4%。\n\n### 训练过程不优雅，但比较条件尽量守住了\n\n更大的模型首先带来了显存问题。原来 163M 模型可以用 batch size 6，新模型只能放下 batch size 4。作者没有让有效 batch size 因此变化，而是借助 gradient accumulation，把 accumulation steps 从 16 增加到 24。这样有效 batch size 保持一致，避免把训练动力学差异误当成架构规模收益。这个细节很重要，因为这类只差 1% 左右的实验，任何训练配置漂移都可能淹没结论。\n\n两个训练都没有一帆风顺。`slightly-larger` 在约 60 小时后因疑似 VRAM fragmentation 耗尽显存，作者从 checkpoint 恢复；总训练时间不到四天。`slightly-smaller` 则触发了 JAX 的 `CUDA_ERROR_STREAM_CAPTURE_INVALIDATED`，同样通过 checkpoint 重启完成。两者生成的 smoke test 文本至少是连贯的，说明转换到 PyTorch evaluation 格式后没有明显权重错误。真正决定结果的仍是 held-out test set loss，而不是几句看起来像样的生成文本。\n\n### Chinchilla 赢了，但赢得非常克制\n\n最终，`slightly-larger` 的 test loss 为 3.280028，是全部模型中最低的。它相较最佳 overtrained 基线 `jax-gpt2-2x-chinchilla` 的 3.324953，绝对下降 0.044925，相对改善 1.35%。`slightly-smaller` 的 loss 为 3.292937，也优于 overtrained 基线，绝对下降 0.032016，相对改善 0.962%。相比之下，两个 163M 的 overtrained 版本分别是 3.324953 和 3.326482，二者差异只有 0.05% 左右。正常 Chinchilla token 数训练的原模型则是 3.418784，明显落后于所有投入更多 compute 的版本。\n\n所以，这个实验的结论不是“20 tokens/parameter 是不可违背的定律”。固定模型尺寸时，多训练当然仍会让 loss 继续变好；如果目标硬件限制 RAM，overtraining 甚至可能是合理选择。它验证的是 compute allocation 层面的判断：当模型尺寸也可以增长时，别把所有额外预算都投入更多 token。参数和 token 一起扩大，确实在这次实验中拿到了更低 loss。只是收益仅约 1%，而候选架构与计算预算本身也并非完全一致，因此这更像一次方向正确、但边界仍然模糊的 Chinchilla check。",
+      "source_name": "gilesthomas.com",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "ai-ml",
+      "keywords": [
+        "Chinchilla",
+        "GPT-2",
+        "scaling laws",
+        "JAX"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Meta: Introducing Muse Code and Muse Spark 1.2",
       "title_zh": "Meta 发布 Muse Code 与 Spark 1.2 编码代理",
       "link": "https://research.meta.ai/blog/introducing-muse-code-and-muse-spark-1-2",
@@ -41,7 +60,7 @@
         "coding agents",
         "GPU kernels"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Premium: The Hater's Guide To NVIDIA (Part 2)",
@@ -60,7 +79,7 @@
         "CoreWeave",
         "vendor financing"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Moonlight & Mayhem (Raccoon Heist by Codex + GPT-5.6 Sol Ultra)",
@@ -79,7 +98,7 @@
         "sub-agents",
         "gpt-image-2"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "‘Google’s Top AI Brains Are Leaving to Launch Discovery Loop’",
@@ -98,7 +117,7 @@
         "Google DeepMind",
         "automated science"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "8 Predictions for the Era of Continual Learning",
@@ -117,7 +136,26 @@
         "model lock-in",
         "inference batching"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "Google Earth Retracts AI Tool for Making Fake Satellite Images After It Was Immediately Abused Upon Release",
+      "title_zh": "Google Earth 因伪造卫星图像滥用下线 AI 功能",
+      "link": "https://arstechnica.com/ai/2026/07/google-earth-releases-swiftly-retracts-ai-feature-to-make-fake-satellite-images/",
+      "pub_date": "2026-08-07T19:43:23.000Z",
+      "summary": "Google Earth 上线可生成或修改卫星图像的 AI 功能后，因用户迅速制作加沙医院爆炸坑等虚假场景而回滚。Ars 测试发现，SynthID 能识别原始 AI 修改图，但经手机拍摄后无法验证；每日约 10 次的检测限额也削弱了实用性。该功能会动摇卫星图像作为现实证据的信任基础，并给虚假信息制造者留下否认真图的借口。",
+      "source_name": "daringfireball.net",
+      "score": 10,
+      "depth": 4,
+      "novelty": 6,
+      "category": "security",
+      "keywords": [
+        "Google Earth",
+        "SynthID",
+        "satellite imagery",
+        "misinformation"
+      ],
+      "rank": 8
     },
     {
       "title": "Leadership Shake-Up at Google DeepMind",
@@ -136,7 +174,7 @@
         "Koray Kavukcuoglu",
         "Gemini"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "An AI Model From Meta Also Hacked Another Company During Testing",
@@ -155,7 +193,7 @@
         "AI safety",
         "cybersecurity evaluation"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "★ App Store Rejection of the Week: Dark Hours",
@@ -174,7 +212,7 @@
         "App Review",
         "astronomy"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "App Store Review Times Are Failing to Meet the AI-Driven Influx of Submissions",
@@ -193,7 +231,7 @@
         "AI-generated apps",
         "submission backlog"
       ],
-      "rank": 10
+      "rank": 12
     },
     {
       "title": "The Tokenpocalypse Is Here: Companies Are Scrambling To Stop Spending So Much on AI",
@@ -212,7 +250,26 @@
         "markdown",
         "Accenture"
       ],
-      "rank": 11
+      "rank": 13
+    },
+    {
+      "title": "Some New Data Centers Are Necessary",
+      "title_zh": "讽刺手机误触截图占满数据中心",
+      "link": "https://www.newyorker.com/cartoon/a62045",
+      "pub_date": "2026-08-07T19:39:15.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 1,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "data center",
+        "smartphone",
+        "screenshots",
+        "cartoon"
+      ],
+      "rank": 14
     }
   ]
 }
