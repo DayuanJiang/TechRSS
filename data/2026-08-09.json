@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 84,
   "total_articles": 2513,
-  "filtered_articles": 10,
+  "filtered_articles": 11,
   "articles": [
+    {
+      "title": "Tracking down a Zsh history data loss bug 🐞",
+      "title_zh": "SIGINT 如何让 Zsh 历史静默丢失",
+      "link": "https://michael.stapelberg.ch/posts/2026-08-09-zsh-history-truncation-bug/",
+      "pub_date": "2026-08-09T08:13:00.000Z",
+      "summary": "## 一句话总结\n\n这篇排障的关键不在于一开始就猜中 Zsh 的 bug，而是逐层升级观测手段，最终用常驻的 `bpftrace` 证明：历史文件丢失时，Zsh 确实在未读到 EOF 的情况下，用不完整内容重写了整个 `~/.zsh_history`。\n\n## 正文\n\n### 丢的不是几条命令，而是整段年份的历史\n\n作者遇到的问题很诡异：按 `Ctrl+R` 搜索时，明明昨天执行过的命令突然消失了。更糟的是，这不是偶尔漏掉一条记录，而是历史文件会退回到“很老的版本”。几年内积累的新命令，都可能一起不见。文件本身却看不出损坏，没有乱码，也没有半截文本行。作者起初靠每日备份恢复，并没有深究。可问题反复出现后，真正需要回答的就变成了：到底是 Zsh 自己写坏了文件，还是某个外部程序，抑或多个 Zsh 进程并发造成了事故？\n\n### 这套配置让多个 shell 共享文件，却不共享内存历史\n\n作者的配置并不算激进，但恰好构成了这个问题的运行环境。`HISTSIZE=4000` 只限制内存中可供 `Ctrl+R` 搜索的历史条数，而 `SAVEHIST=10000000` 则让磁盘上的历史几乎无限保存。`INC_APPEND_HISTORY` 会在命令执行时持续把记录追加进 `~/.zsh_history`。但 `SHARE_HISTORY` 被关闭了，因此不同 shell 是独立 session，不会自动把彼此的新命令读进内存。说白了，每个 shell 都在向同一个文件流式写入，却各自维护自己的历史视图。作者需要看到其他 shell 写入的内容时，会显式执行 `exec zsh`，重新加载历史文件。\n\n### inotify 看见了“删除”，却还没看见凶手\n\n排查最先从文件系统事件开始，因为如果能抓到谁截断或替换了 `.zsh_history`，问题就解决了一半。直接监控文件时，`inotifywait` 显示了打开、读取、关闭，随后竟然出现 `DELETE_SELF`。这看起来像历史文件被删掉了，但监控其所在目录后，事情就清楚了。Zsh 的正常改写流程是：读取旧文件，写入 `.zsh_history.new`，再通过 rename 用新文件原子替换旧文件。于是旧 inode 被删除，并不意味着有人粗暴地 `rm` 了历史。可 `inotifywait` 没有给出触发事件的 PID，`fsnotifywait` 虽然基于能获取 PID 的 `fanotify`，却也没有把 PID 展示出来，因此这条线索无法确认究竟是哪一个 Zsh 进程动了手。\n\n### fatrace 找到了进程，但看不出它究竟读了多少\n\n接下来作者换成了 `fatrace`，它能够把文件操作和进程名、PID 对应起来。日志确认了同一个 `zsh(197994)` 完成了读取旧历史、写 `.zsh_history.new`、rename 覆盖旧文件的完整流程。这样至少排除了“完全不知是谁修改文件”的盲区，也让多进程竞争成为可以验证的假设。但问题是，`fatrace` 只说明发生过读写，不说明每次读写了多少字节。对于一个几十 MB 的 history 文件而言，这个差别至关重要：一个进程是完整读完再重写，还是只读到文件中段就覆盖，都可能在表面上呈现相似的文件事件。`strace` 本可以给出 syscall 级细节，配合 `-k` 还能关联调用栈。可要给所有交互式 Zsh 长期挂 `strace`，既麻烦，也可能改变行为，所以作者暂时没有走这条路。\n\n### bpftrace 把“文件被改了”推进到“Zsh 没读完就重写了”\n\n真正的转折来自 `bpftrace`。作者先监控 `open`、`openat` 和 `openat2`，并打印用户态栈，确认历史文件在 `readhistfile`、`savehistfile`、`zexit` 等 Zsh 内部路径中被访问。随后，他把脚本扩展到 `read`、`write`、`lseek`、`rename`、`unlink` 和 `symlink`，并按线程与 fd 累加读写字节数。这个设计很巧妙：它不只是看“调用发生过”，还把一次文件生命周期中的数据量和 EOF 行为串了起来。作者甚至把脚本做成常驻 systemd 服务，让它长期写入 journal，等待这个低频 bug 再次出现。正常的一次重写中，Zsh 会读完整个旧文件，日志能看到 `read = 0`，然后写出接近相同规模的新文件，例如读取 `52,895,744` 字节，写入 `52,888,907` 字节。\n\n### 出事那次，日志留下了一个决定性的缺口\n\n当历史再次被截断后，常驻日志终于抓到了异常现场。这个 Zsh 进程先获取 `.zsh_history.LOCK`，打开旧 history 文件，并对 fd 做了多次 `lseek`。它随后从偏移 `11,572,944` 继续处理，并在总读取 `11,575,296` 字节后关闭文件。关键是，日志里没有正常情况下的 `read = 0`。也就是说，Zsh 没有读到 EOF，就停止读取旧历史，并准备把自己拿到的那部分内容写入 `.zsh_history.new`，最后通过 rename 覆盖原文件。至此，问题不再是模糊的“历史偶尔丢失”，而是一个可证实的错误行为：Zsh 的重写路径会在某些条件下读取不完整输入，再把不完整结果当成完整历史落盘。\n\n### 这篇排障最值得借鉴的，是把猜测变成可复核证据\n\n文章给出的修复结论是，Zsh 5.9.2 已经包含该问题的 upstream 修复，对应提交为 `zsh-users/zsh` 的 fix 53454。更有意思的是，作者在标题中已经透露，最后的制胜策略不是继续堆 tracing，而是修改 Zsh，让它在错误条件下直接 crash，再分析 core dump。前面的 `inotify`、`fatrace` 和 `bpftrace` 并没有白费，它们各自缩小了问题空间。`inotify` 解释了 rename 替换的文件语义，`fatrace` 锁定了责任进程，`bpftrace` 则捕捉到“未读 EOF”的反常证据。等到行为已经足够具体，给程序加断言并强制崩溃，才有机会从 core dump 追到真正的内部状态和根因。对处理这类低频、跨进程、又会覆盖持久化数据的 bug 来说，这条路径很有启发性：先建立长期观测，再寻找违反不变量的瞬间，最后让错误状态停止“悄悄继续执行”。",
+      "source_name": "michael.stapelberg.ch",
+      "score": 18,
+      "depth": 10,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "Zsh",
+        "bpftrace",
+        "SIGINT",
+        "debugging"
+      ],
+      "rank": 1
+    },
     {
       "title": "Auto mode is now the default in Claude Code for Pro, Max, and Team plans",
       "title_zh": "Claude Code 自动模式默认化的安全赌注",
@@ -22,7 +41,7 @@
         "prompt injection",
         "data exfiltration"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "I got an email about resistance",
@@ -41,7 +60,7 @@
         "software engineering",
         "career strategy"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Maybe ‘Steal Underpants by Blowing a Fortune on AI Tokens’ Is, in Fact, Not a Good Business Plan",
@@ -60,7 +79,7 @@
         "PDF conversion",
         "AI costs"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "★ Retraction: The App Store Rejection of the Week That Was, in Fact, a Correct Rejection",
@@ -79,7 +98,7 @@
         "astrology",
         "DarkHours"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Anubis v1.27.0: Moenbryda Wilfsunnwyn",
@@ -97,7 +116,7 @@
         "v1.27.0",
         "bot protection"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Corrupt Minds Think Alike",
@@ -115,7 +134,7 @@
         "World Cup",
         "privatization"
       ],
-      "rank": 6
+      "rank": 7
     }
   ]
 }
