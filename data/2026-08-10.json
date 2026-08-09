@@ -6,6 +6,25 @@
   "filtered_articles": 11,
   "articles": [
     {
+      "title": "SQLite compressed text-history prototypes",
+      "title_zh": "用分块压缩在 SQLite 保存文本修订史",
+      "link": "https://simonwillison.net/2026/Aug/9/sqlite-text-history-prototype/#atom-everything",
+      "pub_date": "2026-08-09T22:05:00.000Z",
+      "summary": "## 一句话总结\n\n这篇原型验证了一个很直接但效果惊人的思路：把文本的所有历史版本聚合后整体压缩，能把 1,000 次修订的 20.4MB 原始文本压到 80.3KB，而当历史变长时，再用分块封存避免每次编辑都重压全部历史。\n\n## 正文\n\n### 传统“每个版本一行”的方案，浪费在重复文本上\n\n存文本修订历史，最直觉的做法是每次修改都存一份旧值。这个方案实现简单，查询某个历史版本也很自然。  \n但对于长文档，它的空间成本相当粗暴。假设文档有 20KB，哪怕用户只改了一个字，一次修订也可能再往数据库里塞进 20KB。  \n问题不只是“存得多”，而是这些版本之间通常高度相似。相邻版本几乎共享全文，却被关系型数据库当作彼此独立的大文本处理。  \n作者在遛狗时抓住的，正是这个重复性：既然版本之间重复这么多，为什么不把它们放在一起压缩？  \n说白了，与其为每个版本单独付出完整文本的存储成本，不如让压缩算法看到所有版本之间的共同部分。\n\n### 核心实验很朴素：把历史变成一个压缩 JSON 数组\n\n原型的第一个实现叫 `WholeBlobHistoryStore`。它把全部旧版本组织成一个 JSON 字符串数组，再将整个数组用 `zlib` 或 `zstd` 压缩，存进 SQLite 的一个 BLOB 列。  \n与文本内容并列的，还有一组时间戳。时间戳以 Unix 整数形式保存，体积很小，因此不一定需要和正文采用同样的压缩策略。  \n这样设计的关键在于，压缩器不再只看一个版本，而是同时看到整个演化过程。那些反复出现的段落、未改动的句子，以及相似的 JSON 结构，都会成为压缩算法可以利用的冗余。  \n这并不是 delta encoding，也没有引入复杂的差异链或版本合并逻辑。恢复任意历史时，仍然是解压后从数组中取出对应字符串。  \n因此它牺牲的是更新时的部分计算量，换来的是极低的实现复杂度和极高的压缩比。\n\n### 数据说明，版本历史确实比想象中更适合压缩\n\n实验结果相当夸张：1,000 次模拟修订产生了 20.4MB 的原始历史文本。将这些文本作为 JSON 数组整体以 Zstandard 压缩后，最终只占 80.3KB。  \n这意味着压缩后的大小不到原始文本的千分之四。对“不断小修小补的长文本”这种典型场景来说，历史版本之间的重复内容显然远超直觉。  \n这也是原型最值得关注的地方：它没有先发明一套复杂的存储结构，而是先验证一个简单假设。事实证明，文本历史的冗余足够大，整体压缩本身就已经能带来极强的收益。  \n当然，这个数字来自模拟修订，不应直接视为所有业务文本的固定压缩率。不同文档类型、编辑模式和压缩算法，都会影响最终结果。  \n但它至少说明了一件事：在设计 revision history 前，先测一下“全量历史一起压缩”这个基线，可能非常值得。\n\n### 整体压缩的短板，不在空间而在每次写入\n\n`WholeBlobHistoryStore` 的问题也很明确。每次编辑都要读取旧 BLOB，解压整个历史数组，追加一个版本，再重新压缩并写回。  \n历史较短时，这种做法完全可以接受，甚至可能是工程上最划算的选择。毕竟只维护一个 BLOB，数据模型和事务处理都非常直接。  \n但随着历史增长，单次编辑需要处理的数据也会线性变大。即使新修改只涉及几个字符，系统仍要重写整段压缩历史。  \n于是，空间效率很好并不代表扩展性没有问题。真正的瓶颈从“数据库占多少空间”，转移成了“每次保存需要解压和重压多少历史”。  \n那怎么办？GPT-5.6 Sol Pro 给出的答案是保留整体压缩的优势，但不要让所有历史永远挤在同一个 BLOB 里。\n\n### ChunkedHistoryStore 用“封存分块”控制重写成本\n\n第二个实现叫 `ChunkedHistoryStore`，它把历史拆到多行中，每一行保存一个压缩后的历史 chunk。当前可写 chunk 达到 128 个 revision，或者其未压缩 JSON 超过 3MB 后，就会被封存。  \n后续编辑会写入新的 chunk，而不会再解压并改写那些已经封存的旧块。这样一来，历史越长，单次更新并不会被最早的版本拖慢。  \n这里有个巧妙的取舍：chunk 内部仍然保留“多个完整版本一起压缩”的高压缩率。chunk 之间则通过封存实现增量扩展，避免全历史重写。  \n128 个版本和 3MB 未压缩 JSON 是两个边界条件。前者限制版本数量，后者防止少量超大文本让单块变得过大。  \n这使得方案从“一个压缩 BLOB 的实验”变成了可随历史增长而扩展的存储策略。\n\n### 原型也没忽略一致性：历史更新必须和正文更新原子发生\n\n两个实现都保留旧文本和对应时间戳，并且默认跳过内容完全相同的替换。后者看起来是小优化，但能避免无意义保存制造重复历史。  \n更重要的是，写入时使用 `BEGIN IMMEDIATE` 串行化 writer。SQLite 会在事务开始阶段获取合适的写锁，避免多个写入者同时基于同一份历史各自追加，最后互相覆盖。  \n这保证了“更新当前文本”和“把旧文本放入历史”可以作为一个原子操作完成。否则，系统可能出现正文已更新但历史未保存，或历史顺序错乱的情况。  \n因此，这个原型真正讨论的不只是压缩率，也是在 SQLite 里如何可靠地维护 append-only 风格的文本历史。  \n最终的结论很务实：短历史可以直接用 `WholeBlobHistoryStore`，而历史规模不确定或会持续增长时，`ChunkedHistoryStore` 用分块封存把这个简单思路变得更可持续。",
+      "source_name": "simonwillison.net",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "SQLite",
+        "zstd",
+        "revision history",
+        "compression"
+      ],
+      "rank": 1
+    },
+    {
       "title": "A simple range reduction method",
       "title_zh": "用 Cody-Waite 提高三角函数约简精度",
       "link": "https://www.johndcook.com/blog/2026/08/09/simple-range-reduction/",
@@ -22,7 +41,26 @@
         "floating-point",
         "trigonometry"
       ],
-      "rank": 1
+      "rank": 2
+    },
+    {
+      "title": "GitHub Models is now retired",
+      "title_zh": "GitHub Models 退役，Actions 工作流受影响",
+      "link": "https://simonwillison.net/2026/Aug/9/github-models-is-now-retired/#atom-everything",
+      "pub_date": "2026-08-09T22:48:05.000Z",
+      "summary": "GitHub Models 已完成退役，依赖其 API 的 GitHub Actions 工作流会在“scheduled retirement brownout”报错后彻底失效。GitHub 未公开关闭原因；文中推测，编码代理带来的高频调用可能使免费或补贴 token 的成本难以承受。作者原先利用 Actions 自动调用模型，为 research 仓库 README 生成目录摘要，现改用设有月度消费上限的 OpenAI API，并以 GPT-5.6 Luna 替代。",
+      "source_name": "simonwillison.net",
+      "score": 8,
+      "depth": 3,
+      "novelty": 5,
+      "category": "ai-ml",
+      "keywords": [
+        "GitHub Models",
+        "GitHub Actions",
+        "Continuous AI",
+        "GPT-5.6 Luna"
+      ],
+      "rank": 3
     },
     {
       "title": "DNA and Bessel functions",
@@ -41,7 +79,26 @@
         "X-ray diffraction",
         "helical structure"
       ],
-      "rank": 2
+      "rank": 4
+    },
+    {
+      "title": "Edinburgh Fringe - Heated Rivalry: The Musical Parody! ★★★★★",
+      "title_zh": "爱丁堡边缘节的《Heated Rivalry》恶搞音乐剧",
+      "link": "https://shkspr.mobi/blog/2026/08/edinburgh-fringe-heated-rivalry-the-musical-parody/",
+      "pub_date": "2026-08-09T22:45:45.000Z",
+      "summary": "",
+      "source_name": "shkspr.mobi",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "Edinburgh Fringe",
+        "Heated Rivalry",
+        "musical parody",
+        "theatre review"
+      ],
+      "rank": 5
     },
     {
       "title": "Edinburgh Fringe: 4 Aussies For Aussies - The Raging Bull ★★⯪☆☆",
@@ -59,7 +116,7 @@
         "stand-up comedy",
         "Australia"
       ],
-      "rank": 3
+      "rank": 6
     }
   ]
 }
