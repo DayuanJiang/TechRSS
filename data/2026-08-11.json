@@ -1,10 +1,29 @@
 {
   "date": "2026-08-11",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2493,
-  "filtered_articles": 18,
+  "success_feeds": 84,
+  "total_articles": 2514,
+  "filtered_articles": 26,
   "articles": [
+    {
+      "title": "Watch out for cache read costs",
+      "title_zh": "长上下文代理的成本陷阱在缓存读取",
+      "link": "https://martinalderson.com/posts/watch-out-for-cache-read-costs/?utm_source=rss&utm_medium=rss&utm_campaign=feed",
+      "pub_date": "2026-08-10T00:00:00.000Z",
+      "summary": "## 一句话总结\n\n在长上下文的 agentic workload 里，真正决定账单的往往不再是 input/output token，而是每一轮都要重复读取的 KV cache；选模型时只看百万 token 单价，已经很容易算错账。\n\n## 正文\n\n### 长上下文让“输入成本”变成了一个误导性的指标\n\n很多人看 OpenRouter 或模型厂商的价格表，习惯先比较 input 和 output 每百万 token 的价格。这个习惯过去没什么问题，但放到今天的 agentic workload 里，已经不够用了。因为 agent 并不是发一次请求、拿一次答案就结束。它会不断调用工具、读取结果、继续推理，再带着此前积累的上下文进入下一轮。于是，每轮新增的 token 可能并不多，但此前的上下文需要被反复读取。说白了，账单里最容易膨胀的部分，已经从“新写进去多少”变成了“旧上下文被重读了多少次”。\n\n### 20 轮时只是接近一半，100 轮时 cache read 已经主宰账单\n\n文章用一个很典型的场景说明了这个变化：agent 从 60k context 开始，每次工具调用新增 500 token，同时读取 5,000 token，连续运行多轮。在 20 轮时，DeepSeek V4-Flash 的总成本是 $0.03，其中 cache read 为 $0.01，占 18.4%。Claude Opus 5 的总成本为 $2.32，cache read 是 $1.04，占 44.9%；GPT 5.6 Sol 则是 $2.16，其中 cache read 为 $1.04，占 48.1%。这时 cache read 已经接近账单的一半，但还不算特别惊人。真正的问题会在 session 继续拉长后出现。\n\n到了 100 轮，同一个 workload 的成本结构几乎翻转了。DeepSeek V4-Flash 的总价升至 $0.19，cache read 为 $0.09，占 48.1%。Claude Opus 5 的总价是 $21.34，其中 $16.31 来自 cache read，占比 76.4%。GPT 5.6 Sol 更夸张：总价 $36.20，cache read 高达 $29.55，占比 81.6%。也就是说，长任务里你主要不是在为模型生成答案付费，而是在为模型一次又一次地“回看历史”付费。\n\n### 成本为什么近似二次增长：每轮只加一点，却要重读全部\n\n这里的关键不是单轮新增了多少 token，而是 context 会随着轮数持续增长。文章里的每轮大约新增 5,500 token，但下一轮请求必须读取此前已经积累的完整上下文。第 1 轮读得少，第 50 轮已经要读几十万 token，第 100 轮又更大。把这些逐轮增长的读取量累加起来，整体成本就会随着轮数近似二次增长。文章假设 cache hit rate 为 100%，对于大多数自主 agent 来说，这个假设通常是合理的。\n\n这也解释了一个很实用的工程结论：减少 tool call 次数，收益会大得超出直觉。因为少一次调用，不只是少掉这一次的 output 和新 input，还避免了后续一轮对整个累积 context 的重复读取。文章估算，如果把 agent 的总轮数降低 10%，单次 agent run 的成本大约可以降低 16%。所以，更专用的工具、更少的来回确认、更能一次完成任务的 workflow，价值不只是提升 latency。它们还直接改变了成本曲线。\n\n### 模型价格表还藏着另一层陷阱：长请求可能跨过计费断崖\n\n有意思的是，cache read 不只是让成本变高，还会让模型之间的价格排序发生反转。在 20 轮场景里，GPT 5.6 Sol 比 Claude Opus 5 更便宜，分别是 $2.16 和 $2.32。可运行到 100 轮后，GPT 5.6 Sol 的成本变成 $36.20，反而比 Opus 5 的 $21.34 高出约 70%。这不是简单的 token 单价差异，而是 OpenAI 在输入超过 272k token 后的重新计费规则导致的。超过这一阈值后，整次调用按 2 倍 input 和 1.5 倍 output 计费，而不是只对超出的部分涨价。\n\n在文章的 100 轮计算中，仅这个价格断崖就让 GPT 5.6 Sol 的账单增加了 76%。相比之下，Anthropic 明确表示，900k-token request 与 9k-token request 使用相同的 per-token rate。于是，静态价格表上看起来更便宜的模型，在长 session 里可能突然变成明显更贵的选择。这里的教训很直接：模型选型不能只比较标称 input/output 价格。你还得把 context 长度、轮数、cache read 单价，以及长度阈值后的计费规则一起代入。\n\n### KV cache 正在变得很小，底层成本却没有同步反映到价格里\n\n为什么作者认为 cache read 会成为一个特别值得警惕的收费项？因为 context window 在变长，但 KV cache 本身在内存中的体积却在快速缩小。以 DeepSeek 的 Compressed Sparse Attention 和 Heavily Compressed Attention 为例，约 fp8 精度下，1M context 的 KV cache 可以压到约 5GB。这样的规模已经可以从 GPU VRAM 卸载到 system RAM，甚至放到 NVMe SSD 上。借助 RAID 式配置和 PCIe 5.0 flash，理论上把 1–5GB 的 cache 写入和读回可以低于 100ms。\n\n而且 Nvidia 和 AMD 都支持 GPU 直接读写 NVMe，数据甚至不必经过 system RAM。这样一组 NVMe 驱动器就能承载数万条 agentic session 的 cache。DeepSeek 也把这一点做成了 API 的卖点：它对同一模型的 cache read 收费可以做到其他 provider 的十分之一。虽然文章提到 DeepSeek 当时传闻会涨价，但作者认为那更可能是硬件供需失衡，而不是底层存储成本真的必须那么高。随着 KV cache 压缩和分层存储继续成熟，cache read 的市场价格理论上还有很大下行空间。\n\n### 这很可能是 frontier labs 最赚钱的一项收费\n\n文章最后算了一笔很尖锐的账。以 100 轮的 Claude Opus 5 session 为例，其中 cache read 花了 $16.31。若每轮约两分钟，整个 session 运行约 3.3 小时，生命周期中的平均 context 约为 330k token。即便按远高于 DeepSeek 的 30KB/token 估算，持有的 KV cache 也只是约 10GB。换算下来，用户支付的 cache read 费用大约是 $0.5 per GB-hour。\n\n作为对比，AWS 的内存租用成本远低于 $0.01 per GB-hour。作者也承认，这不是说 cache serving 只有 RAM 或 NVMe 成本。大规模推理服务还需要复杂网络、调度和数据迁移机制，确保 cache 恰好在请求到来时位于正确机器上。可是对本地部署、on-prem LLM，或者没到超大规模的组织来说，这类复杂度要低得多。最终的 takeaway 是：KV cache 的底层技术已经发生了巨大进步，但相应的定价机制还没有完全跟上，而 cache read 很可能会成为未来 agent 成本里最需要盯住的一项。",
+      "source_name": "martinalderson.com",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "KV cache",
+        "agentic workloads",
+        "cache reads",
+        "LLM pricing"
+      ],
+      "rank": 1
+    },
     {
       "title": "Michael Tsai on My Retraction of the Astrology/Astronomy App Store Rejection Story",
       "title_zh": "天文 App 拒审丑闻实为开发者误导",
@@ -22,7 +41,7 @@
         "Claude",
         "retraction"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "‘The Problem With Vibe-Coded Flattery’",
@@ -41,7 +60,26 @@
         "Dark Hours",
         "authenticity"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "Edinburgh Fringe: 15 Minutes of Shame ★★★★⯪",
+      "title_zh": "《15 Minutes of Shame》审视 OnlyFans 剥削",
+      "link": "https://shkspr.mobi/blog/2026/08/edinburgh-fringe-15-minutes-of-shame/",
+      "pub_date": "2026-08-10T20:43:10.000Z",
+      "summary": "《15 Minutes of Shame》借一对为缓解经济压力而投身 OnlyFans 的伴侣，呈现零工经济、算法和观众共同构成的控制关系。剧本将“品牌战略”“订阅漏斗”等 LinkedIn 式营销术语置入亲密关系，演员 Ellen Pallant 与 Anton Bibby 的表演令这类自我包装显得既精明又无奈。政治立场并不隐晦，结尾略显仓促，但留下了可供讨论的余波。",
+      "source_name": "shkspr.mobi",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "other",
+      "keywords": [
+        "Edinburgh Fringe",
+        "OnlyFans",
+        "sex work",
+        "theatre review"
+      ],
+      "rank": 4
     },
     {
       "title": "‘Friday Night Baseball’ Will Start Broadcasting Games Live, in Apple Immersive, on Vision Pro",
@@ -60,7 +98,26 @@
         "Friday Night Baseball",
         "Apple TV"
       ],
-      "rank": 3
+      "rank": 5
+    },
+    {
+      "title": "What’s New in iOS 27 Beta 5",
+      "title_zh": "iOS 27 Beta 5 扩展 Siri 英式英语语音",
+      "link": "https://9to5mac.com/2026/08/10/heres-whats-new-with-ios-27-beta-5/",
+      "pub_date": "2026-08-10T21:54:25.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 6,
+      "depth": 2,
+      "novelty": 4,
+      "category": "other",
+      "keywords": [
+        "iOS 27",
+        "beta 5",
+        "Siri",
+        "Apple Intelligence"
+      ],
+      "rank": 6
     },
     {
       "title": "Edinburgh Fringe - Kat Ronson: Millennial Girl ★★★★☆",
@@ -79,7 +136,7 @@
         "millennial nostalgia",
         "comedy review"
       ],
-      "rank": 4
+      "rank": 7
     },
     {
       "title": "Edinburgh Fringe - Michael Brunström: William Tell vs the Algorithm ★★★☆☆",
@@ -98,7 +155,24 @@
         "comedy",
         "AI"
       ],
-      "rank": 5
+      "rank": 8
+    },
+    {
+      "title": "[Sponsor] Drata",
+      "title_zh": "Drata 合规自动化赞助链接",
+      "link": "https://drata.com/daring",
+      "pub_date": "2026-08-10T22:25:00.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "security",
+      "keywords": [
+        "Drata",
+        "compliance automation"
+      ],
+      "rank": 9
     }
   ]
 }
