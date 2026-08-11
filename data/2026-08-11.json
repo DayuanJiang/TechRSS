@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2539,
-  "filtered_articles": 17,
+  "filtered_articles": 18,
   "articles": [
+    {
+      "title": "Shared Code Between Package Managers",
+      "title_zh": "包管理器重复造轮子放大安全修复缺口",
+      "link": "https://nesbitt.io/2026/08/11/package-manager-library-reuse.html",
+      "pub_date": "2026-08-11T10:00:00.000Z",
+      "summary": "## 一句话总结\n\n包管理器之间真正共享的代码远少于想象，尤其是最容易出安全问题的 git、解压、下载校验等底层操作，结果就是同一种漏洞在不同工具里被反复独立修复。\n\n## 正文\n\n### 从重复出现的 CVE，追问“这些工具到底有没有共用轮子”\n\n作者先整理了 package manager CWE，以及 `--end-of-options` 参数注入漏洞的调查。一个现象反复出现：同一种 bug，会在一个又一个工具里被独立发现、独立修复。于是问题来了，既然它们都在做依赖解析、下载、解压、调用 git，为什么不能共享实现？作者检查了 20 个包管理器的直接依赖，覆盖 Ruby、JavaScript、Rust、Python 和 C/C++。筛选时排除了 `serde`、`clap`、`requests` 这类普通 CLI 也会使用的通用库。要找的是更具体的东西：真正承载包管理语义的 resolver、registry client、版本解析器、安装器和 git 集成。\n\n### 少数项目确实直接复用另一个包管理器的内部能力\n\n结论并不全是坏消息，确实有几个项目走到了“直接复用同行代码”这一步。Pixi 将 28 个 uv crate 当作自己的 PyPI 后端，包括 `uv-resolver`、`uv-distribution`、`uv-client`、`uv-install-wheel`、`uv-pep440` 和 `uv-git`。pnpm 依赖了 5 个 Yarn Berry 包，包括 `@yarnpkg/core`、`@yarnpkg/lockfile`、`@yarnpkg/pnp`、`@yarnpkg/nm` 和 `@yarnpkg/extensions`。uv 则从 Cargo 仓库中复用了 `cargo-util`。这种直接依赖的价值很直观：底层逻辑有 bug 时，修复可以在一个代码库发生，再通过升级依赖传递出去。可惜，在 20 个样本中，直接这么做的只有 3 个。\n\n### 共享最成功的部分，往往有明确的规范与维护者\n\nJavaScript 生态的复用相对明显。npm、Yarn Berry 和 pnpm 在不同组合中共用了 8 个 npm-org 包，包括 `semver`、`ssri`、`hosted-git-info`、`validate-npm-package-name`、`npm-registry-fetch`、`libnpmpublish`、`node-gyp` 和 `bin-links`。Python 这边，PyPA 提供了 `packaging` 和 `pyproject-hooks`，前者实现 PEP 440，后者负责 PEP 517 build backend 调用。pip、Poetry 和 Conda 都会使用 PEP 440 的实现，而 pip 与 Poetry 也共享 PEP 517 调用逻辑。有意思的地方在于，npm-org 和 PyPA 不只是库的发布者，还是相关规范的维护者。也就是说，规范、实现和维护责任集中在一起，才更容易形成可复用的基础设施。\n\n### 但关键安全边界，恰恰仍在各家重复造轮子\n\n跨生态的共享更少。uv 和 Pixi 都使用 Embark Studios 的 `spdx` crate 来解析 license expression，DNF5 与 Mamba 都使用 `libsolv` 做依赖求解。`libsolv` 是样本中唯一一个被不同 registry 体系采用的 solver library。可一旦看向更危险的操作，复用几乎消失了：Ruby 组唯一明显重叠的是 Homebrew 和 CocoaPods 共享的 `ruby-macho`。除 Pixi 使用 `uv-git` 外，没有两个 manager 共用 git subprocess wrapper。JavaScript 以外，也没有两个 manager 共享带路径检查的 archive extractor。说白了，大家愿意共享版本解析和求解器，却仍各自实现最容易踩安全坑的边界代码。\n\n### Vendor 解决了启动难题，却让修复传播变成了额外工作\n\npip、Bundler 和 Homebrew 还有另一种复用方式：不声明依赖，而是把代码 vendor 进仓库。这样做主要是为了解决 bootstrap 问题，因为包管理器不能轻易依赖一个必须先由自己安装的组件。pip 的 `_vendor/` 目录里包含 `packaging`、`pyproject_hooks`、`distro`、`platformdirs`、`requests` 等十多个库。于是 pip 虽然没有对 Poetry 或 Conda 形成显式依赖边，但仍在使用同一个 PEP 440 parser。代价是，某个 vendored 库出现 CVE 后，修复不会自动流入消费者，而要靠每个项目单独执行一次 re-vendor。pip 为此提供了基于 pinned `vendor.txt` 的 `nox -s vendoring` 工具，但这仍然是一道需要人工跨越的传播链路。\n\n### 共享代码时，漏洞修复能成为一次升级；不共享时，就是多年的追赶\n\n作者用几个历史 CVE 把差异说得很清楚。npm 和 Yarn Berry 在 2021 年都依赖 `tar`，而 `tar` 当年出现了 5 个 path traversal advisory：`CVE-2021-32803`、`32804`、`37701`、`37712` 和 `37713`。这些修复集中发生在 `tar` 一个代码库中，消费者只需升级版本即可获得补丁。`semver` 的 `CVE-2022-25883` 同样影响 npm、Yarn 和 pnpm，`hosted-git-info` 的 `CVE-2021-23362` 则影响 npm 和 pnpm。反过来，`--end-of-options` 调查追踪到 8 个 git argument injection CVE，横跨 Bundler、Composer、CocoaPods、Poetry、pip 和 Go。它们全是各自独立报告、独立修复，Go 从攻击模式首次公开到发布自身补丁，间隔长达 5 年。\n\n### 真正缺的不是“共享意识”，而是可独立维护的安全基础设施\n\n为什么 npm 生态能形成一些共享包，而 RubyGems 和 pip 很难做到？作者给出的关键解释是 bootstrap。npm 随 Node 一起发布，Node installer 解决了 npm 的启动问题，因此 npm 内部能力可以拆成独立 package，甚至让竞争者直接依赖。RubyGems 和 pip 没有对应的外部安装器；如果 RubyGems 团队发布一个 `git-source` gem，RubyGems 自己反而未必能安全地把它声明为依赖。`libsolv` 之所以能跨工具采用，也正因为它由包管理器之外的组织维护。最终，git invocation、checked archive extraction、download-verify-cache 这些持续产生独立 advisory 的模块，既没有共同实现，也没有明确的 spec owner。文章的核心警告就在这里：只要这些安全关键操作继续被每个包管理器自行实现，同一种漏洞就还会继续以不同名字、不同 CVE、不同修复时间表反复出现。",
+      "source_name": "nesbitt.io",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "package managers",
+        "dependency reuse",
+        "CVE",
+        "vendoring"
+      ],
+      "rank": 1
+    },
     {
       "title": "Watch out for cache read costs",
       "title_zh": "长上下文代理的成本陷阱在缓存读取",
@@ -22,7 +41,7 @@
         "cache reads",
         "LLM pricing"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Introducing Muse Glimmer",
@@ -41,7 +60,7 @@
         "agentic models",
         "LM Studio"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "No, local models will not win",
@@ -60,7 +79,7 @@
         "batching",
         "B200"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Michael Tsai on My Retraction of the Astrology/Astronomy App Store Rejection Story",
@@ -79,7 +98,7 @@
         "Claude",
         "retraction"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "‘The Problem With Vibe-Coded Flattery’",
@@ -98,7 +117,7 @@
         "Dark Hours",
         "authenticity"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "A noob learns FFT",
@@ -117,7 +136,7 @@
         "spectrogram",
         "Nyquist"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Edinburgh Fringe: 15 Minutes of Shame ★★★★⯪",
@@ -136,7 +155,7 @@
         "sex work",
         "theatre review"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "‘Friday Night Baseball’ Will Start Broadcasting Games Live, in Apple Immersive, on Vision Pro",
@@ -155,7 +174,7 @@
         "Friday Night Baseball",
         "Apple TV"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "What’s New in iOS 27 Beta 5",
@@ -174,7 +193,7 @@
         "Siri",
         "Apple Intelligence"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "How can I perform a Copy­File&shy in unbuffered mode?",
@@ -193,7 +212,7 @@
         "CopyFile2",
         "unbuffered I/O"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Edinburgh Fringe - Kat Ronson: Millennial Girl ★★★★☆",
@@ -212,7 +231,7 @@
         "millennial nostalgia",
         "comedy review"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "Edinburgh Fringe - Michael Brunström: William Tell vs the Algorithm ★★★☆☆",
@@ -231,7 +250,7 @@
         "comedy",
         "AI"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "[Sponsor] Drata",
@@ -248,7 +267,7 @@
         "Drata",
         "compliance automation"
       ],
-      "rank": 13
+      "rank": 14
     }
   ]
 }
