@@ -1,9 +1,9 @@
 {
   "date": "2026-08-11",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2494,
-  "filtered_articles": 19,
+  "success_feeds": 85,
+  "total_articles": 2539,
+  "filtered_articles": 21,
   "articles": [
     {
       "title": "Watch out for cache read costs",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Introducing Muse Glimmer",
+      "title_zh": "Meta 以 Apache 2.0 发布 30B Muse Glimmer",
+      "link": "https://simonwillison.net/2026/Aug/10/introducing-muse-glimmer/#atom-everything",
+      "pub_date": "2026-08-10T23:56:03.000Z",
+      "summary": "## 一句话总结\n\nMuse Glimmer 是 Meta 重新押注开放权重的一款 30B Apache 2.0 模型，它最值得关注的不是“能聊天”，而是在 32GB 以上内存的本地机器上，尝试把代码 Agent、工具调用和视觉理解一起跑起来。\n\n## 正文\n\n### Meta 回归开放权重，关键是这次许可证终于干净了\n\n这篇文章一开头最醒目的消息，是 Meta 又回到了 open weights 阵营。新模型叫 Muse Glimmer，规模是 30B，采用 Apache 2.0 许可证。这个细节看似枯燥，实际很重要。相比过去 Llama 系列那些被作者称为“janky”的许可证，Apache 2.0 给本地部署、再分发和商业集成留下了更清晰的空间。说白了，模型能力再强，如果许可证让人不敢用，它就很难真正进入开发者工具链。Muse Glimmer 的定位也很明确：它不是单纯追求对话效果，而是冲着本地 Agent 工作流来的。\n\n### 它瞄准的不是单点能力，而是把任务真的做完\n\nMeta 对 Glimmer 的宣传集中在三个方向：端到端 Agent 任务完成、可靠的 Tool Use，以及长链路的多步推理。前者对应 DeepSearch QA、MCP-Atlas、τ-Bench 和 SWE-Bench 这些 full-task benchmark。它们考察的不是模型会不会写一段代码，而是能否在脚手架环境里探索问题、调用工具、修改代码、调试并完成多轮请求。这里的逻辑很直接：真实 Agent 失败，往往不是因为某一步不会做，而是在十几次工具调用后丢了上下文、调错参数，或者忘了最初目标。Glimmer 声称能在长工作流中维持连贯计划，并以精确 schema 发起 function call，正是在解决这个更难的问题。至于这些 benchmark 声明有多大程度能迁移到日常项目，作者没有替 Meta 背书，而是直接开始自己跑。\n\n### 30B 是一个很现实的本地部署甜点位\n\n作者通过 LM Studio 使用了模型的 18.16GB 版本，并让它生成了一只 pelican 的图像。结果颇有代表性：画面里的元素基本都在，但组合得比较混乱。这个例子没有被包装成“惊艳的本地文生图效果”，反而很诚实地暴露了模型当前的局限。可作者依然喜欢这个尺寸，因为 30B 模型在量化后能落在相对可控的内存范围里。只要机器有 32GB RAM 以上，就还能给浏览器、编辑器、数据库和其他开发工具留出空间；作者自己的机器是 128GB RAM。对于希望在本机常驻模型的开发者来说，这比动辄占满显存或内存的大模型更有实际意义。\n\n### 真正的测试是让它读 Datasette，而不是让它回答一道题\n\n为了验证 Agent 能力，作者拿自己的 `llm-coding-agent` plugin 跑了一次实战。测试对象是一个刚 checkout 下来的 Datasette 代码库，提示词只有一句：`how does auth work?`。这类问题很适合检验 Agent，因为答案不会藏在单个文件里。模型需要先理解仓库结构，再检索认证相关实现，沿着调用链和配置逻辑继续挖，最后组织成能让人读懂的解释。作者保留了完整 transcript，其中包含模型为探索代码库而发起的一长串工具调用，以及最终回答。运行环境则是 `llm-lmstudio`，并应用了一个兼容 LLM 0.32 的 patch，这也说明本地 Agent 的体验不只取决于模型，外围工具协议和插件兼容性同样是链条的一部分。\n\n### 视觉能力意外地扎实，但它仍然不是完美的全能模型\n\nGlimmer 还是一个 vision model，作者随后用命令行把一张两只鹈鹕站在岩石上的图片交给它描述。调用方式是 `llm -m lmstudio/meta/muse-glimmer -a <image-url> 'describe image'`，也就是把视觉输入直接接入本地 LLM 工具链。模型的输出相当细：它识别出阴天、灰色水面、breakwater 风格的岩石岸线，以及两只 brown pelican。它还描述了鹈鹕的喙、喉囊、羽毛颜色、姿态，并注意到岩石间还有几只较小的鸟。更有意思的是，它没有只给出“图中有两只鸟”这种泛泛描述，而是把构图、光线和前后景关系也讲出来了。和前面那张“元素都有但布局混乱”的生成图放在一起看，Glimmer 的图像理解显然比它的图像生成更令人信服。\n\n### 这篇文章传递的信号，是本地 Agent 开始变得可用而不是只可演示\n\n整篇文章没有试图证明 Muse Glimmer 已经击败所有闭源模型。它展示的是另一件更务实的事：一个 Apache 2.0 的 30B 开放权重模型，已经可以在个人机器上承担代码库探索、工具调用和图像理解等任务。Meta 的 benchmark 宣称提供了宏观指标，而作者的 Datasette 测试和图片描述，则补上了“拿到手能不能跑”的微观体验。它的文生图结果仍然有明显瑕疵，这提醒我们不能把“多模态”自动等同于每项能力都成熟。可是，对有 32GB 以上内存、又不想把开发工作流完全交给云端 API 的开发者而言，这个模型尺寸和许可证组合很有吸引力。核心看点不在于它某一道 benchmark 的分数，而在于它是否能成为本地开发环境里那个真正能调用工具、读懂仓库、并持续完成任务的 Agent 大脑。",
+      "source_name": "simonwillison.net",
+      "score": 12,
+      "depth": 5,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "Muse Glimmer",
+        "Meta",
+        "agentic models",
+        "LM Studio"
+      ],
+      "rank": 2
+    },
+    {
       "title": "No, local models will not win",
       "title_zh": "本地模型难以取代数据中心推理",
       "link": "https://seangoedecke.com/local-models-will-not-win/",
@@ -41,7 +60,7 @@
         "batching",
         "B200"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Michael Tsai on My Retraction of the Astrology/Astronomy App Store Rejection Story",
@@ -60,7 +79,7 @@
         "Claude",
         "retraction"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "‘The Problem With Vibe-Coded Flattery’",
@@ -79,7 +98,7 @@
         "Dark Hours",
         "authenticity"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Edinburgh Fringe: 15 Minutes of Shame ★★★★⯪",
@@ -98,7 +117,7 @@
         "sex work",
         "theatre review"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "‘Friday Night Baseball’ Will Start Broadcasting Games Live, in Apple Immersive, on Vision Pro",
@@ -117,7 +136,7 @@
         "Friday Night Baseball",
         "Apple TV"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "What’s New in iOS 27 Beta 5",
@@ -136,7 +155,7 @@
         "Siri",
         "Apple Intelligence"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Edinburgh Fringe - Kat Ronson: Millennial Girl ★★★★☆",
@@ -155,7 +174,7 @@
         "millennial nostalgia",
         "comedy review"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Edinburgh Fringe - Michael Brunström: William Tell vs the Algorithm ★★★☆☆",
@@ -174,7 +193,7 @@
         "comedy",
         "AI"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "[Sponsor] Drata",
@@ -191,7 +210,7 @@
         "Drata",
         "compliance automation"
       ],
-      "rank": 10
+      "rank": 11
     }
   ]
 }
