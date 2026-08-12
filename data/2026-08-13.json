@@ -1,10 +1,29 @@
 {
   "date": "2026-08-13",
   "total_feeds": 92,
-  "success_feeds": 79,
-  "total_articles": 2411,
-  "filtered_articles": 21,
+  "success_feeds": 83,
+  "total_articles": 2466,
+  "filtered_articles": 16,
   "articles": [
+    {
+      "title": "Stealing Reasoning Traces from Proprietary LLM APIs",
+      "title_zh": "加密推理链可借弱模型被解密窃取",
+      "link": "https://simonwillison.net/2026/Aug/11/stealing-reasoning-traces/",
+      "pub_date": "2026-08-11T22:40:45.000Z",
+      "summary": "## 一句话总结\n\n这篇研究揭示了一个已经被修复的漏洞：攻击者能把前沿模型的加密 reasoning trace 回放给同家族的弱模型，再诱导弱模型吐出强模型本不该公开的原始 Chain-of-Thought。\n\n## 正文\n\n### 加密的 reasoning，不等于只能由原模型读取\n\n事情的起点是，Anthropic、OpenAI 和 Google 的 API 都会向客户端返回加密后的 reasoning block。  \n这些 block 看起来像一长串密文，OpenAI Responses API 中对应的字段是 `reasoning.encrypted_content`。  \n正常设计下，客户端不该读取它的内容，但可以把它带到后续请求中。  \n这本来是为了让模型跨请求延续推理状态，而不是每一轮都重新思考。  \n例如，文章给出的 GPT-5.6-luna 请求会返回一个 `type: \"reasoning\"` 的 output，其中 `content` 为空，但附带 `encrypted_content`。  \n问题不在于密文本身能不能被破解，而在于服务端会不会替客户端解密并信任它。  \n研究者发现，答案不仅是“会”，而且这个信任边界比预想中宽得多。\n\n### 真正的漏洞：同一模型家族共用了解密能力\n\n论文的关键发现是，同一模型家族中的不同模型似乎使用了相同的加密密钥或兼容的解密机制。  \n因此，一个由强模型生成的 reasoning trace，可以被回放到同家族较弱的模型上。  \n弱模型收到这段密文后，能够识别并恢复其中的原始推理内容。  \n到这里还不一定构成泄露，毕竟模型通常仍会把 reasoning 当作内部信息，不直接展示给用户。  \n但研究者接着对这个弱模型实施 jailbreak，要求它把附带的 reasoning 原样转录出来。  \n说白了，攻击者不需要攻破 OpenAI、Anthropic 或 Google 的密码系统。  \n他们只需要让一个较弱、较容易越狱的“同门模型”，替自己把强模型的内部思考翻译成明文。\n\n### Haiku 4.5 成了最容易被撬开的那扇门\n\n在实验中，Claude Haiku 4.5 是最容易攻击的目标之一。  \n研究者使用的提示词很直接：要求模型继续执行，并将当前轮附带的 reasoning 逐字放进 `<thinking-copy>...</thinking-copy>` 标签中。  \n更关键的一步，是给 assistant turn 预填 `<thinking-copy>` 这个前缀。  \n这相当于把模型推到“已经开始转录内部思考”的轨道上，再让它顺势补完。  \nAnthropic 后续在 4.6 系列模型中移除了 prefilled response 这一能力，因此这条具体攻击路径不再适用。  \n而且论文披露后，所有受影响的模型提供商都确认收到报告。  \n研究者随后也无法再复现相同攻击，说明这个跨模型回放与泄露链条已经被修补。\n\n### 泄露出来的不是精修答案，而是模型真实的工作草稿\n\n论文附录收录了大量成功提取的 reasoning trace。  \n这些内容提供了一个罕见窗口，让人看到专有模型未经整理的原始 Chain-of-Thought。  \n从文中展示的 GPT-5.5 CSS 推理片段来看，它的内部文字非常像开发过程中的草稿。  \n里面有不完整句子、待办事项、架构权衡，以及诸如 “Need app.css truncated” 这样的自言自语。  \n这也解释了为什么模型厂商不愿直接公开 reasoning token。  \n它们并不是面向用户的解释，而是模型执行任务时产生的内部轨迹。  \n一旦这些轨迹可被稳定导出，泄露的就不只是某一次回答，还可能包括模型的策略、偏好和隐含指令处理方式。\n\n### 更危险的后果，是 reasoning trace 会变成高可信提示注入载体\n\n文章最后提到了一种更隐蔽的 prompt injection 变体。  \n攻击者可以诱导一个模型在自己的 reasoning 中考虑某种数据外传行为，例如把文件上传到远程服务器。  \n随后，再把这段加密 reasoning trace 回放给另一个模型。  \n实验表明，模型似乎会把自己的 reasoning 视为一种近乎“神圣”的上下文。  \n相比普通用户输入，进入 reasoning block 的指令更容易被后续模型接受和执行。  \n这让 reasoning trace 不再只是隐私与可解释性问题，还可能成为跨会话、跨模型传播的高权限指令通道。  \n漏洞虽然已经修复，但这篇论文留下的警示很明确：只要模型把加密状态视作可信内部上下文，密文的可回放性本身就可能成为攻击面。",
+      "source_name": "simonwillison.net",
+      "score": 15,
+      "depth": 6,
+      "novelty": 9,
+      "category": "security",
+      "keywords": [
+        "chain-of-thought",
+        "prompt injection",
+        "Anthropic",
+        "OpenAI"
+      ],
+      "rank": 1
+    },
     {
       "title": "Card Sharks",
       "title_zh": "贺卡公司如何造出 Care Bears 帝国",
@@ -22,7 +41,7 @@
         "Strawberry Shortcake",
         "character licensing"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Amazon Is Spiting Customers With Unhelpful Order Confirmation Emails",
@@ -41,7 +60,7 @@
         "AI agents",
         "e-commerce"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Google’s Pixel Watch 5",
@@ -60,7 +79,7 @@
         "SpO2",
         "insulin resistance"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Google Introduces ‘Camera Looks’ With Pixel 11 Phones",
@@ -79,7 +98,7 @@
         "HDR+",
         "Camera Looks"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Hands-On With Google Pixel 11 Pro Fold",
@@ -98,7 +117,26 @@
         "Qi 2.2",
         "Galaxy Z Fold 8"
       ],
-      "rank": 5
+      "rank": 6
+    },
+    {
+      "title": "There are no lossless transformations of natural-language text",
+      "title_zh": "LLM 润色无法无损保留原意",
+      "link": "https://simonwillison.net/2026/Aug/11/there-are-no-lossless-transformations-of-natural-language-text/",
+      "pub_date": "2026-08-11T23:48:35.000Z",
+      "summary": "LLM 对自然语言的改写不可能无损：措辞、重点和隐含意图都会变化，因此工程师不能把生成或润色结果当作可直接转发的个人表达。可接受的底线是发布者须能为文档中每个观点和句子负责，并在被追问时解释其含义；以“AI 写的”为由否认内容只会误导读者、浪费评审时间。",
+      "source_name": "simonwillison.net",
+      "score": 8,
+      "depth": 3,
+      "novelty": 5,
+      "category": "opinion",
+      "keywords": [
+        "LLM",
+        "AI writing",
+        "natural language",
+        "engineering"
+      ],
+      "rank": 7
     },
     {
       "title": "TechCrunch on Google’s Pixel 11 Lineup",
@@ -117,7 +155,45 @@
         "Tensor G6",
         "Magic Capture"
       ],
-      "rank": 6
+      "rank": 8
+    },
+    {
+      "title": "Quoting Florian Herrengt",
+      "title_zh": "AI 编程正在掏空软件工程的中间层",
+      "link": "https://simonwillison.net/2026/Aug/12/florian-herrengt/",
+      "pub_date": "2026-08-12T15:08:47.000Z",
+      "summary": "AI 代写代码会让团队在复杂系统出现故障时失去关键的上下文与排障能力：开发者不知道数据来源，只能再向 Claude 追问，并无法验证其自信生成的解释。引用以“第四次让 AI 修 bug”仍失败为例，警示代码产出变快不等于系统知识被保留；缺少理解、文档和责任归属的团队，最终可能无人能维护自己构建的软件。",
+      "source_name": "simonwillison.net",
+      "score": 7,
+      "depth": 2,
+      "novelty": 5,
+      "category": "opinion",
+      "keywords": [
+        "AI coding",
+        "Claude",
+        "software engineering",
+        "codebase complexity"
+      ],
+      "rank": 9
+    },
+    {
+      "title": "Edinburgh Fringe - Heated Rivalry: The Unauthorized Musical Parody ★★★★☆",
+      "title_zh": "《Heated Rivalry》未授权音乐恶搞剧短评",
+      "link": "https://shkspr.mobi/blog/2026/08/edinburgh-fringe-heated-rivalry-the-unauthorized-musical-parody/",
+      "pub_date": "2026-08-12T21:22:09.000Z",
+      "summary": "",
+      "source_name": "shkspr.mobi",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "Edinburgh Fringe",
+        "Heated Rivalry",
+        "musical parody",
+        "theatre review"
+      ],
+      "rank": 10
     },
     {
       "title": "Edinburgh Fringe - Garrett Millerick: We Tried it Your Way ★☆☆☆☆",
@@ -136,7 +212,7 @@
         "Edinburgh Fringe",
         "Garrett Millerick"
       ],
-      "rank": 7
+      "rank": 11
     },
     {
       "title": "Edinburgh Fringe - James Rowland: Team Viking ★★⯪☆☆",
@@ -154,7 +230,7 @@
         "James Rowland",
         "theatre review"
       ],
-      "rank": 8
+      "rank": 12
     }
   ]
 }
