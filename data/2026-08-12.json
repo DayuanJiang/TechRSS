@@ -2,8 +2,8 @@
   "date": "2026-08-12",
   "total_feeds": 92,
   "success_feeds": 84,
-  "total_articles": 2491,
-  "filtered_articles": 18,
+  "total_articles": 2514,
+  "filtered_articles": 27,
   "articles": [
     {
       "title": "Don't Look Up",
@@ -82,6 +82,25 @@
       "rank": 4
     },
     {
+      "title": "The little-known winstart.bat batch file",
+      "title_zh": "WINSTART.BAT 如何隔离 Windows 的 TSR",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260811-00/?p=112605",
+      "pub_date": "2026-08-11T14:00:00.000Z",
+      "summary": "## 一句话总结\n\n`WINSTART.BAT` 的真正用途，是在 Windows 启动后的 System VM 中加载只服务于 Windows 程序的 TSR，而不让这些 TSR 占用普通 MS-DOS 虚拟机的内存或引入兼容性问题。\n\n## 正文\n\n### `AUTOEXEC.BAT` 解决的是全局初始化，代价是所有 DOS 环境都得带上它\n\n理解 `WINSTART.BAT`，要先从 `AUTOEXEC.BAT` 的位置说起。机器启动时，先进入 MS-DOS，随后 `COMMAND.COM` 执行 `AUTOEXEC.BAT`。这时加载的 TSR，例如文中的 `TSR1`，属于真实模式 DOS 环境的一部分。之后 Windows 接管系统时，会把当时已有的 DOS 环境带入它创建的 System VM。结果就是，`AUTOEXEC.BAT` 加载的 TSR 不仅对 Windows 可见，也会出现在后来创建的每一个 DOS virtual machine 里。说白了，`AUTOEXEC.BAT` 是“全局生效”的入口，方便，但没有隔离能力。\n\n### Windows 95 接管 DOS 后，先造了一个 System VM\n\nWindows 95 的启动并不是简单地“DOS 退出，Windows 进来”。Virtual Machine Manager 初始化后，系统进入 protected mode，并建立一个运行在 v86 mode 的 System VM。这个 System VM 继承了 Windows 接管前的 real-mode 环境，所以此前加载的 `TSR1` 仍然存在。与此同时，Virtual Machine Manager 接管了文件系统职责，并关闭了 MS-DOS 原本的 real-mode file system。这里有个很有时代感的设计：你先启动了 MS-DOS，然后 Windows 又把这个 DOS 环境包进自己管理的虚拟机里。Raymond Chen 的比喻很形象：像是你走在街上，走到一半才发现整条街其实是电影摄影棚搭出来的。\n\n### `WINSTART.BAT` 恰好卡在 Windows kernel 启动之前\n\n`WINSTART.BAT` 的执行时机，就是 Virtual Machine Manager 创建好 System VM 之后、启动 Windows user-mode kernel 之前。它不是在纯 DOS 阶段运行，也不是在 Windows GUI 已经起来之后才运行。它运行在 System VM 内，因此可以再加载一个 TSR，例如文中的 `TSR2`。接下来，Windows 的 user-mode kernel 启动，System VM 被切换到 Windows 应用实际运行的 protected-mode 环境。于是 `TSR2` 对 Windows 程序有效，但它并不属于 Windows 最初接管时的 DOS 基线状态。这个时间点，正是 `WINSTART.BAT` 存在的全部价值。\n\n### 新开的 DOS 窗口不会继承 `WINSTART.BAT` 里的 TSR\n\n关键差异出现在用户从 Windows GUI 打开一个 command prompt 时。Windows 会为这个 command prompt 创建第二个 virtual machine，而这个 VM 的基础镜像来自 Windows 启动时的系统状态。它能看到在 `AUTOEXEC.BAT` 阶段加载的 `TSR1`，却看不到之后由 `WINSTART.BAT` 加载的 `TSR2`。如果你在这个 DOS 窗口里再加载一个 `TSR3`，那它只属于这个特定的 VM。于是三种加载位置形成了清晰的作用域：DOS 启动阶段加载的 TSR 到处可见，`WINSTART.BAT` 加载的 TSR 只对 Windows 可见，在单一 DOS VM 中加载的 TSR 则只在该 VM 可见。这个隔离模型，正是 Windows 3.x/95 虚拟 DOS 环境设计的一个缩影。\n\n### 它的实际用途，是把“只给 Windows 用”的驱动从 DOS 里拿出去\n\n那么什么东西适合放进 `WINSTART.BAT`？典型例子是只为 Windows 程序服务的 network driver 或其他 TSR。假如你不需要让 MS-DOS 程序联网，就没必要通过 `AUTOEXEC.BAT` 把网络驱动加载到所有 DOS VM 中。这样做能释放 conventional memory，留给真正需要运行的 DOS 程序。另一种情况是，某些驱动根本不支持同时运行于多个 virtual machine。此时把它放在 System VM 中，可以让 Windows 程序使用它，同时避免 DOS 程序所在的 VM 与它发生冲突。核心思路其实很简单：`AUTOEXEC.BAT` 管全局，`WINSTART.BAT` 管 Windows 专属环境。\n\n### 这不是 Windows 95 的新功能，而是 Windows 3.1 时代的设计\n\n有意思的是，很多发现 `WINSTART.BAT` 的人会把它当成 Windows 95 的冷门特性。Raymond Chen 指出，它实际上至少可以追溯到 Windows 3.1，甚至可能 Windows 3.0 就已经存在。Windows 3.1 Resource Kit 第 263 页已经明确记录了这套机制，并用表格说明 TSR 在不同加载位置下的可见范围。该表的结论很直接：从 MS-DOS 加载，Windows 和全部 virtual machines 都可见；从 `WINSTART.BAT` 加载，Windows 可见、其他 virtual machines 不可见；在单个 virtual machine 内加载，则仅该 VM 可见。需要注意的是，当时文档里的 “virtual machine” 往往专指非 Windows 的 DOS VM，而运行 Windows 本身的 System VM 通常直接被称为 “Windows”。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 6,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Windows 95",
+        "Windows 3.1",
+        "WINSTART.BAT",
+        "TSR"
+      ],
+      "rank": 5
+    },
+    {
       "title": "Netflix Has Peaked",
       "title_zh": "Netflix增长见顶并转向廉价内容",
       "link": "https://sharptext.net/2026/is-netflix-washed-now/",
@@ -98,7 +117,7 @@
         "YouTube",
         "engagement"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Mark Zuckerberg Posts 6,500-Word AI Essay",
@@ -117,7 +136,7 @@
         "alignment",
         "open source"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Alex Micek on BMW’s iDrive ‘Special Surprises’",
@@ -136,7 +155,7 @@
         "in-car advertising",
         "dark patterns"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Microsoft Plugs Nearly 400 Security Holes",
@@ -155,7 +174,7 @@
         "CVE-2026-68820",
         "afd.sys"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Anthropic Posts ‘How Claude Marks AI-Generated Content’ Without Explaining How Claude Marks AI-Generated Content",
@@ -174,7 +193,26 @@
         "C2PA",
         "EU AI Act"
       ],
-      "rank": 9
+      "rank": 10
+    },
+    {
+      "title": "datasette-upload-dbs 0.5a0",
+      "title_zh": "Datasette 支持 API 原子替换 SQLite 数据库",
+      "link": "https://simonwillison.net/2026/Aug/11/datasette-upload-dbs/#atom-everything",
+      "pub_date": "2026-08-11T20:35:13.000Z",
+      "summary": "datasette-upload-dbs 0.5a0 增加正式 API，可通过带 Bearer Token 的 multipart POST 上传 SQLite 文件并指定数据库名。服务端先保存和校验文件，再原子切换正在服务的数据库；GitHub Actions 可在构建完成后直接发布新版数据。",
+      "source_name": "simonwillison.net",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "tools",
+      "keywords": [
+        "Datasette",
+        "SQLite",
+        "API",
+        "GitHub Actions"
+      ],
+      "rank": 11
     },
     {
       "title": "There are no lossless transformations of natural-language text",
@@ -193,7 +231,7 @@
         "semantics",
         "documentation"
       ],
-      "rank": 10
+      "rank": 12
     },
     {
       "title": "The Talk Show: ‘Getting the Snack Right’",
@@ -212,7 +250,7 @@
         "Vision Pro",
         "OpenAI"
       ],
-      "rank": 11
+      "rank": 13
     },
     {
       "title": "BMW Probably Paid Sony for the Spider-Man Dashboard Ads, Not the Other Way Around",
@@ -231,7 +269,7 @@
         "E Ink Prism",
         "BMW Operating System"
       ],
-      "rank": 12
+      "rank": 14
     },
     {
       "title": "Edinburgh Fringe: Hamlet The Musical ★★☆☆☆",
@@ -250,7 +288,7 @@
         "musical theatre",
         "review"
       ],
-      "rank": 13
+      "rank": 15
     },
     {
       "title": "The Economist: ‘How to Spot AI Writing’",
@@ -268,7 +306,7 @@
         "LLM",
         "writing detection"
       ],
-      "rank": 14
+      "rank": 16
     },
     {
       "title": "Edinburgh Fringe - Justina Seselskaite: Settled ★★★★☆",
@@ -287,7 +325,7 @@
         "stand-up comedy",
         "Lithuania"
       ],
-      "rank": 15
+      "rank": 17
     },
     {
       "title": "The Economist: ‘How to Spot AI Writing’",
@@ -305,7 +343,7 @@
         "authorship",
         "The Economist"
       ],
-      "rank": 16
+      "rank": 18
     },
     {
       "title": "Books I Enjoyed In 2026H1",
@@ -324,7 +362,7 @@
         "space settlement",
         "logic"
       ],
-      "rank": 17
+      "rank": 19
     },
     {
       "title": "Edinburgh Fringe: Afronauts ★★★★☆",
@@ -343,7 +381,7 @@
         "Afrofuturism",
         "circus"
       ],
-      "rank": 18
+      "rank": 20
     },
     {
       "title": "Edinburgh Fringe: Handel Nine German Arias ★★★⯪☆",
@@ -361,7 +399,7 @@
         "Handel",
         "classical music"
       ],
-      "rank": 19
+      "rank": 21
     }
   ]
 }
