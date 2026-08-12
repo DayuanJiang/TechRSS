@@ -173,10 +173,10 @@ export async function summarizeArticle(title: string, content: string): Promise<
 这是主体，占全文 80% 以上。按文章的逻辑线索，用连贯的段落把故事讲完。
 
 要求：
-- 分 4-8 个段落，每段有小标题（用 ### ）。小标题要有信息量，不要写"背景介绍"这种废话标题，写"遗留代码的真正难题是没人敢动"。
+- 分几个段落（最大8个，根据文章信息量调整）
+- 每段有小标题（用 ### ）。小标题要有信息量，不要写"背景介绍"这种废话标题，写"遗留代码的真正难题是没人敢动"。
 - 段落之间要有逻辑衔接，读者能感受到"问题→尝试→发现→方案→效果"的叙事弧线。
 - 每段 5-8 句话，宁短勿长。如果一句话超过 40 字，拆成两句。
-- **保留 why**：不光讲"做了什么"，更要讲"为什么这么做"、"这样做的好处是什么"。
 
 ---
 
@@ -184,6 +184,7 @@ export async function summarizeArticle(title: string, content: string): Promise<
 1. 忠于原文，不添加原文没有的观点
 2. 技术术语精确，不为了通俗牺牲准确
 3. 用中文写作，技术名词保留英文
+4. 如果文章是反爬的网页，说明没获取到正文，直接返回“无法获取正文内容，无法生成摘要。”，不要尝试去猜测文章内容
 
 # 待分析文章
 
@@ -191,6 +192,9 @@ export async function summarizeArticle(title: string, content: string): Promise<
 
 ${truncated}`,
       maxOutputTokens: 4096 * 4,
+      providerOptions: {
+        openai: { reasoningEffort: 'high' },
+      },
     });
     return text?.trim() || null;
   } catch (e) {
@@ -216,6 +220,9 @@ export async function processArticles(articles: Article[]): Promise<Map<number, 
           output: Output.object({ schema: articleResultSchema }),
           prompt: buildPrompt({ title: article.title, content: article.content, sourceName: article.sourceName, link: article.link }),
           maxOutputTokens: 4096 * 4,
+          providerOptions: {
+            openai: { reasoningEffort: 'high' },
+          },
         });
         if (output) {
           allResults.set(index, {
