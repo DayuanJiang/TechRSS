@@ -2,8 +2,8 @@
   "date": "2026-08-12",
   "total_feeds": 92,
   "success_feeds": 84,
-  "total_articles": 2510,
-  "filtered_articles": 28,
+  "total_articles": 2514,
+  "filtered_articles": 27,
   "articles": [
     {
       "title": "Don't Look Up",
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "OTel Isn't Going Well (And I Made A Spreadsheet About It)",
+      "title_zh": "数据揭示 OpenTelemetry 的维护瓶颈",
+      "link": "https://matduggan.com/otel-isnt-going-well-and-i-made-a-spreadsheet-about-it/",
+      "pub_date": "2026-08-12T11:14:11.000Z",
+      "summary": "## 一句话总结\n\nOpenTelemetry 的缓慢并不主要是“语义约定吵太久”，而是“极高的稳定性承诺 × 覆盖无数语言和框架 × 维护者严重不足”三者相撞后的必然结果。\n\n## 正文\n\n### Vendor SDK 的顺滑，恰好衬出 OTel 的陡峭\n\n作者从一个很多团队都熟悉的抱怨切入：为什么 OpenTelemetry 到现在还让人感觉“没做完”？Vendor SDK 通常足够傻瓜化，装上以后数据进 dashboard，底层的集成和兼容问题由厂商兜底。OTel 的路线完全不同，它要做真正 vendor-agnostic 的遥测标准，因此用户会同时面对大量 experimental 标记，以及同一件事有多种实现路径的现实。作者认可这种中立性很难得，尤其考虑到 observability 市场既赚钱又充满竞争，而项目维护者不少正受雇于这些厂商。但几年观察下来，他发现不同语言 SDK 的成熟度差异太大，Go 和 .NET 相对强势，Ruby、PHP 等语言却明显滞后。自动埋点确实很神奇，但一旦需要手写 instrumentation，团队就会从“开箱即用”跌进一段相当陡的学习和维护悬崖。\n\n### OTel 的规模决定了它不是一个普通 SDK 项目\n\n说白了，OTel 的问题首先来自它要覆盖的表面积实在太大：几十种语言、数百个库、无数后端和框架。项目用 Core 与 Contrib 划分责任，Core 由 OTel 项目直接维护，包含 API、SDK、OTLP exporter、context propagation 和 resource detection 等稳定且 vendor-neutral 的能力。Contrib 则承载 Flask、Django、Redis、Kafka、boto3 等长尾集成，变化快，也更适合放那些可能频繁调整的内容。这套设计本身合理：容易破的东西放 Contrib，稳定定义和规范进入 Core。问题在于，Contrib 的规模对实际用户可能过于庞大，尤其是 Collector 一侧。语言库可以只安装 `opentelemetry-instrumentation-flask`，但 Collector 往往需要用 OpenTelemetry Collector Builder 自己组装发行版，或者接受一个“先用着再说”的大包。\n\n### 从提案到用户手里，中间隔着一整条稳定性流水线\n\n作者梳理的功能交付路径揭示了另一个关键点：OTel 不是合并一个 PR 就结束了。新能力先进入 OpenTelemetry Enhancement Proposal（OTEP），被接受后写入 Specification，然后进入 Semantic Conventions，讨论具体字段、命名和行为。这里的决定接近永久承诺，因为一旦稳定发布，后续修改的代价会极高。随后，各语言 SDK 需要按规范实现 API surface，Contrib instrumentation 还要跟随这些 API 和 SDK 的演进。最后，数据还要通过 OTLP 和 Collector 真正发出去，而 OTLP 与 Collector 组件各自又有独立的稳定性生命周期。作者也坦言，自己仍无法准确判断 OTEP 到 Specification 的耗时规律，以及语言 SDK、Collector 和 OTLP 之间的稳定性承诺究竟如何联动。\n\n### 数据先证明了一件事：很多 SDK 的维护力量确实不够\n\n为了验证“OTel 进展慢”究竟是错觉还是事实，作者拿 CNCF 的 Envoy 和 Prometheus 作为参照，并统计了过去 24 个月的 PR 合并、合并者和 issue 处理情况。Envoy 的表现相当健康：维护工作分布较广，即使 `phlax` 很重要，项目仍有足够的后备维护者。反过来看 OTel PHP 和 Ruby，关键工作高度集中在极少数人身上，作者认为这显然不足以覆盖 OTel 所要求的庞大范围。更完整的表格进一步说明了问题：`opentelemetry-cpp` 的 Top-1 merger 合并了 86.1% 的 PR，Kotlin 是 79.7%，Ruby 是 78.7%，Python 也达到 61.4%。相比之下，Go 的 Top-1 merger 占比为 36.9%，.NET 为 31.5%，而 Prometheus 只有 14.4%，拥有 31 位不同的 merger。作者的判断很直接：作者、PR merger 和 issue closer 不该长期由同一两个人兼任，否则项目的吞吐和风险控制都会失衡。\n\n### 真正卡住的不是 semconv 辩论，而是审批资源\n\n一开始，作者猜测 Semantic Conventions 仓库可能是整条链路的最大瓶颈。这个猜测并不离谱，因为所有语言和框架都需要在这里对遥测语义达成一致，而某些 PR 的确拖得很久。比如 MCP semantic conventions 的 PR #2083 持续了 277.5 天，经历了 115 次 review；Gen-AI chat history attributes 的 PR #2179 持续 117 天，也有 114 次 review。但数据没有支持“语义约定拖慢所有 SDK”的结论，这些长期讨论并没有明显向下游 SDK/API 层层传导。以 Python 为例，最慢的 PR 包括 OpAMP integration sketch、OTLP HTTP batch size、exporter error handling 和 logs SDK refactor，它们大多并不属于 semconv 问题。真正反复出现的信号是 `Approve Public API check`：公共 API 的变更必须由额外维护者审批，而维护者本身正是最稀缺的资源。\n\n### 三重碰撞让项目天然倾向于慢下来\n\n作者最终把问题归结为一次“三车相撞”。第一辆车是 binary stability gate，OTel 对稳定 API 的承诺很严，一旦标记为 stable，未来就很难修改。第二辆车是维护者储备不足，尤其在若干语言 SDK 中，维护和审核工作被少数人垄断。第三辆车则是项目范围巨大，OTel 不只是一个库，而是规范、多个 SDK、语义约定、instrumentation、OTLP 和 Collector 的组合系统。三者叠加后，任何新功能都会激励参与者提前争论所有潜在问题，因为谁都不想把一个有缺陷的设计永久锁进稳定接口。作者认为维护者并非故意阻止社区参与，项目的公开会议记录和讨论也相当透明。更现实的问题是，这种规模和稳定性要求已经超出“业余开源维护”能够承受的范围：有人必须为维护者的时间和责任买单。",
+      "source_name": "matduggan.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "OpenTelemetry",
+        "observability",
+        "semantic conventions",
+        "open source maintenance"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Ryan Greenblatt – Human level AIs might build runaway superintelligences by 2032",
       "title_zh": "AI 自动研发会否引爆失控超智能",
       "link": "https://www.dwarkesh.com/p/ryan-greenblatt",
@@ -60,7 +79,7 @@
         "reward hacking",
         "AI safety"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Extending immutability: deletion without losing data",
@@ -79,7 +98,7 @@
         "FoundationDB",
         "active-active replication"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "The little-known winstart.bat batch file",
@@ -98,7 +117,7 @@
         "WINSTART.BAT",
         "TSR"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Pluralistic: Model collapse (12 Aug 2026)",
@@ -117,7 +136,7 @@
         "Goodhart's law",
         "exploration vs exploitation"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Netflix Has Peaked",
@@ -136,7 +155,7 @@
         "YouTube",
         "engagement"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Mark Zuckerberg Posts 6,500-Word AI Essay",
@@ -155,7 +174,7 @@
         "alignment",
         "open source"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Alex Micek on BMW’s iDrive ‘Special Surprises’",
@@ -174,7 +193,7 @@
         "in-car advertising",
         "dark patterns"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Microsoft Plugs Nearly 400 Security Holes",
@@ -193,7 +212,26 @@
         "CVE-2026-68820",
         "afd.sys"
       ],
-      "rank": 10
+      "rank": 11
+    },
+    {
+      "title": "IBM PC introduced, August 12, 1981",
+      "title_zh": "IBM PC 如何以兼容性成为行业标准",
+      "link": "https://dfarq.homeip.net/ibm-pc-introduced-august-12-1981/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=ibm-pc-introduced-august-12-1981",
+      "pub_date": "2026-08-12T11:00:03.000Z",
+      "summary": "IBM PC 并非靠原创技术横扫市场，而是以 Intel 8088、MS-DOS、扩展槽和开放 BIOS 对接既有生态。其销量在 1980 年代约占电脑市场 55%，兼容机靠洁净室 BIOS 与 Phoenix 授权迅速扩张，最终反而削弱了 IBM 的控制力。",
+      "source_name": "dfarq.homeip.net",
+      "score": 8,
+      "depth": 4,
+      "novelty": 4,
+      "category": "other",
+      "keywords": [
+        "IBM PC",
+        "Intel 8088",
+        "MS-DOS",
+        "BIOS"
+      ],
+      "rank": 12
     },
     {
       "title": "Anthropic Posts ‘How Claude Marks AI-Generated Content’ Without Explaining How Claude Marks AI-Generated Content",
@@ -212,7 +250,7 @@
         "C2PA",
         "EU AI Act"
       ],
-      "rank": 11
+      "rank": 13
     },
     {
       "title": "datasette-upload-dbs 0.5a0",
@@ -231,7 +269,26 @@
         "API",
         "GitHub Actions"
       ],
-      "rank": 12
+      "rank": 14
+    },
+    {
+      "title": "Where Did the Productivity Gains Go?",
+      "title_zh": "生产率提升为何没有换来更多闲暇",
+      "link": "https://idiallo.com/blog/where-did-the-productivity-gains-go",
+      "pub_date": "2026-08-12T12:00:00.000Z",
+      "summary": "一次将捐款录入量提升逾 10 倍的流程改造，最终把高产出固化成管理层的新基线，而非员工的自由时间。AI 写代码也遵循同一规律：原型生成很快，投入使用后仍需谨慎迭代、维护兼容性；若只按初期速度考核，组织会误把不可持续的爆发当作常态。",
+      "source_name": "idiallo.com",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "opinion",
+      "keywords": [
+        "productivity",
+        "AI",
+        "software maintenance",
+        "workload expectations"
+      ],
+      "rank": 15
     },
     {
       "title": "There are no lossless transformations of natural-language text",
@@ -250,7 +307,7 @@
         "semantics",
         "documentation"
       ],
-      "rank": 13
+      "rank": 16
     },
     {
       "title": "The Talk Show: ‘Getting the Snack Right’",
@@ -269,7 +326,7 @@
         "Vision Pro",
         "OpenAI"
       ],
-      "rank": 14
+      "rank": 17
     },
     {
       "title": "BMW Probably Paid Sony for the Spider-Man Dashboard Ads, Not the Other Way Around",
@@ -288,7 +345,7 @@
         "E Ink Prism",
         "BMW Operating System"
       ],
-      "rank": 15
+      "rank": 18
     },
     {
       "title": "Edinburgh Fringe: Hamlet The Musical ★★☆☆☆",
@@ -307,7 +364,7 @@
         "musical theatre",
         "review"
       ],
-      "rank": 16
+      "rank": 19
     },
     {
       "title": "The Economist: ‘How to Spot AI Writing’",
@@ -325,7 +382,7 @@
         "LLM",
         "writing detection"
       ],
-      "rank": 17
+      "rank": 20
     },
     {
       "title": "Edinburgh Fringe - Justina Seselskaite: Settled ★★★★☆",
@@ -344,7 +401,7 @@
         "stand-up comedy",
         "Lithuania"
       ],
-      "rank": 18
+      "rank": 21
     },
     {
       "title": "The Economist: ‘How to Spot AI Writing’",
@@ -362,7 +419,7 @@
         "authorship",
         "The Economist"
       ],
-      "rank": 19
+      "rank": 22
     },
     {
       "title": "Books I Enjoyed In 2026H1",
@@ -381,7 +438,7 @@
         "space settlement",
         "logic"
       ],
-      "rank": 20
+      "rank": 23
     },
     {
       "title": "Weekly Update 516: Live From Vietnam",
@@ -400,7 +457,7 @@
         "OAuth",
         "incident response"
       ],
-      "rank": 21
+      "rank": 24
     },
     {
       "title": "Edinburgh Fringe: Afronauts ★★★★☆",
@@ -419,7 +476,7 @@
         "Afrofuturism",
         "circus"
       ],
-      "rank": 22
+      "rank": 25
     },
     {
       "title": "Edinburgh Fringe: Handel Nine German Arias ★★★⯪☆",
@@ -437,7 +494,7 @@
         "Handel",
         "classical music"
       ],
-      "rank": 23
+      "rank": 26
     }
   ]
 }
