@@ -1,10 +1,29 @@
 {
   "date": "2026-08-14",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2509,
+  "success_feeds": 85,
+  "total_articles": 2538,
   "filtered_articles": 19,
   "articles": [
+    {
+      "title": "Another partial SSI trick with canonicalize",
+      "title_zh": "ZJIT 借全局改写传播分支类型信息",
+      "link": "https://bernsteinbear.com/blog/more-partial-ssi/?utm_source=rss",
+      "pub_date": "2026-08-13T00:00:00.000Z",
+      "summary": "## 一句话总结\n\nZJIT 把原本只在单个 basic block 内生效的 `canonicalize` 扩展到支配树范围，并顺手把条件分支携带的真假信息编码成常量替换，从而让后续 constant folding 消掉更多冗余 `GuardType` 和分支。\n\n## 正文\n\n### 起点：重复的类型守卫，本来可以只做一次\n\n这件事的起点，是 Chris Fallin 关于 aegraph 的文章，以及新 ZJIT 贡献者 dak2 提交的 block-local `canonicalize`。  \n它解决的问题很直观：同一个值已经经过 `GuardType v0, Int`，后面又做一次相同检查时，不应该把两次守卫当成完全无关的值。  \n局部版本维护一个 `rewrite_map`，扫描 block 内的每条指令，并将 operand 替换成当前已知的更精确值。  \n当它遇到 `GuardType` 时，就记录“原值 `v0` 可以重写为守卫后的值 `v1`”。  \n于是第二个 `GuardType v0, Int` 会被改写成 `GuardType v1, Int`，而 `v1` 本身已经是 `Int`。  \n后续 constant-folding 看到这个事实，就能把 `v2` 的所有使用替换为 `v1`，并直接删除第二次 guard。  \n说白了，`canonicalize` 自己不负责消除 guard，但它把 IR 改写成了一个让后续优化很容易看懂的形状。\n\n### 局部优化已经有效，但 rewrite_map 被困在 block 里\n\nblock-local 版本的限制也很明显：每处理一个 block，都会新建空的 `rewrite_map`。  \n这意味着改写关系不会跨 block 传播，即使某个 guard 所在的 block 支配了后续大量控制流。  \n不过，它当时依然给 ZJIT 带来了不少收益。  \n原因在于 ZJIT 直到不久前仍使用 maximal SSA form，因此局部的 SSA 值关系也可能间接影响到更大范围的 IR。  \n但这显然不是终点，因为真正有价值的信息，往往恰恰来自“一个 block 支配另一个 block”这件事。  \n大约五天后，dak2 就提交了全局版本 `#17013`，试图让这些 rewrite 跨越 basic block 边界。\n\n### 全局 canonicalize：沿着支配关系复制已知事实\n\n作者随后在 `#17766` 中实现了一个“先慢后快”的全局版本。  \n它没有急着追求 dak2 PR 中的性能优化，而是选择了一个更小、更容易验证正确性的实现，当作后续优化版本的 correctness oracle。  \n核心做法是：为每个 block 保存一个 `rewrite_map`，处理当前 block 时，从其 immediate dominator，也就是 `idom` 的 map 克隆一份。  \n然后继续像局部版本那样扫描指令、改写 operand，并把新出现的 `GuardType` 关系加入 map。  \n处理完成后，当前 block 的 map 会保存下来，供被它支配的后继 block 继承。  \n这套写法与 Maxine VM 的 GVN 实现很相似，而且并非巧合：两者都在利用支配关系，把“此前已经成立的等价或精化事实”向下传播。\n\n### 不必显式遍历支配树，RPO 加 idom 也能完成传播\n\n有意思的地方在于，这里并没有显式构造一棵可从上向下遍历的 dominator tree。  \n实现只通过 engineered algorithm 计算出一个从 block 到 `idom` 的映射。  \n随后它按 reverse post-order，也就是 RPO，遍历各个 block，并从 `idom` 克隆 rewrite 状态。  \nRPO 的顺序和 dominator-tree pre-order 不一样，但这个 pass 真正在乎的只有一件事：处理某个 block 前，它的 dominator 必须已经被处理过。  \n这一点在两种遍历顺序中都成立，因此 rewrite 仍然能够沿支配关系逐层级联。  \n而脚注还解释了一个现实背景：作者特意等 SSA minimization pass `#17311` 落地后才合入全局版本，因为 maximal SSA 会让跨 block 复用 SSA value 的机会变少，削弱全局 canonicalization 的效果。\n\n### 条件分支的真假信息，也可以塞进 rewrite_map\n\n文章真正想引出的，是另一种 partial SSI：让 branch target 自动获得条件的类型信息。  \n此前，ZJIT 已经能在 SSA 构造阶段，为来自 Ruby 源码的条件创建 `RefineType`。  \n例如 `Test v0` 后，会分别产生 `Truthy = RefineType v0, Truthy` 和 `Falsy = RefineType v0, Falsy`，并作为参数传给 true、false 分支。  \n但有些 branch 是编译器合成的，并不能在 SSA construction 时自然插入这些 refinement。  \n对于一般形式的 `CondBranch v0, bb1, bb2`，作者仍希望 `bb1` 知道 `v0` 等价于 `CBool[true]`，而 `bb2` 知道它等价于 `CBool[false]`。  \n全局 `canonicalize` 恰好提供了一个放置这类事实的地方：在进入 block 时，先根据其唯一入边对应的条件分支，为 `rewrite_map` 预置条件值到布尔常量的映射。\n\n### 几行改动，终于让分支目标“知道自己为什么会到这里”\n\n具体来说，处理 block `B` 时，pass 先检查它是否恰好只有一条 incoming control edge。  \n接着检查这条边来源 block 的 terminator 是否为 conditional branch。  \n如果 `B` 是 `iftrue` 目标，就写入 `T.cond => Const(CBool[true])`；如果它是 `iffalse` 目标，就写入 `T.cond => Const(CBool[false])`。  \n这里检查的是 incoming edge 数量，而不是 predecessor block 数量，因为同一个 block 可以通过 true 和 false 两条不同 edge 跳到同一目标 block，并在 edge 上携带不同 block arguments。  \n如果 `canonicalize` 会运行多次，常量还需要 intern，例如统一放在 entry block，避免每次 pass 都生成新的常量指令。  \n这样做还能让 pass 更接近幂等：重复运行不会持续给 IR 增加无意义的分配。\n\n### `30k_ifelse` 说明，缺的往往不是优化器而是上下文\n\n作者是在 ruby-bench 的 `30k_ifelse` benchmark 中碰到这个问题的。  \n原型 value numbering 跑完后，IR 仍然可能呈现这样的结构：`bb0` 用 `v0` 分支，而 `bb1`、`bb2` 内部又继续对同一个 `v0` 做条件分支。  \n从控制流角度看，这很别扭，因为进入 `bb1` 已经意味着 `v0` 为真，进入 `bb2` 已经意味着 `v0` 为假。  \n但在没有这层 rewrite 的情况下，IR 并没有把这个上下文显式交给后续优化 pass。  \n加入这几行条件常量替换后，后续的 constant folding 就能折叠掉其中一批分支。  \n这个例子或许有些针对 benchmark，但它说明了一个很实用的方向：`canonicalize` 不只是清理冗余值，它也可以成为把控制流事实转化为数据流事实的工具。",
+      "source_name": "bernsteinbear.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Ruby",
+        "ZJIT",
+        "SSA",
+        "canonicalization"
+      ],
+      "rank": 1
+    },
     {
       "title": "Supplier Security Questionnaire",
       "title_zh": "一份逼疯开源维护者的供应商问卷",
@@ -22,7 +41,7 @@
         "software supply chain",
         "AI governance"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Edinburgh Fringe: Hot Flush – A Bold, We’re Old(ish) Burlesque Show ★★★☆☆",
@@ -41,7 +60,25 @@
         "menopause",
         "review"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "Edinburgh Fringe: Miscast Sondheim ★★☆☆☆",
+      "title_zh": "《Miscast Sondheim》演出失望短评",
+      "link": "https://shkspr.mobi/blog/2026/08/edinburgh-fringe-miscast-sondheim/",
+      "pub_date": "2026-08-13T18:45:15.000Z",
+      "summary": "",
+      "source_name": "shkspr.mobi",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "other",
+      "keywords": [
+        "Edinburgh Fringe",
+        "Sondheim",
+        "theatre review"
+      ],
+      "rank": 4
     }
   ]
 }
