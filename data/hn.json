@@ -1,6 +1,708 @@
 {
-  "updatedAt": "2026-08-13T12:05:12.888Z",
+  "updatedAt": "2026-08-13T12:56:34.805Z",
   "items": [
+    {
+      "id": 49272832,
+      "by": "ropbear",
+      "title": "Tailscale Traces Database Corruption to 16y/o SQLite WAL-Reset Bug",
+      "url": "https://tailscale.com/blog/sqlite-wal-reset-bug",
+      "score": 1085,
+      "detailUpdatedAt": 1786623216,
+      "createdAt": 1786546843,
+      "aiSummaryUpdatedAt": 1786624284,
+      "aisummary": {
+        "chinese_title": "Tailscale靠SQLite支持合同查出16年WAL-reset bug",
+        "emoji": "🔧",
+        "sarcastic_question": "16年老 bug 还叫“正常使用”吗？"
+      },
+      "classifications": {
+        "topics": [
+          6,
+          4,
+          10
+        ],
+        "facets": [
+          8
+        ],
+        "tags": [
+          "Tailscale",
+          "SQLite",
+          "WAL reset bug",
+          "database corruption",
+          "WAL",
+          "checkpointing",
+          "VFS",
+          "Go",
+          "tailscale/sqlite"
+        ]
+      },
+      "classificationsUpdatedAt": 1786551683,
+      "aiSummary": {
+        "chinese_title": "Tailscale靠SQLite支持合同查出16年WAL-reset bug",
+        "emoji": "🔧",
+        "sarcastic_question": "16年老 bug 还叫“正常使用”吗？"
+      },
+      "detail": {
+        "id": 49272832,
+        "by": "ropbear",
+        "title": "Tailscale Traces Database Corruption to 16y/o SQLite WAL-Reset Bug",
+        "url": "https://tailscale.com/blog/sqlite-wal-reset-bug",
+        "score": 784,
+        "detailUpdatedAt": 1786583615,
+        "createdAt": 1786546843,
+        "aiSummaryUpdatedAt": 1786584319,
+        "aisummary": {
+          "chinese_title": "Tailscale 追查 16年老 SQLite WAL-reset 漏洞，付费支持并资助 VFS shim",
+          "discussion_overview": [
+            {
+              "category": "开源支持与公司姿态",
+              "summary": "很多评论把这篇事故复盘视为 Tailscale 对开源生态“真金白银”的支持案例：他们不仅买了 SQLite 的 support contract，还资助了帮助定位竞态的 VFS shim。有人把这种做法和 Percona、EnterpriseDB 这类靠支持服务养核心开发者的模式类比，认为这比口头感谢更有分量。讨论里还延伸到 headscale（Tailscale control protocol 的开源自建实现），不少人因此更信任这家公司。也有人提醒，诊断遥测和账号绑定仍有一些实际摩擦，并不算完全无争议。",
+              "supportid": [
+                "49273533",
+                "49273685",
+                "49275689",
+                "49273719",
+                "49278950",
+                "49275817",
+                "49279341",
+                "49280458",
+                "49274375"
+              ]
+            },
+            {
+              "category": "WAL-reset 竞态与 checkpoint 触发条件",
+              "summary": "技术讨论集中在 SQLite WAL-reset bug 的触发机制：它需要多个 connection、极端时序以及 checkpoint 和写入交错，才会出现数据结构状态不一致。Tailscale 之所以更容易撞上它，是因为他们手动接管 checkpoint，而且为了 backup 和 disaster recovery 采取了非常激进的 checkpoint 频率，试图让 WAL 保持很小并缩短恢复时间。评论里有人根据文中的指标异常推测，系统曾出现“报告复制的页数”和“实际可用页数”不一致的现象，这正是把团队引到这个古老竞态的线索。也有人指出，SQLite 开发者后来还得在测试环境里特意触发这个条件，说明它确实极端而隐蔽。",
+              "supportid": [
+                "49273810",
+                "49273908",
+                "49274270",
+                "49274882",
+                "49275168",
+                "49279584",
+                "49280231",
+                "49279023",
+                "49280302",
+                "49274827",
+                "49274099"
+              ]
+            },
+            {
+              "category": "SQLite 是否适合这种架构",
+              "summary": "围绕“为什么不用 Postgres”出现了明显分歧。支持者认为 Tailscale 的 shard 化 control plane 已经把故障半径限制在少数客户，data plane 仍然是 peer-to-peer，所以这不是传统意义上的全局单点故障；再加上他们需要极快的 byte-copy restore、低 pause time 和较低的 page cache 成本，SQLite 并非毫无道理。批评者则觉得这属于在数据库上做非标准操作，越接近边缘路径越容易把可靠性赌在运气上，在线备份能力更成熟的 client/server DB 可能更省心。还有人把这类设计归结为“极简主义走到头”的架构摇摆，认为频繁换底层技术本身就会制造复杂度。",
+              "supportid": [
+                "49280171",
+                "49280546",
+                "49276444",
+                "49276068",
+                "49277686",
+                "49274921",
+                "49276654",
+                "49277834",
+                "49279043",
+                "49279437",
+                "49279817",
+                "49280260",
+                "49280330"
+              ]
+            },
+            {
+              "category": "测试、形式化方法与故障注入",
+              "summary": "这篇修复过程也引发了对测试能力边界的讨论。有人拿 Dijkstra 和 Knuth 的老话开玩笑，强调测试只能证明某个 bug 被抓到过，不能证明“没有 bug”；不过它们至少能防止已知问题再次出现。讨论进一步扩展到 TLA+、Rust 的 type system、unsafe、model checker，以及 Antithesis 这类故障注入/模拟平台，据说能在十几分钟内找到类似问题。整体共识是：对 SQLite 这种复杂存储系统，单靠 unit tests 不够，但测试、形式化建模和 fault injection 各自都很有价值。",
+              "supportid": [
+                "49275094",
+                "49275346",
+                "49278566",
+                "49275424",
+                "49275983",
+                "49276796",
+                "49278154",
+                "49280298",
+                "49280191",
+                "49274696",
+                "49276335",
+                "49277244",
+                "49274445",
+                "49274867",
+                "49280526"
+              ]
+            },
+            {
+              "category": "身份、隐私与使用体验摩擦",
+              "summary": "除了数据库本身，评论里也反复提到身份认证和隐私设置的细节。有人不喜欢 Tailscale 把账号绑在 GitHub、Apple 之类的 SSO provider 上，觉得身份被永久绑定很别扭；也有人补充说可以通过 support ticket 切换 provider，或者直接用 OIDC 和 passkeys。另一派则认为不提供 username/password 反而更安全，因为一旦自己成为 identity provider，就要面对 MFA 丢失、credential stuffing 和大量人工支持。客户端遥测是否能彻底关闭也被提到，尤其在 macOS/iOS 上并不总是直观。",
+              "supportid": [
+                "49274873",
+                "49275214",
+                "49276117",
+                "49277215",
+                "49279878",
+                "49276307",
+                "49275384",
+                "49275447",
+                "49279341",
+                "49280458",
+                "49275817"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "WAL（Write-Ahead Log）",
+              "explanation": "SQLite 的预写日志机制，先把变更写入日志，再在 checkpoint 时合并回主数据库文件。"
+            },
+            {
+              "term": "checkpoint",
+              "explanation": "把 WAL 中的内容刷回主数据库文件的过程；这里的手动和高频 checkpoint 是故障背景之一。"
+            },
+            {
+              "term": "VFS shim",
+              "explanation": "SQLite 的 Virtual File System 适配层/中间层，可用于隔离 I/O 行为并帮助复现、定位竞态。"
+            },
+            {
+              "term": "headscale",
+              "explanation": "一个兼容 Tailscale control protocol 的开源自建 control plane 实现。"
+            },
+            {
+              "term": "tailnet",
+              "explanation": "Tailscale 里的私有网络/租户单元，一组设备和访问控制策略的集合。"
+            }
+          ],
+          "context": "Tailscale（基于 WireGuard 的零配置 mesh VPN）把每个 shard 的 control plane 元数据放在独立的 SQLite 数据库里，由单个 Go process 管理。为了 backup 和 disaster recovery，他们手动控制 SQLite 的 WAL checkpoint，希望把 WAL 保持得很小并实现快速的 byte-copy restore，但这也把系统带进了更少见的边缘时序。SQLite 的 WAL-reset bug 是一个非常老的竞态：在多个 connection、checkpoint 和写入交错时，可能出现页面状态不一致并导致腐化。文章里提到他们先和 SQLite 开发者签 support contract，再资助一个 VFS shim 来隔离问题、复现 bug 并验证修复；评论还把话题延伸到 headscale（开源自建 control plane）、SSO、遥测和是否该改用 Postgres 之类的 client/server DB。",
+          "emoji": "🛠️",
+          "sarcastic_question": "都把 SQLite 折腾成这样了，还叫标准用法吗？"
+        },
+        "classifications": {
+          "topics": [
+            6,
+            4,
+            10
+          ],
+          "facets": [
+            8
+          ],
+          "tags": [
+            "Tailscale",
+            "SQLite",
+            "WAL reset bug",
+            "database corruption",
+            "WAL",
+            "checkpointing",
+            "VFS",
+            "Go",
+            "tailscale/sqlite"
+          ]
+        },
+        "classificationsUpdatedAt": 1786551683,
+        "aiSummary": {
+          "chinese_title": "Tailscale 追查 16年老 SQLite WAL-reset 漏洞，付费支持并资助 VFS shim",
+          "discussion_overview": [
+            {
+              "category": "开源支持与公司姿态",
+              "summary": "很多评论把这篇事故复盘视为 Tailscale 对开源生态“真金白银”的支持案例：他们不仅买了 SQLite 的 support contract，还资助了帮助定位竞态的 VFS shim。有人把这种做法和 Percona、EnterpriseDB 这类靠支持服务养核心开发者的模式类比，认为这比口头感谢更有分量。讨论里还延伸到 headscale（Tailscale control protocol 的开源自建实现），不少人因此更信任这家公司。也有人提醒，诊断遥测和账号绑定仍有一些实际摩擦，并不算完全无争议。",
+              "supportid": [
+                "49273533",
+                "49273685",
+                "49275689",
+                "49273719",
+                "49278950",
+                "49275817",
+                "49279341",
+                "49280458",
+                "49274375"
+              ]
+            },
+            {
+              "category": "WAL-reset 竞态与 checkpoint 触发条件",
+              "summary": "技术讨论集中在 SQLite WAL-reset bug 的触发机制：它需要多个 connection、极端时序以及 checkpoint 和写入交错，才会出现数据结构状态不一致。Tailscale 之所以更容易撞上它，是因为他们手动接管 checkpoint，而且为了 backup 和 disaster recovery 采取了非常激进的 checkpoint 频率，试图让 WAL 保持很小并缩短恢复时间。评论里有人根据文中的指标异常推测，系统曾出现“报告复制的页数”和“实际可用页数”不一致的现象，这正是把团队引到这个古老竞态的线索。也有人指出，SQLite 开发者后来还得在测试环境里特意触发这个条件，说明它确实极端而隐蔽。",
+              "supportid": [
+                "49273810",
+                "49273908",
+                "49274270",
+                "49274882",
+                "49275168",
+                "49279584",
+                "49280231",
+                "49279023",
+                "49280302",
+                "49274827",
+                "49274099"
+              ]
+            },
+            {
+              "category": "SQLite 是否适合这种架构",
+              "summary": "围绕“为什么不用 Postgres”出现了明显分歧。支持者认为 Tailscale 的 shard 化 control plane 已经把故障半径限制在少数客户，data plane 仍然是 peer-to-peer，所以这不是传统意义上的全局单点故障；再加上他们需要极快的 byte-copy restore、低 pause time 和较低的 page cache 成本，SQLite 并非毫无道理。批评者则觉得这属于在数据库上做非标准操作，越接近边缘路径越容易把可靠性赌在运气上，在线备份能力更成熟的 client/server DB 可能更省心。还有人把这类设计归结为“极简主义走到头”的架构摇摆，认为频繁换底层技术本身就会制造复杂度。",
+              "supportid": [
+                "49280171",
+                "49280546",
+                "49276444",
+                "49276068",
+                "49277686",
+                "49274921",
+                "49276654",
+                "49277834",
+                "49279043",
+                "49279437",
+                "49279817",
+                "49280260",
+                "49280330"
+              ]
+            },
+            {
+              "category": "测试、形式化方法与故障注入",
+              "summary": "这篇修复过程也引发了对测试能力边界的讨论。有人拿 Dijkstra 和 Knuth 的老话开玩笑，强调测试只能证明某个 bug 被抓到过，不能证明“没有 bug”；不过它们至少能防止已知问题再次出现。讨论进一步扩展到 TLA+、Rust 的 type system、unsafe、model checker，以及 Antithesis 这类故障注入/模拟平台，据说能在十几分钟内找到类似问题。整体共识是：对 SQLite 这种复杂存储系统，单靠 unit tests 不够，但测试、形式化建模和 fault injection 各自都很有价值。",
+              "supportid": [
+                "49275094",
+                "49275346",
+                "49278566",
+                "49275424",
+                "49275983",
+                "49276796",
+                "49278154",
+                "49280298",
+                "49280191",
+                "49274696",
+                "49276335",
+                "49277244",
+                "49274445",
+                "49274867",
+                "49280526"
+              ]
+            },
+            {
+              "category": "身份、隐私与使用体验摩擦",
+              "summary": "除了数据库本身，评论里也反复提到身份认证和隐私设置的细节。有人不喜欢 Tailscale 把账号绑在 GitHub、Apple 之类的 SSO provider 上，觉得身份被永久绑定很别扭；也有人补充说可以通过 support ticket 切换 provider，或者直接用 OIDC 和 passkeys。另一派则认为不提供 username/password 反而更安全，因为一旦自己成为 identity provider，就要面对 MFA 丢失、credential stuffing 和大量人工支持。客户端遥测是否能彻底关闭也被提到，尤其在 macOS/iOS 上并不总是直观。",
+              "supportid": [
+                "49274873",
+                "49275214",
+                "49276117",
+                "49277215",
+                "49279878",
+                "49276307",
+                "49275384",
+                "49275447",
+                "49279341",
+                "49280458",
+                "49275817"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "WAL（Write-Ahead Log）",
+              "explanation": "SQLite 的预写日志机制，先把变更写入日志，再在 checkpoint 时合并回主数据库文件。"
+            },
+            {
+              "term": "checkpoint",
+              "explanation": "把 WAL 中的内容刷回主数据库文件的过程；这里的手动和高频 checkpoint 是故障背景之一。"
+            },
+            {
+              "term": "VFS shim",
+              "explanation": "SQLite 的 Virtual File System 适配层/中间层，可用于隔离 I/O 行为并帮助复现、定位竞态。"
+            },
+            {
+              "term": "headscale",
+              "explanation": "一个兼容 Tailscale control protocol 的开源自建 control plane 实现。"
+            },
+            {
+              "term": "tailnet",
+              "explanation": "Tailscale 里的私有网络/租户单元，一组设备和访问控制策略的集合。"
+            }
+          ],
+          "context": "Tailscale（基于 WireGuard 的零配置 mesh VPN）把每个 shard 的 control plane 元数据放在独立的 SQLite 数据库里，由单个 Go process 管理。为了 backup 和 disaster recovery，他们手动控制 SQLite 的 WAL checkpoint，希望把 WAL 保持得很小并实现快速的 byte-copy restore，但这也把系统带进了更少见的边缘时序。SQLite 的 WAL-reset bug 是一个非常老的竞态：在多个 connection、checkpoint 和写入交错时，可能出现页面状态不一致并导致腐化。文章里提到他们先和 SQLite 开发者签 support contract，再资助一个 VFS shim 来隔离问题、复现 bug 并验证修复；评论还把话题延伸到 headscale（开源自建 control plane）、SSO、遥测和是否该改用 Postgres 之类的 client/server DB。",
+          "emoji": "🛠️",
+          "sarcastic_question": "都把 SQLite 折腾成这样了，还叫标准用法吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n\nTailscale 经过 6 个月、19 次 SQLite 损坏事故的取证，最终将问题锁定在一个罕见的 SQLite WAL checkpoint/WAL-reset 路径上的长期 bug；关键突破来自对虚拟文件系统层的实时追踪。\n\n## 正文\n\n### 一个“单写者 SQLite”架构，却开始反复出现损坏\n\nTailscale 的 control plane 对外是一个统一入口，但内部由多个独立 shard 组成。每个 tailnet 同一时间只落在一个 shard 上，并可以在 shard 之间迁移。每个 shard 由一个 Go 进程独占访问一份 SQLite 数据库，这正是 SQLite 擅长的单写者使用方式。Tailscale 从 2022 年起将 SQLite 用作主数据库，并从 2023 年初开始定期做完整快照，将数据库文件上传到 S3。这个架构长期稳定运行，直到去年 8 月，读取 S3 备份的数据管道报出了第一例数据库错误。`PRAGMA integrity_check` 随后确认：备份中的 SQLite 数据库确实损坏了。\n\n一开始，这看起来像一次极其罕见的偶发事件。SQLite 理论上当然可能损坏，但在正常使用中不应该频繁遇到。可问题没有停在第一例：接下来的 6 个月里，Tailscale 一共遭遇了 19 次独立的数据库损坏。说白了，真正棘手的不是“SQLite 会不会坏”，而是它在看似标准的单进程、单写者架构里，开始以毫无规律的方式反复坏掉。\n\n### 损坏影响有限，但恢复过程会让一个 shard 暂时失明\n\n这些 SQLite 数据库保存的是 tailnet、设备和配置相关的控制面元数据，不包含用户的私有加密密钥，也不承载网络流量。因此，数据库损坏并不意味着 WireGuard 流量或密钥泄露。最早几次事故中，真正丢失的主要是少量尚未持久化的新设备记录或配置修改。可一旦发现损坏，Tailscale 必须停止对应 shard 的 control plane 进程，修复或恢复数据库。于是，这个 shard 上的 tailnet 会在恢复窗口内失去 control plane 服务。\n\n已经在线的设备通常还能维持既有的 peer-to-peer WireGuard 连接，但无法获知网络拓扑的新变化。新上线的设备则无法从 control plane 获取 peer 列表，因此无法建立新的连接。Web 管理后台和 Tailscale API 也会暂时不可用。早期一次恢复可能超过一小时，后来团队通过流程改进不断压缩恢复时间。即便大部分 shard 从未受影响，反复出现在全局 status page 上的事故，依然会侵蚀用户对服务可靠性的信任。\n\n### 最难的不是修复损坏，而是找不到触发条件\n\nTailscale 最先怀疑的是自己的代码。他们回查最近变更，却找不到和 SQLite 底层交互有关的可疑修改。随后又重新审阅了多年前写好的 SQLite 集成代码，仍没有发现能解释损坏的错误。团队也试图在事故之间找共同点：shard、客户、tailnet 功能、时间、负载水平，全都没有显著关联。没有稳定的触发条件，就无法在测试环境里合成复现。\n\n这迫使他们采取一种并不理想、但别无选择的办法：在生产环境部署被动取证遥测，等待下一次损坏发生。更糟的是，事故间隔完全不规律，有时只差数小时，有时相隔数周。去年 10 月到 12 月之间甚至有连续 6 周没有事故，随后问题又在圣诞节前后卷土重来。由于这是一个会直接影响生产可靠性的长期问题，Tailscale 还与 SQLite 团队签订了专业支持合同。双方逐步排除了诸如 `close()` 导致 POSIX advisory lock 失效、错误管理 SQLite 所有的内存、关闭线程安全后发生多线程访问等假设。\n\n### 为了更快恢复，他们意外发现“已提交事务消失了”\n\n在根因尚未找到时，Tailscale 先把目标转为降低事故伤害。他们让 shard 一旦遇到损坏就立即 hard-stop，避免继续在可疑数据库上运行。同时，他们部署了持续对备份执行 `PRAGMA integrity_check` 的监控，并完善了 runbook 与 on-call 培训。这些措施先将响应时间压缩到不足一小时。但真正重要的转折，来自他们为恢复服务而搭建的一套 transaction logging pipeline。\n\n这套机制会把每条修改数据库的 SQL 语句流式写入独立日志。由于 SQLite 是单写者数据库，且事务具备 serialisable isolation，事务历史天然是线性且确定的。理论上，只要从最近一份已知正常的备份开始，按顺序重放后续事务，就能恢复到故障前的最新状态，而不用直接修复损坏文件。这个方案本身已经比“回滚到旧备份”更好，因为后者会丢失更多数据。可在两次事故中，事务日志竟然无法干净重放：一个事务已经写入并提交的数据，对后续事务却不可见，仿佛这次写入从未发生过，而且 SQLite 没有报错。\n\n### 真正的线索藏在 WAL checkpoint 的异常计数里\n\n这类“已提交写入消失”的现象，开始把怀疑点指向 SQLite 的 checkpoint 流程。Tailscale 在运行 SQLite 时启用了 Write-Ahead Logging，也就是 WAL mode。更新发生时，新 page 不会直接覆盖主数据库文件，而是先追加到 WAL file。随后，checkpoint 再把 WAL 中的 page 拷回主数据库文件，避免 WAL 无限增长。通常 checkpoint 由 SQLite 自动调度，但 Tailscale 为了让备份更快、更一致，选择手动控制 checkpoint。\n\n这个非标准用法因此成了重点嫌疑对象。事故期间的指标显示，SQLite 有时声称从 WAL 拷贝了比 WAL 实际拥有数量更多的 page。比如 WAL 中明明只有 10 个 page，却报告复制了 20 个 page，这显然不可能是正常状态。为了看清 checkpoint 到底在文件层做了什么，SQLite 开发者没有只看 SQL 或 pager 层日志，而是向更底层推进。SQLite 的架构从 SQL parser/code generator，经 pager 拆成 page，最终通过 virtual filesystem，也就是 OS interface，执行实际磁盘 I/O。\n\n### `tmstmpvfs` 把难以复现的底层 bug 变成了可观察证据\n\nSQLite 的一个重要设计是，各层可以替换或包装。于是 SQLite 开发者为 Tailscale 写了一个 virtual filesystem wrapper，用于记录数据库文件操作、时间和更多追踪信息。这个 shim 名为 `tmstmpvfs`，源码也已公开在 SQLite 仓库中。它不改变上层 SQL 语义，而是在真正的文件读写边界上补齐取证能力。换句话说，之前团队只能看到“数据库最终坏了”，现在终于能看到“checkpoint 过程中每一步究竟写了什么”。\n\nTailscale 将这个 shim 部署到生产环境后，不久便等到了下一次损坏事故。根据文章已提供的内容，新增的 `tmstmpvfs` 日志让 SQLite 开发者最终定位并修复了问题。标题将其定义为一个存在长达 16 年的 SQLite WAL-reset bug，而文章开头也明确表示 Tailscale 已确认理解并修复了该问题。可惜，提供的原文在介绍具体 bug 机制的句子中途截断，因此无法忠实说明 WAL reset 究竟在什么条件下错误执行，以及补丁的具体实现。能确定的是，整个调查的关键不在于再加一层恢复脚本，而在于把无法合成复现的生产事故，向下追踪到了 SQLite virtual filesystem 层的可验证证据。"
+    },
+    {
+      "id": 49280061,
+      "by": "gumby271",
+      "title": "What's New in Flutter 3.47",
+      "url": "https://flutter.dev/blog/whats-new-in-flutter-3-47",
+      "score": 130,
+      "detailUpdatedAt": 1786623220,
+      "createdAt": 1786581641,
+      "aiSummaryUpdatedAt": 1786623646,
+      "aisummary": {
+        "chinese_title": "Flutter 3.47：多窗口、WASM 与跨平台路线争论",
+        "emoji": "🤨",
+        "sarcastic_question": "都 3.47 了，多窗口和桌面菜单才想起来吗？"
+      },
+      "classifications": {
+        "topics": [
+          4,
+          11
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "Flutter",
+          "Flutter 3.47",
+          "Dart",
+          "Google",
+          "Material",
+          "Cupertino",
+          "Kotlin",
+          "KMP",
+          "Kotlin Compose"
+        ]
+      },
+      "classificationsUpdatedAt": 1786584057,
+      "aiSummary": {
+        "chinese_title": "Flutter 3.47：多窗口、WASM 与跨平台路线争论",
+        "emoji": "🤨",
+        "sarcastic_question": "都 3.47 了，多窗口和桌面菜单才想起来吗？"
+      },
+      "detail": {
+        "id": 49280061,
+        "by": "gumby271",
+        "title": "What's New in Flutter 3.47",
+        "url": "https://flutter.dev/blog/whats-new-in-flutter-3-47",
+        "score": 130,
+        "detailUpdatedAt": 1786623220,
+        "createdAt": 1786581641,
+        "aiSummaryUpdatedAt": 1786623646,
+        "aisummary": {
+          "chinese_title": "Flutter 3.47：多窗口、WASM 与跨平台路线争论",
+          "discussion_overview": [
+            {
+              "category": "跨平台路线之争",
+              "summary": "评论把 Flutter 放在 React Native、原生开发、KMP（Kotlin Multiplatform）和 PWA 之间反复比较。支持 Flutter 的人看重的是单一代码库覆盖多平台、UI 视觉一致、业务应用交付快，而且很多时候不用为了每个平台重新设计交互。偏向 React Native 或原生的人则强调 TypeScript/JavaScript 人才更好招、原生组件和平台 API 映射更自然，未来迁移到 Swift/Kotlin 也更顺手。还有人提到 AI 让“直接做 native 再用 LLM 复制到别的平台”变得可行，这在一定程度上削弱了跨平台框架的独特性。",
+              "supportid": [
+                "49282933",
+                "49283148",
+                "49283339",
+                "49284654",
+                "49283165",
+                "49283178",
+                "49283304",
+                "49283093",
+                "49284497",
+                "49282716",
+                "49282791",
+                "49282864",
+                "49283041",
+                "49283590",
+                "49282755",
+                "49283593",
+                "49282836",
+                "49283478",
+                "49283080",
+                "49283262",
+                "49281819",
+                "49280957",
+                "49284426"
+              ]
+            },
+            {
+              "category": "布局模型与组件化",
+              "summary": "有评论纠正了一个常见误解：Flutter 不是简单的 width/height 布局，而是 min/max box constraints。它的核心规则是约束自上而下传递、尺寸自下而上回传，最后由 parent 决定位置；Row 和 Column 只是建立在同一模型上的布局算法，并不是后来额外塞进去的一套系统。GridView 也主要依赖 sliver system，而不是引入像 CSS Grid 那样的通用网格引擎。关于 UI 代码里大量嵌套括号的抱怨，则被另一派解释为一种提醒：嵌套太深时正好该拆成更小的 widget，逼迫代码更好地 composition。",
+              "supportid": [
+                "49283626",
+                "49283742",
+                "49284550",
+                "49280551",
+                "49283693",
+                "49283205",
+                "49281109"
+              ]
+            },
+            {
+              "category": "Web/desktop 的性能与功能短板",
+              "summary": "不少人认为 Flutter 在 mobile 上很成熟，但 web 和 desktop 仍然有明显短板。Web 端因为主要走 Canvas 自绘而不是 DOM，被批评为“不是传统 web”，即使引入 WASM 也未必能解决浏览器下载体积、Apple Lockdown Mode 兼容性等问题。desktop 端则被吐槽多窗口、popup windows、context menu、utility palette 这些基础能力来得太晚，而且早期应用常见 FPS 不稳、滚动不顺、鼠标滚动不够丝滑等体验问题。Impeller 虽然是新渲染路线，但迁移过程里也出现过 blank screen、驱动冲突和渲染 regression，说明新引擎并不是一键解决所有图形问题。",
+              "supportid": [
+                "49281034",
+                "49281364",
+                "49282698",
+                "49281570",
+                "49280957",
+                "49283109",
+                "49282072",
+                "49283241",
+                "49283823",
+                "49284434",
+                "49284181",
+                "49283723",
+                "49283922",
+                "49283123",
+                "49280456",
+                "49280493",
+                "49284040",
+                "49284603",
+                "49280741",
+                "49284474",
+                "49283766"
+              ]
+            },
+            {
+              "category": "Dart 语言与工程体验",
+              "summary": "Dart 的评价非常分裂：有人觉得它比 JS/TS 更适合 UI，静态类型、null safety、pattern matching、primary constructors、AOT/JIT 一体化和 hot reload 都很顺手；也有人直接把它骂成“Java 和 JavaScript 的糟糕混合”。除了 Flutter，Dart 还被用于 backend、CLI 和服务端项目，pub.dev、Serverpod 之类的例子说明它并不只是一门 UI 语言。工程层面的争论则集中在 UI 树太深、Redux 和状态管理被滥用、组件职责混乱等问题上，很多人认为框架本身不会拯救糟糕的架构。",
+              "supportid": [
+                "49281326",
+                "49283992",
+                "49284645",
+                "49282954",
+                "49281365",
+                "49280476",
+                "49281194",
+                "49283086",
+                "49281436",
+                "49280551",
+                "49283693",
+                "49283205",
+                "49284028",
+                "49284476",
+                "49283270",
+                "49283559",
+                "49283972",
+                "49283262"
+              ]
+            },
+            {
+              "category": "采用度与 Google 战略",
+              "summary": "围绕 Flutter 会不会被 Google 放弃，评论里分成了两派。支持者指出它在 Google 内部有 dogfooding，像 Google Pay、NotebookLM、Family Link、Google One、AdSense 等产品都在用，外部还有 Nubank、ByteDance/Douyin、Grab、eBay、Alibaba、Baidu 等大用户，说明它早已不是小众试验品。质疑者则强调 Google 的组织政治、Android 团队与 JetBrains/Compose/KMP 的路线分歧，以及 Flutter 在 Android 开发文档中存在感不足。也有人引用第三方统计称 Flutter 已进入相当比例的 iOS 和 Android 应用，认为“没人用”这种说法明显与现实不符。",
+              "supportid": [
+                "49280405",
+                "49280476",
+                "49280495",
+                "49280462",
+                "49281243",
+                "49282073",
+                "49280481",
+                "49280488",
+                "49280720",
+                "49281074",
+                "49281124",
+                "49281636",
+                "49281285",
+                "49281361",
+                "49280765",
+                "49281457",
+                "49281954",
+                "49282745",
+                "49284419",
+                "49282045",
+                "49280994",
+                "49282696",
+                "49284765",
+                "49280591",
+                "49280813",
+                "49281309",
+                "49281774",
+                "49284562",
+                "49281878"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Impeller",
+              "explanation": "Flutter 的新渲染引擎，目标是替换旧图形路径并改善跨平台图形表现，但迁移过程曾伴随不少 bug 和兼容性问题。"
+            },
+            {
+              "term": "WASM / WebAssembly",
+              "explanation": "一种可在浏览器中运行的低级字节码格式，Flutter web 被寄望用它来提升性能和运行体验。"
+            },
+            {
+              "term": "hot reload",
+              "explanation": "开发时无需完整重启应用即可替换代码并保留状态的机制，是 Flutter/Dart 的重要开发体验卖点。"
+            },
+            {
+              "term": "AOT/JIT",
+              "explanation": "AOT 是 Ahead-of-Time 编译，JIT 是 Just-in-Time 编译；Dart 兼顾发布时的 native 编译和开发时的快速反馈。"
+            },
+            {
+              "term": "KMP / Compose Multiplatform",
+              "explanation": "Kotlin Multiplatform 与 JetBrains 的跨平台 UI 方案，常被拿来和 Flutter 比较成熟度、原生集成和生态。"
+            }
+          ],
+          "context": "这次讨论围绕 Flutter 3.47 的更新展开，重点包括 desktop 端的 multi-window 和 popup windows、web 端继续推进 WASM、以及 Impeller 渲染引擎的替换进度。评论把 Flutter 放进更大的跨平台框架竞争里，对比了 React Native、SwiftUI、KMP（Kotlin Multiplatform）和 Compose Multiplatform。很多争议都来自 Flutter web 的“Canvas 自绘”路线：它不是传统的 DOM/web 应用，因此在浏览器性能、滚动手感和安全模式兼容性上会有额外代价。与此同时，Flutter 也被拿来讨论 Google 的长期投入、Dart 的语言设计，以及它到底更适合做哪类产品。",
+          "emoji": "🤨",
+          "sarcastic_question": "都 3.47 了，多窗口和桌面菜单才想起来吗？"
+        },
+        "classifications": {
+          "topics": [
+            4,
+            11
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "Flutter",
+            "Flutter 3.47",
+            "Dart",
+            "Google",
+            "Material",
+            "Cupertino",
+            "Kotlin",
+            "KMP",
+            "Kotlin Compose"
+          ]
+        },
+        "classificationsUpdatedAt": 1786584057,
+        "aiSummary": {
+          "chinese_title": "Flutter 3.47：多窗口、WASM 与跨平台路线争论",
+          "discussion_overview": [
+            {
+              "category": "跨平台路线之争",
+              "summary": "评论把 Flutter 放在 React Native、原生开发、KMP（Kotlin Multiplatform）和 PWA 之间反复比较。支持 Flutter 的人看重的是单一代码库覆盖多平台、UI 视觉一致、业务应用交付快，而且很多时候不用为了每个平台重新设计交互。偏向 React Native 或原生的人则强调 TypeScript/JavaScript 人才更好招、原生组件和平台 API 映射更自然，未来迁移到 Swift/Kotlin 也更顺手。还有人提到 AI 让“直接做 native 再用 LLM 复制到别的平台”变得可行，这在一定程度上削弱了跨平台框架的独特性。",
+              "supportid": [
+                "49282933",
+                "49283148",
+                "49283339",
+                "49284654",
+                "49283165",
+                "49283178",
+                "49283304",
+                "49283093",
+                "49284497",
+                "49282716",
+                "49282791",
+                "49282864",
+                "49283041",
+                "49283590",
+                "49282755",
+                "49283593",
+                "49282836",
+                "49283478",
+                "49283080",
+                "49283262",
+                "49281819",
+                "49280957",
+                "49284426"
+              ]
+            },
+            {
+              "category": "布局模型与组件化",
+              "summary": "有评论纠正了一个常见误解：Flutter 不是简单的 width/height 布局，而是 min/max box constraints。它的核心规则是约束自上而下传递、尺寸自下而上回传，最后由 parent 决定位置；Row 和 Column 只是建立在同一模型上的布局算法，并不是后来额外塞进去的一套系统。GridView 也主要依赖 sliver system，而不是引入像 CSS Grid 那样的通用网格引擎。关于 UI 代码里大量嵌套括号的抱怨，则被另一派解释为一种提醒：嵌套太深时正好该拆成更小的 widget，逼迫代码更好地 composition。",
+              "supportid": [
+                "49283626",
+                "49283742",
+                "49284550",
+                "49280551",
+                "49283693",
+                "49283205",
+                "49281109"
+              ]
+            },
+            {
+              "category": "Web/desktop 的性能与功能短板",
+              "summary": "不少人认为 Flutter 在 mobile 上很成熟，但 web 和 desktop 仍然有明显短板。Web 端因为主要走 Canvas 自绘而不是 DOM，被批评为“不是传统 web”，即使引入 WASM 也未必能解决浏览器下载体积、Apple Lockdown Mode 兼容性等问题。desktop 端则被吐槽多窗口、popup windows、context menu、utility palette 这些基础能力来得太晚，而且早期应用常见 FPS 不稳、滚动不顺、鼠标滚动不够丝滑等体验问题。Impeller 虽然是新渲染路线，但迁移过程里也出现过 blank screen、驱动冲突和渲染 regression，说明新引擎并不是一键解决所有图形问题。",
+              "supportid": [
+                "49281034",
+                "49281364",
+                "49282698",
+                "49281570",
+                "49280957",
+                "49283109",
+                "49282072",
+                "49283241",
+                "49283823",
+                "49284434",
+                "49284181",
+                "49283723",
+                "49283922",
+                "49283123",
+                "49280456",
+                "49280493",
+                "49284040",
+                "49284603",
+                "49280741",
+                "49284474",
+                "49283766"
+              ]
+            },
+            {
+              "category": "Dart 语言与工程体验",
+              "summary": "Dart 的评价非常分裂：有人觉得它比 JS/TS 更适合 UI，静态类型、null safety、pattern matching、primary constructors、AOT/JIT 一体化和 hot reload 都很顺手；也有人直接把它骂成“Java 和 JavaScript 的糟糕混合”。除了 Flutter，Dart 还被用于 backend、CLI 和服务端项目，pub.dev、Serverpod 之类的例子说明它并不只是一门 UI 语言。工程层面的争论则集中在 UI 树太深、Redux 和状态管理被滥用、组件职责混乱等问题上，很多人认为框架本身不会拯救糟糕的架构。",
+              "supportid": [
+                "49281326",
+                "49283992",
+                "49284645",
+                "49282954",
+                "49281365",
+                "49280476",
+                "49281194",
+                "49283086",
+                "49281436",
+                "49280551",
+                "49283693",
+                "49283205",
+                "49284028",
+                "49284476",
+                "49283270",
+                "49283559",
+                "49283972",
+                "49283262"
+              ]
+            },
+            {
+              "category": "采用度与 Google 战略",
+              "summary": "围绕 Flutter 会不会被 Google 放弃，评论里分成了两派。支持者指出它在 Google 内部有 dogfooding，像 Google Pay、NotebookLM、Family Link、Google One、AdSense 等产品都在用，外部还有 Nubank、ByteDance/Douyin、Grab、eBay、Alibaba、Baidu 等大用户，说明它早已不是小众试验品。质疑者则强调 Google 的组织政治、Android 团队与 JetBrains/Compose/KMP 的路线分歧，以及 Flutter 在 Android 开发文档中存在感不足。也有人引用第三方统计称 Flutter 已进入相当比例的 iOS 和 Android 应用，认为“没人用”这种说法明显与现实不符。",
+              "supportid": [
+                "49280405",
+                "49280476",
+                "49280495",
+                "49280462",
+                "49281243",
+                "49282073",
+                "49280481",
+                "49280488",
+                "49280720",
+                "49281074",
+                "49281124",
+                "49281636",
+                "49281285",
+                "49281361",
+                "49280765",
+                "49281457",
+                "49281954",
+                "49282745",
+                "49284419",
+                "49282045",
+                "49280994",
+                "49282696",
+                "49284765",
+                "49280591",
+                "49280813",
+                "49281309",
+                "49281774",
+                "49284562",
+                "49281878"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Impeller",
+              "explanation": "Flutter 的新渲染引擎，目标是替换旧图形路径并改善跨平台图形表现，但迁移过程曾伴随不少 bug 和兼容性问题。"
+            },
+            {
+              "term": "WASM / WebAssembly",
+              "explanation": "一种可在浏览器中运行的低级字节码格式，Flutter web 被寄望用它来提升性能和运行体验。"
+            },
+            {
+              "term": "hot reload",
+              "explanation": "开发时无需完整重启应用即可替换代码并保留状态的机制，是 Flutter/Dart 的重要开发体验卖点。"
+            },
+            {
+              "term": "AOT/JIT",
+              "explanation": "AOT 是 Ahead-of-Time 编译，JIT 是 Just-in-Time 编译；Dart 兼顾发布时的 native 编译和开发时的快速反馈。"
+            },
+            {
+              "term": "KMP / Compose Multiplatform",
+              "explanation": "Kotlin Multiplatform 与 JetBrains 的跨平台 UI 方案，常被拿来和 Flutter 比较成熟度、原生集成和生态。"
+            }
+          ],
+          "context": "这次讨论围绕 Flutter 3.47 的更新展开，重点包括 desktop 端的 multi-window 和 popup windows、web 端继续推进 WASM、以及 Impeller 渲染引擎的替换进度。评论把 Flutter 放进更大的跨平台框架竞争里，对比了 React Native、SwiftUI、KMP（Kotlin Multiplatform）和 Compose Multiplatform。很多争议都来自 Flutter web 的“Canvas 自绘”路线：它不是传统的 DOM/web 应用，因此在浏览器性能、滚动手感和安全模式兼容性上会有额外代价。与此同时，Flutter 也被拿来讨论 Google 的长期投入、Dart 的语言设计，以及它到底更适合做哪类产品。",
+          "emoji": "🤨",
+          "sarcastic_question": "都 3.47 了，多窗口和桌面菜单才想起来吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n\nFlutter 3.47 的主线是“拆包、换底座、迎接平台迁移”：Material/Cupertino 脱离 SDK 独立发布，Impeller 成为桌面默认渲染器，同时为 Apple 新平台、Wasm 默认化和更成熟的开发工具链铺路。\n\n## 正文\n\n### Material 和 Cupertino 终于不再跟着 SDK 一起发版\n\nFlutter 的 Material 和 Cupertino 一直是核心竞争力。它们能提供高度一致、接近原生的设计系统实现。  \n但问题也很明显：这两个库长期绑定在 Flutter SDK 内部。设计组件的小修小补，也得等 SDK 的季度发布节奏。  \nFlutter 3.47 迈出的关键一步，是将它们作为独立的 `material_ui` 和 `cupertino_ui` 包发布到 `pub.dev`，并正式达到 1.0。  \nSDK 中暂时仍保留原有库，但开发者已经可以主动切换到新包。  \n说白了，Flutter 想把“渲染与框架能力”和“具体设计系统”逐步分开，让前者更中立，后者更快迭代。\n\n### 独立发版解决的不是 import，而是设计系统的迭代速度\n\n改用独立包之后，Material 和 Cupertino 可以按周发布。它们不必再被 Flutter SDK 的季度节奏绑住。  \n这意味着开发者可以拿到最新 widget 样式和 bug fix，而不需要为了一个 UI 更新升级整个 SDK。  \n对 Flutter 团队来说，贡献也可以更快合入和发布。此前被 SDK 发布流程放大的维护成本，会明显下降。  \n更长远的目标是建立一个 style-neutral 的 Flutter core widget catalog。  \n有了这个基础，未来使用自定义 Design System 的团队，不必天然依附于 Material 或 Cupertino。\n\n### 迁移工具和 Compatibility Bridge 是给生态留出的缓冲带\n\n迁移入口很直接：执行 `dart fix --apply --code=migrate_design_widgets`。  \n这个命令会把 `package:flutter/material.dart` 和 `package:flutter/cupertino.dart` 的 import 自动改到独立包。  \n目前有一个已知早期问题：工具可能无法正确更新 `pubspec.yaml`。遇到时可以手动执行 `flutter pub add material_ui`，需要 Cupertino 时再加 `cupertino_ui`，随后重新运行 `dart fix`。  \n真正巧妙的地方在于，Flutter 没有要求整个生态同时完成迁移。`MaterialUiCompatibilityBridge` 允许应用先使用新包，即使某些三方依赖仍在引用 SDK 内的旧 Material API。  \n原 SDK 内设计库计划在即将到来的 11 月 Fall stable release 正式废弃；如果你维护的是 package，这次迁移应视为一次 major release。\n\n### 连本地化也被拆出去，设计系统开始真正自包含\n\n这次解耦不只是 widget import 的变化。原先独立存在的 `flutter_localizations` 也随之 unbundle。  \nMaterial 与 Cupertino 的 localization delegates 和翻译字符串，分别迁入 `material_ui` 与 `cupertino_ui`。  \n迁移后，只需引入 `package:material_ui/material_ui.dart`，并把 delegates 设置为 `GlobalMaterialLocalizations.delegates`。  \n这个集合现在也包含 Cupertino 和 Widgets 的 delegates，因此配置更简单。  \nFlutter 团队在今年 4 月冻结过 Material/Cupertino 的贡献，以保证迁移期稳定；现在冻结解除，新包将以计划中的周更节奏接收功能、修复和社区贡献。\n\n### Apple 平台的变化已经不是“以后再说”的兼容性问题\n\nXcode 27、iOS 27 和 macOS 27 将在秋季到来，Flutter 3.47 已提前调整兼容策略。  \n从该版本开始，最低支持版本从 iOS 13 升至 iOS 15，从 macOS 10.15 升至 macOS 12。  \n更关键的是，iOS 27 SDK 强制 UIKit 应用使用 `UIScene` lifecycle。使用 Xcode 27 构建、却未迁移到 `UIScene` 的应用，会在启动时直接失败。  \n普通 Flutter 应用通常能由 Flutter CLI 自动完成迁移，但如果 `AppDelegate` 有自定义原生代码，或插件还依赖旧 application lifecycle，就必须按 UIScene/Delegate Adoption Guide 手动处理。  \n因此文章给出的建议很明确：不要等正式版，应该现在就用 Apple beta 测试应用和插件链路。\n\n### Intel、CocoaPods 都在退出，而 SwiftPM 正在成为默认路径\n\nFlutter 也在跟随 Apple 向 Apple Silicon 的迁移。当前已经停止在 Intel Mac 上执行自动化测试。  \nFlutter CLI 在 Intel host 构建或构建 dual architectures 时会给出 warning，并且未来会升级为 error。  \n想提前切到 ARM64-only macOS app，可以执行 `flutter config --enable-macos-arm64-only`。  \n依赖管理方面，92 个 top 100 iOS plugins 已迁移到 Swift Package Manager；此前关闭 SwiftPM 的项目，可以通过 `flutter config --enable-swift-package-manager` 重新启用。  \nCocoaPods 已进入 maintenance mode，未迁移的插件最终会停止工作，并且会获得更低的 `pub.dev` 评分；这次还通过提前过滤无用 SwiftPM package schemes 优化了构建时间。\n\n### WebAssembly 正朝默认选项前进，但旧 JS interop 得先清掉\n\nFlutter 正在推动 Flutter Web 默认启用 WebAssembly。目标是让浏览器端获得更接近原生的性能表现。  \n现在可以先通过 `flutter build web --release --wasm` 主动测试。  \n但 Wasm 并不是加个 flag 就结束了：依赖 `dart:html` 的旧代码无法支持，需要迁移到新的 JS interop 包 `package:web`。  \n很多问题可以通过升级项目依赖自动解决，但大型项目仍应尽早扫描遗留 interop。  \n此外，main channel 上已经出现 Wasm deferred loading 的实验支持，可通过 `--enable-wasm-deferred-loading` 将应用拆成按需加载模块，改善首次加载时间。\n\n### Impeller 成为桌面默认渲染器，桌面端开始补齐“原生感”\n\nFlutter 3.47 中，Impeller 正式成为 macOS、Windows 和 Linux 的默认 renderer。  \nImpeller 面向 Metal 和 Vulkan 等现代图形 API，并在构建期编译固定 shader 集合。  \n这避开了 Skia 运行期首次编译 shader 所引发的 shader compilation jank，因此动画从第一帧起就更稳定。  \n目前仍可以针对各平台临时关闭 Impeller，但这些 fallback 会在未来版本移除；如果必须回退 Skia，Flutter 希望开发者提交 bug。  \n同时，macOS 默认启用 Wide Gamut Color；桌面端的 Impeller 还使用 SDF 渲染文字和矢量曲线，以适配低于移动设备的常见桌面屏幕像素密度。\n\n### 桌面不只换渲染器，也开始补齐窗口和构建能力\n\n实验性的 multi-window API 继续推进。Windows 和 Linux 现在支持 popup windows，可用于原生风格的 context menu 和 utility palette。  \n平台控制器还允许查询 `windowHandle`，直接获得底层 `HWND`、`NSWindow` 或 `GtkWindow` 指针。  \n这给 Windows dockable panes 等深度原生集成功能留下了入口。  \nWindows 修复了窗口激活时拉起后台窗口、以及应用恢复后抢回焦点的问题；Linux 则在窗口首帧到达 compositor 前显式完成 realize，避免早期渲染 warning 和 assertion。  \n此外，Windows 和 Linux 已支持 Flutter flavors，可在 `pubspec.yaml` 中按 flavor 选择 assets，再通过 `flutter build windows --flavor ...` 或 `flutter build linux --flavor ...` 构建。\n\n### Widget Preview 转正，GenUI 继续向 agentic UI 靠拢\n\nFlutter Widget Preview 在 3.47 成为 stable。它的价值很直接：单独渲染、检查和迭代一个 widget，不必每次都启动完整应用。  \n稳定版通过 `.widget_preview/` 本地项目缓存减少重复初始化，因此启动更快。  \n新的抽象 `PreviewThemeData` 支持顺序叠加 theme，适合复杂的矩阵式 UI 测试。  \n对于 Web widget，Preview 还能自动同步宿主项目的 `web/` assets，并自动应用项目的主题和定制化 `index.html`。  \n与此同时，`genui` 0.10.0 引入 `a2ui_core` 以集中协议相关类，并支持 A2UI client-side functions，让 agent 能指挥客户端执行校验、派生值计算等轻量任务，而不必每次往返服务端。"
+    },
     {
       "id": 49279013,
       "by": "carabiner",
@@ -2777,319 +3479,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n\nChrome 显示极小 JPEG 时会通过 partial IDCT scaling 跳过高频解码，这本是省内存、提速度的优化，却可能让图标丢掉边缘渐变并显得更粗、更厚。\n\n## 正文\n\n### 一个 15px 图标，为什么在 Chrome 和 Firefox 里不一样\n\n事情从一个很小的视觉差异开始。作者在同事电脑上看到同一个 logo，和自己机器上的效果不一样。它最终只渲染成 15px，但 Chrome 里的图标看起来更厚。对比图中，Firefox 的版本更纤细，也更接近原始图像。把图片换成 SVG 后，问题立刻消失了。可这并不是普通的浏览器渲染 bug，而是 Chrome 针对小尺寸 JPEG 做的一项解码优化。\n\n### 先完整解 JPEG，再缩小，实在太浪费\n\n直觉上的做法，是先把 JPEG 完整解压成位图，再把位图缩放到目标尺寸。这个流程没有错，但在“原图巨大、显示尺寸极小”的场景里很浪费。文章举了一个 2000 × 2000 JPEG 渲染为 20 × 20 的例子。完整解压后的位图大约要占用 12 MB，而最终的 20 × 20 结果只需要约 1.2 KB。也就是说，绝大部分被解出来的数据，随后都会在缩小时被丢掉。那既然注定要丢，能不能在解码阶段就不去生成它们？\n\n### 被缩小丢掉的，主要是高频细节\n\n这里的关键在于，缩小图像时损失的信息并不是随机的。消失最多的是高频信息，也就是像素之间变化很快的细节。树叶、树皮的纹理、细窄的边缘和细微渐变，都属于这类信息。把一棵细节丰富的树缩成 20 × 10 后，树冠基本只剩一团绿色，树干则变成一根棕色的线。低频信息，也就是大块颜色和整体轮廓，还会保留下来。高频细节虽然有时会通过混合留下些痕迹，但已经不再是缩略图的主要内容。\n\n### JPEG 恰好把图像拆成了“高频和低频”\n\nJPEG 的编码方式，刚好给这种优化留出了入口。它会把图像切成 8 × 8 的块，并通过 DCT（Discrete Cosine Transform）把每个块转换到频域。频域中的左上角是 constant component，也就是完全不变化的平坦颜色。右下角则对应最高频率，视觉上类似黑白棋盘格。中间的各种 basis functions，则代表不同程度的像素变化模式。JPEG 会记录每种模式在这个 8 × 8 块里占多少，这些数值就是 coefficients。\n\n### 缩到 1/8 时，根本不必把所有系数还原出来\n\n当图像需要缩小到原来的 1/8 时，一个原始的 8 × 8 JPEG block 刚好可以对应目标图上的一个像素。此时，目标图主要需要低频信息，因为高频纹理本来就会在后续缩放中被抹掉。于是解码器可以跳过高频 coefficients，只利用生成粗略图像所需的低频部分。这样得到的并不是“先完整解码，再缩小”的结果，而是直接从 JPEG 的频域信息中生成一个低分辨率版本。解出来的图像占用更少内存，解码速度也更快。这个技术叫 partial IDCT scaling，也能应用于分母为 8 的分数缩放比例。\n\n### Chrome 的巧妙之处，也正是图标变粗的原因\n\nChrome 把图像解码和渲染交给 Skia，而 Skia 解 JPEG 时使用 libjpeg-turbo。libjpeg-turbo 实现了 partial IDCT scaling，因此可以在目标尺寸足够小时只解出低频内容。Skia 会计算最接近的、分母为 8 的缩放比例，先按这个比例解码 JPEG。之后，它再用传统的 downsampling 算法，把这个中间结果缩到最终尺寸。问题就在于，作者的图标小到触发了 1/8 解码。此时保留下来的几乎只有 constant component，原图中本可柔化边缘的渐变和高频信息没有被用于解码，于是图标在 Chrome 中看起来更厚。\n\n### JPEG 的优化目标是照片，不是小图标\n\n这件事最有意思的地方在于，Chrome 并没有“错误地”渲染图片。它是在利用 JPEG 的频域结构，避免为一个极小的显示结果浪费解码成本。只是这种优化符合照片缩略图的感知需求，却不一定符合 icon 对边缘、线条和轮廓的要求。对于照片来说，舍弃一部分高频细节通常无伤大雅。对于 15px 的 logo 来说，少掉一点抗锯齿和边缘渐变，视觉重心就可能完全变了。说白了，JPEG 不适合承担小图标这类任务。格式名称里的 “Photographic”，其实已经点明了它最初的设计对象。"
-    },
-    {
-      "id": 49272832,
-      "by": "ropbear",
-      "title": "Tailscale Traces Database Corruption to 16y/o SQLite WAL-Reset Bug",
-      "url": "https://tailscale.com/blog/sqlite-wal-reset-bug",
-      "score": 784,
-      "detailUpdatedAt": 1786583615,
-      "createdAt": 1786546843,
-      "aiSummaryUpdatedAt": 1786584319,
-      "aisummary": {
-        "chinese_title": "Tailscale 追查 16年老 SQLite WAL-reset 漏洞，付费支持并资助 VFS shim",
-        "emoji": "🛠️",
-        "sarcastic_question": "都把 SQLite 折腾成这样了，还叫标准用法吗？"
-      },
-      "classifications": {
-        "topics": [
-          6,
-          4,
-          10
-        ],
-        "facets": [
-          8
-        ],
-        "tags": [
-          "Tailscale",
-          "SQLite",
-          "WAL reset bug",
-          "database corruption",
-          "WAL",
-          "checkpointing",
-          "VFS",
-          "Go",
-          "tailscale/sqlite"
-        ]
-      },
-      "classificationsUpdatedAt": 1786551683,
-      "aiSummary": {
-        "chinese_title": "Tailscale 追查 16年老 SQLite WAL-reset 漏洞，付费支持并资助 VFS shim",
-        "emoji": "🛠️",
-        "sarcastic_question": "都把 SQLite 折腾成这样了，还叫标准用法吗？"
-      },
-      "detail": {
-        "id": 49272832,
-        "by": "ropbear",
-        "title": "Tailscale Traces Database Corruption to 16y/o SQLite WAL-Reset Bug",
-        "url": "https://tailscale.com/blog/sqlite-wal-reset-bug",
-        "score": 784,
-        "detailUpdatedAt": 1786583615,
-        "createdAt": 1786546843,
-        "aiSummaryUpdatedAt": 1786584319,
-        "aisummary": {
-          "chinese_title": "Tailscale 追查 16年老 SQLite WAL-reset 漏洞，付费支持并资助 VFS shim",
-          "discussion_overview": [
-            {
-              "category": "开源支持与公司姿态",
-              "summary": "很多评论把这篇事故复盘视为 Tailscale 对开源生态“真金白银”的支持案例：他们不仅买了 SQLite 的 support contract，还资助了帮助定位竞态的 VFS shim。有人把这种做法和 Percona、EnterpriseDB 这类靠支持服务养核心开发者的模式类比，认为这比口头感谢更有分量。讨论里还延伸到 headscale（Tailscale control protocol 的开源自建实现），不少人因此更信任这家公司。也有人提醒，诊断遥测和账号绑定仍有一些实际摩擦，并不算完全无争议。",
-              "supportid": [
-                "49273533",
-                "49273685",
-                "49275689",
-                "49273719",
-                "49278950",
-                "49275817",
-                "49279341",
-                "49280458",
-                "49274375"
-              ]
-            },
-            {
-              "category": "WAL-reset 竞态与 checkpoint 触发条件",
-              "summary": "技术讨论集中在 SQLite WAL-reset bug 的触发机制：它需要多个 connection、极端时序以及 checkpoint 和写入交错，才会出现数据结构状态不一致。Tailscale 之所以更容易撞上它，是因为他们手动接管 checkpoint，而且为了 backup 和 disaster recovery 采取了非常激进的 checkpoint 频率，试图让 WAL 保持很小并缩短恢复时间。评论里有人根据文中的指标异常推测，系统曾出现“报告复制的页数”和“实际可用页数”不一致的现象，这正是把团队引到这个古老竞态的线索。也有人指出，SQLite 开发者后来还得在测试环境里特意触发这个条件，说明它确实极端而隐蔽。",
-              "supportid": [
-                "49273810",
-                "49273908",
-                "49274270",
-                "49274882",
-                "49275168",
-                "49279584",
-                "49280231",
-                "49279023",
-                "49280302",
-                "49274827",
-                "49274099"
-              ]
-            },
-            {
-              "category": "SQLite 是否适合这种架构",
-              "summary": "围绕“为什么不用 Postgres”出现了明显分歧。支持者认为 Tailscale 的 shard 化 control plane 已经把故障半径限制在少数客户，data plane 仍然是 peer-to-peer，所以这不是传统意义上的全局单点故障；再加上他们需要极快的 byte-copy restore、低 pause time 和较低的 page cache 成本，SQLite 并非毫无道理。批评者则觉得这属于在数据库上做非标准操作，越接近边缘路径越容易把可靠性赌在运气上，在线备份能力更成熟的 client/server DB 可能更省心。还有人把这类设计归结为“极简主义走到头”的架构摇摆，认为频繁换底层技术本身就会制造复杂度。",
-              "supportid": [
-                "49280171",
-                "49280546",
-                "49276444",
-                "49276068",
-                "49277686",
-                "49274921",
-                "49276654",
-                "49277834",
-                "49279043",
-                "49279437",
-                "49279817",
-                "49280260",
-                "49280330"
-              ]
-            },
-            {
-              "category": "测试、形式化方法与故障注入",
-              "summary": "这篇修复过程也引发了对测试能力边界的讨论。有人拿 Dijkstra 和 Knuth 的老话开玩笑，强调测试只能证明某个 bug 被抓到过，不能证明“没有 bug”；不过它们至少能防止已知问题再次出现。讨论进一步扩展到 TLA+、Rust 的 type system、unsafe、model checker，以及 Antithesis 这类故障注入/模拟平台，据说能在十几分钟内找到类似问题。整体共识是：对 SQLite 这种复杂存储系统，单靠 unit tests 不够，但测试、形式化建模和 fault injection 各自都很有价值。",
-              "supportid": [
-                "49275094",
-                "49275346",
-                "49278566",
-                "49275424",
-                "49275983",
-                "49276796",
-                "49278154",
-                "49280298",
-                "49280191",
-                "49274696",
-                "49276335",
-                "49277244",
-                "49274445",
-                "49274867",
-                "49280526"
-              ]
-            },
-            {
-              "category": "身份、隐私与使用体验摩擦",
-              "summary": "除了数据库本身，评论里也反复提到身份认证和隐私设置的细节。有人不喜欢 Tailscale 把账号绑在 GitHub、Apple 之类的 SSO provider 上，觉得身份被永久绑定很别扭；也有人补充说可以通过 support ticket 切换 provider，或者直接用 OIDC 和 passkeys。另一派则认为不提供 username/password 反而更安全，因为一旦自己成为 identity provider，就要面对 MFA 丢失、credential stuffing 和大量人工支持。客户端遥测是否能彻底关闭也被提到，尤其在 macOS/iOS 上并不总是直观。",
-              "supportid": [
-                "49274873",
-                "49275214",
-                "49276117",
-                "49277215",
-                "49279878",
-                "49276307",
-                "49275384",
-                "49275447",
-                "49279341",
-                "49280458",
-                "49275817"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "WAL（Write-Ahead Log）",
-              "explanation": "SQLite 的预写日志机制，先把变更写入日志，再在 checkpoint 时合并回主数据库文件。"
-            },
-            {
-              "term": "checkpoint",
-              "explanation": "把 WAL 中的内容刷回主数据库文件的过程；这里的手动和高频 checkpoint 是故障背景之一。"
-            },
-            {
-              "term": "VFS shim",
-              "explanation": "SQLite 的 Virtual File System 适配层/中间层，可用于隔离 I/O 行为并帮助复现、定位竞态。"
-            },
-            {
-              "term": "headscale",
-              "explanation": "一个兼容 Tailscale control protocol 的开源自建 control plane 实现。"
-            },
-            {
-              "term": "tailnet",
-              "explanation": "Tailscale 里的私有网络/租户单元，一组设备和访问控制策略的集合。"
-            }
-          ],
-          "context": "Tailscale（基于 WireGuard 的零配置 mesh VPN）把每个 shard 的 control plane 元数据放在独立的 SQLite 数据库里，由单个 Go process 管理。为了 backup 和 disaster recovery，他们手动控制 SQLite 的 WAL checkpoint，希望把 WAL 保持得很小并实现快速的 byte-copy restore，但这也把系统带进了更少见的边缘时序。SQLite 的 WAL-reset bug 是一个非常老的竞态：在多个 connection、checkpoint 和写入交错时，可能出现页面状态不一致并导致腐化。文章里提到他们先和 SQLite 开发者签 support contract，再资助一个 VFS shim 来隔离问题、复现 bug 并验证修复；评论还把话题延伸到 headscale（开源自建 control plane）、SSO、遥测和是否该改用 Postgres 之类的 client/server DB。",
-          "emoji": "🛠️",
-          "sarcastic_question": "都把 SQLite 折腾成这样了，还叫标准用法吗？"
-        },
-        "classifications": {
-          "topics": [
-            6,
-            4,
-            10
-          ],
-          "facets": [
-            8
-          ],
-          "tags": [
-            "Tailscale",
-            "SQLite",
-            "WAL reset bug",
-            "database corruption",
-            "WAL",
-            "checkpointing",
-            "VFS",
-            "Go",
-            "tailscale/sqlite"
-          ]
-        },
-        "classificationsUpdatedAt": 1786551683,
-        "aiSummary": {
-          "chinese_title": "Tailscale 追查 16年老 SQLite WAL-reset 漏洞，付费支持并资助 VFS shim",
-          "discussion_overview": [
-            {
-              "category": "开源支持与公司姿态",
-              "summary": "很多评论把这篇事故复盘视为 Tailscale 对开源生态“真金白银”的支持案例：他们不仅买了 SQLite 的 support contract，还资助了帮助定位竞态的 VFS shim。有人把这种做法和 Percona、EnterpriseDB 这类靠支持服务养核心开发者的模式类比，认为这比口头感谢更有分量。讨论里还延伸到 headscale（Tailscale control protocol 的开源自建实现），不少人因此更信任这家公司。也有人提醒，诊断遥测和账号绑定仍有一些实际摩擦，并不算完全无争议。",
-              "supportid": [
-                "49273533",
-                "49273685",
-                "49275689",
-                "49273719",
-                "49278950",
-                "49275817",
-                "49279341",
-                "49280458",
-                "49274375"
-              ]
-            },
-            {
-              "category": "WAL-reset 竞态与 checkpoint 触发条件",
-              "summary": "技术讨论集中在 SQLite WAL-reset bug 的触发机制：它需要多个 connection、极端时序以及 checkpoint 和写入交错，才会出现数据结构状态不一致。Tailscale 之所以更容易撞上它，是因为他们手动接管 checkpoint，而且为了 backup 和 disaster recovery 采取了非常激进的 checkpoint 频率，试图让 WAL 保持很小并缩短恢复时间。评论里有人根据文中的指标异常推测，系统曾出现“报告复制的页数”和“实际可用页数”不一致的现象，这正是把团队引到这个古老竞态的线索。也有人指出，SQLite 开发者后来还得在测试环境里特意触发这个条件，说明它确实极端而隐蔽。",
-              "supportid": [
-                "49273810",
-                "49273908",
-                "49274270",
-                "49274882",
-                "49275168",
-                "49279584",
-                "49280231",
-                "49279023",
-                "49280302",
-                "49274827",
-                "49274099"
-              ]
-            },
-            {
-              "category": "SQLite 是否适合这种架构",
-              "summary": "围绕“为什么不用 Postgres”出现了明显分歧。支持者认为 Tailscale 的 shard 化 control plane 已经把故障半径限制在少数客户，data plane 仍然是 peer-to-peer，所以这不是传统意义上的全局单点故障；再加上他们需要极快的 byte-copy restore、低 pause time 和较低的 page cache 成本，SQLite 并非毫无道理。批评者则觉得这属于在数据库上做非标准操作，越接近边缘路径越容易把可靠性赌在运气上，在线备份能力更成熟的 client/server DB 可能更省心。还有人把这类设计归结为“极简主义走到头”的架构摇摆，认为频繁换底层技术本身就会制造复杂度。",
-              "supportid": [
-                "49280171",
-                "49280546",
-                "49276444",
-                "49276068",
-                "49277686",
-                "49274921",
-                "49276654",
-                "49277834",
-                "49279043",
-                "49279437",
-                "49279817",
-                "49280260",
-                "49280330"
-              ]
-            },
-            {
-              "category": "测试、形式化方法与故障注入",
-              "summary": "这篇修复过程也引发了对测试能力边界的讨论。有人拿 Dijkstra 和 Knuth 的老话开玩笑，强调测试只能证明某个 bug 被抓到过，不能证明“没有 bug”；不过它们至少能防止已知问题再次出现。讨论进一步扩展到 TLA+、Rust 的 type system、unsafe、model checker，以及 Antithesis 这类故障注入/模拟平台，据说能在十几分钟内找到类似问题。整体共识是：对 SQLite 这种复杂存储系统，单靠 unit tests 不够，但测试、形式化建模和 fault injection 各自都很有价值。",
-              "supportid": [
-                "49275094",
-                "49275346",
-                "49278566",
-                "49275424",
-                "49275983",
-                "49276796",
-                "49278154",
-                "49280298",
-                "49280191",
-                "49274696",
-                "49276335",
-                "49277244",
-                "49274445",
-                "49274867",
-                "49280526"
-              ]
-            },
-            {
-              "category": "身份、隐私与使用体验摩擦",
-              "summary": "除了数据库本身，评论里也反复提到身份认证和隐私设置的细节。有人不喜欢 Tailscale 把账号绑在 GitHub、Apple 之类的 SSO provider 上，觉得身份被永久绑定很别扭；也有人补充说可以通过 support ticket 切换 provider，或者直接用 OIDC 和 passkeys。另一派则认为不提供 username/password 反而更安全，因为一旦自己成为 identity provider，就要面对 MFA 丢失、credential stuffing 和大量人工支持。客户端遥测是否能彻底关闭也被提到，尤其在 macOS/iOS 上并不总是直观。",
-              "supportid": [
-                "49274873",
-                "49275214",
-                "49276117",
-                "49277215",
-                "49279878",
-                "49276307",
-                "49275384",
-                "49275447",
-                "49279341",
-                "49280458",
-                "49275817"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "WAL（Write-Ahead Log）",
-              "explanation": "SQLite 的预写日志机制，先把变更写入日志，再在 checkpoint 时合并回主数据库文件。"
-            },
-            {
-              "term": "checkpoint",
-              "explanation": "把 WAL 中的内容刷回主数据库文件的过程；这里的手动和高频 checkpoint 是故障背景之一。"
-            },
-            {
-              "term": "VFS shim",
-              "explanation": "SQLite 的 Virtual File System 适配层/中间层，可用于隔离 I/O 行为并帮助复现、定位竞态。"
-            },
-            {
-              "term": "headscale",
-              "explanation": "一个兼容 Tailscale control protocol 的开源自建 control plane 实现。"
-            },
-            {
-              "term": "tailnet",
-              "explanation": "Tailscale 里的私有网络/租户单元，一组设备和访问控制策略的集合。"
-            }
-          ],
-          "context": "Tailscale（基于 WireGuard 的零配置 mesh VPN）把每个 shard 的 control plane 元数据放在独立的 SQLite 数据库里，由单个 Go process 管理。为了 backup 和 disaster recovery，他们手动控制 SQLite 的 WAL checkpoint，希望把 WAL 保持得很小并实现快速的 byte-copy restore，但这也把系统带进了更少见的边缘时序。SQLite 的 WAL-reset bug 是一个非常老的竞态：在多个 connection、checkpoint 和写入交错时，可能出现页面状态不一致并导致腐化。文章里提到他们先和 SQLite 开发者签 support contract，再资助一个 VFS shim 来隔离问题、复现 bug 并验证修复；评论还把话题延伸到 headscale（开源自建 control plane）、SSO、遥测和是否该改用 Postgres 之类的 client/server DB。",
-          "emoji": "🛠️",
-          "sarcastic_question": "都把 SQLite 折腾成这样了，还叫标准用法吗？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n\nTailscale 经过 6 个月、19 次 SQLite 损坏事故的取证，最终将问题锁定在一个罕见的 SQLite WAL checkpoint/WAL-reset 路径上的长期 bug；关键突破来自对虚拟文件系统层的实时追踪。\n\n## 正文\n\n### 一个“单写者 SQLite”架构，却开始反复出现损坏\n\nTailscale 的 control plane 对外是一个统一入口，但内部由多个独立 shard 组成。每个 tailnet 同一时间只落在一个 shard 上，并可以在 shard 之间迁移。每个 shard 由一个 Go 进程独占访问一份 SQLite 数据库，这正是 SQLite 擅长的单写者使用方式。Tailscale 从 2022 年起将 SQLite 用作主数据库，并从 2023 年初开始定期做完整快照，将数据库文件上传到 S3。这个架构长期稳定运行，直到去年 8 月，读取 S3 备份的数据管道报出了第一例数据库错误。`PRAGMA integrity_check` 随后确认：备份中的 SQLite 数据库确实损坏了。\n\n一开始，这看起来像一次极其罕见的偶发事件。SQLite 理论上当然可能损坏，但在正常使用中不应该频繁遇到。可问题没有停在第一例：接下来的 6 个月里，Tailscale 一共遭遇了 19 次独立的数据库损坏。说白了，真正棘手的不是“SQLite 会不会坏”，而是它在看似标准的单进程、单写者架构里，开始以毫无规律的方式反复坏掉。\n\n### 损坏影响有限，但恢复过程会让一个 shard 暂时失明\n\n这些 SQLite 数据库保存的是 tailnet、设备和配置相关的控制面元数据，不包含用户的私有加密密钥，也不承载网络流量。因此，数据库损坏并不意味着 WireGuard 流量或密钥泄露。最早几次事故中，真正丢失的主要是少量尚未持久化的新设备记录或配置修改。可一旦发现损坏，Tailscale 必须停止对应 shard 的 control plane 进程，修复或恢复数据库。于是，这个 shard 上的 tailnet 会在恢复窗口内失去 control plane 服务。\n\n已经在线的设备通常还能维持既有的 peer-to-peer WireGuard 连接，但无法获知网络拓扑的新变化。新上线的设备则无法从 control plane 获取 peer 列表，因此无法建立新的连接。Web 管理后台和 Tailscale API 也会暂时不可用。早期一次恢复可能超过一小时，后来团队通过流程改进不断压缩恢复时间。即便大部分 shard 从未受影响，反复出现在全局 status page 上的事故，依然会侵蚀用户对服务可靠性的信任。\n\n### 最难的不是修复损坏，而是找不到触发条件\n\nTailscale 最先怀疑的是自己的代码。他们回查最近变更，却找不到和 SQLite 底层交互有关的可疑修改。随后又重新审阅了多年前写好的 SQLite 集成代码，仍没有发现能解释损坏的错误。团队也试图在事故之间找共同点：shard、客户、tailnet 功能、时间、负载水平，全都没有显著关联。没有稳定的触发条件，就无法在测试环境里合成复现。\n\n这迫使他们采取一种并不理想、但别无选择的办法：在生产环境部署被动取证遥测，等待下一次损坏发生。更糟的是，事故间隔完全不规律，有时只差数小时，有时相隔数周。去年 10 月到 12 月之间甚至有连续 6 周没有事故，随后问题又在圣诞节前后卷土重来。由于这是一个会直接影响生产可靠性的长期问题，Tailscale 还与 SQLite 团队签订了专业支持合同。双方逐步排除了诸如 `close()` 导致 POSIX advisory lock 失效、错误管理 SQLite 所有的内存、关闭线程安全后发生多线程访问等假设。\n\n### 为了更快恢复，他们意外发现“已提交事务消失了”\n\n在根因尚未找到时，Tailscale 先把目标转为降低事故伤害。他们让 shard 一旦遇到损坏就立即 hard-stop，避免继续在可疑数据库上运行。同时，他们部署了持续对备份执行 `PRAGMA integrity_check` 的监控，并完善了 runbook 与 on-call 培训。这些措施先将响应时间压缩到不足一小时。但真正重要的转折，来自他们为恢复服务而搭建的一套 transaction logging pipeline。\n\n这套机制会把每条修改数据库的 SQL 语句流式写入独立日志。由于 SQLite 是单写者数据库，且事务具备 serialisable isolation，事务历史天然是线性且确定的。理论上，只要从最近一份已知正常的备份开始，按顺序重放后续事务，就能恢复到故障前的最新状态，而不用直接修复损坏文件。这个方案本身已经比“回滚到旧备份”更好，因为后者会丢失更多数据。可在两次事故中，事务日志竟然无法干净重放：一个事务已经写入并提交的数据，对后续事务却不可见，仿佛这次写入从未发生过，而且 SQLite 没有报错。\n\n### 真正的线索藏在 WAL checkpoint 的异常计数里\n\n这类“已提交写入消失”的现象，开始把怀疑点指向 SQLite 的 checkpoint 流程。Tailscale 在运行 SQLite 时启用了 Write-Ahead Logging，也就是 WAL mode。更新发生时，新 page 不会直接覆盖主数据库文件，而是先追加到 WAL file。随后，checkpoint 再把 WAL 中的 page 拷回主数据库文件，避免 WAL 无限增长。通常 checkpoint 由 SQLite 自动调度，但 Tailscale 为了让备份更快、更一致，选择手动控制 checkpoint。\n\n这个非标准用法因此成了重点嫌疑对象。事故期间的指标显示，SQLite 有时声称从 WAL 拷贝了比 WAL 实际拥有数量更多的 page。比如 WAL 中明明只有 10 个 page，却报告复制了 20 个 page，这显然不可能是正常状态。为了看清 checkpoint 到底在文件层做了什么，SQLite 开发者没有只看 SQL 或 pager 层日志，而是向更底层推进。SQLite 的架构从 SQL parser/code generator，经 pager 拆成 page，最终通过 virtual filesystem，也就是 OS interface，执行实际磁盘 I/O。\n\n### `tmstmpvfs` 把难以复现的底层 bug 变成了可观察证据\n\nSQLite 的一个重要设计是，各层可以替换或包装。于是 SQLite 开发者为 Tailscale 写了一个 virtual filesystem wrapper，用于记录数据库文件操作、时间和更多追踪信息。这个 shim 名为 `tmstmpvfs`，源码也已公开在 SQLite 仓库中。它不改变上层 SQL 语义，而是在真正的文件读写边界上补齐取证能力。换句话说，之前团队只能看到“数据库最终坏了”，现在终于能看到“checkpoint 过程中每一步究竟写了什么”。\n\nTailscale 将这个 shim 部署到生产环境后，不久便等到了下一次损坏事故。根据文章已提供的内容，新增的 `tmstmpvfs` 日志让 SQLite 开发者最终定位并修复了问题。标题将其定义为一个存在长达 16 年的 SQLite WAL-reset bug，而文章开头也明确表示 Tailscale 已确认理解并修复了该问题。可惜，提供的原文在介绍具体 bug 机制的句子中途截断，因此无法忠实说明 WAL reset 究竟在什么条件下错误执行，以及补丁的具体实现。能确定的是，整个调查的关键不在于再加一层恢复脚本，而在于把无法合成复现的生产事故，向下追踪到了 SQLite virtual filesystem 层的可验证证据。"
     },
     {
       "id": 49272569,
@@ -14098,273 +14487,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n\n这篇文章借 1873 年铁路泡沫的崩盘提醒我们：当 AI 基建开始靠债务不断加杠杆时，真正有价值的不只是训练最强模型，而是能把稀缺算力卖给所有人的基础设施平台。\n\n## 正文\n\n### 1873 年的铁路狂热，像极了今天的 AI CapEx\n\n文章先从 Jay Cooke 的故事讲起，因为这几乎是一则关于“基础设施繁荣如何变成金融危机”的原型故事。Northern Pacific Railway 拿到了 4,000 万英亩沿线土地，却始终缺少修铁路的钱。Jay Cooke 原本拒绝为它融资，直到对方给出每售出 1,000 美元债券，就拿 12% 佣金和 200 美元股票的条件。于是 Cooke 把卖 Civil War 战争债时的套路搬了过来：爱国叙事、媒体影响力，以及面向散户的大规模销售网络。巅峰时期，他雇了 1,500 名销售员，还通过广告和直接付款影响 1,300 家报纸。这个创新确实扩大了融资渠道，但也意味着铁路建设开始依赖不断涌入的新资金，而不是已经形成的现金流。\n\n### 真正击穿系统的，不是铁路亏损，而是融资突然断了\n\n问题在于，Northern Pacific 的资本需求几乎没有尽头，而 Cooke 在两次债券发行之间，甚至会动用存款来垫付资金。1873 年 9 月，维也纳股市崩盘和白银废币化共同收紧了全球信贷。新债券卖不出去，Jay Cooke & Company 随即破产，并触发了 Panic of 1873。后续是连锁式的铁路破产、持续多年的经济萧条，以及长达数十年的通缩。作者引用 Liaquat Ahamed 的《1873》指出，当年美国铁路繁荣期每年约有 5 亿美元流入铁路债券。按经济规模换算到 2026 年，这相当于每年 6,000 亿美元，几乎就是 major tech companies 预计在 2026 年投入 AI 的规模。\n\n### 一年前还能说“不是泡沫”，现在 Big Tech 已经开始借钱了\n\n这段历史之所以重要，是因为过去一年里 AI 基建的融资方式发生了明显变化。此前，Big Tech 还能用“CapEx 并非债务融资”来反驳 AI 泡沫论。Microsoft 至今仍是这个论点最有力的例外，它上季度依然有 196 亿美元自由现金流。可从去年 9 月到 11 月，Oracle、Meta、Alphabet 和 Amazon 已合计发行 800 亿美元债务来建设基础设施。四家公司 2025 年全年融资 1,080 亿美元，而截至 7 月 7 日，今年已经融资 1,940 亿美元。市场也开始变得警惕：今年发行债券中有 86% 的收益率已经高于发行时，认购覆盖倍数则从 2 月的 5 倍降到不足 2 倍。\n\n### Google 连发股权，暴露了算力争夺已经变成现金争夺\n\n真正让作者感到震动的，是 Google 在 6 月宣布融资 850 亿美元股权，其中有 100 亿美元由 Berkshire Hathaway 特别认购。单看 100 亿美元，对 Google 和 Berkshire 都不算大钱，因此它更像一次刻意释放的信号。Google 想表达的是：未来算力需求可能远超市场预期，公司愿意动用包括股权在内的一切融资工具来扩张供给。Berkshire 的参与则为这场投入提供了某种背书。作者此前的推论很直接：如果未来没有足够的 compute 可买，那么竞争就会变成谁能拿出最多现金。现金能力会换来更多算力，更多算力又能带来更多收入，最终形成一个不断自我强化的闭环。\n\n### 但 Google 的问题是：它可能输掉模型前沿，却赢下基础设施战争\n\n有意思的地方在于，Google 的资本优势并不自动意味着 Gemini 会成为最强模型。DeepMind CEO Demis Hassabis 虽然名义上升任 chairman，但已不再负责日常运营；Gemini co-lead、前 Chief Scientist Jeff Dean 也已离开。SemiAnalysis 的判断很尖锐：DeepMind 已不再是 frontier lab，研究人员流失和 compute 分配不佳，使其重返 SOTA 的概率接近于零。作者认为，问题不只是组织官僚化，也可能是 DeepMind 与 Anthropic、OpenAI 的路线不同。Hassabis 更押注 world models 和多模态能力，而竞争对手更聚焦文本、代码，以及依赖模型与 harness 协同的长程 agentic workflow。换句话说，Google 未必只是“做不好 coding”，也可能是其研究资源长期在服务另一种 AGI 愿景，而公司已经没有耐心继续等待这个愿景兑现。\n\n### Google Cloud 的增长说明，卖铲子未必比造模型差\n\n即使 DeepMind 失去前沿地位，Google 对 Berkshire Hathaway 而言也未必是坏赌注，因为 Google Cloud 正在成为 AI 算力需求的直接受益者。Google Cloud 本季度收入同比增长 82%，高于上一季度的 63% 和一年前的 32%；利润率则达到 36%，同样高于上一季度的 33% 和一年前的 21%。Pichai 在财报电话会上提到，公司愿意承受几个月的高成本，甚至租用第三方 capacity，去满足“非常大的 Cloud 客户”的短期需求。作者认为，这个客户几乎肯定是 Anthropic。SemiAnalysis 进一步称，2026 年第三季度到 2027 年第四季度期间，Google 超过 20% 的 TPU 出货量将直接卖给 Anthropic。更关键的是，这还不包括 Anthropic 当前租用的数十万 TPUs，以及未来六个季度内向 Anthropic 和 Meta 承诺出租的更多 TPUs。\n\n### 当 intelligence 变成 commodity，TPU 和平台位置才是 Google 的底牌\n\nGoogle Cloud CEO Thomas Kurian 的逻辑与 DeepMind 截然不同：Google 不是只想成为一个 AI lab，而是想做让所有 AI lab 都能运行的平台。客户可以只买 TPU，也可以同时购买 Gemini、cybersecurity 或其他 Google Cloud 服务。即便 Anthropic 的 Claude 与 Gemini 竞争，只要 Anthropic 用 Google 的 TPUs 训练和推理，Google 就能从中变现，并将收入继续投入研发和基础设施。这里当然存在一个尖锐矛盾：Google 自己的研究人员据报道也曾为 compute 配额而竞争，算力并不天然是无限的。可文章的核心判断已经很明确：Google 是否还能赢得 frontier model 竞赛，和它能否赢得 AI infrastructure 竞赛，是两件不同的事。若未来 intelligence 趋于商品化，那么决定长期竞争力的将是边际成本、供给能力和平台控制权，而 Google 的 TPU 正是它在这场战争里的关键筹码。"
-    },
-    {
-      "id": 49223965,
-      "by": "mark_l_watson",
-      "title": "Jolt: Clojure compiler implemented with Chez Scheme",
-      "url": "https://jolt-lang.github.io",
-      "score": 122,
-      "detailUpdatedAt": 1786484618,
-      "createdAt": 1786465841,
-      "aiSummaryUpdatedAt": 1786485322,
-      "aisummary": {
-        "chinese_title": "Jolt：Chez Scheme 上的 Clojure 编译器，主打 JVM 兼容却被疑 LLM 速成",
-        "emoji": "🤔",
-        "sarcastic_question": "两个月两千次提交，真不是 LLM 速成班？"
-      },
-      "classifications": {
-        "topics": [
-          4,
-          6
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "Jolt",
-          "Clojure",
-          "Chez Scheme",
-          "Gambit",
-          "Racket",
-          "Datomic",
-          "jolt-lang"
-        ]
-      },
-      "classificationsUpdatedAt": 1786469171,
-      "aiSummary": {
-        "chinese_title": "Jolt：Chez Scheme 上的 Clojure 编译器，主打 JVM 兼容却被疑 LLM 速成",
-        "emoji": "🤔",
-        "sarcastic_question": "两个月两千次提交，真不是 LLM 速成班？"
-      },
-      "detail": {
-        "id": 49223965,
-        "by": "mark_l_watson",
-        "title": "Jolt: Clojure compiler implemented with Chez Scheme",
-        "url": "https://jolt-lang.github.io",
-        "score": 122,
-        "detailUpdatedAt": 1786484618,
-        "createdAt": 1786465841,
-        "aiSummaryUpdatedAt": 1786485322,
-        "aisummary": {
-          "chinese_title": "Jolt：Chez Scheme 上的 Clojure 编译器，主打 JVM 兼容却被疑 LLM 速成",
-          "discussion_overview": [
-            {
-              "category": "快速推进与 LLM 痕迹引发怀疑",
-              "summary": "有评论对这个项目的推进速度非常警惕，尤其是它在很短时间内就表现得像一个“功能完整、文档完善”的语言实现。有人指出单一作者在两三个月里提交了大量 commit，还配有很长的提交信息、代码注释和看起来很成熟的官网，这让人怀疑是否过早包装成可用产品。后来又有人翻出作者的长文，指出里面明确提到使用了 LLMs，于是“vibecoded/速成”的质疑进一步被坐实。",
-              "supportid": [
-                "49263983",
-                "49264060",
-                "49264133",
-                "49264829"
-              ]
-            },
-            {
-              "category": "作者资历与快速迭代的辩护",
-              "summary": "也有人为项目辩护，认为这不是随便拼出来的“slop”，因为维护者长期活跃在 Clojure 圈子里，显然知道自己在做什么。支持者强调，快速迭代不等于低质量，尤其是在编译器和运行时这类大工程上，外观上的“速度快”并不能直接推出“设计差”。不过即便是相对支持的声音，也承认这种单人高频推进的节奏确实很少见。",
-              "supportid": [
-                "49264684",
-                "49264912"
-              ]
-            },
-            {
-              "category": "Jolt 走兼容 JVM 库路线，jank 走 C++ 互操作路线",
-              "summary": "讨论中最重要的横向比较对象是 jank。jank 的核心卖点是 seamless C++ interop、对任意 C++ 库的 JIT/AOT 支持，以及类似 Cargo 的原生依赖构建系统；而 Jolt 则更像是要当“JVM 的替代品”，重点是通过 shims 让现有 Clojure 库继续跑起来。Jolt 这边还强调了支持库列表、conformance corpus 和基准测试，说明它更在意兼容性和迁移成本，而不是先做一套全新的宿主语言边界。",
-              "supportid": [
-                "49262149",
-                "49263897",
-                "49264534",
-                "49264801",
-                "49263556"
-              ]
-            },
-            {
-              "category": "FFI、宿主互操作与原生库用途",
-              "summary": "很多人对 Jolt 的兴趣集中在 C FFI 和直接调用原生库上，因为这意味着它能做一些 JVM 上很别扭的事。评论里提到 Panama（JVM 的 Foreign Function & Memory API）和 jextract 作为 JVM 侧替代方案，也提到 coffi（一个简化 Panama 调用的库）可以让 FFI 更顺手。作者随后举了自己的例子：用系统库实现时间 API、用 GTK 做响应式界面库、以及把 JDBC 和 crypto 之类的能力做成可复用的库。",
-              "supportid": [
-                "49261164",
-                "49261422",
-                "49262831",
-                "49262990",
-                "49263922"
-              ]
-            },
-            {
-              "category": "后端可移植，但前端并非目标",
-              "summary": "作者说明，Gambit 后端主要是为了证明 Jolt 的 portable Scheme 层可行，而不是要和 ClojureScript 正面竞争浏览器生态。对于浏览器场景，评论和作者都更建议用 ClojureScript 或 Squint（一个更轻量的 Clojure-to-JS 路线），因为前端更需要保持方言轻巧、减少与 JavaScript 生态的摩擦。另一个有意思的点是，作者把后端抽象出来后，Racket（一个对 Chez Scheme 有大量扩展的 Scheme 平台）也被认为会比较容易适配。",
-              "supportid": [
-                "49261117",
-                "49263603",
-                "49261216",
-                "49261367",
-                "49261470"
-              ]
-            },
-            {
-              "category": "可执行文件、实际可用性与其他 Lisp 方案",
-              "summary": "不少人试过用 Jolt 构建小型自包含程序，并反馈在 macOS 和 Linux 上都能顺利产出可执行文件。有人拿它编译自己的棋类示例，另有人拿 datomic demo 测试，不过后者还碰到了对源代码依赖的现实问题，因此大家也关心它的二进制体积、性能和是否真适合工作场景。话题还顺带扩展到 Janet（一个能做独立二进制的 Lisp）和 lg/let-go（一个用 Go 实现的 Clojure），说明大家在寻找更轻量的 Lisp 运行时选择。",
-              "supportid": [
-                "49223966",
-                "49223977",
-                "49261150",
-                "49261295",
-                "49261071",
-                "49262407",
-                "49263500",
-                "49260795",
-                "49261195",
-                "49261815",
-                "49261251",
-                "49261361"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "FFI",
-              "explanation": "Foreign Function Interface，用来从语言里调用 C、系统库或其他原生代码的接口。"
-            },
-            {
-              "term": "Chez Scheme",
-              "explanation": "一个高性能的 Scheme 实现，Jolt 选择它作为主要编译/运行后端。"
-            },
-            {
-              "term": "shims",
-              "explanation": "兼容层或适配层，用来把另一套 API 模拟出来，让现有库无需大改就能运行。"
-            },
-            {
-              "term": "C++ interop",
-              "explanation": "让语言直接调用、链接或包装 C++ 库的能力，jank 的核心卖点之一。"
-            },
-            {
-              "term": "vibe coding / LLM-assisted coding",
-              "explanation": "大量借助 LLMs 生成或辅助编写代码的开发方式，评论中用来质疑项目是否“速成”。"
-            }
-          ],
-          "context": "Jolt 是一个把 Clojure 编译到 Chez Scheme（一个高性能 Scheme 实现）的项目，目标不是只做实验性方言，而是尽量让现有 JVM Clojure 代码也能迁移过来。评论里提到它通过 mapping Java 标准库 API 的 shims、自己的 conformance 测试和基准测试，去模拟 JVM 生态中常见的行为。与此同时，另一个相关项目 jank（另一个 Clojure 实现）则更强调 C++ interop、原生构建和更激进的宿主互操作，这让两者的定位差异很明显。作者还补充说 Jolt 的 portable Scheme 层已经能切到 Gambit（一个 Scheme 实现），未来也可能适配 Racket（一个扩展较多的 Scheme 平台）。争议点在于，项目推进速度极快，且后来被指出有 LLMs 参与开发，所以很多人一边觉得很酷，一边又对它的成熟度和透明度保持警惕。",
-          "emoji": "🤔",
-          "sarcastic_question": "两个月两千次提交，真不是 LLM 速成班？"
-        },
-        "classifications": {
-          "topics": [
-            4,
-            6
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "Jolt",
-            "Clojure",
-            "Chez Scheme",
-            "Gambit",
-            "Racket",
-            "Datomic",
-            "jolt-lang"
-          ]
-        },
-        "classificationsUpdatedAt": 1786469171,
-        "aiSummary": {
-          "chinese_title": "Jolt：Chez Scheme 上的 Clojure 编译器，主打 JVM 兼容却被疑 LLM 速成",
-          "discussion_overview": [
-            {
-              "category": "快速推进与 LLM 痕迹引发怀疑",
-              "summary": "有评论对这个项目的推进速度非常警惕，尤其是它在很短时间内就表现得像一个“功能完整、文档完善”的语言实现。有人指出单一作者在两三个月里提交了大量 commit，还配有很长的提交信息、代码注释和看起来很成熟的官网，这让人怀疑是否过早包装成可用产品。后来又有人翻出作者的长文，指出里面明确提到使用了 LLMs，于是“vibecoded/速成”的质疑进一步被坐实。",
-              "supportid": [
-                "49263983",
-                "49264060",
-                "49264133",
-                "49264829"
-              ]
-            },
-            {
-              "category": "作者资历与快速迭代的辩护",
-              "summary": "也有人为项目辩护，认为这不是随便拼出来的“slop”，因为维护者长期活跃在 Clojure 圈子里，显然知道自己在做什么。支持者强调，快速迭代不等于低质量，尤其是在编译器和运行时这类大工程上，外观上的“速度快”并不能直接推出“设计差”。不过即便是相对支持的声音，也承认这种单人高频推进的节奏确实很少见。",
-              "supportid": [
-                "49264684",
-                "49264912"
-              ]
-            },
-            {
-              "category": "Jolt 走兼容 JVM 库路线，jank 走 C++ 互操作路线",
-              "summary": "讨论中最重要的横向比较对象是 jank。jank 的核心卖点是 seamless C++ interop、对任意 C++ 库的 JIT/AOT 支持，以及类似 Cargo 的原生依赖构建系统；而 Jolt 则更像是要当“JVM 的替代品”，重点是通过 shims 让现有 Clojure 库继续跑起来。Jolt 这边还强调了支持库列表、conformance corpus 和基准测试，说明它更在意兼容性和迁移成本，而不是先做一套全新的宿主语言边界。",
-              "supportid": [
-                "49262149",
-                "49263897",
-                "49264534",
-                "49264801",
-                "49263556"
-              ]
-            },
-            {
-              "category": "FFI、宿主互操作与原生库用途",
-              "summary": "很多人对 Jolt 的兴趣集中在 C FFI 和直接调用原生库上，因为这意味着它能做一些 JVM 上很别扭的事。评论里提到 Panama（JVM 的 Foreign Function & Memory API）和 jextract 作为 JVM 侧替代方案，也提到 coffi（一个简化 Panama 调用的库）可以让 FFI 更顺手。作者随后举了自己的例子：用系统库实现时间 API、用 GTK 做响应式界面库、以及把 JDBC 和 crypto 之类的能力做成可复用的库。",
-              "supportid": [
-                "49261164",
-                "49261422",
-                "49262831",
-                "49262990",
-                "49263922"
-              ]
-            },
-            {
-              "category": "后端可移植，但前端并非目标",
-              "summary": "作者说明，Gambit 后端主要是为了证明 Jolt 的 portable Scheme 层可行，而不是要和 ClojureScript 正面竞争浏览器生态。对于浏览器场景，评论和作者都更建议用 ClojureScript 或 Squint（一个更轻量的 Clojure-to-JS 路线），因为前端更需要保持方言轻巧、减少与 JavaScript 生态的摩擦。另一个有意思的点是，作者把后端抽象出来后，Racket（一个对 Chez Scheme 有大量扩展的 Scheme 平台）也被认为会比较容易适配。",
-              "supportid": [
-                "49261117",
-                "49263603",
-                "49261216",
-                "49261367",
-                "49261470"
-              ]
-            },
-            {
-              "category": "可执行文件、实际可用性与其他 Lisp 方案",
-              "summary": "不少人试过用 Jolt 构建小型自包含程序，并反馈在 macOS 和 Linux 上都能顺利产出可执行文件。有人拿它编译自己的棋类示例，另有人拿 datomic demo 测试，不过后者还碰到了对源代码依赖的现实问题，因此大家也关心它的二进制体积、性能和是否真适合工作场景。话题还顺带扩展到 Janet（一个能做独立二进制的 Lisp）和 lg/let-go（一个用 Go 实现的 Clojure），说明大家在寻找更轻量的 Lisp 运行时选择。",
-              "supportid": [
-                "49223966",
-                "49223977",
-                "49261150",
-                "49261295",
-                "49261071",
-                "49262407",
-                "49263500",
-                "49260795",
-                "49261195",
-                "49261815",
-                "49261251",
-                "49261361"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "FFI",
-              "explanation": "Foreign Function Interface，用来从语言里调用 C、系统库或其他原生代码的接口。"
-            },
-            {
-              "term": "Chez Scheme",
-              "explanation": "一个高性能的 Scheme 实现，Jolt 选择它作为主要编译/运行后端。"
-            },
-            {
-              "term": "shims",
-              "explanation": "兼容层或适配层，用来把另一套 API 模拟出来，让现有库无需大改就能运行。"
-            },
-            {
-              "term": "C++ interop",
-              "explanation": "让语言直接调用、链接或包装 C++ 库的能力，jank 的核心卖点之一。"
-            },
-            {
-              "term": "vibe coding / LLM-assisted coding",
-              "explanation": "大量借助 LLMs 生成或辅助编写代码的开发方式，评论中用来质疑项目是否“速成”。"
-            }
-          ],
-          "context": "Jolt 是一个把 Clojure 编译到 Chez Scheme（一个高性能 Scheme 实现）的项目，目标不是只做实验性方言，而是尽量让现有 JVM Clojure 代码也能迁移过来。评论里提到它通过 mapping Java 标准库 API 的 shims、自己的 conformance 测试和基准测试，去模拟 JVM 生态中常见的行为。与此同时，另一个相关项目 jank（另一个 Clojure 实现）则更强调 C++ interop、原生构建和更激进的宿主互操作，这让两者的定位差异很明显。作者还补充说 Jolt 的 portable Scheme 层已经能切到 Gambit（一个 Scheme 实现），未来也可能适配 Racket（一个扩展较多的 Scheme 平台）。争议点在于，项目推进速度极快，且后来被指出有 LLMs 参与开发，所以很多人一边觉得很酷，一边又对它的成熟度和透明度保持警惕。",
-          "emoji": "🤔",
-          "sarcastic_question": "两个月两千次提交，真不是 LLM 速成班？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n\nJolt 的目标是把接近完整语义的 Clojure 从 JVM 中解放出来：用自举的 Clojure 编译器生成 Scheme，并最终交付无需 Scheme 或 JVM 的独立二进制。\n\n## 正文\n\n### Jolt 想解决的不是“跑 Clojure”，而是摆脱 JVM\n\nClojure 的语言语义很成熟，但它通常和 JVM 绑定在一起。Jolt 选择了一条不同的路：它实现 Clojure，却把 Scheme 作为运行宿主。原生环境使用 Chez Scheme，面向浏览器时则走 Gambit，并由 Gambit 编译成 JavaScript。说白了，Jolt 想保留 Clojure 的编程模型，却不要求部署机器安装 JVM。它承诺大多数可移植的 Clojure 代码无需修改就能运行。  \n\n这不是一个需要额外构建步骤才能启动的实验性解释器。Jolt 自带运行时、编译器和标准库，安装后可以直接执行 `jolt -e '(+ 1 2)'`。从源码运行也不复杂，只需准备 Chez Scheme，因为 bootstrap seed 已经提交在仓库中。网站右侧的 REPL 本身也是 Jolt，只不过它经 Gambit 后端编译成了浏览器里的 JavaScript。为了减小下载体积，这个在线演示使用 reduced build，因此刻意移除了 regex 支持。  \n\n### 编译器用 Clojure 写，并且能编译自己\n\nJolt 最核心的设计是 self-hosted compiler。它读取 Clojure 源码，先分析为与宿主无关的 IR，再把 IR 发射为 Scheme。之后，这份 Scheme 可以在 Chez 上原生运行，也可以交给 Gambit 进一步变成 JavaScript。更关键的是，编译器本身就是用 Clojure 编写的，并能够编译自己。  \n\n这意味着 Jolt 并不是“在 Scheme 中实现了一小部分 Lisp 风格 API”。它试图把 Clojure 的编译模型和语言行为整体搬到一个新的运行基础上。这样的分层也让目标平台更清晰：前端是 Clojure，核心中间表示不依赖具体宿主，后端则选择 Scheme 方言。Chez 提供原生执行能力，Gambit 则承担 JavaScript 输出路径。文章没有把 Scheme 当成用户必须感知的依赖，而是把它定位为编译与运行的后端。  \n\n### 兼容性的重点，是 Clojure 那套“难实现的语义”\n\nJolt 不只实现基本函数和语法糖，它把目标放在 Clojure 最有辨识度的运行时语义上。集合层面包括 32-way trie 实现的 immutable vector、cons list，以及 HAMT map/set，并保持 Clojure 的 value semantics。它也支持真正可变的 transient，用于局部构造和批量更新的 scratch collection。Lazy seq、无限序列、transducer、destructuring、metadata、namespace 和完整 reader 都在支持范围内。  \n\n数值系统也没有被简化成普通机器整数和浮点数。Jolt 支持 exact integer、bignum、exact ratio，以及 flonum double，例如 `(/ 1 2)` 的结果仍是 `1/2`。文中特别指出，`=` 是 category-aware，而 `==` 才是 value-equality。与此同时，multimethod、protocol、record 和运行时 `eval` 也都被纳入实现目标。换句话说，它追求的是让现有 Clojure 代码依赖的语义继续成立，而不是只复刻表面语法。  \n\n### 并发没有退化成单线程模拟\n\n离开 JVM 后，最容易被牺牲的往往是并发语义，但 Jolt 在这里选择了硬碰硬。`future`、`promise`、`agent` 和 `pmap` 都运行在 OS threads 上，并共享同一个 heap。文章明确说，这一行为旨在匹配 JVM 上的 Clojure 语义。对于 CSP 风格的协作，Jolt 还提供 `core.async` 的 channel 和 `go` block。  \n\n这点让 Jolt 的定位和“只能跑脚本的嵌入式 Lisp”拉开了距离。开发者不需要因为切换运行时，就把 `future` 或 agent 改写为另一套异步抽象。原文也把 atom、并发原语和 `core.async` 列入“大多数可不改运行”的 Clojure 能力清单。它的承诺不是 API 名字相同，而是这些并发构件仍在共享堆与操作系统线程的模型下工作。对依赖 Clojure 原有并发习惯的项目，这比单纯的语言兼容更重要。  \n\n### 最终交付物不是 Scheme 程序，而是单个可执行文件\n\nJolt 的另一个关键卖点是 `jolt build`。它会 ahead-of-time 编译整个项目，将 runtime、标准库、应用代码和依赖一起打进一个自包含 executable。生成后的二进制不需要目标环境安装 Chez Scheme，也不需要 JVM，更不需要保留源代码。命令形式很直接：`jolt build -m myapp.core -o myapp`，随后可以直接执行 `./myapp arg1 arg2`。  \n\n构建时还可用 `--opt` 生成优化版本，或使用 `--dev` 生成未优化版本。日常开发路径则仍保留 Clojure 熟悉的 `deps.edn` 工作流，例如 `jolt run -m myapp.core` 会解析依赖后运行 `-main`。它支持 alias 的 `:main-opts`，也能输出解析后的 source roots。nREPL 同样被保留，`--nrepl-server` 会自动解析 `deps.edn` 并写入 `.nrepl-port`。因此 CIDER、Calva、Cursive 可以连接到进程，重新定义一个 var 后，下一次调用立刻看到新定义，不必重启。  \n\n### 真正的边界很明确：没有 JVM，就没有 Java 世界\n\nJolt 的兼容目标是 Clojure semantics，而不是 JVM compatibility。最直接的差异是没有通用 Java interop，也没有 Java reflection、`gen-class` 或 `proxy`。它提供了一部分 shimmed `java.*`，同时支持通过 C FFI 做 native interop，但这显然不是 JVM 上那套 Java 生态接入方式。对于强依赖 Java 类库、反射或动态代理的项目，这会是迁移前必须正视的边界。  \n\n数值系统中唯一明确缺失的是 `BigDecimal`，因此 `decimal?` 永远返回 false。除此之外，文章称其余 numeric tower 与 Clojure 对齐。Regex 也不是使用 `java.util.regex`，而是由 `irregex` 编译，所以常见模式可用，但部分 Java 特有特性会不同。也就是说，Jolt 的故事并不是“零差异替代 JVM Clojure”。它更像是为可移植 Clojure 程序提供一条新路径：保留语言核心能力，用 Scheme 后端获得原生执行、JavaScript 输出和单文件部署。"
     }
   ]
 }
