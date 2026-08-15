@@ -1,10 +1,29 @@
 {
   "date": "2026-08-15",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2513,
-  "filtered_articles": 20,
+  "success_feeds": 85,
+  "total_articles": 2539,
+  "filtered_articles": 17,
   "articles": [
+    {
+      "title": "Training a Reinforcement Learning Model to Play Bonk.io",
+      "title_zh": "用真实游戏物理训练 Bonk.io 对战机器人",
+      "link": "https://blog.pixelmelt.dev/training-a-reinforcement-learning-model-to-play-bonk-io/",
+      "pub_date": "2026-08-15T02:50:29.000Z",
+      "summary": "## 一句话总结\n\n这篇文章真正的难点不在训练 PPO，而在于先从 Bonk.io 客户端中提取并逐位复刻原始物理引擎，最终让 AI 在超过 100 亿帧自博弈后登上真实 Elo 榜第 5 名。\n\n## 正文\n\n### 看起来只有几个按键，背后却是高技能上限\n\nBonk.io 是一个很直观的浏览器物理游戏：玩家控制一个圆盘，把其他圆盘撞出地图即可获胜。它的输入也并不复杂，核心就是左右移动、上下操作，以及开启或关闭 heavy。作者最初的想法也很自然：既然状态和动作都有限，训练一个神经网络应该不难。  \n但问题是，Bonk.io 的对抗强度并不由按键数量决定，而是由物理、地形、惯性和技能时机共同决定。一个能在真实游戏里生存和击败玩家的模型，不能只学会“往对手方向走”。它必须理解碰撞后的速度变化、平台边缘、死亡区域，以及不同局面中的风险。  \n所以，训练任务的第一步不是设计网络，而是造出一个能大规模运行、且与真实游戏一致的环境。\n\n### 浏览器方案最省事，但 100 亿帧根本跑不动\n\n最直接的办法，是驱动一个浏览器实例，向 DOM 发送按键，再从游戏内存或渲染流程中读取状态。有人确实用过类似方案，而且从工程投入看，这可能是最快能跑起来的路线。可它有一个致命限制：一个浏览器标签页只能以真实速度运行游戏，大约 30 fps。  \n强化学习恰恰是一个极度消耗样本的过程。作者当前的一次训练已经超过 100 亿帧，若只用一个 30 fps 的浏览器标签页，需要连续运行十年以上。即便通过多浏览器并行，也意味着要维护大量长期运行的浏览器实例。  \n此外，游戏客户端本身经过混淆，要从渲染 API 或内存中可靠读取状态也不轻松。说白了，浏览器方案可以让模型“玩游戏”，却无法让训练速度达到可接受的规模。\n\n### 自己重写物理也不行，因为“差不多”没有意义\n\n另一条路是根据游戏表现，自行实现一套近似的物理系统。可作者很快意识到，这在 RL 里是个陷阱：模型会完美适应训练环境中的错误，而不是适应 Bonk.io 本身。只要碰撞、浮点计算、摩擦或关节行为和原版稍有偏差，最终策略就可能建立在错误的物理直觉上。  \n而且，即使训练出了模型，部署到真实游戏时仍要与浏览器客户端对接，问题并没有真正消失。有意思的地方在于，Bonk.io 使用 deterministic lockstep networking。每个客户端都会在本地模拟整局游戏，网络中传输的主要只是玩家按键。  \n这意味着物理模拟必须严格确定：相同状态加相同输入，在每台机器上都应产生 bit-for-bit 相同的浮点结果。于是答案其实已经摆在客户端里了——既然浏览器能独立模拟游戏，游戏本身就必须把完整物理引擎下载给每个玩家。\n\n### 从混淆客户端里拿到了一台可调用的原版模拟器\n\n要复用这套引擎，第一步是让客户端代码重新变得可读。Bonk.io 的 JavaScript 使用了 JScrambler 混淆，作者的朋友 Ciaran 完成了大部分 JScrambler build 的去混淆工作，作者再处理 Bonk.io 特有的额外混淆。最终面对的是 31,339 行整理后的代码。  \n分析之后，作者确认游戏使用的是修改版的 Box2DWeb，也就是 Flash 时代 Box2D 引擎的 JavaScript 移植版本。真正关键的发现是：Bonk.io 每一帧都会从普通 JSON 游戏状态重建整个物理世界。所有 body、fixture 和 joint 都会重新创建，世界只 step 一次，再把结果写回一个新的状态。  \n这使得整个模拟过程天然成为纯函数：给定状态和输入，就能得到下一帧状态。对于训练环境来说，这几乎是理想形态，因为它可以脱离浏览器、高速重复执行，同时仍保持与原游戏的语义一致。顺便一提，作者还在代码中发现了一个彩蛋：玩家摩擦系数是 `0.001337`。\n\n### Rust 移植的目标不是更优雅，而是逐位一致\n\n起初，作者直接使用从客户端提取出的 JavaScript 物理代码。后来，他让 LLM 协助把这套库重写为 Rust，目标也不是做一次“合理的重构”，而是同时追求执行速度和对 JavaScript 实现的 parity。这里的原则非常严格：Rust 版本不能只是物理效果看起来相似，而必须镜像原始代码中的每个浮点表达式、计算形状和求值顺序。  \n所有数学计算都经过包装层，按游戏 `SafeTrig` 工具函数的规则四舍五入到 7 位小数。甚至 JSON parser 也必须正确舍入，因为默认 parser 的行为不一致时，第一次除法就可能让结果开始漂移。  \n为了验证移植是否可靠，作者使用了来自真实游戏的 1,961 张地图作为测试语料。测试不是只比最终结果，而是进行逐帧比较。最终 Rust 实现达到 1,961 / 1,961 的 bit-identical 结果，至此才真正拥有了一个既快又等价的训练环境。\n\n### 小网络不值得上 TF.js GPU，于是 PPO 也被重写进 CUDA\n\n有了真实物理，机器学习部分才正式开始。训练器由运行在 Bun 上的 TypeScript 编写，通过 FFI 调用 Rust 物理引擎。作者最初尝试 TensorFlow.js GPU，但因为网络很小，GPU 调用开销反而压过计算本身，训练速度只有 4k fps，而 TF.js CPU 版本达到 41k fps。  \n于是作者再次借助 LLM，从头实现 PPO：矩阵乘法交给 cuBLAS，其余操作使用 31 个自定义 CUDA kernel。模型每 2 个物理帧决策一次，也就是 15 Hz。8 个 rollout worker 各自运行 512 个互相对战的游戏实例，中央 inference server 将各 worker 的策略推理汇聚成大批次 GPU 计算，PPO 更新也在同一张 GPU 的批次间隙完成。  \n观测空间共有 385 个 float：模型读取自身圆盘的 14 个特征、对手的 19 个特征，包括位置、速度、技能充能和接触状态。它会将这些信息按 0、1、3、7、15、30、60 帧偏移堆叠，获得数秒历史；同时加入自身近期按键的衰减轨迹，以及 16 条检测墙体和死亡区距离的 raycast，并将 raycast 结果堆叠 4 层。动作则是左右或不动、上下或不动，以及 heavy 开关。\n\n### League 训练避免了模型只会欺负过去的自己\n\n奖励设计很直接：胜利 `+1`，失败 `−1`，平局 `−0.3`。但作者没有只让当前模型不断与自身对战，因为纯 self-play 很容易形成带漏洞的稳定策略。为此，他使用了 league：约三分之一比赛对当前版本自己，三分之一对历史版本组成的 reservoir，剩余三分之一对“exploiter”。  \n所谓 exploiter，是专门训练来击败当前主模型的策略，它们会持续寻找主策略的弱点，迫使主模型不能安于已有打法。所有样本还会进行水平镜像，既将数据量翻倍，也强制策略保持左右对称。  \n目前，这个 bot 已经能击败许多休闲玩家，但面对强人类玩家仍会输。在真实 Elo 榜上，作者部署的最佳策略位列 522 名追踪玩家中的第 5 名，排在 4 位顶尖人类之后，但领先于其他进入房间的常规玩家。  \n整件事最值得读的地方，最终不是“PPO 打到了什么排名”，而是作者先解决了 RL 最容易被忽略的前提：训练环境必须足够快，也必须足够真。",
+      "source_name": "blog.pixelmelt.dev",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "ai-ml",
+      "keywords": [
+        "reinforcement learning",
+        "PPO",
+        "Bonk.io",
+        "Box2DWeb"
+      ],
+      "rank": 1
+    },
     {
       "title": "Google’s ‘Material 3’ Design Write-Up Is 93.3 Percent Embarrassing",
       "title_zh": "Material 3 Expressive 的可用性实验数据",
@@ -22,7 +41,7 @@
         "eye tracking",
         "accessibility"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Forcing an ARM64X executable to run as a specific architecture",
@@ -41,7 +60,7 @@
         "Windows",
         "CreateProcessW"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Don't classify. Hallucinate!",
@@ -60,7 +79,7 @@
         "taxonomy",
         "tagging"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Premium: How Much Money Does AI Need?",
@@ -79,7 +98,7 @@
         "hyperscalers",
         "compute costs"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "★ You Don’t Need to Worry About Scratching Your iPhone Camera Lenses",
@@ -98,7 +117,7 @@
         "camera lens",
         "scratch resistance"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Edinburgh Fringe: Target Audience ★★★★★",
@@ -116,7 +135,26 @@
         "theatre",
         "satire"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "Northern Gannet",
+      "title_zh": "太平洋唯一北方塘鹅 Morris 现身",
+      "link": "https://simonwillison.net/2026/Aug/15/sighting-391300422/",
+      "pub_date": "2026-08-15T03:22:00.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Northern Gannet",
+        "Morus bassanus",
+        "Farallon Islands",
+        "Pillar Point"
+      ],
+      "rank": 8
     },
     {
       "title": "This Week on The Analog Antiquarian",
@@ -133,7 +171,7 @@
         "Analog Antiquarian",
         "weekly update"
       ],
-      "rank": 7
+      "rank": 9
     }
   ]
 }
