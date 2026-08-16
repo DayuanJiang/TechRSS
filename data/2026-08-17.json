@@ -2,9 +2,28 @@
   "date": "2026-08-17",
   "total_feeds": 92,
   "success_feeds": 85,
-  "total_articles": 2539,
-  "filtered_articles": 9,
+  "total_articles": 2540,
+  "filtered_articles": 10,
   "articles": [
+    {
+      "title": "Qwen 3.8 27B is excellent, but it defaults to wildly overthinking things",
+      "title_zh": "Qwen 3.8 27B本地运行的能力与过度推理",
+      "link": "https://simonwillison.net/2026/Aug/16/qwen-38-27b/",
+      "pub_date": "2026-08-16T22:00:39.000Z",
+      "summary": "## 一句话总结\n\nQwen 3.8 27B 是一款能在本地跑、能力相当全面的强模型，但它默认的 `xhigh` reasoning 会把简单任务也做成“深度项目”，因此真正的使用关键不是模型能力，而是学会控制它的思考预算。\n\n## 正文\n\n### 27B 的体量，终于让“本地全能模型”有了现实感\n\nQwen 3.8 27B 是 Alibaba Qwen 发布的 Apache 2 许可视觉模型，参数量为 27B。这个尺寸很有吸引力，因为它已经能在配置不错的个人设备上运行。作者在 128GB M5 Max MacBook Pro 和 NVIDIA DGX Spark 上测试了它。测试使用的是 LM Studio 的 `Q4_K_M` 量化版本，磁盘占用仅 17GB。相比前代 Qwen 3.6 27B，Qwen 官方基准显示它有明显提升。更夸张的是，它的自报成绩甚至超过了闭源权重的 Qwen 3.7-Plus。换句话说，这不是“为了本地部署而妥协”的小模型，而是一个具备实际生产力潜力的本地模型。\n\n### 默认 `xhigh` reasoning，是它最离谱也最有趣的设定\n\n问题从默认配置开始：Qwen 3.8 官方支持 `reasoning_effort`，包含 `xhigh`、`medium` 和 `low` 三档，而默认值居然是 `xhigh`。官方把它定位为复杂任务的深度分析模式，但模型会把这种深度分析带到几乎所有请求中。作者最初使用 LM Studio 默认的 8,192 token context，结果模型连普通任务都能把上下文耗尽。将上下文窗口提高到最大 262,144 token 后，耗尽问题解决了。可代价也非常直观：模型获得了更多空间去“过度思考”。作者的结论很明确，`xhigh` 绝不是消费级硬件上运行它的合理起点。\n\n### 一只骑自行车的鹈鹕，证明深思熟虑确实能换来质量\n\n作者让模型生成“一只骑自行车的鹈鹕”的 SVG，并保留默认的 `xhigh` reasoning。结果模型花了 21 分钟，消耗 22,276 个 reasoning tokens，最终输出 3,223 tokens 的 SVG。成品的确非常出色：自行车车架形状正确，鹈鹕有清晰的喉囊，两侧都有腿，翅膀还接触到了车把。甚至连运动线的位置、背景里的太阳、云朵、山丘和花草都处理得相当完整。作者认为，这是他在本地可运行模型中见过最好的鹈鹕 SVG。问题在于，这样的质量并不值得等待 21 分钟。\n\n把同一个 prompt 关掉 reasoning 后，模型在 137 秒内完成了 3,715 tokens 的输出。速度从 21 分钟缩短到略高于两分钟，但图的质量也明显下降：车架变形，脚没有踩到踏板，翅膀也没有去扶车把。这个对比并不意味着 reasoning 没用，恰恰相反，它清楚说明 reasoning 能提升复杂生成任务的结果。只是默认把每个请求都开到最高档，等于把“质量上限”误当成了“日常默认”。作者也拿更大的 Qwen 3.8 2.4T-A95B 做了同题测试，后者甚至生成了动画 SVG。模型家族的能力显然很强，但 27B 本地版的核心取舍仍是质量、延迟和推理成本。\n\n### 让它画个圆，它先开始构思一场 Bauhaus 展览\n\n最能说明问题的实验，反而是一个极简单的请求：`draw an svg of a circle`。模型没有直接输出一个 `<circle>`，而是在 reasoning trace 中认真讨论如何做出“有角色”的作品。它考虑了同心圆、刻度、柔和渐变、旋转虚线环、发光动画，以及深青色、暖白纸张、朱红和海军蓝等配色方案。它还会自我约束，提醒自己用户只是要求画圆，但随后继续为“几何研究风格”做设计决策。几分钟后，模型确实生成了一个非常漂亮的动画圆。只是这个结果完全偏离了用户原本的需求。\n\n这里暴露的不是模型“不聪明”，而是模型在默认策略下没有正确匹配任务复杂度。它将“请输出一个简单对象”理解成“请展示你的设计能力”。对于需要创意、规划和多步骤验证的任务，这种倾向可能带来惊喜。对于大量日常开发任务，它则会变成延迟、token 消耗和不可控输出的来源。因此作者给出的操作建议非常实际：先用 `low` reasoning，甚至直接禁用 reasoning；只有在任务确实需要时，再逐级提高思考强度。\n\n### Vision 能力不只是能看图，bounding box 的精度也很能打\n\n作者随后测试了模型的图像定位能力，要求它为照片中的鹈鹕返回 0–1000 标准化坐标系下的 JSON bounding boxes。模型返回了两个框：`[195, 290, 370, 780]` 和 `[445, 320, 675, 850]`。将这些框叠加到原图后，框与两只鹈鹕的实际位置高度吻合。对于本地 27B 模型来说，这个结果相当亮眼。它意味着模型不只是能描述图片内容，也能以足够稳定的结构化格式提供空间信息。这样的输出很适合接进标注、审核、图像检索或轻量视觉工作流。\n\n作者还让 Qwen 直接根据一段 prompt，生成一个用于展示 bounding box 的完整 HTML 工具。这个工具接受图片 URL 和检测结果 JSON，然后按 0–1000 坐标缩放，在实际图片上绘制带标签的框。模型不仅完成了需求，还额外造了一个可离线运行的 demo scene。它用 Canvas 画出了日落背景和两只鹈鹕，以便用户无需准备图片也能测试工具。这个额外功能完全不是用户要求的，但正是 `xhigh` reasoning 风格的典型产物：功能很完整，甚至很讨喜，却明显过度设计。\n\n### 不思考时会更快，但也更容易在关键细节上失手\n\n有意思的是，作者也让模型在关闭 reasoning 的情况下重做这个 bounding box 工具。它生成的 UI 看起来依然不错，整体结构也基本成立。可真正运行时，边界框的位置错了，没有覆盖到正确的鹈鹕区域。也就是说，关闭 reasoning 后，模型没能一次性完成一个正确可用的工具。通过后续 prompt 修复它大概率不难，但“一次成型”的成功率确实下降了。\n\n这正是文章最值得记住的平衡点：reasoning 不是累赘，它对代码实现、坐标换算和多步骤任务的可靠性有真实价值。问题不在于“该不该思考”，而在于“是否值得为这个任务支付思考成本”。对于一个临时 SVG、一段简单脚本或确定性很高的问题，`xhigh` 是浪费。对于需要理解需求、设计交互、处理边界条件并验证结果的任务，更多 reasoning 又确实能减少返工。Qwen 3.8 27B 的使用体验，很大程度上取决于开发者是否愿意主动做这种任务分级。\n\n### 它已经能跑 coding agent，但速度仍是本地部署的硬约束\n\n作者还测试了它能否驱动 coding agent，这对本地模型是一个更高门槛的场景。coding agent 需要长上下文、可靠的 tool calling，以及足够强的代码生成能力。作者选择了 Pi，因为 Pi 的 system prompt 较短，更适合测试中小规模本地模型。他将运行在 DGX Spark 的 LM Studio 服务通过 `tailscale serve` 暴露给 Pi。随后在 Datasette 项目目录中问它“how does auth work?”。模型通过 reasoning 和一系列工具调用读取多个文件，最终给出的认证机制说明被作者评价为“非常扎实”。\n\n更进一步，作者让模型读取 Pi 生成的 JSONL session transcript，并要求它写一个将 JSONL 转为 Markdown 的 Python 工具。Qwen 3.8 27B 不仅写出了 `pi_jsonl_to_md.py`，还完成了测试，结果满足需求。这个案例说明，它已经不只是“本地聊天模型”，而是能进入真实代码库、理解文件、调用工具并完成自动化任务的模型。代价仍然是速度：作者在 LM Studio 上观察到大约 15–30 tokens/s。这个速度不算糟，但与托管 API 相比仍有明显差距。文章引用 Artificial Analysis 数据作为参照：OpenAI 5.6 Sol 为 74 tokens/s，5.6 Luna 则达到 184 tokens/s。\n\n### 真正的下一战，是用 MTP 把它从“能用”变成“顺手”\n\n所以，Qwen 3.8 27B 的整体结论并不复杂。它有很强的图像理解、SVG 和 UI 生成、代码编写、tool calling 以及 agent 驱动能力。17GB 的量化文件能在高端消费级设备上运行，这本身已经很有价值。但默认 `xhigh` reasoning 会让它在简单任务上付出荒谬的时间成本。即便关闭 reasoning，它的 15–30 tokens/s 也仍然难以和高速托管模型竞争。\n\n文章最后把希望放在推理加速上，尤其是模型内置支持的 Multi-Token Prediction，简称 MTP。MTP 的思路是先由更便宜的机制预测多个后续 token，再由主模型快速验证这些预测是否正确，从而提升推理吞吐。作者提到，社区在模型发布仅两天后就已经开始研究相关优化，并尝试在 DGX Spark 上通过 `llama.cpp` 启用 MTP。文章提供的内容到具体命令处截断，因此没有给出这部分的最终测速结果。可以确定的是，Qwen 3.8 27B 已经证明“本地模型能干活”；接下来要解决的，是让它别在画一个圆时先花几分钟写设计哲学。",
+      "source_name": "simonwillison.net",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "Qwen 3.8 27B",
+        "local LLM",
+        "reasoning_effort",
+        "Multi-Token Prediction"
+      ],
+      "rank": 1
+    },
     {
       "title": "★ Anthropic’s ‘Watermark’ Text Adulteration in Claude Is a Perversion of Writing",
       "title_zh": "Claude 文本水印为何会扭曲写作",
@@ -22,7 +41,26 @@
         "SynthID",
         "EU AI Act"
       ],
-      "rank": 1
+      "rank": 2
+    },
+    {
+      "title": "How I think about reducing AI costs",
+      "title_zh": "AI 成本削减：模型、工具与代理优化",
+      "link": "https://martinalderson.com/posts/how-i-think-about-reducing-ai-costs/?utm_source=rss&utm_medium=rss&utm_campaign=feed",
+      "pub_date": "2026-08-16T00:00:00.000Z",
+      "summary": "## 一句话总结\n\n降低 AI 成本不是单纯换个便宜模型，而是先看清全公司 token 花在哪，再按“模型、供应商、工作流设计”三层逐步动刀，并持续跟上快速变化的模型生态。\n\n## 正文\n\n### AI 账单上涨，真正的问题是公司根本不知道钱花在哪\n\nAI inference 成本已经从“技术团队的小开销”，变成了许多公司的经营问题。文中引用 Ramp AI Index 的数据指出，截至 2026 年 8 月，企业每位员工每月的 AI 支出正在快速上升，头部使用者尤其明显。很多公司内部也开始把“怎么降 AI 成本”提上议程。  \n但作者观察到，第一道障碍通常不是模型太贵，而是成本信息过于碎片化。API 由一个团队买单，coding agent 由开发部门买单，业务 agent 又可能散落在不同 BU。结果是每个人都觉得自己的那部分不算多，但全公司账单加起来已经失控。  \n所以，优化的起点不是立刻做模型迁移，而是建立全公司范围的成本审计。你得知道总支出，也得知道每一笔支出究竟是由什么模型、什么工作流和什么 token 类型驱动的。\n\n### 先清理“模型技术债”，很多旧模型又贵又弱\n\n审计时，第一个要看的维度就是模型。作者认为，很多公司仍在运行“古老且性价比很差”的模型，这本身就是一种 AI 技术债。  \n文中给出的例子很直接：GPT-4o 的价格是每百万 token 输入 $2.50、输出 $10；而 GPT-5.6 Luna 的成本只有其约 10%，能力却明显更强。在 Artificial Analysis intelligence index 上，GPT-5.6 Luna 得分为 52，而 GPT-4o 为 12，前者超过后者四倍。  \n这意味着，部分成本优化甚至不需要重构系统。只要在同一家 provider 内替换掉陈旧模型，就可能同时得到更低成本和更高质量。  \n不过，这不是可以无脑执行的迁移。旧模型时代为了弥补能力不足而积累的 prompt hack、流程补丁，换到更强模型后反而可能造成回归。  \n因此，模型替换必须带验证阶段。节省单价只是第一步，确保实际业务结果没有劣化才算完成。\n\n### 不要只盯 API：cached input、coding agent 和“大模型滥用”都可能是主犯\n\n光知道用了什么模型还不够，还得继续拆 token 成本结构。作者特别强调三个主要部分：cached input、uncached input 和 output。对于 agent 场景，实际支出分布往往和团队直觉完全不同，尤其 cache read 成本很容易被低估。  \n这里最常见的误区是只看 API bill，却忽略开发团队大量使用 coding agent 的开销。反过来也一样：有的公司盯着 Claude Code 或类似工具的账单，却没发现业务侧某个自动化 agent 正在持续烧 token。  \n完成全量盘点后，下一步是寻找“低垂的果实”。除了淘汰旧模型，还要识别那些明显为任务“配了过强模型”的工作流。  \n不少团队习惯把最大的 frontier model 用在所有场景里，但许多高频、结构化或低风险任务，其实可以由更小、更便宜的模型完成。问题在于，这种替换并不总是显而易见。  \n你需要理解某个工作流真正依赖的是推理能力、上下文理解、工具调用稳定性，还是只是一个可靠的文本变换能力。对于账单特别高的流程，最值得做的就是逐一实验，而不是默认“大模型最安全”。\n\n### 真正的大头，往往来自把部分工作流迁到 open weights\n\n如果只是模型内替换还不够，作者认为下一根更有力度的杠杆，是从 OpenAI、Anthropic、Google 等 frontier labs 的闭源模型，迁移一部分负载到托管的 open weights models。  \n这件事值不值得做，取决于支出规模。对于用量很小的公司，采购、数据隐私审查和接入成本，可能超过节省下来的 token 费用。  \n但对于多数有明显 AI 支出的企业，这通常才是节省金额最大的地方。关键是，不必一次性迁走所有工作流。  \n更现实的策略是找出少数 token-hungry workflow：它们往往占据总支出的大头。先把这些流程迁到更便宜的托管模型，同时把其他对能力要求更高或改造风险更大的场景保留在 frontier 模型上，就能以更少前期工作换来更大收益。  \n作者还提醒了一个常见内部误解：DeepSeek 等模型的原始 API 可能位于中国，但这不代表企业必须把数据交给中国境内服务。美国和欧洲已有许多 provider 提供同一类 open weights 模型托管，并能满足 SLA、数据驻留和隐私合规要求。\n\n### 最深层的浪费，不在模型价格，而在 agent 工作流的 token 设计\n\n当模型和供应商层面的优化做完后，剩下的就是更费工、但也更有价值的工作：逐个检查工作流到底在做什么。作者建议先从成本最高的十个工作流开始，因为这些地方最可能藏着结构性浪费。  \n第一类问题是 prompt 塞得太满。很多系统为了“以防万一”，把几十页甚至几百页文档直接放进上下文，但其中大多数内容与用户当前问题无关。  \n在具备 tool use 的今天，更省 token 的方式通常是提供搜索工具，让模型按需检索相关文档，而不是每次请求都携带整套知识库。  \n但有意思的是，工具本身往往又成了第二类浪费源。许多内部工具或 MCP 会把数万字符的 JSON 原样返回给 agent，模型不得不把这些低价值数据读进上下文。  \n工具调用失败同样昂贵。agent 会不断重试、换路径或尝试绕过错误；对于长运行任务，越接近后期的失败越糟，因为此时 cache read 成本可能已经开始快速累积。要发现这类问题，靠猜不行，必须有足够好的监控。\n\n### QuickBooks MCP 说明：功能完整的工具，也可能是 token 灾难\n\n作者用 Intuit 官方的 QuickBooks Online MCP server 举了一个很有代表性的例子。这个项目并不是粗制滥造：代码谨慎、有真实测试，安全设计也优于很多开源仓库。  \n但从 token 成本角度看，它依然是“灾难”。它内置了 142 个工具，序列化后的工具定义约为 21,000 tokens，而且这些定义会在每次请求中发送，用户甚至还没开始提问就已经产生了巨大上下文负担。  \n它的搜索结果也几乎不做控制。`search_invoices` 会把从 QuickBooks API 获取到的发票字段原样全部返回，而不是过滤或摘要。  \n如果用户问得宽泛，agent 可能直接把整个账本塞进上下文。更极端的是，`get_invoice_pdf` 会把 PDF 用 Base64 编码成文本返回。  \n一份 100KB 发票会变成大约 33,000 tokens 的噪声，模型既难以理解，也无法有效压缩；一次这样的调用，成本可能超过整段对话的其他部分。作者认为，问题的根源在于工具供应商通常优化的是功能覆盖率和 demo 效果，而 token bill 最终由客户承担，因此 token efficiency 很少被当作设计约束。\n\n### 优化不是一次项目，而是每季度都要重新审视的能力\n\n文章最后的提醒很重要：AI 领域变化太快，去年最佳实践今年可能已经有害。模型能力、价格、缓存策略和 agent 框架都在快速迭代，静态的成本策略很快会过期。  \n因此，作者建议团队至少每季度复查一次 token 支出。复查的不只是账单变化，也包括当前模型市场发生了什么、哪些工作流可以迁移、哪些 agent 设计需要重做。  \n说白了，AI 成本优化不是采购部门和平台团队做完一次就结束的项目。它更像持续管理性能、可靠性和安全性一样，需要被纳入工程运营节奏。  \n作者提到，他最近帮助一家公司在三周内将 token bill 降低了 50% 以上。这个结果也侧面说明，许多企业当前的浪费并非不可避免，而是长期缺少统一可见性和系统性优化。",
+      "source_name": "martinalderson.com",
+      "score": 12,
+      "depth": 6,
+      "novelty": 6,
+      "category": "ai-ml",
+      "keywords": [
+        "LLM inference",
+        "token optimization",
+        "MCP",
+        "QuickBooks"
+      ],
+      "rank": 3
     },
     {
       "title": "‘Anthropic’s Weak Watermarks Appease a Weak Law’",
@@ -41,7 +79,7 @@
         "EU AI Act",
         "watermarking"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "The Information Profiles Cami Clark, Dario Amodei’s Wife, Ivanka Trump’s Friend, One-Time Would-Be Pornographer, and Anthropic’s ‘First Lady’",
@@ -60,7 +98,7 @@
         "Cami Clark",
         "tech culture"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "Trump Administration ‘Not in Favor’ of Apple Using Chinese RAM",
@@ -79,7 +117,7 @@
         "China",
         "supply chain"
       ],
-      "rank": 4
+      "rank": 6
     }
   ]
 }
