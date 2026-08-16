@@ -1,6 +1,211 @@
 {
-  "updatedAt": "2026-08-16T10:45:22.294Z",
+  "updatedAt": "2026-08-16T11:15:06.994Z",
   "items": [
+    {
+      "id": 49243061,
+      "by": "pdet",
+      "title": "Asynchronous I/O in DuckDB: Work, Thread, Work",
+      "url": "https://duckdb.org/2026/07/31/asynchronous-io",
+      "score": 166,
+      "detailUpdatedAt": 1786876989,
+      "createdAt": 1786846211,
+      "aiSummaryUpdatedAt": 1786877993,
+      "aisummary": {
+        "chinese_title": "DuckDB 异步 I/O：线程超配、CSV 并行解析与大内存基准",
+        "emoji": "🚀",
+        "sarcastic_question": "512GB 内存跑 22GB 文件，也叫基准吗？"
+      },
+      "classifications": {
+        "topics": [
+          6,
+          4
+        ],
+        "facets": [
+          5,
+          4
+        ],
+        "tags": [
+          "DuckDB",
+          "Asynchronous I/O",
+          "Threads",
+          "Worker pool"
+        ]
+      },
+      "classificationsUpdatedAt": 1786868441,
+      "aiSummary": {
+        "chinese_title": "DuckDB 异步 I/O：线程超配、CSV 并行解析与大内存基准",
+        "emoji": "🚀",
+        "sarcastic_question": "512GB 内存跑 22GB 文件，也叫基准吗？"
+      },
+      "detail": {
+        "id": 49243061,
+        "by": "pdet",
+        "title": "Asynchronous I/O in DuckDB: Work, Thread, Work",
+        "url": "https://duckdb.org/2026/07/31/asynchronous-io",
+        "score": 166,
+        "detailUpdatedAt": 1786876989,
+        "createdAt": 1786846211,
+        "aiSummaryUpdatedAt": 1786877993,
+        "aisummary": {
+          "chinese_title": "DuckDB 异步 I/O：线程超配、CSV 并行解析与大内存基准",
+          "discussion_overview": [
+            {
+              "category": "线程超配可行性",
+              "summary": "评论集中讨论 async I/O 线程池是否可以按核心数甚至略微超配。有人拿 Rust 里的 Rayon + Tokio 组合举例：在 6 vCPU 上同时跑 4 个 worker 线程和 2 个 async 线程，网络延迟仍然正常。回应认为 I/O 线程大多在等 syscall，kernel 调度通常能很好处理这种 oversubscription；即使偶尔被饿住，对纯网络客户端也不算灾难。还有人补充说，DuckDB 的 memory governor 会把这些线程约束在合理范围内，因此可以在默认情况下保留更高吞吐。",
+              "supportid": [
+                "49317845",
+                "49318269",
+                "49318206"
+              ]
+            },
+            {
+              "category": "CSV 并行解析",
+              "summary": "关于 CSV 读取，讨论焦点是带 quoted newlines 的文件如何在异步线程里从中间切入，而不用先扫完整个文件。回应解释 DuckDB 用的是 speculative parallel CSV parsing：先在随机 byte 位置猜测解析器状态，再据此推断下一行起点。随后还会在收尾阶段做 validation，防止切分时对引号状态判断错误。另有人补充说实现上通常是读取大块数据后再 decode，这也是并行切分能成立的原因。",
+              "supportid": [
+                "49318600",
+                "49318687",
+                "49318633"
+              ]
+            },
+            {
+              "category": "大内存基准设计",
+              "summary": "有人质疑用 512GB RAM 去测一个 22GB 的远程文件是否过于夸张。回应指出，大内存机器便于统一做 benchmark，而且 CSV 数据集本身可能超过 80GB，数据库场景也常常依赖 large buffer cache。另有评论提到，云厂商和数据库工作负载本来就经常采用较高的内存/CPU 配比。为了让实验可控，还可以用 DuckDB 的 memory_limit、threads 设置，或者用 cgroups 把进程资源收紧。",
+              "supportid": [
+                "49316878",
+                "49316952",
+                "49318232",
+                "49318167"
+              ]
+            },
+            {
+              "category": "文章深度与实现细节争议",
+              "summary": "一部分评论把这篇文章视为高性能数据处理的工程干货，认为关于 async I/O 和执行模型的拆解很有价值。另一部分则觉得内容还不够深，因为没有交代队列类型、磁盘子系统如何处理 random reads 等关键实现细节。也有人直接把它当成长期等待的功能发布来欢迎，说明读者对这类执行器优化非常关注。总体上，这组评论既肯定方向，也在追问实现是否已经足够完整。",
+              "supportid": [
+                "49316232",
+                "49317330",
+                "49318618",
+                "49316300"
+              ]
+            },
+            {
+              "category": "DuckDB 路线与生态期待",
+              "summary": "还有一组评论把话题延伸到 DuckDB 的产品路线和生态需求。有人认为 DuckDB 正在朝着最快的 analytical query engine 方向演进，也有人用 Quack.Ducks 的梗设想多个 DuckDB 实例如何协同并行。除此之外，还有人关心 SSL/HTTPS 更新是否到位，以及是否存在聚合官方文档的入口，说明大家开始把它当成需要正式部署和维护的系统来期待。",
+              "supportid": [
+                "49316809",
+                "49317006",
+                "49316865",
+                "49317872"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "oversubscription（线程超配）",
+              "explanation": "让线程数超过 CPU 核心数；在 I/O 场景中常见，因为很多线程大部分时间都在等待 syscall。"
+            },
+            {
+              "term": "speculative parallel CSV parsing（推测式并行 CSV 解析）",
+              "explanation": "先猜测 CSV 解析状态并并行切分，再在收尾阶段校验修正，适合处理 quoted newlines。"
+            },
+            {
+              "term": "buffer cache（缓冲缓存）",
+              "explanation": "操作系统或数据库用于缓存磁盘数据的内存页，常显著影响数据库基准测试表现。"
+            }
+          ],
+          "context": "这篇文章讨论 DuckDB（一个面向分析型查询的嵌入式数据库/查询引擎）如何把 worker 线程、async 线程和 I/O 任务拆开，让计算与等待重叠，从而提高吞吐。评论进一步追问 CSV 读取如何处理 quoted newlines，以及如何从文件中间并行切入而不必先扫描整文件。基准测试之所以用到 512GB RAM 和 22GB 远程文件，是因为数据库类 workload 往往依赖 large buffer cache（大缓冲缓存），而作者也提到可以用 memory_limit、threads 或 Linux cgroups（控制组）把实验环境缩小。整个讨论也反映出 DuckDB 正从“好用的小工具”变成需要认真看待其执行器、CSV parser 和部署边界的系统。",
+          "emoji": "🚀",
+          "sarcastic_question": "512GB 内存跑 22GB 文件，也叫基准吗？"
+        },
+        "classifications": {
+          "topics": [
+            6,
+            4
+          ],
+          "facets": [
+            5,
+            4
+          ],
+          "tags": [
+            "DuckDB",
+            "Asynchronous I/O",
+            "Threads",
+            "Worker pool"
+          ]
+        },
+        "classificationsUpdatedAt": 1786868441,
+        "aiSummary": {
+          "chinese_title": "DuckDB 异步 I/O：线程超配、CSV 并行解析与大内存基准",
+          "discussion_overview": [
+            {
+              "category": "线程超配可行性",
+              "summary": "评论集中讨论 async I/O 线程池是否可以按核心数甚至略微超配。有人拿 Rust 里的 Rayon + Tokio 组合举例：在 6 vCPU 上同时跑 4 个 worker 线程和 2 个 async 线程，网络延迟仍然正常。回应认为 I/O 线程大多在等 syscall，kernel 调度通常能很好处理这种 oversubscription；即使偶尔被饿住，对纯网络客户端也不算灾难。还有人补充说，DuckDB 的 memory governor 会把这些线程约束在合理范围内，因此可以在默认情况下保留更高吞吐。",
+              "supportid": [
+                "49317845",
+                "49318269",
+                "49318206"
+              ]
+            },
+            {
+              "category": "CSV 并行解析",
+              "summary": "关于 CSV 读取，讨论焦点是带 quoted newlines 的文件如何在异步线程里从中间切入，而不用先扫完整个文件。回应解释 DuckDB 用的是 speculative parallel CSV parsing：先在随机 byte 位置猜测解析器状态，再据此推断下一行起点。随后还会在收尾阶段做 validation，防止切分时对引号状态判断错误。另有人补充说实现上通常是读取大块数据后再 decode，这也是并行切分能成立的原因。",
+              "supportid": [
+                "49318600",
+                "49318687",
+                "49318633"
+              ]
+            },
+            {
+              "category": "大内存基准设计",
+              "summary": "有人质疑用 512GB RAM 去测一个 22GB 的远程文件是否过于夸张。回应指出，大内存机器便于统一做 benchmark，而且 CSV 数据集本身可能超过 80GB，数据库场景也常常依赖 large buffer cache。另有评论提到，云厂商和数据库工作负载本来就经常采用较高的内存/CPU 配比。为了让实验可控，还可以用 DuckDB 的 memory_limit、threads 设置，或者用 cgroups 把进程资源收紧。",
+              "supportid": [
+                "49316878",
+                "49316952",
+                "49318232",
+                "49318167"
+              ]
+            },
+            {
+              "category": "文章深度与实现细节争议",
+              "summary": "一部分评论把这篇文章视为高性能数据处理的工程干货，认为关于 async I/O 和执行模型的拆解很有价值。另一部分则觉得内容还不够深，因为没有交代队列类型、磁盘子系统如何处理 random reads 等关键实现细节。也有人直接把它当成长期等待的功能发布来欢迎，说明读者对这类执行器优化非常关注。总体上，这组评论既肯定方向，也在追问实现是否已经足够完整。",
+              "supportid": [
+                "49316232",
+                "49317330",
+                "49318618",
+                "49316300"
+              ]
+            },
+            {
+              "category": "DuckDB 路线与生态期待",
+              "summary": "还有一组评论把话题延伸到 DuckDB 的产品路线和生态需求。有人认为 DuckDB 正在朝着最快的 analytical query engine 方向演进，也有人用 Quack.Ducks 的梗设想多个 DuckDB 实例如何协同并行。除此之外，还有人关心 SSL/HTTPS 更新是否到位，以及是否存在聚合官方文档的入口，说明大家开始把它当成需要正式部署和维护的系统来期待。",
+              "supportid": [
+                "49316809",
+                "49317006",
+                "49316865",
+                "49317872"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "oversubscription（线程超配）",
+              "explanation": "让线程数超过 CPU 核心数；在 I/O 场景中常见，因为很多线程大部分时间都在等待 syscall。"
+            },
+            {
+              "term": "speculative parallel CSV parsing（推测式并行 CSV 解析）",
+              "explanation": "先猜测 CSV 解析状态并并行切分，再在收尾阶段校验修正，适合处理 quoted newlines。"
+            },
+            {
+              "term": "buffer cache（缓冲缓存）",
+              "explanation": "操作系统或数据库用于缓存磁盘数据的内存页，常显著影响数据库基准测试表现。"
+            }
+          ],
+          "context": "这篇文章讨论 DuckDB（一个面向分析型查询的嵌入式数据库/查询引擎）如何把 worker 线程、async 线程和 I/O 任务拆开，让计算与等待重叠，从而提高吞吐。评论进一步追问 CSV 读取如何处理 quoted newlines，以及如何从文件中间并行切入而不必先扫描整文件。基准测试之所以用到 512GB RAM 和 22GB 远程文件，是因为数据库类 workload 往往依赖 large buffer cache（大缓冲缓存），而作者也提到可以用 memory_limit、threads 或 Linux cgroups（控制组）把实验环境缩小。整个讨论也反映出 DuckDB 正从“好用的小工具”变成需要认真看待其执行器、CSV parser 和部署边界的系统。",
+          "emoji": "🚀",
+          "sarcastic_question": "512GB 内存跑 22GB 文件，也叫基准吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n\nDuckDB v2.0 通过“`REGULAR` 线程算数据、`ASYNC` 线程提前拉数据”的双线程池和受内存约束的 read-ahead 队列，解决了 S3/EC2 场景下同步 I/O 吃不满网络带宽的问题，并在 TPC-H SF100 上将 Parquet 查询从 8.230 秒降至 2.844 秒。\n\n## 正文\n\n### DuckDB 原本不太需要关心 I/O，因为数据就在本机 SSD 上\n\n过去 DuckDB 的典型使用方式，是直接查询本机 SSD 上的文件。  \n它依靠 filter pushdown 和 projection pushdown，尽早裁掉不需要的数据。  \nParquet 按 row group 切分，CSV 按固定大小 buffer 切分，本地存储的低延迟和高带宽足以支撑同步读取。  \n于是性能瓶颈通常出现在 joins、aggregations、subqueries 等计算算子，而不是读文件本身。  \n说白了，过去的 DuckDB 可以假设：线程发起一次读取后，等一会儿并不是什么大问题。  \n\n但这个前提已经变了。  \nDuckDB 开始适合查询 data lake，例如基于 S3 的远程数据集，也可以通过 Quack protocol 作为服务端运行。  \n此时计算在 EC2 上，数据在 S3 或其他 blob storage 里，即使两者同 Region，网络延迟也不再可以忽略。  \n如果每个 worker 都同步等待 HTTP range request 返回，CPU 线程会大量空转。  \n更糟的是，请求并发度不够时，机器明明有网络带宽，却根本跑不满。  \n\n### 同步读取的问题不是“慢”，而是线程被迫什么都不做\n\n文章用一个简单的 Parquet scan 说明问题：\n\n```sql\nFROM read_parquet('s3://bucket/file.parquet');\n```\n\nDuckDB 会把 Parquet scan 切成以 row group 为单位的 jobs。  \n每个 job 又可能拆成一个或多个 fetch tasks，用 byte-range request 拉取实际需要的数据。  \n在同步 I/O 模式下，worker 发出读取请求后必须阻塞，直到数据到达本机才能继续 decode、aggregate 等工作。  \n也就是说，网络等待和 CPU 解码是串行发生的。  \n\n这正是远程 I/O 场景里最浪费的地方。  \n线程不是没有任务可做，而是被同步读取 API 卡在了等待状态。  \n即便还有其他 pipeline task，当前 scan 的执行也会因此失去连续性。  \n而网络侧也只有少量请求同时在飞，无法覆盖 S3 请求延迟。  \n因此，异步 I/O 的目标并不神秘：让“等数据”和“处理数据”重叠起来。  \n\n### 双线程池把“搬数据”和“做计算”拆开了\n\nDuckDB v2.0 为此引入了两个独立的 thread pool。  \n`REGULAR` pool 默认每个可用 CPU thread 配一个 worker，负责 decoding、joins、aggregations 等真正消耗 CPU 的工作。  \n这些 worker 优先执行常规任务，但在空闲时也可以协助 I/O task。  \n`ASYNC` pool 则专门承担异步任务，主要是那些会阻塞在远程 HTTP I/O 上的 fetch tasks。  \n这里的关键设计是，`ASYNC` 线程数远多于 CPU 线程数，默认是 `4 * system threads`，总数最多 256。  \n\n为什么敢开这么多？  \n因为远程读取线程大多数时候不占 CPU，它们只是在等响应。  \n如果仍然按 CPU 核数限制这些线程，很多网络等待时间就无法被并发请求覆盖。  \n有了 `ASYNC` pool，多个 fetch task 可以持续在飞。  \n与此同时，`REGULAR` worker 不再因为某个请求没返回就被彻底占住。  \n\n### read-ahead 队列让请求在真正需要前就出发\n\n仅仅把读取放到异步线程还不够。  \n如果 worker 到了某个 row group 才临时发请求，延迟依然会暴露在执行路径上。  \n所以 DuckDB 采用 read-ahead：在 regular worker 还在 decode 当前 job 时，`ASYNC` 线程已经开始拉取后续 jobs 的数据。  \n目标是让足够多的 fetch task 始终处于 in-flight 状态，从而隐藏远程存储的请求延迟。  \n这也是整套设计最核心的吞吐量来源。  \n\n不同文件格式里，job 的定义不同。  \n对 Parquet 来说，一个 job 对应一个文件的一个 row group；具体会拆成多少 fetch task，取决于 projection、filter pushdown、物理列位置和相邻 range 是否可以合并。  \n对 CSV 来说，job 是一个 scan boundary，通常覆盖文件中的固定字节范围。  \nCSV 没有 Parquet 那么丰富的元数据，因此它会读取起始 buffer，并在一行跨 buffer 时继续读取下一个 buffer。  \n目前异步 I/O 已支持 Parquet，以及未压缩、可 seek 的 UTF-8 CSV；DuckDB native format 和 JSON 仍在后续计划中。  \n\n### 队列的巧妙之处，是生产、读取和唤醒都不需要专职调度者\n\nDuckDB 没有额外安排一个专门生产 read-ahead job 的线程。  \n任何一个来领取 scan work 的 regular worker，都会先尝试把 read-ahead queue 补满。  \n只要 queue slot 或内存预算允许，它就创建新的 job 和对应 fetch tasks。  \nfetch tasks 会立刻提交到 `ASYNC` pool，而 job 按批次顺序进入 read-ahead queue。  \n因此，队列补充是执行路径中的协作行为，而不是又一个独立的调度瓶颈。  \n\n`ASYNC` 线程以 fetch task 为粒度独立执行，不需要按 job 的领取顺序工作。  \n同一个 job 的多个 fetch task 可以并发，它们共享一个 countdown。  \n最后完成的 fetch task 将 countdown 归零，也就标志着该 job 的 I/O 已准备完毕。  \nregular worker 总是领取队列中最早的 job；如果数据已到，就直接 decode。  \n如果数据还没到，worker 会 park 当前 scan task，转而运行其他 pipeline task，最后由完成 I/O 的 fetch task 将它唤醒。  \n\n还有一个重要细节：worker 一领取 job，对应 queue slot 就立即释放。  \n这意味着其他 regular worker 可以继续在队尾补充新的预读 job。  \n整个循环因此形成了稳定的流水线：队首消费、队尾生产、异步线程并发下载。  \n数据准备和数据处理从串行关系，变成了可重叠的关系。  \n这也是标题里 “Work, Thread, Work” 所表达的节奏：线程不该在 I/O 等待里失去工作机会。  \n\n### 预读会吞内存，所以 DuckDB 把它接入了统一的内存治理\n\nread-ahead 的代价很直接：提前拉下来的数据需要先放在内存里。  \n如果网络很快、解码很慢，预取数据可能不断积压，最终触发 out-of-memory。  \n因此 DuckDB 增加了 `read_ahead_depth` 配置项，用来限制预读深度。  \n`-1` 是默认值，表示深度不限，但受内存预算控制；`N > 0` 表示最多预读 N 个 job，但不设内存预算；`0` 则关闭 read-ahead。  \n例如可以执行：\n\n```sql\nSET read_ahead_depth = 5;\n```\n\n默认模式没有单独发明一套内存逻辑。  \n它直接与 DuckDB 的 temporary memory manager 协商预算。  \n这个 manager 本来就负责在 joins、sorts、window operators 等并发算子之间分配内存。  \n当某个算子内存压力很大时，read-ahead queue 的可用预算会迅速收缩，最极端时只能保留一个 job。  \n这时 scan 的行为会退化得接近同步读取；当内存密集型算子结束，预读队列又会重新填充。  \n\n### S3 上的 Parquet 终于能接近 25 Gbit/s 网络上限\n\n文章用 TPC-H Query 6、SF100 数据集测试这一设计。  \n数据在 S3 上，计算运行在同 Region 的 EC2 `r7i.16xlarge`，机器有 64 vCPU、512 GB RAM。  \n每张表写成单个文件，`lineitem` 有 600,037,902 行；测试关闭 external file cache，确保每次都从 S3 读取。  \nParquet 文件约 22 GB，包含约 4,880 个 row group，每组约 122,880 行。  \n五次执行取平均值后，DuckDB v1.5.5 的同步版本耗时 8.230 秒。  \n\n启用异步 I/O 的 v2.0.0-dev 将平均耗时降到 2.844 秒，接近 3 倍加速。  \n更有意思的是，进一步调优后，性能还能继续提升。  \n测试将 read-ahead 限制为 64 个 in-flight jobs，并设置 `async_threads = 48`、`http_retries = 8`、`http_retry_wait_ms = 50`、`http_retry_backoff = 2`。  \n调优版本耗时 2.227 秒，比未调优的异步版本再快 21.7%，相对 v1.5.5 约快 3.7 倍。  \n网络曲线解释了原因：同步版大约停在 5 Gbit/s，而调优后的异步版本几乎持续跑满 25 Gbit/s。  \n\n### 本地 SSD 也会受益，但它不是异步 I/O 的主战场\n\n作者也测试了本地冷读场景。  \n测试在一台 Apple M4 Max MacBook Pro 上进行，机器有 14 核和 36 GB RAM。  \n每次运行前使用 macOS 的 `purge` 清理 OS cache，确保文件确实需要从本地磁盘读取。  \n同样的 SF100 Parquet Query 6，v1.5.5 同步读取耗时 1.321 秒。  \nv2.0.0-dev 的异步 I/O 耗时 0.883 秒，约快 1.5 倍，运行时间下降约 33%。  \n\n但这个结果也反过来说明了异步 I/O 的适用边界。  \n本地 SSD 延迟更低、带宽更高，因此同步读取本来就没那么难以饱和。  \n数据已经被缓存的热读场景下，几乎没有实际磁盘访问，异步 I/O 的收益也接近于零。  \n它真正瞄准的还是 EC2/S3 这类高延迟、可提供高总带宽、但需要足够请求并发才能跑满的环境。  \n文章最后还开始讨论多小文件的 Parquet 数据集：将 SF100 切为 976 个文件、每个约 22 MB、含 5 个 row group；但所提供的原文在该 benchmark 结果处截断。"
+    },
     {
       "id": 49314902,
       "by": "ingve",
@@ -14787,275 +14992,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n\n当 AI 让写代码不再是瓶颈，真正的瓶颈变成了人类能否持续理解系统，并以此参与下一轮创造。\n\n## 正文\n\n### 代码越容易生成，人越容易“失去剧情”\n\nGeoffrey Litt 的观点很直接：即使 agent 已经能写出大量代码，人依然必须理解它们。  \n但他首先纠正了一个常见理由：理解并不只是为了 verification。  \n当然，审查 agent 的输出是否符合 spec、架构是否合理，仍然重要。  \n可这是一个“通过或不通过”的判断题，而 agent 也正在越来越擅长自我验证。  \n如果人类理解代码的唯一目的只是挑错，那么随着 agent 变强，人自然会被挤出这个环节。  \n真正的问题是，软件项目从来不是“一次 prompt、一次交付”，而是无数轮人与 agent 的迭代。  \n你若不知道当前系统的结构、约束和行为，就很难提出下一步真正有价值的想法。  \n\n### 理解不是为了验收，而是为了继续参与创造\n\n作者给出的替代答案是：我们理解代码，是为了 participate。  \n说白了，理解系统会在脑中形成一套可调用的概念和直觉。  \n有了这套心智模型，你才能自然地讨论“这里能否换一种抽象”“这个交互还能如何演化”。  \n没有它，你面对 agent 的产物只能说“看起来差不多”，而无法主动推动项目。  \n这也正是 Margaret Storey 和 Simon Willison 所说的 cognitive debt：短期不理解似乎不影响交付，但长期下来，人会彻底“lost the plot”。  \n它和 tech debt 很像，只是欠下的不是代码质量，而是团队对系统的认知能力。  \n因此，AI 加速开发后，人类需要解决的不是如何更快地产生代码，而是如何以匹配的速度建立理解。  \n\n### 好的解释不是 diff，而是先帮你建立直觉\n\n第一种技术是 explanations，具体形式是作者的 `/explain-diff` skill。  \n它不会只丢给你一份按文件名排序的 raw diff，而会生成 HTML、Markdown 或 Notion 文档形式的 code explainer。  \n这里的关键设计是“背景先于改动”：在讲本次代码修改前，先解释已有系统是如何工作的。  \n例如，在一个调整游戏视角的案例中，explainer 会先介绍游戏引擎，再说明目标是用 2D 绘制技巧让花园呈现 3D 感。  \n接着它解释 isometric projection 等概念，让读者先形成直觉，再进入具体实现。  \n作者把这种形式称为 “literate diff”：它按叙事逻辑组织改动，穿插上下文解释和局部代码片段。  \n这比直接阅读 raw diff 更快，因为读者不必自行从杂乱文件中重建“为什么改、改了什么、这些改动如何协作”的故事。  \n\n### 交互图和小测验，把“看过”变成“真的懂了”\n\n仅靠文字解释还不够，作者还会在 explainer 里嵌入 interactive figures。  \n在等距视角案例中，读者可以拖动花园里的石头，并实时观察坐标如何变化。  \n这种交互不是为了展示效果，而是让抽象概念通过操作变成直觉。  \n有意思的是，作者甚至会把 explainer 打印出来带到咖啡馆阅读，用更慢、更专注的方式消化 AI 高速生成的结果。  \n每份 explainer 底部还有一个五题 quiz，用来测试自己是否真的理解了改动。  \n作者的规则很硬：答不过 quiz，就不把代码发给别人；审查他人的代码时也一样。  \n这个 quiz 的作用是给 AI loop 加上“速度调节器”，防止产出速度超过人的理解速度。  \n\n### 最好的理解工具，有时也是 agent 写出来的程序\n\n第二种技术是 micro-worlds，灵感来自 Seymour Papert 的 “living in Mathland”。  \nPapert 的想法是，学数学不一定要先听抽象理论；更好的方式是进入一个环境，在好奇心驱动下自然地接触数学。  \n作者把这个思路迁移到代码：不要只读系统说明，而是构建一个可以“住进去”的小世界。  \n他在实现 Prolog interpreter 时，就让 agent 帮他做了一个 debugger，可以逐步执行逻辑程序、沿时间轴回看、查看 stack 和当前匹配的规则。  \n他甚至能在执行步骤旁留下“这条规则正确应用了”的注释，把理解过程本身沉淀下来。  \n重点不在于让 agent 替他 debug，而在于让自己通过操作 debugger，亲自形成对执行模型的感觉。  \n换句话说，agent 不只可以写业务代码，也可以专门写帮助人类理解业务代码的工具。  \n\n### 把一次框架迁移，变成可亲手操作的游戏关卡\n\n作者还举了一个更具体的 micro-world 案例。  \n他把个人网站从一个 framework 迁移到另一个 framework，Claude 虽然写好了迁移脚本，但他对新框架并不熟悉。  \n面对脚本，他能做的只有一句：“我猜看起来没问题。”  \n于是他没有继续硬审代码，而是让 Claude 做了一个“视频游戏式”的 command center。  \n在这个 UI 里，他可以一步步点击执行迁移，同时观察旧站和新站并排运行，文件树也随着每一步变化。  \n这样，他亲眼看到新网站如何逐渐成形，获得了接近手工迁移的理解。  \n区别是，agent 已经替他把操作路径和可视化环境准备好了，所以学习和理解的成本低得多。  \n\n### 团队真正需要的是共享心智模型，而非各自审各自的 agent\n\n第三种技术是 shared spaces，因为个人理解还不足以支撑团队协作。  \n当团队成员共享同一套心智模型和词汇时，一句简短讨论就能唤起相同的架构图景。  \n于是大家可以快速 jam、riff，围绕系统展开真正有创造性的讨论。  \n反过来，如果每个人只和自己的 agent 私下工作，即使代码都正确，团队依然可能陷入认知孤岛。  \n作者以 Notion 的新能力为例：Claude 和 Cursor agents 可以直接运行在 Notion 中，而技术计划默认就是一个可协作评论的页面。  \n这样，agent 生成的计划不再是某个人本地的一段对话记录，而成为团队能立即讨论、质疑和补充的公共对象。  \n最终目标不是把人移出 loop，而是让人和团队都能更深地进入 loop。  \n\n### AI 的终点不该只是自动化，而是增强人的理解力\n\n文章最后把话题从 code review 拉回到计算机的原始理想。  \n50 年前，Alan Kay 就设想过计算机应成为一种比书更强大的学习媒介。  \n他想象的不是孩子被动观看内容，而是孩子一边运行物理模拟，一边修改代码，从互动中理解世界。  \n今天，AI 让构建这类模拟、debugger 和交互式解释环境的成本大幅下降。  \n因此，最值得期待的方向并不是让 AI 把所有工作自动做完。  \n而是让 AI 帮我们快速创造可探索、可操作、可讨论的环境，使人类更容易理解复杂系统。  \n这才是 Litt 想强调的结论：AI 的价值不只是 automate，更是 augment。"
-    },
-    {
-      "id": 49289512,
-      "by": "tosh",
-      "title": "Choose Boring Technology (2015)",
-      "url": "https://mcfunley.com/choose-boring-technology",
-      "score": 346,
-      "detailUpdatedAt": 1786702421,
-      "createdAt": 1786644039,
-      "aiSummaryUpdatedAt": 1786703444,
-      "aisummary": {
-        "chinese_title": "选择无聊技术：创新代币、AI Agents 与 Node/Go 之争",
-        "emoji": "🤔",
-        "sarcastic_question": "既然都无聊，创新额度只是个摆设吗？"
-      },
-      "classifications": {
-        "topics": [
-          4,
-          12,
-          10
-        ],
-        "facets": [
-          9
-        ],
-        "tags": [
-          "Choose Boring Technology",
-          "innovation tokens",
-          "AI",
-          "mcfunley"
-        ]
-      },
-      "classificationsUpdatedAt": 1786645895,
-      "aiSummary": {
-        "chinese_title": "选择无聊技术：创新代币、AI Agents 与 Node/Go 之争",
-        "emoji": "🤔",
-        "sarcastic_question": "既然都无聊，创新额度只是个摆设吗？"
-      },
-      "detail": {
-        "id": 49289512,
-        "by": "tosh",
-        "title": "Choose Boring Technology (2015)",
-        "url": "https://mcfunley.com/choose-boring-technology",
-        "score": 243,
-        "detailUpdatedAt": 1786670018,
-        "createdAt": 1786644039,
-        "aiSummaryUpdatedAt": 1786670452,
-        "aisummary": {
-          "chinese_title": "AI 时代重读《Choose Boring Technology》：创新配额与 boring 技术",
-          "discussion_overview": [
-            {
-              "category": "支持：用成熟栈换取交付确定性",
-              "summary": "很多人把这篇文章视为实战经验总结：公司早期只有少量“创新预算”，把它花在真正能创造差异化的地方即可，其他基础组件尽量用团队已经熟悉、社区验证过的方案。评论里把这条原则扩展到网站框架、数据库、队列、部署和运维，认为 PHP、Go、Django（Python Web 框架）、PostgreSQL（关系型数据库）、MySQL、Memcached 这类成熟栈能减少踩坑、缩短交付路径。也有人用“每次只做一件新事”“80% 保守、20% 激进”来描述同一思路，强调可靠性和长期维护比短期新鲜感更重要。",
-              "supportid": [
-                "49289692",
-                "49289863",
-                "49290349",
-                "49291970",
-                "49292583",
-                "49290913",
-                "49289696",
-                "49290741",
-                "49291497",
-                "49290367"
-              ]
-            },
-            {
-              "category": "反对：术语太虚，应直接谈需求与风险",
-              "summary": "反对者认为“boring technology / innovation tokens”太像口号，真正该讨论的是需求、风险、测试覆盖、文档质量、团队经验和迁移成本。有人举例说，新技术如果经过 Jepsen（一套分布式系统一致性测试工具）、fuzzing（模糊测试）或足够的验证，就不能简单地因为“new”而被排除；反过来，很多老项目也充满难以预料的 edge cases，并不天然安全。还有人指出，这个词很容易被滥用成“我熟悉所以我选它”或“先别碰新东西”的万能挡箭牌，反而把本该具体讨论的选型问题说空了。",
-              "supportid": [
-                "49290222",
-                "49290390",
-                "49290605",
-                "49290484",
-                "49290628",
-                "49290757",
-                "49293306",
-                "49292947",
-                "49290603"
-              ]
-            },
-            {
-              "category": "AI/agents 时代：把创新点放在 agents 上",
-              "summary": "在 AI / agents 语境下，很多评论把这条建议重写成：把创新额度都投到 agents 上，其他部分尽量选择模型“在分布内”的技术。有人认为 LLM（大语言模型）在 Django（Python Web 框架）、Go、Elixir 等模式稳定、文档清晰的栈上更可靠，甚至比在 Rust、Zig 这类新组合上更容易产出可用代码；也有人指出 PHP、Ruby、Elixir 在 Web 场景下因为部署简单、约定统一，反而比 TypeScript monorepo 更适合让 AI 大规模生成。相反，AI 生成代码经常偏向 TypeScript / Next.js，这被认为更多是训练数据偏置，而不一定是“最适合任务”的选择。",
-              "supportid": [
-                "49289882",
-                "49290277",
-                "49291043",
-                "49292551",
-                "49290346",
-                "49290420",
-                "49292671",
-                "49292433",
-                "49290408",
-                "49291087"
-              ]
-            },
-            {
-              "category": "边界条件：boring 不是固定属性",
-              "summary": "不少评论提醒，boring 不是固定属性，而是随团队经验和行业周期变化的。Node.js 以及 k8s（Kubernetes，容器编排系统）这些当年被当作“新玩具”的东西，如今在一些人眼里已经变成 boring；但换到另一些公司，它们仍可能是复杂、脆弱、值得少碰的系统。还有人强调，Cassandra（分布式 NoSQL 数据库）这类技术只有在合适负载下才“boring”，一旦拿去做不擅长的任务，就会把成熟度反过来变成风险。",
-              "supportid": [
-                "49292779",
-                "49290098",
-                "49289892",
-                "49290386",
-                "49290270",
-                "49292985",
-                "49292102",
-                "49292687",
-                "49291606"
-              ]
-            },
-            {
-              "category": "职业激励：新奇更显眼，稳妥更隐形",
-              "summary": "讨论里还有一条很现实的线索：新技术更容易给简历加分，而把系统做稳做久往往不可见。有人抱怨公司和个人都会奖励看起来很新、可展示的选择，结果是工程师被鼓励去追逐 novelty，而不是把基础设施、安全和故障预防做好；也有人说这类工作更像“扑灭火灾”和“防火”，前者容易被看见，后者几乎没有正反馈。于是有人想要专门筛选 pragmatist 工程文化的招聘渠道，也有人承认自己曾因过度坚持 boring tech 错过机会，说明这场争论最后也会落到职业收益和组织激励上。",
-              "supportid": [
-                "49289886",
-                "49290936",
-                "49292299",
-                "49293014",
-                "49293469",
-                "49292662",
-                "49291971",
-                "49290469"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "innovation tokens",
-              "explanation": "把公司能承受的“尝新次数”看成有限预算的比喻，用来约束高风险技术选型。"
-            },
-            {
-              "term": "boring technology",
-              "explanation": "成熟、熟悉、社区验证过的技术栈；强调低风险、可维护和可预测。"
-            },
-            {
-              "term": "CV driven development",
-              "explanation": "为了简历/履历好看而选技术，而不是为了问题本身。"
-            },
-            {
-              "term": "in-distribution",
-              "explanation": "AI 术语，指模型训练分布里更常见、因此更容易处理的输入或技术栈。"
-            }
-          ],
-          "context": "这篇 2015 年的文章最初来自 Etsy（手工艺品电商）的工程实践，核心是把技术选型当成有限的“创新预算”：数据库、队列、部署栈等基础组件尽量用成熟、熟悉、可替换的方案，把少数风险留给真正决定产品差异化的部分。它诞生于 JavaScript framework churn、NoSQL 热潮和云原生尚未定型的年代，所以 Node.js、MongoDB、k8s（Kubernetes，容器编排系统）这类当时仍偏新的技术常被拿来当反例。评论把这条老建议更新到了 AI / agents 时代：如果 LLM（大语言模型）要参与写代码，就更应该选它们“见过”的栈，让模型在稳定约定和成熟文档里工作。争论因此集中在“boring”到底是不是有用的简写，以及它会不会把真正该讨论的 requirements、risk 和 workload 直接抹平。",
-          "emoji": "🤔",
-          "sarcastic_question": "既然都靠“boring”，那架构评审多余吗？"
-        },
-        "classifications": {
-          "topics": [
-            4,
-            12,
-            10
-          ],
-          "facets": [
-            9
-          ],
-          "tags": [
-            "Choose Boring Technology",
-            "innovation tokens",
-            "AI",
-            "mcfunley"
-          ]
-        },
-        "classificationsUpdatedAt": 1786645895,
-        "aiSummary": {
-          "chinese_title": "AI 时代重读《Choose Boring Technology》：创新配额与 boring 技术",
-          "discussion_overview": [
-            {
-              "category": "支持：用成熟栈换取交付确定性",
-              "summary": "很多人把这篇文章视为实战经验总结：公司早期只有少量“创新预算”，把它花在真正能创造差异化的地方即可，其他基础组件尽量用团队已经熟悉、社区验证过的方案。评论里把这条原则扩展到网站框架、数据库、队列、部署和运维，认为 PHP、Go、Django（Python Web 框架）、PostgreSQL（关系型数据库）、MySQL、Memcached 这类成熟栈能减少踩坑、缩短交付路径。也有人用“每次只做一件新事”“80% 保守、20% 激进”来描述同一思路，强调可靠性和长期维护比短期新鲜感更重要。",
-              "supportid": [
-                "49289692",
-                "49289863",
-                "49290349",
-                "49291970",
-                "49292583",
-                "49290913",
-                "49289696",
-                "49290741",
-                "49291497",
-                "49290367"
-              ]
-            },
-            {
-              "category": "反对：术语太虚，应直接谈需求与风险",
-              "summary": "反对者认为“boring technology / innovation tokens”太像口号，真正该讨论的是需求、风险、测试覆盖、文档质量、团队经验和迁移成本。有人举例说，新技术如果经过 Jepsen（一套分布式系统一致性测试工具）、fuzzing（模糊测试）或足够的验证，就不能简单地因为“new”而被排除；反过来，很多老项目也充满难以预料的 edge cases，并不天然安全。还有人指出，这个词很容易被滥用成“我熟悉所以我选它”或“先别碰新东西”的万能挡箭牌，反而把本该具体讨论的选型问题说空了。",
-              "supportid": [
-                "49290222",
-                "49290390",
-                "49290605",
-                "49290484",
-                "49290628",
-                "49290757",
-                "49293306",
-                "49292947",
-                "49290603"
-              ]
-            },
-            {
-              "category": "AI/agents 时代：把创新点放在 agents 上",
-              "summary": "在 AI / agents 语境下，很多评论把这条建议重写成：把创新额度都投到 agents 上，其他部分尽量选择模型“在分布内”的技术。有人认为 LLM（大语言模型）在 Django（Python Web 框架）、Go、Elixir 等模式稳定、文档清晰的栈上更可靠，甚至比在 Rust、Zig 这类新组合上更容易产出可用代码；也有人指出 PHP、Ruby、Elixir 在 Web 场景下因为部署简单、约定统一，反而比 TypeScript monorepo 更适合让 AI 大规模生成。相反，AI 生成代码经常偏向 TypeScript / Next.js，这被认为更多是训练数据偏置，而不一定是“最适合任务”的选择。",
-              "supportid": [
-                "49289882",
-                "49290277",
-                "49291043",
-                "49292551",
-                "49290346",
-                "49290420",
-                "49292671",
-                "49292433",
-                "49290408",
-                "49291087"
-              ]
-            },
-            {
-              "category": "边界条件：boring 不是固定属性",
-              "summary": "不少评论提醒，boring 不是固定属性，而是随团队经验和行业周期变化的。Node.js 以及 k8s（Kubernetes，容器编排系统）这些当年被当作“新玩具”的东西，如今在一些人眼里已经变成 boring；但换到另一些公司，它们仍可能是复杂、脆弱、值得少碰的系统。还有人强调，Cassandra（分布式 NoSQL 数据库）这类技术只有在合适负载下才“boring”，一旦拿去做不擅长的任务，就会把成熟度反过来变成风险。",
-              "supportid": [
-                "49292779",
-                "49290098",
-                "49289892",
-                "49290386",
-                "49290270",
-                "49292985",
-                "49292102",
-                "49292687",
-                "49291606"
-              ]
-            },
-            {
-              "category": "职业激励：新奇更显眼，稳妥更隐形",
-              "summary": "讨论里还有一条很现实的线索：新技术更容易给简历加分，而把系统做稳做久往往不可见。有人抱怨公司和个人都会奖励看起来很新、可展示的选择，结果是工程师被鼓励去追逐 novelty，而不是把基础设施、安全和故障预防做好；也有人说这类工作更像“扑灭火灾”和“防火”，前者容易被看见，后者几乎没有正反馈。于是有人想要专门筛选 pragmatist 工程文化的招聘渠道，也有人承认自己曾因过度坚持 boring tech 错过机会，说明这场争论最后也会落到职业收益和组织激励上。",
-              "supportid": [
-                "49289886",
-                "49290936",
-                "49292299",
-                "49293014",
-                "49293469",
-                "49292662",
-                "49291971",
-                "49290469"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "innovation tokens",
-              "explanation": "把公司能承受的“尝新次数”看成有限预算的比喻，用来约束高风险技术选型。"
-            },
-            {
-              "term": "boring technology",
-              "explanation": "成熟、熟悉、社区验证过的技术栈；强调低风险、可维护和可预测。"
-            },
-            {
-              "term": "CV driven development",
-              "explanation": "为了简历/履历好看而选技术，而不是为了问题本身。"
-            },
-            {
-              "term": "in-distribution",
-              "explanation": "AI 术语，指模型训练分布里更常见、因此更容易处理的输入或技术栈。"
-            }
-          ],
-          "context": "这篇 2015 年的文章最初来自 Etsy（手工艺品电商）的工程实践，核心是把技术选型当成有限的“创新预算”：数据库、队列、部署栈等基础组件尽量用成熟、熟悉、可替换的方案，把少数风险留给真正决定产品差异化的部分。它诞生于 JavaScript framework churn、NoSQL 热潮和云原生尚未定型的年代，所以 Node.js、MongoDB、k8s（Kubernetes，容器编排系统）这类当时仍偏新的技术常被拿来当反例。评论把这条老建议更新到了 AI / agents 时代：如果 LLM（大语言模型）要参与写代码，就更应该选它们“见过”的栈，让模型在稳定约定和成熟文档里工作。争论因此集中在“boring”到底是不是有用的简写，以及它会不会把真正该讨论的 requirements、risk 和 workload 直接抹平。",
-          "emoji": "🤔",
-          "sarcastic_question": "既然都靠“boring”，那架构评审多余吗？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n\n技术选型的关键不是为每个局部问题找“最强工具”，而是把有限的创新预算留给真正的业务难题，用成熟技术换取可预测性、低运维成本和持续交付能力。\n\n## 正文\n\n### 每家公司都只有几枚“创新代币”\n\n作者先抛出一个很有用的心智模型：每家公司大概只有三枚“创新代币”。  \n你可以把它们花在任何地方，但短期内总量是固定的。  \n选择 NodeJS 写网站，可能花掉一枚；引入 MongoDB，又花掉一枚；采用刚出现一年的 service discovery 技术，再花一枚。  \n如果决定自己写数据库，那基本就是把钱包和未来一起扔进火里。  \n这些选择不一定错，假如你的公司本身就是 JavaScript 咨询公司或数据库公司，它们甚至可能正中业务核心。  \n但对大多数公司来说，目标通常是重塑电商、改进支付，或者解决某个真正属于用户的问题。  \n把注意力投入到“重新发明 ssh”这类事情上，不会让公司更接近目标，最多只会让成功来得更晚。\n\n### “无聊”不是落后，而是故障模式已经被踩过\n\n这里最容易被误解的一点是，boring technology 不等于坏技术。  \n确实存在又老又糟的技术，作者还调侃这片交集常被叫作 enterprise software。  \n但 MySQL、Postgres、PHP、Python、Memcached、Squid、Cron 这类东西，则属于“无聊但足够好”的技术。  \n它们真正的价值，不只是功能稳定，而是能力边界和故障模式都已经被大量实践摸清了。  \n比如，你可能不知道数据库满 CPU 后具体会怎样，但至少你知道这件事值得监控和压测。  \n这叫 known unknown：知道自己还有未知问题。  \n更危险的是 unknown unknown，例如根本没想到写统计数据会触发 GC pause；新技术最昂贵的地方，往往正是这类未知风险成倍增加。\n\n### “最佳工具”思维，漏算了运维这张账\n\n但作者并不是说技术栈必须永远一成不变。  \n问题在于，很多人谈起 “best tool for the job” 时，把“job”理解成了眼前那一个功能。  \n如果现有系统用 Ruby，再加 Python，大家通常能直觉感到复杂度会上升。  \n可一旦话题变成 Python 对 Scala、MySQL 对 Redis，很多团队就开始忽略约束，转而追求局部最优。  \n但技术从来不是无负担的选择：要监控、要写单测、要让开发者理解它、要部署、要维护 init script，还要有人在事故发生时能修。  \n这些负担被统称为 operations，另有一部分是团队的 cognitive overhead。  \n所以真正的“最佳工具”，不是每个点上最漂亮的那个，而是在尽可能多问题上处于“least worst”位置的那个。\n\n### 造系统的短痛，远小于养系统的长痛\n\n作者的判断很直接：长期维持一个系统可靠运行的成本，几乎总是远高于最初实现它时的不便。  \n成熟且高产的开发者会理解，写出来只是开始，之后数年的维护才是主战场。  \n这也是为什么局部最优工具堆出来的系统，常常会在几年后变成团队的负担。  \n每个服务都可能很优雅，每个数据库都可能适合某个场景，但组合起来以后，组织必须承担它们全部的运行成本。  \n说白了，工程师的工作不是为每个技术问题配一件最趁手的武器。  \n工程师的工作是让公司持续活下去，并且持续交付。  \n因此，技术选型必须从团队、组织和整体系统的视角全局优化，而不是只看某一段代码写起来是否舒服。\n\n### 新技术可以引入，但先证明旧栈真的不够\n\n把“选择无聊技术”推到极端，当然也会荒谬。  \n如果因此选了 Java 后就拒绝使用任何新东西，显然不是作者想表达的结论。  \n真正的做法是承认：引入新技术是一个过程，也是一场需要全公司可见的讨论。  \n因为今天某个团队加的一套数据库、队列或服务，明天就会成为别的团队的运维和认知负担。  \n作者建议先做一个很有效的练习：不引入任何新东西，能不能解决眼前的问题？  \n这一步能识别出一种常见情况——所谓“问题”，其实只是某人刚看完 graph database 的 webinar，很想找机会用一用。  \n如果是后者，应该立刻停止讨论。\n\n### 真正该写下来的，是旧方案为何“贵到不可接受”\n\n实践中，现有技术栈几乎很少真的做不到。  \n更多时候，答案是“能做，但会很难”，而“很难”本身还不足以成为引入新技术的理由。  \n团队应当明确写下：当前栈的哪些具体限制，使得实现成本高到不可接受。  \n这能把“我想用新技术”的偏好，变成可以审查的工程论证。  \n如果新技术只是补充，例如系统此前没有缓存，需要加入 Memcached，决策相对简单。  \n但如果它会替换或覆盖已有能力，就必须同时给出迁移旧功能的承诺和时间表。  \n否则，团队只是在不断积累局部最优的遗留物，最后没人知道该维护哪一套系统。\n\n### Etsy 的经验：克制让系统在无人看管时也能增长 20 倍\n\n作者用 Etsy 的 activity feeds 说明了这种克制的长期收益。  \n当时 Etsy 正努力把大部分系统收敛到 PHP、MySQL、Memcached 和 Gearman。  \n在这个栈上实现 activity feed，比直接使用 Redis 之类的方案更复杂，但并非不可能。  \n项目完成后，团队的注意力转移到了别处，几年里几乎没人专门维护 activity feeds。  \n有意思的地方在于，这个功能的规模增长了 20 倍，却没有针对它做任何修改。  \n原因不是它天生完美，而是它建立在共享平台上，底层能力会随着整个公司基础设施一起演进。  \n当然，这不是绝对主义：Etsy 最终也使用 Solr 做带 faceting 的全文搜索，因为用原始 PHP 实现那件事确实不划算。  \n\n### 技术自由，不是随便选工具的自由\n\n文章最后把矛头指向了“polyglot programming 会让开发者更高效”这类承诺。  \n开发者完全自由地为每个问题选择语言、数据库和队列，表面上很灵活。  \n但如果把后续运维劳动算进去，这种自由很容易变成日常 toil，并最终压垮团队。  \n真正有意识的技术选择，反而能给工程师更大的自由。  \n那种自由不是“我今天能不能试一个新数据库”，而是团队是否还有余力思考更大的产品和业务问题。  \n技术本身不是目的，把技术当成目的，作者的说法很尖锐：那只是 snake oil。"
     }
   ]
 }
