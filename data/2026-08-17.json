@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2539,
-  "filtered_articles": 8,
+  "filtered_articles": 9,
   "articles": [
+    {
+      "title": "★ Anthropic’s ‘Watermark’ Text Adulteration in Claude Is a Perversion of Writing",
+      "title_zh": "Claude 文本水印为何会扭曲写作",
+      "link": "https://daringfireball.net/2026/08/anthropics_watermark_text_adulteration_in_claude_is_a_perversion_of_writing",
+      "pub_date": "2026-08-16T19:26:33.000Z",
+      "summary": "## 一句话总结\n\n作者认为，Anthropic 为满足 EU 规则而在 Claude 输出中植入基于词汇选择的统计水印，等于让模型故意牺牲文字精确性；它既伤害所有正常用户，又挡不住真正想伪装 AI 文本的人。\n\n## 正文\n\n### Anthropic 先承诺“不影响质量”，后来才承认会改写词语选择\n\n事情的起点，是 Anthropic 宣布 Claude 将在全球范围内为生成内容添加 watermark。最初的说明说得很漂亮：水印“不可感知”，不会改变文本的“meaning, quality, or readability”。作者因此猜测，Anthropic 可能会插入不可见的 Unicode 字符。毕竟，若真不影响语义和质量，隐藏在字符层似乎是最合理的实现。可随后 Anthropic 发布技术说明，事实恰恰相反：水印不是藏在文本旁边，而是通过影响模型在生成时的词语选择，直接写进文本本身。\n\n### 水印的核心是把语言生成变成一枚偏置硬币\n\nAnthropic 所采用的是一种 semantic watermarking，也可以理解为基于 token 选择的 steganography。LLM 在每一步生成下一个 token 时，本来会从多个概率不同的候选中采样。水印机制会根据一个秘密密钥，把候选 token 动态划入“green list”和“red list”。模型并非不能选 red token，但会被轻微地推向 green token。作者用一枚 51:49 的偏置硬币来解释：单次抛掷没有意义，但抛得足够多，就能统计判断这枚硬币是否被动过手脚。文本也是如此，字数越多，检测者越能判断其中是否出现了异常多的“green”选择。\n\n### 这不是公开词表，而是只有厂商能验证的概率指纹\n\n这里有个巧妙但也令人不安的设计：green 和 red 并不是固定词表。某个词在一个生成位置可能是 green，在另一个位置又可能变成 red。分类会随着上下文和秘密密钥，在每个 token 决策点动态确定。持有密钥的 Anthropic 可以回头检验一段文字，统计其中 green token 是否显著偏多。没有密钥的人则无法知道 Claude 在偏向哪些词。结果是，Claude 只能检测 Claude 自己的水印，Gemini 也只能检测 Gemini 的水印，跨厂商没有统一的识别能力。\n\n### 作者真正反对的是：服务用户的文字，被拿去服务监管目标\n\n作者的核心 objection 并不在于水印技术“不够隐蔽”，而在于它必然改变生成过程。没有两个同义词拥有完全相同的意义、语气、节奏和适用场景。“He leaped at the chance”和“He jumped at the opportunity”大意接近，但绝不是同一句话。用户调用 Claude 时，希望模型在速度、计算成本的约束下，尽可能选出最准确、最清晰的表达。如今 Anthropic 却承认，模型还要为了留下可检测的统计痕迹而偏向某些选择。尤其是该计划覆盖超过 200 tokens、约 150 词的所有 Claude 输出，连用户私下与 Claude 的对话也不例外。\n\n### 水印对诚实用户是负担，对恶意用户却很脆弱\n\n这项改动的直接动机，是 EU 的《Code of Practice on Transparency of AI-Generated Content》。作者引用 Ben Thompson 的概括：规则针对超过 200 tokens 的文本，要求服务商在 ToS 中禁止用户移除水印，并要求水印能抵抗截图、OCR、复制粘贴、翻译等常见处理。问题是，文本水印依赖的恰好是措辞本身。只要对内容进行实质性改写、换一种说法，统计信号就可能消失。真正要拿 AI 作业或 AI 报告冒充自己写作的人，可以使用不合规的 paraphrasing 工具绕过检测。反而是正常使用 Claude 起草、润色或获得辅助的用户，会被一个宽泛、可疑却又脆弱的信号牵连。\n\n### Declaude 恰好证明了这套规则的尴尬\n\n作者引用 James Padolsey 的批评：把 AI 辅助视为可疑，并不是一个有原则的边界。计算器、拼写检查、写作辅助都能降低人类完成任务的难度，但社会不会因此要求其输出携带可追溯污点。Padolsey 认为 Anthropic 选择了 blanket、model-level 的实现方式，范围可能超过法规最低要求。它抹平了正常辅助与刻意欺骗之间本应保留的区别。更讽刺的是，Padolsey 自己做的 Declaude 原本用于去除 Claude 式的“AI 味”，如今也可以成为清除这种文本水印的额外一步。于是这项机制留下的是一个对普通人有效、对蓄意规避者无效的监管标记。\n\n### Google SynthID 说明，这不是 Anthropic 独有的路线\n\nGoogle 的 SynthID 也已经用于图片、视频、音频和文本的 AI watermarking。作者承认，多媒体文件可以在 metadata 或文件结构中嵌入水印，而不影响观看和收听体验。可文本不同，文本的载体就是词语本身。Google 对 SynthID 的描述同样是调整 token 的概率分数，并声称用户“不会注意到”，且不会影响输出质量。作者用 Google 举的例子反讽：如果模型把“My favorite tropical fruits are mango and…”续写成“airplanes”，人当然会注意到。文章借此指出，所谓“不可感知”的说法，掩盖了一个基本事实：只要水印靠干预措辞实现，它就必然让文字生成目标从“写得最好”变成“写得可被统计识别”。",
+      "source_name": "daringfireball.net",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "Claude",
+        "text watermarking",
+        "SynthID",
+        "EU AI Act"
+      ],
+      "rank": 1
+    },
     {
       "title": "‘Anthropic’s Weak Watermarks Appease a Weak Law’",
       "title_zh": "Claude 水印为何惩罚诚实辅助使用",
@@ -22,7 +41,7 @@
         "EU AI Act",
         "watermarking"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "The Information Profiles Cami Clark, Dario Amodei’s Wife, Ivanka Trump’s Friend, One-Time Would-Be Pornographer, and Anthropic’s ‘First Lady’",
@@ -41,7 +60,7 @@
         "Cami Clark",
         "tech culture"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Trump Administration ‘Not in Favor’ of Apple Using Chinese RAM",
@@ -60,7 +79,7 @@
         "China",
         "supply chain"
       ],
-      "rank": 3
+      "rank": 4
     }
   ]
 }
