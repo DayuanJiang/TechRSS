@@ -1,8 +1,8 @@
 {
   "date": "2026-08-18",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2541,
+  "success_feeds": 83,
+  "total_articles": 2487,
   "filtered_articles": 14,
   "articles": [
     {
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Two-Factor Authentication Across Package Registries",
+      "title_zh": "软件包注册表的 2FA 安全版图",
+      "link": "https://nesbitt.io/2026/08/18/two-factor-authentication-across-package-registries.html",
+      "pub_date": "2026-08-18T10:00:00.000Z",
+      "summary": "## 一句话总结\n\n包注册表的 2FA 进展并不取决于包管理器有多流行，而主要取决于它把身份系统握在自己手里、交给 OAuth、绑定到 Git forge，还是干脆没有发布者账户；而 CI 发布正在把长期绕过凭证，替换成 OIDC 与人工批准两条更安全的路径。\n\n## 正文\n\n### npm 收紧 bypass-2FA，暴露了一个更大的分类维度\n\n这篇文章的起点是 npm 的一次收紧：它停止接受带有 `bypass-2FA` 标记的 token 执行账户治理操作。  \n这是 GitHub 在 2025 年 9 月公布的 npm 供应链安全计划中的一步，目标是封死可复用凭证绕过 2FA 的剩余通道。  \n但作者没有只盯着 npm，而是检查了 ecosyste.ms 所跟踪的、包数量超过一万的注册表。  \n结果发现，单纯问“某个注册表支不支持 2FA”其实不够。  \n真正决定其安全策略上限的，是它的账户模型：自建账户、第三方 OAuth、Git forge 账户，或者根本没有账户。  \n说白了，2FA 不是注册表可以孤立添加的一项开关，它首先取决于注册表究竟控制了哪一层身份。\n\n### 自建账户的注册表，差距主要出在“是否敢强制”\n\n拥有原生用户名和密码体系的注册表，包括 npm、PyPI、RubyGems、Packagist、Docker Hub、Hex.pm、Clojars、Hackage 和 CPAN PAUSE。  \n它们都能自行决定 2FA 的形式和强制策略，因此实际进展差异很大。  \nPyPI 走得最彻底：自 2024 年 1 月 1 日起，所有账户都必须启用 2FA，并同时接受 TOTP 和 WebAuthn。  \n在强制前，PyPI 还在 2022 年向热门项目维护者发放了 4,000 把硬件安全密钥，显然是在降低迁移阻力。  \nnpm 则采取分批推进的路线：2022 年先覆盖依赖者最多的前 100 个包，接着是前 500 个包，后来扩展到周下载量超百万或拥有 500 个依赖者的高影响力包。  \n目前 npm 发布可以使用 2FA，或使用带 bypass 标记的 granular access token；这次先禁止后者治理账户，未来计划连本地发布的豁免也取消。\n\n### RubyGems、Packagist 与“只提供、不强制”的长尾注册表\n\nRubyGems 同时支持 WebAuthn 和 TOTP，并从 2022 年 8 月起要求累计下载量超过 1.8 亿的 gem 所有者启用 MFA。  \n它还提供 `rubygems_mfa_required` 元数据标记，让维护者可按 gem 强制共同所有者启用 MFA。  \nPackagist 从 2019 年就支持 TOTP，但真正的强制策略直到 2026 年 5 月才明确方向。  \n它计划先落地组织级强制，再针对较大包的维护者提出要求。  \n相比之下，Docker Hub、Hex.pm 和 Clojars 都只是提供可选 TOTP，不支持 WebAuthn，也没有强制计划。  \nHackage 的 2FA 仍停留在 2023 年 11 月提出、等待志愿者实现的 issue；CPAN 的 PAUSE 则仍用密码上传加每次上传通知邮件来发现异常活动。\n\n### 把身份交给 OAuth，不等于注册表真的强制了 2FA\n\ncrates.io、pub.dev 和公开的 Terraform Registry 分别依赖 GitHub OAuth、Google 账户和 GitHub 登录。  \n这意味着它们的用户是否受 2FA 保护，完全取决于背后的 GitHub 或 Google 账户。  \n但“可使用 2FA”与“注册表要求必须启用”是两回事。  \n例如 crates.io 曾讨论过拒绝未开启 GitHub 2FA 的账户登录，GitHub API 也能提供这个状态，但这一策略尚未实施。  \nRust 在 2026 年 5 月接受的 RFC 3946 会给 crates.io 引入原生用户名，7 月的开发更新称实现已经开始，这为多身份提供商和未来更自主的安全政策打开了空间。  \nNuGet.org 是这个类别里的例外：它自 2022 年 3 月起要求所有关联的 Microsoft 或 Azure AD 身份启用 2FA，因此它和 PyPI 一样实现了全员强制，只是底层身份系统并不由 NuGet 自己运营。\n\n### Git 仓库型注册表，把发布权限变成了代码评审权限\n\nHomebrew、conda-forge、Spack、nixpkgs、Guix 和 Julia General 的包定义都保存在 Git 仓库中。  \n新包和版本更新通过 pull request 进入，因此这里不存在独立的“注册表发布者账户”。  \n发布安全实际退化为 Git forge 的账户安全，以及仓库权限和代码评审流程。  \n对托管在 GitHub 的项目而言，是否强制 2FA 取决于 GitHub 的贡献者 2FA 计划，而不是 Homebrew 或 conda-forge 自己的规则。  \nGitHub 在 2024 年 4 月表示，2023 年被定向覆盖的用户中有 95% 已经完成注册；不过它是按用户权限和高影响操作分组推进，并非要求所有账户启用。  \n有意思的是，这类仓库的 committer 必然在 GitHub 上贡献代码，较容易落入 GitHub 的目标人群；而只用 GitHub 登录 crates.io 或 Terraform Registry 的发布者，未必会被这一计划覆盖。\n\n### 没有账户的注册表，2FA 这个问题本身就不成立\n\nCRAN 通过网页提交、邮件确认和人工审核接收包，因此没有可附着 2FA 的账户数据库。  \nCocoaPods trunk 使用邮件发送的 session token 认证，逻辑上也是账户型 2FA 难以直接落脚的模式。  \n不过 CocoaPods Specs Repo 计划在 2026 年 12 月 2 日停止接收新的 podspec，这个问题届时也会失去意义。  \nGo module proxy 更进一步，它只是从 VCS host 缓存模块版本，并不拥有发布者身份。  \nSwift Package Index 同样只是索引和发现层，不托管开发者发布的仓库。  \n此外，文章刻意排除了 Debian、Ubuntu、Alpine 等发行版仓库，因为它们的发布要经过发行版维护者，而不是由上游作者直接上传。\n\n### CI 才是 2FA 落地时最棘手的地方\n\n人可以触碰硬件安全密钥，但 CI job 做不到，因此“发布时强制 2FA”天然会与自动化发布冲突。  \n过去的通行做法是长期 API token 加上 2FA 豁免，例如 npm 的 bypass token 和 RubyGems 的 automation-scoped key。  \n但这正是现在被逐步收紧的攻击面：长期凭证一旦泄露，就可能绕过维护者的交互式验证。  \nTrusted publishing 的思路是用短期 OIDC token 替代保存的 token，由注册表验证 token 是否来自预先登记的 CI workflow。  \nPyPI 在 2023 年 4 月率先支持，RubyGems 在同年 12 月跟进；npm 和 crates.io 于 2025 年加入，pub.dev 也支持 GitHub Actions 与 Google Cloud。  \n这样发布凭证绑定的是构建 workflow，而不是某个维护者的长期秘密。\n\n### staged publishing 把自动化上传和人工放行拆开\n\nnpm 在 2026 年 5 月、npm CLI 11.15.0 起正式提供 staged publishing，这是一种不同于纯 OIDC 的设计。  \n`npm stage publish` 可以用任意 token 上传 tarball 到暂存区，上传本身不触发 2FA。  \n但该版本不会立即出现在可安装的公共索引中，必须由维护者通过 CLI 或网站完成一次独立的 2FA 批准。  \n关键在于，批准要求不关心上传者使用的是普通 token 还是 OIDC token。  \n也就是说，即使 CI 已经通过 trusted publishing 被证明是可信 workflow，最终仍有一个人类 2FA 挑战横在“构建完成”和“公开发布”之间。  \nPackagist 计划用 FIDO2 确认 Git tag 的方式实现类似模型，而 PyPI 社区也在讨论将 staged release 从 PEP 694 中拆出，形成独立能力。",
+      "source_name": "nesbitt.io",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "security",
+      "keywords": [
+        "2FA",
+        "package registries",
+        "OIDC",
+        "trusted publishing"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Help peer",
       "title_zh": "多智能体不会自然成为统一的机器神",
       "link": "https://seangoedecke.com/help-peer/",
@@ -41,7 +60,7 @@
         "Moloch",
         "coordination"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "AI Alignment as a Thought-Terminating Cliche",
@@ -60,7 +79,7 @@
         "human agency",
         "political economy"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "How do functions like alloca allocate memory from the stack?",
@@ -79,7 +98,7 @@
         "x86-64",
         "stack probing"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "★ Follow-Up Thoughts on Watermarking Schemes for AI-Generated Text",
@@ -98,7 +117,7 @@
         "temperature",
         "SynthID"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "MacOS 26.7 Tahoe Release Candidate Contains a Video Demonstrating Camera-Equipped AirPods in Action",
@@ -117,7 +136,7 @@
         "Siri",
         "macOS Tahoe"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Snakes and Ladders",
@@ -136,7 +155,7 @@
         "cooperative game",
         "game design"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Qwen 3.8 27B scores 52 on the Artificial Analysis Intelligence Index",
@@ -155,7 +174,7 @@
         "benchmark",
         "LLM"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Weekly Update 517: Cyber Ransoms",
@@ -174,7 +193,7 @@
         "class action",
         "incident disclosure"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "No Update Since Early July Regarding Siri AI Coming to the EU, Ever",
@@ -192,7 +211,7 @@
         "Apple Intelligence",
         "EU"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Apple TV Still Has No Start Date for ‘The Savant’",
@@ -211,7 +230,7 @@
         "Jessica Chastain",
         "release date"
       ],
-      "rank": 11
+      "rank": 12
     }
   ]
 }
