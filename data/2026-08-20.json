@@ -1,8 +1,28 @@
 {
   "date": "2026-08-20",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2517,
-  "filtered_articles": 9,
-  "articles": []
+  "success_feeds": 85,
+  "total_articles": 2542,
+  "filtered_articles": 10,
+  "articles": [
+    {
+      "title": "Anubis continues to expose new ways people configure webservers",
+      "title_zh": "Anubis 用 blob Worker 减少挑战页请求",
+      "link": "https://xeiaso.net/notes/2026/anubis-csp-worker-hell/",
+      "pub_date": "2026-08-19T00:00:00.000Z",
+      "summary": "## 一句话总结\n\nAnubis 为了减少 Proof of Work challenge 对服务器的并发请求，改用“`fetch` 一次 Worker 源码再生成 `blob:` Worker”的方案，却发现严格 CSP 会让 Worker 在异步阶段失败，只能保留更耗请求的降级路径。\n\n## 正文\n\n### CSP 的本意是收紧权限，代价是功能会以奇怪方式失效\n\n写 Web 应用时，开发者不得不信任浏览器，但这种信任从来不是无条件的。浏览器如今暴露了 WebUSB、Built-in AI 等越来越多的能力，管理员自然希望关闭站点不需要的功能。CSP，也就是 Content-Security-Policy，正是做这件事的工具：默认禁用，再按需放行。Anubis 文档里的推荐策略就很典型，`default-src 'none'` 先一刀切，然后只允许同源脚本、样式、图片、字体和 `fetch()` 请求。它还特意允许 `worker-src 'self' blob:`，因为后面的 Worker 优化方案正依赖这个看似不起眼的 `blob:`。\n\n### 最难调试的地方：Worker 构造成功，不代表它真的能运行\n\n这里有个容易踩坑的细节：如果 CSP 禁止 Worker 从 `blob:` URI 加载脚本，`new Worker(blobURL)` 并不会同步抛异常。代码可以正常创建 `Blob`，通过 `URL.createObjectURL()` 得到 URL，再把它传给 `new Worker()`。真正的失败发生在浏览器创建后台线程之后，因此只能从异步的 `w.onerror` 回调里捕获。换句话说，传统的 `try/catch` 只能覆盖 Worker 构造阶段，覆盖不了 CSP 拦截脚本加载的阶段。对于依赖 Worker 创建结果做 fallback 的程序来说，这意味着控制流必须重新设计，不能再把“没抛异常”当作“Worker 已可用”。\n\n### Anubis 的并行 PoW，原本会把请求压力放大\n\nAnubis 不希望用户长时间看到 challenge 页面，因此会并行执行 Proof of Work 检查，尽快让验证页消失。这很符合现代 CPU 的特点：过去十年的性能提升，更多来自多核而不是单核。问题是，普通 Worker 的创建方式会让每个 Worker 都单独请求一次脚本，例如 `new Worker(\"/static/js/worker/test1.mjs\")` 会触发一次 `GET`。Anubis 会根据 `navigator.hardwareConcurrency` 决定并发数，默认使用 CPU 线程数的一半，最低为 1。于是当服务器本就被大量 scraper 压垮时，一个正常用户完成 challenge，可能额外触发多达 16 个 Worker 脚本请求。\n\n### 先 fetch 一次，再用 blob 分发给所有 Worker\n\n因此，Anubis 的新思路其实很直接：不要让每个 Worker 分别去服务器取代码。它先用普通的同源 `fetch()` 加载一次 Worker 源码，再将源码封装成 `Blob`，最后通过 `blob:` URI 创建多个 Worker。这样，原来随着 Worker 数量线性增长的 HTTP 请求，被压缩成一次请求加多个本地 Worker 初始化。这个设计还有一个现实好处：如果 Worker 加载需要重试，重试逻辑不必散落在每次 `new Worker()` 的外围。说白了，Anubis 把“从服务器拿代码”和“并行启动计算线程”拆开了，减少了挑战页本身对过载服务器造成的二次压力。\n\n### 但 CSP 不允许 blob 时，只能接受更差的降级路径\n\n问题是，并非所有管理员的 CSP 都允许 `blob:` URI。为了兼容这种配置，Anubis 仍然保留了旧的“每个 Worker 各自请求脚本”的逻辑。这个 fallback 不仅增加服务器压力，还要求额外测试，因为 `blob:` Worker 的失败是异步发生的，不能只靠构造时的异常处理判断。文章也解释了为何这种容错可以相对宽松：PoW 的核心大多只是数学计算，每个 Worker 分到 nonce 空间中的一条“lane”。丢掉一两个 Worker 会跳过它们负责的 nonce 区间，但只要还有 Worker 在运行，通常仍能找到解；未来或许会支持从失败位置重启 Worker，但目前不在范围内。最终，这篇文章揭示的不是某个神奇优化，而是现代 Web 开发里更常见的现实：安全策略、浏览器异步行为、服务器负载和客户端兼容性，会在最边缘的地方一起制造难以复现的 bug。",
+      "source_name": "xeiaso.net",
+      "score": 12,
+      "depth": 6,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Anubis",
+        "Content-Security-Policy",
+        "Web Workers",
+        "blob URI"
+      ],
+      "rank": 1
+    }
+  ]
 }
