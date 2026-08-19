@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 84,
   "total_articles": 2517,
-  "filtered_articles": 9,
+  "filtered_articles": 10,
   "articles": [
+    {
+      "title": "smolmachines / smolvm as a sandbox for untrusted Python & JavaScript",
+      "title_zh": "用 smolvm 隔离不可信 Python 与 JavaScript",
+      "link": "https://simonwillison.net/2026/Aug/19/smolmachines-untrusted-sandbox/",
+      "pub_date": "2026-08-19T23:16:00.000Z",
+      "summary": "## 一句话总结\n\n这篇研究验证了 `smolvm 1.8.3` 可以用硬件隔离的 VM，而非共享内核的容器，构建一个能安全执行不可信 Python 和 JavaScript 数据转换任务的本地 sandbox。\n\n## 正文\n\n### 目标很具体：让用户代码只能处理数据，不能碰宿主机\n\n这项研究要解决的不是“能不能跑 Python”，而是“能不能安全地跑用户提交的 Python 和 JavaScript”。目标场景是数据转换：用户给出一段代码和输入文件，系统执行后产出指定结果。问题在于，这类代码天然不可信，可能包含 `while true` 之类的无限循环，也可能试图耗尽内存、访问网络，或者读取不该读取的文件。  \n所以需要的 sandbox 不只是隔离进程，而是要能明确限制 CPU 时间和 RAM。文件系统也必须收紧，只允许代码读取指定输入、写入指定输出。网络则应该默认彻底关闭。说白了，这是一套“允许计算，但不允许越界”的执行环境。\n\n### 为什么看中 smolvm：隔离边界从容器换成 VM\n\n研究测试的对象是 `smolmachines` / `smolvm 1.8.3`。它的关键吸引力在于，隔离单位是 hardware-isolated VM，而不是与宿主共享 kernel 的 container。对于执行不可信代码，这个架构选择很重要：容器的隔离最终仍依赖共享内核，而 VM 提供了更强的边界。  \n测试结果表明，smolvm 能以本地离线镜像运行，不需要在执行时拉取网络资源。它还支持完全禁网执行，以及 CPU、RAM 和存储配额。时间限制由 guest 侧强制执行，而不是只依赖宿主发信号终止进程。再配合 `--unprivileged`，以及只读 input mount 和可写 output mount，所需的权限模型基本都具备了。\n\n### 关键不是“能限制”，而是这些限制真的被验证了\n\n这篇研究并没有停留在功能列表，而是实际跑了一组测试来验证 sandbox 行为。测试确认了 no-network execution 按预期工作，CPU 和内存限制也能生效。针对无限循环等场景，guest-enforced timeout 能够终止超时任务。  \n文件访问模型同样符合目标：输入目录以只读方式挂载，任务可以将结果写入单独的输出目录。存储配额也可用，因此用户程序不能无限制地膨胀磁盘占用。最终结论是，smolvm 很适合承载这种“不可信脚本做受控数据处理”的工作负载。性能上，冷启动约为 `0.6–1.5 秒`，而 warm execution 约为 `50 ms`，这让它不只是安全方案，也具备实际交互式使用的可行性。\n\n### 研究过程先撞上了嵌套虚拟化的墙\n\n有意思的是，执行研究的 Claude Fable 5 一开始并不能直接运行 smolvm。它所在的 Claude Code for web 环境本身就是一个 Firecracker guest，系统是 `Linux 6.18.5-fc-v20`，配置为 `4 vCPU` 和 `15GB RAM`。但这个环境没有 `/dev/kvm`，CPU 也没有 `vmx/svm` flags。  \n这意味着它无法使用 nested virtualization，直接执行 `smolvm machine run` 会报出预期的错误：`kvm not available`。如果研究到这里停止，结论就只能是“当前环境无法测试”。但问题并不在 smolvm，而在研究环境没有暴露 KVM。于是 Fable 没有试图绕过安全限制，而是换了一个具备必要硬件能力的执行环境。\n\n### Plan B 选中了 GitHub Actions，并把真实测试跑起来了\n\nFable 的替代方案是 GitHub Actions 的 Ubuntu runner，因为它暴露了 `/dev/kvm`。它在当前分支创建了一个临时 workflow，安装 smolvm，并直接执行测试脚本。这样，测试仍然是在支持 KVM 的真实环境中运行，而不是用 mock 或纯理论分析替代。  \n日志被收集后，临时 workflow 会在最终提交中移除，避免把一次性研究基础设施永久留在仓库里。这种做法的价值不只是“找到了一台能跑 VM 的机器”。更关键的是，它把环境限制转化成了可复现的 CI 实验。文章最后也把这件事作为 Claude Fable 主动性的一个例子：遇到当前环境不支持的能力时，它没有停在失败信息上，而是自己寻找了满足前提条件的验证路径。",
+      "source_name": "simonwillison.net",
+      "score": 14,
+      "depth": 7,
+      "novelty": 7,
+      "category": "security",
+      "keywords": [
+        "smolvm",
+        "smolmachines",
+        "Firecracker",
+        "sandbox"
+      ],
+      "rank": 1
+    },
     {
       "title": "Anubis continues to expose new ways people configure webservers",
       "title_zh": "Anubis 用 blob Worker 减少挑战页请求",
@@ -22,7 +41,7 @@
         "Web Workers",
         "blob URI"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Conceptual integrity and counting lines of code",
@@ -41,7 +60,7 @@
         "lines of code",
         "The Mythical Man-Month"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Quoting Jeremy Morrell",
@@ -60,7 +79,7 @@
         "sandboxing",
         "web"
       ],
-      "rank": 3
+      "rank": 4
     }
   ]
 }
