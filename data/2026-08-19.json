@@ -1,10 +1,29 @@
 {
   "date": "2026-08-19",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2522,
-  "filtered_articles": 18,
+  "success_feeds": 85,
+  "total_articles": 2542,
+  "filtered_articles": 17,
   "articles": [
+    {
+      "title": "Hands-on with Raspberry Pi's CM5 Programming Jig",
+      "title_zh": "CM5 编程治具简化批量烧录流程",
+      "link": "https://www.jeffgeerling.com/blog/2026/cm5-programming-jig/",
+      "pub_date": "2026-08-19T07:13:00.000Z",
+      "summary": "## 一句话总结\n\nRaspberry Pi 的 CM5 Programming Jig 用 $600 的 pogo-pin 自动烧录方案，把多台 CM5 的镜像写入、身份记录和生产追踪整合起来，填补了手工刷机与昂贵工业治具之间的空档。\n\n## 正文\n\n### 多刷几台 CM5，麻烦不在“刷机”本身\n\n作者以前搭过不少 Raspberry Pi CM5 集群，真正让人头疼的并不是系统镜像怎么做。问题出在规模一上来，手工流程就开始失控。刷一两块 CM5 时，把模块装进 carrier board，连到电脑，再用 Raspberry Pi Imager 写卡，一切都还算正常。可当数量到了 4 块以上，你就得同时管理 hostname、MAC address、物理机器编号，以及每块模块实际刷到了哪个镜像。  \n这件事当然不是不可解，只是会迅速变成一种重复、容易出错、没人想做的操作。尤其在小批量生产或集群交付场景里，手工插拔和人工核对很快会成为瓶颈。Raspberry Pi 推出的 CM5 Programming Jig，瞄准的正是这个“还没大到要建工厂，但已经不能靠手工”的阶段。\n\n### 它不是唯一方案，但价格把市场切开了\n\n在 Raspberry Pi 官方推出产品之前，Everypin 已经有类似的 CM5 Flash Jig。Everypin 的产品配套开源 Python 库，也做了非常完整的 CM5 test point 文档和治具文档。问题在于，它的价格是 €2200，约合 $2500。  \n这个价位对于正式生产线或高价值设备交付未必离谱，但对小型 CM5 项目来说很难 justify。Raspberry Pi 的 Programming Jig 定价 $600，依然不是个人玩家会随手买的玩具，但已经进入小型系统集成商、小企业和中等规模生产线可接受的范围。  \n更关键的是，官方 Jig 可以直接接入 Raspberry Pi 自己的工具链，包括运行在 Jig 内部的 `rpi-sb-provisioner`，以及用于构建自定义系统镜像的 `pi-gen`。说白了，Everypin 更像一套可深度定制的专业方案，而 Raspberry Pi 这款产品试图把“可直接投入使用”的门槛降下来。\n\n### 一台 Jig，本身就是一台负责烧录的 Pi\n\nProgramming Jig 的使用流程很直白。首先，如果 Jig 尚未预装系统，需要通过 Raspberry Pi Imager 2.0.11 或更高版本，把 Jig OS 刷入治具。然后使用 `pi-gen` 构建自己要部署的 Raspberry Pi OS `.img` 镜像。  \n接下来，通过 Jig 的本地 Web UI 配置烧录任务，并将镜像传入设备。准备完成后，操作就变成了把 CM5 放入治具。蓝色 LED 闪烁代表正在烧录，数分钟后变成绿色，则表示该模块已完成。  \n作者因为时间有限，还没有搭起完整的端到端 CM5 成像流水线，但已经成功跑通了绝大多数关键步骤。这里的价值不只是“插进去自动刷”，而是把原本分散在电脑、Imager、carrier board 和人工记录里的流程，收敛到一个可重复执行的设备中。\n\n### 自定义镜像仍然交给 `pi-gen`\n\n自动烧录不意味着放弃定制系统。作者使用 `pi-gen` 构建了一个基于 Raspberry Pi OS Trixie 的 ARM64 Lite 镜像，并把镜像交给 Programming Jig 部署。  \n他在 macOS Tahoe 上构建镜像时遇到了一个具体细节：虽然 `pi-gen` 附带 Docker 脚本，但需要切换到它的 `arm64` 分支才能正常工作。镜像配置中设置了 `RELEASE=trixie`、`ARCH=arm64`，并定义了自有镜像名 `jeffpios-trixie`。  \n此外，配置还预置了首个用户、passwordless sudo、SSH 启用方式，以及仅允许 SSH public key 登录。这一点很重要，因为在批量交付机器时，真正需要的通常不是一份“通用 Raspberry Pi OS”，而是一份已经带好账号、安全策略、网络初始化和业务依赖的交付镜像。作者最终通过 `magic-wormhole` 将生成的镜像传到了 Jig 上。\n\n### 真正适合生产线的，是可追踪而不是单纯能刷\n\nJig 上运行的 `rpi-sb-provisioner` 不只是一个写镜像工具。它提供了 Web UI 用于查看 CM5 的烧录进度，也会将每一次成功烧录记录到本地 manufacturing database。记录内容包括 CM5 的 MAC address、serial number 和硬件规格。  \n这意味着它开始具备生产管理系统的雏形：每一块物理模块不再只是“刷好了”，而是可以被追溯到具体硬件身份。至于这些信息如何进入更上层的制造系统、标签打印流程或库存系统，则仍然需要使用者自己集成。  \n对于大型生产线来说，装载和卸载 CM5 也显然会进一步自动化。但即使没有机械臂，这个数据库也解决了批量部署中最容易被忽略的问题：当设备离开工作台后，你是否还知道它是什么、刷了什么、对应哪条记录。\n\n### Pogo pin 才是这个治具能经受批量使用的关键\n\n有意思的是，作者特别提到了 Raspberry Pi 过去的 CM4 测试治具。几年前他参观 Sony 工厂时，看到的 CM4 jig 使用 Hirose connectors。问题是，这类连接器大约只保证 30 次插拔后仍能维持可靠的信号完整性。  \n对于每天可能要处理上千个模块的生产场景，这显然不够理想。连接器磨损、接触不良和偶发失败，会让批量烧录变成持续排查硬件问题的噩梦。  \nCM5 Programming Jig 改用了更适合高重复操作的 “bed of nails” 结构。也就是一组 pogo pins，对准 CM5 底部预留的 test pads 接触。这个设计的重复性更好，也与作者此前在 Raspberry Pi 4 生产线上见到的测试方式一致。  \n所以，这款产品真正值得注意的地方不只是多了一个 Web UI，而是它把生产级的物理接触方案带到了相对可负担的小批量部署工具中。\n\n### 它不适合极客桌面，但很适合“开始交付设备”的团队\n\n作者的结论很明确：哪怕你管理几个小型 Pi 集群，个人玩家通常也很难为一台 $600 的 Jig 找到充分理由。手工刷几块模块虽然烦，但还没有贵到必须上专用治具。  \n但一旦你是小企业、系统集成商，或者需要反复交付数百乃至数千块 CM5，情况就不同了。此时，烧录速度只是收益的一部分，更大的价值来自降低人工操作、减少模块身份混乱，以及获得可追踪的烧录记录。  \nCM5 Programming Jig 因而不是一个面向所有 Raspberry Pi 用户的产品。它更像是 Raspberry Pi 为“从实验室原型走向小规模制造”准备的基础设施。至于多年以后它们流入二手工厂设备市场，作者还提醒了一句：这些 Jig 里面其实还藏着一块可以回收利用的 CM5。",
+      "source_name": "jeffgeerling.com",
+      "score": 12,
+      "depth": 6,
+      "novelty": 6,
+      "category": "tools",
+      "keywords": [
+        "Raspberry Pi CM5",
+        "provisioning",
+        "pi-gen",
+        "rpi-sb-provisioner"
+      ],
+      "rank": 1
+    },
     {
       "title": "The imbalance theorem",
       "title_zh": "图论中的不平衡猜想获证明",
@@ -22,7 +41,7 @@
         "imbalance theorem",
         "arXiv"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Vim wants you to control, VSCode wants you to consume",
@@ -41,7 +60,7 @@
         "VSCode",
         "editor extensibility"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Organized Thieves Are Targeting AI Server Chips With Violent Highway Hijackings",
@@ -60,7 +79,7 @@
         "data centers",
         "freight security"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Big little hexagon",
@@ -79,7 +98,7 @@
         "hexagon",
         "maximum area"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "‘Dickover’ Makes It Into The Guardian",
@@ -98,7 +117,7 @@
         "AI-horning",
         "subscription"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Mojo🔥 is now open source",
@@ -117,7 +136,7 @@
         "Apache 2.0",
         "GPU programming"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Apple Gives Legal Middle Finger to DOJ Challenge on Apple’s July Discovery Win",
@@ -136,7 +155,7 @@
         "antitrust",
         "discovery"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Disney’s ABC Sues Trump’s FCC Over Challenge to Its Broadcast License",
@@ -155,7 +174,7 @@
         "FCC",
         "broadcast license"
       ],
-      "rank": 8
+      "rank": 9
     }
   ]
 }
