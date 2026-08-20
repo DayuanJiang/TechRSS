@@ -1,10 +1,29 @@
 {
   "date": "2026-08-20",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2542,
-  "filtered_articles": 9,
+  "success_feeds": 84,
+  "total_articles": 2513,
+  "filtered_articles": 8,
   "articles": [
+    {
+      "title": "Issues in the Repo",
+      "title_zh": "把 Issue 随 Git 仓库同步的五种方案",
+      "link": "https://nesbitt.io/2026/08/20/issues-in-the-repo.html",
+      "pub_date": "2026-08-20T09:00:00.000Z",
+      "summary": "## 一句话总结\n\n把 issue 和 review 数据放进版本库并不难，真正的取舍在于：你愿意让它们以何种 Git 对象存在，以及为离线协作、可读性、同步安全和冲突处理付出什么代价。\n\n## 正文\n\n### GitHub 宕机暴露的，不是代码丢失，而是上下文丢失\n\n这篇文章从一次 GitHub 故障切入：git 操作、Actions 和 issue tracker 同时不可用数小时。代码暂时不可访问固然烦人，但通常还不至于让项目停摆。毕竟每个贡献者的本地 clone 都有一份完整代码。真正脆弱的是 issues 和 PR 讨论，它们往往只存在 GitHub 的数据库里。换句话说，代码是分布式的，项目协作上下文却仍可能是中心化且不可克隆的。\n\n作者因此追问一个很直接的问题：有没有工具能把 issue、评论和 review 数据也放进 repository，让它们随 `git clone`、`git fetch` 和 `git push` 一起流动？结果发现，这并不是新鲜想法。过去约二十年里，已经有不少项目尝试过。它们的区别不主要在 UI，而在于数据到底落在 working tree、orphan branch、`git notes`、custom refs，还是干脆由 VCS 原生支持。后面的比较也围绕几个关键问题展开：默认 clone 能否拿到数据、离线并发修改如何合并、没有专用工具时能否阅读、普通 bare Git host 是否能保存，以及身份如何定义。\n\n### 最朴素的方案：把 issue 当作代码旁边的文件\n\n最早的一条路线非常直白：每个 issue 就是一个文本文件，或者一个文件目录，直接提交到源码仓库。2005 年的 Bugs Everywhere、2008 年的 ditz 都采用过这类模型。近一些的 GitRoot 甚至据此构建了完整 self-hosted forge，把 issue 存成 `issues/<id>-<slug>.md`，状态放在 front matter 中。还有更极简的实践，直接复用 changelog fragment 目录当作轻量工作项，甚至不需要专门工具。\n\n这个设计的优点几乎全是 Git 白送的。普通 `git clone` 会拿到 issue，`grep -r` 可以搜索，`cat` 可以读取，`git bundle` 可以打包，任何 dumb HTTP host 或 cgit 也都能提供访问。并发编辑同一个 issue 时，Git 的三方合并就是合并机制。两个人各自在文件末尾追加评论，通常能自动合并；两人都改标题，则产生正常文本冲突，由人手解决。身份也不必另起炉灶，`git blame`、commit author 和项目既有的 commit signing 就足够表达“是谁创建或修改了它”。\n\n但问题也很明显：issue 的可变状态和代码历史被塞进了同一条 commit graph。繁忙项目的 `git log` 会混入大量“修改 issue #34”之类的提交，`git bisect` 也可能踩到这些纯元数据提交。更麻烦的是分支语义：创建 feature branch 时，你也 fork 了 issue 的状态。某个 issue 在分支上关闭，切回 `main` 又会显示打开。给提交加固定前缀，再用 `--invert-grep` 可以缓解日志噪音，但无法解决“元数据跟着代码分支走”这个结构性问题。\n\n### Orphan branch 把 issue 历史从 main 中搬走了\n\n于是下一种设计把 issue 放到 orphan branch。它是一个没有父提交的分支，和 `main` 不共享历史，也不会出现在普通工作区 checkout 中。2008 年的 ticgit 和后来的 ticgit-ng 就把 issue 放在名为 `ticgit` 的分支上。新的 haxy 则把事件日志放到 `refs/heads/haxy/events`，每个 commit 的 tree 为空，JSON 事件写进 commit message。服务端通过回放这些事件，计算 issue 的当前状态。\n\n这样做解决了一个核心问题：`main` 的日志终于不再混入 issue 操作。工具可以通过 plumbing 或第二个 worktree 读取和写入这个分支，而并发修改仍然沿用 Git 的文件合并机制。由于 ref 位于 `refs/heads/` 下，默认 `git clone` 会自动抓取它。这是 orphan branch 相比 `git notes` 和 custom ref 的最大优势。ticgit 甚至把 `STATE_open`、`TAG_attach`、`ASSIGNED_<email>` 等状态编码进文件名，所以单靠 `git ls-tree` 就能看出 issue 状态。\n\n不过，orphan branch 的风险恰好来自它“看起来太像普通分支”。它会出现在 `git branch -a` 中，某位维护者很可能把 `ticgit` 当成过期分支删掉。来自 `--single-branch` clone、只拉取 `main` 的 CI，或者执行 `git push --prune`、`git push --mirror`，都可能在远端误删它。多数 forge 的 branch protection 又依赖名字匹配，除非团队专门配置，否则 `ticgit` 未必受保护。一旦这个 ref 被删，整段断开的对象图会变成 unreachable，后续 `git gc --prune` 可能彻底清除数据，而普通 bare host 通常也没有 server-side reflog 可供恢复。\n\n### git notes 适合“附着在提交上的协作信息”\n\nGit 自带的 `git notes` 走的是另一条路：把任意 blob 附着到已有 commit 上，数据存储在 `refs/notes/<namespace>`。note ref 本身指向一个普通 commit，其 tree 将被注释的 commit SHA 映射到对应 blob。因此，新增或修改 note 本身也有 commit，历史并不会丢失。Google 已归档的 git-appraise 就在这套机制上实现了分布式 code review。它将 review request、讨论串和 CI 状态分别存进 `refs/notes/devtools/reviews`、`discuss` 和 `ci`。\n\nnotes 的并发合并比纯文本文件更有针对性。Git 原生提供 `git notes merge`，其中 `cat_sort_uniq` 策略会逐行拼接并去重。也正因为如此，git-appraise 把每个 JSON object 放成一行，而不是保存成一个格式化的大 JSON 文档。任何 Git host 都可以接受这种 ref，`git log --notes='*'` 还能把 note 内联显示到提交历史中。通过 `git bundle create backup.bundle --all`，notes 也能被一起打包备份。\n\n但这里有两个边界。第一，默认 clone 不会抓取 `refs/notes/*`，用户需要手动配置 `fetch = +refs/notes/*:refs/notes/*`。第二，note 必须挂在一个既有 commit 上，所以它天然适合 code review、CI 结果和“这次提交的讨论”。对于一个不对应任何特定 commit 的 bug report，这个模型就有些别扭。身份则来自 notes commit 的 author，并可由 payload 补充；例如 git-appraise 会在 JSON 中记录 requester email。\n\n### Custom refs 让 issue 成为独立的、可合并的数据模型\n\n目前仍活跃的项目，大多选择把数据存进 `refs/heads/` 之外的 custom ref namespace。这样它不会出现在 `git branch` 里，不会污染 working tree，同时工具可以自由定义对象布局。git-bug 是其中较成熟的例子：每个 bug 是 `refs/bugs/<id>` 下的一条 commit chain。每个 commit 的 tree 中包含 JSON 格式的 `ops` blob，以及编码 Lamport clock 的零字节 marker file。身份则被建模为独立的 `refs/identities/<id>` 链。\n\n这条路线不止用于 issue。Gerrit 的 NoteDb 将每个 change 的 review metadata 存入 `refs/changes/NN/NNNN/meta`，并且从 Gerrit 3.0 起支撑了 Google 的 code review，而不依赖 SQL 数据库。Radicle 则把 issues 和 patches 放进各 peer 的 `refs/namespaces/<nodeid>/refs/cobs/`，再通过 gossip protocol 合并。git-native-issue 使用 `refs/issues/<uuid>`，让 commit tree 保持为空，元数据改放到 commit-message trailers 中，例如 `State: open` 与 `Labels: bug`。GitHub 和 GitLab 事实上也在使用类似层次暴露 PR/MR 的代码部分，例如 `refs/pull/N/head` 和 `refs/merge-requests/N/head`，只是这些 refs 对客户端是只读的。\n\n这种方案的关键，不是“把 JSON 放到 Git 里”，而是把每一次修改表达成追加操作。两个用户离线编辑同一个 bug，最终会产生两个 divergent tip。工具不会要求用户解决文本冲突，而是回放双方 operation log，并依据 Lamport clock 合并状态。代价是，当两人离线修改同一字段时，系统会按 clock 顺序自动选出胜者，而不是显式呈现冲突。说白了，这把“人手合并冲突”换成了“数据模型定义合并语义”。\n\n代价也不小。默认 clone 会跳过这些 refs，因此所有工具都得先向 `.git/config` 注入 refspec，例如抓取 `refs/bugs/*` 和 `refs/identities/*`。raw object 虽然能通过 `git cat-file` 检查，但人类通常无法不借助工具直接读懂。identity 也必须进入自己的数据模型：git-bug 保存 versioned identity object，Radicle 则从节点的 Ed25519 key 派生身份。好消息是，git-bug 已提供 GitHub、GitLab 和 Jira bridge，因此现有 tracker 可以镜像到 `refs/bugs/`，在 forge 宕机时仍作为可用副本。\n\n### Fossil 说明：最彻底的解法是让 VCS 原生理解 ticket\n\n最后，文章提到一种更彻底的选择：不要在 Git 上搭 issue tracker，而是让 VCS 从设计之初就把 ticket 当作一等对象。Fossil 就是代表。它把 check-in、ticket、wiki、forum thread 和 technote 都存进同一个 content-addressed store，并将整个 repository 打包成单个 SQLite 文件。ticket 由一组不可变 artifact 构成，每个 artifact 声明对若干命名字段的修改。当前状态不是更新某条数据库记录，而是按时间顺序应用所有具有相同 ticket id 的 artifact。\n\nFossil 的 card format 让这种模型保持可审计。`D` 表示时间戳，`J` 表示字段赋值，`K` 指向被修改的 ticket，`U` 表示用户，`Z` 则是前面内容的 MD5。同步时，节点交换对方缺少的 artifact。并发修改同一 ticket 时，双方 artifact 都会保留，而不是覆盖彼此。由于每条 `J` 只更新一个字段，实际合并策略是按字段 last-writer-wins，且不会产生 Git 风格的 conflict marker。\n\n这也是全文逐渐显现出的结论：issue 数据“是否在仓库里”，只是第一层问题。更关键的是它是否随默认 clone 到达、是否会被误删、是否能在没有专用工具时审阅，以及冲突究竟交给人、Git，还是交给领域模型。工作区文件模型最透明，却与代码分支纠缠。orphan branch 保持 clone 友好，却容易被当成普通分支误操作。notes 和 custom refs 更干净、更适合专用协作模型，但需要显式配置和专门工具。",
+      "source_name": "nesbitt.io",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "git",
+        "issue tracking",
+        "custom refs",
+        "git notes"
+      ],
+      "rank": 1
+    },
     {
       "title": "smolmachines / smolvm as a sandbox for untrusted Python & JavaScript",
       "title_zh": "用 smolvm 隔离不可信 Python 与 JavaScript",
@@ -22,7 +41,7 @@
         "Firecracker",
         "sandbox"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Use the built-in GELU, don't roll your own!",
@@ -41,7 +60,7 @@
         "JAX",
         "training throughput"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Anubis continues to expose new ways people configure webservers",
@@ -60,7 +79,7 @@
         "Web Workers",
         "blob URI"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Conceptual integrity and counting lines of code",
@@ -79,7 +98,7 @@
         "lines of code",
         "The Mythical Man-Month"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "On wrapping a callable in a lambda that just calls it with the same parameters",
@@ -98,7 +117,7 @@
         "callable",
         "perfect forwarding"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Quoting Jeremy Morrell",
@@ -117,7 +136,7 @@
         "sandboxing",
         "web"
       ],
-      "rank": 6
+      "rank": 7
     }
   ]
 }
