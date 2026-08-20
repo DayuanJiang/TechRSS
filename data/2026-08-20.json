@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 84,
   "total_articles": 2517,
-  "filtered_articles": 10,
+  "filtered_articles": 8,
   "articles": [
     {
       "title": "smolmachines / smolvm as a sandbox for untrusted Python & JavaScript",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Use the built-in GELU, don't roll your own!",
+      "title_zh": "内置 PyTorch GELU 让 GPT-2 训练快20%",
+      "link": "https://www.gilesthomas.com/2026/08/built-in-gelu",
+      "pub_date": "2026-08-20T02:00:00.000Z",
+      "summary": "## 一句话总结\n\n在 GPT-2 small 训练中，把手写的 `tanh` GELU 换成 PyTorch 内置 `nn.GELU`，即使数学近似完全相同，吞吐也从约 21,000 tps 跃升到 25,000 tps，白捡了 20% 性能。\n\n## 正文\n\n### 一次“顺手重构”，意外找到了 20% 的训练性能\n\n这篇文章的起点很朴素：作者在给自己的 PyTorch GPT-2 实现加 Mixture-of-Experts（MoE）支持时，顺手清理了一点旧代码。旧代码来自 Sebastian Raschka 的《Build a Large Language Model (from Scratch)》，其中自己实现了一个 `GELU` 模块。作者原本只是想把它替换成 PyTorch 原生的 `nn.GELU()`，减少一点看起来像样板代码的维护负担。结果，MoE 代码突然变快了。起初这很像一次测量幻觉，但重新跑了三轮各 20 分钟的训练后，结论非常清楚：不是幻觉。手写 GELU 的训练吞吐约为 20,920 tokens/s，而 PyTorch 内置 GELU 达到了 25,134 tokens/s。也就是说，只改一个 activation 的实现，整体训练就快了约 20%。\n\n### 问题不在 GELU 的数学，而在它怎样落到 GPU 上\n\n这里最有意思的地方是，作者手写的 GELU 并不是什么离谱的实现。它使用的是常见的 `tanh` 近似：\n\n```python\n0.5 * x * (\n    1 + torch.tanh(\n        torch.sqrt(torch.tensor(2.0 / torch.pi))\n        * (x + 0.044715 * torch.pow(x, 3))\n    )\n)\n```\n\n而 PyTorch 的 `nn.GELU(approximate=\"tanh\")` 使用的也是同一套近似数学。换句话说，模型算的东西本质上没有变，数值近似方式也没有变。但手写版本会暴露成一串独立的 PyTorch tensor 操作：`pow`、乘法、加法、`tanh` 等等。内置版本则可以直接走框架针对 GELU 优化过的实现。说白了，慢的不是 GELU 公式本身，而是把一个公式拆成许多通用操作后带来的额外开销。\n\n### 连“精确 GELU”都没有输给手写近似版\n\n作者没有只测一个 `nn.GELU()`，而是把关键变量拆开了。第一组是旧的手写 `tanh` 近似 GELU，20 分钟后的平均速度为 20,920 tps。第二组换成默认的 `nn.GELU()`，得到 25,134 tps。需要注意，PyTorch 默认 GELU 用的是精确计算，而不是手写代码所用的 `tanh` 近似。直觉上，精确版本似乎应该更慢，但实际结果反而快了 20%。这已经说明，kernel 实现和算子调度带来的差异，远远压过了“公式看起来更复杂”这件事。\n\n### 同样的 tanh 近似，内置实现依然快 20%\n\n为了排除“精确公式与近似公式不同”这个因素，作者又进行了第三组实验：\n\n```python\nnn.GELU(approximate=\"tanh\")\n```\n\n这组使用与手写版本相同的 `tanh` 近似，20 分钟后的吞吐是 25,142 tps。它和默认 `nn.GELU()` 的 25,134 tps 基本完全一样。于是实验把结论钉死了：性能差异不是由近似策略造成的。相同数学、几乎相同数值行为下，内置实现比 Python 层拼出来的运算图更高效。对于这个配置而言，直接使用框架提供的 fused 或优化 kernel，才是决定性因素。\n\n### 12 个 GELU，为什么能拖慢整个 GPT-2 训练？\n\n作者训练的是 GPT-2 small 风格模型，共 12 层。每层只有一个 GELU，处理的张量形状是 `(batch_size, seq_len, 4 * d_emb)`，具体为 `(6, 1024, 3072)`。看上去这并不是一个特别夸张的数量，尤其模型里还有完整的 self-attention、投影层和反向传播。可整体吞吐从约 21k 升到 25k tps，意味着旧实现引入的额外成本约占总训练时间的 17%。这还是一个下界，因为内置 GELU 并不代表 GELU 本身完全不耗时。真正令人警醒的地方在于：一个位于每层 MLP 中间的 activation，如果实现方式不对，足以明显吞掉 Transformer 训练预算。\n\n### JAX 比 PyTorch 快，原来不全是 JIT 的功劳\n\n这次发现还顺带解释了作者此前一个困惑。作者的 JAX 实现使用内置 `jax.nn.gelu`，训练速度约为 24,000 tps。PyTorch 实现此前只有约 21,000 tps，尽管它启用了 AMP，也就是能在安全的地方使用 16-bit 计算的 Automatic Mixed Precision。作者此前测得 AMP 可将 PyTorch 从 15,402 tps 提升至 19,797 tps，因此 JAX 在 full 32-bit 下仍比 PyTorch AMP 快，曾让他把原因主要归于 JAX 的 JIT。现在看，PyTorch 版本的手写 GELU 人为拉低了成绩，抵消了一部分 AMP 带来的收益。换成内置 GELU 后，PyTorch 已达到约 25,000 tps，反而略高于此前 JAX 的约 24,000 tps。\n\n### 后续值得测 torch.compile，但当下答案已经足够明确\n\n作者并没有声称手写 GELU 在任何条件下都必然更慢。比如 JAX 的 JIT 可能会把那串逐元素操作编译、融合成高效 GPU kernel，因此 JAX 中手写和内置的差距可能更小。PyTorch 的 `torch.compile` 也可能做到类似的图编译与算子融合，届时内置 GELU 的优势是否还存在，值得专门测试。还可以继续测非 AMP 的 PyTorch 加内置 GELU，进一步拆解 AMP、GELU 实现和编译优化各自的贡献。但这些都是后续研究题。眼下这篇文章给出的工程结论很直接：只要框架已有成熟的内置模块，就不要为了“从零实现”的完整感去手搓它。",
+      "source_name": "gilesthomas.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "ai-ml",
+      "keywords": [
+        "PyTorch",
+        "GELU",
+        "JAX",
+        "training throughput"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Anubis continues to expose new ways people configure webservers",
       "title_zh": "Anubis 用 blob Worker 减少挑战页请求",
       "link": "https://xeiaso.net/notes/2026/anubis-csp-worker-hell/",
@@ -41,7 +60,7 @@
         "Web Workers",
         "blob URI"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Conceptual integrity and counting lines of code",
@@ -60,7 +79,7 @@
         "lines of code",
         "The Mythical Man-Month"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Quoting Jeremy Morrell",
@@ -79,7 +98,7 @@
         "sandboxing",
         "web"
       ],
-      "rank": 4
+      "rank": 5
     }
   ]
 }
