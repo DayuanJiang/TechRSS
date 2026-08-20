@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2542,
-  "filtered_articles": 12,
+  "filtered_articles": 10,
   "articles": [
+    {
+      "title": "A shot-scraper-style JSON API on Bun 1.4's new Bun.WebView",
+      "title_zh": "用 Bun.WebView 实现零依赖网页自动化 API",
+      "link": "https://simonwillison.net/2026/Aug/20/bun-webview-json-api/",
+      "pub_date": "2026-08-20T15:37:00.000Z",
+      "summary": "## 一句话总结\n\nBun 1.4 新增的实验性 `Bun.WebView`，已经能用约 150 行、零依赖 TypeScript 搭出一个类似 shot-scraper 的浏览器自动化 JSON API，但运行完整 Chrome 处理复杂页面仍需要约 192MB–256MB 内存。\n\n## 正文\n\n### Bun 1.4 的大新闻很多，但 `Bun.WebView` 最值得关注\n\nBun 1.4 是 Bun 完成从 Zig 到 Rust 重写后的首个稳定版本。官方发布说明把重点放在了一长串新能力上，包括 `Bun.Image`、`Bun.markdown`、`Bun.cron()`、`Bun.Terminal` 等。性能数字也很吸引人：空闲 CPU 使用降低 5 倍，内存最多减少 35%，Linux 启动速度提升 50%。兼容性方面，Bun 1.4 新增了 1,517 个 Node.js 测试，并修复了超过 2,900 个问题。  \n但作者最关注的不是这些宏观指标，而是其中一个看似低调的新增 API：`Bun.WebView`。它把浏览器自动化能力直接带进了 Bun core，不再必须先引入 Puppeteer 或 Playwright 这样的外部工具链。说白了，Bun 开始尝试把“启动浏览器、打开页面、执行脚本、截图”变成运行时自带的能力。\n\n### 它没有自造浏览器，而是接入 WebKit 和 Chromium\n\n`Bun.WebView` 的设计很务实：在 macOS 上，它可以使用 WebKit；另一方面，它也可以通过 Chrome DevTools Protocol（CDP）控制本机运行的 Chromium。也就是说，Bun 提供的是一层原生的浏览器自动化接口，而不是重新实现浏览器渲染能力。  \n这个选择的意义在于，开发者可以在 Bun 服务中直接驱动真实浏览器页面。页面加载、JavaScript 执行和截图，都可以走同一套运行时接口完成。对于原本需要 Puppeteer、Playwright 或 WebDriver 的轻量需求，这可能显著缩短部署路径。  \n不过文章并没有把它包装成成熟的生产级替代品。`Bun.WebView` 仍是 experimental API，作者的工作更像一次探测：它到底能不能支撑一个可用的远程浏览器服务，以及代价有多高。\n\n### 从 shot-scraper 得到灵感：把浏览器能力包成 HTTP API\n\n作者让 Claude Code for web 构建了一个原型，目标很明确：提供一个 HTTP API，调用方传入网页和参数，服务端加载页面后执行 JavaScript 或返回截图。这套接口直接借鉴了作者自己的 `shot-scraper javascript` CLI。  \n最终产物是一个大约 150 行的 TypeScript 服务，而且没有额外依赖。它暴露了三个端点：`/javascript` 用来加载页面并执行 JavaScript，`/screenshot` 用来生成截图，`/healthz` 则用于健康检查。截图支持 PNG、JPEG 和 WebP。  \n这里最关键的不是端点数量，而是返回形式。无论页面执行成功还是失败，服务都会以 JSON 返回页面结果和错误信息。于是浏览器自动化不再只是本地脚本的能力，而可以被其他服务、任务队列或 Agent 通过普通 HTTP 调用。\n\n### 每个请求一个 tab，换来的是简单的并发模型\n\n这个原型采用了一个直接的并发策略：每个请求创建一个独立的浏览器 tab。这样做避免了多个请求共享同一个页面上下文，也让并行请求天然隔离。  \n对于一个“请求进来，打开页面，跑一段 JavaScript 或截张图，然后返回”的 API 来说，这种模型很容易理解。调用方不需要维护 session，也不用管理复杂的 tab 生命周期。服务端则把每次任务当作一次独立浏览器作业处理。  \n当然，这种简单性并不意味着没有成本。每个请求都要占用浏览器资源，特别是在真实 Chromium 参与渲染时，内存会成为部署时最先碰到的约束。也正因为如此，作者没有停留在“能跑”的层面，而是专门测试了它的资源消耗。\n\n### 真正的门槛不是代码量，而是 Chrome 的内存账单\n\n原型代码只有约 150 行，且零依赖，这说明用 `Bun.WebView` 做出类似 shot-scraper 的服务在工程实现上并不复杂。但浏览器自动化的传统成本依然存在：Chrome 本身并不轻。  \n作者使用 cgroups 进行了测试，结论是，若要让完整 Chrome 处理复杂网页，容器大约需要分配 192MB 到 256MB 内存。这个数字是文章最重要的现实信号。  \n换句话说，Bun 1.4 的价值不在于让浏览器渲染“没有成本”，而在于减少了搭建自动化服务的依赖和代码复杂度。以前你可能先想 Puppeteer 或 Playwright；现在，在适合的场景里，可以先评估 Bun 原生的 `Bun.WebView`。至于是否值得上生产，还要看 experimental API 的成熟度，以及你的并发量能否接受每个浏览器任务带来的资源开销。",
+      "source_name": "simonwillison.net",
+      "score": 12,
+      "depth": 6,
+      "novelty": 6,
+      "category": "tools",
+      "keywords": [
+        "Bun",
+        "Bun.WebView",
+        "TypeScript",
+        "browser automation"
+      ],
+      "rank": 1
+    },
     {
       "title": "Introducing Dashboard Touch, a build-your-own version of Touch ID",
       "title_zh": "Dashboard Touch 用自制指纹器解锁 Mac",
@@ -22,7 +41,7 @@
         "macOS",
         "fingerprint sensor"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "A Sloppy Interface Is a Security Liability ￼",
@@ -41,7 +60,7 @@
         "Axios",
         "social engineering"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Better Batteries",
@@ -60,7 +79,7 @@
         "Go",
         "Rust"
       ],
-      "rank": 3
+      "rank": 4
     }
   ]
 }
