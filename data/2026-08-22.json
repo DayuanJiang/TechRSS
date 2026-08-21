@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Rust Glancer",
+      "title_zh": "Rust LSP 应以 rmeta 替代全量增量索引",
+      "link": "https://matklad.github.io/2026/08/21/rust-glancer.html",
+      "pub_date": "2026-08-21T00:00:00.000Z",
+      "summary": "## 一句话总结\n\nRust Glancer 的低内存路线提示了一个更根本的方向：Rust IDE 不该把所有依赖都当作可增量编辑的源码来维护，而应把“正在改的少量代码”和“几乎不看的海量依赖”放进两套不同的表示与分析后端。\n\n## 正文\n\n### Rust Glancer 戳中了 rust-analyzer 的内存痛点\n\n作者从 Rust Glancer 这个新 LSP 项目切入。它主打 functional LSP server，并且声称 RAM 使用量比传统方案低两个数量级。作者认为这非常有意思，但重点不只是“它更省内存”。真正值得讨论的是，它重新暴露了 rust-analyzer 的一个架构选择：为了支持增量分析和重构，rust-analyzer 把大量代码都纳入了同一套重量级模型。  \n这个模型的核心之一是 `rowan`，也就是 rust-analyzer 使用的语法树表示。作者对它的评价很直接：`rowan` 对增量解析，以及类似 DOM mutation 的增量重构非常合适。问题在于，这些能力只服务于很小的一部分场景。  \n绝大多数时候，IDE 面对的是用户根本不会打开、更不会修改的依赖代码。它们仍需要被浅层分析和索引，但不值得获得完整、可变、可增量更新的语法树。说白了，rust-analyzer 可能为了那 1% 的“精细编辑体验”，给另外 99% 的依赖付出了不必要的内存成本。\n\n### 函数体或许可以懒加载，但不能假装它能增量\n\nRust workspace 的确有大量必须保存的信息。函数、结构体、trait、它们之间的关系，以及函数体中的语句，都与跳转定义、查找引用等能力相关。对这部分需求，作者并不否认。真正的问题是：这些信息是否必须在启动时、对所有代码一次性完整建立？  \n他猜测 Rust Glancer 可能会处理每一个函数体，而这部分其实可以做成 lazy。IDE 可以先索引所有 item，例如函数签名、类型定义和 trait 关系。至于函数体，则只分析当前打开的文件，或者用户实际导航到的文件。  \n这里的关键不是“增量”，而是“按需”。依赖中的函数体通常不会被持续编辑，因此不需要维护复杂的增量状态。这样能同时吸收两种架构的优点：项目本身的编辑保持灵敏，海量依赖则不再长期占据内存。  \n作者还提到，若比较内存占用，应该把 RustRover 的 IDE GUI 本身排除在外。他猜测 RustRover 的核心分析部分可能更紧凑。这也为后文埋下了伏笔：JetBrains 系 IDE 本来就采用了分层、多后端的代码模型。\n\n### proc macro 是 rust-analyzer 变重的转折点\n\nRust Glancer 有意不支持 build script 和通过真实调用实现的 proc macro 支持。看起来像功能取舍，但作者认为，这很可能恰好避开了 rust-analyzer 变得“过于臃肿”的关键节点。  \nproc macro 的难点在于，它不是普通的静态代码转换。IDE 必须运行真实代码，因而很难采用常见的分析器捷径。运行本身可能慢，展开结果还可能生成大量代码，最终放大解析、索引和内存压力。  \n作者给出了一条很具体的历史测量：rust-analyzer 二进制大小中，曾有约 30% 被归因于 JSON parsing code。背后的逻辑并不复杂，proc macro 生态会带来更多运行时和序列化相关依赖。即便用户最终没有看到那些展开后的代码，工具仍然为它们支付了成本。  \n那怎么办？作者提出一个类似 Sorbet 的思路：不要运行元编程本身，而是通过插件描述它的“效果”。例如，不真的执行 `serde` 宏，而是由 shim 直接为类型注入类似 `impl Serialize for T {}` 的结果，并使用空函数体。这个方案当然不是完整语义等价，但它代表了一种很重要的取舍：IDE 有时需要的是足够用于导航和类型分析的效果，而不是忠实重演整个编译过程。\n\n### inlay hint 错位不一定是分析模型的问题\n\n文章还回应了一个实际体验问题：有用户观察到，当 agent 编辑代码时，rust-analyzer 的 inlay hints 可能错位。作者先为 rust-analyzer 的核心模型辩护了一下。它对一致性要求非常严格，尽力让语言客户端与服务端看到一个严格可串行化的代码快照。  \n但问题在于，LSP 协议本身无法让这种同步做到完全正确，只能做到启发式地“通常正确”。作者引用了一个 LSP issue，并对比了旧版 Dart Analyzer protocol：后者具备更可靠的数据同步语义。  \n更现实的问题可能出在文件监听。rust-analyzer 有两套 watcher backend，一种依赖编辑器监听，另一种使用 server-side watcher。作者建议尝试切换 `files.watcher` 配置，看是否缓解问题。  \n不过他也承认，原生 watcher 的 API 记忆中存在根本性的 race，而他没有完成那些麻烦的平台特定修补工作。因此，inlay hint 错位未必说明 AST 或查询系统不一致。它可能只是编辑器、LSP 和文件系统事件之间的同步链条漏了一环。\n\n### IntelliJ 的答案是让同一个 PSI 有多个后端\n\n文章最核心的观点出现在后半段。作者形容当前 rust-analyzer 像“半匹马”梗图，只精心画了马头的一半：它拥有优秀的增量源码分析能力，但缺少对应的低成本、只读依赖处理层。  \n而 IntelliJ 的一个“大想法”正好提供了答案。它的 PSI API，也就是大致可理解为“带解析结果和类型信息的 AST 接口”，本质上是一个抽象接口。用户看到的是同一套 PSI，但底层并不只有一种实现。  \n正在编辑的文件由完整 concrete syntax tree 支撑，因为这些文件频繁变化，需要实时更新。项目中其他未打开的文件，则使用 Stub Tree。Stub Tree 是紧凑的磁盘表示，只保存文件对外可见的部分，不保存函数体。  \n当用户真正跳转进入某个文件时，IDE 会透明地从 stub 切换到完整语法树。对于依赖，PSI 往往甚至直接建立在 `javac` 生成的 `.class` 文件上。只有当用户导航进去时，IDE 才即时反编译源码视图。这个设计的巧妙之处在于：API 一致，但存储、加载和分析成本按使用场景分级。\n\n### Rust 应该用 `.rmeta` 承担依赖层，而不是 Salsa\n\n作者认为，Rust 也应该采用类似架构。rust-analyzer 不应该为了那“6666 个你从未看过的依赖”，都运行一套基于 Salsa 的源码增量分析。更合理的方式是直接读取 rustc 已经生成的 `.rmeta` 文件。  \n`.rmeta` 是 Rust 编译产物中的元数据。对于依赖的公开 API、类型和语义信息，它天然比重新解析全部源码更紧凑，也更适合作为只读输入。只有当用户真的开始查看或修改 `~/.cargo/registry/src` 中的依赖源码时，IDE 才透明地切换到 Salsa 驱动的源码分析。  \n这不是一个临时补丁，而是需要先定义“访问 Rust 代码的抽象 API”。该 API 不能假设所有 crate 都有源码可用，也必须支持预编译的 `.rmeta` 输入。作者指出，这原本就是 rust-analyzer 的计划之一，并且曾经开始过相关设计。  \n他引用的设计文档中有一个明确目标：`rmeta-transparent`，即某些 crate 的源码可能不存在，API 应能把预编译 `.rmeta` 作为输入。但这项工作似乎从未完成。  \n最终，作者把它称为“lowest-hanging watermelon”：把世界切成两部分。一部分是尖锐、活跃、需要增量更新的冰山顶端，也就是用户正在编辑的代码。另一部分则是大多只读、紧凑地躺在磁盘上的依赖海洋。Rust Glancer 所展示的，也许正是这种 “glance analyzer” 架构值得重新认真考虑的信号。",
+      "source_name": "matklad.github.io",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "Rust Glancer",
+        "rust-analyzer",
+        "LSP",
+        "rmeta"
+      ],
+      "rank": 2
+    },
+    {
       "title": "How Bluesky and Threads Sneak Their Logos Into iOS Screenshots",
       "title_zh": "Bluesky 如何只在截图中露出 Logo",
       "link": "https://timmarinin.net/2026/bluesky-screenshots/",
@@ -41,7 +60,7 @@
         "UITextField",
         "screenshot"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Why shaming people about AI slop isn’t enough to stop Big AI",
@@ -60,7 +79,7 @@
         "platform power",
         "collective action"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Bluesky’s Active User Base Is Shrinking, and Remains Tiny Compared to Threads and Twitter/X",
@@ -79,7 +98,7 @@
         "Similarweb",
         "AT Proto"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Stop Making TUIs",
@@ -98,7 +117,7 @@
         "coding agents",
         "SwiftUI"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "★ When New DF Posts Drop in a Forest and No One Is There to Read Them",
@@ -117,7 +136,7 @@
         "automation",
         "feed generation"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Bluesky Is Full of Anti-AI Zealots",
@@ -136,7 +155,7 @@
         "agentic tools",
         "social media"
       ],
-      "rank": 7
+      "rank": 8
     }
   ]
 }
