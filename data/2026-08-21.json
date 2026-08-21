@@ -1,9 +1,9 @@
 {
   "date": "2026-08-21",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2517,
-  "filtered_articles": 9,
+  "success_feeds": 85,
+  "total_articles": 2542,
+  "filtered_articles": 10,
   "articles": [
     {
       "title": "A shot-scraper-style JSON API on Bun 1.4's new Bun.WebView",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Readers can't identify watermarked AI text",
+      "title_zh": "小型盲测显示人类难辨 AI 文本水印",
+      "link": "https://seangoedecke.com/readers-cant-identify-watermarked-ai-text/",
+      "pub_date": "2026-08-21T00:00:00.000Z",
+      "summary": "## 一句话总结\n\n一项简单的盲测显示，读者无法从并排的 AI 回答中识别 SynthID-Text 水印；在修正题目顺序偏差后，73 名参与者的平均得分几乎等于纯随机猜测。\n\n## 正文\n\n### 作者想验证的不是“能不能检测”，而是“人能不能看出来”\n\n围绕 AI 文本水印，公众最直觉的担忧是：为了嵌入水印，模型会被迫挑选生硬、反常的词。  \n如果真是这样，文本质量就会变差，用户也应该能凭阅读感觉发现“这段不对劲”。  \n作者此前一直在反驳这种观点：AI watermarking 并不天然损害消费者体验，也不会让输出变糟。  \n相关论文已经从理论上论证了这一点，但作者觉得，数学解释未必足以说服所有人。  \n所以他把问题改写成了一个很直接的实验：面对同一 prompt 的多个回答，读者能找出带水印的那一个吗？\n\n### 用 30 段回答做了一场低成本盲测\n\n作者做了一个静态网页 quiz，让访问者完成 10 道判断题。  \n每道题提供 3 个针对同一问题生成的回答，其中恰好 1 个被秘密嵌入了 SynthID-Text 水印。  \n生成模型是 `Qwen3-30B-A3B-Instruct-2507`，运行在租来的 H200 GPU 上。  \n总共生成 30 段回答，也就是每题 3 段，GPU 成本大约只有 2 美元。  \n统计方式也很朴素：不同分数跳转到不同页面，再通过 Umami analytics 汇总各页面访问量。  \n作者承认这种方法很容易被有心人伪造，但对于一次随手做的公开测试，已经足够观察趋势。\n\n### 第一轮看似“人比随机强”，其实是选项位置泄露了答案\n\n第一轮共有 278 人参与，平均得分是 3.92/10。  \n而在每题三个选项、随机选择的前提下，理论期望分数应当是 3.33/10。  \n结果分布中确实有一个接近 3 分的峰值，但还出现了一个异常明显的 6 分峰值。  \n一开始看，这似乎意味着部分用户真的能辨别水印文本。  \n但作者回头检查后发现，SynthID 水印回答在 10 题中有 6 题恰好都是选项 A。  \n换句话说，只要有人每题无脑选第一个答案，就会稳定拿到 6 分，那个峰值并不是识别能力，而是题目排序出了问题。\n\n### 重排选项之后，成绩回到了随机猜测应有的位置\n\n作者重新打乱了题目和选项顺序，然后又收集到 73 名参与者的数据。  \n这一次，平均得分降到了 3.4/10，几乎贴着随机猜测的理论值 3.33/10。  \n此前那个 6 分附近的异常峰值也消失了，分数分布不再显示出明显的系统性偏差。  \n样本量比第一轮小得多，因为多数人是在作者刚发到 LinkedIn 和 Hacker News 时就立刻参与了第一版。  \n不过，结合第一轮中已定位到的 A 选项偏差，作者认为第二轮已经足以支持一个结论：读者基本是在随机猜。  \n也就是说，至少在这组 Qwen3 生成的样本中，水印没有留下可被人类阅读直觉稳定捕捉的痕迹。\n\n### 水印的关键不是“塞进怪词”，而是控制模型本来就有的随机性\n\n这里有个容易被误解的技术点：文本水印不一定要求模型选择它“本来绝不会选”的词。  \n语言模型生成时，本来就在多个高概率 token 中进行随机采样。  \nSynthID-Text 一类方法做的事情，是把这份随机性换成一种可预测、可验证的偏置。  \n作者举了个简化例子：原来是在 top 3 token 中随机挑一个，现在可以根据前 10 个 token 的字母数取模，再选择对应 token。  \n从输出分布看，它依然是合理的随机选择；但从检测者视角看，这些选择会积累出可验证的信号。  \n因此，如果水印真的经常迫使模型走上一条明显怪异的措辞路径，用户在三段并列文本中理应偶尔能看出来；这场测试的结果恰恰没有显示出这种现象。\n\n### 这不是严格论文，但它给了“质量会变差”一个直观反证\n\n作者没有把这次 quiz 包装成严谨的科学研究。  \n样本数量有限，题目来自单一模型，统计系统也不是为防作弊设计的。  \n但它仍然回答了一个很实际的问题：普通读者能否通过文本表面质量，辨认出水印存在。  \n修正排序 bug 后的数据表明，答案大概率是否定的。  \n所以，对于担心水印会让 AI 输出变得僵硬、古怪或低质量的用户，这个小实验提供了一个比公式更直观的证据。  \n说白了，水印可以在不显著改变人类阅读体验的前提下存在，而人眼并不是它的检测器。",
+      "source_name": "seangoedecke.com",
+      "score": 12,
+      "depth": 6,
+      "novelty": 6,
+      "category": "ai-ml",
+      "keywords": [
+        "SynthID-Text",
+        "Qwen3-30B-A3B-Instruct-2507",
+        "watermarking",
+        "human evaluation"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Introducing Dashboard Touch, a build-your-own version of Touch ID",
       "title_zh": "Dashboard Touch 用自制指纹器解锁 Mac",
       "link": "https://anildash.com/2026/08/20/introducing-dashboard-touch/",
@@ -41,7 +60,7 @@
         "macOS",
         "fingerprint sensor"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Pluralistic: The actual epistemic crisis (20 Aug 2026)",
@@ -60,7 +79,7 @@
         "epistemic trust",
         "AI"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "ChatGPT search now uses the site:operator at scale",
@@ -79,7 +98,7 @@
         "GPT-5.6",
         "GEO"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "A Sloppy Interface Is a Security Liability ￼",
@@ -98,7 +117,7 @@
         "Axios",
         "social engineering"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Better Batteries",
@@ -117,7 +136,7 @@
         "Go",
         "Rust"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Reducing C++ template bloat by factoring out the type-dependent portions of the function",
@@ -136,7 +155,7 @@
         "code bloat",
         "std::span"
       ],
-      "rank": 7
+      "rank": 8
     }
   ]
 }
