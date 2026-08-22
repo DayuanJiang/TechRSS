@@ -1,6 +1,682 @@
 {
-  "updatedAt": "2026-08-22T14:15:41.575Z",
+  "updatedAt": "2026-08-22T14:44:10.404Z",
   "items": [
+    {
+      "id": 49391553,
+      "by": "hn_acker",
+      "title": "OTel isn't going well (and I made a spreadsheet about it)",
+      "url": "https://matduggan.com/otel-isnt-going-well-and-i-made-a-spreadsheet-about-it/",
+      "score": 162,
+      "detailUpdatedAt": 1787408031,
+      "createdAt": 1787371248,
+      "aiSummaryUpdatedAt": 1787409367,
+      "aisummary": {
+        "chinese_title": "OTel 进展不妙：SDK 过重与三支柱争议",
+        "emoji": "😩",
+        "sarcastic_question": "监控先把 CPU 和内存吃光也算性能优化吗？"
+      },
+      "classifications": {
+        "topics": [
+          6,
+          4
+        ],
+        "facets": [
+          9
+        ],
+        "tags": [
+          "OpenTelemetry (OTel)",
+          "Prometheus",
+          "Jaeger",
+          "Grafana",
+          "OpenTelemetry Collector",
+          "tracing",
+          "metrics",
+          "logs",
+          "observability"
+        ]
+      },
+      "classificationsUpdatedAt": 1787371865,
+      "aiSummary": {
+        "chinese_title": "OTel 进展不妙：SDK 过重与三支柱争议",
+        "emoji": "😩",
+        "sarcastic_question": "监控先把 CPU 和内存吃光也算性能优化吗？"
+      },
+      "detail": {
+        "id": 49391553,
+        "by": "hn_acker",
+        "title": "OTel isn't going well (and I made a spreadsheet about it)",
+        "url": "https://matduggan.com/otel-isnt-going-well-and-i-made-a-spreadsheet-about-it/",
+        "score": 162,
+        "detailUpdatedAt": 1787408031,
+        "createdAt": 1787371248,
+        "aiSummaryUpdatedAt": 1787409367,
+        "aisummary": {
+          "chinese_title": "OTel 进展不妙：SDK 过重与三支柱争议",
+          "discussion_overview": [
+            {
+              "category": "SDK 性能与自动埋点",
+              "summary": "很多人认为问题不在于 OTel 迭代慢，而在于 SDK 本身太重。Python 和 Ruby 里强制抽象带来的 CPU 开销被反复提到，自动埋点和状态化 API 也被嫌弃成 Java/Kubernetes 风格的过度工程。还有人指出，在 durable execution、Cloudflare Workflows 这类跨很长时间、可重试的流程里，传统 span 模型很难自然表达，最后只能自己逆向 SDK 和 UI。整体上，这一派觉得为了观测付出的性能、复杂度和心智成本都太高。",
+              "supportid": [
+                "49397084",
+                "49400018",
+                "49398868",
+                "49398313",
+                "49399798",
+                "49398507",
+                "49398242",
+                "49396628",
+                "49396056"
+              ]
+            },
+            {
+              "category": "框架集成被注入打爆",
+              "summary": "另一个集中吐槽点是 OTel 在具体框架里的注入方式过于粗暴，Django 最典型。评论者提到 instrumentor 会在错误时机强行加载 settings，和大型 monolith 那种多阶段启动、动态生成 MIDDLEWARE、从多个来源读取配置的流程直接冲突。大家更想要的是更小的 primitives 和公开接口，可以在应用真正准备好时手动调用，而不是被一个巨大的 inject 函数绑死。这里的核心不是能不能自动化，而是默认假设太强，导致集成反而更难。",
+              "supportid": [
+                "49397444",
+                "49398376",
+                "49400032",
+                "49398242",
+                "49396150"
+              ]
+            },
+            {
+              "category": "一次埋点、动态出图",
+              "summary": "有一派希望只写一次埋点，然后在运行时动态决定它最终是 log、metric 还是 trace。比如在 dashboard 里看到异常后，一键要求下次同类事件自动保留 trace，或者像 Micrometer 的 observation 一样先产出统一事件，再由 handler 转成不同输出。还有人主张先默认记录更高层的信号，后面再按需升级成更细的 traces，减少重复埋点。这个方向的共同诉求是让应用代码只表达事实，观测形态交给后端和策略层决定。",
+              "supportid": [
+                "49396130",
+                "49397448",
+                "49396148",
+                "49397651",
+                "49397991",
+                "49398083",
+                "49398574",
+                "49396174"
+              ]
+            },
+            {
+              "category": "三支柱本就不同",
+              "summary": "反对统一的人认为 metrics、logs、traces 的数据形态和成本模型根本不同。metrics 是聚合后的时间序列，logs 要保留大量上下文，traces 则是请求级的执行树，甚至像 GC 这种低层信号也不可能从另外两者里直接补出来。对他们来说，把三者塞进一个抽象里是错误抽象，现实里更可行的是 correlation、adaptive sampling 和按需过滤。有人还提醒，若一直全量 trace，监控系统本身的 CPU 和网络开销可能比业务还重。",
+              "supportid": [
+                "49398003",
+                "49397362",
+                "49397045",
+                "49398066",
+                "49399089",
+                "49399897",
+                "49398123",
+                "49399908",
+                "49399885"
+              ]
+            },
+            {
+              "category": "标准化与反锁定",
+              "summary": "也有人为 OTel 辩护，认为它至少解决了 vendor lock-in 和各家 SDK/后端互不兼容的问题。OTLP 和统一的 source/sink 让 Datadog、Honeycomb、Grafana、Sentry、Langfuse 之类系统更容易互联，哪怕 semantic conventions 还不够完美。实际部署上，常见做法是本机 collector、gateway collector，或者在 Lambda 里用 layer 在响应返回后异步发送 telemetry。对这些人来说，OTel 的价值不是完美，而是让混用多个 observability vendor 变得可行。",
+              "supportid": [
+                "49395167",
+                "49396804",
+                "49396372",
+                "49396791",
+                "49397620",
+                "49397731",
+                "49398932",
+                "49398496",
+                "49396190",
+                "49397740",
+                "49399087",
+                "49396889"
+              ]
+            },
+            {
+              "category": "Prometheus/Jaeger 替代",
+              "summary": "另一条很强的声音是直接放弃 OTel，回到 Prometheus、Victoriametrics、Jaeger 这类更窄但更简单的方案。评论者认为这些工具已经接近 de-facto standard，自己写少量 shim 就够了，而 OTel 反而把问题做成一个巨大、复杂、让人分析瘫痪的 framework。自托管观测栈也被吐槽体验差，Grafana 路线和 SigNoz 都不算顺手。有人甚至举例直接写 .prom 文件给 node_exporter 读取，或让 Blackbox Exporter 采集 TLS expiry 之类简单指标。总体态度是：标准不如简单，别为了兼容性把系统搞得越来越重。",
+              "supportid": [
+                "49397593",
+                "49397738",
+                "49395735",
+                "49396237",
+                "49395809",
+                "49396324",
+                "49399304"
+              ]
+            },
+            {
+              "category": "温和支持：还能用",
+              "summary": "也有少数更温和的声音认为 OTel 本身并没有坏到不能用，只是还缺一些实战里很想要的能力。有人自己补了 boring segments 之类的逻辑，把健康检查、空查询提前丢弃，或者把预期会失败的请求降级处理。还有人觉得很多关于项目出问题的判断并没有被数据证明，至少从开源活跃度看它还算健康。这个阵营更像是在说：OTel 需要更多实验和局部修补，而不是彻底否定。",
+              "supportid": [
+                "49396182",
+                "49396552",
+                "49397127",
+                "49393236"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "OpenTelemetry (OTel)",
+              "explanation": "开源 observability 标准，目标是统一 tracing、metrics 和 logs 的采集与导出。"
+            },
+            {
+              "term": "OTLP",
+              "explanation": "OpenTelemetry Protocol，用于把 telemetry 数据从应用或 collector 发送到后端。"
+            },
+            {
+              "term": "span",
+              "explanation": "trace 中的一段执行区间，记录一次操作的开始、结束、属性和事件。"
+            },
+            {
+              "term": "collector",
+              "explanation": "接收、转发、聚合 telemetry 的中间组件，既可本机部署也可做 gateway。"
+            },
+            {
+              "term": "auto-instrumentation",
+              "explanation": "通过 agent 或框架钩子自动注入埋点，减少手写 instrumentation。"
+            },
+            {
+              "term": "adaptive sampling",
+              "explanation": "根据条件动态决定保留哪些 traces 或 samples 的策略。"
+            },
+            {
+              "term": "semantic conventions",
+              "explanation": "规定 telemetry 属性字段命名和含义的共享约定。"
+            }
+          ],
+          "context": "这篇讨论围绕 OpenTelemetry（OTel，开源可观测性标准）在真实项目里的落地体验展开，原帖还附带了一张 spreadsheet 来整理各语言 SDK、后端和功能支持情况。OTel 试图用统一的 API 和 OTLP（OpenTelemetry Protocol）覆盖 tracing、metrics 和 logs，但评论里很多人抱怨 SDK 的自动埋点、性能开销和框架兼容性。背景里还涉及 Grafana 生态里的 Loki（日志存储）、Tempo（distributed tracing 后端）和 Mimir（metrics 后端），以及 Prometheus（指标系统）、Jaeger（分布式 tracing 系统）这些更窄但更成熟的工具。讨论还延伸到 AWS Lambda（无服务器函数运行时）、Cloudflare Workflows（Cloudflare 的长任务/工作流运行时）、Django（Python Web 框架）、Micrometer（Java 的指标与观测库）和 eBPF/Dtrace 这类运行时或内核级观测方案，争论核心是到底该统一三类数据，还是保留分层和按需采样。",
+          "emoji": "😩",
+          "sarcastic_question": "监控先把 CPU 和内存吃光也算性能优化吗？"
+        },
+        "classifications": {
+          "topics": [
+            6,
+            4
+          ],
+          "facets": [
+            9
+          ],
+          "tags": [
+            "OpenTelemetry (OTel)",
+            "Prometheus",
+            "Jaeger",
+            "Grafana",
+            "OpenTelemetry Collector",
+            "tracing",
+            "metrics",
+            "logs",
+            "observability"
+          ]
+        },
+        "classificationsUpdatedAt": 1787371865,
+        "aiSummary": {
+          "chinese_title": "OTel 进展不妙：SDK 过重与三支柱争议",
+          "discussion_overview": [
+            {
+              "category": "SDK 性能与自动埋点",
+              "summary": "很多人认为问题不在于 OTel 迭代慢，而在于 SDK 本身太重。Python 和 Ruby 里强制抽象带来的 CPU 开销被反复提到，自动埋点和状态化 API 也被嫌弃成 Java/Kubernetes 风格的过度工程。还有人指出，在 durable execution、Cloudflare Workflows 这类跨很长时间、可重试的流程里，传统 span 模型很难自然表达，最后只能自己逆向 SDK 和 UI。整体上，这一派觉得为了观测付出的性能、复杂度和心智成本都太高。",
+              "supportid": [
+                "49397084",
+                "49400018",
+                "49398868",
+                "49398313",
+                "49399798",
+                "49398507",
+                "49398242",
+                "49396628",
+                "49396056"
+              ]
+            },
+            {
+              "category": "框架集成被注入打爆",
+              "summary": "另一个集中吐槽点是 OTel 在具体框架里的注入方式过于粗暴，Django 最典型。评论者提到 instrumentor 会在错误时机强行加载 settings，和大型 monolith 那种多阶段启动、动态生成 MIDDLEWARE、从多个来源读取配置的流程直接冲突。大家更想要的是更小的 primitives 和公开接口，可以在应用真正准备好时手动调用，而不是被一个巨大的 inject 函数绑死。这里的核心不是能不能自动化，而是默认假设太强，导致集成反而更难。",
+              "supportid": [
+                "49397444",
+                "49398376",
+                "49400032",
+                "49398242",
+                "49396150"
+              ]
+            },
+            {
+              "category": "一次埋点、动态出图",
+              "summary": "有一派希望只写一次埋点，然后在运行时动态决定它最终是 log、metric 还是 trace。比如在 dashboard 里看到异常后，一键要求下次同类事件自动保留 trace，或者像 Micrometer 的 observation 一样先产出统一事件，再由 handler 转成不同输出。还有人主张先默认记录更高层的信号，后面再按需升级成更细的 traces，减少重复埋点。这个方向的共同诉求是让应用代码只表达事实，观测形态交给后端和策略层决定。",
+              "supportid": [
+                "49396130",
+                "49397448",
+                "49396148",
+                "49397651",
+                "49397991",
+                "49398083",
+                "49398574",
+                "49396174"
+              ]
+            },
+            {
+              "category": "三支柱本就不同",
+              "summary": "反对统一的人认为 metrics、logs、traces 的数据形态和成本模型根本不同。metrics 是聚合后的时间序列，logs 要保留大量上下文，traces 则是请求级的执行树，甚至像 GC 这种低层信号也不可能从另外两者里直接补出来。对他们来说，把三者塞进一个抽象里是错误抽象，现实里更可行的是 correlation、adaptive sampling 和按需过滤。有人还提醒，若一直全量 trace，监控系统本身的 CPU 和网络开销可能比业务还重。",
+              "supportid": [
+                "49398003",
+                "49397362",
+                "49397045",
+                "49398066",
+                "49399089",
+                "49399897",
+                "49398123",
+                "49399908",
+                "49399885"
+              ]
+            },
+            {
+              "category": "标准化与反锁定",
+              "summary": "也有人为 OTel 辩护，认为它至少解决了 vendor lock-in 和各家 SDK/后端互不兼容的问题。OTLP 和统一的 source/sink 让 Datadog、Honeycomb、Grafana、Sentry、Langfuse 之类系统更容易互联，哪怕 semantic conventions 还不够完美。实际部署上，常见做法是本机 collector、gateway collector，或者在 Lambda 里用 layer 在响应返回后异步发送 telemetry。对这些人来说，OTel 的价值不是完美，而是让混用多个 observability vendor 变得可行。",
+              "supportid": [
+                "49395167",
+                "49396804",
+                "49396372",
+                "49396791",
+                "49397620",
+                "49397731",
+                "49398932",
+                "49398496",
+                "49396190",
+                "49397740",
+                "49399087",
+                "49396889"
+              ]
+            },
+            {
+              "category": "Prometheus/Jaeger 替代",
+              "summary": "另一条很强的声音是直接放弃 OTel，回到 Prometheus、Victoriametrics、Jaeger 这类更窄但更简单的方案。评论者认为这些工具已经接近 de-facto standard，自己写少量 shim 就够了，而 OTel 反而把问题做成一个巨大、复杂、让人分析瘫痪的 framework。自托管观测栈也被吐槽体验差，Grafana 路线和 SigNoz 都不算顺手。有人甚至举例直接写 .prom 文件给 node_exporter 读取，或让 Blackbox Exporter 采集 TLS expiry 之类简单指标。总体态度是：标准不如简单，别为了兼容性把系统搞得越来越重。",
+              "supportid": [
+                "49397593",
+                "49397738",
+                "49395735",
+                "49396237",
+                "49395809",
+                "49396324",
+                "49399304"
+              ]
+            },
+            {
+              "category": "温和支持：还能用",
+              "summary": "也有少数更温和的声音认为 OTel 本身并没有坏到不能用，只是还缺一些实战里很想要的能力。有人自己补了 boring segments 之类的逻辑，把健康检查、空查询提前丢弃，或者把预期会失败的请求降级处理。还有人觉得很多关于项目出问题的判断并没有被数据证明，至少从开源活跃度看它还算健康。这个阵营更像是在说：OTel 需要更多实验和局部修补，而不是彻底否定。",
+              "supportid": [
+                "49396182",
+                "49396552",
+                "49397127",
+                "49393236"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "OpenTelemetry (OTel)",
+              "explanation": "开源 observability 标准，目标是统一 tracing、metrics 和 logs 的采集与导出。"
+            },
+            {
+              "term": "OTLP",
+              "explanation": "OpenTelemetry Protocol，用于把 telemetry 数据从应用或 collector 发送到后端。"
+            },
+            {
+              "term": "span",
+              "explanation": "trace 中的一段执行区间，记录一次操作的开始、结束、属性和事件。"
+            },
+            {
+              "term": "collector",
+              "explanation": "接收、转发、聚合 telemetry 的中间组件，既可本机部署也可做 gateway。"
+            },
+            {
+              "term": "auto-instrumentation",
+              "explanation": "通过 agent 或框架钩子自动注入埋点，减少手写 instrumentation。"
+            },
+            {
+              "term": "adaptive sampling",
+              "explanation": "根据条件动态决定保留哪些 traces 或 samples 的策略。"
+            },
+            {
+              "term": "semantic conventions",
+              "explanation": "规定 telemetry 属性字段命名和含义的共享约定。"
+            }
+          ],
+          "context": "这篇讨论围绕 OpenTelemetry（OTel，开源可观测性标准）在真实项目里的落地体验展开，原帖还附带了一张 spreadsheet 来整理各语言 SDK、后端和功能支持情况。OTel 试图用统一的 API 和 OTLP（OpenTelemetry Protocol）覆盖 tracing、metrics 和 logs，但评论里很多人抱怨 SDK 的自动埋点、性能开销和框架兼容性。背景里还涉及 Grafana 生态里的 Loki（日志存储）、Tempo（distributed tracing 后端）和 Mimir（metrics 后端），以及 Prometheus（指标系统）、Jaeger（分布式 tracing 系统）这些更窄但更成熟的工具。讨论还延伸到 AWS Lambda（无服务器函数运行时）、Cloudflare Workflows（Cloudflare 的长任务/工作流运行时）、Django（Python Web 框架）、Micrometer（Java 的指标与观测库）和 eBPF/Dtrace 这类运行时或内核级观测方案，争论核心是到底该统一三类数据，还是保留分层和按需采样。",
+          "emoji": "😩",
+          "sarcastic_question": "监控先把 CPU 和内存吃光也算性能优化吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n\nOpenTelemetry 的迟缓并不主要是“语义规范争论太久”，而是“大规模跨语言覆盖 + 严格稳定性承诺 + 维护者严重不足”三者相撞后的系统性瓶颈。\n\n## 正文\n\n### 从“装上就能用”到“为什么还没做完”\n\n作者观察到，团队从 vendor-specific SDK 迁移到 OpenTelemetry 时，最常见的抱怨是：为什么 OTel 看起来这么多年还像“没做完”。这和厂商 SDK 的体验形成鲜明对比。后者往往安装完就有 dashboard、有默认集成，复杂性被供应商藏在了背后。OTel 则到处可见 experimental 标记，同一件事也经常有多种实现路径。  \n但作者并不认为这是 OTel 背离初衷的证据。恰恰相反，它一直坚持 vendor-neutral，且没有明显偏向任何一家可观测性厂商。考虑到其维护者大量来自这些竞争激烈的厂商，这种中立性并不容易。真正让作者不安的是，语义规范讨论持续拖延，不同语言 SDK 的成熟度也长期不均衡。  \n自动埋点确实很“魔法”，但从“自动埋点能跑”迈入“需要手动埋点”的落差很陡。对于缺少时间、预算和心理余量的小团队，推荐 OTel 前必须说明这个现实。于是作者决定不再只凭社区的模糊体感，而是试图用数据判断：到底是进展慢，还是大家误解了它的进展？\n\n### 真正的事故现场是三种约束同时碰撞\n\n作者一开始猜测，这只是典型的开源项目“摊子铺得太大，维护者不够”。数据表明，这个判断只对了一部分。更准确地说，OTel 面临的是一个三方碰撞：严格的 binary stability、很小的核心维护者队伍，以及覆盖海量语言和框架的项目范围。  \n稳定性要求让每个 API 和语义设计都变成长期承诺。一旦一个功能从 experimental 进入 stable，后续几乎不能随意修改。于是，维护者有充分理由反复讨论某个设计未来可能造成的问题。问题不在于他们喜欢争论，而在于错误一旦进入稳定接口，代价会被扩散到所有 SDK、instrumentation、Collector 和后端生态中。  \n说白了，OTel 的慢并非单点故障，而是它把“跨供应商标准化”与“长期兼容性”同时做到了极致。范围越大，稳定性门槛越高；维护者越少，穿过这道门的速度就越慢。\n\n### Core 和 Contrib 的分层缓解了复杂度，却没消除它\n\nOTel 用 Core 与 Contrib 分层来控制规模。Core 是项目直接维护的规范性表面，包括 API、SDK、OTLP exporter、context propagation 和 resource detection 等基础能力。Contrib 则容纳社区和厂商贡献的各类集成，例如 Flask、Django、Redis、Kafka、boto3 等 instrumentation。  \n这个设计的逻辑很清晰：容易变化、容易损坏的东西留在 Contrib；需要稳定且 vendor-neutral 的东西进入 Core。但有意思的是，用户并不会因为仓库边界而自动少承担复杂度。在语言侧，按需安装一个包通常还好，比如 `pip install opentelemetry-instrumentation-flask`。  \nCollector 侧的体验却更麻烦。团队常常要通过 OpenTelemetry Collector Builder 自建一个只含所需组件的 Collector，或者直接采用现成发行版并“祈祷它包含自己要的东西”。这不是说 Builder 不好，而是它把一个本该是基础设施使用者的问题，变成了使用者也要承担的构建和组合问题。\n\n### 一项能力要穿过整条供应链，才能真正到达用户\n\n作者梳理的功能落地流程是：先提出 OpenTelemetry Enhancement Proposal（OTEP），获接纳后进入 Specification，再进入 Semantic Conventions 的具体设计。之后，各语言 SDK 根据 specification 实现 API 表面，Contrib instrumentation 跟进最新 API/SDK，最后通过 Collector 与 OTLP 把数据真正送出去。  \n其中，Semantic Conventions 是最容易引发长期讨论的地方。因为属性名、事件模型、资源语义等一旦定下来，实际上就是在为全生态做永久设计承诺。OTLP 也有自己的稳定性生命周期，Collector 组件又各自声明稳定级别。  \n作者承认，自己仍无法完全厘清这些稳定性承诺之间如何联动。例如 OTEP 到 Specification 究竟有没有可预测的周期，Collector 与 OTLP 是否同步演进，以及落后的语言实现会不会事实性地“掉队”。但即使这些流程细节尚不完全透明，核心事实已经很明显：一个功能不是合并一条 PR 就结束了，它需要跨越多个规格、实现与发布层级。\n\n### 数据证明：许多语言 SDK 确实没有足够的维护者\n\n为了验证维护压力，作者用一个 Python 脚本统计了过去 24 个月的开源活跃度，并拿 Envoy、Prometheus 与 OTel 各语言 SDK 对比。Envoy 在此期间合并了 5,432 个 PR，有 28 位 distinct mergers，头号合并者占比为 35.8%。Prometheus 合并了 1,849 个 PR，有 31 位 merger，头号合并者占比仅 14.4%。这是一种相对健康的、可替补的维护者梯队。  \n对比之下，多个 OTel SDK 的合并权限高度集中。`opentelemetry-cpp` 的头号 merger 占 86.1%，Kotlin 为 79.7%，Ruby 为 78.7%，Browser 为 79.5%。Python 在 486 个合并 PR 中只有 4 位 merger，其中一人完成 61.4%；PHP 则在 181 个合并 PR 中只有 2 位 merger。  \n相对健康的是 Go 和 .NET：Go 的头号 merger 占比为 36.9%，.NET 为 31.5%，都有更分散的维护梯队。但这也意味着 OTel 的能力与体验会随语言而显著变化。对于 Ruby、PHP 这类维护集中度极高的 SDK，项目范围显然已经超过了少数人能长期覆盖的程度。\n\n### Semantic Conventions 很慢，但并不是主要堵点\n\n作者原先怀疑，vendor 和语义设计的争论才是所有延迟的根源。于是他查看了 `semantic-conventions` 仓库中耗时最长的 PR。确实存在很慢的案例：MCP semantic conventions 的 PR #2083 耗时 277.5 天，拿到 115 次 review；Gen-AI chat history attributes 的 PR #2179 耗时 117 天，获得 114 次 review。  \n但这些议题本身就复杂，且往往涉及 breaking change、云厂商资源模型、Kubernetes 指标、RPC/NFS 或 GenAI 语义。更关键的发现是：这种慢并没有显著传导到 SDK/API 层。换句话说，OTel 在一定程度上成功把复杂的语义争论隔离在 `semconv` 层，而没有让它全面拖死实现层。  \nPython 的数据尤其说明问题。其最慢的 PR 包括 OpAMP integration sketch，耗时 361.1 天；OTLP HTTP `max_export_batch_size`，耗时 314 天；以及 exporter error handling、runtime metric reader 管理、logs SDK refactor 等。它们大多不是 `semconv` 问题，而是卡在 `Approve Public API check` 等需要额外维护者审批的流程上。  \n这项检查本身并不荒谬，公开 API 的变更理应被谨慎对待。但它再次把结论拉回原点：当项目要求高标准稳定性时，每一道必要审查都会放大维护者数量不足的问题。\n\n### 不是维护者不开放，而是这份工作不可能靠热情长期维持\n\n作者特别指出，OTel 维护者并没有试图排斥外部参与者。各工作组的公开会议记录相当容易找到，讨论过程也相对透明。问题不是“门关着”，而是项目的稳定性预期实际上把参与门槛推得很高。  \n一个需要长期 API 兼容承诺、跨语言协调、反复设计审查和持续发布维护的项目，很难依赖业余时间稳定运转。普通贡献者未必能免费参加大量会议，也未必能承担这个规模项目所要求的决策责任。于是核心维护工作自然落在少数受雇于相关公司的人员身上。  \n但这又带来另一层约束：这些人承担的关键工作，终究要与其雇主的优先级、资源和目标相协调。作者的最终判断因此不是简单的“OTel 人手不够”，而是它的治理和交付模型，正在承受一个超大规模标准化项目必然产生的成本。  \n文章在结尾进入“Potential Solutions”时被截断，但前文已经把结论铺得足够清楚：新特性之所以很久才能触达最终用户，不是因为某一个仓库或某一场讨论出了问题，而是整条稳定性供应链的每一环都在等待稀缺的维护能力。"
+    },
+    {
+      "id": 49384210,
+      "by": "underdeserver",
+      "title": "Stop Making TUIs",
+      "url": "https://sockpuppet.org/blog/2026/08/20/stop-making-tuis/",
+      "score": 234,
+      "detailUpdatedAt": 1787408029,
+      "createdAt": 1787297443,
+      "aiSummaryUpdatedAt": 1787409068,
+      "aisummary": {
+        "chinese_title": "别停做 TUI：SSH、tmux、LLM 时代的终端之争",
+        "emoji": "😏",
+        "sarcastic_question": "既然 Claude 能画 GUI，终端协议就该装死吗？"
+      },
+      "classifications": {
+        "topics": [
+          4,
+          11,
+          6
+        ],
+        "facets": [
+          9
+        ],
+        "tags": [
+          "TUI",
+          "terminal",
+          "CLI",
+          "SSH",
+          "GUI",
+          "web UI",
+          "GTK",
+          "Qt",
+          "sockpuppet.org"
+        ]
+      },
+      "classificationsUpdatedAt": 1787298381,
+      "aiSummary": {
+        "chinese_title": "别停做 TUI：SSH、tmux、LLM 时代的终端之争",
+        "emoji": "😏",
+        "sarcastic_question": "既然 Claude 能画 GUI，终端协议就该装死吗？"
+      },
+      "detail": {
+        "id": 49384210,
+        "by": "underdeserver",
+        "title": "Stop Making TUIs",
+        "url": "https://sockpuppet.org/blog/2026/08/20/stop-making-tuis/",
+        "score": 130,
+        "detailUpdatedAt": 1787391827,
+        "createdAt": 1787297443,
+        "aiSummaryUpdatedAt": 1787392230,
+        "aisummary": {
+          "chinese_title": "TUI 该停吗？HN 围绕 SSH/tmux、LLM 与 GUI 争论",
+          "discussion_overview": [
+            {
+              "category": "TUI 仍然有实用价值",
+              "summary": "很多评论把 TUI 看成高效工作流，而不是过时的妥协。它们被反复拿来和 SSH、tmux、headless server 一起讨论，因为在远程机器、容器、VM 或只有终端的环境里，TUI 几乎是最轻的交互方式。评论里多次提到纯键盘操作、低资源占用、可随时 attach/detach 会话、以及在低配机器上也能保持 keystroke 级响应，这些都被视为对开发者和运维很实际的优势。对这类用户来说，TUI 的价值不是像 GUI 一样丰富，而是足够好且处处都能跑。",
+              "supportid": [
+                "49384928",
+                "49384948",
+                "49385083",
+                "49385077",
+                "49385304",
+                "49385049",
+                "49397013",
+                "49397353",
+                "49396965",
+                "49384959",
+                "49385091",
+                "49384931",
+                "49398077"
+              ]
+            },
+            {
+              "category": "GUI 也能做到，TUI 不是天然更好",
+              "summary": "反对者认为，很多所谓 TUI 优势并不是 TUI 天生拥有，而是可以被一个设计得好的 GUI 复制。有人指出 GUI 也能完全键盘驱动、支持多窗口、多实例、信息密度高，而且还能提供滚动条、拖拽、文本选择、双击、复制粘贴和可访问性 API。相反，很多终端界面只是被字符网格和历史协议限制住了，结果既没有 CLI 的脚本能力，又丢掉了 GUI 的直觉性。这个阵营把不少 TUI 形容成 poor man's GUI，或者夹在两边的最差折中。",
+              "supportid": [
+                "49397485",
+                "49397303",
+                "49398092",
+                "49385628",
+                "49388892",
+                "49385093",
+                "49385039",
+                "49397493",
+                "49385594",
+                "49397445",
+                "49398020",
+                "49385072",
+                "49397145",
+                "49386009"
+              ]
+            },
+            {
+              "category": "终端协议本身是瓶颈",
+              "summary": "还有一派把问题归结为终端本身的技术债。评论反复提到字符单元、光标移动，以及 CSI/OSC/DEC/xterm 等历史协议，这些机制让现代交互很难优雅实现。有人主张干脆重新设计一套现代 terminal protocol，把 accessibility、区域布局、滚动、选择和完整键盘语义都内建进去；也有人直接说，做到这一步其实已经是在发明一个新的 DOM 或 GUI framework 了。这个争论的核心不是要不要 TUI，而是终端是否还能承载现代 UX。",
+              "supportid": [
+                "49390842",
+                "49397187",
+                "49398007",
+                "49397445"
+              ]
+            },
+            {
+              "category": "文章本身被认为是 clickbait / 自我展示",
+              "summary": "很多评论主要是在吐槽这篇文章本身，而不是 TUI。大家认为标题很煽动，但正文更像是作者展示自己用 LLM 和 vibe coding 做的 macOS/SwiftUI 小项目，论证链条很长却不够清晰。常见批评包括文章太长、结论模糊、例子堆砌、像 marketing 或 rage bait，甚至把个人审美包装成普遍原则。也有人觉得作者最后承认这些只是自己写给自己用的工具，却又试图劝别人别做 TUI，这在逻辑上站不住。",
+              "supportid": [
+                "49385127",
+                "49384892",
+                "49397393",
+                "49397990",
+                "49385115",
+                "49385439",
+                "49398043",
+                "49396983",
+                "49398087",
+                "49385129",
+                "49385199",
+                "49390937"
+              ]
+            },
+            {
+              "category": "LLM / vibe coding 改变了 GUI 成本，但不等于 TUI 过时",
+              "summary": "围绕 LLM 的观点也很分裂。支持者认为，LLM 和 agent 已经把原本最痛的 GUI 开发门槛降下来了，所以如果你以前做 TUI 只是因为 native GUI 太难，现在情况变了。反方则说，agent 同样能通过 PTY 操作 TUI，真正该讨论的是 human-facing 和 agent-facing 的接口怎么分层，而不是简单地把 TUI 视为落后。还有人提到，当系统复杂到一定程度，TUI 会变得太状态化、太拥挤，最后还是会被 headless CLI 或 web view 拆走。",
+              "supportid": [
+                "49398028",
+                "49398034",
+                "49386241",
+                "49385199",
+                "49385924",
+                "49397543",
+                "49397146",
+                "49397349",
+                "49397576",
+                "49385156",
+                "49398087"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "TUI",
+              "explanation": "Text User Interface，基于终端字符网格、主要依赖键盘交互的界面。"
+            },
+            {
+              "term": "CLI",
+              "explanation": "Command Line Interface，靠命令和参数操作，通常比 TUI 更适合脚本化。"
+            },
+            {
+              "term": "SSH",
+              "explanation": "Secure Shell，用于远程登录和执行命令，也是 TUI 常见的远程使用方式。"
+            },
+            {
+              "term": "tmux",
+              "explanation": "终端复用器，可在一个终端里管理多个会话并断开/重连。"
+            },
+            {
+              "term": "PTY",
+              "explanation": "pseudo-terminal，进程看到的“伪终端”接口，许多 TUI/远程工具依赖它。"
+            },
+            {
+              "term": "Ratatui",
+              "explanation": "Rust 生态里常见的 TUI 框架。"
+            },
+            {
+              "term": "Textual",
+              "explanation": "Python 的 TUI 框架，用于构建终端里的交互式应用。"
+            },
+            {
+              "term": "Bubble Tea",
+              "explanation": "Go 生态的 TUI 框架，常用于做终端交互程序。"
+            },
+            {
+              "term": "SwiftUI",
+              "explanation": "Apple 的声明式 UI 框架，常被用来做 macOS/iOS native GUI。"
+            }
+          ],
+          "context": "这场讨论围绕一篇题为 Stop Making TUIs 的文章展开，作者声称如果你过去做 TUI 只是因为 native GUI 太难，那么 LLM 和 vibe coding 现在已经把这条路变简单了。文章里还展示了多个 macOS/SwiftUI 小项目，暗示终端界面不该再被默认当成首选。评论区把争论拉回到更现实的场景：开发工具、远程服务器、容器、headless 环境、以及终端在 SSH 和 tmux 里的可用性。很多人还把讨论和 Ratatui（Rust 的 TUI 框架）、Textual（Python 的 TUI 框架）、Bubble Tea（Go 的 TUI 框架）以及终端协议的历史包袱联系起来，认为这不是单纯的审美之争，而是交互模型、平台碎片化和 LLM 改变开发成本的交叉问题。",
+          "emoji": "🤨",
+          "sarcastic_question": "自己都还在 vibe coding，凭什么劝人停做 TUI？"
+        },
+        "classifications": {
+          "topics": [
+            4,
+            11,
+            6
+          ],
+          "facets": [
+            9
+          ],
+          "tags": [
+            "TUI",
+            "terminal",
+            "CLI",
+            "SSH",
+            "GUI",
+            "web UI",
+            "GTK",
+            "Qt",
+            "sockpuppet.org"
+          ]
+        },
+        "classificationsUpdatedAt": 1787298381,
+        "aiSummary": {
+          "chinese_title": "TUI 该停吗？HN 围绕 SSH/tmux、LLM 与 GUI 争论",
+          "discussion_overview": [
+            {
+              "category": "TUI 仍然有实用价值",
+              "summary": "很多评论把 TUI 看成高效工作流，而不是过时的妥协。它们被反复拿来和 SSH、tmux、headless server 一起讨论，因为在远程机器、容器、VM 或只有终端的环境里，TUI 几乎是最轻的交互方式。评论里多次提到纯键盘操作、低资源占用、可随时 attach/detach 会话、以及在低配机器上也能保持 keystroke 级响应，这些都被视为对开发者和运维很实际的优势。对这类用户来说，TUI 的价值不是像 GUI 一样丰富，而是足够好且处处都能跑。",
+              "supportid": [
+                "49384928",
+                "49384948",
+                "49385083",
+                "49385077",
+                "49385304",
+                "49385049",
+                "49397013",
+                "49397353",
+                "49396965",
+                "49384959",
+                "49385091",
+                "49384931",
+                "49398077"
+              ]
+            },
+            {
+              "category": "GUI 也能做到，TUI 不是天然更好",
+              "summary": "反对者认为，很多所谓 TUI 优势并不是 TUI 天生拥有，而是可以被一个设计得好的 GUI 复制。有人指出 GUI 也能完全键盘驱动、支持多窗口、多实例、信息密度高，而且还能提供滚动条、拖拽、文本选择、双击、复制粘贴和可访问性 API。相反，很多终端界面只是被字符网格和历史协议限制住了，结果既没有 CLI 的脚本能力，又丢掉了 GUI 的直觉性。这个阵营把不少 TUI 形容成 poor man's GUI，或者夹在两边的最差折中。",
+              "supportid": [
+                "49397485",
+                "49397303",
+                "49398092",
+                "49385628",
+                "49388892",
+                "49385093",
+                "49385039",
+                "49397493",
+                "49385594",
+                "49397445",
+                "49398020",
+                "49385072",
+                "49397145",
+                "49386009"
+              ]
+            },
+            {
+              "category": "终端协议本身是瓶颈",
+              "summary": "还有一派把问题归结为终端本身的技术债。评论反复提到字符单元、光标移动，以及 CSI/OSC/DEC/xterm 等历史协议，这些机制让现代交互很难优雅实现。有人主张干脆重新设计一套现代 terminal protocol，把 accessibility、区域布局、滚动、选择和完整键盘语义都内建进去；也有人直接说，做到这一步其实已经是在发明一个新的 DOM 或 GUI framework 了。这个争论的核心不是要不要 TUI，而是终端是否还能承载现代 UX。",
+              "supportid": [
+                "49390842",
+                "49397187",
+                "49398007",
+                "49397445"
+              ]
+            },
+            {
+              "category": "文章本身被认为是 clickbait / 自我展示",
+              "summary": "很多评论主要是在吐槽这篇文章本身，而不是 TUI。大家认为标题很煽动，但正文更像是作者展示自己用 LLM 和 vibe coding 做的 macOS/SwiftUI 小项目，论证链条很长却不够清晰。常见批评包括文章太长、结论模糊、例子堆砌、像 marketing 或 rage bait，甚至把个人审美包装成普遍原则。也有人觉得作者最后承认这些只是自己写给自己用的工具，却又试图劝别人别做 TUI，这在逻辑上站不住。",
+              "supportid": [
+                "49385127",
+                "49384892",
+                "49397393",
+                "49397990",
+                "49385115",
+                "49385439",
+                "49398043",
+                "49396983",
+                "49398087",
+                "49385129",
+                "49385199",
+                "49390937"
+              ]
+            },
+            {
+              "category": "LLM / vibe coding 改变了 GUI 成本，但不等于 TUI 过时",
+              "summary": "围绕 LLM 的观点也很分裂。支持者认为，LLM 和 agent 已经把原本最痛的 GUI 开发门槛降下来了，所以如果你以前做 TUI 只是因为 native GUI 太难，现在情况变了。反方则说，agent 同样能通过 PTY 操作 TUI，真正该讨论的是 human-facing 和 agent-facing 的接口怎么分层，而不是简单地把 TUI 视为落后。还有人提到，当系统复杂到一定程度，TUI 会变得太状态化、太拥挤，最后还是会被 headless CLI 或 web view 拆走。",
+              "supportid": [
+                "49398028",
+                "49398034",
+                "49386241",
+                "49385199",
+                "49385924",
+                "49397543",
+                "49397146",
+                "49397349",
+                "49397576",
+                "49385156",
+                "49398087"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "TUI",
+              "explanation": "Text User Interface，基于终端字符网格、主要依赖键盘交互的界面。"
+            },
+            {
+              "term": "CLI",
+              "explanation": "Command Line Interface，靠命令和参数操作，通常比 TUI 更适合脚本化。"
+            },
+            {
+              "term": "SSH",
+              "explanation": "Secure Shell，用于远程登录和执行命令，也是 TUI 常见的远程使用方式。"
+            },
+            {
+              "term": "tmux",
+              "explanation": "终端复用器，可在一个终端里管理多个会话并断开/重连。"
+            },
+            {
+              "term": "PTY",
+              "explanation": "pseudo-terminal，进程看到的“伪终端”接口，许多 TUI/远程工具依赖它。"
+            },
+            {
+              "term": "Ratatui",
+              "explanation": "Rust 生态里常见的 TUI 框架。"
+            },
+            {
+              "term": "Textual",
+              "explanation": "Python 的 TUI 框架，用于构建终端里的交互式应用。"
+            },
+            {
+              "term": "Bubble Tea",
+              "explanation": "Go 生态的 TUI 框架，常用于做终端交互程序。"
+            },
+            {
+              "term": "SwiftUI",
+              "explanation": "Apple 的声明式 UI 框架，常被用来做 macOS/iOS native GUI。"
+            }
+          ],
+          "context": "这场讨论围绕一篇题为 Stop Making TUIs 的文章展开，作者声称如果你过去做 TUI 只是因为 native GUI 太难，那么 LLM 和 vibe coding 现在已经把这条路变简单了。文章里还展示了多个 macOS/SwiftUI 小项目，暗示终端界面不该再被默认当成首选。评论区把争论拉回到更现实的场景：开发工具、远程服务器、容器、headless 环境、以及终端在 SSH 和 tmux 里的可用性。很多人还把讨论和 Ratatui（Rust 的 TUI 框架）、Textual（Python 的 TUI 框架）、Bubble Tea（Go 的 TUI 框架）以及终端协议的历史包袱联系起来，认为这不是单纯的审美之争，而是交互模型、平台碎片化和 LLM 改变开发成本的交叉问题。",
+          "emoji": "🤨",
+          "sarcastic_question": "自己都还在 vibe coding，凭什么劝人停做 TUI？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n\n在 LLM 能低成本生成合格原生 UI 的今天，作者认为开发者不该再把 TUI 当作默认选择：保留 CLI，把交互界面尽可能搬到原生 GUI。\n\n## 正文\n\n### 从“写应用”到“让电脑替自己干活”\n\n这篇文章的起点，不是一场关于 TUI 的抽象辩论，而是作者最近造的一批 macOS 小工具。它们包括 Markdown 阅读器 MDV.app、SageMath 的计算器式前端、能根据自然语言生成播放列表的 DJ Roomba，以及自动追踪饮食宏量营养素的菜单栏应用。还有读取 TP-Link 温度传感器的 Thermite，和一个能控制 Apple TV、Roku TV、Denon 功放的通用遥控器。共同点是，这些工具大多是 SwiftUI 原生应用，而且作者几乎没有亲手写 UI 代码。说白了，他不是在传统意义上“开发和发布软件”，而是在让自己的电脑按自己的方式工作。过去 Unix 用户会用 shell script、CLI 和管道完成这类个性化自动化；现在，作者认为，同样的事情也可以轻松拥有图形界面。\n\n### LLM 改变的不是能力上限，而是 UI 的成本结构\n\n作者并不声称这些 app 有多么革命性。恰恰相反，MDV 这类 Markdown viewer 的 UI 并没有什么新的交互发明，难点不在产品构思，而在实现细节。传统原生 UI 开发之所以令人望而却步，是因为它重复、琐碎、要求精确，并且依赖大量平台框架知识。想把控件、布局、滚动、菜单、状态管理和系统行为都做对，过去需要多年经验。现在的变化在于，LLM 可以遵循 Apple 的 SwiftUI 规范，稳定地产出“replacement-level”甚至略高于此的界面。作者承认这些设计很可能经不起专业设计师挑剔，但以 App Store 的实际标准看，五年前团队里若有 UI 工程师能交付这种质量，他会非常满意。于是，原生 GUI 从“需要专门团队才能负担的项目”，变成了个人可以随手召唤出来的计算机工具外壳。\n\n### CLI 仍然必要，但 TUI 的历史包袱不该被浪漫化\n\n文章最锋利的主张是：CLI 和 TUI 不能混为一谈。作者认为，CLI 几乎总值得做，因为它适合自动化、脚本调用、组合、远程执行和程序间协作；但 TUI 几乎从不该成为默认选择。两者都诞生于 1970 年代的 teletype 和 dumb terminal 约束，但 CLI 的抽象价值超越了那个时代，TUI 的大量限制却仍与终端绑定。作者特别调侃 Neal Stephenson 1999 年的《In the Beginning Was the Command Line》，认为它把 Unix 命令行塑造成“掌握机器力量的祭司语言”，影响了整个行业对终端的浪漫想象。现实一点说，TUI 的流行并非因为它与机器有神秘的亲和力，而是因为早年的 modem 环境有限，以及 Unix 开发者不想学习 Motif 这类复杂 GUI 工具包。Curses 虽然也不优雅，但五分钟就能上手；相比之下，过去的原生 UI 框架确实把很多人赶回了终端。\n\n### TUI 的问题，是你在手工重建系统早已提供的能力\n\n作者并不是说 Ratatui、Textual、Bubbletea 这些现代 TUI 框架不好。问题在于，即使使用这些优秀框架，开发者依然是在对抗终端环境，只为了渐近逼近原生 UI 已经默认提供的能力。滚动和 scroll targets、drag and drop、文本选择、多个浮动窗口、图像处理，这些在终端中都很别扭。尤其当 TUI 用 in-band signaling 绘制边框或刷新屏幕时，连文本选择都会变复杂。你当然能在一小时内做出 date picker、secure text field、progress bar 或 text editor，但它们通常不如系统原生控件，而且彼此组合时还需要继续补洞。原生 UI 框架则天然拥有这些系统级 widget、交互约定和可组合性。更关键的是，原生应用“看起来和其他原生应用一样”不是缺点，而是优势：同质性意味着用户不必重新学习基础操作。\n\n### 高信息密度和 SSH，不是 TUI 独占的理由\n\nTUI 的拥护者通常会说，终端界面信息密度高、速度快、键盘友好，高手能几次按键完成复杂任务。作者接受这些优点，但指出它们不是 TUI 专属属性。GUI 通常显得稀疏、鼠标导向，并不是因为图形界面不能高密度或键盘化，而是多数 GUI 设计目标不是服务“nerd power user”。Bloomberg Terminal 就是反例：它是图形界面，却同样高密度、高效率，也为专业用户设计。作者反而认为，这正是应该多做 GUI 实验的原因——他想看到一个原生 GUI，吸收 Magit 或 Lazygit 的高效交互，而不是继续把这些体验困在终端里。至于“生产环境只能 SSH，因此必须有 TUI”，他的回答更直接：你大概率不需要在 prod 上运行一个用户界面，而是需要一个 CLI，由本机的 GUI 通过 SSH 去驱动它。Emacs TRAMP 已经展示了这种模式：它隐藏 SSH 连接，把远程文件呈现为接近本地的编辑体验，甚至能与 LSP 和 Magit 协作。\n\n### 可访问性与跨平台是现实顾虑，但不足以扭转默认选择\n\n作者也预判了“TUIs 更 accessible”的说法，但认为这很可能不成立。现代 TUI 的屏幕刷新和“chrome”会让 screen reader 逐行朗读边框与状态更新，用户可能听到一连串“hash mark、dash”，这显然不是好体验。SwiftUI 从设计之初就维护视觉 UI tree 和语义 accessibility tree 两套结构，因此可访问性并不是偏爱 TUI 的理由。作者承认，一些 TUI 框架也在努力处理 accessibility，所以他的结论不是“TUI 无法无障碍”，而是“无障碍不构成 TUI 优于 GUI 的证据”。真正强的反驳是跨平台：做一个 TUI，Linux 用户通常能得到和作者相近的体验；而原生 SwiftUI、GTK 4、WinUI 3 分别面向不同平台，开发者未必有条件逐个测试。可作者最后把问题拉回自己的场景：这些工具本来就不是准备发布给陌生用户的产品，而是为自己打造的个人计算环境。既然如此，为了并不存在的跨平台用户牺牲原生交互能力，是一笔不划算的账。\n\n### 结论：过去只能选 Electron 或 TUI，现在可以重新选择\n\n作者认为，几年前提出“少做 TUI，多做原生 GUI”确实很荒唐。不是因为 TUI 本身多好，而是因为原生 UI 当时真的昂贵到不合理，Electron 的十年流行正说明了这一点。大家容忍 Electron，并不总是喜欢它，而是因为跨平台原生 UI 难以交付。LLM 降低了这部分成本后，局面变了：个人开发者可以让 agent 生成符合平台规范的 SwiftUI 界面，也可以借助已有 Python 库实现复杂协议能力，而不必拘泥于语言边界。作者的 Apple TV remote 就是例子：底层通信虽然依赖别人解决过的 Python 生态问题，但 frontier model 可以把这些能力迁移、重写或包装到 Swift 应用里。文章最终不是要求大家废弃终端，而是要求开发者停止把终端 UI 当作天然正确的答案：CLI 留在该留的位置，真正需要交互时，就开始认真考虑原生 GUI。"
+    },
     {
       "id": 49398304,
       "by": "backlit4034",
@@ -809,341 +1485,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n\nRust Glancer 的核心赌注是放弃 rust-analyzer 的“实时增量分析”，把完整索引冻结并落盘，以部分编辑期准确性和功能完整性为代价，将 Rust LSP 的常驻内存压到合理项目不足 100MB，同时让重启编辑器后可以立即复用索引。\n\n## 正文\n\n### rust-analyzer 的 16GB，把一个“不想造 LSP”的人逼成了 LSP 作者\n\n作者做 Rust 开发约 7 年，也参与过 rustc、clippy 和 rust-analyzer。  \n所以他很清楚，自己要碰的不是一个普通工具，而是编译器前端级别的复杂系统。  \n但他对 rust-analyzer 一直有两个怨念：内存占用高，以及首次索引很重。  \n尤其打开 build scripts 和 proc macros 时，启动编辑器常常意味着一轮高 CPU 的并行索引。  \n作者的工作流更极端：两个显示器上开着两个相同 IDE，工作区里还塞了多个项目。  \n这会让 rust-analyzer 的内存近似变成 `2N`，最近一组项目甚至吃掉了 16GB RAM。  \n于是他最初只想做一个“Rust 版 smart ctags”，给自己一个够用但轻量的替代品。  \n结果，随着功能一点点膨胀，这个 ctags 项目最终变成了 Rust Glancer。\n\n### 真正的分歧不在“少分析”，而在“分析结果放在哪里”\n\n文章先解释了 rust-analyzer 为什么天然吃内存。  \n第一部分是绕不开的：一个 Rust workspace 本来就有大量函数、trait、结构体、关联关系，以及函数体内部的信息需要记录。  \n如果想支持 “find all references” 这类功能，就不能假装这些数据不存在。  \n但第二和第三部分是架构选择：rust-analyzer 用 Salsa 做内存里的增量查询数据库，也用 Rowan 保存可局部失效的语法树。  \nSalsa 的优势是按需计算且自动维护依赖，但它天然绑定内存，不容易把数据迁出。  \nRowan 则避免每次键入都重解析整个文件，不过树状表示可能造成严重内存碎片。  \n说白了，rust-analyzer 为了键入时的即时响应，选择了“尽量把分析状态留在 RAM”的路线。  \nRust Glancer 则反过来问：如果不做增量 LSP，而是只保存一份冻结的完整分析结果，会怎样？\n\n### 把索引落到磁盘，换来低内存和重启即用\n\nRust Glancer 的做法很直接：完整索引 workspace 一次，然后把结果保存到文件系统。  \n后续某个 LSP 请求需要信息时，它只在请求期间加载并反序列化必要数据。  \n这带来两个关键结果：分析数据不必长期驻留内存，已经生成的索引还能跨编辑器重启复用。  \n因此，用户重启 VS Code 后不需要重新索引，服务可以直接利用此前的磁盘结果。  \n代价同样明确：从磁盘加载和反序列化，肯定比直接访问内存里的增量状态慢。  \n为了避免每个按键都触发全量分析，Rust Glancer 会对当前函数体做 shallow analysis，同时复用上一次完整索引。  \n这让 completion 能保持“足够快”，但新 import、struct 或 trait 在保存前不会进入完整索引。  \n作者承认这不是 rust-analyzer 的键入级精确体验，但认为用户习惯后并不会觉得特别别扭。\n\n### 它已经能用，但不是“更好的 rust-analyzer”\n\n经过 4 个月开发，Rust Glancer 还不是完整 LSP，也存在已知 bug 和大量待补功能。  \n不过它已经有完整 indexing pipeline、type inference，以及基于 Chalk 的 trait solver。  \n普通 Rust syntax 大多可用，goto definition、hover、inlay hints、completion 等常见 LSP 操作也已经实现。  \n性能测试显示，在 M4 Max、36GB 的机器上，它的基础索引为 5 秒，完整索引为 8 秒。  \n同一机器上的 rust-analyzer 对应为 6 秒和 13 秒。  \n在 M1、8GB 的 2020 MacBook Pro 上，Rust Glancer 是 6 秒和 9 秒，rust-analyzer 则是 7 秒和 14 秒。  \n作者还展示了使用期间内存始终低于 100MB 的录屏，并将合理项目的目标定为 `<100MB`。  \n因此它的定位很清楚：不是取代 rust-analyzer，而是服务旧机器、低内存环境，以及愿意交换部分体验来换 RAM 的用户。\n\n### 从声明索引到 Chalk，复杂度是被一个 iterator 链条逼出来的\n\n项目一开始进展顺利，作者复用了 rust-analyzer 的 syntax library，先做 item lowering、definition map 和 module structure。  \n随后，他又加入了简单的函数体 lowering、朴素的类型传播和 inlay hints。  \n问题在于，简单类型传播很快不够用，而一旦想支持稍微真实一点的 Rust，复杂度就会突然爆炸。  \n文章用 `vals.iter().copied().map(|v| v * 2).collect()` 举例，这段代码看似普通，却要求支持 slice、closure、Fn traits、trait solving 和 associated type projection。  \n甚至还会碰到不少 nightly 相关能力，因为 `std` 和 sysroot 本身就大量依赖 nightly 机制。  \n作者经历了三个关键台阶：declarative macro expansion、正式的类型推导引擎，以及正式 trait solver。  \n其中 trait solver 最终没有继续堆“impl header 匹配加 std trait 特判”的补丁，而是接入了 Chalk。  \n有意思的是，Chalk 的集成反而比作者此前自己搭出的 hack 层级更简单，只是之后还得解决它的性能问题。\n\n### 真正让这个架构活下来的，是持续测量而不是凭感觉优化\n\n作者最自豪的设计之一，不是某个语义功能，而是一套 profiling stack。  \n这套工具可以测性能，也可以跟踪实际分配对象和 jemalloc 视角下的内存使用。  \n它还能按需采集 profile 数据，将 Rust Glancer 与 rust-analyzer 做对比，并在 CI 中运行 benchmark。  \n这很关键，因为低内存 LSP 的难点不只是“少分配”，还包括索引期峰值、碎片化和真实 workload 下的查询开销。  \n对于 agentic workflow，Rust Glancer 也做了专门处理。  \n作者曾遇到外部 agent 修改代码后 inlay hints 错位的问题，后来通过自定义 file watcher 和一些调整解决了。  \n此外，服务端会降低对编辑器外部变更的优先级，避免 agent 批量改代码时触发频繁重索引。  \n作者大约在 1.5 个月前开始将它作为日常主力，如今认为它已经足以交给更多用户试用。\n\n### LLM 加速了开发，但没有替作者做架构判断\n\nRust Glancer 大量使用了 LLM，但作者明确强调它不是 vibe coded。  \n他会审查每个 PR，并指出 Git 历史中虽然有超过 1 万行 diff 的提交，但这些提交之间往往隔着多天。  \n原因很简单：代码生成可以快，但理解、验证和设计修正依然需要人花时间。  \n作者总结了一个反复出现的循环：先接受看似合理的 LLM 方案，跑起来后觉得哪里不对，再审视设计并发现更深层的缺陷。  \n然后，他会和 LLM 一起重构，有时一次大的修正会持续一周。  \n这不是把思考外包，而是把常规的软件开发反馈循环加速了。  \n接下来项目会继续优化性能和索引期间内存，改善类型推导与 syntax support，并补上 auto-import、补全 trait field 等 code actions。  \nproc macro support 也在考虑中，但作者倾向于避免实际执行不可信代码；至于 build scripts 和通过调用 proc macro 实现的完整兼容，大概率不会成为项目目标。"
-    },
-    {
-      "id": 49384210,
-      "by": "underdeserver",
-      "title": "Stop Making TUIs",
-      "url": "https://sockpuppet.org/blog/2026/08/20/stop-making-tuis/",
-      "score": 130,
-      "detailUpdatedAt": 1787391827,
-      "createdAt": 1787297443,
-      "aiSummaryUpdatedAt": 1787392230,
-      "aisummary": {
-        "chinese_title": "TUI 该停吗？HN 围绕 SSH/tmux、LLM 与 GUI 争论",
-        "emoji": "🤨",
-        "sarcastic_question": "自己都还在 vibe coding，凭什么劝人停做 TUI？"
-      },
-      "classifications": {
-        "topics": [
-          4,
-          11,
-          6
-        ],
-        "facets": [
-          9
-        ],
-        "tags": [
-          "TUI",
-          "terminal",
-          "CLI",
-          "SSH",
-          "GUI",
-          "web UI",
-          "GTK",
-          "Qt",
-          "sockpuppet.org"
-        ]
-      },
-      "classificationsUpdatedAt": 1787298381,
-      "aiSummary": {
-        "chinese_title": "TUI 该停吗？HN 围绕 SSH/tmux、LLM 与 GUI 争论",
-        "emoji": "🤨",
-        "sarcastic_question": "自己都还在 vibe coding，凭什么劝人停做 TUI？"
-      },
-      "detail": {
-        "id": 49384210,
-        "by": "underdeserver",
-        "title": "Stop Making TUIs",
-        "url": "https://sockpuppet.org/blog/2026/08/20/stop-making-tuis/",
-        "score": 130,
-        "detailUpdatedAt": 1787391827,
-        "createdAt": 1787297443,
-        "aiSummaryUpdatedAt": 1787392230,
-        "aisummary": {
-          "chinese_title": "TUI 该停吗？HN 围绕 SSH/tmux、LLM 与 GUI 争论",
-          "discussion_overview": [
-            {
-              "category": "TUI 仍然有实用价值",
-              "summary": "很多评论把 TUI 看成高效工作流，而不是过时的妥协。它们被反复拿来和 SSH、tmux、headless server 一起讨论，因为在远程机器、容器、VM 或只有终端的环境里，TUI 几乎是最轻的交互方式。评论里多次提到纯键盘操作、低资源占用、可随时 attach/detach 会话、以及在低配机器上也能保持 keystroke 级响应，这些都被视为对开发者和运维很实际的优势。对这类用户来说，TUI 的价值不是像 GUI 一样丰富，而是足够好且处处都能跑。",
-              "supportid": [
-                "49384928",
-                "49384948",
-                "49385083",
-                "49385077",
-                "49385304",
-                "49385049",
-                "49397013",
-                "49397353",
-                "49396965",
-                "49384959",
-                "49385091",
-                "49384931",
-                "49398077"
-              ]
-            },
-            {
-              "category": "GUI 也能做到，TUI 不是天然更好",
-              "summary": "反对者认为，很多所谓 TUI 优势并不是 TUI 天生拥有，而是可以被一个设计得好的 GUI 复制。有人指出 GUI 也能完全键盘驱动、支持多窗口、多实例、信息密度高，而且还能提供滚动条、拖拽、文本选择、双击、复制粘贴和可访问性 API。相反，很多终端界面只是被字符网格和历史协议限制住了，结果既没有 CLI 的脚本能力，又丢掉了 GUI 的直觉性。这个阵营把不少 TUI 形容成 poor man's GUI，或者夹在两边的最差折中。",
-              "supportid": [
-                "49397485",
-                "49397303",
-                "49398092",
-                "49385628",
-                "49388892",
-                "49385093",
-                "49385039",
-                "49397493",
-                "49385594",
-                "49397445",
-                "49398020",
-                "49385072",
-                "49397145",
-                "49386009"
-              ]
-            },
-            {
-              "category": "终端协议本身是瓶颈",
-              "summary": "还有一派把问题归结为终端本身的技术债。评论反复提到字符单元、光标移动，以及 CSI/OSC/DEC/xterm 等历史协议，这些机制让现代交互很难优雅实现。有人主张干脆重新设计一套现代 terminal protocol，把 accessibility、区域布局、滚动、选择和完整键盘语义都内建进去；也有人直接说，做到这一步其实已经是在发明一个新的 DOM 或 GUI framework 了。这个争论的核心不是要不要 TUI，而是终端是否还能承载现代 UX。",
-              "supportid": [
-                "49390842",
-                "49397187",
-                "49398007",
-                "49397445"
-              ]
-            },
-            {
-              "category": "文章本身被认为是 clickbait / 自我展示",
-              "summary": "很多评论主要是在吐槽这篇文章本身，而不是 TUI。大家认为标题很煽动，但正文更像是作者展示自己用 LLM 和 vibe coding 做的 macOS/SwiftUI 小项目，论证链条很长却不够清晰。常见批评包括文章太长、结论模糊、例子堆砌、像 marketing 或 rage bait，甚至把个人审美包装成普遍原则。也有人觉得作者最后承认这些只是自己写给自己用的工具，却又试图劝别人别做 TUI，这在逻辑上站不住。",
-              "supportid": [
-                "49385127",
-                "49384892",
-                "49397393",
-                "49397990",
-                "49385115",
-                "49385439",
-                "49398043",
-                "49396983",
-                "49398087",
-                "49385129",
-                "49385199",
-                "49390937"
-              ]
-            },
-            {
-              "category": "LLM / vibe coding 改变了 GUI 成本，但不等于 TUI 过时",
-              "summary": "围绕 LLM 的观点也很分裂。支持者认为，LLM 和 agent 已经把原本最痛的 GUI 开发门槛降下来了，所以如果你以前做 TUI 只是因为 native GUI 太难，现在情况变了。反方则说，agent 同样能通过 PTY 操作 TUI，真正该讨论的是 human-facing 和 agent-facing 的接口怎么分层，而不是简单地把 TUI 视为落后。还有人提到，当系统复杂到一定程度，TUI 会变得太状态化、太拥挤，最后还是会被 headless CLI 或 web view 拆走。",
-              "supportid": [
-                "49398028",
-                "49398034",
-                "49386241",
-                "49385199",
-                "49385924",
-                "49397543",
-                "49397146",
-                "49397349",
-                "49397576",
-                "49385156",
-                "49398087"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "TUI",
-              "explanation": "Text User Interface，基于终端字符网格、主要依赖键盘交互的界面。"
-            },
-            {
-              "term": "CLI",
-              "explanation": "Command Line Interface，靠命令和参数操作，通常比 TUI 更适合脚本化。"
-            },
-            {
-              "term": "SSH",
-              "explanation": "Secure Shell，用于远程登录和执行命令，也是 TUI 常见的远程使用方式。"
-            },
-            {
-              "term": "tmux",
-              "explanation": "终端复用器，可在一个终端里管理多个会话并断开/重连。"
-            },
-            {
-              "term": "PTY",
-              "explanation": "pseudo-terminal，进程看到的“伪终端”接口，许多 TUI/远程工具依赖它。"
-            },
-            {
-              "term": "Ratatui",
-              "explanation": "Rust 生态里常见的 TUI 框架。"
-            },
-            {
-              "term": "Textual",
-              "explanation": "Python 的 TUI 框架，用于构建终端里的交互式应用。"
-            },
-            {
-              "term": "Bubble Tea",
-              "explanation": "Go 生态的 TUI 框架，常用于做终端交互程序。"
-            },
-            {
-              "term": "SwiftUI",
-              "explanation": "Apple 的声明式 UI 框架，常被用来做 macOS/iOS native GUI。"
-            }
-          ],
-          "context": "这场讨论围绕一篇题为 Stop Making TUIs 的文章展开，作者声称如果你过去做 TUI 只是因为 native GUI 太难，那么 LLM 和 vibe coding 现在已经把这条路变简单了。文章里还展示了多个 macOS/SwiftUI 小项目，暗示终端界面不该再被默认当成首选。评论区把争论拉回到更现实的场景：开发工具、远程服务器、容器、headless 环境、以及终端在 SSH 和 tmux 里的可用性。很多人还把讨论和 Ratatui（Rust 的 TUI 框架）、Textual（Python 的 TUI 框架）、Bubble Tea（Go 的 TUI 框架）以及终端协议的历史包袱联系起来，认为这不是单纯的审美之争，而是交互模型、平台碎片化和 LLM 改变开发成本的交叉问题。",
-          "emoji": "🤨",
-          "sarcastic_question": "自己都还在 vibe coding，凭什么劝人停做 TUI？"
-        },
-        "classifications": {
-          "topics": [
-            4,
-            11,
-            6
-          ],
-          "facets": [
-            9
-          ],
-          "tags": [
-            "TUI",
-            "terminal",
-            "CLI",
-            "SSH",
-            "GUI",
-            "web UI",
-            "GTK",
-            "Qt",
-            "sockpuppet.org"
-          ]
-        },
-        "classificationsUpdatedAt": 1787298381,
-        "aiSummary": {
-          "chinese_title": "TUI 该停吗？HN 围绕 SSH/tmux、LLM 与 GUI 争论",
-          "discussion_overview": [
-            {
-              "category": "TUI 仍然有实用价值",
-              "summary": "很多评论把 TUI 看成高效工作流，而不是过时的妥协。它们被反复拿来和 SSH、tmux、headless server 一起讨论，因为在远程机器、容器、VM 或只有终端的环境里，TUI 几乎是最轻的交互方式。评论里多次提到纯键盘操作、低资源占用、可随时 attach/detach 会话、以及在低配机器上也能保持 keystroke 级响应，这些都被视为对开发者和运维很实际的优势。对这类用户来说，TUI 的价值不是像 GUI 一样丰富，而是足够好且处处都能跑。",
-              "supportid": [
-                "49384928",
-                "49384948",
-                "49385083",
-                "49385077",
-                "49385304",
-                "49385049",
-                "49397013",
-                "49397353",
-                "49396965",
-                "49384959",
-                "49385091",
-                "49384931",
-                "49398077"
-              ]
-            },
-            {
-              "category": "GUI 也能做到，TUI 不是天然更好",
-              "summary": "反对者认为，很多所谓 TUI 优势并不是 TUI 天生拥有，而是可以被一个设计得好的 GUI 复制。有人指出 GUI 也能完全键盘驱动、支持多窗口、多实例、信息密度高，而且还能提供滚动条、拖拽、文本选择、双击、复制粘贴和可访问性 API。相反，很多终端界面只是被字符网格和历史协议限制住了，结果既没有 CLI 的脚本能力，又丢掉了 GUI 的直觉性。这个阵营把不少 TUI 形容成 poor man's GUI，或者夹在两边的最差折中。",
-              "supportid": [
-                "49397485",
-                "49397303",
-                "49398092",
-                "49385628",
-                "49388892",
-                "49385093",
-                "49385039",
-                "49397493",
-                "49385594",
-                "49397445",
-                "49398020",
-                "49385072",
-                "49397145",
-                "49386009"
-              ]
-            },
-            {
-              "category": "终端协议本身是瓶颈",
-              "summary": "还有一派把问题归结为终端本身的技术债。评论反复提到字符单元、光标移动，以及 CSI/OSC/DEC/xterm 等历史协议，这些机制让现代交互很难优雅实现。有人主张干脆重新设计一套现代 terminal protocol，把 accessibility、区域布局、滚动、选择和完整键盘语义都内建进去；也有人直接说，做到这一步其实已经是在发明一个新的 DOM 或 GUI framework 了。这个争论的核心不是要不要 TUI，而是终端是否还能承载现代 UX。",
-              "supportid": [
-                "49390842",
-                "49397187",
-                "49398007",
-                "49397445"
-              ]
-            },
-            {
-              "category": "文章本身被认为是 clickbait / 自我展示",
-              "summary": "很多评论主要是在吐槽这篇文章本身，而不是 TUI。大家认为标题很煽动，但正文更像是作者展示自己用 LLM 和 vibe coding 做的 macOS/SwiftUI 小项目，论证链条很长却不够清晰。常见批评包括文章太长、结论模糊、例子堆砌、像 marketing 或 rage bait，甚至把个人审美包装成普遍原则。也有人觉得作者最后承认这些只是自己写给自己用的工具，却又试图劝别人别做 TUI，这在逻辑上站不住。",
-              "supportid": [
-                "49385127",
-                "49384892",
-                "49397393",
-                "49397990",
-                "49385115",
-                "49385439",
-                "49398043",
-                "49396983",
-                "49398087",
-                "49385129",
-                "49385199",
-                "49390937"
-              ]
-            },
-            {
-              "category": "LLM / vibe coding 改变了 GUI 成本，但不等于 TUI 过时",
-              "summary": "围绕 LLM 的观点也很分裂。支持者认为，LLM 和 agent 已经把原本最痛的 GUI 开发门槛降下来了，所以如果你以前做 TUI 只是因为 native GUI 太难，现在情况变了。反方则说，agent 同样能通过 PTY 操作 TUI，真正该讨论的是 human-facing 和 agent-facing 的接口怎么分层，而不是简单地把 TUI 视为落后。还有人提到，当系统复杂到一定程度，TUI 会变得太状态化、太拥挤，最后还是会被 headless CLI 或 web view 拆走。",
-              "supportid": [
-                "49398028",
-                "49398034",
-                "49386241",
-                "49385199",
-                "49385924",
-                "49397543",
-                "49397146",
-                "49397349",
-                "49397576",
-                "49385156",
-                "49398087"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "TUI",
-              "explanation": "Text User Interface，基于终端字符网格、主要依赖键盘交互的界面。"
-            },
-            {
-              "term": "CLI",
-              "explanation": "Command Line Interface，靠命令和参数操作，通常比 TUI 更适合脚本化。"
-            },
-            {
-              "term": "SSH",
-              "explanation": "Secure Shell，用于远程登录和执行命令，也是 TUI 常见的远程使用方式。"
-            },
-            {
-              "term": "tmux",
-              "explanation": "终端复用器，可在一个终端里管理多个会话并断开/重连。"
-            },
-            {
-              "term": "PTY",
-              "explanation": "pseudo-terminal，进程看到的“伪终端”接口，许多 TUI/远程工具依赖它。"
-            },
-            {
-              "term": "Ratatui",
-              "explanation": "Rust 生态里常见的 TUI 框架。"
-            },
-            {
-              "term": "Textual",
-              "explanation": "Python 的 TUI 框架，用于构建终端里的交互式应用。"
-            },
-            {
-              "term": "Bubble Tea",
-              "explanation": "Go 生态的 TUI 框架，常用于做终端交互程序。"
-            },
-            {
-              "term": "SwiftUI",
-              "explanation": "Apple 的声明式 UI 框架，常被用来做 macOS/iOS native GUI。"
-            }
-          ],
-          "context": "这场讨论围绕一篇题为 Stop Making TUIs 的文章展开，作者声称如果你过去做 TUI 只是因为 native GUI 太难，那么 LLM 和 vibe coding 现在已经把这条路变简单了。文章里还展示了多个 macOS/SwiftUI 小项目，暗示终端界面不该再被默认当成首选。评论区把争论拉回到更现实的场景：开发工具、远程服务器、容器、headless 环境、以及终端在 SSH 和 tmux 里的可用性。很多人还把讨论和 Ratatui（Rust 的 TUI 框架）、Textual（Python 的 TUI 框架）、Bubble Tea（Go 的 TUI 框架）以及终端协议的历史包袱联系起来，认为这不是单纯的审美之争，而是交互模型、平台碎片化和 LLM 改变开发成本的交叉问题。",
-          "emoji": "🤨",
-          "sarcastic_question": "自己都还在 vibe coding，凭什么劝人停做 TUI？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n\n在 LLM 能低成本生成合格原生 UI 的今天，作者认为开发者不该再把 TUI 当作默认选择：保留 CLI，把交互界面尽可能搬到原生 GUI。\n\n## 正文\n\n### 从“写应用”到“让电脑替自己干活”\n\n这篇文章的起点，不是一场关于 TUI 的抽象辩论，而是作者最近造的一批 macOS 小工具。它们包括 Markdown 阅读器 MDV.app、SageMath 的计算器式前端、能根据自然语言生成播放列表的 DJ Roomba，以及自动追踪饮食宏量营养素的菜单栏应用。还有读取 TP-Link 温度传感器的 Thermite，和一个能控制 Apple TV、Roku TV、Denon 功放的通用遥控器。共同点是，这些工具大多是 SwiftUI 原生应用，而且作者几乎没有亲手写 UI 代码。说白了，他不是在传统意义上“开发和发布软件”，而是在让自己的电脑按自己的方式工作。过去 Unix 用户会用 shell script、CLI 和管道完成这类个性化自动化；现在，作者认为，同样的事情也可以轻松拥有图形界面。\n\n### LLM 改变的不是能力上限，而是 UI 的成本结构\n\n作者并不声称这些 app 有多么革命性。恰恰相反，MDV 这类 Markdown viewer 的 UI 并没有什么新的交互发明，难点不在产品构思，而在实现细节。传统原生 UI 开发之所以令人望而却步，是因为它重复、琐碎、要求精确，并且依赖大量平台框架知识。想把控件、布局、滚动、菜单、状态管理和系统行为都做对，过去需要多年经验。现在的变化在于，LLM 可以遵循 Apple 的 SwiftUI 规范，稳定地产出“replacement-level”甚至略高于此的界面。作者承认这些设计很可能经不起专业设计师挑剔，但以 App Store 的实际标准看，五年前团队里若有 UI 工程师能交付这种质量，他会非常满意。于是，原生 GUI 从“需要专门团队才能负担的项目”，变成了个人可以随手召唤出来的计算机工具外壳。\n\n### CLI 仍然必要，但 TUI 的历史包袱不该被浪漫化\n\n文章最锋利的主张是：CLI 和 TUI 不能混为一谈。作者认为，CLI 几乎总值得做，因为它适合自动化、脚本调用、组合、远程执行和程序间协作；但 TUI 几乎从不该成为默认选择。两者都诞生于 1970 年代的 teletype 和 dumb terminal 约束，但 CLI 的抽象价值超越了那个时代，TUI 的大量限制却仍与终端绑定。作者特别调侃 Neal Stephenson 1999 年的《In the Beginning Was the Command Line》，认为它把 Unix 命令行塑造成“掌握机器力量的祭司语言”，影响了整个行业对终端的浪漫想象。现实一点说，TUI 的流行并非因为它与机器有神秘的亲和力，而是因为早年的 modem 环境有限，以及 Unix 开发者不想学习 Motif 这类复杂 GUI 工具包。Curses 虽然也不优雅，但五分钟就能上手；相比之下，过去的原生 UI 框架确实把很多人赶回了终端。\n\n### TUI 的问题，是你在手工重建系统早已提供的能力\n\n作者并不是说 Ratatui、Textual、Bubbletea 这些现代 TUI 框架不好。问题在于，即使使用这些优秀框架，开发者依然是在对抗终端环境，只为了渐近逼近原生 UI 已经默认提供的能力。滚动和 scroll targets、drag and drop、文本选择、多个浮动窗口、图像处理，这些在终端中都很别扭。尤其当 TUI 用 in-band signaling 绘制边框或刷新屏幕时，连文本选择都会变复杂。你当然能在一小时内做出 date picker、secure text field、progress bar 或 text editor，但它们通常不如系统原生控件，而且彼此组合时还需要继续补洞。原生 UI 框架则天然拥有这些系统级 widget、交互约定和可组合性。更关键的是，原生应用“看起来和其他原生应用一样”不是缺点，而是优势：同质性意味着用户不必重新学习基础操作。\n\n### 高信息密度和 SSH，不是 TUI 独占的理由\n\nTUI 的拥护者通常会说，终端界面信息密度高、速度快、键盘友好，高手能几次按键完成复杂任务。作者接受这些优点，但指出它们不是 TUI 专属属性。GUI 通常显得稀疏、鼠标导向，并不是因为图形界面不能高密度或键盘化，而是多数 GUI 设计目标不是服务“nerd power user”。Bloomberg Terminal 就是反例：它是图形界面，却同样高密度、高效率，也为专业用户设计。作者反而认为，这正是应该多做 GUI 实验的原因——他想看到一个原生 GUI，吸收 Magit 或 Lazygit 的高效交互，而不是继续把这些体验困在终端里。至于“生产环境只能 SSH，因此必须有 TUI”，他的回答更直接：你大概率不需要在 prod 上运行一个用户界面，而是需要一个 CLI，由本机的 GUI 通过 SSH 去驱动它。Emacs TRAMP 已经展示了这种模式：它隐藏 SSH 连接，把远程文件呈现为接近本地的编辑体验，甚至能与 LSP 和 Magit 协作。\n\n### 可访问性与跨平台是现实顾虑，但不足以扭转默认选择\n\n作者也预判了“TUIs 更 accessible”的说法，但认为这很可能不成立。现代 TUI 的屏幕刷新和“chrome”会让 screen reader 逐行朗读边框与状态更新，用户可能听到一连串“hash mark、dash”，这显然不是好体验。SwiftUI 从设计之初就维护视觉 UI tree 和语义 accessibility tree 两套结构，因此可访问性并不是偏爱 TUI 的理由。作者承认，一些 TUI 框架也在努力处理 accessibility，所以他的结论不是“TUI 无法无障碍”，而是“无障碍不构成 TUI 优于 GUI 的证据”。真正强的反驳是跨平台：做一个 TUI，Linux 用户通常能得到和作者相近的体验；而原生 SwiftUI、GTK 4、WinUI 3 分别面向不同平台，开发者未必有条件逐个测试。可作者最后把问题拉回自己的场景：这些工具本来就不是准备发布给陌生用户的产品，而是为自己打造的个人计算环境。既然如此，为了并不存在的跨平台用户牺牲原生交互能力，是一笔不划算的账。\n\n### 结论：过去只能选 Electron 或 TUI，现在可以重新选择\n\n作者认为，几年前提出“少做 TUI，多做原生 GUI”确实很荒唐。不是因为 TUI 本身多好，而是因为原生 UI 当时真的昂贵到不合理，Electron 的十年流行正说明了这一点。大家容忍 Electron，并不总是喜欢它，而是因为跨平台原生 UI 难以交付。LLM 降低了这部分成本后，局面变了：个人开发者可以让 agent 生成符合平台规范的 SwiftUI 界面，也可以借助已有 Python 库实现复杂协议能力，而不必拘泥于语言边界。作者的 Apple TV remote 就是例子：底层通信虽然依赖别人解决过的 Python 生态问题，但 frontier model 可以把这些能力迁移、重写或包装到 Swift 应用里。文章最终不是要求大家废弃终端，而是要求开发者停止把终端 UI 当作天然正确的答案：CLI 留在该留的位置，真正需要交互时，就开始认真考虑原生 GUI。"
     },
     {
       "id": 49387525,
@@ -14987,389 +15328,6 @@
         }
       },
       "articleSummary": "无法获取正文内容，无法生成摘要。"
-    },
-    {
-      "id": 49374269,
-      "by": "abhisek",
-      "title": "Malicious Rust Crate Arrayref Runs a Build-Time Payload",
-      "url": "https://safedep.io/arrayref-proc-macro1-rust-build-time-malware/",
-      "score": 340,
-      "detailUpdatedAt": 1787264017,
-      "createdAt": 1787233242,
-      "aiSummaryUpdatedAt": 1787264451,
-      "aisummary": {
-        "chinese_title": "恶意 arrayref crate 触发 Rust 构建期供应链争议",
-        "emoji": "😠",
-        "sarcastic_question": "Cargo 还要先替你跑一遍木马吗？"
-      },
-      "classifications": {
-        "topics": [
-          3,
-          4,
-          6
-        ],
-        "facets": [
-          8
-        ],
-        "tags": [
-          "arrayref",
-          "Rust",
-          "supply-chain attack",
-          "proc-macro",
-          "build-time payload",
-          "build.rs",
-          "rust-lang",
-          "rustsec",
-          "crates.io",
-          "cargo-deny"
-        ]
-      },
-      "classificationsUpdatedAt": 1787235700,
-      "aiSummary": {
-        "chinese_title": "恶意 arrayref crate 触发 Rust 构建期供应链争议",
-        "emoji": "😠",
-        "sarcastic_question": "Cargo 还要先替你跑一遍木马吗？"
-      },
-      "detail": {
-        "id": 49374269,
-        "by": "abhisek",
-        "title": "Malicious Rust Crate Arrayref Runs a Build-Time Payload",
-        "url": "https://safedep.io/arrayref-proc-macro1-rust-build-time-malware/",
-        "score": 237,
-        "detailUpdatedAt": 1787244215,
-        "createdAt": 1787233242,
-        "aiSummaryUpdatedAt": 1787244992,
-        "aisummary": {
-          "chinese_title": "Rust crate arrayref 投毒：build.rs 自动执行、仓库删除与 Cargo 沙箱争议",
-          "discussion_overview": [
-            {
-              "category": "下架与公告透明",
-              "summary": "评论里首先争的是事件处理透明度：有人抱怨 GitHub 把仓库直接“像没存在过一样”处理，crates.io 上的坏版本也消失了，却没有明确标成 yanked 或 deleted。另一边有人解释，这次是彻底删除而不是单纯 yanking，因为 yanked 版本仍可能被已有 lockfile 拉取，遇到已投毒包时反而不够安全。争议不在于是否下架，而在于版本页、security 页和 RUSTSEC（Rust 安全公告数据库）是否应同步给出原因、链接和处置状态。还有人拿 GitHub/Google 那种“直接消失”的做法做对比，认为平台不该只留空白。",
-              "supportid": [
-                "49375609",
-                "49376662",
-                "49376501",
-                "49376606",
-                "49376673",
-                "49376268"
-              ]
-            },
-            {
-              "category": "build.rs / proc macro 攻击面",
-              "summary": "这一组评论把焦点放在 Cargo 的默认执行面上：build.rs 和 proc macro 都能在用户审查前运行，甚至 `cargo add`、`rust-analyzer` 也可能先触发它们。有人因此要求 Cargo 默认禁用第三方 build.rs、对新增 build.rs / proc macro 版本强提示，或至少提供一等的 whitelist 机制。`cargo-deny` 之类工具只能审计，不能阻止第一次执行，所以只能算补救。对 proc macro 的态度尤其强硬：它本质上也是编译期任意代码，默认就该在无 IO 的 sandbox 里跑。",
-              "supportid": [
-                "49375101",
-                "49375533",
-                "49375384",
-                "49375602",
-                "49374737",
-                "49375201",
-                "49375435",
-                "49376247"
-              ]
-            },
-            {
-              "category": "build 脚本沙箱可行性争议",
-              "summary": "反对者则强调 build.rs 天生就不是“纯”的：很多包要调用 C compiler toolchain、生成绑定代码、链接外部依赖，任何过严的沙箱都可能把正常构建打坏。有人提议先做一个极小权限默认值，比如只读 `/usr`、可写临时目录、禁止网络，再把更高权限做成显式例外。也有人认为这只是让攻击者少走一步，因为最终产物仍可能被植入后门。还有观点认为，把 sandbox 层级交给用户选择只是把责任转嫁出去，并没有解决依赖自动执行的问题。",
-              "supportid": [
-                "49375702",
-                "49375441",
-                "49375356",
-                "49376717",
-                "49376039",
-                "49375398",
-                "49375475",
-                "49375909"
-              ]
-            },
-            {
-              "category": "最小权限与能力系统",
-              "summary": "讨论很快扩展到更底层的 least privilege：有人提到 bubblewrap/bwrap、seccomp、Landlock、Capsicum、sandbox-execute、microVM，甚至 WASM 和 effect-based language。支持者认为构建和测试默认就该在没有网络、没有文件权限的隔离环境里运行，或者直接用 capability-based（能力权限）语言来表达可用权限。反对者则指出跨平台支持、权限模型和部署复杂度都很现实。于是这既被看作技术问题，也被看作生态 adoption 的问题。",
-              "supportid": [
-                "49375020",
-                "49375446",
-                "49375422",
-                "49375578",
-                "49375822",
-                "49376385",
-                "49375443",
-                "49376080",
-                "49376123",
-                "49375622",
-                "49375354",
-                "49375614",
-                "49376128",
-                "49376509"
-              ]
-            },
-            {
-              "category": "标准库与依赖文化",
-              "summary": "尽管 arrayref 只是四个宏的小 crate，这次恰好成了“微小依赖也能带来大风险”的例子。很多评论把根源归到“thin stdlib + 微型 crate 文化”上，主张把常见非 UI 能力直接放进 Rust 的标准库，或者做少量 blessed crates 来减少 transitive dependencies。反方指出 Rust 的 stdlib 其实已经不小，而且放进 std 以后就很难按新需求修改；与其无限扩标准库，不如靠 vendoring、固定版本或受控仓库。讨论中还拿 Go、Java、.NET 和 Debian 作对比，认为更强的基础库或更统一的发行体系通常会带来更短、更可审计的依赖链。",
-              "supportid": [
-                "49375369",
-                "49376998",
-                "49376908",
-                "49375412",
-                "49375318",
-                "49375526",
-                "49376162",
-                "49375299",
-                "49375011",
-                "49375232",
-                "49375063",
-                "49375017",
-                "49375394",
-                "49375203",
-                "49376445",
-                "49376966",
-                "49376480",
-                "49375414",
-                "49376439",
-                "49376813",
-                "49375246"
-              ]
-            },
-            {
-              "category": "审计、冷却期与默认拒绝",
-              "summary": "另一条主线是“默认策略要更严格”：不少人直言依赖审计是志愿者工作，不能指望人人手工看完所有包。有人希望 crates.io 对新出现的 build.rs / proc macro 版本延迟供给，并像 pnpm 那样提供 install script allowlist、cooldown 或 trust downgrade 保护。评论里频繁提到 `cargo audit`、`cargo-vet`、`cargo-crev`、`cargo-deny`，但也承认这些工具大多还是靠用户主动使用，无法阻止第一次执行。有人主张对关键包做集中审计，或给新包加 `min-publish-age`；也有人说公司可以用 Nexus（企业制品仓库）这类受控仓库，但对普通开源用户来说，审核成本依然很高。",
-              "supportid": [
-                "49373814",
-                "49374856",
-                "49374897",
-                "49375263",
-                "49375109",
-                "49375329",
-                "49375509",
-                "49374664",
-                "49374728",
-                "49375290",
-                "49374726",
-                "49376514",
-                "49375440",
-                "49375631",
-                "49374732",
-                "49375222",
-                "49376553",
-                "49375724"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "build.rs（Cargo 构建脚本）",
-              "explanation": "在编译前执行的脚本，可运行任意代码、生成绑定或探测系统环境。"
-            },
-            {
-              "term": "proc macro（过程宏）",
-              "explanation": "Rust 的编译期代码扩展机制，能在编译时执行逻辑并生成代码。"
-            },
-            {
-              "term": "crates.io（Rust 官方包仓库）",
-              "explanation": "Rust 依赖的集中发布与分发平台。"
-            },
-            {
-              "term": "yank / yanked",
-              "explanation": "从注册表撤回某个版本，阻止新解析选中，但已锁定版本仍可能被下载。"
-            },
-            {
-              "term": "cargo-vet / cargo-crev",
-              "explanation": "用于记录、共享和消费 crate 审核结论的工具。"
-            },
-            {
-              "term": "min-publish-age",
-              "explanation": "对新发布包设置冷却期，延迟其自动进入下载/解析流程。"
-            },
-            {
-              "term": "sandboxing（沙箱隔离）",
-              "explanation": "限制代码的文件、网络和系统调用权限。"
-            },
-            {
-              "term": "capability-based / least privilege（能力权限/最小权限）",
-              "explanation": "只授予完成任务所需的最小权限，减少被攻陷后的破坏面。"
-            }
-          ],
-          "context": "这次讨论围绕 Rust 官方博客披露的 arrayref crate 恶意版本；arrayref 是一个只有四个宏的小 crate，但其构建阶段脚本在依赖被下载时就会执行，所以攻击面出现在编译/安装阶段而不是运行时。Cargo（Rust 的包管理与构建工具）允许 build.rs（构建脚本）和 proc macro（过程宏）在编译期运行代码，因此第三方依赖可以在开发机或 CI 上直接接触密钥、文件系统和网络。事发后，crates.io（Rust 官方包仓库）和 GitHub 上的相关仓库被直接删除，评论里也争论 yanked（撤回版本但仍保留给已锁定依赖）与彻底删除哪种更适合被入侵的包。整个线程顺势延伸到 RUSTSEC（Rust 安全公告数据库）是否应同步告警，以及能否靠 sandboxing（沙箱隔离）、capability-based（能力权限）或更强的标准库来减少第三方 crate。",
-          "emoji": "😬",
-          "sarcastic_question": "都被投毒了还默认跑build.rs吗？"
-        },
-        "classifications": {
-          "topics": [
-            3,
-            4,
-            6
-          ],
-          "facets": [
-            8
-          ],
-          "tags": [
-            "arrayref",
-            "Rust",
-            "supply-chain attack",
-            "proc-macro",
-            "build-time payload",
-            "build.rs",
-            "rust-lang",
-            "rustsec",
-            "crates.io",
-            "cargo-deny"
-          ]
-        },
-        "classificationsUpdatedAt": 1787235700,
-        "aiSummary": {
-          "chinese_title": "Rust crate arrayref 投毒：build.rs 自动执行、仓库删除与 Cargo 沙箱争议",
-          "discussion_overview": [
-            {
-              "category": "下架与公告透明",
-              "summary": "评论里首先争的是事件处理透明度：有人抱怨 GitHub 把仓库直接“像没存在过一样”处理，crates.io 上的坏版本也消失了，却没有明确标成 yanked 或 deleted。另一边有人解释，这次是彻底删除而不是单纯 yanking，因为 yanked 版本仍可能被已有 lockfile 拉取，遇到已投毒包时反而不够安全。争议不在于是否下架，而在于版本页、security 页和 RUSTSEC（Rust 安全公告数据库）是否应同步给出原因、链接和处置状态。还有人拿 GitHub/Google 那种“直接消失”的做法做对比，认为平台不该只留空白。",
-              "supportid": [
-                "49375609",
-                "49376662",
-                "49376501",
-                "49376606",
-                "49376673",
-                "49376268"
-              ]
-            },
-            {
-              "category": "build.rs / proc macro 攻击面",
-              "summary": "这一组评论把焦点放在 Cargo 的默认执行面上：build.rs 和 proc macro 都能在用户审查前运行，甚至 `cargo add`、`rust-analyzer` 也可能先触发它们。有人因此要求 Cargo 默认禁用第三方 build.rs、对新增 build.rs / proc macro 版本强提示，或至少提供一等的 whitelist 机制。`cargo-deny` 之类工具只能审计，不能阻止第一次执行，所以只能算补救。对 proc macro 的态度尤其强硬：它本质上也是编译期任意代码，默认就该在无 IO 的 sandbox 里跑。",
-              "supportid": [
-                "49375101",
-                "49375533",
-                "49375384",
-                "49375602",
-                "49374737",
-                "49375201",
-                "49375435",
-                "49376247"
-              ]
-            },
-            {
-              "category": "build 脚本沙箱可行性争议",
-              "summary": "反对者则强调 build.rs 天生就不是“纯”的：很多包要调用 C compiler toolchain、生成绑定代码、链接外部依赖，任何过严的沙箱都可能把正常构建打坏。有人提议先做一个极小权限默认值，比如只读 `/usr`、可写临时目录、禁止网络，再把更高权限做成显式例外。也有人认为这只是让攻击者少走一步，因为最终产物仍可能被植入后门。还有观点认为，把 sandbox 层级交给用户选择只是把责任转嫁出去，并没有解决依赖自动执行的问题。",
-              "supportid": [
-                "49375702",
-                "49375441",
-                "49375356",
-                "49376717",
-                "49376039",
-                "49375398",
-                "49375475",
-                "49375909"
-              ]
-            },
-            {
-              "category": "最小权限与能力系统",
-              "summary": "讨论很快扩展到更底层的 least privilege：有人提到 bubblewrap/bwrap、seccomp、Landlock、Capsicum、sandbox-execute、microVM，甚至 WASM 和 effect-based language。支持者认为构建和测试默认就该在没有网络、没有文件权限的隔离环境里运行，或者直接用 capability-based（能力权限）语言来表达可用权限。反对者则指出跨平台支持、权限模型和部署复杂度都很现实。于是这既被看作技术问题，也被看作生态 adoption 的问题。",
-              "supportid": [
-                "49375020",
-                "49375446",
-                "49375422",
-                "49375578",
-                "49375822",
-                "49376385",
-                "49375443",
-                "49376080",
-                "49376123",
-                "49375622",
-                "49375354",
-                "49375614",
-                "49376128",
-                "49376509"
-              ]
-            },
-            {
-              "category": "标准库与依赖文化",
-              "summary": "尽管 arrayref 只是四个宏的小 crate，这次恰好成了“微小依赖也能带来大风险”的例子。很多评论把根源归到“thin stdlib + 微型 crate 文化”上，主张把常见非 UI 能力直接放进 Rust 的标准库，或者做少量 blessed crates 来减少 transitive dependencies。反方指出 Rust 的 stdlib 其实已经不小，而且放进 std 以后就很难按新需求修改；与其无限扩标准库，不如靠 vendoring、固定版本或受控仓库。讨论中还拿 Go、Java、.NET 和 Debian 作对比，认为更强的基础库或更统一的发行体系通常会带来更短、更可审计的依赖链。",
-              "supportid": [
-                "49375369",
-                "49376998",
-                "49376908",
-                "49375412",
-                "49375318",
-                "49375526",
-                "49376162",
-                "49375299",
-                "49375011",
-                "49375232",
-                "49375063",
-                "49375017",
-                "49375394",
-                "49375203",
-                "49376445",
-                "49376966",
-                "49376480",
-                "49375414",
-                "49376439",
-                "49376813",
-                "49375246"
-              ]
-            },
-            {
-              "category": "审计、冷却期与默认拒绝",
-              "summary": "另一条主线是“默认策略要更严格”：不少人直言依赖审计是志愿者工作，不能指望人人手工看完所有包。有人希望 crates.io 对新出现的 build.rs / proc macro 版本延迟供给，并像 pnpm 那样提供 install script allowlist、cooldown 或 trust downgrade 保护。评论里频繁提到 `cargo audit`、`cargo-vet`、`cargo-crev`、`cargo-deny`，但也承认这些工具大多还是靠用户主动使用，无法阻止第一次执行。有人主张对关键包做集中审计，或给新包加 `min-publish-age`；也有人说公司可以用 Nexus（企业制品仓库）这类受控仓库，但对普通开源用户来说，审核成本依然很高。",
-              "supportid": [
-                "49373814",
-                "49374856",
-                "49374897",
-                "49375263",
-                "49375109",
-                "49375329",
-                "49375509",
-                "49374664",
-                "49374728",
-                "49375290",
-                "49374726",
-                "49376514",
-                "49375440",
-                "49375631",
-                "49374732",
-                "49375222",
-                "49376553",
-                "49375724"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "build.rs（Cargo 构建脚本）",
-              "explanation": "在编译前执行的脚本，可运行任意代码、生成绑定或探测系统环境。"
-            },
-            {
-              "term": "proc macro（过程宏）",
-              "explanation": "Rust 的编译期代码扩展机制，能在编译时执行逻辑并生成代码。"
-            },
-            {
-              "term": "crates.io（Rust 官方包仓库）",
-              "explanation": "Rust 依赖的集中发布与分发平台。"
-            },
-            {
-              "term": "yank / yanked",
-              "explanation": "从注册表撤回某个版本，阻止新解析选中，但已锁定版本仍可能被下载。"
-            },
-            {
-              "term": "cargo-vet / cargo-crev",
-              "explanation": "用于记录、共享和消费 crate 审核结论的工具。"
-            },
-            {
-              "term": "min-publish-age",
-              "explanation": "对新发布包设置冷却期，延迟其自动进入下载/解析流程。"
-            },
-            {
-              "term": "sandboxing（沙箱隔离）",
-              "explanation": "限制代码的文件、网络和系统调用权限。"
-            },
-            {
-              "term": "capability-based / least privilege（能力权限/最小权限）",
-              "explanation": "只授予完成任务所需的最小权限，减少被攻陷后的破坏面。"
-            }
-          ],
-          "context": "这次讨论围绕 Rust 官方博客披露的 arrayref crate 恶意版本；arrayref 是一个只有四个宏的小 crate，但其构建阶段脚本在依赖被下载时就会执行，所以攻击面出现在编译/安装阶段而不是运行时。Cargo（Rust 的包管理与构建工具）允许 build.rs（构建脚本）和 proc macro（过程宏）在编译期运行代码，因此第三方依赖可以在开发机或 CI 上直接接触密钥、文件系统和网络。事发后，crates.io（Rust 官方包仓库）和 GitHub 上的相关仓库被直接删除，评论里也争论 yanked（撤回版本但仍保留给已锁定依赖）与彻底删除哪种更适合被入侵的包。整个线程顺势延伸到 RUSTSEC（Rust 安全公告数据库）是否应同步告警，以及能否靠 sandboxing（沙箱隔离）、capability-based（能力权限）或更强的标准库来减少第三方 crate。",
-          "emoji": "😬",
-          "sarcastic_question": "都被投毒了还默认跑build.rs吗？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n\n这起 `arrayref` 供应链投毒的关键不在源码，而在一个看似无害的依赖声明：Cargo 一旦编译被投毒版本，就会执行 `proc-macro1` 的恶意 build script，下载并后台运行远程 payload。\n\n## 正文\n\n### 一次普通的 `cargo build`，变成了 payload 执行入口\n\n2026 年 8 月 20 日，Rust 生态里一个很小但极其常用的 crate `arrayref` 出现了被篡改的 0.3.10 版本。它表面上仍是那个提供几个数组宏的轻量库。真正的恶意代码不在 `arrayref` 的 `src/lib.rs`，而藏在它新引入的依赖 `proc-macro1` 里。问题在于，Cargo 会构建所有声明的非 optional dependency。即使 `arrayref` 的源码根本没有调用 `proc-macro1`，这条依赖也足以触发其 build script。说白了，只要项目的依赖解析到了这些恶意版本，单纯执行编译就可能下载并运行攻击者的二阶段程序。事后，crates.io 已移除这些恶意版本，但这并不改变它曾在依赖图中自动传播的事实。\n\n### 攻击者先接管维护者，再把升级路径变成陷阱\n\n被波及的不只是 `arrayref` 0.3.10。维护者 `droundy` 名下的 `internment` 0.8.7 和 `append-only-vec` 0.1.9 也出现了恶意版本。原文认为 `droundy` 的 crates.io 账号很可能已经失陷，因为其 GitHub 账号和相关仓库都已返回 404。攻击者随后做了一件很有针对性的事：yank 掉了 `arrayref` 0.3.5 到 0.3.9 的旧版本。Cargo 遇到 yanked release 会给出“建议升级到未 yank 版本”的警告。于是，开发者顺着正常的升级建议，很容易被推向唯一未 yank 的 0.3.10。这个设计的危险之处在于，它没有利用开发者的疏忽，而是把正常维护动作变成了投毒分发渠道。\n\n### 245 million 下载量，让一个小 crate 进入了庞大依赖图\n\n`arrayref` 并不是边缘包，它累计下载量约为 244,989,384 次。其中，干净的 0.3.9 版本就占了约 1.52 亿次。这个数字不等于实际受害构建次数，但足以说明它在 Rust 依赖图中的覆盖面。它会经由 `tiny-skia`、`sctk-adwaita` 和 `winit` 等包进入下游项目。换句话说，很多使用 `egui`、`eframe` 或 `iced` 的 GUI 项目，可能根本没有直接写过 `arrayref`，却仍会把它拉进构建过程。供应链攻击最麻烦的地方就在这里：风险通常藏在开发者看不到、也不会主动审查的深层 transitive dependency 中。\n\n### 恶意注入只是一行 Manifest，源码本身几乎没有变化\n\n`arrayref` 原本是一个非常简单的 crate，0.3.9 之前没有 build script，也没有 runtime dependency。到了 0.3.10，攻击者保留了原本的宏实现，只在 `Cargo.toml` 加入了这一段：`[dependencies.proc-macro1] version = \"1.0.107\"`。这就是整个注入点，没有必要修改 `array_ref!` 等宏的正常逻辑。`1.0.107` 是 caret version requirement，而攻击者只发布过 1.0.106 和 1.0.107。结果是依赖解析会落到恶意的 1.0.107。这里有个关键细节：Cargo 不关心 `arrayref` 的 Rust 代码是否实际引用该 crate，只要 Manifest 声明了它，就会下载、编译，并执行其 build script。\n\n### `proc-macro1` 伪装成 `proc-macro2`，让构建看上去一切正常\n\n攻击者没有从零写一个可疑的 crate，而是把真实的 `proc-macro2` 源码机械重命名为 `proc-macro1`。它连文档链接、issue 链接都做了替换，例如 `docs.rs/proc-macro1/1.0.107`。因此，从库代码角度看，`proc-macro1` 基本是能工作的 `proc-macro2` 副本。正常构建不会因为 API 缺失而立刻暴露异常，这让恶意行为更隐蔽。发布账号名 `dtolney` 则刻意模仿知名 Rust 开发者 David Tolnay 的真实账号 `dtolnay`。其 metadata 还伪造了作者信息和仓库地址，但对应 GitHub 路径同样是 404。真正不合理的信号藏在 build dependency：一个 token-parsing 库却引入了 `base64`、`rustls` 和 `ureq`，这正好构成了解码、联网和 TLS 通信的完整工具链。\n\n### build script 绕过证书校验，按平台投递不同 payload\n\n恶意逻辑位于 `proc-macro1` 1.0.107 的 `build.rs` 中。攻击者把服务器地址拆成多段 base64 字符串，运行时再拼接，避免源代码中直接出现完整 IOC。解码后，payload 下载地址是 `hxxps://23[.]254[.]165[.]112:9089/`，C2 地址是 `23[.]254[.]165[.]112:443`。它使用自定义 `rustls` verifier，并让所有证书和签名验证无条件成功。也就是说，即使目标是裸 IP 地址上的自签名证书，下载也不会失败。脚本会根据平台选择四个二阶段名称：Linux x86_64 使用 `rust-crate_0.1.0`，Windows x86_64 使用 `_0.2.0`，macOS x86_64 和 aarch64 分别使用 `_0.3.0`、`_0.4.0`。而且这段逻辑位于 build script 的 `main` 开头，没有 feature gate，也没有环境检查，支持的平台每次构建都会执行。\n\n### Unix 写入 `/tmp`，Windows 借 WScript 逃离 Cargo 的控制\n\n在 Linux 和 macOS 上，脚本将下载内容写入 `/tmp/rust-setup`。随后它通过 `chmod +x` 赋予执行权限，并以 C2 地址作为第一个参数启动该程序。标准输入、输出和错误流都被重定向到 null，因此普通构建日志很难留下直接线索。Windows 上的处理更刻意：下载内容被写为 `%TEMP%\\rust-setup.ps1`，再生成 `%TEMP%\\rust-setup-launch.vbs`。VBScript 会通过隐藏窗口启动 `powershell.exe`，并显式使用 `-ExecutionPolicy Bypass`。源码注释直接说明，经过 `wscript.exe` 启动可以逃离 Cargo 的 job object。最后的 `std::mem::forget(child)` 则避免等待 launcher，确保 payload 即使在 `cargo build` 结束后仍能继续运行。\n\n### 这起事件最值得盯住的，不是宏代码，而是构建期行为\n\n原文给出的恶意 artifact SHA256 分别是：`arrayref` 0.3.10 为 `25ad700976873c76af785cb99b33c48db7df8b81f21d1e9e06b3676b9a9373ae`。`proc-macro1` 1.0.107 为 `61198155da51b838772eecf5bfaac6cbc4dcc388dccc56658fc28a8e831b34d4`。`proc-macro1` 1.0.106 也被列为恶意版本，其 SHA256 是 `b5c1b5b0763a8809a644a8f92224653f0aca623a98eecc714d27f74b80fbe436`。排查时，网络侧可关注 `23.254.165.112:9089` 与 `23.254.165.112:443`。文件侧则应检查 Unix 的 `/tmp/rust-setup`，以及 Windows 的 `rust-setup.ps1` 和 `rust-setup-launch.vbs`。这次攻击最终说明了一件很具体的事：在 Rust 供应链里，审查依赖源码还不够，`Cargo.toml` 的新增依赖和 build script 的联网能力，往往才是决定构建是否安全的那条暗线。"
     }
   ]
 }
