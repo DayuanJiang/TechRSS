@@ -2,9 +2,28 @@
   "date": "2026-08-24",
   "total_feeds": 92,
   "success_feeds": 84,
-  "total_articles": 2518,
-  "filtered_articles": 7,
+  "total_articles": 2514,
+  "filtered_articles": 8,
   "articles": [
+    {
+      "title": "Fixing an eMachines EL1200 BIOS bug with Claude",
+      "title_zh": "Claude 修复老主板 8GB 内存 BIOS 死机",
+      "link": "https://www.downtowndougbrown.com/2026/08/fixing-an-emachines-el1200-bios-bug-with-claude/",
+      "pub_date": "2026-08-23T19:28:10.000Z",
+      "summary": "## 一句话总结\n\nClaude Code 在一次“诊断—刷机—变砖—反馈—修复”的闭环中，定位并修复了 eMachines EL1200 BIOS 里一个 8-bit `DIV` 溢出导致的 8 GB 内存 Setup 卡死问题。\n\n## 正文\n\n### 一块官方只支持 4 GB 的主板，偏偏能正常跑 8 GB\n\n故事从一块 2008 年的 eMachines EL1200 主板开始。它官方只支持两条 2 GB DDR2，总计 4 GB，但作者装上两条 4 GB 后，Linux 居然能正常启动，内存测试也全部通过。换句话说，硬件和内存控制器本身并没有拒绝 8 GB。真正奇怪的是，按启动时的 F2 进入 Phoenix Award BIOS Setup，屏幕会黑掉，只剩左上角一个闪烁光标，机器完全卡死。换回两条 2 GB 内存后，Setup 又能正常进入。  \n\n这里的关键线索是：问题并不是“总内存超过 4 GB”这么简单。后来 Claude 进一步指出，即使只插一条 4 GB 内存，BIOS Setup 依然会挂；唯一能正常进入 Setup 的 4 GB 配置，是两条独立的 2 GB DIMM。也就是说，触发条件其实是“单条内存达到 4 GB”，而不是总容量达到 8 GB。这个细节最终直接指向了 BIOS 显示每根 DIMM 容量的代码。\n\n### 换 BIOS、换 AGESA 都没用，因为问题不在内存初始化\n\n作者最初的直觉也很合理：既然机器能启动 Linux，只有 BIOS Setup 出问题，也许是旧版 BIOS 或 AGESA 对大内存支持不好。他找来了不同版本的 BIOS 更新，但没有一个能解决问题。之后他甚至用 `CBROM32`，从另一块主板的 BIOS 中提取并替换了更高版本的 AGESA。这个改动居然没有刷死主板，但对 8 GB 下无法进入 Setup 的问题毫无影响。  \n\n这其实说明了一个重要事实：内存训练、初始化和操作系统启动路径都已经没问题。故障很可能出现在 BIOS 的一个更高层模块中，例如 UI、Setup 页面或字符串格式化代码。只是对于作者来说，要从 1 MB 左右的老式 Award BIOS 镜像中反汇编、追踪模块和理解 16-bit x86 代码，成本实在太高。这个项目因此在 2021 年被搁置了。直到 2026 年，作者决定把这个长期悬案交给 Claude Opus 5 试试。\n\n### Claude 第一次找对了方向，却因为改坏镜像布局把主板刷砖\n\n作者给 Claude 的输入并不复杂：一份 BIOS dump，加上“8 GB 能启动，但按 F2 进入 Setup 会卡死”的现象描述。半个多小时后，Claude 不仅给出了问题分析，还生成了一份修补过的 BIOS 镜像。它还纠正了作者对触发条件的判断，明确指出单条 4 GB DIMM 同样会导致卡死，作者实测后确认无误。这个诊断已经相当接近真相。  \n\n但第一次刷入补丁镜像后，主板彻底变砖：CPU 风扇会转，显示器却没有任何信号。问题不在补丁的逻辑，而在 BIOS 镜像的物理布局。Claude 为了容纳未压缩的 patched section，直接向后挪动了后续内容，导致 `MEMINIT.BIN`、`HT.DLL` 和 `HT32GATE.BIN` 等模块位置发生变化。它没有同步更新指向这些模块的指针，因此固件一上电就无法正常执行。说白了，Claude 已经找到了病因，却在“打包发布”这一步犯了一个很传统的固件工程错误。\n\n### 真正有价值的不是第一次成功，而是 AI 能接住失败继续迭代\n\n作者把“刷砖了”的结果反馈给 Claude 后，6 分钟内它就意识到模块偏移被破坏的问题。接下来 Claude 没有继续硬塞未压缩代码，而是决定重新压缩修改过的模块，确保后续 BIOS 模块保持原位。10 分钟后，它甚至自己写了一个 LH5 compressor，并输出第二版 BIOS 镜像。这里有个巧妙的地方：对于这种旧 BIOS，二进制内容对空间和偏移都很敏感，补丁能否工作不仅取决于逻辑正确性，也取决于镜像布局是否完全兼容。  \n\n作者还要求 Claude 在第二次尝试前做更多自检。Claude 写了一个简单的 Python x86 interpreter，用它执行被修改的例程，确认 8 GB 情况下不再触发崩溃。它还用 BIOS 自己的解压逻辑测试新压缩模块，验证 LH5 输出是否兼容。这个过程并不能替代真机验证，但它建立了一个很关键的反馈闭环：AI 先提出假设和补丁，再用局部模拟缩小风险，最后由人类在真实硬件上完成最终验证。第一次失败没有证明 AI 没用，反而让第二次的工程处理更扎实。\n\n### 救砖过程很硬核，但第二版 BIOS 终于让 F2 正常工作\n\n由于 BIOS ROM 是焊在主板上的 SOIC 芯片，救砖并不只是重新刷一下那么简单。作者的 CH341A programmer 无法直接识别板载 flash chip，而且不断断连，像是主板其他电路正在从编程器侧拉取电流。最终，他用烙铁抬起 flash 芯片的 VCC 引脚，再在下方垫上 Kapton tape，使芯片与主板电源轨隔离。这样 CH341A 才能稳定识别并重刷芯片。  \n\n作者先恢复原始 BIOS 备份，确认主板成功复活，再通过 `flashrom --programmer internal` 刷入 Claude 的第二版镜像。这一次重启后，eMachines 启动画面正常出现。按下 F2 后，Setup 终于可以进入，而且 Standard CMOS Features 页面正确显示了 `DIMM1 4096MB`、`DIMM2 4096MB` 与 `Total Memory 8192MB`。困扰作者 7 年的问题，就这样在第二次 AI 生成的补丁上被解决了。\n\n### 根因并不深奥：4096 ÷ 10 让 8-bit 除法溢出了\n\n最终 bug 位于 `awardext.rom` 的一小段代码里，它负责把每个 DIMM 的容量转换成 BIOS 页面上的文本。把整数转换为十进制字符串，本质上就是不断除以 10，并根据余数从右向左生成数字。问题在于，显示 `DIMM1` 和 `DIMM2` 容量的代码用了 8-bit `DIV` 指令。该指令以 16-bit 的 `AX` 为被除数，但商必须塞进 8-bit 的 `AL`。  \n\n对于 2 GB DIMM，计算 `2048 / 10`，商是 204，能放进 8-bit，因此一切正常。但对于 4 GB DIMM，第一次计算就是 `4096 / 10`，商为 409，超过 8-bit 最大值 255。x86 的 `DIV` 在商无法放入目标寄存器时会触发 `#DE` exception，而这段 BIOS 代码显然没有处理这个异常，于是 Setup 直接挂死。有意思的是，`Total Memory` 一行本来就使用 16-bit 除法，因此即使总内存为 4 GB 或 8 GB，也不会触发同样的问题。Claude 的最终修复，就是把 DIMM1 和 DIMM2 的计算改为等价的 16-bit 除法，并把补丁紧凑地塞回原有例程空间中。\n\n### 这不是“AI 一键修 BIOS”，而是逆向工程门槛被重新定义\n\n作者并没有把这次经历包装成“AI 完美无缺”的故事。第一次镜像确实刷砖了，而且人类必须负责备份、刷写、救砖和最终验收。但真正令人震撼的是，Claude 在很少人工引导的情况下，知道该从哪里找问题，识别出单 DIMM 容量而非总内存才是触发条件，并最终定位到一个老 BIOS 模块中的除法宽度错误。作者认为，如果由自己手工完成，这个低优先级的逆向任务可能要拖上数周，甚至永远不会开始。  \n\n这篇文章真正的 takeaway 并不是“以后可以放心让 AI 刷 BIOS”。恰恰相反，固件修改仍然是高风险操作，第一次失败已经证明了这一点。但 AI 已经能承担过去极其耗时的代码阅读、假设生成、二进制 patch 和验证脚本编写工作。对于那些没人愿意投入数周时间、但又确实存在明确反馈信号的调试和逆向任务，这种“人类提供目标与硬件反馈，Agent 负责分析和迭代”的模式，正在让原本不值得做的项目变得可做。",
+      "source_name": "downtowndougbrown.com",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "Claude Code",
+        "BIOS",
+        "reverse engineering",
+        "x86"
+      ],
+      "rank": 1
+    },
     {
       "title": "What exactly is modified about a modified Bessel function?",
       "title_zh": "改良贝塞尔函数究竟改了什么",
@@ -22,7 +41,7 @@
         "heat equation",
         "radial symmetry"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Why special function terminology is arcane",
@@ -41,7 +60,7 @@
         "Fourier transform",
         "Bessel functions"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Cooper Sharp Proves That American Cheese Can Be Great Cheese",
@@ -60,7 +79,7 @@
         "watermarking",
         "Apple"
       ],
-      "rank": 3
+      "rank": 4
     }
   ]
 }
