@@ -1,6 +1,783 @@
 {
-  "updatedAt": "2026-08-24T15:06:38.625Z",
+  "updatedAt": "2026-08-24T15:33:33.971Z",
   "items": [
+    {
+      "id": 49415271,
+      "by": "setheron",
+      "title": "Executable Is a SQLite Database",
+      "url": "https://fzakaria.com/2026/08/23/your-executable-is-a-sqlite-database",
+      "score": 278,
+      "detailUpdatedAt": 1787584385,
+      "createdAt": 1787562610,
+      "aiSummaryUpdatedAt": 1787585393,
+      "aisummary": {
+        "chinese_title": "用 SQLite 充当可执行文件格式",
+        "emoji": "🤯",
+        "sarcastic_question": "可执行文件也要先变成数据库才算现代化？"
+      },
+      "classifications": {
+        "topics": [
+          6,
+          4
+        ],
+        "facets": [
+          9
+        ],
+        "tags": [
+          "SQLite",
+          "executable format",
+          "database"
+        ]
+      },
+      "classificationsUpdatedAt": 1787566843,
+      "aiSummary": {
+        "chinese_title": "用 SQLite 充当可执行文件格式",
+        "emoji": "🤯",
+        "sarcastic_question": "可执行文件也要先变成数据库才算现代化？"
+      },
+      "detail": {
+        "id": 49415271,
+        "by": "setheron",
+        "title": "Executable Is a SQLite Database",
+        "url": "https://fzakaria.com/2026/08/23/your-executable-is-a-sqlite-database",
+        "score": 173,
+        "detailUpdatedAt": 1787575386,
+        "createdAt": 1787562610,
+        "aiSummaryUpdatedAt": 1787576394,
+        "aisummary": {
+          "chinese_title": "SQLite 可执行文件：单文件应用、动态链接与 mmap 争议",
+          "discussion_overview": [
+            {
+              "category": "单文件应用与可变状态",
+              "summary": "支持者把它想象成一种“活”的单文件应用：程序、依赖、资源和运行时状态都放进同一个 SQLite 文件里。有人进一步设想把 Lisp image、内置虚拟文件系统和可运行时修改的额外表都塞进去，让文件随着使用不断演化。还有人希望加入 BEFORE/AFTER/REPLACE 这类 hook，以及运行时重新链接，使插件或依赖只要改数据库就能在下次调用时生效。整体上，这一派把它看成代码、数据和部署目标合一的激进单文件方案。",
+              "supportid": [
+                "49417700",
+                "49417991",
+                "49418265",
+                "49418905",
+                "49416696"
+              ]
+            },
+            {
+              "category": "mmap、页对齐与内核复杂度",
+              "summary": "真正被反复指出的阻碍，是 copied 和 mapped memory 的取舍：SQLite Blob 往往要复制，不能像原生可执行映像那样直接 mmap。有人考虑通过压缩 section、页对齐 BLOB，或者重写 SQLite binary format，让内容更适合页映射并减少启动拷贝。也有人提议把 SQLite driver 放进 kernel space，把它变成唯一的 filesystem 或 unikernel，但随即有人提醒这会把大量复杂 machinery 塞进内核。另一种观点认为，除非 latency 和 size 的 trade-off 变得更有利，否则这类方案很难胜过传统 loader。",
+              "supportid": [
+                "49418820",
+                "49417656",
+                "49418556",
+                "49418922",
+                "49418284"
+              ]
+            },
+            {
+              "category": "巧思有余，刚需不足",
+              "summary": "不少人认可这个点子很巧，也承认读起来很有趣，但并不觉得自己“必须拥有它”。有人明确表示，这主要对处理 ELF internals 的少数人更有价值，而不是对大多数只是正常使用可执行文件的人更有价值。还有人认为，把所有东西都塞进一个数据库未必比拆分成多个工具更好，真正的关键是能否在性能、体积或互操作性上带来明显收益。整体语气是欣赏黑客精神，但对实际落地保持克制。",
+              "supportid": [
+                "49417327",
+                "49417530",
+                "49418284"
+              ]
+            },
+            {
+              "category": "文件格式统一与历史类比",
+              "summary": "评论把这个想法放进更大的“所有东西都像数据库”的叙事里。有人说 PE/COFF（Windows 的可执行/对象文件格式）和 .NET assembly（.NET 程序集格式）本身就很像关系数据库，Office、Power BI、OpenDocument 等格式也被拿来类比。这个视角认为，过去几十年里很多工具都在重复发明类似数据库的打包方式，而 SQLite 可能把文档、应用、依赖和二进制统一进一个容器。也有人进一步猜测，它甚至可能演化成某种替代 container image 的格式，尤其适合把依赖一起封装时。",
+              "supportid": [
+                "49418820",
+                "49418335",
+                "49417871"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "SQLite",
+              "explanation": "嵌入式关系型数据库文件格式，这里被当作可执行容器和单文件应用载体。"
+            },
+            {
+              "term": "ELF",
+              "explanation": "Unix/Linux 常见的可执行文件和共享库格式，是这场讨论的核心对照物。"
+            },
+            {
+              "term": "mmap",
+              "explanation": "内存映射，把文件页直接映射到进程地址空间；是否能避免拷贝是争论焦点。"
+            },
+            {
+              "term": "dynamic linking",
+              "explanation": "运行时加载共享库并解析符号的机制，决定插件化和依赖替换是否可行。"
+            },
+            {
+              "term": "AppImage",
+              "explanation": "Linux 的单文件应用打包格式，常被拿来类比这种“一个文件装下应用”的思路。"
+            },
+            {
+              "term": "PE/COFF",
+              "explanation": "Windows 的可执行文件/对象文件格式，也被评论者类比成某种“数据库化”的容器。"
+            },
+            {
+              "term": "VFS（Virtual File System）",
+              "explanation": "虚拟文件系统接口，让应用把不同存储后端抽象成统一的文件访问层。"
+            }
+          ],
+          "context": "这篇文章讨论把可执行文件重新设计成基于 SQLite 的单文件容器，试图把代码、依赖、资源和运行时状态都塞进同一个数据库文件。评论里不断拿 ELF（Unix 的可执行/共享库格式）、AppImage（Linux 的单文件应用打包格式）、PE/COFF（Windows 的可执行/对象文件格式）和 .NET assembly（.NET 程序集格式）做类比，说明很多二进制格式本来就带有“数据库化”倾向。争议焦点主要是 dynamic linking、relocations、mmap（内存映射）和 VFS（Virtual File System，虚拟文件系统）：它们决定这种格式是方便打包，还是会在启动速度和内存访问上吃亏。也有人把它联想到 Smalltalk/Lisp 那种代码与状态可一起持久化、可在线修改的系统。",
+          "emoji": "🤔",
+          "sarcastic_question": "难道万物最终都要先塞进SQLite里吗？"
+        },
+        "classifications": {
+          "topics": [
+            6,
+            4
+          ],
+          "facets": [
+            9
+          ],
+          "tags": [
+            "SQLite",
+            "executable format",
+            "database"
+          ]
+        },
+        "classificationsUpdatedAt": 1787566843,
+        "aiSummary": {
+          "chinese_title": "SQLite 可执行文件：单文件应用、动态链接与 mmap 争议",
+          "discussion_overview": [
+            {
+              "category": "单文件应用与可变状态",
+              "summary": "支持者把它想象成一种“活”的单文件应用：程序、依赖、资源和运行时状态都放进同一个 SQLite 文件里。有人进一步设想把 Lisp image、内置虚拟文件系统和可运行时修改的额外表都塞进去，让文件随着使用不断演化。还有人希望加入 BEFORE/AFTER/REPLACE 这类 hook，以及运行时重新链接，使插件或依赖只要改数据库就能在下次调用时生效。整体上，这一派把它看成代码、数据和部署目标合一的激进单文件方案。",
+              "supportid": [
+                "49417700",
+                "49417991",
+                "49418265",
+                "49418905",
+                "49416696"
+              ]
+            },
+            {
+              "category": "mmap、页对齐与内核复杂度",
+              "summary": "真正被反复指出的阻碍，是 copied 和 mapped memory 的取舍：SQLite Blob 往往要复制，不能像原生可执行映像那样直接 mmap。有人考虑通过压缩 section、页对齐 BLOB，或者重写 SQLite binary format，让内容更适合页映射并减少启动拷贝。也有人提议把 SQLite driver 放进 kernel space，把它变成唯一的 filesystem 或 unikernel，但随即有人提醒这会把大量复杂 machinery 塞进内核。另一种观点认为，除非 latency 和 size 的 trade-off 变得更有利，否则这类方案很难胜过传统 loader。",
+              "supportid": [
+                "49418820",
+                "49417656",
+                "49418556",
+                "49418922",
+                "49418284"
+              ]
+            },
+            {
+              "category": "巧思有余，刚需不足",
+              "summary": "不少人认可这个点子很巧，也承认读起来很有趣，但并不觉得自己“必须拥有它”。有人明确表示，这主要对处理 ELF internals 的少数人更有价值，而不是对大多数只是正常使用可执行文件的人更有价值。还有人认为，把所有东西都塞进一个数据库未必比拆分成多个工具更好，真正的关键是能否在性能、体积或互操作性上带来明显收益。整体语气是欣赏黑客精神，但对实际落地保持克制。",
+              "supportid": [
+                "49417327",
+                "49417530",
+                "49418284"
+              ]
+            },
+            {
+              "category": "文件格式统一与历史类比",
+              "summary": "评论把这个想法放进更大的“所有东西都像数据库”的叙事里。有人说 PE/COFF（Windows 的可执行/对象文件格式）和 .NET assembly（.NET 程序集格式）本身就很像关系数据库，Office、Power BI、OpenDocument 等格式也被拿来类比。这个视角认为，过去几十年里很多工具都在重复发明类似数据库的打包方式，而 SQLite 可能把文档、应用、依赖和二进制统一进一个容器。也有人进一步猜测，它甚至可能演化成某种替代 container image 的格式，尤其适合把依赖一起封装时。",
+              "supportid": [
+                "49418820",
+                "49418335",
+                "49417871"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "SQLite",
+              "explanation": "嵌入式关系型数据库文件格式，这里被当作可执行容器和单文件应用载体。"
+            },
+            {
+              "term": "ELF",
+              "explanation": "Unix/Linux 常见的可执行文件和共享库格式，是这场讨论的核心对照物。"
+            },
+            {
+              "term": "mmap",
+              "explanation": "内存映射，把文件页直接映射到进程地址空间；是否能避免拷贝是争论焦点。"
+            },
+            {
+              "term": "dynamic linking",
+              "explanation": "运行时加载共享库并解析符号的机制，决定插件化和依赖替换是否可行。"
+            },
+            {
+              "term": "AppImage",
+              "explanation": "Linux 的单文件应用打包格式，常被拿来类比这种“一个文件装下应用”的思路。"
+            },
+            {
+              "term": "PE/COFF",
+              "explanation": "Windows 的可执行文件/对象文件格式，也被评论者类比成某种“数据库化”的容器。"
+            },
+            {
+              "term": "VFS（Virtual File System）",
+              "explanation": "虚拟文件系统接口，让应用把不同存储后端抽象成统一的文件访问层。"
+            }
+          ],
+          "context": "这篇文章讨论把可执行文件重新设计成基于 SQLite 的单文件容器，试图把代码、依赖、资源和运行时状态都塞进同一个数据库文件。评论里不断拿 ELF（Unix 的可执行/共享库格式）、AppImage（Linux 的单文件应用打包格式）、PE/COFF（Windows 的可执行/对象文件格式）和 .NET assembly（.NET 程序集格式）做类比，说明很多二进制格式本来就带有“数据库化”倾向。争议焦点主要是 dynamic linking、relocations、mmap（内存映射）和 VFS（Virtual File System，虚拟文件系统）：它们决定这种格式是方便打包，还是会在启动速度和内存访问上吃亏。也有人把它联想到 Smalltalk/Lisp 那种代码与状态可一起持久化、可在线修改的系统。",
+          "emoji": "🤔",
+          "sarcastic_question": "难道万物最终都要先塞进SQLite里吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n\nSELF 把 SQLite 从“描述可执行文件的工具”推进到“可直接执行的文件格式”：它用数据库表替代 ELF 的手工结构，让分析、修改、动态链接和依赖闭包都变成 SQL 问题，但代价是启动延迟和内存映射共享能力尚未追平 ELF。\n\n## 正文\n\n### ELF 早就在重复造数据库，只是不肯承认\n\n作者对 ELF 的不满，不是因为它不能运行程序，而是因为它本质上已经在做数据库的工作。`.strtab` 和 `.dynstr` 是字符串驻留，`.hash` 与 `.gnu.hash` 是索引，section header table 类似 `sqlite_schema`，符号名偏移则像手写的 foreign key。甚至 `objcopy --strip-debug`，从抽象上看也无非是一次 `DELETE + VACUUM`。但 ELF 没有把这些能力交给一个真正的数据库，而是把它们压缩成大量紧耦合的偏移、section 和约定。于是，`ld.so`、binutils、LIEF、goblin、`readelf` 等工具，都得反复实现同一套解析和序列化逻辑。说白了，ELF 是一个为磁盘和带宽极其昂贵的时代设计的手工数据库。\n\n### sqlelf 证明了“用 SQL 看 ELF”并不只是玩具\n\n作者此前做过 `sqlelf`，它通过 SQLite virtual tables 将 ELF 暴露为可查询的数据。于是，原本需要 `readelf` 配合 `grep` 的事情，可以写成 `SELECT name FROM elf_symbols`。这个实验的价值不只在于查询体验更舒服，更在于它说明 ELF 结构可以自然映射为关系数据。可 `sqlelf` 仍然只是“用数据库观察 ELF”，并没有改变真正被执行的文件。随着 LLM 带来重新探索激进想法的动力，作者把问题推进了一步：能不能直接用 SQLite 替代 ELF？最终原型叫 SELF，即 Structured Executable & Linkable Format。\n\n### SELF 的最小运行时模型只有元数据和加载段\n\nSELF 不是“一个数据库描述某个 ELF”，而是那个可以 `chmod +x` 后直接运行的 SQLite 文件。最小可执行 SELF 只需要两张表：`self_meta` 保存 ELF header 级别的 key/value 元数据，`segments` 则保存每个 program header 对应的 load image。`segments` 的每一行包括原始 offset、`vaddr`、`filesz`、`memsz`、R/W/X 权限、对齐方式和实际 BLOB 内容。纯 BSS 段甚至不需要存储内容，只要让 `content` 为 `NULL` 即可。也就是说，加载器需要的核心信息，不再散落于 ELF header、program header 和各类 section 中，而是成为可直接查询的行。作者的结论是：把 ELF 运行所需信息表示为 SQLite 数据库，技术上并不复杂。\n\n### 符号、版本和工具元数据都从格式魔法变成普通表\n\n在 SELF 中，符号表被收敛成一张 `symbols` 表，并通过 `(name, version)` 上的 B-tree 索引完成查找。它取代了 ELF 中多张相关 section，以及 `.gnu.hash` 和 `.hash` 这类专用索引结构。符号版本不再需要 `.gnu.version_r`、`.gnu.version_d` 等机制，而只是 `version` 列中的一个值。字符串表也消失了，因为名称直接保存为 SQLite `TEXT`，不再需要 `st_name` 指向 `.strtab` 的偏移。更关键的是，`sections`、`notes`、`dynamic_entries` 这类主要服务于工具链的元数据表，删除后程序依然可以运行。于是 `strip` 不再是危险的 offset surgery，而是一笔事务：`DELETE FROM sections; DELETE FROM notes; VACUUM;`。\n\n### 读 ELF、改 ELF，最后都可以退化成 SQL\n\n这个格式最有意思的地方，是大量熟悉的 ELF 工具都不再需要理解二进制布局。`nm -D --undefined` 对应查询 `imports` view，`readelf -l` 查询 `segments`，`ldd` 则通过 `needed`、`symbols` 和 `segments` 的关联得出依赖库。作者给出的 `hello` 示例里，删除可选表后文件从 57,344 B 缩到 49,152 B，程序仍能输出 `Hello, world!`。对于修改型工具，`patchelf` 也可被理解为一次 `UPDATE`，而不是在紧凑二进制文件里腾挪 section。这里的核心转变是，ELF 的“格式知识”被提升为 schema、table 和 view。缺失的信息也不必扩展底层格式，只需暴露一个新的 view。\n\n### Linux 不需要认识 SELF，binfmt_misc 就能把它跑起来\n\nSELF 利用了 SQLite header 中 offset 68 的 4-byte `application_id` 字段，并将其标记为 `SELF`。因此，一个 SELF 文件同时具有 SQLite 的 magic `SQLite format 3\\0`，以及专属格式标记 `SELF`。Linux 侧不必修改内核，只需通过 `binfmt_misc` 注册这段 magic，并指定解释器 `self-exec`。在 NixOS 中，这是一段 `boot.binfmt.registrations.self` 配置：匹配 SQLite 文件头和 offset 68 的 `SELF`，然后交给解释器执行。`elf2self` 目前负责把现有 ELF 转换为 SELF，适合以 Nix 的 `postFixup` hook 形式逐包试验。真正的 `self-exec` 是一个链接了 `libsqlite3` 的小型 ELF 程序，它读取数据库、映射 segment、做 relocation，再跳转到入口点；它自己必须仍是 ELF，否则会触发解释器递归并得到 `-ELOOP`。\n\n### 动态链接才是数据库格式真正发挥想象力的地方\n\n静态执行并不难，真正复杂的是动态链接，而作者在这里试了两条路线。第一条保留 glibc 的 `ld.so`，借助 `rtld-audit` 的 `la_objsearch` 拦截库查找，并用 SQL 替代 `RUNPATH` 和 `LD_LIBRARY_PATH` 的文件系统搜索。这样，实际加载、relocation、lazy PLT、IFUNC、TLS 和 symbol versioning 仍由成熟的 glibc 完成，但“去哪找库”由数据库回答。演示中，即使磁盘上的 `libgreet.so.1` 已被删除，只要把库扫描进 `system.db`，设置 `SELF_SYSTEM_DB` 和 `LD_AUDIT`，程序仍能加载它。第二条路线更激进：`self-ld` 自己实现动态链接器，用 SQL 查 relocation 对应的符号、对象和 load bias，再直接 patch GOT。它还只是 proof-of-concept，但已经能够映射对象、发布 export、处理 relocation 并跳转执行。\n\n### 代价并不小，但 closure 让格式开始有了 ELF 没有的形态\n\n替代成熟格式，最终要看体积和延迟。SELF 因为携带 SQLite B-tree 开销，初始体积大约是对应 ELF 的两倍；但这些额外空间大多来自调试和工具元数据。删掉可选表后，`coreutils` 的 SELF 为 1,794,048 B，而 ELF 为 1,768,632 B，差距已经在 **1%** 以内。启动性能则更棘手：作者测量从 15 KiB 的 `hello` 到链接 47 个库、42 MiB 的 `gdb`，SELF 有约 **5 ms** 的固定 SQLite 打开和解释器启动开销，还要按映像大小复制数据。因为 segment BLOB 位于 B-tree page 中，无法像普通 ELF 那样直接 `mmap`，两个进程运行同一 SELF 也不能自然共享 text page。\n\n但作者认为，SQLite 的价值不止替换单个可执行文件，而是把整个依赖闭包装进一个数据库。传统 `ldd` 只给出 soname，并不能说明最终到底加载哪个具体文件；Nix 通过 `RUNPATH` 显式解析路径，而 SELF 则把这个关系存成 `needs.resolved_path` foreign key。`self closure` 可以把程序及其全部传递依赖封装进一个 `.db`，让共享库解析从“运行时猜测”变成“数据库中已确定的边”。这时 `ldd` 也不再是扫描外部文件系统，而只是一次 `JOIN`。原文在介绍这个 single-database closure 的后续能力时截断了，但到这里，SELF 的野心已经很清楚：它不是要把 ELF 换成更方便读写的容器，而是试图把可执行文件、链接关系和部署闭包统一成一个可查询、可事务化、可组合的数据系统。"
+    },
+    {
+      "id": 49417394,
+      "by": "giuliomagnifico",
+      "title": "Woman stranded in Spain after UK's eVisa system mistakes her for twin sister",
+      "url": "https://www.theguardian.com/uk-news/2026/aug/24/woman-stranded-spain-uk-evisa-system-mistakes-twin-sister",
+      "score": 137,
+      "detailUpdatedAt": 1787584388,
+      "createdAt": 1787566214,
+      "aiSummaryUpdatedAt": 1787585100,
+      "aisummary": {
+        "chinese_title": "英国 eVisa 误认双胞胎，数字移民系统缺人工兜底",
+        "emoji": "🤦",
+        "sarcastic_question": "连双胞胎都认错，还敢说这系统能上生产环境？"
+      },
+      "classifications": {
+        "topics": [
+          3,
+          6,
+          9
+        ],
+        "facets": [
+          8
+        ],
+        "tags": [
+          "UK eVisa",
+          "twins",
+          "identity verification",
+          "face recognition",
+          "biometrics",
+          "software rollout",
+          "UK",
+          "Spain",
+          "The Guardian"
+        ]
+      },
+      "classificationsUpdatedAt": 1787568669,
+      "aiSummary": {
+        "chinese_title": "英国 eVisa 误认双胞胎，数字移民系统缺人工兜底",
+        "emoji": "🤦",
+        "sarcastic_question": "连双胞胎都认错，还敢说这系统能上生产环境？"
+      },
+      "detail": {
+        "id": 49417394,
+        "by": "giuliomagnifico",
+        "title": "Woman stranded in Spain after UK's eVisa system mistakes her for twin sister",
+        "url": "https://www.theguardian.com/uk-news/2026/aug/24/woman-stranded-spain-uk-evisa-system-mistakes-twin-sister",
+        "score": 137,
+        "detailUpdatedAt": 1787584388,
+        "createdAt": 1787566214,
+        "aiSummaryUpdatedAt": 1787585100,
+        "aisummary": {
+          "chinese_title": "英国 eVisa 误认双胞胎，数字移民系统缺人工兜底",
+          "discussion_overview": [
+            {
+              "category": "人工兜底缺失",
+              "summary": "许多评论认为，这件事暴露的不是单纯的 bug，而是系统没有可用的人工兜底。软件出错本来就不可避免，但高风险场景至少要有能打通的热线、现场主管或授权官员来手动放行。有人举了受伤、毁容、指纹或视网膜失效等例子，强调身份验证系统不能把异常当作不存在。真正的问题是把绝不出错的幻想放在前面，而不是设计能处理剩余极端案例的流程。",
+              "supportid": [
+                "49418298",
+                "49420735",
+                "49419786",
+                "49420895",
+                "49420782",
+                "49420879",
+                "49418472",
+                "49418440",
+                "49418817",
+                "49419564",
+                "49419970",
+                "49420796"
+              ]
+            },
+            {
+              "category": "上线混乱与现场流程",
+              "summary": "另一组评论聚焦在 eVisa 上线时的现场混乱。航空公司和地勤人员没受过充分培训，仍然按旧规则看过期卡片，或者强行要求旅客当场登录网站生成 share code。这个流程默认每个人都有智能手机、稳定 Wi‑Fi 和能顺利访问政府网站的条件，现实里则经常不成立。还有人提到旧的实体 BRP 被取消、规则前后反复、截图和电话协调才能勉强放行，说明问题不只是系统本身，而是整个交付和运营流程。",
+              "supportid": [
+                "49417693",
+                "49417756",
+                "49417963",
+                "49419679",
+                "49419970",
+                "49417734",
+                "49420023",
+                "49419217",
+                "49417950",
+                "49420304",
+                "49418522"
+              ]
+            },
+            {
+              "category": "成功率数字争议",
+              "summary": "对 1000 万次成功使用 eVisa 这类说法，评论区普遍持怀疑态度。有人指出没有总尝试次数和失败分布，这个绝对数字几乎不能说明失败率高低；对个人来说，哪怕 0.001% 的错误率也可能意味着被困在境外。也有人补充说 eVisa 只有最近才在边境强制使用，而这 1000 万次可能大量来自工作、租房、福利或医疗核验，因此不能直接拿来证明边境体验良好。另一边则认为，至少这个数字说明系统并非全面崩溃，只是争议在于它到底够不够好。",
+              "supportid": [
+                "49418060",
+                "49418165",
+                "49418275",
+                "49418489",
+                "49419564",
+                "49418136",
+                "49418443",
+                "49418610",
+                "49419411",
+                "49418509",
+                "49418651",
+                "49418763",
+                "49420357"
+              ]
+            },
+            {
+              "category": "外包与责任链",
+              "summary": "还有人把矛头指向政府 IT 外包和管理文化。评论里提到 eVisa 相关组件可能由 Entrust 和 Accenture 之类的外包或咨询公司参与，问题模式与英国 Post Office scandal 很像：系统出事却没人愿意承担责任。另一些人则把锅更多归到管理层，认为他们压制工程师的判断、按合同规格而不是用户体验做事，甚至为了指标好看就关闭 issue。于是最终交付的是一个谁都不想真正负责的系统。",
+              "supportid": [
+                "49417916",
+                "49418270",
+                "49418896",
+                "49417950",
+                "49420304",
+                "49417703",
+                "49417976",
+                "49418141",
+                "49418408",
+                "49420743",
+                "49417812",
+                "49418567",
+                "49420068"
+              ]
+            },
+            {
+              "category": "双胞胎与生物识别误判",
+              "summary": "标题里的双胞胎识别错误也引发了大量讨论。很多人认为，脸部识别本来就会有 false positive，系统还要处理同名、换护照号、换邮箱等现实情况，不能只靠一个生物特征把人钉死。有人分享自己家里双胞胎在银行 App 里被提示已有同一张脸注册的经历，说明这类误判并不罕见。评论普遍觉得，若系统缺少把两个合法身份区分开的机制，靠 support agent 口头解释这是 twins 根本不够。",
+              "supportid": [
+                "49417580",
+                "49417661",
+                "49417835",
+                "49418009",
+                "49417723",
+                "49417772",
+                "49417690",
+                "49419387",
+                "49418160",
+                "49418585",
+                "49419512",
+                "49420007",
+                "49420334"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "eVisa",
+              "explanation": "英国把移民或居留身份数字化后的在线证明，需要账户和系统核验。"
+            },
+            {
+              "term": "BRP",
+              "explanation": "Biometric Residence Permit，英国过去使用的实体居留卡。"
+            },
+            {
+              "term": "share code",
+              "explanation": "用于让航空公司、雇主或房东在线验证移民身份的临时代码。"
+            },
+            {
+              "term": "biometrics",
+              "explanation": "通过脸、指纹等生物特征识别身份的技术，常用于自动核验。"
+            }
+          ],
+          "context": "这篇报道讲的是英国 Home Office（英国内政部）推进的 eVisa（电子移民身份）系统：原本用来证明在英居留权的实体 BRP（Biometric Residence Permit，生物居留卡）正在被数字化身份替代，出行时往往要靠在线账户或 share code（临时验证码）让航空公司和边检核验。文中这位女子在西班牙准备返英时，系统把她的记录和双胞胎姐妹混淆，导致被拦下并反复电话求助才修正。评论区把这件事放在更大的英国移民数字化背景下讨论，尤其是 Brexit 之后居留身份更复杂、2025 年边境切换到 eVisa only 之后，航空公司、雇主和房东等场景都更依赖在线验证。很多人认为，问题不只是某次数据错误，而是一个高风险制度把人工兜底和现场例外处理拿掉了。",
+          "emoji": "🤦",
+          "sarcastic_question": "连双胞胎都认错，还敢说这系统能上生产环境？"
+        },
+        "classifications": {
+          "topics": [
+            3,
+            6,
+            9
+          ],
+          "facets": [
+            8
+          ],
+          "tags": [
+            "UK eVisa",
+            "twins",
+            "identity verification",
+            "face recognition",
+            "biometrics",
+            "software rollout",
+            "UK",
+            "Spain",
+            "The Guardian"
+          ]
+        },
+        "classificationsUpdatedAt": 1787568669,
+        "aiSummary": {
+          "chinese_title": "英国 eVisa 误认双胞胎，数字移民系统缺人工兜底",
+          "discussion_overview": [
+            {
+              "category": "人工兜底缺失",
+              "summary": "许多评论认为，这件事暴露的不是单纯的 bug，而是系统没有可用的人工兜底。软件出错本来就不可避免，但高风险场景至少要有能打通的热线、现场主管或授权官员来手动放行。有人举了受伤、毁容、指纹或视网膜失效等例子，强调身份验证系统不能把异常当作不存在。真正的问题是把绝不出错的幻想放在前面，而不是设计能处理剩余极端案例的流程。",
+              "supportid": [
+                "49418298",
+                "49420735",
+                "49419786",
+                "49420895",
+                "49420782",
+                "49420879",
+                "49418472",
+                "49418440",
+                "49418817",
+                "49419564",
+                "49419970",
+                "49420796"
+              ]
+            },
+            {
+              "category": "上线混乱与现场流程",
+              "summary": "另一组评论聚焦在 eVisa 上线时的现场混乱。航空公司和地勤人员没受过充分培训，仍然按旧规则看过期卡片，或者强行要求旅客当场登录网站生成 share code。这个流程默认每个人都有智能手机、稳定 Wi‑Fi 和能顺利访问政府网站的条件，现实里则经常不成立。还有人提到旧的实体 BRP 被取消、规则前后反复、截图和电话协调才能勉强放行，说明问题不只是系统本身，而是整个交付和运营流程。",
+              "supportid": [
+                "49417693",
+                "49417756",
+                "49417963",
+                "49419679",
+                "49419970",
+                "49417734",
+                "49420023",
+                "49419217",
+                "49417950",
+                "49420304",
+                "49418522"
+              ]
+            },
+            {
+              "category": "成功率数字争议",
+              "summary": "对 1000 万次成功使用 eVisa 这类说法，评论区普遍持怀疑态度。有人指出没有总尝试次数和失败分布，这个绝对数字几乎不能说明失败率高低；对个人来说，哪怕 0.001% 的错误率也可能意味着被困在境外。也有人补充说 eVisa 只有最近才在边境强制使用，而这 1000 万次可能大量来自工作、租房、福利或医疗核验，因此不能直接拿来证明边境体验良好。另一边则认为，至少这个数字说明系统并非全面崩溃，只是争议在于它到底够不够好。",
+              "supportid": [
+                "49418060",
+                "49418165",
+                "49418275",
+                "49418489",
+                "49419564",
+                "49418136",
+                "49418443",
+                "49418610",
+                "49419411",
+                "49418509",
+                "49418651",
+                "49418763",
+                "49420357"
+              ]
+            },
+            {
+              "category": "外包与责任链",
+              "summary": "还有人把矛头指向政府 IT 外包和管理文化。评论里提到 eVisa 相关组件可能由 Entrust 和 Accenture 之类的外包或咨询公司参与，问题模式与英国 Post Office scandal 很像：系统出事却没人愿意承担责任。另一些人则把锅更多归到管理层，认为他们压制工程师的判断、按合同规格而不是用户体验做事，甚至为了指标好看就关闭 issue。于是最终交付的是一个谁都不想真正负责的系统。",
+              "supportid": [
+                "49417916",
+                "49418270",
+                "49418896",
+                "49417950",
+                "49420304",
+                "49417703",
+                "49417976",
+                "49418141",
+                "49418408",
+                "49420743",
+                "49417812",
+                "49418567",
+                "49420068"
+              ]
+            },
+            {
+              "category": "双胞胎与生物识别误判",
+              "summary": "标题里的双胞胎识别错误也引发了大量讨论。很多人认为，脸部识别本来就会有 false positive，系统还要处理同名、换护照号、换邮箱等现实情况，不能只靠一个生物特征把人钉死。有人分享自己家里双胞胎在银行 App 里被提示已有同一张脸注册的经历，说明这类误判并不罕见。评论普遍觉得，若系统缺少把两个合法身份区分开的机制，靠 support agent 口头解释这是 twins 根本不够。",
+              "supportid": [
+                "49417580",
+                "49417661",
+                "49417835",
+                "49418009",
+                "49417723",
+                "49417772",
+                "49417690",
+                "49419387",
+                "49418160",
+                "49418585",
+                "49419512",
+                "49420007",
+                "49420334"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "eVisa",
+              "explanation": "英国把移民或居留身份数字化后的在线证明，需要账户和系统核验。"
+            },
+            {
+              "term": "BRP",
+              "explanation": "Biometric Residence Permit，英国过去使用的实体居留卡。"
+            },
+            {
+              "term": "share code",
+              "explanation": "用于让航空公司、雇主或房东在线验证移民身份的临时代码。"
+            },
+            {
+              "term": "biometrics",
+              "explanation": "通过脸、指纹等生物特征识别身份的技术，常用于自动核验。"
+            }
+          ],
+          "context": "这篇报道讲的是英国 Home Office（英国内政部）推进的 eVisa（电子移民身份）系统：原本用来证明在英居留权的实体 BRP（Biometric Residence Permit，生物居留卡）正在被数字化身份替代，出行时往往要靠在线账户或 share code（临时验证码）让航空公司和边检核验。文中这位女子在西班牙准备返英时，系统把她的记录和双胞胎姐妹混淆，导致被拦下并反复电话求助才修正。评论区把这件事放在更大的英国移民数字化背景下讨论，尤其是 Brexit 之后居留身份更复杂、2025 年边境切换到 eVisa only 之后，航空公司、雇主和房东等场景都更依赖在线验证。很多人认为，问题不只是某次数据错误，而是一个高风险制度把人工兜底和现场例外处理拿掉了。",
+          "emoji": "🤦",
+          "sarcastic_question": "连双胞胎都认错，还敢说这系统能上生产环境？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n\n英国 eVisa 系统把一名合法定居者与其双胞胎姐妹混淆，导致她在西班牙险些无法返英，也暴露出移民身份全面数字化后“身份匹配失败即失去通行权”的脆弱性。\n\n## 正文\n\n### 一次返程登机，把“已定居”变成了“无法证明”\n\nNidia Webb 已在英国生活八年，并拥有合法的 settled status。按理说，她从西班牙返回英国，只需要通过 eVisa 证明自己的移民身份。  \n但在机场登机口，系统却告诉她：她无法登机回英国。问题不在于她没有身份，而在于 Home Office 的数字系统把她的身份信息关联到了她的同卵双胞胎姐妹身上。  \n说白了，Webb 的 settled status 还在，但系统无法把这份状态正确匹配到“眼前这个人”。对机场和航空公司而言，这种无法匹配就等同于无法验证入境资格。  \n于是，一个本应由数字化减少摩擦的系统，反而把一位合法居民困在了境外。\n\n### 系统知道这是问题，却连修复通知都发错了人\n\nWebb 被告知，这并非偶发的人工误操作，而是 Home Office 系统中“影响部分双胞胎”的已知技术问题。她只能在机场花数小时打电话联系相关人员，试图让系统恢复正确的身份关联。  \nHome Office 工作人员在电话中承诺会修复问题，但后续的确认邮件又被发给了她的姐妹，而不是她本人。这个细节很关键：系统不只是最初混淆了双胞胎身份，连修复后的沟通链路也仍然沿用了错误的身份归属。  \nWebb 直到最终被允许登机时，才知道问题已经解决。她表示，如果没有持续数小时主动追踪和催办，自己可能会在海外滞留多久，根本无从得知。  \n这正是纯数字身份系统的风险所在：用户无法自行看到底层状态是否正确，只能在边境、登机口这类最不能出错的场景里，被动发现问题。\n\n### eVisa 的规模很大，但“少数错误”足以造成严重后果\n\nHome Office 的回应强调，已有超过 1,000 万人成功使用 eVisa 证明移民身份。该部门称，随着英国扩展数字移民系统，会继续关注数据准确性，并确保依赖 eVisa 的用户能够获得相应支持。  \n对于错误案例，Home Office 表示“大多数”可在 24 小时内解决，并称 Webb 遇到的问题已经修复，工作人员会直接与她联系。  \n但这里的张力也很明显：24 小时内解决，对后台工单指标或许不算差；可对已经站在境外机场登机口的人来说，哪怕几小时的身份验证中断，也可能意味着错过航班、额外住宿成本，甚至无法合法返回日常居住地。  \n而 Webb 的经历表明，所谓“已修复”也不一定意味着用户会立即、准确地收到通知。系统的可用性不只是数据最终能改对，还包括用户能否在关键时刻可靠地证明自己是谁。\n\n### 真正令人担心的，是数字迁移中的“失联人群”\n\n这起双胞胎身份混淆事件并不是外界首次质疑 eVisa rollout 的原因。2025 年 7 月，《卫报》曾报道，英国政府在将旧移民文件迁移到数字系统时，可能无法联系到多达 20 万名已合法居英数十年的人。  \n这些人因此面临被卷入类似 Windrush scandal 的风险：他们原本拥有合法身份，却可能因为政府记录、通知或验证机制失效，而无法在现实场景中证明这件事。  \n移民权益组织 the3million 的代理 CEO Monique Hawkins 表示，该组织此前也见过类似 Webb 的案例。她认为，这说明系统仍存在漏洞，人们必须拥有一种“真正稳定”的方式来证明自己的身份状态。  \nHawkins 进一步批评 eVisa 的推出过程过于仓促，并指出他们经常看到旅客被拒绝登机后，航空公司和 Home Office 相互推诿责任，连补偿问题也陷入责任归属之争。  \nWebb 的案例因此不只是一次双胞胎数据匹配 bug，而是一个更现实的问题：当移民身份完全依赖数字系统时，系统出错的代价不再只是页面显示异常，而可能是一个人被直接拦在回家路上。"
+    },
+    {
+      "id": 49409473,
+      "by": "shortcrct",
+      "title": "How Complex Systems Fail",
+      "url": "https://how.complexsystems.fail/",
+      "score": 351,
+      "detailUpdatedAt": 1787584391,
+      "createdAt": 1787500250,
+      "aiSummaryUpdatedAt": 1787584796,
+      "aisummary": {
+        "chinese_title": "复杂系统失效：根因神话、降级常态与组织责任",
+        "emoji": "🤯",
+        "sarcastic_question": "既然是复杂系统，为什么还迷信单一根因？"
+      },
+      "classifications": {
+        "topics": [
+          6
+        ],
+        "facets": [
+          6,
+          9
+        ],
+        "tags": [
+          "complex systems",
+          "failure",
+          "John Gall"
+        ]
+      },
+      "classificationsUpdatedAt": 1787506272,
+      "aiSummary": {
+        "chinese_title": "复杂系统失效：根因神话、降级常态与组织责任",
+        "emoji": "🤯",
+        "sarcastic_question": "既然是复杂系统，为什么还迷信单一根因？"
+      },
+      "detail": {
+        "id": 49409473,
+        "by": "shortcrct",
+        "title": "How Complex Systems Fail",
+        "url": "https://how.complexsystems.fail/",
+        "score": 148,
+        "detailUpdatedAt": 1787514223,
+        "createdAt": 1787500250,
+        "aiSummaryUpdatedAt": 1787515237,
+        "aisummary": {
+          "chinese_title": "复杂系统如何失效：多因链、近失事故与RCA争议",
+          "discussion_overview": [
+            {
+              "category": "复杂系统往往是多因链失效",
+              "summary": "许多评论把这篇文章解读为：复杂系统的事故通常不是单一“根因”，而是技术、组织、人因同时沿着链条出问题。有人指出，系统会长期在退化模式下运转，局部故障和替换是常态，真正致命的是整体流程无法吸收这些波动。Challenger 被反复拿来说明这一点：O-rings、低温、进度压力、管理层对偏差的正常化，以及工程师缺乏决策权，都是同一事故网络的一部分。",
+              "supportid": [
+                "49410581",
+                "49411267",
+                "49411600",
+                "49410913",
+                "49411370"
+              ]
+            },
+            {
+              "category": "RCA 的争议与用途",
+              "summary": "另一派评论并不完全反对 Root Cause Analysis，而是认为它在工程上真正的用途是回答“这次失败是否意味着系统要改”。在这个理解里，所谓 root cause 只是约定俗成的标签，指向最值得改动的地方，而不是哲学上的唯一起点。也有人反过来说，如果你得出“RCA 没意义”，那本身可能就是系统设计或流程设计出了问题。",
+              "supportid": [
+                "49411124",
+                "49411194"
+              ]
+            },
+            {
+              "category": "近失事故、proto-accident 与预警",
+              "summary": "文章里关于 proto-accident、near miss 和 Heinrich's Law 的说法引起共鸣：灾难前往往已经出现大量差一点出事的小事件。评论里有人引用“每次严重事故背后有数百到数千次近失”的经验法则，并把它和事故复盘里常见的事后识别联系起来。也有人追问：如果前兆真的能识别，为什么不能提前设 alert？这反映出预警并不等于可控，复杂系统的动态变化会让信号变得很难用。",
+              "supportid": [
+                "49411370",
+                "49411786"
+              ]
+            },
+            {
+              "category": "Chaos Engineering 与受控故障演练",
+              "summary": "有评论把这篇文章和 Chaos Engineering 直接联系起来：通过主动制造故障，团队能逼迫系统为失败做防御，并测出不同失效模式下的临界点。有人把它类比为物理产品的 accelerated life testing，但也强调安全关键或数据关键系统不能在生产环境里随便“打坏”来试。更现实的做法是先在实验室建模、测试，承认 unknown unknowns 仍然存在。",
+              "supportid": [
+                "49410184",
+                "49410415",
+                "49410880",
+                "49411078"
+              ]
+            },
+            {
+              "category": "经典安全工程读物与必读地位",
+              "summary": "不少评论把这篇文章视为安全工程和系统思维的经典读物，甚至会定期在团队里重读，或在面试后把它发给新成员。评论里还串起了一条相关书单：John Gall 的 Systemantics 和 Gall's law、Dietrich Dörner 的 The Logic of Failure、Charles Perrow 的 Normal Accidents、Meltdown，以及 Nancy Leveson 的安全工程研究。它们共同强调：复杂系统往往不是一次设计出来的，而是在事故、反馈和经验中逐步长出来的。",
+              "supportid": [
+                "49411819",
+                "49409790",
+                "49410013",
+                "49410556",
+                "49411230",
+                "49411093",
+                "49410831",
+                "49410707",
+                "49410615",
+                "49410366"
+              ]
+            },
+            {
+              "category": "软件工程 vs 机械工程的纪律差异",
+              "summary": "还有一组评论把问题归因到软件行业的工程纪律不足，而不只是“复杂”本身。对比机械工程、发动机、bearing、汽车或大 SQL database，有人认为这些领域已经积累了几十年到几百年的边界、余量和失效模式，而软件常常是在不充分理解的情况下重造组件，再把它们拼成更大的系统。另有人感叹 ML systems 的新手甚至连基本操作都不熟，说明人类 expertise 本身也在变动。",
+              "supportid": [
+                "49410913",
+                "49410845",
+                "49411074",
+                "49411355",
+                "49410969"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Root Cause Analysis",
+              "explanation": "事故复盘方法，常被用来找需要改动的系统部分；在复杂系统里容易被误解成单一原因追查。"
+            },
+            {
+              "term": "Chaos Engineering",
+              "explanation": "通过主动注入故障来验证系统韧性、暴露隐藏依赖的做法。"
+            },
+            {
+              "term": "Heinrich's Law",
+              "explanation": "安全领域经验法则：一次严重事故背后通常有大量 near miss 和 at-risk behaviors。"
+            },
+            {
+              "term": "Gall's law / Systemantics",
+              "explanation": "John Gall 的观点：能工作的复杂系统通常由简单可工作的系统逐步演化，而不是一次从零设计成功。"
+            },
+            {
+              "term": "Normal Accidents",
+              "explanation": "Charles Perrow 提出的理论：高复杂度、高耦合系统中的事故往往难以完全避免，只能尽量降低概率和损失。"
+            }
+          ],
+          "context": "这篇文章出自 Richard Cook（芝加哥大学麻醉学家，后来研究 patient safety 和 safety systems research）的经典随笔，核心是说复杂系统在组织、人的操作和技术部件层面会持续局部失效，但靠冗余和人工修补继续运转。它强调 near miss、proto-accident 和退化运行：大事故前往往已经有很多小异常，只是事后才显得清楚。评论把它联系到 National Airport 跑道碰撞、Challenger（挑战者号航天飞机）里的 O-rings、以及 Three Mile Island（美国核电事故）等安全工程案例。讨论也自然延伸到 software engineering 里的 root cause analysis（根因分析）和 Chaos Engineering（混沌工程），因为两者都在试图理解系统如何在看似正常时级联崩坏。",
+          "emoji": "⚠️",
+          "sarcastic_question": "既然早就有那么多征兆，事故还算什么意外？"
+        },
+        "classifications": {
+          "topics": [
+            6
+          ],
+          "facets": [
+            6,
+            9
+          ],
+          "tags": [
+            "complex systems",
+            "failure",
+            "John Gall"
+          ]
+        },
+        "classificationsUpdatedAt": 1787506272,
+        "aiSummary": {
+          "chinese_title": "复杂系统如何失效：多因链、近失事故与RCA争议",
+          "discussion_overview": [
+            {
+              "category": "复杂系统往往是多因链失效",
+              "summary": "许多评论把这篇文章解读为：复杂系统的事故通常不是单一“根因”，而是技术、组织、人因同时沿着链条出问题。有人指出，系统会长期在退化模式下运转，局部故障和替换是常态，真正致命的是整体流程无法吸收这些波动。Challenger 被反复拿来说明这一点：O-rings、低温、进度压力、管理层对偏差的正常化，以及工程师缺乏决策权，都是同一事故网络的一部分。",
+              "supportid": [
+                "49410581",
+                "49411267",
+                "49411600",
+                "49410913",
+                "49411370"
+              ]
+            },
+            {
+              "category": "RCA 的争议与用途",
+              "summary": "另一派评论并不完全反对 Root Cause Analysis，而是认为它在工程上真正的用途是回答“这次失败是否意味着系统要改”。在这个理解里，所谓 root cause 只是约定俗成的标签，指向最值得改动的地方，而不是哲学上的唯一起点。也有人反过来说，如果你得出“RCA 没意义”，那本身可能就是系统设计或流程设计出了问题。",
+              "supportid": [
+                "49411124",
+                "49411194"
+              ]
+            },
+            {
+              "category": "近失事故、proto-accident 与预警",
+              "summary": "文章里关于 proto-accident、near miss 和 Heinrich's Law 的说法引起共鸣：灾难前往往已经出现大量差一点出事的小事件。评论里有人引用“每次严重事故背后有数百到数千次近失”的经验法则，并把它和事故复盘里常见的事后识别联系起来。也有人追问：如果前兆真的能识别，为什么不能提前设 alert？这反映出预警并不等于可控，复杂系统的动态变化会让信号变得很难用。",
+              "supportid": [
+                "49411370",
+                "49411786"
+              ]
+            },
+            {
+              "category": "Chaos Engineering 与受控故障演练",
+              "summary": "有评论把这篇文章和 Chaos Engineering 直接联系起来：通过主动制造故障，团队能逼迫系统为失败做防御，并测出不同失效模式下的临界点。有人把它类比为物理产品的 accelerated life testing，但也强调安全关键或数据关键系统不能在生产环境里随便“打坏”来试。更现实的做法是先在实验室建模、测试，承认 unknown unknowns 仍然存在。",
+              "supportid": [
+                "49410184",
+                "49410415",
+                "49410880",
+                "49411078"
+              ]
+            },
+            {
+              "category": "经典安全工程读物与必读地位",
+              "summary": "不少评论把这篇文章视为安全工程和系统思维的经典读物，甚至会定期在团队里重读，或在面试后把它发给新成员。评论里还串起了一条相关书单：John Gall 的 Systemantics 和 Gall's law、Dietrich Dörner 的 The Logic of Failure、Charles Perrow 的 Normal Accidents、Meltdown，以及 Nancy Leveson 的安全工程研究。它们共同强调：复杂系统往往不是一次设计出来的，而是在事故、反馈和经验中逐步长出来的。",
+              "supportid": [
+                "49411819",
+                "49409790",
+                "49410013",
+                "49410556",
+                "49411230",
+                "49411093",
+                "49410831",
+                "49410707",
+                "49410615",
+                "49410366"
+              ]
+            },
+            {
+              "category": "软件工程 vs 机械工程的纪律差异",
+              "summary": "还有一组评论把问题归因到软件行业的工程纪律不足，而不只是“复杂”本身。对比机械工程、发动机、bearing、汽车或大 SQL database，有人认为这些领域已经积累了几十年到几百年的边界、余量和失效模式，而软件常常是在不充分理解的情况下重造组件，再把它们拼成更大的系统。另有人感叹 ML systems 的新手甚至连基本操作都不熟，说明人类 expertise 本身也在变动。",
+              "supportid": [
+                "49410913",
+                "49410845",
+                "49411074",
+                "49411355",
+                "49410969"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Root Cause Analysis",
+              "explanation": "事故复盘方法，常被用来找需要改动的系统部分；在复杂系统里容易被误解成单一原因追查。"
+            },
+            {
+              "term": "Chaos Engineering",
+              "explanation": "通过主动注入故障来验证系统韧性、暴露隐藏依赖的做法。"
+            },
+            {
+              "term": "Heinrich's Law",
+              "explanation": "安全领域经验法则：一次严重事故背后通常有大量 near miss 和 at-risk behaviors。"
+            },
+            {
+              "term": "Gall's law / Systemantics",
+              "explanation": "John Gall 的观点：能工作的复杂系统通常由简单可工作的系统逐步演化，而不是一次从零设计成功。"
+            },
+            {
+              "term": "Normal Accidents",
+              "explanation": "Charles Perrow 提出的理论：高复杂度、高耦合系统中的事故往往难以完全避免，只能尽量降低概率和损失。"
+            }
+          ],
+          "context": "这篇文章出自 Richard Cook（芝加哥大学麻醉学家，后来研究 patient safety 和 safety systems research）的经典随笔，核心是说复杂系统在组织、人的操作和技术部件层面会持续局部失效，但靠冗余和人工修补继续运转。它强调 near miss、proto-accident 和退化运行：大事故前往往已经有很多小异常，只是事后才显得清楚。评论把它联系到 National Airport 跑道碰撞、Challenger（挑战者号航天飞机）里的 O-rings、以及 Three Mile Island（美国核电事故）等安全工程案例。讨论也自然延伸到 software engineering 里的 root cause analysis（根因分析）和 Chaos Engineering（混沌工程），因为两者都在试图理解系统如何在看似正常时级联崩坏。",
+          "emoji": "⚠️",
+          "sarcastic_question": "既然早就有那么多征兆，事故还算什么意外？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n\n复杂系统并不是靠消灭故障来获得安全，而是依靠一线人员在持续变化、始终带病运行的环境里，不断把系统拉回可接受的边界之内。\n\n## 正文\n\n### 复杂系统天生危险，安全从来不是默认状态\n\n这篇文章先抛出一个不太舒服、但必须接受的前提：交通、医疗、能源这类复杂系统，本质上就是危险的。  \n危险并非来自某个设计失误，而是来自系统所处理的能量、速度、规模和任务本身。  \n你可以降低暴露风险的频率，却无法把风险从系统里彻底拿掉。  \n也正因为危险不可消除，系统才会逐渐堆出一层层防线。  \n这些防线不只是 backup、冗余设备和 safety feature，也包括培训、规程、认证、团队协作和监管制度。  \n正常情况下，它们像多层盾牌一样，把一次次偏离事故轨道的操作拦下来。  \n所以，高可靠系统的常态不是“没有故障”，而是“故障不断出现，但大多数没能穿透防线”。\n\n### 真正的事故不是一个错误，而是多条裂缝碰到一起\n\n既然防线有效，为什么灾难仍然会发生？作者的回答是：灾难需要多个失败同时连成链条。  \n单点故障通常不够，真正的 catastrophe 往往由一系列看似无害的小问题共同构成。  \n每个问题本身都不足以制造事故，但它们的组合恰好打开了一条通往事故的路径。  \n系统中实际出现的失败机会，远远多于最终被看见的重大事故。  \n很多轨迹先被技术安全机制挡住，少数到达运行现场的，也常被操作人员临场化解。  \n问题在于，复杂系统不可能做到零缺陷，它必然带着不断变化的 latent failures 运行。  \n技术升级、组织调整、人员流动，以及修复旧问题的努力，都会改变下一次故障组合的形态。\n\n### 所谓“带病运行”，其实是复杂系统的正常工作方式\n\n作者进一步把话说得更直白：复杂系统经常是在 degraded mode 下运行。  \n换句话说，系统并不是修好了一切才开始工作，而是在多个部件、流程和组织环节都有缺陷时，仍然设法完成任务。  \n它之所以还能跑下去，靠的是冗余，也靠人能够绕开、补偿和修复这些缺陷。  \n事故复盘时，人们几乎总能找到此前的 proto-accidents，也就是那些差一点酿成大祸的时刻。  \n事后看，这些征兆似乎都很明显，于是很容易得出“早该发现”的结论。  \n但作者认为，这种判断往往建立在对系统运行的天真想象上。  \n现实里，技术、组织和人员状态一直在变，组件持续失效、被替换、被绕过，系统只能在动态不完整中维持运转。  \n因此，灾难的可能性永远在附近；它无法被彻底清零，只能被持续管理。\n\n### “根因分析”很诱人，但它常常把事故讲得过于简单\n\n事故发生后，组织最常问的问题是：“root cause 是什么？”  \n但本文认为，这个问题本身就错了。  \n既然事故依赖多个必要但单独不充分的条件，就不存在一个可以被孤立出来的唯一原因。  \n事故不是某个按钮、某个人或某条规则单独造成的，而是这些因素在特定时刻发生了连接。  \n执着于 root cause，更多是在满足社会和文化上的归责需求：我们希望找到一个局部、明确、可以责怪的对象。  \n同样的问题也出现在对人的复盘里。知道结果之后，调查者会觉得当时的信号理应更显著，操作人员“应该知道”它会导致事故。  \n这就是 hindsight bias：结果知识污染了我们重建当时视角的能力，而它恰恰是事故调查中最顽固的障碍之一。\n\n### 一线人员不是事故链末端的“人因”，而是系统的实时控制器\n\n文章最重要的翻转，是重新定义 human operator 的角色。  \n一线人员一边要完成生产任务，一边也在持续防止系统滑向事故。  \n平时系统没有出事，外部观察者只看见他们在“生产”；出了事故，又只看见他们本该“防御失败”。  \n但对操作人员而言，这两个角色从来是同时存在的。  \n他们每一个动作都是一次 gamble，因为行动发生在不确定的结果之下，而不是在全知全能的条件下。  \n事后看失败的赌注，人们会说那是错误；但成功的运行同样来自赌注，只是它们没有进入事故报告。  \n更麻烦的是，组织常常故意模糊效率、成本、产出目标与可接受风险之间的关系。  \n最终，这些模糊的矛盾都被推到 sharp end，由现场人员用具体行动替组织做出取舍。\n\n### 人在不断“创造安全”，而不是机械执行安全\n\n面对持续变化的风险，一线人员和基层管理者不是被动遵守流程，而是在实时调整系统。  \n他们会重组工作方式，减少脆弱环节暴露；会把稀缺资源集中到预计高负荷的位置；也会预留撤退和恢复路径。  \n更成熟的做法，是尽早发现系统性能变化，然后通过降载等方式实现 graceful cutback，而不是等到失控才紧急处置。  \n这也是为什么人的 expertise 如此关键：复杂系统需要的不是静态知识，而是随技术变化、人员更替和任务压力不断演化的能力。  \n专家资源本身也有矛盾，一方面必须投入最困难的当下任务，另一方面又必须培养未来能接手的人。  \n说白了，安全不是某个安全部门、某台设备或某份制度的属性，而是整个系统涌现出来的动态特征。  \n它不能像原材料一样被采购、制造或储存，只能由人在每一次正常运行中持续生产出来。\n\n### 改进安全不能只堵住上一次事故，而要理解系统的边界\n\n最后，文章警告了一个常见误区：针对“human error”设计的事后补救，通常只是在事故链末端增加障碍。  \n这类措施未必能显著降低下一次事故概率，因为那次事故所依赖的 latent failure 组合本来就很难再次原样出现。  \n更糟的是，新增控制和限制有时会让系统更复杂、耦合更紧，反而增加潜在故障的数量。  \n新技术也是类似的双刃剑：它可能消除高频、低后果的问题，却引入低频、高后果的新型灾难路径。  \n由于这类事故罕见，而且其间往往已经发生多轮技术和组织变更，人们很难在事前看清风险，也很难在事后准确归因。  \n因此，真正可靠的系统不能只追求“从不失败”，而要让操作人员理解 edge of the envelope。  \n也就是系统何时开始退化、何时变得难以预测、何时不再容易恢复。  \n只有让人持续接触、识别并校准对失败的理解，知道自己的行动是在把系统推向边界还是拉离边界，failure-free operation 才有可能成为现实。"
+    },
     {
       "id": 49413561,
       "by": "pantelisk",
@@ -1075,223 +1852,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n\n这篇 The Midas Project 的调查认为，a16z 一边重金押注利用 AI 进行欺骗、规避规则和操纵用户的公司，一边又试图塑造更宽松的 AI 监管环境，形成了“投资风险，再改写规则”的利益闭环。\n\n## 正文\n\n### a16z 想参与制定规则，但报道质疑它已在从漏洞中获利\n\n文章的切入点不是某一家创业公司，而是 Marc Andreessen 与 a16z 的双重角色。Marc Andreessen 公开表示希望影响美国 AI 政策，而 a16z 既是顶级 VC，也在 AI 创业投资中占据重要位置。报道认为，公众正越来越希望约束大型科技公司和 AI 风险，而 a16z 却在投入数千万美元影响政策方向。文中列举的动作包括：参与发起一个规模 1 亿美元的 super PAC、前合伙人进入政府关键职位，以及推动一项试图削弱州级 AI 法律的行政命令。说白了，作者质疑的是：一家投资组合中已有大量争议产品的机构，是否正在争取由自己定义什么该被监管、什么不该被监管。a16z 没有回应这份报告的置评请求。\n\n### 这不是完整投资组合，但作者试图证明一条重复出现的模式\n\n报道声称审视了 a16z 最臭名昭著的 18 项投资，但当前提供的正文主要展开了其中的 Doublespeed 与 Cluely AI。作者的判断并不是说所有 a16z 被投企业都有问题，而是这些案例共同显示了某种投资边界。它们涉及批量伪造社交媒体身份、鼓励考试和求职作弊、AI companion 的安全风险、deepfake 色情内容、赌博平台，以及涉嫌欺诈的 fintech 公司。文章的逻辑是，许多公司并非无意踩线，而是明知规则存在，仍主动违反规则或利用消费者保护的空白。于是，宽松监管不只是抽象的政策立场，而可能直接改善这些商业模式的盈利空间。后文用两个案例，具体展示这种“把规避规则当产品能力”的方式。\n\n### Doublespeed 卖的不是 AI 营销，而是让机器看起来像真人\n\nDoublespeed 是 a16z 旗下 Speedrun 项目在 2025 年 10 月投资 100 万美元的公司。它对外出售的是一套“phone farm”能力：用大量真实手机创建和运营虚假社交账号，再让这些账号伪装成真人发布 AI 生成的营销内容。创始人 Zuhair Lakhani 曾把它称为“美国唯一有 VC 支持的 bot farm”，还直接用“Welcome to the dead internet”宣传。其网站明确称，系统会模仿真实用户行为，让内容“在算法面前显得像人类制作”。这也是它使用真实手机而非单纯批量注册账号的原因：TikTok 等平台本就禁止并会检测大规模虚假账号。账号在发布营销内容前，会搜索关键词、刷“For You”页面，并由 AI 分析截图来决定转发、评论还是划走。\n\n### 真正危险的地方，是它把脆弱用户变成了精准转化漏斗\n\n报道认为，Doublespeed 的问题不止是制造假内容，而是用这些伪装账号触达容易受影响的人群。Lakhani 在播客中提到，一个客户正瞄准老年人市场，并称这是很适合 AI 内容切入的领域。文章同时引用 Pew Research 和 AP 的研究指出，老年人较少听说 AI，也更容易相信 AI 生成的错误信息。创始人还谈到自己此前制作面向老年人的补剂营销内容，称这种业务佣金很高，并承认一些补剂宣传“应该有点违法”。但在 2025 年 12 月的后端泄露事件中，研究者看到的正是大量未明确披露的商品推广：虚构 UCLA 学生身份的 AI 女性推广草本补剂，或让 AI 女性反复躺在病床上讲述病痛，最后销售泡沫轴。创始人曾展示，AI 账号获得私信权限后，130 条私信中有 15 条带来了转化；这意味着系统已不只是内容农场，也在主动进行伪装式销售。\n\n### 平台规则和 FTC 披露要求，在这里都被当成了待绕过的障碍\n\n泄露数据表明，Doublespeed 运营了超过 1,100 台手机和 400 多个 TikTok 账号。报道称，其中多数账号推广产品时没有说明内容是付费广告，也没有清晰披露 AI 生成身份。按文中引用的规则，这可能同时违反 TikTok 对逼真 AI 内容的标注要求，以及 FTC 对 influencer 与品牌之间“material connection”的披露要求。404 Media 向 TikTok 举报后，平台表示已给部分内容增加 AI 标签。可 The Midas Project 的后续调查发现，虽然 `chloedav1s_` 等账号已有标签，`lilyw4tson`、`mia.garc1a` 等相近账号和近似内容仍未标记，评论者大多仍把它们当真人。文章借此强调：即使平台事后修补，批量化、自动化的欺骗系统仍能比审核机制更快地扩散。\n\n### Cluely 把“作弊”做成品牌，并把争议本身当增长策略\n\n第二个重点案例是 Cluely AI，a16z 在 2025 年 6 月领投其 1,500 万美元 Series A。Cluely 最初的 manifesto 毫不含糊，宣称“想在一切事情上作弊”，包括销售电话、会议和谈判。其 CEO Roy Lee 也承认，自己在 Columbia 就读期间几乎每份作业都使用 AI，估计 ChatGPT 写了自己提交论文的 80%。他随后做出 Interview Coder，一种在技术面试中后台运行、实时向用户提供 AI 解答的工具，并录制自己用它通过 Amazon 面试的过程。Amazon 向 Columbia 举报后，学校以“协助学术不端”为由对他作出 probation 处分。更关键的是，Lee 并不把这种争议当作副作用，而是公开表示，即使自己在网上说“极其疯狂的话”，也会带来更多关注、下载和转化。\n\n### 被质疑后，Cluely 改了包装，但“不可被发现”仍留在产品核心叙事里\n\nCluely 还曾发布视频，展示用户在约会中借助产品谎报年龄、工作和兴趣，该视频在 X 上获得约 1,300 万观看。面对批评后，公司逐步删除网站中关于考试和求职面试作弊的表述，并在 2025 年 11 月将自己重新定位为 AI meeting assistant 和 notetaker。Lee 对 TechCrunch 表示，“隐身”并非核心功能，且多数企业客户会因法律问题关闭该功能。可是，文章指出，Cluely 当时官网的第一句话仍将产品宣传为“undetectable”。这让作者认为，公司的定位调整更像是商业和公关上的收缩，而不是对原始产品逻辑的彻底放弃。a16z 则曾称赞 Lee 的做法“rooted in deliberate strategy and intentionality”，这也成为报道批评 a16z 的重要证据。\n\n### 文章最终要追问的，是谁来为“故意越线”的外部成本买单\n\nDoublespeed 的案例是把“真实身份”变成可工业化伪造的资源，Cluely 的案例则是尝试让“作弊”在文化上失去污名。两者表面上属于不同赛道，一个是 AI marketing infrastructure，另一个最终转向 meeting assistant。可在作者看来，它们共享同一个内核：把原本用于维持信任的规则，当成产品需要规避的摩擦。文章特别强调，历史上某些打破旧规则的公司，例如早期的 Lyft，至少能被解释为给普通用户创造了明显便利。相比之下，Cluely 所挑战的是“撒谎和作弊是不对的”这一更基础的社会共识。因而，这篇调查的核心指控并非“a16z 投资了有争议的 AI 公司”这么简单，而是：当它同时试图影响 AI 政策时，公众需要警惕它所偏好的监管框架，是否恰好最有利于这些依赖欺骗、规避和执法滞后的商业模式。"
-    },
-    {
-      "id": 49415271,
-      "by": "setheron",
-      "title": "Executable Is a SQLite Database",
-      "url": "https://fzakaria.com/2026/08/23/your-executable-is-a-sqlite-database",
-      "score": 173,
-      "detailUpdatedAt": 1787575386,
-      "createdAt": 1787562610,
-      "aiSummaryUpdatedAt": 1787576394,
-      "aisummary": {
-        "chinese_title": "SQLite 可执行文件：单文件应用、动态链接与 mmap 争议",
-        "emoji": "🤔",
-        "sarcastic_question": "难道万物最终都要先塞进SQLite里吗？"
-      },
-      "classifications": {
-        "topics": [
-          6,
-          4
-        ],
-        "facets": [
-          9
-        ],
-        "tags": [
-          "SQLite",
-          "executable format",
-          "database"
-        ]
-      },
-      "classificationsUpdatedAt": 1787566843,
-      "aiSummary": {
-        "chinese_title": "SQLite 可执行文件：单文件应用、动态链接与 mmap 争议",
-        "emoji": "🤔",
-        "sarcastic_question": "难道万物最终都要先塞进SQLite里吗？"
-      },
-      "detail": {
-        "id": 49415271,
-        "by": "setheron",
-        "title": "Executable Is a SQLite Database",
-        "url": "https://fzakaria.com/2026/08/23/your-executable-is-a-sqlite-database",
-        "score": 173,
-        "detailUpdatedAt": 1787575386,
-        "createdAt": 1787562610,
-        "aiSummaryUpdatedAt": 1787576394,
-        "aisummary": {
-          "chinese_title": "SQLite 可执行文件：单文件应用、动态链接与 mmap 争议",
-          "discussion_overview": [
-            {
-              "category": "单文件应用与可变状态",
-              "summary": "支持者把它想象成一种“活”的单文件应用：程序、依赖、资源和运行时状态都放进同一个 SQLite 文件里。有人进一步设想把 Lisp image、内置虚拟文件系统和可运行时修改的额外表都塞进去，让文件随着使用不断演化。还有人希望加入 BEFORE/AFTER/REPLACE 这类 hook，以及运行时重新链接，使插件或依赖只要改数据库就能在下次调用时生效。整体上，这一派把它看成代码、数据和部署目标合一的激进单文件方案。",
-              "supportid": [
-                "49417700",
-                "49417991",
-                "49418265",
-                "49418905",
-                "49416696"
-              ]
-            },
-            {
-              "category": "mmap、页对齐与内核复杂度",
-              "summary": "真正被反复指出的阻碍，是 copied 和 mapped memory 的取舍：SQLite Blob 往往要复制，不能像原生可执行映像那样直接 mmap。有人考虑通过压缩 section、页对齐 BLOB，或者重写 SQLite binary format，让内容更适合页映射并减少启动拷贝。也有人提议把 SQLite driver 放进 kernel space，把它变成唯一的 filesystem 或 unikernel，但随即有人提醒这会把大量复杂 machinery 塞进内核。另一种观点认为，除非 latency 和 size 的 trade-off 变得更有利，否则这类方案很难胜过传统 loader。",
-              "supportid": [
-                "49418820",
-                "49417656",
-                "49418556",
-                "49418922",
-                "49418284"
-              ]
-            },
-            {
-              "category": "巧思有余，刚需不足",
-              "summary": "不少人认可这个点子很巧，也承认读起来很有趣，但并不觉得自己“必须拥有它”。有人明确表示，这主要对处理 ELF internals 的少数人更有价值，而不是对大多数只是正常使用可执行文件的人更有价值。还有人认为，把所有东西都塞进一个数据库未必比拆分成多个工具更好，真正的关键是能否在性能、体积或互操作性上带来明显收益。整体语气是欣赏黑客精神，但对实际落地保持克制。",
-              "supportid": [
-                "49417327",
-                "49417530",
-                "49418284"
-              ]
-            },
-            {
-              "category": "文件格式统一与历史类比",
-              "summary": "评论把这个想法放进更大的“所有东西都像数据库”的叙事里。有人说 PE/COFF（Windows 的可执行/对象文件格式）和 .NET assembly（.NET 程序集格式）本身就很像关系数据库，Office、Power BI、OpenDocument 等格式也被拿来类比。这个视角认为，过去几十年里很多工具都在重复发明类似数据库的打包方式，而 SQLite 可能把文档、应用、依赖和二进制统一进一个容器。也有人进一步猜测，它甚至可能演化成某种替代 container image 的格式，尤其适合把依赖一起封装时。",
-              "supportid": [
-                "49418820",
-                "49418335",
-                "49417871"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "SQLite",
-              "explanation": "嵌入式关系型数据库文件格式，这里被当作可执行容器和单文件应用载体。"
-            },
-            {
-              "term": "ELF",
-              "explanation": "Unix/Linux 常见的可执行文件和共享库格式，是这场讨论的核心对照物。"
-            },
-            {
-              "term": "mmap",
-              "explanation": "内存映射，把文件页直接映射到进程地址空间；是否能避免拷贝是争论焦点。"
-            },
-            {
-              "term": "dynamic linking",
-              "explanation": "运行时加载共享库并解析符号的机制，决定插件化和依赖替换是否可行。"
-            },
-            {
-              "term": "AppImage",
-              "explanation": "Linux 的单文件应用打包格式，常被拿来类比这种“一个文件装下应用”的思路。"
-            },
-            {
-              "term": "PE/COFF",
-              "explanation": "Windows 的可执行文件/对象文件格式，也被评论者类比成某种“数据库化”的容器。"
-            },
-            {
-              "term": "VFS（Virtual File System）",
-              "explanation": "虚拟文件系统接口，让应用把不同存储后端抽象成统一的文件访问层。"
-            }
-          ],
-          "context": "这篇文章讨论把可执行文件重新设计成基于 SQLite 的单文件容器，试图把代码、依赖、资源和运行时状态都塞进同一个数据库文件。评论里不断拿 ELF（Unix 的可执行/共享库格式）、AppImage（Linux 的单文件应用打包格式）、PE/COFF（Windows 的可执行/对象文件格式）和 .NET assembly（.NET 程序集格式）做类比，说明很多二进制格式本来就带有“数据库化”倾向。争议焦点主要是 dynamic linking、relocations、mmap（内存映射）和 VFS（Virtual File System，虚拟文件系统）：它们决定这种格式是方便打包，还是会在启动速度和内存访问上吃亏。也有人把它联想到 Smalltalk/Lisp 那种代码与状态可一起持久化、可在线修改的系统。",
-          "emoji": "🤔",
-          "sarcastic_question": "难道万物最终都要先塞进SQLite里吗？"
-        },
-        "classifications": {
-          "topics": [
-            6,
-            4
-          ],
-          "facets": [
-            9
-          ],
-          "tags": [
-            "SQLite",
-            "executable format",
-            "database"
-          ]
-        },
-        "classificationsUpdatedAt": 1787566843,
-        "aiSummary": {
-          "chinese_title": "SQLite 可执行文件：单文件应用、动态链接与 mmap 争议",
-          "discussion_overview": [
-            {
-              "category": "单文件应用与可变状态",
-              "summary": "支持者把它想象成一种“活”的单文件应用：程序、依赖、资源和运行时状态都放进同一个 SQLite 文件里。有人进一步设想把 Lisp image、内置虚拟文件系统和可运行时修改的额外表都塞进去，让文件随着使用不断演化。还有人希望加入 BEFORE/AFTER/REPLACE 这类 hook，以及运行时重新链接，使插件或依赖只要改数据库就能在下次调用时生效。整体上，这一派把它看成代码、数据和部署目标合一的激进单文件方案。",
-              "supportid": [
-                "49417700",
-                "49417991",
-                "49418265",
-                "49418905",
-                "49416696"
-              ]
-            },
-            {
-              "category": "mmap、页对齐与内核复杂度",
-              "summary": "真正被反复指出的阻碍，是 copied 和 mapped memory 的取舍：SQLite Blob 往往要复制，不能像原生可执行映像那样直接 mmap。有人考虑通过压缩 section、页对齐 BLOB，或者重写 SQLite binary format，让内容更适合页映射并减少启动拷贝。也有人提议把 SQLite driver 放进 kernel space，把它变成唯一的 filesystem 或 unikernel，但随即有人提醒这会把大量复杂 machinery 塞进内核。另一种观点认为，除非 latency 和 size 的 trade-off 变得更有利，否则这类方案很难胜过传统 loader。",
-              "supportid": [
-                "49418820",
-                "49417656",
-                "49418556",
-                "49418922",
-                "49418284"
-              ]
-            },
-            {
-              "category": "巧思有余，刚需不足",
-              "summary": "不少人认可这个点子很巧，也承认读起来很有趣，但并不觉得自己“必须拥有它”。有人明确表示，这主要对处理 ELF internals 的少数人更有价值，而不是对大多数只是正常使用可执行文件的人更有价值。还有人认为，把所有东西都塞进一个数据库未必比拆分成多个工具更好，真正的关键是能否在性能、体积或互操作性上带来明显收益。整体语气是欣赏黑客精神，但对实际落地保持克制。",
-              "supportid": [
-                "49417327",
-                "49417530",
-                "49418284"
-              ]
-            },
-            {
-              "category": "文件格式统一与历史类比",
-              "summary": "评论把这个想法放进更大的“所有东西都像数据库”的叙事里。有人说 PE/COFF（Windows 的可执行/对象文件格式）和 .NET assembly（.NET 程序集格式）本身就很像关系数据库，Office、Power BI、OpenDocument 等格式也被拿来类比。这个视角认为，过去几十年里很多工具都在重复发明类似数据库的打包方式，而 SQLite 可能把文档、应用、依赖和二进制统一进一个容器。也有人进一步猜测，它甚至可能演化成某种替代 container image 的格式，尤其适合把依赖一起封装时。",
-              "supportid": [
-                "49418820",
-                "49418335",
-                "49417871"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "SQLite",
-              "explanation": "嵌入式关系型数据库文件格式，这里被当作可执行容器和单文件应用载体。"
-            },
-            {
-              "term": "ELF",
-              "explanation": "Unix/Linux 常见的可执行文件和共享库格式，是这场讨论的核心对照物。"
-            },
-            {
-              "term": "mmap",
-              "explanation": "内存映射，把文件页直接映射到进程地址空间；是否能避免拷贝是争论焦点。"
-            },
-            {
-              "term": "dynamic linking",
-              "explanation": "运行时加载共享库并解析符号的机制，决定插件化和依赖替换是否可行。"
-            },
-            {
-              "term": "AppImage",
-              "explanation": "Linux 的单文件应用打包格式，常被拿来类比这种“一个文件装下应用”的思路。"
-            },
-            {
-              "term": "PE/COFF",
-              "explanation": "Windows 的可执行文件/对象文件格式，也被评论者类比成某种“数据库化”的容器。"
-            },
-            {
-              "term": "VFS（Virtual File System）",
-              "explanation": "虚拟文件系统接口，让应用把不同存储后端抽象成统一的文件访问层。"
-            }
-          ],
-          "context": "这篇文章讨论把可执行文件重新设计成基于 SQLite 的单文件容器，试图把代码、依赖、资源和运行时状态都塞进同一个数据库文件。评论里不断拿 ELF（Unix 的可执行/共享库格式）、AppImage（Linux 的单文件应用打包格式）、PE/COFF（Windows 的可执行/对象文件格式）和 .NET assembly（.NET 程序集格式）做类比，说明很多二进制格式本来就带有“数据库化”倾向。争议焦点主要是 dynamic linking、relocations、mmap（内存映射）和 VFS（Virtual File System，虚拟文件系统）：它们决定这种格式是方便打包，还是会在启动速度和内存访问上吃亏。也有人把它联想到 Smalltalk/Lisp 那种代码与状态可一起持久化、可在线修改的系统。",
-          "emoji": "🤔",
-          "sarcastic_question": "难道万物最终都要先塞进SQLite里吗？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n\nSELF 把 SQLite 从“描述可执行文件的工具”推进到“可直接执行的文件格式”：它用数据库表替代 ELF 的手工结构，让分析、修改、动态链接和依赖闭包都变成 SQL 问题，但代价是启动延迟和内存映射共享能力尚未追平 ELF。\n\n## 正文\n\n### ELF 早就在重复造数据库，只是不肯承认\n\n作者对 ELF 的不满，不是因为它不能运行程序，而是因为它本质上已经在做数据库的工作。`.strtab` 和 `.dynstr` 是字符串驻留，`.hash` 与 `.gnu.hash` 是索引，section header table 类似 `sqlite_schema`，符号名偏移则像手写的 foreign key。甚至 `objcopy --strip-debug`，从抽象上看也无非是一次 `DELETE + VACUUM`。但 ELF 没有把这些能力交给一个真正的数据库，而是把它们压缩成大量紧耦合的偏移、section 和约定。于是，`ld.so`、binutils、LIEF、goblin、`readelf` 等工具，都得反复实现同一套解析和序列化逻辑。说白了，ELF 是一个为磁盘和带宽极其昂贵的时代设计的手工数据库。\n\n### sqlelf 证明了“用 SQL 看 ELF”并不只是玩具\n\n作者此前做过 `sqlelf`，它通过 SQLite virtual tables 将 ELF 暴露为可查询的数据。于是，原本需要 `readelf` 配合 `grep` 的事情，可以写成 `SELECT name FROM elf_symbols`。这个实验的价值不只在于查询体验更舒服，更在于它说明 ELF 结构可以自然映射为关系数据。可 `sqlelf` 仍然只是“用数据库观察 ELF”，并没有改变真正被执行的文件。随着 LLM 带来重新探索激进想法的动力，作者把问题推进了一步：能不能直接用 SQLite 替代 ELF？最终原型叫 SELF，即 Structured Executable & Linkable Format。\n\n### SELF 的最小运行时模型只有元数据和加载段\n\nSELF 不是“一个数据库描述某个 ELF”，而是那个可以 `chmod +x` 后直接运行的 SQLite 文件。最小可执行 SELF 只需要两张表：`self_meta` 保存 ELF header 级别的 key/value 元数据，`segments` 则保存每个 program header 对应的 load image。`segments` 的每一行包括原始 offset、`vaddr`、`filesz`、`memsz`、R/W/X 权限、对齐方式和实际 BLOB 内容。纯 BSS 段甚至不需要存储内容，只要让 `content` 为 `NULL` 即可。也就是说，加载器需要的核心信息，不再散落于 ELF header、program header 和各类 section 中，而是成为可直接查询的行。作者的结论是：把 ELF 运行所需信息表示为 SQLite 数据库，技术上并不复杂。\n\n### 符号、版本和工具元数据都从格式魔法变成普通表\n\n在 SELF 中，符号表被收敛成一张 `symbols` 表，并通过 `(name, version)` 上的 B-tree 索引完成查找。它取代了 ELF 中多张相关 section，以及 `.gnu.hash` 和 `.hash` 这类专用索引结构。符号版本不再需要 `.gnu.version_r`、`.gnu.version_d` 等机制，而只是 `version` 列中的一个值。字符串表也消失了，因为名称直接保存为 SQLite `TEXT`，不再需要 `st_name` 指向 `.strtab` 的偏移。更关键的是，`sections`、`notes`、`dynamic_entries` 这类主要服务于工具链的元数据表，删除后程序依然可以运行。于是 `strip` 不再是危险的 offset surgery，而是一笔事务：`DELETE FROM sections; DELETE FROM notes; VACUUM;`。\n\n### 读 ELF、改 ELF，最后都可以退化成 SQL\n\n这个格式最有意思的地方，是大量熟悉的 ELF 工具都不再需要理解二进制布局。`nm -D --undefined` 对应查询 `imports` view，`readelf -l` 查询 `segments`，`ldd` 则通过 `needed`、`symbols` 和 `segments` 的关联得出依赖库。作者给出的 `hello` 示例里，删除可选表后文件从 57,344 B 缩到 49,152 B，程序仍能输出 `Hello, world!`。对于修改型工具，`patchelf` 也可被理解为一次 `UPDATE`，而不是在紧凑二进制文件里腾挪 section。这里的核心转变是，ELF 的“格式知识”被提升为 schema、table 和 view。缺失的信息也不必扩展底层格式，只需暴露一个新的 view。\n\n### Linux 不需要认识 SELF，binfmt_misc 就能把它跑起来\n\nSELF 利用了 SQLite header 中 offset 68 的 4-byte `application_id` 字段，并将其标记为 `SELF`。因此，一个 SELF 文件同时具有 SQLite 的 magic `SQLite format 3\\0`，以及专属格式标记 `SELF`。Linux 侧不必修改内核，只需通过 `binfmt_misc` 注册这段 magic，并指定解释器 `self-exec`。在 NixOS 中，这是一段 `boot.binfmt.registrations.self` 配置：匹配 SQLite 文件头和 offset 68 的 `SELF`，然后交给解释器执行。`elf2self` 目前负责把现有 ELF 转换为 SELF，适合以 Nix 的 `postFixup` hook 形式逐包试验。真正的 `self-exec` 是一个链接了 `libsqlite3` 的小型 ELF 程序，它读取数据库、映射 segment、做 relocation，再跳转到入口点；它自己必须仍是 ELF，否则会触发解释器递归并得到 `-ELOOP`。\n\n### 动态链接才是数据库格式真正发挥想象力的地方\n\n静态执行并不难，真正复杂的是动态链接，而作者在这里试了两条路线。第一条保留 glibc 的 `ld.so`，借助 `rtld-audit` 的 `la_objsearch` 拦截库查找，并用 SQL 替代 `RUNPATH` 和 `LD_LIBRARY_PATH` 的文件系统搜索。这样，实际加载、relocation、lazy PLT、IFUNC、TLS 和 symbol versioning 仍由成熟的 glibc 完成，但“去哪找库”由数据库回答。演示中，即使磁盘上的 `libgreet.so.1` 已被删除，只要把库扫描进 `system.db`，设置 `SELF_SYSTEM_DB` 和 `LD_AUDIT`，程序仍能加载它。第二条路线更激进：`self-ld` 自己实现动态链接器，用 SQL 查 relocation 对应的符号、对象和 load bias，再直接 patch GOT。它还只是 proof-of-concept，但已经能够映射对象、发布 export、处理 relocation 并跳转执行。\n\n### 代价并不小，但 closure 让格式开始有了 ELF 没有的形态\n\n替代成熟格式，最终要看体积和延迟。SELF 因为携带 SQLite B-tree 开销，初始体积大约是对应 ELF 的两倍；但这些额外空间大多来自调试和工具元数据。删掉可选表后，`coreutils` 的 SELF 为 1,794,048 B，而 ELF 为 1,768,632 B，差距已经在 **1%** 以内。启动性能则更棘手：作者测量从 15 KiB 的 `hello` 到链接 47 个库、42 MiB 的 `gdb`，SELF 有约 **5 ms** 的固定 SQLite 打开和解释器启动开销，还要按映像大小复制数据。因为 segment BLOB 位于 B-tree page 中，无法像普通 ELF 那样直接 `mmap`，两个进程运行同一 SELF 也不能自然共享 text page。\n\n但作者认为，SQLite 的价值不止替换单个可执行文件，而是把整个依赖闭包装进一个数据库。传统 `ldd` 只给出 soname，并不能说明最终到底加载哪个具体文件；Nix 通过 `RUNPATH` 显式解析路径，而 SELF 则把这个关系存成 `needs.resolved_path` foreign key。`self closure` 可以把程序及其全部传递依赖封装进一个 `.db`，让共享库解析从“运行时猜测”变成“数据库中已确定的边”。这时 `ldd` 也不再是扫描外部文件系统，而只是一次 `JOIN`。原文在介绍这个 single-database closure 的后续能力时截断了，但到这里，SELF 的野心已经很清楚：它不是要把 ELF 换成更方便读写的容器，而是试图把可执行文件、链接关系和部署闭包统一成一个可查询、可事务化、可组合的数据系统。"
     },
     {
       "id": 49415621,
@@ -4864,255 +5424,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n\nFable 的高能力与高成本，让 AI 编程从“把所有任务交给最强模型”的免费午餐时代，进入了“按任务分层调度模型、上下文与数据”的工程优化时代。\n\n## 正文\n\n### Moore’s Law 停摆后，软件工程第一次被迫精打细算\n\n作者先把 Fable 放进了一个更长的技术周期里看。Moore’s Law 有效的年代，开发者没有太大动力去极限优化代码。因为通常再过 18 个月，新 CPU 就会带来接近翻倍的性能。Herb Sutter 曾把这种红利称为 “the free lunch”。但当 2000 年代中期单线程性能开始停滞，情况变了。开发者不得不认真面对并行化、系统架构和 memory locality 等问题。说白了，大家开始思考：不同类型的计算工作，到底应该放到哪里执行。\n\n### 大模型迭代曾经也像一顿“免费午餐”\n\n在 Fable 出现前，AI 编程工具的演进也有类似的感觉。花很多时间打磨 coding harness 或 context strategy，似乎并不总是划算。因为下一代模型往往会以相同、甚至更低的价格出现，并直接抹平不少现有问题。上下文不够好、工作流不够顺、任务切分不够细，这些工程瑕疵似乎都可以等更强模型来解决。但 Fable 改变了这个预期。它的能力确实惊人，而且发布后依然如此，但它的价格也足够高。于是，开发者开始重新问那个老问题：什么工作值得送给最贵的模型，什么工作不值得。\n\n### Fable 负责设计，GLM 负责把活干完\n\n作者认为，GLM 5.2 很能说明这种新分工。它与 Fable 在同一周发布，成本大约只有 Fable 的 `1/9`，也约为 Opus 5 的 `1/5`。GLM 5.2 当然不可能在所有任务上都达到 Fable 的质量，某些任务类别下，两者的差距可能确实很大。可对于大多数重复性、流程化的 coding 工作，它已经足够好，尤其是在输入了高质量上下文之后。作者自己的做法是，先与 Fable 对话，用它审问、塑造和收敛设计方案。然后再把整理好的 brief 交给 GLM 执行，这样把昂贵推理能力集中用在真正需要判断力的环节。\n\n### 推理变便宜，也未必会让最强模型通吃\n\n有人反驳说，随着 inference 成本持续下降，最终大家还是会把所有任务都交给最大模型。作者并不认同这个结论。原因在于，成本下降不会只让 Fable 这类顶级模型受益，K3、Qwen 这类较小或较便宜的模型同样会变得更划算。与此同时，coding harness 和 context strategy 也会持续进步。更好的 harness 能把足够准确的上下文交给能力稍弱、但仍然很强的模型，从而让它们完成原本需要更大模型的工作。于是，模型能力的差距不一定会消失，但通过任务分解和上下文供给，实际可用性的差距会被缩小。\n\n### 真正锁定这种分层的，还有数据主权问题\n\nFable 带来的冲击不只是价格。它的 access controls、dynamic degradation，以及要求保留数据的策略，也让不少公司乃至国家开始警惕。它们必须考虑代码轨迹、上下文和 token 到底被发送到了哪里。过去，选择模型可能主要是在质量、速度和价格之间权衡。现在，数据留存、访问控制和供应链风险也进入了调度决策。最终，AI 编程的核心不再只是“哪个模型最强”。而是像当年优化计算架构一样，认真决定什么任务该交给谁、什么上下文该送到哪里，以及哪些数据根本不该离开边界。"
-    },
-    {
-      "id": 49409473,
-      "by": "shortcrct",
-      "title": "How Complex Systems Fail",
-      "url": "https://how.complexsystems.fail/",
-      "score": 249,
-      "detailUpdatedAt": 1787539425,
-      "createdAt": 1787500250,
-      "aiSummaryUpdatedAt": 1787540134,
-      "aisummary": {
-        "chinese_title": "复杂系统失效：单一根因之争、混沌工程与Safety II",
-        "emoji": "⚠️",
-        "sarcastic_question": "都复杂成这样了，还想抓一个唯一根因吗？"
-      },
-      "classifications": {
-        "topics": [
-          6
-        ],
-        "facets": [
-          6,
-          9
-        ],
-        "tags": [
-          "complex systems",
-          "failure",
-          "John Gall"
-        ]
-      },
-      "classificationsUpdatedAt": 1787506272,
-      "aiSummary": {
-        "chinese_title": "复杂系统失效：单一根因之争、混沌工程与Safety II",
-        "emoji": "⚠️",
-        "sarcastic_question": "都复杂成这样了，还想抓一个唯一根因吗？"
-      },
-      "detail": {
-        "id": 49409473,
-        "by": "shortcrct",
-        "title": "How Complex Systems Fail",
-        "url": "https://how.complexsystems.fail/",
-        "score": 148,
-        "detailUpdatedAt": 1787514223,
-        "createdAt": 1787500250,
-        "aiSummaryUpdatedAt": 1787515237,
-        "aisummary": {
-          "chinese_title": "复杂系统如何失效：多因链、近失事故与RCA争议",
-          "discussion_overview": [
-            {
-              "category": "复杂系统往往是多因链失效",
-              "summary": "许多评论把这篇文章解读为：复杂系统的事故通常不是单一“根因”，而是技术、组织、人因同时沿着链条出问题。有人指出，系统会长期在退化模式下运转，局部故障和替换是常态，真正致命的是整体流程无法吸收这些波动。Challenger 被反复拿来说明这一点：O-rings、低温、进度压力、管理层对偏差的正常化，以及工程师缺乏决策权，都是同一事故网络的一部分。",
-              "supportid": [
-                "49410581",
-                "49411267",
-                "49411600",
-                "49410913",
-                "49411370"
-              ]
-            },
-            {
-              "category": "RCA 的争议与用途",
-              "summary": "另一派评论并不完全反对 Root Cause Analysis，而是认为它在工程上真正的用途是回答“这次失败是否意味着系统要改”。在这个理解里，所谓 root cause 只是约定俗成的标签，指向最值得改动的地方，而不是哲学上的唯一起点。也有人反过来说，如果你得出“RCA 没意义”，那本身可能就是系统设计或流程设计出了问题。",
-              "supportid": [
-                "49411124",
-                "49411194"
-              ]
-            },
-            {
-              "category": "近失事故、proto-accident 与预警",
-              "summary": "文章里关于 proto-accident、near miss 和 Heinrich's Law 的说法引起共鸣：灾难前往往已经出现大量差一点出事的小事件。评论里有人引用“每次严重事故背后有数百到数千次近失”的经验法则，并把它和事故复盘里常见的事后识别联系起来。也有人追问：如果前兆真的能识别，为什么不能提前设 alert？这反映出预警并不等于可控，复杂系统的动态变化会让信号变得很难用。",
-              "supportid": [
-                "49411370",
-                "49411786"
-              ]
-            },
-            {
-              "category": "Chaos Engineering 与受控故障演练",
-              "summary": "有评论把这篇文章和 Chaos Engineering 直接联系起来：通过主动制造故障，团队能逼迫系统为失败做防御，并测出不同失效模式下的临界点。有人把它类比为物理产品的 accelerated life testing，但也强调安全关键或数据关键系统不能在生产环境里随便“打坏”来试。更现实的做法是先在实验室建模、测试，承认 unknown unknowns 仍然存在。",
-              "supportid": [
-                "49410184",
-                "49410415",
-                "49410880",
-                "49411078"
-              ]
-            },
-            {
-              "category": "经典安全工程读物与必读地位",
-              "summary": "不少评论把这篇文章视为安全工程和系统思维的经典读物，甚至会定期在团队里重读，或在面试后把它发给新成员。评论里还串起了一条相关书单：John Gall 的 Systemantics 和 Gall's law、Dietrich Dörner 的 The Logic of Failure、Charles Perrow 的 Normal Accidents、Meltdown，以及 Nancy Leveson 的安全工程研究。它们共同强调：复杂系统往往不是一次设计出来的，而是在事故、反馈和经验中逐步长出来的。",
-              "supportid": [
-                "49411819",
-                "49409790",
-                "49410013",
-                "49410556",
-                "49411230",
-                "49411093",
-                "49410831",
-                "49410707",
-                "49410615",
-                "49410366"
-              ]
-            },
-            {
-              "category": "软件工程 vs 机械工程的纪律差异",
-              "summary": "还有一组评论把问题归因到软件行业的工程纪律不足，而不只是“复杂”本身。对比机械工程、发动机、bearing、汽车或大 SQL database，有人认为这些领域已经积累了几十年到几百年的边界、余量和失效模式，而软件常常是在不充分理解的情况下重造组件，再把它们拼成更大的系统。另有人感叹 ML systems 的新手甚至连基本操作都不熟，说明人类 expertise 本身也在变动。",
-              "supportid": [
-                "49410913",
-                "49410845",
-                "49411074",
-                "49411355",
-                "49410969"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "Root Cause Analysis",
-              "explanation": "事故复盘方法，常被用来找需要改动的系统部分；在复杂系统里容易被误解成单一原因追查。"
-            },
-            {
-              "term": "Chaos Engineering",
-              "explanation": "通过主动注入故障来验证系统韧性、暴露隐藏依赖的做法。"
-            },
-            {
-              "term": "Heinrich's Law",
-              "explanation": "安全领域经验法则：一次严重事故背后通常有大量 near miss 和 at-risk behaviors。"
-            },
-            {
-              "term": "Gall's law / Systemantics",
-              "explanation": "John Gall 的观点：能工作的复杂系统通常由简单可工作的系统逐步演化，而不是一次从零设计成功。"
-            },
-            {
-              "term": "Normal Accidents",
-              "explanation": "Charles Perrow 提出的理论：高复杂度、高耦合系统中的事故往往难以完全避免，只能尽量降低概率和损失。"
-            }
-          ],
-          "context": "这篇文章出自 Richard Cook（芝加哥大学麻醉学家，后来研究 patient safety 和 safety systems research）的经典随笔，核心是说复杂系统在组织、人的操作和技术部件层面会持续局部失效，但靠冗余和人工修补继续运转。它强调 near miss、proto-accident 和退化运行：大事故前往往已经有很多小异常，只是事后才显得清楚。评论把它联系到 National Airport 跑道碰撞、Challenger（挑战者号航天飞机）里的 O-rings、以及 Three Mile Island（美国核电事故）等安全工程案例。讨论也自然延伸到 software engineering 里的 root cause analysis（根因分析）和 Chaos Engineering（混沌工程），因为两者都在试图理解系统如何在看似正常时级联崩坏。",
-          "emoji": "⚠️",
-          "sarcastic_question": "既然早就有那么多征兆，事故还算什么意外？"
-        },
-        "classifications": {
-          "topics": [
-            6
-          ],
-          "facets": [
-            6,
-            9
-          ],
-          "tags": [
-            "complex systems",
-            "failure",
-            "John Gall"
-          ]
-        },
-        "classificationsUpdatedAt": 1787506272,
-        "aiSummary": {
-          "chinese_title": "复杂系统如何失效：多因链、近失事故与RCA争议",
-          "discussion_overview": [
-            {
-              "category": "复杂系统往往是多因链失效",
-              "summary": "许多评论把这篇文章解读为：复杂系统的事故通常不是单一“根因”，而是技术、组织、人因同时沿着链条出问题。有人指出，系统会长期在退化模式下运转，局部故障和替换是常态，真正致命的是整体流程无法吸收这些波动。Challenger 被反复拿来说明这一点：O-rings、低温、进度压力、管理层对偏差的正常化，以及工程师缺乏决策权，都是同一事故网络的一部分。",
-              "supportid": [
-                "49410581",
-                "49411267",
-                "49411600",
-                "49410913",
-                "49411370"
-              ]
-            },
-            {
-              "category": "RCA 的争议与用途",
-              "summary": "另一派评论并不完全反对 Root Cause Analysis，而是认为它在工程上真正的用途是回答“这次失败是否意味着系统要改”。在这个理解里，所谓 root cause 只是约定俗成的标签，指向最值得改动的地方，而不是哲学上的唯一起点。也有人反过来说，如果你得出“RCA 没意义”，那本身可能就是系统设计或流程设计出了问题。",
-              "supportid": [
-                "49411124",
-                "49411194"
-              ]
-            },
-            {
-              "category": "近失事故、proto-accident 与预警",
-              "summary": "文章里关于 proto-accident、near miss 和 Heinrich's Law 的说法引起共鸣：灾难前往往已经出现大量差一点出事的小事件。评论里有人引用“每次严重事故背后有数百到数千次近失”的经验法则，并把它和事故复盘里常见的事后识别联系起来。也有人追问：如果前兆真的能识别，为什么不能提前设 alert？这反映出预警并不等于可控，复杂系统的动态变化会让信号变得很难用。",
-              "supportid": [
-                "49411370",
-                "49411786"
-              ]
-            },
-            {
-              "category": "Chaos Engineering 与受控故障演练",
-              "summary": "有评论把这篇文章和 Chaos Engineering 直接联系起来：通过主动制造故障，团队能逼迫系统为失败做防御，并测出不同失效模式下的临界点。有人把它类比为物理产品的 accelerated life testing，但也强调安全关键或数据关键系统不能在生产环境里随便“打坏”来试。更现实的做法是先在实验室建模、测试，承认 unknown unknowns 仍然存在。",
-              "supportid": [
-                "49410184",
-                "49410415",
-                "49410880",
-                "49411078"
-              ]
-            },
-            {
-              "category": "经典安全工程读物与必读地位",
-              "summary": "不少评论把这篇文章视为安全工程和系统思维的经典读物，甚至会定期在团队里重读，或在面试后把它发给新成员。评论里还串起了一条相关书单：John Gall 的 Systemantics 和 Gall's law、Dietrich Dörner 的 The Logic of Failure、Charles Perrow 的 Normal Accidents、Meltdown，以及 Nancy Leveson 的安全工程研究。它们共同强调：复杂系统往往不是一次设计出来的，而是在事故、反馈和经验中逐步长出来的。",
-              "supportid": [
-                "49411819",
-                "49409790",
-                "49410013",
-                "49410556",
-                "49411230",
-                "49411093",
-                "49410831",
-                "49410707",
-                "49410615",
-                "49410366"
-              ]
-            },
-            {
-              "category": "软件工程 vs 机械工程的纪律差异",
-              "summary": "还有一组评论把问题归因到软件行业的工程纪律不足，而不只是“复杂”本身。对比机械工程、发动机、bearing、汽车或大 SQL database，有人认为这些领域已经积累了几十年到几百年的边界、余量和失效模式，而软件常常是在不充分理解的情况下重造组件，再把它们拼成更大的系统。另有人感叹 ML systems 的新手甚至连基本操作都不熟，说明人类 expertise 本身也在变动。",
-              "supportid": [
-                "49410913",
-                "49410845",
-                "49411074",
-                "49411355",
-                "49410969"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "Root Cause Analysis",
-              "explanation": "事故复盘方法，常被用来找需要改动的系统部分；在复杂系统里容易被误解成单一原因追查。"
-            },
-            {
-              "term": "Chaos Engineering",
-              "explanation": "通过主动注入故障来验证系统韧性、暴露隐藏依赖的做法。"
-            },
-            {
-              "term": "Heinrich's Law",
-              "explanation": "安全领域经验法则：一次严重事故背后通常有大量 near miss 和 at-risk behaviors。"
-            },
-            {
-              "term": "Gall's law / Systemantics",
-              "explanation": "John Gall 的观点：能工作的复杂系统通常由简单可工作的系统逐步演化，而不是一次从零设计成功。"
-            },
-            {
-              "term": "Normal Accidents",
-              "explanation": "Charles Perrow 提出的理论：高复杂度、高耦合系统中的事故往往难以完全避免，只能尽量降低概率和损失。"
-            }
-          ],
-          "context": "这篇文章出自 Richard Cook（芝加哥大学麻醉学家，后来研究 patient safety 和 safety systems research）的经典随笔，核心是说复杂系统在组织、人的操作和技术部件层面会持续局部失效，但靠冗余和人工修补继续运转。它强调 near miss、proto-accident 和退化运行：大事故前往往已经有很多小异常，只是事后才显得清楚。评论把它联系到 National Airport 跑道碰撞、Challenger（挑战者号航天飞机）里的 O-rings、以及 Three Mile Island（美国核电事故）等安全工程案例。讨论也自然延伸到 software engineering 里的 root cause analysis（根因分析）和 Chaos Engineering（混沌工程），因为两者都在试图理解系统如何在看似正常时级联崩坏。",
-          "emoji": "⚠️",
-          "sarcastic_question": "既然早就有那么多征兆，事故还算什么意外？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n\n复杂系统并不是靠消灭故障来获得安全，而是依靠一线人员在持续变化、始终带病运行的环境里，不断把系统拉回可接受的边界之内。\n\n## 正文\n\n### 复杂系统天生危险，安全从来不是默认状态\n\n这篇文章先抛出一个不太舒服、但必须接受的前提：交通、医疗、能源这类复杂系统，本质上就是危险的。  \n危险并非来自某个设计失误，而是来自系统所处理的能量、速度、规模和任务本身。  \n你可以降低暴露风险的频率，却无法把风险从系统里彻底拿掉。  \n也正因为危险不可消除，系统才会逐渐堆出一层层防线。  \n这些防线不只是 backup、冗余设备和 safety feature，也包括培训、规程、认证、团队协作和监管制度。  \n正常情况下，它们像多层盾牌一样，把一次次偏离事故轨道的操作拦下来。  \n所以，高可靠系统的常态不是“没有故障”，而是“故障不断出现，但大多数没能穿透防线”。\n\n### 真正的事故不是一个错误，而是多条裂缝碰到一起\n\n既然防线有效，为什么灾难仍然会发生？作者的回答是：灾难需要多个失败同时连成链条。  \n单点故障通常不够，真正的 catastrophe 往往由一系列看似无害的小问题共同构成。  \n每个问题本身都不足以制造事故，但它们的组合恰好打开了一条通往事故的路径。  \n系统中实际出现的失败机会，远远多于最终被看见的重大事故。  \n很多轨迹先被技术安全机制挡住，少数到达运行现场的，也常被操作人员临场化解。  \n问题在于，复杂系统不可能做到零缺陷，它必然带着不断变化的 latent failures 运行。  \n技术升级、组织调整、人员流动，以及修复旧问题的努力，都会改变下一次故障组合的形态。\n\n### 所谓“带病运行”，其实是复杂系统的正常工作方式\n\n作者进一步把话说得更直白：复杂系统经常是在 degraded mode 下运行。  \n换句话说，系统并不是修好了一切才开始工作，而是在多个部件、流程和组织环节都有缺陷时，仍然设法完成任务。  \n它之所以还能跑下去，靠的是冗余，也靠人能够绕开、补偿和修复这些缺陷。  \n事故复盘时，人们几乎总能找到此前的 proto-accidents，也就是那些差一点酿成大祸的时刻。  \n事后看，这些征兆似乎都很明显，于是很容易得出“早该发现”的结论。  \n但作者认为，这种判断往往建立在对系统运行的天真想象上。  \n现实里，技术、组织和人员状态一直在变，组件持续失效、被替换、被绕过，系统只能在动态不完整中维持运转。  \n因此，灾难的可能性永远在附近；它无法被彻底清零，只能被持续管理。\n\n### “根因分析”很诱人，但它常常把事故讲得过于简单\n\n事故发生后，组织最常问的问题是：“root cause 是什么？”  \n但本文认为，这个问题本身就错了。  \n既然事故依赖多个必要但单独不充分的条件，就不存在一个可以被孤立出来的唯一原因。  \n事故不是某个按钮、某个人或某条规则单独造成的，而是这些因素在特定时刻发生了连接。  \n执着于 root cause，更多是在满足社会和文化上的归责需求：我们希望找到一个局部、明确、可以责怪的对象。  \n同样的问题也出现在对人的复盘里。知道结果之后，调查者会觉得当时的信号理应更显著，操作人员“应该知道”它会导致事故。  \n这就是 hindsight bias：结果知识污染了我们重建当时视角的能力，而它恰恰是事故调查中最顽固的障碍之一。\n\n### 一线人员不是事故链末端的“人因”，而是系统的实时控制器\n\n文章最重要的翻转，是重新定义 human operator 的角色。  \n一线人员一边要完成生产任务，一边也在持续防止系统滑向事故。  \n平时系统没有出事，外部观察者只看见他们在“生产”；出了事故，又只看见他们本该“防御失败”。  \n但对操作人员而言，这两个角色从来是同时存在的。  \n他们每一个动作都是一次 gamble，因为行动发生在不确定的结果之下，而不是在全知全能的条件下。  \n事后看失败的赌注，人们会说那是错误；但成功的运行同样来自赌注，只是它们没有进入事故报告。  \n更麻烦的是，组织常常故意模糊效率、成本、产出目标与可接受风险之间的关系。  \n最终，这些模糊的矛盾都被推到 sharp end，由现场人员用具体行动替组织做出取舍。\n\n### 人在不断“创造安全”，而不是机械执行安全\n\n面对持续变化的风险，一线人员和基层管理者不是被动遵守流程，而是在实时调整系统。  \n他们会重组工作方式，减少脆弱环节暴露；会把稀缺资源集中到预计高负荷的位置；也会预留撤退和恢复路径。  \n更成熟的做法，是尽早发现系统性能变化，然后通过降载等方式实现 graceful cutback，而不是等到失控才紧急处置。  \n这也是为什么人的 expertise 如此关键：复杂系统需要的不是静态知识，而是随技术变化、人员更替和任务压力不断演化的能力。  \n专家资源本身也有矛盾，一方面必须投入最困难的当下任务，另一方面又必须培养未来能接手的人。  \n说白了，安全不是某个安全部门、某台设备或某份制度的属性，而是整个系统涌现出来的动态特征。  \n它不能像原材料一样被采购、制造或储存，只能由人在每一次正常运行中持续生产出来。\n\n### 改进安全不能只堵住上一次事故，而要理解系统的边界\n\n最后，文章警告了一个常见误区：针对“human error”设计的事后补救，通常只是在事故链末端增加障碍。  \n这类措施未必能显著降低下一次事故概率，因为那次事故所依赖的 latent failure 组合本来就很难再次原样出现。  \n更糟的是，新增控制和限制有时会让系统更复杂、耦合更紧，反而增加潜在故障的数量。  \n新技术也是类似的双刃剑：它可能消除高频、低后果的问题，却引入低频、高后果的新型灾难路径。  \n由于这类事故罕见，而且其间往往已经发生多轮技术和组织变更，人们很难在事前看清风险，也很难在事后准确归因。  \n因此，真正可靠的系统不能只追求“从不失败”，而要让操作人员理解 edge of the envelope。  \n也就是系统何时开始退化、何时变得难以预测、何时不再容易恢复。  \n只有让人持续接触、识别并校准对失败的理解，知道自己的行动是在把系统推向边界还是拉离边界，failure-free operation 才有可能成为现实。"
     },
     {
       "id": 49409862,
@@ -13773,301 +14084,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n\nLLM 把性能工程从“少数专家耗时数周的手艺活”，变成了“任何开发者都能低成本反复试验的工程流程”，软件将越来越多地针对具体用户和具体 workload 动态优化。\n\n## 正文\n\n### 性能瓶颈不再只是技术问题，而是成本问题\n\n文章的出发点并不是说 LLM 已经能把所有软件重写成 assembly。作者明确认为，我们离那个阶段还很远。真正发生变化的是，过去昂贵的性能优化，如今的人工成本已经下降了好几个数量级。很多优化本身并不神秘，难的是实现、验证、排错，以及判断值不值得投入数天甚至数周。现在，开发者只要描述目标，agent 就能完成大量“代码手术”和实验循环。说白了，软件慢往往不是因为没人知道怎么优化，而是因为优化曾经贵到不值得做。\n\n### FRE 的实验说明：几分钟就能把想法变成数据\n\n作者拿自己此前构建的 regex engine——FRE——做实验。FRE 是通过让 agent 围绕 rebar regex benchmark 持续优化一个月得到的，早期因此严重 overfit 到 rebar。直到作者告诉 agent 还有 holdout benchmark，优化才开始具备一定泛化能力。FRE 的一个亮点是，其 native AOT 编译版本在长时间搜索上表现不错。于是作者提出一个很实际的策略：让 ripgrep 先用正常 matcher 搜索，同时在后台线程编译 native regex code，编译完成后再切换过去。这个方案会牺牲短查询性能，因为一个线程被拿去编译了，但对于持续数秒甚至数分钟的 ripgrep 查询，这个 trade-off 很合理。\n\n### 从 2x–4x 到 7%，关键在于优化终于便宜了\n\n作者只输入了几句指令，agent 就完成了把这个 AOT 切换机制接入 ripgrep 的工作，并用其 Codex 历史中的真实查询进行 benchmark。对于少数简单且较长的查询，性能提升达到 **2x–4x**。但真实 workload 通常更复杂，在代表性的 holdout queries 上，只统计适合启用 AOT 的查询，整体提速约为 **7%**。这当然称不上颠覆性结果，但它的上下文很重要：作者只花了几分钟人类时间。过去，类似改动意味着需要熟悉 regex engine、编译器、ripgrep 执行路径和 benchmark 体系的人，投入相当一段时间。现在，即便 7% 的收益，也可能因为验证成本足够低而值得做。\n\n### 真正该建索引，但“先试试”已经不再昂贵\n\n有意思的是，作者承认给 regex matcher 加 AOT 编译未必是最直接的解法。如果机器上反复做全文搜索，更显然的方案是建立文本索引，而不是每次都扫描文件。作者曾参与 BitFunnel——Bing 的高吞吐搜索索引，并且该项目获得过 SIGIR Best Paper Award。BitFunnel 的开源版本只有 bytecode interpreter 和一个 JIT，但 Bing 内部版本实际上包含多个 JIT compiler。以前，做一个能快速 ingest、覆盖整台机器磁盘的本地索引，是典型的大型系统项目。现在作者认为，对于拥有顶级模型和高吞吐推理硬件的 AI lab 来说，“周末做出来”已经不只是玩笑。\n\n### 最值钱的变化，是把验证复杂优化的苦工外包出去\n\n作者用自己构建 Azul game AI 的经历，说明 LLM 改变的不只是写代码速度。他没有游戏 AI 背景，却做出了当时世界最强的 Azul AI，并且认为其主要优势来自优化而非算法本身。这个 AI 同时具备 multi-threaded 实现、native code 版本、Wasm shared memory + JavaScript 版本，还为 minimax 和 MCTS 两套搜索架构实现了不同的并行算法。手工完成这些工作已经很重，更麻烦的是多线程程序需要 debug log、replay 和 nondeterminism 定位机制。作者认为，仅仅把“可复现地调试一个 nondeterministic 优化”这件事做好，过去就可能要花数天到一周；但 agent 可以围绕失败 replay 自动补充日志、持续迭代。\n\n### 当 2% 优化的验证成本下降，优化策略会彻底改变\n\n作者曾做过 CPU microcode、CPU verification 和搜索索引优化，因此很熟悉一种传统决策：某个优化可能带来 2% 性能提升，但验证它要花 N 个 person-days，到底做不做？如今这个 N 被大幅压低，按人类时间计算，作者估计常常可以达到 **1000x、10000x，甚至 1000000x** 的下降。按真实 token 成本和资深工程师人力相比，成本下降可能更接近 **1000x**。这意味着许多过去“收益太小，不值得做”的优化，现在都值得尝试。连那些不确定是否有效、过去需要先投入 M 小时做测量框架的想法，也可以先让 agent 跑起来再说。\n\n### 在可定义的问题上，人类会被大量小优化拉开差距\n\nAzul AI 的例子把这个趋势推得更极端：作者观察到，速度每翻倍，AI 强度大约增加 **100 Elo**。仅仅加入 multithreading，就足以击败其他条件相近的单线程 AI；如果再叠加 10 到 20 个过去嫌麻烦的优化，差距会非常大。作者也引用 Jamie Brandon 做 Anthropic performance takehome 的经历：Claude 不仅完成了他已经想到但来不及做的优化，还做出一些“除非研究数周，否则自己根本不会尝试”的激进优化。这里的限制也很明确，当前公开 SOTA 模型仍然不擅长 experimental design。对于会改变输出结果的优化，比如 game AI 搜索策略调整，人类仍需先搭好评估框架；但框架一旦存在，后续搜索和迭代就可以交给 agent。\n\n### 下一步不是通用软件更快，而是每个用户都有自己的版本\n\n文章最后回到 Marc Brooker 的判断：未来会出现大量“为特定 workload 动态定制的软件”。作者立刻让 agent 针对自己的 ripgrep 查询历史优化 FRE，而不是优化通用 regex workload。这个实验只花了约 **2 分钟**启动，第一轮后，workload-specialized 版本已经在 holdout query 上比标准 ripgrep 快 **2%**，并且还在继续优化。2% 对个人本地搜索不算巨大，但当获取这 2% 的成本只有几分钟时，决策完全不同。FRE 在通用 holdout benchmark 上原本明显落后 Rust regex engine，但对作者自己的查询，历史数据和新增数据都足够丰富，可以直接围绕真实需求优化。风险当然是 overfitting，尤其当未来 workload 发生 regime change 时；但作者的核心判断是，面对自己的真实数据做定制优化，依然比过去只能依赖通用软件包的处境更好。"
-    },
-    {
-      "id": 49388154,
-      "by": "speckx",
-      "title": "Kagi added a setting for removing paywalled links from search results",
-      "url": "https://kagi.com/changelog#11296",
-      "score": 1220,
-      "detailUpdatedAt": 1787426032,
-      "createdAt": 1787321440,
-      "aiSummaryUpdatedAt": 1787427036,
-      "aisummary": {
-        "chinese_title": "Kagi 新增 paywalled 过滤，引发搜索与新闻付费争论",
-        "emoji": "🤔",
-        "sarcastic_question": "都花钱买搜索了，还要顺手替你拆付费墙？"
-      },
-      "classifications": {
-        "topics": [
-          5,
-          11,
-          10
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "Kagi",
-          "paywalled links",
-          "search",
-          "search engine",
-          "Google"
-        ]
-      },
-      "classificationsUpdatedAt": 1787322961,
-      "aiSummary": {
-        "chinese_title": "Kagi 新增 paywalled 过滤，引发搜索与新闻付费争论",
-        "emoji": "🤔",
-        "sarcastic_question": "都花钱买搜索了，还要顺手替你拆付费墙？"
-      },
-      "detail": {
-        "id": 49388154,
-        "by": "speckx",
-        "title": "Kagi added a setting for removing paywalled links from search results",
-        "url": "https://kagi.com/changelog#11296",
-        "score": 460,
-        "detailUpdatedAt": 1787328823,
-        "createdAt": 1787321440,
-        "aiSummaryUpdatedAt": 1787330727,
-        "aisummary": {
-          "chinese_title": "Kagi 新增隐藏 paywall 结果：支持者狂赞，争论新闻付费与隐私",
-          "discussion_overview": [
-            {
-              "category": "Kagi 与 AI Assistant 口碑",
-              "summary": "不少人先是夸 Kagi 本身和它的 AI Assistant，认为它比很多通用 AI 更像“先搜再答”，回答里会尽量给出可验证来源，而不是一堆空话。有人提到它能找到手动搜索都找不到的东西，尤其擅长识别同一产品的不同别名或改名版本。还有人说 Kagi 的 AI 功能是可选的，不像 Google 或 Microsoft 那样把 AI 强行塞进界面里。整体语气是：如果你愿意为更好的 search 付费，Kagi 目前确实做对了不少事。",
-              "supportid": [
-                "49388910",
-                "49390131",
-                "49389380",
-                "49390028",
-                "49390259",
-                "49390056",
-                "49388983",
-                "49389354",
-                "49388966",
-                "49390380"
-              ]
-            },
-            {
-              "category": "隐藏 paywall 结果提升可用性",
-              "summary": "支持者觉得，把 paywalled links 从结果里直接去掉，比只标记成“这里有门槛”更实用，因为他们本来就不会为一篇偶然搜到的文章临时订阅。对很多查询来说，paywall 结果就是纯噪音，点进去只会浪费时间，然后再回退去找别的结果。有人把它类比成广告：既然本来就不可用，那就不该继续占据最相关的位置。也有人希望这个功能能更细：保留手动切换、允许白名单，或者只在需要时才屏蔽。",
-              "supportid": [
-                "49388382",
-                "49388683",
-                "49389133",
-                "49388428",
-                "49388558",
-                "49388679",
-                "49389753",
-                "49390048",
-                "49388449",
-                "49389815"
-              ]
-            },
-            {
-              "category": "新闻付费与 journalism 商业模式争论",
-              "summary": "评论很快转向新闻业怎么活下去：一边认为好内容理应靠订阅支撑，另一边则说互联网早就把大家训练成“信息应该免费”，而且按月订阅对偶尔读一次的用户太高摩擦。有人指出，很多 paywalled site 质量并不高，或者只是换个说法重复别家的报道，付费并不自动等于好 journalism。也有人强调本地新闻、独立媒体和公共资金支持的重要性，认为 bundle、单次购买、micropayments 都比“每家都要单独订阅”更合理。整体上，这里讨论的不是“该不该付费”，而是“谁来付、怎么付、值不值”。",
-              "supportid": [
-                "49389173",
-                "49390092",
-                "49390250",
-                "49389973",
-                "49390338",
-                "49389548",
-                "49388660",
-                "49389253",
-                "49389917",
-                "49390165",
-                "49390369",
-                "49389257",
-                "49389550",
-                "49390096"
-              ]
-            },
-            {
-              "category": "重定向、归档与绕过工具生态",
-              "summary": "很多人指出，Kagi 其实早就支持 redirects 和 regex replacement，所以可以把 Reddit 链接改到 safereddit、redlib 或其他前端。还有人提到用 archive.is、Bangs、LibRedirect、Bypass Paywalls Clean 之类工具，把被挡住的内容转成可读版本。也有人希望 Kagi 直接支持白名单，让自己已订阅的 FT 之类站点不要被误伤。这个功能因此被看作“用户掌控 URL 流向”的一部分，而不是单纯的过滤开关。",
-              "supportid": [
-                "49388545",
-                "49388986",
-                "49388678",
-                "49388967",
-                "49389792",
-                "49388755",
-                "49389886",
-                "49388829",
-                "49388900",
-                "49388911",
-                "49389960",
-                "49389082"
-              ]
-            },
-            {
-              "category": "隐私、账户与支付方式顾虑",
-              "summary": "另一条线是隐私：有人喜欢 Kagi，但不想因为订阅就把搜索记录和身份绑在一起。评论里讨论了 Bitcoin、Monero、Privacy Pass，以及用 token 把 payment identity 和 service usage 分离的可能性。虽然 Kagi 可以配合 Tor 使用，也只要求最少的账户信息，但这仍然不够满足最在意匿名的人。还有人担心把所有搜索都交给单一 provider 会形成完整画像，所以会刻意分散到多个 search engines。",
-              "supportid": [
-                "49388579",
-                "49388799",
-                "49388901",
-                "49390103",
-                "49388792",
-                "49388899",
-                "49389269",
-                "49389902"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "paywall",
-              "explanation": "付费墙；限制未订阅用户访问内容的机制。"
-            },
-            {
-              "term": "micropayments",
-              "explanation": "按篇或按次的小额支付模式，用来替代整月订阅。"
-            },
-            {
-              "term": "Privacy Pass",
-              "explanation": "一种隐私友好的令牌机制，可在不暴露身份的情况下验证订阅或权限。"
-            },
-            {
-              "term": "archive.is",
-              "explanation": "网页归档服务，常被用来查看被 paywall 挡住的页面快照。"
-            },
-            {
-              "term": "Bypass Paywalls Clean",
-              "explanation": "浏览器扩展，尝试绕过新闻站的 paywall 并显示正文。"
-            }
-          ],
-          "context": "Kagi（一个付费 search engine 和 metasearch 服务）这次给搜索结果加了“隐藏 paywall 链接”的设置，目标是把用户无法直接阅读的结果从搜索里清掉。Kagi 近年也加入了 AI Assistant（带引用来源的问答功能），所以评论里同时出现了对搜索质量的夸赞、对 AI 功能的讨论，以及对结果可访问性的偏好。帖子下方还延伸到 Reddit 限制旧版访问、Google 搜索被 SEO 垃圾和 AI 概览污染，以及用户用 archive.is、LibRedirect、Bypass Paywalls Clean 等工具绕过访问限制的日常做法。更大的背景是：当搜索越来越像在废墟里找答案时，用户开始认真讨论搜索引擎是否应该把“可读、可用、无门槛”当成排序条件。",
-          "emoji": "🤔",
-          "sarcastic_question": "都不打算订阅了，还想让付费链接继续霸屏吗？"
-        },
-        "classifications": {
-          "topics": [
-            5,
-            11,
-            10
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "Kagi",
-            "paywalled links",
-            "search",
-            "search engine",
-            "Google"
-          ]
-        },
-        "classificationsUpdatedAt": 1787322961,
-        "aiSummary": {
-          "chinese_title": "Kagi 新增隐藏 paywall 结果：支持者狂赞，争论新闻付费与隐私",
-          "discussion_overview": [
-            {
-              "category": "Kagi 与 AI Assistant 口碑",
-              "summary": "不少人先是夸 Kagi 本身和它的 AI Assistant，认为它比很多通用 AI 更像“先搜再答”，回答里会尽量给出可验证来源，而不是一堆空话。有人提到它能找到手动搜索都找不到的东西，尤其擅长识别同一产品的不同别名或改名版本。还有人说 Kagi 的 AI 功能是可选的，不像 Google 或 Microsoft 那样把 AI 强行塞进界面里。整体语气是：如果你愿意为更好的 search 付费，Kagi 目前确实做对了不少事。",
-              "supportid": [
-                "49388910",
-                "49390131",
-                "49389380",
-                "49390028",
-                "49390259",
-                "49390056",
-                "49388983",
-                "49389354",
-                "49388966",
-                "49390380"
-              ]
-            },
-            {
-              "category": "隐藏 paywall 结果提升可用性",
-              "summary": "支持者觉得，把 paywalled links 从结果里直接去掉，比只标记成“这里有门槛”更实用，因为他们本来就不会为一篇偶然搜到的文章临时订阅。对很多查询来说，paywall 结果就是纯噪音，点进去只会浪费时间，然后再回退去找别的结果。有人把它类比成广告：既然本来就不可用，那就不该继续占据最相关的位置。也有人希望这个功能能更细：保留手动切换、允许白名单，或者只在需要时才屏蔽。",
-              "supportid": [
-                "49388382",
-                "49388683",
-                "49389133",
-                "49388428",
-                "49388558",
-                "49388679",
-                "49389753",
-                "49390048",
-                "49388449",
-                "49389815"
-              ]
-            },
-            {
-              "category": "新闻付费与 journalism 商业模式争论",
-              "summary": "评论很快转向新闻业怎么活下去：一边认为好内容理应靠订阅支撑，另一边则说互联网早就把大家训练成“信息应该免费”，而且按月订阅对偶尔读一次的用户太高摩擦。有人指出，很多 paywalled site 质量并不高，或者只是换个说法重复别家的报道，付费并不自动等于好 journalism。也有人强调本地新闻、独立媒体和公共资金支持的重要性，认为 bundle、单次购买、micropayments 都比“每家都要单独订阅”更合理。整体上，这里讨论的不是“该不该付费”，而是“谁来付、怎么付、值不值”。",
-              "supportid": [
-                "49389173",
-                "49390092",
-                "49390250",
-                "49389973",
-                "49390338",
-                "49389548",
-                "49388660",
-                "49389253",
-                "49389917",
-                "49390165",
-                "49390369",
-                "49389257",
-                "49389550",
-                "49390096"
-              ]
-            },
-            {
-              "category": "重定向、归档与绕过工具生态",
-              "summary": "很多人指出，Kagi 其实早就支持 redirects 和 regex replacement，所以可以把 Reddit 链接改到 safereddit、redlib 或其他前端。还有人提到用 archive.is、Bangs、LibRedirect、Bypass Paywalls Clean 之类工具，把被挡住的内容转成可读版本。也有人希望 Kagi 直接支持白名单，让自己已订阅的 FT 之类站点不要被误伤。这个功能因此被看作“用户掌控 URL 流向”的一部分，而不是单纯的过滤开关。",
-              "supportid": [
-                "49388545",
-                "49388986",
-                "49388678",
-                "49388967",
-                "49389792",
-                "49388755",
-                "49389886",
-                "49388829",
-                "49388900",
-                "49388911",
-                "49389960",
-                "49389082"
-              ]
-            },
-            {
-              "category": "隐私、账户与支付方式顾虑",
-              "summary": "另一条线是隐私：有人喜欢 Kagi，但不想因为订阅就把搜索记录和身份绑在一起。评论里讨论了 Bitcoin、Monero、Privacy Pass，以及用 token 把 payment identity 和 service usage 分离的可能性。虽然 Kagi 可以配合 Tor 使用，也只要求最少的账户信息，但这仍然不够满足最在意匿名的人。还有人担心把所有搜索都交给单一 provider 会形成完整画像，所以会刻意分散到多个 search engines。",
-              "supportid": [
-                "49388579",
-                "49388799",
-                "49388901",
-                "49390103",
-                "49388792",
-                "49388899",
-                "49389269",
-                "49389902"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "paywall",
-              "explanation": "付费墙；限制未订阅用户访问内容的机制。"
-            },
-            {
-              "term": "micropayments",
-              "explanation": "按篇或按次的小额支付模式，用来替代整月订阅。"
-            },
-            {
-              "term": "Privacy Pass",
-              "explanation": "一种隐私友好的令牌机制，可在不暴露身份的情况下验证订阅或权限。"
-            },
-            {
-              "term": "archive.is",
-              "explanation": "网页归档服务，常被用来查看被 paywall 挡住的页面快照。"
-            },
-            {
-              "term": "Bypass Paywalls Clean",
-              "explanation": "浏览器扩展，尝试绕过新闻站的 paywall 并显示正文。"
-            }
-          ],
-          "context": "Kagi（一个付费 search engine 和 metasearch 服务）这次给搜索结果加了“隐藏 paywall 链接”的设置，目标是把用户无法直接阅读的结果从搜索里清掉。Kagi 近年也加入了 AI Assistant（带引用来源的问答功能），所以评论里同时出现了对搜索质量的夸赞、对 AI 功能的讨论，以及对结果可访问性的偏好。帖子下方还延伸到 Reddit 限制旧版访问、Google 搜索被 SEO 垃圾和 AI 概览污染，以及用户用 archive.is、LibRedirect、Bypass Paywalls Clean 等工具绕过访问限制的日常做法。更大的背景是：当搜索越来越像在废墟里找答案时，用户开始认真讨论搜索引擎是否应该把“可读、可用、无门槛”当成排序条件。",
-          "emoji": "🤔",
-          "sarcastic_question": "都不打算订阅了，还想让付费链接继续霸屏吗？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n\nKagi 这次更新的主线，是把搜索和 Assistant 从“功能齐全”继续打磨成“日常用起来少受阻”：搜索可自动排除付费墙结果，Assistant 则补齐了内容渲染、历史检索、隐私与移动端体验。\n\n## 正文\n\n### 搜索结果里最烦的一跳，现在可以直接跳过\n\n很多人用搜索引擎时都遇过这个场景：标题很对，摘要也很对，点进去却是一堵 paywall。Kagi 在 2026 年 8 月 21 日的更新中，新增了一个设置，允许用户自动从搜索结果中移除付费墙网站链接。说白了，这不是帮用户绕过付费墙，而是在点击之前就减少无效结果。对于重度检索用户来说，这种过滤比“点开后才发现不能读”更符合 Kagi 一贯强调的搜索可控性。原文没有说明识别付费墙站点的具体规则，也没有列出可过滤的网站名单。因而这项功能的实际覆盖率仍有待用户验证，但它已经把“结果是否可访问”变成了可配置的搜索质量维度。\n\n### Stocks widget 不再只是报一个价格\n\n同一轮更新里，Kagi 也重做了 Stocks widget。它会在更多合适的查询中出现，并且不再只支持普通股票，也能展示 exchange-traded funds，即 ETF 的信息。真正有意思的变化是价格图表：用户可以切换不同时间窗口，界面会用动画衔接 3 个月、1 年、5 年和 1 天等视图。这个设计解决的不是“有没有历史价格”，而是“当前涨跌放进更长周期后到底意味着什么”。比如一天内的剧烈波动，放到五年曲线里可能只是一个小折点。Kagi 正在把搜索页的即时答案组件，从静态卡片往更具上下文的交互式工具推进。\n\n### Assistant 的重点是让信息更容易留下来、找回来\n\nAssistant 这次没有押注某个新模型，而是集中处理日常对话里最常见的摩擦。首先，用户消息现在可以渲染链接、Markdown 和 LaTex，这意味着用户输入的技术内容终于能以更接近原意的形式保留在对话中。其次，线程搜索能力扩大到全部对话，用户可按最近更新时间或字母顺序排序，也可以用 `/` 按文件夹过滤。这个变化看似普通，实际上是在承认 Assistant 已经不只是一次性问答窗口，而是会积累为个人工作记录。临时线程的保留时间也变得可选，支持 24 小时、7 天或 30 天。配合重新梳理过、信息密度更低的设置页，Kagi 试图把“线程保存多久”从隐含行为变成用户明确掌控的策略。\n\n### 隐私控制从单条对话延伸到整个工作区\n\n如果说线程搜索让历史更有价值，那么批量导出和删除就是用户对这些历史的退出权。7 月 30 日的更新已为 Assistant 增加了从 `Settings > General` 一次性导出全部线程、或永久删除全部线程的能力。用户还能直接在 Assistant 中对回答点踩并提交报告，不必离开当前会话。这里有一个重要的隐私细节：提交报告时，完整线程会一并分享给 Kagi 审核。Kagi 表示，报告及其对应的线程副本会在 30 天后自动从审核记录中删除。另一个补强是，共享的 Assistant 线程将不再被搜索引擎索引，避免原本用于协作或分享的链接意外变成公开可检索内容。\n\n### 原生移动端上线，桌面与手机终于开始接成一条线\n\n7 月的另一项大动作，是官方 Kagi Assistant 原生应用登陆 iOS 和 Android。移动端提供提问、网页探索、文件处理、深度研究和不同 AI 模型选择等能力，并同步用户的线程和 Custom Assistants。核心承诺很直接：用户可以在电脑上开始工作，再在手机上接着做。后续修复清单也说明 Kagi 正在处理原生端的真实使用问题，例如 Android 返回手势冲突、iOS 登录失败、动画卡顿、应用切换后 Web Search 开关状态丢失，以及语音转文字不支持停顿等。iPad 外接键盘还加入了提交提示词的快捷键偏好。也就是说，移动端目前仍处于“第一步”阶段，但产品团队已经开始补齐它作为生产力入口所需的交互细节。\n\n### 大量小修复指向同一个目标：让可控性不只停留在设置页\n\n除了新功能，这份 changelog 还修复了不少容易破坏信任的边缘问题。搜索侧包括：Lenses 的直链参数从数字改为可读名称，例如 `https://kagi.com/search?lens=forums`；快捷键在按住 modifier 时不再误触发；被屏蔽域名不应继续成为 Quick Answer 的来源；Extract API 不应因单页超时而让整个 batch 返回空 `data`。此前 7 月还修复了部分动画不遵循系统 `prefers-reduced-motion` 设置的问题。Assistant 侧则涉及代码块语法高亮、Thinking 区域展开后的行为、发送快捷键、代码片段输入和网页搜索状态持久化。Kagi Translate 也补上了网页翻译重载、RSS 503、上下文菜单失效，以及 alternative translations 的 `context` 为空等问题。把这些更新放在一起看，Kagi 的策略并不是用一次大功能发布制造声量，而是在搜索、AI 对话和翻译三个入口中，持续消灭那些“明明有功能，却不敢依赖”的细小断点。"
     }
   ]
 }
