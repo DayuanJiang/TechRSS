@@ -2,9 +2,28 @@
   "date": "2026-08-25",
   "total_feeds": 92,
   "success_feeds": 85,
-  "total_articles": 2544,
-  "filtered_articles": 12,
+  "total_articles": 2545,
+  "filtered_articles": 11,
   "articles": [
+    {
+      "title": "distributed identity",
+      "title_zh": "用 ATProto 重构 Git 的可撤销身份",
+      "link": "https://jyn.dev/distributed-identity/",
+      "pub_date": "2026-08-24T00:00:00.000Z",
+      "summary": "## 一句话总结\n\n这篇文章提出：把 Git commit 中不可变的姓名和邮箱，替换为可验证但可撤销的去中心化身份引用，从而让贡献者能在不重写历史的前提下修改、按时间段展示或删除自己的身份信息。\n\n## 正文\n\n### Git 的不可变历史，恰好卡住了人的可变身份\n\n故事从一个再普通不过的 Git contributor 开始：Andrea 换工作了，想把旧邮箱改成新公司的邮箱。Git 的问题在于，commit 是 Merkle tree 的节点，作者姓名和邮箱又直接写在 commit metadata 里。真去修改旧 commit，就意味着 commit hash 全变，必须对默认分支 force-push。随之失效的还有所有 checkout、open PR，以及各种写死 commit hash 的工具和文档。Git 为这类场景准备了 `.mailmap`，它能把旧的 `name <email>` 映射为新的展示身份。于是，第一眼看上去，问题似乎已经解决了。\n\n### `.mailmap` 能改展示名，却不能表达“人在什么时候是谁”\n\n但 Andrea 随后结婚改姓，需求就变得微妙了。她希望结婚前的 commit 仍显示 Andrea Researcher，结婚后的 commit 显示 Andrea Locksmith。`.mailmap` 做不到这一点，因为 Git 识别身份的基本单位是 `(name, email)` tuple，而不是“某个人在某段时间内的身份状态”。它没有日期维度，也没有“同一个稳定身份”的概念。最终，她只能把同一个邮箱对应的所有 commit 统一显示为新名字。说白了，Git 的 alias 机制可以做静态替换，却不能处理身份随时间演变的事实。\n\n### 当改名涉及 deadname，显示层修补就不够了\n\n接着 Andrea 以 Bobby 的新身份回来，希望将所有旧名字替换掉。此时 `.mailmap` 的问题不只是功能不足，而是它仍然保留了旧名。旧的 deadname 依然明晃晃地躺在仓库顶层配置中，任何人都能追溯出来。Bobby 想改的是实际数据，而不是让某些 Git 命令换一种显示方式。维护者当然可以使用 `git-filter-repo` 重写历史，但代价极大：force-push `main`、修复 `.git-blame-ignore-revs`、通知 300 个 PR rebase，并找出文档和博客里硬编码的 commit hash。一次或许能忍，反复发生就会让维护者和贡献者都疲惫不堪。\n\n### 真正缺失的是可撤销身份，而不是又一个重写历史工具\n\n作者把 Bobby 的诉求拆成三层：事后修改姓名或邮箱、按时间修改姓名、以及让旧名称不可被检测。Git 通过 `.mailmap` 勉强支持第一层，但后两层都无能为力。Mercurial 的 `hg censor` 看似更进一步，因为它能在不改变 changeset hash 的情况下抹除文件内容。可它处理的是 file content，不是 commit author 这类 metadata。更重要的是，`hg censor` 的做法本质上破坏了 Merkle tree 的可验证性，并要求部分命令容忍“无法 materialize 的历史数据”。作者因此得出一个关键判断：这里不该把“身份修正”当成“篡改历史内容”，而应将身份从不可变历史中抽离出来。\n\n### ATProto 已经提供了身份与数据分离的模型\n\n作者把目光投向 ATProto，也就是 Bluesky 背后的协议。ATProto 区分了人类可读的 handle 和稳定的 decentralized identifier，简称 DID。比如 `@jyn.dev` 可以更换，但 `did:plc:h2okxbr76w5522tailkxmidq` 仍是同一个身份锚点。它还有 Personal Data Server（PDS）机制，用户可以迁移数据托管位置，甚至自托管。问题在于，`did:plc` 的操作历史，包括 handle 和 PDS 地址的历史，本身是永久公开的。这个设计仍不满足 Bobby 的需求，因为改名记录依旧可追溯，甚至可能造成去匿名化。\n\n### 巧妙之处在于：别用 DID 历史，用可删除的自定义 Record\n\n但 ATProto 并不只有 `did:plc` 这类身份记录。它允许应用定义自己的 schema，并把数据作为普通 ATProto record 存储。普通 record 与 DID operation history 不同，没有永久历史，可以被删除。作者举了 `checkmate.blue` 的例子：一盘在线国际象棋对局就是一个自定义 ATProto record，其中玩家以 DID 表示，对局数据则由应用 schema 定义。这个例子说明，ATProto 不只服务于 Bluesky 的社交资料，也可以承载应用自己定义的数据模型。于是，Git identity 不必绑定在不可变 commit metadata 中，而可以变成一个外部、可验证、可更新、可删除的 record。\n\n### 提案：commit 只签名，姓名邮箱从 ATProto 动态解析\n\n作者设想的新 VCS 数据模型大致是这样的：`.mailmap` 不再存姓名和邮箱，而是存每个仓库对应的唯一公钥。创建 commit 时，不再将 `name/email` 写入 metadata，而是嵌入对 commit 的私钥签名。贡献者随后发布一个类似 `org.jyns-awesome-vcs.identity` 的 ATProto identity record，其中可包含当前姓名、当前邮箱、历史邮箱、GitHub OAuth 链接等字段。该 record 同时绑定公钥，并带有“这个 DID 对应此仓库身份”的每仓库签名。运行 `jj log` 时，客户端再从 ATProto 拉取并展示身份信息。这样，commit 的作者归属仍然能被密码学验证，但具体显示什么姓名、邮箱或资料，已经不再由不可变 Git 历史决定。\n\n### 这让“改名、分段展示、删除身份”变成正常操作\n\n在这个模型下，用户可以随时编辑 identity record，因此事后修改姓名和邮箱不需要重写 commit。record 还可以声明某个名字在某个日期前后生效，从而满足按时间展示旧名和新名的需求。若用户希望删除身份，只需从 ATProto record 中移除该仓库对应的 DID 签名。由于签名是 per-repo 的，撤销一个仓库的身份关联不会影响其他项目。作者还设想用 `jj` 作为实现入口，例如 `jj git init` 自动生成密钥，用户将私钥存进 1Password，并通过一个纯客户端网页编辑和发布 identity record。最终，Bobby 像平常一样提交代码，维护者则不必每次都为了身份修正而重写整个仓库历史。",
+      "source_name": "jyn.dev",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "Git",
+        "ATProto",
+        "decentralized identity",
+        "jj"
+      ],
+      "rank": 1
+    },
     {
       "title": "BitCam: The 1-Bit Camera App Turns 2.0",
       "title_zh": "BitCam 2.0 把 iPhone 变成复古 1-bit 相机",
@@ -22,7 +41,7 @@
         "1-bit",
         "photo editor"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "llm-anthropic 0.27",
@@ -41,7 +60,7 @@
         "httpx2",
         "Claude Code"
       ],
-      "rank": 2
+      "rank": 3
     }
   ]
 }
