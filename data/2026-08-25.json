@@ -1,10 +1,29 @@
 {
   "date": "2026-08-25",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2545,
-  "filtered_articles": 17,
+  "success_feeds": 84,
+  "total_articles": 2516,
+  "filtered_articles": 18,
   "articles": [
+    {
+      "title": "Hardening the Override Flag",
+      "title_zh": "危险覆盖开关的六层安全设计",
+      "link": "https://nesbitt.io/2026/08/25/hardening-the-override-flag.html",
+      "pub_date": "2026-08-25T10:00:00.000Z",
+      "summary": "## 一句话总结\n\n危险 override 的安全性不在于把它命名得多吓人，而在于能否限制它的入口、作用范围、持续时间和最终执行权，让被攻陷的脚本无法轻易把“例外”变成默认。\n\n## 正文\n\n### package manager 的检查，往往死在那个“一键绕过”上\n\n作者从一连串 package-manager 供应链事件出发，盯上了一个常被忽视的问题：工具做了完整性校验、依赖保护和脚本限制后，那个关闭检查的 flag 到底有多容易被滥用？如果一个被攻陷的 `postinstall`、`setup.py` 或 `build.rs`，能像人在终端上一样传入 `--allow-unauthenticated`，这些保护就很脆弱。于是文章没有只看包管理器，而是横向研究了 `rm`、`curl`、`git`、`sudo`、Docker、macOS 和 Ceph 的危险操作。结论很明确：没有单个 flag 设计能解决问题。真正有效的方案，通常是叠加六类约束：醒目的名字、禁止环境变量入口、要求显式指定目标、让授权自动失效、检查当前状态，以及把决策移到命令行之外。\n\n### 长 flag 能提醒人，但挡不住复制粘贴的脚本\n\n最基础的一层是让 override 显眼，典型做法是只提供长选项，不提供短选项。`rm --no-preserve-root` 不仅没有短形式，还会在 getopt 接受缩写后再次检查原始 `argv`，拒绝 `--no-p` 这类缩写；Rust 版 coreutils 的 uutils 直到 2026 年 3 月才修掉曾接受 `--n` 的问题。apt 也把原先宽泛的 `--force-yes` 拆成 `--allow-remove-essential`、`--allow-downgrades` 和 `--allow-unauthenticated` 等长选项。说白了，reviewer 容易略过 `-f`，却更可能停下来问一句：为什么脚本要 `--allow-remove-essential`？`hdparm` 更进一步，用 `--yes-i-know-what-i-am-doing`，甚至 `--please-destroy-my-drive` 来保护破坏性操作。  \n但 curl 作者 Daniel Stenberg 早就指出，名字并不是安全边界：用户从 Stack Overflow 复制 `-k`，也同样会复制 `--insecure`。因此 curl 至今保留 `-k`，却不提供等价的 `CURL_INSECURE` 环境变量；这比单纯改名更有实际防护价值。\n\n### 真正危险的入口，常常不是命令行而是环境变量\n\n文章最关键的观察是：包管理器运行第三方安装脚本，而这些脚本继承包管理器的环境，也可以重新调用包管理器。于是，环境变量和全局配置就成了攻击者最顺手的 override 渠道。pip 的 `--break-system-packages` 虽然是长选项，错误提示也很醒目，但 pip 会自动把所有长选项映射为环境变量和配置键。攻击者只需设置 `PIP_BREAK_SYSTEM_PACKAGES=1`，或写入 `pip.conf` 中的 `break-system-packages = true`，绕过就变成持久状态。  \nNode.js 的做法更细：每个 option 在 `src/node_options.cc` 中被标记为 `kAllowedInEnvvar` 或 `kDisallowedInEnvvar`，后者经由 `NODE_OPTIONS` 传入时会直接报错。`--eval`、`--print`、`--interactive` 以及指定待执行脚本的参数，都不能来自环境变量；Cargo 也禁止通过环境变量配置 registry `[source]` replacement 和 `[patch]`。npm 12 则限制了另一个渠道：项目范围内不能在命令行传 `--allow-scripts`，否则报 `EALLOWSCRIPTS`，策略必须写进可提交、可审查的 `package.json`。\n\n### 不要给“全部放行”，要让例外精确指向目标\n\n仅仅限制入口还不够，因为全局 boolean override 的爆炸半径太大。Go 1.17 移除了作用于所有依赖的 `go get -insecure`，改用 `GOINSECURE`，要求以逗号分隔的 module path glob 指定哪些模块允许不安全获取。pacman 也废弃了覆盖一切文件冲突的 `--force`，改成 `--overwrite <glob>`，调用者必须说清楚要覆盖什么。Nix 的 `permittedInsecurePackages` 更严格，要求写出带版本的完整包名，例如 `openssl-1.1.1w`，版本升级后旧例外自动失效，必须重新审批。  \nComposer 2.2 的 `allow-plugins` 是 `composer.json` 中按 plugin 列出的 map，而不是全局开关；Cargo 的 `[patch]` 同样按 crate 配置。这里的设计逻辑很朴素：boolean override 会影响它之后解析到的所有直接和传递依赖，命名的 override 只影响它所命名的对象。`NIXPKGS_ALLOW_INSECURE=1` 或 `GOINSECURE=*` 的风险，恰恰在于它们把这条边界重新抹掉了。\n\n### “确认一次”不够，关键是把状态和权限也纳入判断\n\n有些危险操作不是简单地允许或拒绝，而是必须满足额外前提。`git push --force-with-lease` 不只是 force push，它要求远端 ref 仍等于本地上次获取到的版本。但编辑器的后台 auto-fetch 会悄悄更新 tracking ref，使用户没看过的新提交也满足 lease。Git 2.30 因此增加 `--force-if-includes`，要求远端 tip 还必须出现在当前分支 reflog 中，解决“已获取但未阅读”的漏洞。  \nCeph 的 pool 删除把这种防护叠得很重：命令需要重复输入 pool 名、加上 `--yes-i-really-really-mean-it`，而且服务端仍要求 `mon_allow_pool_delete=true`。`systemctl reboot --force` 甚至让重复传递 `--force` 表示更高一级的绕过：一次跳过 unit 的有序关闭，两次直接绕过 systemd 的 PID 1，调用 `reboot(2)`。这说明 override 不必只有一个二元开关，它可以表达不同等级的风险和不同层次的授权。\n\n### 最硬的边界，是把最终决定移出调用者控制范围\n\n如果客户端本身可能被脚本、CI 或恶意依赖操纵，那么最可靠的办法是让命令行根本无权决定。Docker 的 `insecure-registries` 只能配置在 daemon 侧，而不是某次 `docker pull` 的参数中。Git server 设置 `receive.denyNonFastForwards` 或 `receive.denyDeletes` 后，客户端传什么 force flag 都没用。Homebrew 的 `HOMEBREW_FORBIDDEN_FORMULAE` 可以由管理员通过 `/etc/homebrew/brew.env` 强制设定，并借助 `HOMEBREW_SYSTEM_ENV_TAKES_PRIORITY` 覆盖用户 shell 的同名变量。  \nmacOS 也在收紧这一方向：`csrutil disable` 一直要求进入 Recovery，而 macOS 15 已不再支持 `spctl --master-disable` 从终端永久关闭 Gatekeeper，必须通过 System Settings 或 MDM profile 操作。另一种折中是让权限短暂存在：sudo 默认每个终端缓存凭据五分钟，PowerShell 的 `Set-ExecutionPolicy -Scope Process` 只活到当前 shell 结束，Ceph 的动态 `injectargs` 设置会在 monitor 重启后消失。持久、全局、脚本可写的 override 最危险；需要额外交互、管理员配置或会自动过期的 override，攻击成本高得多。\n\n### 错误信息也会成为自动化攻击的操作手册\n\n文章最后提醒了一个很现实的陷阱：面向人的错误提示，可能会被自动化系统当作下一步指令。apt 曾要求用户精确输入 `Yes, do as I say!` 才能删除 essential package，但 2021 年 Pop!_OS 的冲突事件中，用户仍然照着提示输入，最终 apt 2.3.12 直接将这种情况改为 hard error。现在 pip 的 PEP 668 报错会明确告诉用户，可用 `--break-system-packages` 绕过；apt 在 `-y` 路径的报错中，也会指出缺少 `--allow-remove-essential`。对于 CI wrapper、provisioning script、会解析 stderr 的 `build.rs`，以及越来越多读取错误信息后自行重试的 agent，这等于直接提供了绕过命令。  \n因此，作者的最终立场不是“永远不要提供 escape hatch”。现实中维护者、管理员和恢复场景确实需要它。问题在于，危险 override 应该是一个受限、可审查、可过期、绑定具体对象，并最好由服务端或系统策略最终裁决的例外，而不是任何继承了环境的子进程都能随手打开的后门。",
+      "source_name": "nesbitt.io",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "security",
+      "keywords": [
+        "package managers",
+        "override flags",
+        "environment variables",
+        "supply chain security"
+      ],
+      "rank": 1
+    },
     {
       "title": "distributed identity",
       "title_zh": "用 ATProto 重构 Git 的可撤销身份",
@@ -22,7 +41,7 @@
         "decentralized identity",
         "jj"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "A curmudgeon tries a language server",
@@ -41,7 +60,7 @@
         "ghcid",
         "live reload"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Pluralistic: How Canada can help Americans and defeat America (23 Aug 2026)",
@@ -60,7 +79,7 @@
         "Bill C-11",
         "Palantir"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "The Negative Option",
@@ -79,7 +98,7 @@
         "subscription",
         "SaaS"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Numerical (in)stability of recurrece relations",
@@ -98,7 +117,7 @@
         "numerical stability",
         "Miller's algorithm"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "★ What Is the Point of the DMA?",
@@ -117,7 +136,7 @@
         "European Commission",
         "App Store"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Foot Guns for Sale",
@@ -136,7 +155,7 @@
         "reverse engineering",
         "OpenLogi"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "BitCam: The 1-Bit Camera App Turns 2.0",
@@ -155,7 +174,7 @@
         "1-bit",
         "photo editor"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Apple Rethinks Plan to Merge ‘Hide My Email’ Domain Name With ‘Sign In With Apple’",
@@ -174,7 +193,7 @@
         "private.icloud.com",
         "email relay"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "[Sponsor] Finalist 4: Inspired by Paper Day Planners",
@@ -193,7 +212,7 @@
         "Apple Watch",
         "Markdown"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Comparing the two holograms on the Windows 95 box",
@@ -212,7 +231,7 @@
         "anti-piracy",
         "packaging"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "llm-anthropic 0.27",
@@ -231,7 +250,7 @@
         "httpx2",
         "Claude Code"
       ],
-      "rank": 12
+      "rank": 13
     }
   ]
 }
