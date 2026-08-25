@@ -6,6 +6,25 @@
   "filtered_articles": 22,
   "articles": [
     {
+      "title": "A Cautionary Tale About Data Breach Claims, Verification and Carhartt",
+      "title_zh": "Carhartt 泄露数据中近半数是测试样本",
+      "link": "https://www.troyhunt.com/a-cautionary-tale-about-data-breach-claims-verification-and-carhartt/",
+      "pub_date": "2026-08-25T21:51:08.000Z",
+      "summary": "## 一句话总结\n\nCarhartt 泄露样本看似包含 2,487 万个邮箱，但通过域名、国家和出生年份分布交叉验证后，作者发现其中约 45% 是 TPC-DS benchmark 生成的合成数据，真正的教训是：拿到“泄露数据”后，第一步不该是相信规模，而是验证它到底是什么。\n\n## 正文\n\n### 2,487 万邮箱，让这起泄露看起来像个大新闻\n\n事情从 ShinyHunters 声称攻破 Carhartt 开始。公开说法是，攻击者拿到了超过 50GB 的压缩数据，其中包含数百万客户记录、员工信息和 loyalty 数据。按照 Have I Been Pwned（HIBP）的常规流程，Troy Hunt 先用开源的 Email Address Extractor 扫描数据集。结果很吓人：一共提取出 **24,876,077 个唯一邮箱地址**。这意味着它在优先级上会被立刻推到前面，因为处理 1,000 万和 10 万邮箱的成本接近，但前者能触达的人多 100 倍。更容易让人放下戒心的是，外部媒体和行业服务也报告了接近的规模。可问题恰恰在这里：大多数分析到“数字差不多对得上”就停止了，而作者继续往下挖。\n\n### 数据表结构很像真泄露，却也露出了 benchmark 的影子\n\n作者借助 OpenClaw——他戏称为 “PwnedClaw”——先理解这批数据的结构。AI 从文件名和 schema 中识别出，数据来自 Databricks，并且遵循 **TPC-DS** 的 `tpcds_sf1000` schema。TPC-DS 是标准化的零售分析 benchmark，`sf1000` 则代表一个很大的 scale factor。数据里的 `customer_chunk_XXXX.csv` 文件有约 600 个分片，每个分片稳定地包含约 19,300 个唯一邮箱。表字段也相当完整：客户姓名、邮箱、出生年月日、出生国、会员偏好、首次购买日期，以及指向地址和人口统计表的 foreign key。单看这些字段，它很像一份零售客户分析仓库的导出，而不是生产交易数据库的直接备份。关键转折在于：它既可能是 Carhartt 的真实分析数据，也可能混进了用于压测和分析的 TPC-DS 合成数据。\n\n### 最早的异常，是零售品牌里不合理的 .edu 和 .org\n\nAI 很快指出一个不太自然的现象：约 **400 万个 `.edu` 邮箱**和 **390 万个 `.org` 邮箱**。对于一家美国工装和服饰品牌来说，这个比例明显不对劲，哪怕 Carhartt WIP 覆盖了更多街头潮流用户，也很难解释如此庞大的教育和组织域名占比。进一步抽样后，异常变得非常具体：邮箱 local part 看起来像真实姓名，但域名明显是随机字符串。比如 `roy.griffin@mbfhz82d0vkpes4x.edu`、`michael.ware@c.edu` 和 `april.garza@r3zc1yf6i2lxfg.edu`。这正是 TPC-DS 风格的生成模式：用看似合理的姓名字段，拼上随机生成的域名。也就是说，邮箱的“长相”足以骗过简单的格式校验，却经不起域名真实性检查。\n\n### 真正的问题不只在 .edu：近半邮箱可能都是合成的\n\n一开始，异常似乎还局限在 `.edu` 和 `.org`。但作者手动查看原始行后，发现 `.com` 里也有同样的模式，例如 `Marina.Tucker@xgpgHqAu.com`。这条记录甚至把出生国写成了 **Benin**，对于 Carhartt 的客户库而言显得进一步可疑。随后，AI 对全量域名做频率分析，发现 **54.8%** 的邮箱位于出现至少 100 次的域名上，大约是 **1,360 万**地址。剩下 **45.2%**，即约 **1,125 万**地址，位于出现不足 100 次的域名中，其中 **840 万**域名还包含数字。换句话说，最初的 2,487 万邮箱不是“一个超大真实泄露”的直接结论，更合理的初步估计是：其中可能只有约 **1,300 万到 1,400 万**是可被视为真实的地址。\n\n### 域名单例、出生国家和年份，把“合成数据”坐实了\n\n接下来，作者要求生成“域名—出现次数”清单，结果出现了最关键的统计证据：数据里有 **1,035 万个唯一域名**，其中 **97.6% 的域名只出现一次**。真实零售泄露通常会呈现自然的 power-law 分布：Gmail、企业邮箱、ISP 域名会形成明显头部，长尾虽长，但不会几乎全是一次性随机域名。更离谱的是出生国分布，211 个 ISO 国家几乎被均匀采样，每国大约 380 到 420 条记录，而美国仅出现 407 次。于是 Lesotho、Antigua and Barbuda、Montenegro 等国家的数量，竟然能与美国、加拿大相当。出生年份也完全不符合真实人口数据：年份范围固定在 **1924 到 1992 年**，每一年稳定地约有 **1,050 到 1,194 人**。这种近乎完美的均匀分布，不是客户群体的画像，而是随机数生成器留下的指纹。\n\n### 这不是“假泄露”，而是攻击者把测试数据和真实数据一起端走了\n\n文章并没有因此断言整份 Carhartt 数据都是假的。恰恰相反，样本中存在 `carharttdonotship.com`、`carhartt.com` 等域名，并且 freemail 地址与 HIBP 已有数据的命中率达到 **70%**，这说明真实客户数据很可能确实在其中。更合理的解释是：Carhartt 在 Databricks 环境中，把真实客户分析数据与 TPC-DS benchmark 数据放在了相同或兼容的 schema 下。ShinyHunters 获取并发布了整份 Databricks dump，却没有区分哪些记录是真实数据，哪些是用于测试和 benchmark 的合成记录。于是，“2,487 万邮箱”的传播数字被 benchmark 垃圾数据显著抬高了。作者甚至给攻击者留了一点余地：这未必是故意夸大，也可能只是他们自己没意识到数据集已经被污染。对于 HIBP 这样的通知服务而言，后续真正重要的工作不是把原始地址全部导入，而是利用域名频率、既有域名知识和其他分布信号，尽可能过滤出真实受影响的人。",
+      "source_name": "troyhunt.com",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "data breach",
+        "TPC-DS",
+        "Databricks",
+        "Have I Been Pwned"
+      ],
+      "rank": 1
+    },
+    {
       "title": "The AI Hater's Manifesto",
       "title_zh": "AI 泡沫为何建立在不可持续支出上",
       "link": "https://www.wheresyoured.at/the-ai-haters-manifesto/",
@@ -22,7 +41,7 @@
         "OpenAI",
         "NVIDIA"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Debugging Ubiquiti's 5G Backup on AT&T",
@@ -41,7 +60,7 @@
         "AT&T",
         "UniFi"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Footnote Regarding the GDPR and Cookie Permission Prompts",
@@ -60,7 +79,7 @@
         "Apple",
         "EU regulation"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Uranium from Příbram (Czechia)",
@@ -79,7 +98,7 @@
         "radiation",
         "geology"
       ],
-      "rank": 4
+      "rank": 5
     }
   ]
 }
