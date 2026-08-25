@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2545,
-  "filtered_articles": 15,
+  "filtered_articles": 16,
   "articles": [
     {
       "title": "distributed identity",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "A curmudgeon tries a language server",
+      "title_zh": "用 ghcid 在 Haskell 中实现近似 Lisp 的热更新",
+      "link": "https://entropicthoughts.com/curmudgeon-tries-language-server",
+      "pub_date": "2026-08-24T22:00:00.000Z",
+      "summary": "## 一句话总结\n\n作者尝试用 `Eglot + Haskell Language Server + ghcid + foreign-store`，把 Haskell 的“编辑—编译—重启”流程尽可能推向 Lisp 式的 live development，结论是：玩具项目里很有吸引力，但工具链的边角和项目结构限制也很真实。\n\n## 正文\n\n### 作者羡慕的不是 Lisp 语法，而是它始终活着的开发过程\n\n作者平时写代码的方式，和十年前没有本质区别：编辑器改代码，切去终端编译运行，观察结果，再切回来继续改。遇到不确定的行为，就加 trace；遇到崩溃，就修复后重启程序或在 debugger 里重启。可 Lisp 程序员的体验几乎是另一种世界。代码可以直接被送入正在运行的系统，已有定义被替换，程序状态却继续存活。更重要的是，Lisp 的 condition system 甚至允许在修复后，从调用栈任意位置恢复此前崩溃的代码。说白了，Lisp 开发者不是反复启动程序，而是一直待在程序内部工作。\n\n这种模式在项目早期会走得更极端：系统的“真实定义”甚至可能只存在于内存中的 running image，还没有对应的 source code。作者用数据库 schema 作了一个很好的类比。很多项目一开始也不会先写好版本控制中的 schema 文件，而是直接在运行的数据库上持续修改结构。等项目成熟后，schema 才被导出、纳入版本控制，并通过 migration 管理。Common Lisp 项目也类似，只不过它最终导出的不是数据库 schema，而是内存中的系统定义。\n\n### Haskell 进不了运行时，但可以少重启几次\n\n作者并不是 Lisp 开发者，也知道 Haskell 不可能完整复制那种体验。Haskell 无法让开发者直接“进入”目标程序进程，因此 debugger 场景下仍然需要重启。常见的 `EitherT` 和 async exception 体系，也没有 Lisp condition system 那种可恢复异常的能力。好消息是，Haskell 的类型系统本来就能提前排除许多错误，因此运行时异常相对更少，这算是一个不需要额外投入的局部胜利。\n\n真正可操作的改进来自两个方向。第一条是 Haskell Language Server，由 Emacs 内置的 Eglot 作为 LSP client 连接，提供定义跳转、类型信息、code action 和诊断。第二条是 `ghcid`：它持续监视源码变化，并在变更后自动重新编译。单独使用 `ghcid` 只是在更快地 reload，但它还能在成功编译后执行一个函数。于是，配合 `foreign-store`，或更高层的 `Rapid`，就能在代码整体被替换时保留关键进程状态。\n\n### 用自动重启加状态复用，模拟 Lisp 的热替换\n\n这里的核心思路其实很简单：Lisp 是把新的 definition 增量送进 REPL；Haskell 则让 `ghcid` 自动重编译并重启整个程序，但用 `foreign-store` 把状态留住。两条路径的实现方式不同，可对很多软件类别而言，开发体验可能相当接近。程序逻辑变了，运行线程可以被替换；但窗口、资源、共享状态等重要对象不必从头创建。作者希望借此实现一种“保存即更新”的循环，而不是每次手动停止并重新运行应用。\n\n不过，这套方案仍缺少 Lisp workflow 中最直观的一块：不能在正在运行的程序 REPL 里随手执行表达式。作者的替代方案很务实：既然 REPL 主要用于验证某个函数是否按预期工作，那就把这些试验写成真正的 unit test。之后让 `ghcid` 在每次 reload 时执行测试即可。这样，开发者始终待在编辑器里：LSP 提供代码理解能力，保存代码或测试后，`ghcid` reload、跑测试，再用保留的状态重启应用。纸面上很漂亮，于是作者拿一个 toy project 验证它到底能不能落地。\n\n### 微分方程可视化，正好需要“保存即看结果”\n\n这个 toy project 来自作者正在补的微分方程和非线性动力系统知识。书中强调 computational methods，并附带了做练习的软件，但作者选择自己实现。项目本身不复杂，例如绘制 differential equation 的 slope field：浅灰色表示通解的方向场，黑色曲线表示经过鼠标坐标的具体解。重点不在数学挑战，而在开发反馈是否足够即时。\n\n作者想要的体验是：写一点实现，补一点测试，保存后可视化窗口自动反映最新行为。这不是完整的 Lisp development flow，但已经包含其最有价值的部分：代码、验证和运行结果尽量留在一个连续循环里。问题在于，想法听起来简单，实际搭建时却不像“装几个工具”那么轻松。首先要处理的是 Emacs 如何可靠地启动并连接 `hls`。然后才是更棘手的 live reload 和状态复用。\n\n### Eglot 与 hls 能工作，但环境管理和延迟都在消耗耐心\n\n作者从 `cabal init` 创建标准项目开始，最初采用 executable、library 和 test 分离的结构。可随后发现，`ghci`，因此也包括 `ghcid`，对多组件项目的 reload 支持并不理想。为了实验能继续推进，他最终把代码放进同一个 executable component。作者明确认为这不适合生产项目，但对这种探索型 toy project，或者项目最早期的快速演化阶段，还算可以接受。\n\n为了不把 `ghcid` 和 `hls` 全局安装，作者用 `flake.nix` 为 Cabal 项目提供隔离的依赖和构建工具。`direnv` 与 `.envrc` 中的 `use flake` 负责让项目目录自动带上 Nix development shell 环境，`nix-direnv` 则用于加快这件事。Emacs 端还必须安装 `envrc` plugin，否则 Eglot 看不到被 Nix 隔离的 `hls`。连上后，理论上执行 `M-x eglot` 即可，随后可用 `xref-find-definition` 验证定义跳转是否工作。Eglot 还会记录 client 与 server 的通信 event buffer，这为排障提供了一个相当实用的观察窗口。\n\n但“理论上”往往是工具链故事里最短的一段。作者一度遇到 Eglot 找不到 `hls`，手动开启 `envrc-global-mode` 后才成功，怀疑只是之前已经打开的代码 buffer 没触发 hook。即使环境正常，某些 build failure 或 Cabal 新增第三方依赖后，仍需手动执行 `M-x eglot-reconnect`。而 language server 的重启即使面对小项目也有明显等待时间。最终作者给 `haskell-mode` 加了 `eglot-ensure` 自动连接，同时加条件判断，避免没有安装 `hls` 的项目每次打开文件都报难看的错误。\n\n### 真正的瓶颈，是 ghci 的单组件世界\n\nEglot/hls 的理念让作者满意：额外的 buffer formatting 不侵入，一些提示和 code action 也确实方便。可它带来的编辑延迟让作者很难适应，尤其影响他习惯依赖的 Vim movement commands。作者没有断言这是 Eglot 的 bug，只是承认这种不稳定感已经足以阻止他把 Eglot/hls 推广到其他项目。至于 Emacs 文档 popup 与 centered cursor mode 的冲突，反而很好解决：设置 `eldoc-echo-area-use-multiline-p` 为 `nil`，就只显示光标下函数的一行 type signature，这正合他的需求。\n\nlive reload 部分的硬限制更结构性：`ghci` 一次只能跟踪一组 source files。标准 Haskell 项目若分成 executable、library、test 等多个 component，`ghci` 只能 reload 其中一个；修改其他 component，就必须重启整个 `ghci` 进程。这直接破坏了“改应用逻辑和测试，都能自动 reload”的目标。因此作者被迫把所有代码共置于一个 component 中。这个代价说明，这套 workflow 的甜蜜点不在严肃生产工程，而在小型实验、原型和概念探索的早期阶段。\n\n文章最后给出的代码结构也把这个设计讲得很清楚：`main` 在每次 reload 时先执行 `spec`，测试通过后再调用 `update`。测试既包含 example-based test，也包含 QuickCheck property test，用来替代在 REPL 中随手试表达式。`update` 的职责则是：首次启动应用，或者在后续 reload 时重启处理线程，同时复用已有资源。`foreign-store` 持有诸如 SDL 所需资源的 `MVar`，它既保存跨 reload 的状态，也可作为锁，避免多个处理进程同时运行。最终，作者并没有把 Haskell 变成 Lisp，但确实拼出了一条足够接近的路径：保存代码，自动验证，替换运行逻辑，而不丢掉整个世界。",
+      "source_name": "entropicthoughts.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Haskell",
+        "language server",
+        "ghcid",
+        "live reload"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Pluralistic: How Canada can help Americans and defeat America (23 Aug 2026)",
       "title_zh": "加拿大应以互操作性反制美国科技控制",
       "link": "https://pluralistic.net/2026/08/24/elbows-really-up/",
@@ -41,7 +60,26 @@
         "Bill C-11",
         "Palantir"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "The Negative Option",
+      "title_zh": "Columbia House 如何发明强制续订生意",
+      "link": "https://feed.tedium.co/link/15204/17427939/columbia-house-history-retrospective",
+      "pub_date": "2026-08-25T02:45:00.000Z",
+      "summary": "Columbia House 以“一分钱多张唱片”获客，再通过 negative-option 账单、后续高价唱片和催收获利；赠送唱片甚至不付版税。其衰落说明，今天 SaaS 的自动续费与取消障碍并非新发明，而是邮购时代强制续订逻辑的数字化延续。",
+      "source_name": "tedium.co",
+      "score": 10,
+      "depth": 5,
+      "novelty": 5,
+      "category": "opinion",
+      "keywords": [
+        "Columbia House",
+        "negative-option billing",
+        "subscription",
+        "SaaS"
+      ],
+      "rank": 4
     },
     {
       "title": "Numerical (in)stability of recurrece relations",
@@ -60,7 +98,7 @@
         "numerical stability",
         "Miller's algorithm"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "★ What Is the Point of the DMA?",
@@ -79,7 +117,7 @@
         "European Commission",
         "App Store"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "BitCam: The 1-Bit Camera App Turns 2.0",
@@ -98,7 +136,7 @@
         "1-bit",
         "photo editor"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Apple Rethinks Plan to Merge ‘Hide My Email’ Domain Name With ‘Sign In With Apple’",
@@ -117,7 +155,7 @@
         "private.icloud.com",
         "email relay"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "[Sponsor] Finalist 4: Inspired by Paper Day Planners",
@@ -136,7 +174,7 @@
         "Apple Watch",
         "Markdown"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Comparing the two holograms on the Windows 95 box",
@@ -155,7 +193,7 @@
         "anti-piracy",
         "packaging"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "llm-anthropic 0.27",
@@ -174,7 +212,7 @@
         "httpx2",
         "Claude Code"
       ],
-      "rank": 9
+      "rank": 11
     }
   ]
 }
