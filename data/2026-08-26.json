@@ -1,9 +1,9 @@
 {
   "date": "2026-08-26",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2545,
-  "filtered_articles": 20,
+  "success_feeds": 84,
+  "total_articles": 2497,
+  "filtered_articles": 15,
   "articles": [
     {
       "title": "The AI Hater's Manifesto",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Debugging Ubiquiti's 5G Backup on AT&T",
+      "title_zh": "Ubiquiti U5G Backup为何只能跑AT&T 4G",
+      "link": "https://www.jeffgeerling.com/blog/2026/unifi-u5g-backup-debugging/",
+      "pub_date": "2026-08-25T19:18:00.000Z",
+      "summary": "## 一句话总结\n\nUbiquiti 的 UniFi 5G Backup 虽然标注了 AT&T 认证，也能插入 AT&T Enterprise SIM，但其 5G RedCap 能力目前似乎尚未获 AT&T 放行，最终只能以 4G LTE 运行。\n\n## 正文\n\n### 想要一条“移动优先、固定可扩展”的网络链路\n\n作者正在搭建一套移动式 mini homelab。它在移动时要靠 5G 作为主链路，到固定地点后又能接入另一条 Internet 连接。  \n这种需求很适合 Ubiquiti 的小型设备，因为它们可以塞进 mini rack。于是作者选中了 UniFi 5G Backup，也就是 U5G。  \n这是一台 PoE 供电的小设备，采用 5G RedCap，官方标称下行最高 220 Mbps。对“备份网络”这个定位来说，这个性能本来已经足够。  \n作者手里恰好有 AT&T Enterprise 的 AIA 计划。它不同于 AT&T 消费者 5G 套餐，并且官方已经支持 5G RedCap。  \n再加上 U5G 产品规格中列出了 `AT&T` 和 `T-Mobile` 认证，作者自然推断它应该能在 AT&T 企业网络上跑起来。\n\n### 设备先卡在固件循环，网络问题随后浮出水面\n\n但接入过程从一开始就不顺。U5G 被 Cloud Gateway Fiber 采用后，设备陷入了不断更新的循环。  \n作者最终只能让它进入 recovery mode，再通过 TFTP 手动刷入更新固件。整个传输过程没有进度条，只能等待大约 5 分钟，祈祷刷写成功。  \n这里还有一个很实际的坑：TFTP recovery 必须走有线直连交换机。即使 Wi-Fi 信号极好，传输仍可能因一两个损坏字节而失败。  \n固件问题解决后，真正的核心问题出现了：AT&T Business 5G SIM 能联网，但 U5G 只会落到 4G LTE。  \nAT&T 客户经理尝试将设备 IMEI 加入 5G SIM 时，又遇到了明确报错：`The entered IMEI is not eligible for AT&T Internet Air for Business`。\n\n### FAQ 的“消费者套餐不支持”很容易让人误判\n\nUbiquiti 的 FAQ 确实写过，AT&T consumer plans 目前不支持 U5G 所需的 5G RedCap。  \n但问题在于，这个措辞强调的是“消费者套餐”。因此作者合理地认为，Business 或 Enterprise AIA 计划或许不受这个限制。  \n产品规格页还在 Certifications 一栏同时列出 `FCC, IC, PTCRB, GCF, AT&T, T-Mobile`。从用户视角看，这更强化了“AT&T 可用”的预期。  \n可现实是，认证并不等同于运营商已经为该设备 IMEI 和对应套餐开放 5G 接入。  \n根据作者本人以及 UniFi 社区其他用户的反馈，AT&T 目前似乎尚未真正支持 U5G Backup 以 5G 方式接入其网络。\n\n### 直接 SSH 上设备，能看清它为何停在 LTE\n\n为了确认问题到底出在信号、基站还是运营商授权，作者进入了设备调试层。UniFi 设备可以开启直接 SSH，也可以从 Network UI 的设备设置中打开 Debug console。  \n这个控制台会以 root 身份进入设备本机，因此并不适合随便执行未知命令。  \n最有价值的观察命令是 `mca-dump`，它会输出调制解调器、无线电状态、信号和运营商信息。  \n输出显示设备已识别到 `AT&T Wireless`，`networkoperator` 也是 `AT&T`，但 `rat` 与 `rat_mode_active` 都是 `LTE`。  \n同时，设备能力列表 `rat_caps` 包含 `5gnr-sa` 和 `lte`，说明它并非没有 5G 能力；而 `5g_sa_mode: false` 则指向两个可能：当前基站不支持 5G SA，或者 AT&T 没有授权该 SIM 在这台设备上使用 5G SA。\n\n### LTE 能用不代表这根“备份棒”发挥了价值\n\n有意思的是，尽管 IMEI 不被 AT&T Internet Air for Business 接受，U5G 仍然能使用 AT&T 的 4G LTE。  \n但这让设备的实用性明显打了折扣。在信号很强、优于 `-90 dBm` 的情况下，作者最多测到约 30 Mbps 下行和 12 Mbps 上行。  \n一旦信号条件普通，下行速度会掉到约 10 到 12 Mbps。  \n而 U5G 的设计目标本来就是通过 RedCap，在成本、功耗和性能之间取平衡，为备份 Internet 提供“够用”的 5G 带宽。  \n说白了，设备本身并没有超出预期地追求高速；问题是它在 AT&T 上连 RedCap 应有的 5G 档位都拿不到。\n\n### 同一张 SIM 在 U5G Max 跑出 500 Mbps，答案已经很清楚\n\n作者做了一个很有说服力的对照测试：把同一张 AT&T 5G SIM 插入 UniFi 5G Max。  \n在相同地点，这台设备可以正常接入 AT&T 5G，下行超过 500 Mbps，截图中甚至接近 600 Mbps。  \n因此问题既不是 SIM 本身失效，也不是当地 AT&T 5G 覆盖不足。问题集中在 U5G Backup 这台设备，以及 AT&T 对其 IMEI、RedCap 或网络准入的支持状态上。  \nUbiquiti 在产品页的 Carrier Setup Tutorials 中其实也留了一句提示：需要向运营商确认套餐是否支持 5G RedCap。  \nAT&T 已经宣称在全国范围支持 5G RedCap 超过一年，但对 U5G Backup 而言，网络能力上线并不意味着这台具体设备已经获准接入。\n\n### 现阶段的结论：AT&T 上只能把它当 LTE 备份设备\n\n作者的最终判断是，U5G Backup 目前似乎只在 T-Mobile 网络上完整支持 5G 速度。  \n在 AT&T 上，它至少可以作为 LTE 备份链路使用，但无法兑现产品的 5G RedCap 定位。  \n作者已经在 Ubiquiti 社区发帖，希望推动 UI 团队确认或解决 AT&T 5G 支持问题。  \n在那之前，购买 U5G Backup 的 AT&T 用户不应只看“AT&T Certification”字样，也不能只凭套餐宣称支持 RedCap 就假定能获得 5G。  \n对于需要 AT&T 高速 5G 的场景，至少从这次测试看，U5G Max 能跑出超过 500 Mbps，而 U5G Backup 则仍只能接受 LTE 的现实。",
+      "source_name": "jeffgeerling.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Ubiquiti",
+        "5G RedCap",
+        "AT&T",
+        "UniFi"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Footnote Regarding the GDPR and Cookie Permission Prompts",
       "title_zh": "DMA 与 GDPR 的监管副作用批评",
       "link": "https://daringfireball.net/2026/08/what_is_the_point_of_the_dma#fn1-2026-08-24",
@@ -41,7 +60,7 @@
         "Apple",
         "EU regulation"
       ],
-      "rank": 2
+      "rank": 3
     }
   ]
 }
