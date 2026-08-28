@@ -1,9 +1,9 @@
 {
   "date": "2026-08-28",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2521,
-  "filtered_articles": 16,
+  "success_feeds": 85,
+  "total_articles": 2546,
+  "filtered_articles": 20,
   "articles": [
     {
       "title": "Two Alleged ‘TeamPCP’ Hackers Arrested in Australia",
@@ -82,6 +82,44 @@
       "rank": 4
     },
     {
+      "title": "Breaking Claude Code Opus 5 Auto Mode",
+      "title_zh": "Claude Code Auto Mode 可被压缩包诱导绕过",
+      "link": "https://simonwillison.net/2026/Aug/27/breaking-claude-code-opus-5-auto-mode/",
+      "pub_date": "2026-08-27T22:50:25.000Z",
+      "summary": "## 一句话总结\n\nClaude Code Opus 5 的 Auto Mode 并不能可靠抵御 prompt injection：攻击者可借助 ZIP 文件和 Python 模块导入劫持绕过防护，真正可信的底线仍然是 sandbox、网络隔离和最小权限。\n\n## 正文\n\n### Auto Mode 被推到前台，承担了过高的安全期待\n\nAnthropic 近期将 Claude Code 的 Auto Mode 设为默认选项。它承担的角色很明确：当 coding agent 遇到潜在危险操作时，自动判断哪些命令可以执行，哪些应该被拦下。  \n这背后的目标，是降低 prompt injection 对 agent 用户造成的风险。毕竟，coding agent 不只是生成代码，它还会下载文件、解压目录、运行命令，甚至访问本地环境。  \n问题也恰恰在这里：一旦 agent 能够代表用户操作系统，prompt injection 的后果就不再只是“回答跑偏”。它可能变成恶意代码执行、数据泄露，或者凭据被窃取。  \nAnthropic 对 Auto Mode 的效果做出了相当积极的表述。Simon Willison 也注意到，Auto Mode 的默认启用意味着它正在成为 Claude Code 安全模型的重要一层。  \n但 Johann Rehberger 的研究说明，这层防护并没有像预期那样形成可靠边界。\n\n### 攻击不靠明显的恶意命令，而是利用 Python 的导入机制\n\nJohann Rehberger 找到的攻击链并不复杂，但它抓住了 agent 自动执行工作流中的一个危险缝隙。攻击者先诱导 Claude Code 下载并解压一个 ZIP archive。  \nZIP 文件本身不是终点，关键在于其中被放入了一个本地的 `struct.py` 文件。随后，agent 执行某段会 `import base64` 的 Python 代码。  \n看起来，导入 `base64` 是再普通不过的操作。它甚至很可能会被安全分类器视为低风险、正常的开发行为。  \n但 Python 的模块解析会受到当前工作目录中同名文件的影响。于是，在导入 `base64` 的过程中，Python 可能优先加载恶意 ZIP 解压出来的本地 `struct.py`。  \n说白了，攻击者不需要说服模型直接运行一条显眼的恶意命令。他只需要让模型完成一串看似合理的操作，再把恶意执行藏进语言运行时的正常行为里。\n\n### 防护分类器放行了攻击，甚至拦住了止损\n\nRehberger 表示，这个攻击在 Auto Mode 下的成功率可达到 80%。这个数字尤其值得警惕，因为它意味着问题不是偶发的边缘 case。  \n更讽刺的是，部分运行中 Claude 其实察觉到了自己已经被攻陷。它尝试终止正在运行的恶意进程，试图完成清理和止损。  \n但 Auto Mode 拒绝了这条 cleanup command。于是，安全机制允许了恶意进程的创建，却阻止了模型执行关闭它的命令。  \n这是这篇文章最值得开发者记住的地方：安全分类器不是天然站在“安全”一边。它只是在对单条操作进行风险判断，而攻击链往往跨越多个步骤。  \n当分类器看不懂这些步骤之间的语义关联时，就可能出现最糟糕的组合：前面放行攻击，后面阻断修复。安全层本身反而成了失败路径的一部分。\n\n### Prompt injection 的问题，不该只交给模型自身解决\n\nRehberger 的结论很直接，也很务实：只要 agent 所处环境可能被对手关注，就不应把安全完全押在 agent 的判断能力上。  \n无论 Auto Mode 的分类器多强，它最终仍运行在攻击者可以影响上下文的环境中。攻击者可以通过文件名、目录结构、代码依赖和任务说明，把危险行为伪装成正常开发操作。  \n这也是为什么“模型能否识别恶意提示”并不是唯一问题。更根本的问题是，即使它识别失败，失败的影响范围能否被系统边界限制住。  \n文章给出的答案是 sandbox。无人值守的 coding agent 应运行在 container、VM 或 OS sandbox 中，而不是直接拥有用户的日常开发环境。  \n同时，还应限制 network egress，持续监控 agent 行为，并避免把 home directory、SSH keys、cloud credentials 等高价值资产暴露给 agent runtime。\n\n### 真正的安全边界是权限隔离，而不是一次正确判断\n\n这次攻击揭示的并不是某个 Python import 的冷门陷阱，而是 agent 安全设计中的一个基本事实。模型侧防护可以降低风险，但不能成为最后一道防线。  \nAuto Mode 可以继续存在，也可以继续改进对危险命令的判断。可一旦它被视为“无需 sandbox 也能安全运行 agent”的理由，风险就被错误地转移给了一个不具备完备上下文的分类器。  \n对于有经验的开发者来说，最实际的判断标准不是“agent 会不会中招”。而是“即使中招，它最多能做什么”。  \n如果 agent 没有宿主机敏感目录、没有 SSH key、没有云端凭据，且网络出口受限，那么一次 prompt injection 的破坏面会小得多。  \nClaude Code Auto Mode 的这次失守提醒我们：安全不能只依赖 agent 做出正确决定，更要确保它做错决定时，系统仍然守得住。",
+      "source_name": "simonwillison.net",
+      "score": 14,
+      "depth": 6,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "Claude Code",
+        "prompt injection",
+        "Auto Mode",
+        "Python import shadowing"
+      ],
+      "rank": 5
+    },
+    {
+      "title": "The Load-Bearing Vocabulary of Claude",
+      "title_zh": "GitHub PR 词汇揭示 Claude Code 的兴起",
+      "link": "https://louisabraham.github.io/load-bearing/",
+      "pub_date": "2026-08-27T21:09:42.000Z",
+      "summary": "## 一句话总结\n\n这篇文章借一个可交互的“词汇板”，把 Claude 的高频词、词簇和词汇变化做成可读的数据界面，而真正值得看的，是作者如何把视觉设计、浏览器兼容性和触摸交互都当成信息表达的一部分。\n\n## 正文\n\n### 这不是一张图，而是一块用来“读词汇”的板\n\n文章的目标不是把 Claude 的词汇统计扔进一张漂亮图表里。作者把它设计成一块完整的 board：左侧是语料、说明和词表，右侧是聚类、堆叠图和被选中的词。整个页面固定在一个 12-column grid 中，并且坚持“一屏、无折叠”的阅读方式。上千个词会在自己的 cell 内滚动，而不会把图表和页面底部不断往下推。词不是 hover 查看，而是 click 选中，这样选择会保持下来，读者可以放开鼠标，专心阅读右侧面板。说白了，这个界面想解决的不是“怎么展示更多数据”，而是“怎么让人稳定地追踪一个词和它所属的 cluster”。\n\n### 信息层级靠几何和颜色建立，而不是靠装饰\n\n作者把视觉语言定义得相当克制，甚至直接用 “Bauhaus” 来概括它。第一层含义是白底、黑字，以及 red、blue、yellow 三原色。第二层更重要：让 geometry 承担原本会交给装饰的工作。页面中唯一的 accent color 是 `#de301e`，它只用于当前到达的 cluster 和当前选中的对象。其余七个 band 使用灰阶，而不是给每个类别分配不同颜色。这样一来，颜色表达的是“当前状态”和“阅读焦点”，而不是数据对象的固定身份。作者还明确要求 accent 在白底上满足 4.5:1 对比度，因为它不仅标记图形，也承担小字号文字的可读性。\n\n### 轻色主题不是审美偏好，而是一次浏览器渲染事故后的结论\n\n有意思的地方在于，文章花了大量篇幅解释为什么页面必须写 `color-scheme: only light`。如果只是不响应 `prefers-color-scheme`，并不能阻止手机浏览器替页面强制套上 dark mode。作者实际观察到，在 Android Firefox 和 Chrome 中，浏览器会把正文反成深色，却保留图表的 accent、三原色和各种 fill。结果不是“同一套设计的暗色版本”，而是同一块 board 同时处于两种 color scheme。尤其是原本以半透明深色墨水绘制的标签，会变成灰压灰，几乎无法阅读。作者测得，即使声明 `color-scheme: light`，浏览器仍可能改动 board 的 68% 像素；只有 `only light` 才真正撤回浏览器强制深色的许可。\n\n### 字体栈的关键不是列得多，而是不能承诺你控制不了的字重\n\n这篇文章对字体的态度也很工程化：不用 web font，页面是“一个文件读取另一个文件”，因此必须接受平台字体的现实。作者特意把 `Inter` 从字体栈中移除了，原因并不是 Inter 不好看，而是某些设备上安装的 Inter 字重不可靠。在一台手机上，Firefox 选中了本地 Inter，但那个版本无论 CSS 请求 400、500 还是 700，几乎都显示成 hairline。作者测得，它比 Chrome 中的对应文字细了四倍，标题和数字看上去像灰字，而不是黑字。Chrome 又根本识别不到那份 Inter，于是两个浏览器走向不同结果。最终的 `--grotesk` 以 `\"Helvetica Neue\", Helvetica, Roboto, ui-sans-serif, system-ui, Arial, sans-serif` 为主，而 measurement 用的 mono 字体则故意让手机端回落到一致的 `monospace`。\n\n### 响应式布局里，真正危险的是文字膨胀和内容越界\n\nboard 的网格划分是明确的：左列占 5/12，右列占 7/12，中间有一条贯穿页面的竖向分界线。标题与 corpus 统计在第一行，cluster 说明和图表在第二行，词表与详细面板则被固定在第三行。这里没有通过 CSS `order` 改写文档逻辑，而是用显式 `grid-row` 放置内容。这样在窄屏堆叠时，说明文字仍然会出现在它解释的词表之前。作者还处理了一个很实际的问题：Firefox for Android 不识别仅有 `-webkit-text-size-adjust` 的写法。文字被浏览器自动放大后，本来预算一行的标签会换行，进而挤坏图表的测量区域。因此页面同时设置 `-webkit-`、`-moz-` 和标准的 `text-size-adjust: 100%`。\n\n### 图表交互的成败，取决于浏览器把手势交给谁\n\n图表支持沿横轴 scrub，读者可以用手指拖动来读取某一周的数据。问题是，在手机上，Chrome 会把拖动开始时的一小段横向位移当成页面 pan，随后触发 `pointercancel`。于是图表只会跳到手指落点一次，然后读数又回到上一个 week，看起来像“能点、不能拖”。作者的解法是给 SVG 设置 `touch-action: pan-y`。这意味着纵向手势仍交给页面滚动，而横向手势交给图表自己的 pointer handler。与此同时，readout 预留了固定高度，避免它从提示文案变成实际周数时改变 chart 的剩余高度。连 cluster 的翻页箭头也被单独处理了触摸目标、数字等宽和对齐问题，目标是让读数在持续变化时不发生视觉抖动。\n\n### 最终的设计原则是：每个视觉规则都必须对应一种阅读动作\n\n文章反复强调一件事：元素的样式应该由“它是什么”决定，而不是由“它在哪里”决定。标题和大数字用紧凑的 grotesk bold，正文用 grotesk，测量标签、坐标和元信息用 uppercase mono。词本身被视为数据，不只是标签，因此它有自己的字号规则。选中的词又是例外：它沿用词表的 mono 语境，却提升到标题级别。链接也不抢占 accent color，而是保留黑色文字，只用红色下划线表示可点击性。最终，这个项目展示的并不只是 Claude 有哪些“load-bearing vocabulary”，还展示了一个数据叙事界面该如何把每一次点击、滚动、对比和对齐，都变成读者理解数据的支撑结构。",
+      "source_name": "daringfireball.net",
+      "score": 14,
+      "depth": 7,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "Claude",
+        "GitHub",
+        "KL-divergence k-means",
+        "vocabulary trends"
+      ],
+      "rank": 6
+    },
+    {
       "title": "Sandboxing coding agents",
       "title_zh": "用最小权限沙箱隔离编码代理",
       "link": "https://micahflee.com/sandboxing-coding-agents/",
@@ -98,7 +136,45 @@
         "GitHub PAT",
         "SSH signing"
       ],
-      "rank": 5
+      "rank": 7
+    },
+    {
+      "title": "Selling out",
+      "title_zh": "软件工程师如何在职业化中不失自我",
+      "link": "https://seangoedecke.com/selling-out/",
+      "pub_date": "2026-08-28T00:00:00.000Z",
+      "summary": "## 一句话总结\n\n“Selling out”本身并不会必然让人异化；真正危险的，是把职业角色、公司目标或工作价值误当成自己不可质疑的本质。\n\n## 正文\n\n### “卖掉自己”如今不是堕落，而是一门组织技术\n\n文章从 Tom Lehrer 1973 年那句“selling out is easy to do”切入，但作者的判断正好相反：在今天的大组织里，想“卖掉一点”并不容易。它既需要技术能力，也需要理解大型组织实际如何运作。作者所说的 selling out，并不是彻底放弃人格或理想。更像是在公司里学会扮演专业角色，推动事情发生，同时保留独立的内在生活。真正的问题是，这种职业化表演会不会反过来伤害人。换句话说，一个人能否既做个有效率的 Staff Engineer，又不把自己活成公司机器的一部分？\n\n### Marx 的异化，未必能直接套到 Big Tech 工程师身上\n\n很多人会把职业化直接等同于“Marxist alienation”，但作者先回到 Marx 的原始定义。Marx 的核心论证是：工人创造的产品和财富，最终成为独立于工人的力量，并且反过来强化资本家对工人的支配。作者将其拆成四层：工作让雇主比自己更强大、让人脱离手工创造、损害身心，以及让人服务于别人的目标而非自己的目标。对 Big Tech 软件工程师而言，第一层并不成立，或者说方向恰恰相反。公司越成功，工程师通常越有议价能力；公司陷入困境，才更容易裁员、削压福利和恶化待遇。第三层也不太适用，因为 Marx 此处主要讨论的是工厂劳动造成的肉体与精神损伤，而不是知识工作。\n\n### 真正相关的，是工作目标不属于自己\n\n作者并非否认异化的存在，而是认为最贴近知识工作者体验的，是第四层：你的努力在服务别人的目标。问题在于，Marx 对这种心理体验解释得不够细。于是文章转向 Situationist International，特别是 Guy Debord 与 Raoul Vaneigem。Situationists 继承 Marx 的框架，但把重点放在“representation”，也就是人如何被形象、广告和社会角色塑造。Debord 说，劳动者不生产自己，而是生产一种独立的力量；生产越成功，劳动者被剥夺得越多。这里的关键已经不只是经济关系，而是人开始通过外部角色和主流形象认识自己。\n\n### 角色扮演会异化，但前提是角色吞掉了生活\n\nVaneigem 把这种异化说得更直接：日常生活中扮演的角色会渗入个体，让人无法成为真正想成为的人。一个人越投入“高效员工”“成功职业人”之类的身份，真实生活就越显得贫乏；而真实生活越贫乏，角色就越有吸引力。于是职业身份像成瘾物一样，既替代真实体验，也让人暂时不用面对体验被掏空的事实。这正是九十年代“selling out”叙事的原型：人为了 paycheck 放弃梦想，最后变成一个虚伪的职业角色。可作者的反驳很关键：这是风险，不是必然结果。健康的人本来就会在派对、教堂、葬礼和办公室呈现不同面貌；有职业人格，不等于没有真实人格。\n\n### Sartre 所谓“bad faith”，是把自己骗成了角色\n\n如果职业角色有害，问题可能不在“扮演”本身，而在于你是否把角色当成了唯一真实的自己。Sartre 把这种状态称为 bad faith：一个人同时是欺骗者和被欺骗者，却向自己隐藏真相。Simone de Beauvoir 对职业场景的描述更具体，她称之为“serious man”。这种人假装职业价值是天然给定、绝对正确的，仿佛自己从未选择过服从它。可实际上，工作中的价值、流程和优先级，都是人们在激励机制下形成的稳定均衡，不是宇宙法则。作者提醒说，一旦把公司目标当成终极价值，人迟早会因为发现它们的任意性和偶然性而感到幻灭。\n\n### 不是所有白领工作都一样，异化也有具体形态\n\n作者不接受“资本天然异化”“角色扮演必然上瘾”或“职业化必然自欺”这些强结论。可是，他也承认，世界上确实有些工作比另一些工作更容易让人异化。文章因此引入 C. Wright Mills 的《White Collar》与 Erving Goffman 的《The Presentation of the Self in Everyday Life》。Mills 描述的典型 salaried employee，不像工匠那样拥有可欣赏、可完成的作品，而是在年复一年的文书流程中处理自己渴望却无法拥有的东西。结果是，他在工作中无聊，在休闲时又疯狂追逐商业化娱乐；既得不到释放，也得不到满足。文章在提供的片段中止于这里，但它已经把论点推进得很清楚：异化不是“做职业人”的自动后果，而与工作是否让人失去创造、控制感和独立生活紧密相关。",
+      "source_name": "seangoedecke.com",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "alienation",
+        "professionalism",
+        "software engineering",
+        "Marx"
+      ],
+      "rank": 8
+    },
+    {
+      "title": "Afterglow — Classic After Dark Screen Savers on Today’s MacOS",
+      "title_zh": "Afterglow 在现代 macOS 复活 After Dark",
+      "link": "https://morphing.cloud/afterglow/",
+      "pub_date": "2026-08-27T21:49:50.000Z",
+      "summary": "## 一句话总结\n\nAfterglow 是一款专为现代 macOS 打造的轻量级 68k 模块模拟器，它不依赖 Classic Mac OS 或 Apple ROM，就能直接运行原版 _After Dark_ 屏保模块。\n\n## 正文\n\n### 那些经典屏保，难点不在“能不能跑”\n\n90 年代 Berkeley Systems 的 _After Dark_，曾让 Flying Toasters、Fish、Starry Skylines 等动画出现在无数 Macintosh 屏幕上。它最初当然有实际用途：CRT 显示器需要靠屏保避免 burn-in。  \n但 _After Dark_ 的意义很快超出了工具本身，它的模块可以荒诞、好笑、迷幻，也可以非常精致。说白了，这些屏保已经是一批值得保存的软件艺术作品。  \n问题是，把它们带到今天并不容易。过去通常要配置 Classic Mac OS 模拟器，或者直接寻找老硬件。  \n即使成功启动，也没有一个模拟器或一台旧 Mac 能保证所有模块都按原样工作，有些动画过快，有些又过慢。\n\n### Afterglow 的选择是直接模拟模块，而不是复刻效果\n\nAfterglow 没有去重写 Flying Toasters，或者为现代系统做一批“致敬版”移植。它选择运行原始的 68k _After Dark_ module code。  \n这是它和普通复刻项目最关键的区别：目标不是重现某几个知名动画，而是尽可能保存原始软件的运行形态。  \n为此，Afterglow 基于 Musashi 68k CPU emulator，自己实现了运行这些模块所需的部分 Macintosh Toolbox 与 OS API。  \n这里有个巧妙的取舍：它只重实现“足够运行 After Dark modules”的那部分环境，而不是模拟整套 Classic Mac OS。  \n因此，用户不需要准备 Apple ROM，也不用安装旧版 Mac OS，Afterglow 可以作为一个面向特定软件生态的独立模拟器工作。\n\n### 导入机制解决了“手里格式五花八门”的现实问题\n\nAfterglow 不直接附带屏保模块，但它尽量把导入这一步做得简单。用户可以把 module 文件、磁盘镜像，或者压缩归档直接拖进应用。  \n只要文件中包含模块，Afterglow 就会自动提取并导入。原文的意思很直白：无论你手里的收藏是什么封装格式，大概率都可以直接丢进去试试。  \n如果本地没有文件，应用还整合了 Internet Archive 浏览功能。用户可以在不离开应用的情况下浏览并安装软件发行版。  \n这让它不只是一个“文件能跑起来”的模拟器，也承担了软件保存项目常见的发现、整理与访问入口角色。  \n应用还提供 module library、原始设置和说明的展示，让模块不只是黑箱运行，而是能被重新浏览和研究。\n\n### 它最终把老模块重新带回了 macOS 的锁屏时刻\n\nAfterglow 的终点并不只是预览窗口，而是现代 macOS 的 screen saver。安装导入过的模块后，用户可以把任意经典 _After Dark_ 模块作为系统屏保运行。  \n这恢复了屏保最有趣的使用场景：离开电脑一会儿，回来时看到一个意料之外的动画。可能是迷幻 fractal，也可能是程序生成的山景，或者 Bad Dog 在桌面上搞破坏。  \n除了全屏运行，它还提供 Randomizer、Multimodule、模块控制、CRT shader 等功能。  \n面向收藏和研究的功能也没有缺席，包括 Resource inspector、DrawMorph editor，以及可旋转查看的 3D box art。  \n所以 Afterglow 的核心价值不只是“怀旧”，而是用一个不依赖旧系统的专用运行环境，让原始 _After Dark_ 软件能在未来的 macOS 上继续被使用、观看和保存。",
+      "source_name": "daringfireball.net",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "tools",
+      "keywords": [
+        "After Dark",
+        "macOS",
+        "68k emulation",
+        "Musashi"
+      ],
+      "rank": 9
     },
     {
       "title": "Nieuwe wet Inlichtingen- en veiligheidsdiensten: wat mogen ze nu al en waar zijn ze voor",
@@ -117,7 +193,7 @@
         "surveillance",
         "privacy"
       ],
-      "rank": 6
+      "rank": 10
     },
     {
       "title": "‘How Europe Is Killing Makers and Micro-Entrepreneurs’",
@@ -136,7 +212,26 @@
         "micro-enterprises",
         "Lectronz"
       ],
-      "rank": 7
+      "rank": 11
+    },
+    {
+      "title": "How big are factorials?",
+      "title_zh": "从 Gamma 函数推导阶乘位数估算",
+      "link": "https://eli.thegreenplace.net/2026/how-big-are-factorials/",
+      "pub_date": "2026-08-28T01:52:00.000Z",
+      "summary": "用 Stirling 公式的十进对数可快速估算 n! 的位数：52! 估为约 68 位，与真实值一致。推导从 Gamma 函数满足 Γ(n+1)=nΓ(n) 出发，经变量替换和 Laplace 方法得到 √(2πn)(n/e)^n；对数中的常数项在 n 较小时仍会带来约 2 位修正。",
+      "source_name": "eli.thegreenplace.net",
+      "score": 10,
+      "depth": 6,
+      "novelty": 4,
+      "category": "other",
+      "keywords": [
+        "factorial",
+        "Gamma function",
+        "Stirling's approximation",
+        "Laplace's method"
+      ],
+      "rank": 12
     },
     {
       "title": "Second solutions",
@@ -155,7 +250,26 @@
         "recurrence",
         "numerical stability"
       ],
-      "rank": 8
+      "rank": 13
+    },
+    {
+      "title": "U.S. Judge Blocks Trump Defense Department’s Anthropic Blacklisting",
+      "title_zh": "美国法官叫停五角大楼封杀 Anthropic",
+      "link": "https://www.reuters.com/legal/government/us-judge-blocks-pentagons-anthropic-blacklisting-2026-08-28/",
+      "pub_date": "2026-08-28T02:59:46.000Z",
+      "summary": "美国联邦法官暂时阻止特朗普政府国防部将 Anthropic 列入黑名单的措施，使其仍可参与相关政府业务。该消息涉及 AI 供应商进入国防采购体系的法律边界，但页面仅提供路透社新闻链接与标题，未呈现禁令依据、涉案合同或裁决细节。",
+      "source_name": "daringfireball.net",
+      "score": 8,
+      "depth": 2,
+      "novelty": 6,
+      "category": "ai-ml",
+      "keywords": [
+        "Anthropic",
+        "Pentagon",
+        "injunction",
+        "defense procurement"
+      ],
+      "rank": 14
     },
     {
       "title": "Panic Is Refunding Tariff Fees to Playdate Buyers",
@@ -174,7 +288,7 @@
         "tariffs",
         "refunds"
       ],
-      "rank": 9
+      "rank": 15
     },
     {
       "title": "Ads in Apple Maps Have Now Launched",
@@ -193,7 +307,7 @@
         "privacy",
         "Apple"
       ],
-      "rank": 10
+      "rank": 16
     },
     {
       "title": "\"No way to prevent this\" say users of only language where this regularly happens",
@@ -212,7 +326,7 @@
         "memory safety",
         "CVE-2026-41992"
       ],
-      "rank": 11
+      "rank": 17
     },
     {
       "title": "TEAC founded in 1953, sort of",
@@ -231,7 +345,7 @@
         "retro computing",
         "disk storage"
       ],
-      "rank": 12
+      "rank": 18
     },
     {
       "title": "A Calendar View For My Blog",
@@ -250,7 +364,26 @@
         "information architecture",
         "Hacker News"
       ],
-      "rank": 13
+      "rank": 19
+    },
+    {
+      "title": "Elizabeth Warren’s Incoherent Outrage Regarding Apple’s Tariff Refund",
+      "title_zh": "沃伦要求 Apple 返还关税退款",
+      "link": "https://www.warren.senate.gov/newsroom/press-releases/warren-pushes-giant-corporations-to-give-billions-in-tariff-refunds-back-to-consumers/",
+      "pub_date": "2026-08-27T20:46:08.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "tariffs",
+        "refunds",
+        "Apple",
+        "Elizabeth Warren"
+      ],
+      "rank": 20
     },
     {
       "title": "Book Review: The Infinite Sadness of Small Appliances by Glenn Dixon ★★★★☆",
@@ -269,7 +402,7 @@
         "Glenn Dixon",
         "autonomous vacuum"
       ],
-      "rank": 14
+      "rank": 21
     }
   ]
 }
