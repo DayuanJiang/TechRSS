@@ -1,15 +1,10 @@
-import { createOpenAI } from '@ai-sdk/openai';
+import { createAmazonBedrock } from '@ai-sdk/amazon-bedrock';
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
 import type { Article } from './types';
 
-// OpenAI models on Bedrock are only served via the OpenAI-compatible endpoint,
-// not the regular Bedrock runtime (Converse API).
-const bedrock = createOpenAI({
-  baseURL: 'https://bedrock-mantle.us-east-2.api.aws/openai/v1',
-  apiKey: process.env.AWS_BEARER_TOKEN_BEDROCK,
-});
-const MODEL_ID = 'openai.gpt-5.6-terra';
+const bedrock = createAmazonBedrock({ region: 'us-east-1' });
+const MODEL_ID = 'zai.glm-5';
 const MAX_CONCURRENT = 10;
 
 const articleResultSchema = z.object({
@@ -191,10 +186,8 @@ export async function summarizeArticle(title: string, content: string): Promise<
 标题：${title}
 
 ${truncated}`,
-      maxOutputTokens: 4096 * 4,
-      providerOptions: {
-        openai: { reasoningEffort: 'high' },
-      },
+      maxOutputTokens: 4096,
+      temperature: 0.3,
     });
     return text?.trim() || null;
   } catch (e) {
@@ -219,10 +212,8 @@ export async function processArticles(articles: Article[]): Promise<Map<number, 
           model: bedrock(MODEL_ID),
           output: Output.object({ schema: articleResultSchema }),
           prompt: buildPrompt({ title: article.title, content: article.content, sourceName: article.sourceName, link: article.link }),
-          maxOutputTokens: 4096 * 4,
-          providerOptions: {
-            openai: { reasoningEffort: 'high' },
-          },
+          maxOutputTokens: 4096,
+          temperature: 0.3,
         });
         if (output) {
           allResults.set(index, {
