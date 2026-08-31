@@ -1,9 +1,9 @@
 {
   "date": "2026-08-31",
   "total_feeds": 92,
-  "success_feeds": 82,
-  "total_articles": 2481,
-  "filtered_articles": 9,
+  "success_feeds": 85,
+  "total_articles": 2549,
+  "filtered_articles": 12,
   "articles": [
     {
       "title": "Cores in space: The core memory module from a 1980 Spacelab computer",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "Cancelation Terminology",
+      "title_zh": "同步取消、异步取消与优雅关闭的本质区别",
+      "link": "https://matklad.github.io/2026/08/31/cancelation-terminology.html",
+      "pub_date": "2026-08-31T00:00:00.000Z",
+      "summary": "## 一句话总结\n文章厘清了同步取消、异步取消和优雅关闭这三个常被混淆的概念，指出它们分别是控制流结构、通信协议和应用层设计模式。\n\n## 正文\n\n### 同步取消：像抛异常一样的控制流\n作者开篇点题，我们要区分的是概念背后的“东西”，而不是术语本身。同步取消本质上是一种控制流结构，往往还是隐式的。它的核心特征是“立即生效”：调用 `task.cancel()` 后，任务在当前指令执行完毕前就已经结束了。这听起来很高大上，但其实我们每天都在用——错误处理就是典型的同步取消。当你抛出一个异常或者返回一个 error，程序立刻展开栈，跳出循环和判断，执行 `finally` 或 RAII 清理资源。这就像莫里哀笔下的散文：我们一直在做，只是没意识到它有个名字。\n\n### 异步取消：双方协商的通信协议\n但并发编程里，很多情况没法这么干脆。异步取消本质上是一个通信协议：一方发起取消请求，必须等另一方确认并处理完毕。代码写出来是这样的：先 `request_cancelation()`，这时候任务可能还在跑，必须再 `await` 等它真正结束。这不仅仅是加个等待那么简单，它改变了代码的形态。作者提醒，在 Rust 这类语言里，同步取消太容易实现，反而容易让人忽视异步取消的必要性，导致并发程序写出 bug。\n\n### CPU 线程池：为什么不能想停就停\n那为什么非得异步？看个具体场景：CPU 线程池。假设你把加密任务丢给另一个线程，结果用户断连了，任务得取消。你既不想浪费 CPU 算没用的数据，更不能直接扔下不管——因为加密用的 buffer 内存还在用着，直接释放会导致数据竞争。但你也别想直接同步取消。那个线程正跑在极度优化的 SIMD 循环里，每读一个字节都去查取消标志太慢了。折中方案是把任务分块，做完一块查一次。这意味着发起取消的一方，必须得等至少一个分块的时间。\n\n### 从 io_uring 到 TigerBeetle 的实战应用\n同样的逻辑也适用于 `io_uring`。提交给内核的写请求带着 buffer，内核没确认前这内存不能动。虽然 `io_uring` 看着有点新潮，但这其实是并发编程里的家常便饭。作者举了自家数据库 TigerBeetle 的例子：`Grid.cancel` 就是异步取消。当副本发现落后太多需要状态同步时，得先取消所有正在读的操作。有的读是本地盘，得等；有的读是远端，直接扔掉。这里必须用异步 API，因为不能简单粗暴地同步终止。\n\n### 别把异步问题传染给整个调用栈\n有意思的地方在于，虽然底层 `Grid` 必须异步取消，但上层的 `StateMachine.reset` 却是同步的。`StateMachine` 架在 `Grid` 之上，中间隔着好几层。如果因为底层要异步，就把异步逻辑一层层往上透传，代码会变得极其复杂。TigerBeetle 的做法很聪明：只对 `Grid` 做异步取消，等它完事，上层所有组件直接同步 `reset`。这就是理清概念带来的架构红利——把复杂性限制在最小范围内。\n\n### 优雅关闭与“崩溃即退出”的哲学\n最后是优雅关闭。这属于应用层模式，比如 Web 服务停掉 accept 循环，但把现有连接处理完。配合负载均衡，就能实现无感知的滚动升级。但作者话锋一转，TigerBeetle 根本不搞这套，他们信奉“崩溃即软件（Crash-only software）”。既然系统必须能扛住断电和 SIGKILL，那 Quit 按钮干脆直接给自己发个 SIGKILL，既简化了实现，还顺便测试了容错逻辑。在分布式系统里，一个极慢的节点和挂掉的节点没区别，能容忍延迟比优雅关闭更靠谱。",
+      "source_name": "matklad.github.io",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "cancelation",
+        "concurrency",
+        "graceful shutdown",
+        "TigerBeetle"
+      ],
+      "rank": 4
+    },
+    {
       "title": "Before NTP there were Time and Daytime",
       "title_zh": "NTP 之前：Time 和 Daytime 协议简史",
       "link": "https://www.jeffgeerling.com/blog/2026/rfc-867-868-time/",
@@ -79,7 +98,26 @@
         "Time Protocol",
         "network time"
       ],
-      "rank": 4
+      "rank": 5
+    },
+    {
+      "title": "Reducing codebase cognitive debt through... quizzes?",
+      "title_zh": "让 AI 出题测验你对代码库的理解",
+      "link": "https://martinalderson.com/posts/codebase-cognitive-debt-quizzes/?utm_source=rss&utm_medium=rss&utm_campaign=feed",
+      "pub_date": "2026-08-31T00:00:00.000Z",
+      "summary": "## 一句话总结\n作者发现通过让 AI Agent 对自己进行“代码库测验”，能高效消除因代码演进过快产生的“认知负债”，精准填补理解偏差。\n\n## 正文\n\n### 代码跑得比脑子快，这种“失控感”怎么破？\n用 Coding Agent 写代码虽然爽，但很多开发者都有过这种焦虑：代码库的演进速度似乎超过了人脑的理解速度。这种状态作者称之为“认知负债”（Cognitive Debt）。系统没崩，功能也没坏，但你心里就是没底，感觉自己没法完全掌控当下的局面。这种不安全感会随着项目的推进悄悄累积，如果不处理，迟早会出大问题。\n\n### 既然读不进去，不如反过来让 AI 考考你\n为了解决这个问题，作者尝试了一个看似“反直觉”的策略：让 Agent 来考自己。具体的 Prompt 非常简单直接：要求 Agent 出 5 道难度递增的题目，并在最后针对答错的地方进行解释。这比被动地让 Agent 生成大段的代码文档要有效得多。因为 Agent 此时扮演的是“考官”角色，它会主动去寻找代码库中的关键逻辑点。\n\n### 答错题之后的“复盘”才是精华\n这个方法最妙的地方在于“错题解析”环节。当你答错时，Agent 手里握着两份关键信息：你原本的错误理解，以及代码实际运行的逻辑。这让 Agent 能精准定位你的思维盲区，解释“你以为的”和“实际的”之间到底差在哪儿。这种针对性的反馈，比单纯请求 Agent “给我讲讲这块代码”要深刻得多，因为它直接针对你的认知偏差进行了修正。\n\n### 不止于代码，复杂重构也能用这套逻辑\n这个技巧的应用场景不仅限于熟悉代码库。作者发现，在面对复杂的重构任务或棘手的执行方案时，先让 Agent 考考自己对方案的理解，能提前暴露很多潜在问题。这比硬着头皮去啃那些动辄好几页、充满“Claudish”（指 Agent 生成的晦涩难懂的长篇大论）的文档要高效得多。通过高频互动，你能在动手前就确认自己真的“懂了”。\n\n### 消除焦虑，找回掌控感\n实际效果如何？作者提到，很多时候我们感知到的“认知负债”其实远大于实际情况。那种“代码库已经跑在我不理解的黑箱里”的恐慌感，往往源于信息不对称。通过这种 Quiz 机制，作者成功消除了这种下坠感，重新找回了对项目的掌控力。甚至，你还可以把这一步加入工作流：强制要求自己在通过测验后，才允许 Agent 创建 PR。\n\n### 最简单的招数，往往最管用\n说到底，在 AI 辅助编程的时代，我们往往容易把事情想复杂了。有时候，最好的方案就是最简单的那个。与其试图让 Agent 替我们理解一切，不如利用它的知识库来校准我们自己的认知。一个简单的 Quiz，既是对代码的复习，也是对自己信心的充值。",
+      "source_name": "martinalderson.com",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "coding agents",
+        "cognitive debt",
+        "Claude Code",
+        "prompt engineering"
+      ],
+      "rank": 6
     },
     {
       "title": "Recreating a 2010 Experiment",
@@ -98,7 +136,7 @@
         "retro computing",
         "PAL decoder"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "My Experience Has Nuance, Yours Is a Data Point",
@@ -117,7 +155,7 @@
         "product metrics",
         "epistemic bias"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Forgejo Hack #2: Integration with Read The Docs",
@@ -136,7 +174,45 @@
         "webhook",
         "integration"
       ],
-      "rank": 7
+      "rank": 9
+    },
+    {
+      "title": "Here's a good way to present AI videos",
+      "title_zh": "YouTube 的 AI 标签形同虚设，应在视频前加醒目警告",
+      "link": "https://idiallo.com/blog/a-good-way-to-present-ai-videos-on-youtube",
+      "pub_date": "2026-08-31T07:30:00.000Z",
+      "summary": "YouTube 当前的 AI 生成内容标签形同虚设——一个不起眼的小标记藏在视频信息中，连作者的母亲和她的朋友们都无法识别，分享的所谓\"真实视频\"实际上都是 AI 生成的内容。作者建议平台在视频播放前添加类似\"Viewer discretion is advised\"的醒目警告，时长仅 2-3 秒，完全由平台控制而非上传者。这个方案可以直接阻止诈骗分子利用 AI 视频行骗，尤其保护老年群体免受欺骗。讽刺的是，YouTube 一边声称要打击欺诈，一边在创作者工作室的\"灵感\"页面主动推广 AI 视频生成工具。作者此前曾论证过所有欺骗性的 AI 视频都具有潜在危害，而当前的标签机制根本无法起到警示作用。",
+      "source_name": "idiallo.com",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "opinion",
+      "keywords": [
+        "AI-generated content",
+        "YouTube",
+        "deception",
+        "platform design"
+      ],
+      "rank": 10
+    },
+    {
+      "title": "Adobe’s August 1994 acquisition of Aldus",
+      "title_zh": "Adobe 收购 Aldus：桌面出版帝国的起点",
+      "link": "https://dfarq.homeip.net/adobes-august-1994-acquisition-of-aldus/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=adobes-august-1994-acquisition-of-aldus",
+      "pub_date": "2026-08-31T11:00:30.000Z",
+      "summary": "1994 年 8 月 Adobe 以 4.46 亿美元收购 Aldus，将 PageMaker 纳入麾下，与已有的 Photoshop 和 Illustrator 形成产品矩阵。桌面出版在 1985 年由 Macintosh、Apple Laserwriter 和 Aldus PageMaker 三者共同开启，让普通企业能以 9000 美元的硬件成本实现专业排版质量的印刷品。Adobe 1987 年推出 Illustrator、1990 年推出 Photoshop，三款产品常被组合使用，但 Adobe 缺少页面排版工具。收购后 Aldus 将 Freehand 剥离给 Macromedia，Adobe 后来在 2005 年也收购了 Macromedia。PageMaker 后来被 InDesign 取代，但这次收购奠定了 Adobe Creative Suite 的基础，最终让 Adobe 成为创意软件巨头。",
+      "source_name": "dfarq.homeip.net",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "engineering",
+      "keywords": [
+        "Adobe",
+        "Aldus",
+        "PageMaker",
+        "desktop publishing"
+      ],
+      "rank": 11
     },
     {
       "title": "New Pebble Weather App + Software Updates",
@@ -155,7 +231,7 @@
         "touch",
         "HRV"
       ],
-      "rank": 8
+      "rank": 12
     },
     {
       "title": "Finalist 4",
@@ -174,7 +250,25 @@
         "Apple Watch",
         "Markdown"
       ],
-      "rank": 9
+      "rank": 13
+    },
+    {
+      "title": "Review: Ruined Theatre's A Midsummer Night's Dream ★★★★☆",
+      "title_zh": "森林实景版《仲夏夜之梦》剧评",
+      "link": "https://shkspr.mobi/blog/2026/08/review-ruined-theatres-a-midsummer-nights-dream/",
+      "pub_date": "2026-08-31T11:34:08.000Z",
+      "summary": "",
+      "source_name": "shkspr.mobi",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Shakespeare",
+        "theatre review",
+        "A Midsummer Night's Dream"
+      ],
+      "rank": 14
     }
   ]
 }
