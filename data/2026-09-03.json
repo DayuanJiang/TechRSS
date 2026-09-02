@@ -2,8 +2,8 @@
   "date": "2026-09-03",
   "total_feeds": 92,
   "success_feeds": 84,
-  "total_articles": 2531,
-  "filtered_articles": 16,
+  "total_articles": 2524,
+  "filtered_articles": 10,
   "articles": [
     {
       "title": "Claude's new system prompt really doesn't want to reproduce song lyrics",
@@ -23,6 +23,43 @@
         "Fable 5.1"
       ],
       "rank": 1
+    },
+    {
+      "title": "Static Allocation, Constant Work",
+      "title_zh": "静态分配与恒定工作量的系统设计原则",
+      "link": "https://matklad.github.io/2026/09/02/static-allocation-constant-work.html",
+      "pub_date": "2026-09-02T00:00:00.000Z",
+      "summary": "## 一句话总结\n通过静态分配内存和恒定的工作负载，将系统的内存管理从“动态博弈”转变为“静态规划”，从而在根源上消除内存安全问题并保证极端负载下的性能稳定。\n\n## 正文\n\n### 内存安全的真正难题：当回收池变成“类型黑洞”\n文章从一个读者的提问切入，讨论了限价订单撮合引擎中经典的 Use-After-Free 问题。具体场景很典型：一个订单被取消后归还给内存池，但链表中仍保留着指向它的指针，新分配的订单复用了这块内存，导致旧指针解析出错。作者 matklad 指出，这不仅仅是生命周期管理疏忽，更深层的问题在于内存回收池本质上是一个没有类型系统追踪的 Tagged Union。这里的 Tag 是“当前槽位存活的是哪一代对象”，而类型系统对此一无所知。\n\n### 类型隔离：一种“以空间换安全”的防御策略\n如果不使用对象池，直接 malloc/free，逻辑上的 Use-After-Free 会变成物理上的类型混淆，攻击者可以通过修改整数值来劫持函数指针，导致任意代码执行。如果引入对象池，虽然内存别名依然存在，但类型混淆的风险降低了——除非对象内部包含 Inline Enum。这引出了一个有趣的防御思路：使用类型隔离的内存池。如果分配器在编译期就知道类型，它就可以为每种类型维护独立的内存池。虽然这会牺牲少量内存利用率，但能从根本上解决大部分类型混淆问题。\n\n### 静态分配：拒绝“在悬崖边跳舞”\n上面的讨论偏学术，作者给出了更硬核的工程实践：Static Allocation。核心原则很简单：初始化后不再进行任何动态内存分配。启动时设定好最大订单数（如 `--orders-max=1_000_000`），程序一次性分配到位。如果运行时请求超限，直接拒绝。有人可能会问：“如果内存还有富余，为什么不再多接一个？”作者的回答很犀利：“万一没有呢？”在系统满载时尝试分配内存，可能会触发内核的 OOM Killer，导致整个进程甚至监管进程被杀，造成灾难性后果。静态分配虽然看似死板，但它保证了系统要么成功启动，要么优雅降级，绝不会在关键时刻崩溃。\n\n### 恒定工作负载：把“删除”变成“状态流转”\n拿到了静态分配的数组，该怎么管理？传统做法是用位图或链表维护一个“空闲池”。但作者提出了一个反直觉的思路：引入“保留订单”作为中性状态，把数组填满。此时，你不再是在“创建”和“销毁”订单，而是在“流转”订单。订单的数量守恒，它们只是在 `bid`、`ask` 和 `reserved` 状态之间切换。这种思维方式强迫开发者关注状态转换的每一条路径，配合断言检查，能极大地减少逻辑漏洞。\n\n### 性能红利：P100 延迟的“躺平”艺术\n这种设计还带来了意外的性能收益。既然订单总数是固定的，遍历时就不需要判断“是否存活”，直接遍历整个数组即可，遇到 `reserved` 状态直接跳过（执行 No-op）。这听起来像是在浪费 CPU 周期，但实际上它消除了分支预测失败和间接寻址的开销。编译器可以轻松向量化这种简单循环，CPU 也能高效预取数据。更重要的是，这保证了性能的确定性。无论当前负载是 1% 还是 100%，系统的处理逻辑完全一致，P100 延迟始终平稳。你不需要等到黑色星期五流量洪峰到来时才发现系统在满载下跑不动——如果它能跑，它就能一直跑下去。",
+      "source_name": "matklad.github.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "memory safety",
+        "static allocation",
+        "object pool",
+        "TigerStyle"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "llm-gemini 0.34",
+      "title_zh": "llm-gemini 支持 Gemini 3.8 Flash",
+      "link": "https://simonwillison.net/2026/Sep/2/llm-gemini/",
+      "pub_date": "2026-09-02T16:39:38.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "tools",
+      "keywords": [
+        "Gemini",
+        "llm-gemini",
+        "plugin"
+      ],
+      "rank": 3
     }
   ]
 }
