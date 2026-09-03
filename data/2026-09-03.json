@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2549,
-  "filtered_articles": 12,
+  "filtered_articles": 8,
   "articles": [
     {
       "title": "Claude's new system prompt really doesn't want to reproduce song lyrics",
@@ -63,6 +63,44 @@
       "rank": 3
     },
     {
+      "title": "The perils of binding to value types in XAML",
+      "title_zh": "XAML 绑定值类型导致辅助技术导航失败",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260902-00/?p=112668",
+      "pub_date": "2026-09-02T14:00:00.000Z",
+      "summary": "## 一句话总结\n在 XAML 绑定中，为了省事把数据模型定义为 `struct` 会导致导航失败，因为值类型的“复制”语义让 XAML 拿到了“假身”，认不出原本想要导航的对象。\n\n## 正文\n\n### 看似完美的“省事”写法\n故事的起因很简单：一位同事在开发 XAML 程序时遇到了怪事。他们用 `FlipView` 控件绑定了一个数据集合，但在使用辅助技术工具（Assistive Technology）进行导航时，导航偶尔会失败。这让人很摸不着头脑。\n\n后来团队发现了问题的根源，竟然是他们为了“偷懒”做的一个优化。他们的数据模型里只有字符串和布尔值这类基本类型，于是决定在 IDL 文件中把它定义为 `struct`，而不是正规的 `runtimeclass`。这样做的好处显而易见：不需要写冗长的头文件，不需要写构造函数，也不需要手写一堆属性访问器。直接在 IDL 里定义字段，消费端一行代码就能构造进集合，简直是“多快好省”。\n\n### 值类型的“复制”陷阱\n但问题就出在这个“省事”上。`struct` 是值类型，核心特性是“按值复制”，而不是“按引用复制”。这意味着，当 XAML 调用 `GetAt(n)` 去获取集合中的第 n 个元素时，它拿到的并不是原对象，而是一个全新的副本。XAML 的绑定引擎绑定的是这个副本，而不是原集合里的那个对象。\n\n这就导致了导航时的身份危机。当辅助工具请求导航到某个特定条目时，代码传入的是原集合里的对象实例。但在 XAML 看来，它手里拿的是那个对象的“副本”。虽然两者数据一模一样，但在内存里它们是两个完全不同的对象。XAML 会直接拒绝导航，因为它发现自己手里并没有传入的这个“对象”。这就像你拿着一张复印件去办事，办事员却告诉你：“对不起，我们要的是原件，虽然长得一样，但这不是同一个东西。”\n\n### 回归正统的解决方案\n既然 `struct` 的值语义是罪魁祸首，解决办法就是老老实实定义一个 `runtimeclass`。这虽然能解决问题，但写 C++/WinRT 的样板代码确实很繁琐，需要写构造函数、私有成员变量和一堆 `get` 方法。这种为了架构正确性而牺牲开发效率的做法，总让人觉得有点不甘心。\n\n### 用 WIL 库找回开发效率\n有意思的地方在于，微软的 Windows Implementation Library (WIL) 专门为此提供了解决方案。引入 `cppwinrt_authoring.h` 头文件后，你可以利用 CRTP 模式大幅简化代码。原本繁琐的属性定义，现在可以用 `wil::single_threaded_property` 包装一下成员变量就搞定了。由于这些属性只在构造时写入，后续只读，所以用单线程版本完全安全。这样一来，既保留了 `runtimeclass` 的引用语义，避免了导航失败，又享受了接近 `struct` 的简洁写法，可谓两全其美。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "XAML",
+        "value types",
+        "C++/WinRT",
+        "accessibility"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "Second Quest",
+      "title_zh": "MapQuest 借政治营销意外翻红",
+      "link": "https://feed.tedium.co/link/15204/17438215/mapquest-unexpected-revival",
+      "pub_date": "2026-09-03T03:24:54.000Z",
+      "summary": "MapQuest 在 2019 年被 System1 收购后，通过巧妙的政治营销策略实现了品牌复兴。当特朗普政府将",
+      "source_name": "tedium.co",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "opinion",
+      "keywords": [
+        "MapQuest",
+        "brand revival",
+        "marketing strategy",
+        "tech culture"
+      ],
+      "rank": 5
+    },
+    {
       "title": "llm-gemini 0.34",
       "title_zh": "llm-gemini 支持 Gemini 3.8 Flash",
       "link": "https://simonwillison.net/2026/Sep/2/llm-gemini/",
@@ -78,7 +116,7 @@
         "llm-gemini",
         "plugin"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "iOS 27 Introduces New ‘iPhone Handoff’ Feature",
@@ -96,7 +134,7 @@
         "iPhone Handoff",
         "eSIM"
       ],
-      "rank": 5
+      "rank": 7
     }
   ]
 }
