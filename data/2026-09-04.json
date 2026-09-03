@@ -1,0 +1,122 @@
+{
+  "date": "2026-09-04",
+  "total_feeds": 92,
+  "success_feeds": 83,
+  "total_articles": 2496,
+  "filtered_articles": 12,
+  "articles": [
+    {
+      "title": "New RSA number factored",
+      "title_zh": "RSA-260 被成功分解，862 比特密钥安全性再评估",
+      "link": "https://www.johndcook.com/blog/2026/09/03/new-rsa-number-factored/",
+      "pub_date": "2026-09-03T17:21:45.000Z",
+      "summary": "## 一句话总结\nRSA-260 被成功分解确实是个里程碑，但对比目前 2048 位密钥的标准，现有的 RSA 安全体系依然固若金汤。\n\n### 命名里的“数字游戏”容易让人晕\nEric Lu 宣布分解了 RSA-260，这确实是个大新闻。但如果你只看名字，可能会误判它的量级。RSA 的命名规则有点反直觉：有的按位数算，有的按十进制位数算。比如 RSA-768 听起来比 RSA-260 大，其实前者是 768 位，后者却是 260 个十进制位（约 862 位）。所以，这个新被攻克的 RSA-260，实际上是目前为止被分解的最大的 RSA 数。\n\n### 862 位密钥的实际安全成色\n那这个 862 位的“巨无霸”被攻破，是不是意味着我们的加密都要失效了？别慌，算一算就知道差距有多大。根据估算模型，862 位的 RSA 密钥其安全强度大约相当于 74 位的对称密钥。而业界目前最低推荐的 RSA 密钥长度是 2048 位，其安全强度达到了 107 位。\n\n### 破解难度是指数级跃升\n安全级别是对数关系，每增加 1 个比特，破解难度就翻倍。这意味着，想要破解一个标准的 2048 位密钥，其计算量是分解 RSA-260 的 $2^{33}$ 倍，也就是大约 $10^{10}$ 倍。说大白话就是：虽然 RSA-260 被拿下了，但想用同样的手段去碰 2048 位的密钥，计算难度直接提升了百亿倍。\n\n### 真正的威胁还在未来\n当然，这些推论都建立在两个前提之上：一是分解算法没有出现突飞猛进的理论突破，二是那头名为“量子计算机”的狼还没真的来。目前的量子计算机连分解 21 都得“作弊”，离威胁现有的 RSA 体系还差得远。所以，这次 RSA-260 的分解更多是理论上的突破，对于咱们日常开发使用的 2048 位及以上密钥，暂时还不需要担心。",
+      "source_name": "johndcook.com",
+      "score": 15,
+      "depth": 7,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "RSA-260",
+        "factorization",
+        "encryption",
+        "security"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "You Should be Using Rootless Containers",
+      "title_zh": "从 Docker 提权漏洞看 Rootless 容器的必要性",
+      "link": "https://blog.miguelgrinberg.com/post/you-should-be-using-rootless-containers",
+      "pub_date": "2026-09-03T14:59:54.000Z",
+      "summary": "## 一句话总结\nDocker 守护进程默认运行在 root 权限下，这导致普通用户一旦获得访问权限就能轻松提权攻击宿主机，而改用 Podman 等 rootless 容器方案才是更安全的解法。\n\n## 正文\n\n### 那个“方便”的配置其实是个后门\n最近有个 Linux 发行版爆出了一个严重漏洞，任何进程都能无声无息地把自己提权成 root。更有意思的是，这并非由于代码 Bug，而是因为安装程序默认修改了 Docker 配置，却没告诉用户这会带来多大的风险。这给我们敲了个警钟：想安全地配置 Docker 真的很难，如果你还在为了省事把自己加到 `docker` 用户组里，那你的系统其实早已危机四伏。\n\n### Docker 的“原罪”：Client-Server 架构\n问题的根源要追溯到 Docker 最初的设计选择：Client-Server 架构。标准安装下，Docker daemon 以后台服务的形式运行，且拥有至高无上的 `root` 权限。客户端（比如 `docker-cli`）通过 socket 与这个 daemon 通信。这就意味着，谁能跟 daemon 说上话，谁就能以 root 身份执行代码。这可不是危言耸听，攻击面比你想象的要大得多。\n\n### 演示一次“无密码”的提权攻击\n咱们看个最直接的例子。作为一个普通用户，你本来没权限查看 `/etc/sudoers.d/` 目录。但如果你能运行 `docker run -v /:/host alpine ls /host/etc/sudoers.d/`，你会发现一切豁然开朗。原理很简单：你把宿主机的根目录挂载进了容器，而容器是 daemon 以 root 身份跑起来的。这一招甚至不需要密码，稍微改改脚本，攻击者就能篡改系统文件、植入 cron 任务，而你毫无察觉。\n\n### 所谓的“安全默认”在便利性面前不堪一击\n官方默认配置其实很安全：只有 root 用户能运行 docker 命令，普通用户想用必须加 `sudo`。但这太麻烦了，所以几乎所有人都会照着官方文档把自己加入 `docker` 用户组，以此来免去输入密码的繁琐。这一步操作看似无害，实则直接打开了提权的大门。作者提到，甚至连那个出事的 Linux 发行版也默认这么干了，这足以说明这种不安全的“便利”配置有多普遍。\n\n### macOS 和 Windows 也不是绝对的安全岛\n那在 macOS 和 Windows 上用 Docker Desktop 是不是就没事了？这两者确实通过 Linux VM 隔离了一层，风险相对较小。但要注意 Windows 的 WSL，它直接在宿主内核上跑 Linux，整合度太高，风险逻辑和原生 Linux 差不多。所以，别以为换个操作系统就能高枕无忧。\n\n### Rootless 容器：把权力关进笼子\n既然 Docker daemon 跑在 root 下这么危险，能不能让它别用 root？这就是 rootless 容器的思路。目前主要有两个选择：一是 Docker 自带的 rootless 模式，二是 Podman。作者觉得 Docker 的 rootless 方案有点“Hack”——你得先正常安装，手动关掉系统服务，再跑个脚本搞个用户级 daemon，太折腾。相比之下，Podman 才是更优雅的解法。\n\n### Podman：去中心化的安全美学\nPodman 的核心优势在于它没有 daemon。你安装完直接就能用，容器直接跑在你自己的用户权限下。这就彻底切断了“通过容器提权”的路径。最妙的是，Podman 的命令行接口和 Docker 高度兼容，你只需要把习惯性的 `docker` 换成 `podman`（或者干脆设个别名 `alias docker=podman`），绝大多数操作都能无缝迁移。\n\n### 从 Docker 迁移到 Podman 的“坑”\n当然，迁移也不是完全没有成本。首先是镜像拉取，Podman 有时候不知道默认去哪拉，比如 `docker pull postgres` 可能会报错，你得老老实实写全地址：`podman pull docker.io/library/postgres`。其次，因为没有 daemon，系统重启后容器不会自动起来。对于需要 7x24 小时运行的服务，你需要用 `podman quadlet` 配合 `systemd` 来管理。如果你依赖 Docker API 做自动化，Podman 也提供了 `podman system service` 命令来启动一个兼容 Docker API 的临时服务，按需启动即可。",
+      "source_name": "miguelgrinberg.com",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "security",
+      "keywords": [
+        "Docker",
+        "Podman",
+        "rootless containers",
+        "privilege escalation"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Putting my JAX-trained models on the Hugging Face Hub",
+      "title_zh": "将 JAX 训练的 GPT-2 模型上传到 Hugging Face",
+      "link": "https://www.gilesthomas.com/2026/09/jax-models-on-hugging-face",
+      "pub_date": "2026-09-03T18:00:00.000Z",
+      "summary": "## 一句话总结\n作者通过自写的转换脚本将 JAX 训练的模型权重转为 PyTorch 格式，成功绕过了 Hugging Face Transformers 库的生态壁垒，上传了一系列实验模型。\n\n### 长期以来的生态壁垒\n作者一直没把他用 JAX 训练的模型传到 Hugging Face Hub，原因很现实：Transformers 库从版本 5 开始就只支持 PyTorch。虽然官方声称未来会支持 JAX 互操作，但目前这还是个饼。这就导致如果想用 `AutoModelForCausalLM` 这类原生 API 加载模型，JAX 格式的权重根本跑不通。\n\n### 转机在于已有的转换工具\n但问题总有解决办法。作者突然意识到，自己早就写好了一个转换脚本，能把 JAX 的 safetensors 文件转成 PyTorch 兼容格式。更有意思的是，他在做模型评估（evals）时，实际用的就是这些转换后的 PyTorch 模型。既然评估脚本都能跑通，那用同样的逻辑上传模型自然也是水到渠成。\n\n### 核心思路其实很简单\n说白了，这个方案并不复杂：既然 Hub 需要 PyTorch 格式，那就转一下再传。作者利用他之前文章中提到的 PyTorch 上传脚本，把转换后的权重推了上去。这样，原本只能在本地 JAX 环境里跑的模型，现在能被更广泛的开发者社区直接访问了。\n\n### 上传的模型清单\n这次上传的模型主要来自作者之前的几篇技术长文。首先是“从零写 LLM”系列中的三个实验模型：`jax-no-mha-bias-no-dropout`（添加 LayerNorm 阶段）、`jax-no-mha-bias-with-dropout`（添加 Dropout 阶段）以及 `jax-with-mha-bias-no-dropout`（在 MHA 输出投影层添加 bias）。\n\n### 过训练实验与 Chinchilla 验证\n除了基础模型，作者还上传了关于过训练（overtraining）实验的权重。这包括单 epoch 但 token 量翻倍的 `jax-with-mha-bias-no-dropout-extended`，以及训练了两个 epoch 的 `jax-with-mha-bias-no-dropout-2-epoch`。此外，还有用于 Chinchilla 缩放定律验证的两个模型：`slightly-larger` 和 `slightly-smaller` 版本。所有模型现在都可以在 Hugging Face 上直接调用。",
+      "source_name": "gilesthomas.com",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "ai-ml",
+      "keywords": [
+        "JAX",
+        "PyTorch",
+        "Hugging Face",
+        "model conversion"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "Can We Stop With the Uptime Percentages?",
+      "title_zh": "用「停机 12 小时」替代「99% 正常运行时间」",
+      "link": "https://blog.jim-nielsen.com/2026/stop-with-the-uptime-percentage/",
+      "pub_date": "2026-09-03T19:00:00.000Z",
+      "summary": "99% 和 99.9% 的正常运行时间看起来差不多，但后者意味着停机时间减少 10 倍。作者指出，随着 GitHub、Claude、Slack 等服务的停机事件越来越频繁，普通用户被迫查看状态页面，但百分比数字对非基础设施从业者来说是糟糕的界面设计——大多数人无法直观理解 99.72% 和 98.98% 的实际差异。作者建议用具体时间替代抽象百分比：与其显示「GitHub Actions: 98.31% uptime」，不如说「过去 30 天受影响 12 小时」。这样用户无需理解「几个九」的非线性含义，只需知道一小时是多久。基础设施团队习惯用「两个九」「三个九」的行话，但状态页面的受众已扩展到所有人，界面设计需要更友好。",
+      "source_name": "blog.jim-nielsen.com",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "uptime",
+        "status page",
+        "UX",
+        "reliability"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "Phil Schiller Steps Down From Running App Store and Product Events",
+      "title_zh": "Phil Schiller 卸任 App Store 负责人",
+      "link": "https://www.bloomberg.com/news/articles/2026-08-31/apple-s-phil-schiller-steps-down-from-running-app-store-and-product-events?accessToken=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzb3VyY2UiOiJTdWJzY3JpYmVyR2lmdGVkQXJ0aWNsZSIsImlhdCI6MTc4ODE5Mzk5NywiZXhwIjoxNzg4Nzk4Nzk3LCJhcnRpY2xlSWQiOiJUS0VDTE1LSkg2VjQwMCIsImJjb25uZWN0SWQiOiJDNEVEQ0FFMUZBMDU0MEJFQTI0QTlGMjExQzFFOTA4MCJ9.G1fAbZQH31AQBLUajPYPUJ7BqRyeIUN7SbxQZFAqMXE",
+      "pub_date": "2026-09-03T16:39:09.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "Apple",
+        "Phil Schiller",
+        "App Store",
+        "executive"
+      ],
+      "rank": 5
+    },
+    {
+      "title": "MapQuest Refuses to Relabel Lake Ontario, Rewarded With Surge in Popularity",
+      "title_zh": "MapQuest 因拒绝改名而下载量激增",
+      "link": "https://thehill.com/homenews/administration/6063924-mapquest-tops-apple-google-maps-in-downloads-after-refusing-trumps-lake-america-change/?ref=ihnatko.com",
+      "pub_date": "2026-09-03T16:30:09.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "MapQuest",
+        "maps",
+        "naming"
+      ],
+      "rank": 6
+    }
+  ]
+}
