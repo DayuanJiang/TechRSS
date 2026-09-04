@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2551,
-  "filtered_articles": 14,
+  "filtered_articles": 15,
   "articles": [
     {
       "title": "GPT‑6 Astra",
@@ -101,6 +101,25 @@
       "rank": 5
     },
     {
+      "title": "The case of the progress callback that never got called when progress happened",
+      "title_zh": "进度回调失效：C++/WinRT 中间层未转发事件",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260903-00/?p=112672",
+      "pub_date": "2026-09-03T14:00:00.000Z",
+      "summary": "## 一句话总结\n进度回调没反应，不是因为下载太快，而是因为中间层的 C++/WinRT 协程根本没做进度转发，导致外层订阅了个寂寞。\n\n## 正文\n\n### 代码看着没毛病，进度条就是不动\n故事从一个让人抓狂的 Bug 开始。一位同事写了段很标准的 C# 代码：启动下载任务，注册进度回调，await 等待结果。逻辑很顺，但跑起来就是没进度。起初大家怀疑是不是下载太快给漏掉了？结果发现就算下载跑个几十秒，进度回调依然一次都没触发。这就很奇怪了，明明订阅了 `Progress` 事件，怎么就跟没订阅一样？\n\n### 跨语言调试，先定责\n这问题涉及到 C# 调 C++/WinRT 组件，属于跨语言调试，不能光靠猜。建议的排查思路很直接：去 C++ 侧看 COM callable wrapper 有没有被调用。如果 C++ 的断点没断下来，说明问题在 C++ 层；如果断下来了但 C# 没反应，那才是投影层的问题。这一步排查很关键，直接把问题锁定在了 C++ 组件 `AggregateSource::DownloadAsync` 的实现上。\n\n### 真相藏在协程实现里\n打开 C++ 实现代码一看，问题立马暴露了。这个 `DownloadAsync` 方法返回的是 `IAsyncOperationWithProgress`，看着像是个带进度的异步操作。但在函数体内部，它解析完 ID 参数后，直接 `co_await` 了底层 provider 的下载操作。关键在于，它从头到尾都没有调用 `winrt::get_progress_token()`，更别提用这个 token 去汇报进度了。说白了，这个中间层虽然承诺了“我有进度”，但实际上它只负责转发结果，把进度信息全给吞了。\n\n### 中间层没做桥接，外层就订阅了个寂寞\n这里的核心误区在于：调用者在 C# 订阅的是外层返回的那个 `IAsyncOperationWithProgress`。虽然内部调用的 provider 操作确实有进度，但 C++ 协程并没有把这个内部操作的进度“桥接”到外层操作上。外层就像个黑盒，只管等内部跑完然后返回结果。你在外层挂了回调，就像给一个不发声的信箱挂了铃铛，里面动静再大，外面也听不见。\n\n### 最简单的解法：去掉中间商赚差价\n既然中间层不打算处理进度逻辑，那就别让它返回一个带进度的类型占坑。最直接的方案就是让中间层直接返回底层 provider 的异步操作对象。既然 `provider.DownloadAsync` 本身就返回 `IAsyncOperationWithProgress`，那直接把它 return 给调用者就行了。这样 C# 侧拿到的就是真正的源头操作，订阅进度自然就能生效。\n\n### 异常分支也得保持类型一致\n当然，代码里还有参数校验失败的分支，这时候没法调用 provider。原来的代码用 `co_return false` 返回，现在既然改成直接 return operation，就得构造一个“已完成”的异步操作返回。文章给出了 `completed_async(false)` 这种写法，或者直接返回一个 lambda 包装的 `IAsyncOperationWithProgress`。这样无论是走正常下载还是校验失败，返回类型都保持一致，外层调用者的代码逻辑也就不用改动了。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "C++/WinRT",
+        "async",
+        "progress",
+        "interop"
+      ],
+      "rank": 6
+    },
+    {
       "title": "Can We Stop With the Uptime Percentages?",
       "title_zh": "用「停机 12 小时」替代「99% 正常运行时间」",
       "link": "https://blog.jim-nielsen.com/2026/stop-with-the-uptime-percentage/",
@@ -117,7 +136,7 @@
         "UX",
         "reliability"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Phil Schiller Steps Down From Running App Store and Product Events",
@@ -136,7 +155,7 @@
         "App Store",
         "executive"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Hugging Face Easter Egg",
@@ -154,7 +173,7 @@
         "Hugging Face",
         "emoji"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "MapQuest Refuses to Relabel Lake Ontario, Rewarded With Surge in Popularity",
@@ -172,7 +191,7 @@
         "maps",
         "naming"
       ],
-      "rank": 9
+      "rank": 10
     }
   ]
 }
