@@ -1,10 +1,48 @@
 {
   "date": "2026-09-07",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2507,
-  "filtered_articles": 8,
+  "success_feeds": 85,
+  "total_articles": 2552,
+  "filtered_articles": 13,
   "articles": [
+    {
+      "title": "WorkOS: How to Give an Agent a Task Instead of a Token",
+      "title_zh": "AI Agent 的 OAuth Token 泄露风险与代理方案",
+      "link": "https://workos.com/blog/delegated-access-for-ai-agents?utm_source=daringfireball&utm_medium=newsletter&utm_campaign=q32026",
+      "pub_date": "2026-09-06T19:06:27.000Z",
+      "summary": "## 一句话总结\n在 Agent 运行时里直接传递 OAuth Token 是极度危险的，正确的做法是使用代理服务（如 WorkOS Relay），让 Agent 只持有“任务描述”而非“凭证本身”。\n\n## 正文\n\n### 那个“理所应当”的假设失效了\n我们构建的每一个集成，几乎都遵循同一个模式：应用获取第三方 API 的 Access Token，把它存在内存或环境变量里，然后挂载在请求头里去访问。这在以前没问题，因为你的进程只运行你写的代码，那是可信的。\n\n但 Agent 打破了这个假设。代码看起来没变，Agent 也是从配置读 Token，也是把 Token 放进 `Authorization` 头。但问题出在中间——Agent 读取了一个陌生人写的 GitHub Issue，并决定下一步做什么。传统的安全边界是“可信代码 vs 不可信输入”，而 Agent 运行时直接抹掉了这个边界：不可信的输入变成了指令，和你的 System Prompt 混在同一个 Context Window 里。\n\n### Token 在 Agent 环境里的“七次复制”\n一旦把长效 OAuth Token 放进这个环境，它就不只存在于你以为的地方。文章列出了一个令人头皮发麻的清单：Token 可能出现在 Context Window（如果 Agent 自省配置）、Tool Call 的参数日志、模型提供商的日志、stdout/stderr（Agent 自己拼的 curl 命令不会脱敏）、Error Payload、以及 Agent 用于持久化的 Scratch Files。\n\n最致命的是，这还不包括主动的数据渗漏。一个拥有 Token 和网络访问权限的 Agent，完全可能被诱导把 Token 发送到攻击者控制的端点。这甚至不算代码漏洞，而是系统按设计在工作。一个 Token 衍生出七份拷贝，每一条路径都是 Agent 的常规操作，而非 Bug。\n\n### 概率性的安全，是最大的隐患\n攻击成本有多低？假设你有一个处理 GitHub Issue 的 Agent，攻击者只需在 Issue 结尾加一段话，让 Agent 把 Authorization Header 发送到某个诊断 URL。模型会不会照做？这取决于模型、Prompt 甚至当天的运气。\n\n这意味着你的凭证安全变成了一个概率问题。哪怕模型 99 次拒绝，只有 1 次妥协，这也不是你能接受的控制率。更糟糕的是，一旦泄露，这是 Bearer Token，你在服务端无法通过 Session 失效来补救，它直到过期前都有效。\n\n### 常规的补救措施为何力不从心\n直觉告诉我们要缩小 Scope（权限范围）和缩短生命周期（Rotation）。但这两种方法都治标不治本。OAuth Scope 是为 App 设计的，粒度太粗，Agent 能读的 Repo 往往就是用户能读的所有 Repo。\n\nRotation（轮换）同样解决不了根本问题。攻击者能拿到一次，通常就能拿到第二次，因为泄露路径是运行时的固有属性。而且为了自动刷新 Token，运行时还得持有 Refresh Token，这反而让情况更糟。这两种方案都默认了一个前提：Token 必须在 Agent 的环境里。这个前提才是问题的根源。\n\n### 核心思路：给任务，不给 Token\n解决方案是停止向代码传递凭证。WorkOS 推出的 Relay 服务就是这个思路：Agent 只负责描述“我想以哪个用户的身份调用哪个 URL”，由 WorkOS 在出口处注入凭证。\n\n具体实现上，Agent 发送请求到 WorkOS，带上你的 API Key（`Authorization`）、目标 URL（`X-Relay-URL`）和用户 ID（`X-Relay-User`）。WorkOS 验证身份、解析用户连接的账号、从 Pipes 凭证库取 Token、自动刷新过期 Token，最后把上游响应原样返回。对于 Agent 来说，这只是一次 Header 的编辑，而不是请求逻辑的重写。\n\n### 巧妙的边界设计\n这里有两个设计细节值得玩味。一是诚实的错误语义。如果用户未授权，Relay 返回 `402` 状态码和 `authorization_url`，而不是混淆视听的 `401`。同时，响应头里带有 `X-Relay-Upstream-Status`，让你能明确区分是 Provider 拒绝了请求，还是代理层出了问题。\n\n二是物理隔离。Token 藏在 Agent 无法跨越的边界之后。请求只能发往白名单内的 Provider Host，不跟随重定向（防止凭证被带到未授权的地址），并剥离了 `Cookie` 和 `X-Forwarded-*` 等敏感头。结果是，即便 Agent 被攻陷，它也只能在当下发起不该发起的调用，而无法“偷走”凭证带走。\n\n### 这并没有解决所有问题\n必须清醒地认识到，这并没有解决 Prompt Injection。Agent 依然可能被诱导发 Slack 消息，只是攻击者无法拿到 Token 离线使用了。此外，你的 WorkOS API Key 依然在运行时里，它现在成了新的“钥匙”，必须像对待主密钥一样对待它。\n\n本质上，这是在改变“爆炸半径”。泄露 Token 是持久的、可离线的灾难；而被劫持的 Agent 会话是实时的、可切断的进程。这是两种完全不同性质的故障，而后者在发现的那一刻就能被终结。\n\n### 凭证属于“最不可达”的地方\n凭证代理并不是新概念，支付行业的 Card Vault（卡保险库）和 Tokenization 早就证明了：减少审计范围的最好办法，就是让敏感数据根本不进入你的系统。这一原则同样适用于 Agent 运行时。\n\nAgent 运行时现在是架构中最“可达”的组件——它读攻击者控制的文本、记录一切日志、持久化状态。这是一个做决策的好地方，却是一个藏钥匙的坏地方。如果你今天还在给 Agent 传递 Token，值得深思的问题不是“我的 Prompt 是否足够健壮”，而是“当它失效的那一天，后果是什么”。",
+      "source_name": "daringfireball.net",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "OAuth",
+        "agent security",
+        "credential proxy",
+        "token leakage"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Matt Haughey: ‘The Car Industry a/B Tested Selling a Car With and Without CarPlay and the Results Are Not Shocking’",
+      "title_zh": "CarPlay 支持让同款车销量高出 73%",
+      "link": "https://a.wholelottanothing.org/the-car-industry-a-b-tested-selling-the-same-car-with-and-without-carplay-and-the-results-are-not-shocking/",
+      "pub_date": "2026-09-06T19:04:12.000Z",
+      "summary": "## 一句话总结\n一场意外的 A/B 测试证明：砍掉 CarPlay 支持不仅没能保护数据护城河，反而直接把销量送进了下滑通道。\n\n### 汽车厂商的“去手机化”豪赌\n几年前，通用汽车（GM）搞了个大动作，宣布旗下新车将彻底移除 Apple CarPlay 和 Android Auto 支持。官方理由冠冕堂皇：为了隐私，不想让你的数据流向 Apple。但有意思的是，他们转手就把系统换成了 \"Android Automotive OS\"，数据最终流向了 Google 和 GM 自己。这波操作当时就引发了轩然大波，用户几乎是一边倒的愤怒，但 Chevy 好像压根没听见，依然在 2025 款电动车上强行推进了这一策略。\n\n### 一场“无心插柳”的完美对照实验\n这就引出了一个极其罕见的商业案例。Honda 因为自家 EV 研发滞后，找 Chevy 合作推出了 Honda Prologue。这车说白了就是换皮的 Chevy Blazer EV：底盘、三电系统全是 Chevy 的，甚至连钥匙都是 GM 的设计改了个标。但有一个关键区别：Prologue 保留了 CarPlay 和 Android Auto，而 Blazer EV 没有。这简直就是老天爷给安排的一场完美 A/B 测试：两款车机械素质几乎完全一致，唯一的变量就是手机互联功能。\n\n### 销量数据狠狠“打脸”\n结果怎么样？数据相当残酷。作者翻出了两家公司向投资者公开的销量报告，对比了这两款“姊妹车”在美国市场的表现。2024 年全年，Honda Prologue 比 Blazer EV 多卖了近一万辆，领先幅度达 42.8%。到了 2025 年，差距进一步拉大，Prologue 领先了 73.1%。最夸张的是 2026 年上半年，Prologue 的销量直接是 Blazer EV 的两倍半还多，领先幅度高达 165.5%。\n\n### 用户用钱包投了票\n这说明了什么？消费者其实很诚实。当两款车本质上是一样的，大家毫不犹豫地选择了那个支持手机互联的版本。哪怕是必须要买 Chevy 的底子，用户也宁愿买一辆“贴了 Honda 标的 Chevy”，只为了能顺滑地用上 CarPlay。这不仅仅是偏好问题，这直接反映了市场对 Chevy 这种“封闭策略”的惩罚。用户不想被厂商绑架，他们更信任 Apple 和 Google 的生态体验。\n\n### 厂商的傲慢终有代价\nChevy 当初为了所谓的“隐私”和数据主权，硬是切掉了用户最刚需的功能。现在市场已经给出了最直接的反馈：销量被换皮竞品按在地上摩擦。这给所有想搞“生态闭环”的车企提了个醒：在智能座舱体验上，试图强行扭转用户习惯、把用户锁在自己拙劣的系统里，只会把用户推向竞争对手。现在销量差距已经拉大到肉眼可见的地步，不知道 GM 看着这份报表，会不会后悔当初那个傲慢的决定。",
+      "source_name": "daringfireball.net",
+      "score": 16,
+      "depth": 8,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "CarPlay",
+        "A/B testing",
+        "EV sales",
+        "consumer choice"
+      ],
+      "rank": 2
+    },
     {
       "title": "The purpose of DNS is to spread scams",
       "title_zh": "DNS沦为诈骗温床：五分之一新域名是骗局",
@@ -22,7 +60,45 @@
         "domain abuse",
         "ICANN"
       ],
-      "rank": 1
+      "rank": 3
+    },
+    {
+      "title": "The purpose of DNS is to spread scams",
+      "title_zh": "五分之一新域名是诈骗网站，DNS已成犯罪基础设施",
+      "link": "https://shkspr.mobi/blog/2026/09/the-purpose-of-dns-is-to-spread-scams/",
+      "pub_date": "2026-09-06T11:34:20.000Z",
+      "summary": "## 一句话总结\nDNS 系统的现实功能已异化为诈骗分子的提款机，数据显示 gTLD 新注册域名中恶意比例高达 20%，而现有的防御手段在速度和力度上都远远落后。\n\n## 正文\n\n### 系统的初衷与现实的讽刺\n大家肯定都收到过那种蹩脚的诈骗短信，让你去什么 \"Genuine-Tax-Payment-Website.fart\" 缴税。你当然一眼就能看穿，直接标记为垃圾短信。但现实很残酷，总有一批人会信以为真，急匆匆地访问网站，甚至乖乖奉上信用卡信息和家庭住址。互联网的光速传播特性在这里成了帮凶：你在英国注册一个 .uk 域名，一分钟内它就能从地球另一端访问。这对正常用户是便利，对诈骗犯就是天赐良机。\n\n### 触目惊心的恶意注册数据\n等到监管机构把域名封禁，或者把它加入 Google Safe Browsing List 时，黄花菜都凉了。诈骗分子早就群发了几百万条信息，骗到了足够的敏感数据。这就引出了一个悲观的结论：按照 \"系统的目的就是它实际做的事\" 这一理论，DNS 系统现在的核心功能似乎就是让罪犯以极高的效率收割受害者。这并不是危言耸听，Andrew Campling 的一篇博文引用了 Interisle 的研究数据，揭示了问题的真实规模。\n\n### gTLD 已成重灾区\n数据非常惊人。研究显示，在 2025 年注册的所有新 gTLD（通用顶级域名，如 .com, .fun）中，至少有 10% 随后出现在了安全黑名单上。考虑到未被列入黑名单的关联域名，研究人员估计恶意注册者的实际占比可能接近 20%。也就是说，每五个新注册的 gTLD 域名里，就有一个是骗局。这简直是危机级别。更离谱的是，有 13 个 TLD 的恶意域名占比超过了 50%，像 .LOCKER (72.9%)、.LGBT (72.2%) 和 .TOWN (70.2%) 都是重灾区。\n\n### 注册商的监管困局\n你可能会问，谁在给这些骗子提供方便？数据显示，NameCheap、Gname、Dynadot 等注册商榜上有名。虽然像 NameCheap 这样的注册商确实有一些关键词拦截机制（比如禁止注册包含 \"gov-uk\" 的域名），但这只能防住最笨的骗子。稍微变通一下，骗子可以注册 `gov.uk-dwpaph.bond` 这种域名，把迷惑性的部分放在子域名里，依然能骗过不少人。而且，只要有一家注册商审核宽松，骗子就能钻空子，这成了典型的劣币驱逐良币。\n\n### 亡羊补牢的方案与代价\n那怎么办？文章探讨了几种方案，但都有硬伤。首先是强制 KYC（实名认证），但这会扼杀匿名注册的正当需求，而且骗子手里有的是被盗的信用卡和身份信息。其次是押金制度，比如注册费 9 欧元，但要押 900 欧元，一旦域名上了黑名单就没收押金。这招或许能劝退一些小骗子，但对使用赃款的大规模犯罪团伙来说根本不痛不痒。最后是设立 \"冷静期\"，新域名延迟生效以便人工审核。但这不仅效率低下，还赋予了大公司过大的权力——难道 DPD 物流公司能因为名字冲突，就否决掉 \"Darwin Pensioner Divas\" 乐队的域名注册吗？\n\n### 技术无法解决的人性博弈\nICANN 也没闲着，他们正在协调各方制定滥用报告政策。但正如会议讨论中指出的，随着 AI 技术的发展，滥用 DNS 的门槛只会越来越低，作恶成本越来越低，利润却越来越高。这注定是一场猫鼠游戏。文章最后并没有给出完美的解法，因为这是一个两难困境：我们既不想生活在一个需要护照和巨额押金才能注册域名的极权网络里，也不想生活在一个骗子肆无忌惮、毫无 deterrent 的混乱世界里。DNS 的信任危机，本质上是一场关于开放与安全的艰难博弈。",
+      "source_name": "shkspr.mobi",
+      "score": 15,
+      "depth": 7,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "DNS",
+        "gTLD",
+        "domain abuse",
+        "scam"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "There's No Limit to How Bad Code Can Get",
+      "title_zh": "重写系统的陷阱：为何从零开始往往失败",
+      "link": "https://simonwillison.net/2026/Sep/6/theres-no-limit-to-how-bad-code-can-get/",
+      "pub_date": "2026-09-06T09:08:06.000Z",
+      "summary": "## 一句话总结\n推倒重来往往是从一个坑跳进另一个坑，与其幻想通过重写摆脱技术债，不如老老实实给遗留系统加测试、做重构。\n\n### 重写的诱惑往往是陷阱\n\n当你面对那个被技术债压垮的老系统时，最本能的反应就是：“烧了它，咱们从头来过。” 这种想法很诱力，因为 Greenfield 项目总是看起来充满希望。但现实往往很残酷：根据作者的经验，这种推倒重来的策略极少能真正成功。这不仅仅是代码的问题，更是组织和业务节奏的博弈。\n\n### 新旧系统的尴尬博弈\n\n一旦重写启动，你就进入了双线作战的窘境。老系统还得继续支撑核心业务，需求还得做，改动还得加。但留守团队的士气已经崩了——既然这东西迟早要被废弃，谁还愿意花心思去精雕细琢？结果就是，老系统不仅没停止腐烂，反而因为敷衍了事的修补，技术债堆得更快了。\n\n与此同时，负责新系统的团队往往雄心勃勃，甚至有点天真。起步阶段进度飞快，毕竟这是从零开始。但随着时间推移，他们发现了一个尴尬的事实：根本没人完全搞得清老系统的所有业务逻辑和边界条件。如果老系统文档齐全、测试完善，它也许根本就不需要被替换。\n\n### \"双系统\"运营的灾难现场\n\n经过数月甚至数年的开发，新系统迟迟未能交付价值，管理层终于坐不住了，“上线”的压力迫在眉睫。于是，新系统被迫发布，但它往往只能处理老系统功能的子集，或者仅仅是为了解决某些在老系统上太难实现的新需求。\n\n这下局面更尴尬了：生产环境里现在跑着两个系统。一个是没人想碰的“破烂”老系统，另一个是只承担了边缘功能、剩下 80% 代码都是为了“将来替换老系统”而写的新系统。你原本想消灭一个烂系统，结果现在手里有了两个烂系统。\n\n### 唯一的赢家是耐心\n\n如果运气好，公司还没失去耐心，或许还会允许继续投入。但只要老系统还在生产环境顽强运行一天，风险就多一分。一旦“业务优先级调整”，新系统的替换计划往往第一个被砍掉。最终，你不仅没完成替换，反而背上了维护两套系统的沉重包袱。\n\n作者推荐了 Will Larson 的文章《Migrations: the sole scalable fix to tech debt》，认为这是处理此类迁移最靠谱的指南。与其听信重写的“海妖歌声”，不如沉下心来给老系统补齐自动化测试。先稳住阵脚，再通过针对性的重构逐步改善。这听起来不够性感，但这才是成功率最高的那条路。",
+      "source_name": "simonwillison.net",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "technical debt",
+        "rewrite",
+        "migration",
+        "legacy system"
+      ],
+      "rank": 5
     },
     {
       "title": "Dickover of the Week: Slashdot Put One in Their RSS Feed",
@@ -41,7 +117,7 @@
         "cookie banner",
         "user experience"
       ],
-      "rank": 2
+      "rank": 6
     },
     {
       "title": "Litterbox: Safari Extension for Viewing X Tweets",
@@ -60,7 +136,7 @@
         "X",
         "privacy"
       ],
-      "rank": 3
+      "rank": 7
     },
     {
       "title": "Gurman on Schiller’s Departure and Ternus’s Goals for the App Store",
@@ -79,7 +155,25 @@
         "Phil Schiller",
         "John Ternus"
       ],
-      "rank": 4
+      "rank": 8
+    },
+    {
+      "title": "Trump Administration Launches Rip-Off Video Games at Arcade.gov",
+      "title_zh": "白宫发布以移民政策为主题的官方网页游戏",
+      "link": "https://x.com/WhiteHouse/status/2095615734567100766",
+      "pub_date": "2026-09-06T17:51:09.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 1,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "White House",
+        "browser games",
+        "arcade.gov"
+      ],
+      "rank": 9
     }
   ]
 }
