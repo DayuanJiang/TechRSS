@@ -1,10 +1,29 @@
 {
   "date": "2026-09-06",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2552,
-  "filtered_articles": 9,
+  "success_feeds": 84,
+  "total_articles": 2532,
+  "filtered_articles": 8,
   "articles": [
+    {
+      "title": "Debian Code Search: Fast TurboPFor with Go SIMD",
+      "title_zh": "用 Go SIMD 实现超越 C 的 TurboPFor 编解码器",
+      "link": "https://michael.stapelberg.ch/posts/2026-09-06-dcs-fast-turbopfor-go-simd/",
+      "pub_date": "2026-09-06T07:00:00.000Z",
+      "summary": "## 一句话总结\n作者利用 Go 1.26 新引入的 SIMD 实验性特性，重写了 Debian Code Search 的 TurboPFor 整数压缩编解码器，不仅彻底移除了对 C 库的 cgo 依赖，还通过 AVX512 指令集和算法优化，实现了比原 C 实现更快的性能。\n\n## 正文\n\n### 为了消灭 cgo 依赖，作者盯上了 TurboPFor\nDebian Code Search (DCS) 是一个搜索 Debian 发行版中所有开源源代码的引擎。为了在海量数据中快速检索，它使用了倒排索引，其中文档 ID 列表的存储采用了高效的 TurboPFor 整数压缩格式。长期以来，DCS 依赖 C 语言编写的 `powturbo/TurboPFor` 库来处理解压，通过 cgo 调用。虽然性能不错，但作者一直有个执念：把项目里最后的 cgo 依赖删掉，回归纯粹的 Go 代码。Go 1.26 引入了实验性的 `simd/archsimd` 包，支持 AVX2 和 AVX512，这终于让“纯 Go 高性能编解码”成为了可能。\n\n### 先搞定功能，再谈优化：从教学版解码器起步\n作者并没有一上来就硬刚 SIMD，而是先梳理了 API。DCS 的场景主要分索引构建（流式写入）和查询（随机读取解码）。为了减少 GC 压力，他设计了一套零内存分配的 API：`BlockEncoder` 和 `BlockDecoder`。通过复用内存缓冲区，避免了高频操作带来的内存分配开销。有了 API 设计，下一步是实现编码器。作者先写了一个最简单的“教学版”实现：把所有值都当成 32 位存，虽然压缩率极低，但逻辑跑通了。随后，他逐步补齐了 TurboPFor 的各种 Block 类型：bitpacking、带异常处理的 bitpacking、VB 编码以及常量块。此时，Go 版本的编码器性能达到了 C 版本的 76%，虽然够用了，但作者的好奇心才刚刚开始。\n\n### 标量优化的三板斧：PGO、泛型与内存优化\n在进入 SIMD 深水区之前，作者先在标量代码层面做了一轮压榨。首先是 Profile-Guided Optimization (PGO)，通过 `-pgo` 标志让编译器根据运行时 Profile 优化代码布局。接着是利用 Go 的泛型进行 Bit Width Specialization（位宽特化）。TurboPFor 的核心操作是 bitpacking，不同的位宽（比如 3bit、7bit）处理逻辑不同。通过泛型生成针对特定位宽的函数，避免了运行时判断分支，提升了 CPU 分支预测的准确率。这一步做完，性能已经逼近甚至超过了原本的 cgo 版本。\n\n### SIMD 登场：垂直布局与 AVX512 的威力\n重头戏来了。TurboPFor 的核心算法之一是 `bitunpack256v32`，它处理的是 256 个 uint32 的块。传统的标量处理是水平布局，而 SIMD 优化需要垂直布局——把 256 个值的第 0 位打包在一起，第 1 位打包在一起。Go 的 `simd` 包提供了 `Int32x8` 这样的向量类型，正好对应 AVX2 的 256 位寄存器。作者利用 Go 1.26 的 SIMD API，实现了 AVX512 版本的解包内核。这不仅仅是换指令，更涉及数据布局的重排。结果很惊人：在解码环节，纯 Go 实现成功追平并超越了 cgo 版本。\n\n### 意想不到的 2 倍提速：Positional Popcount\n就在作者以为优化接近尾声时，Claude Fable 5 模型给出了一个神来之笔的建议：使用 Positional Popcount。在编码器扫描输入数据计算最佳位宽时，传统方法需要遍历每个值。而 Positional Popcount 技术利用 SIMD 指令并行统计每个位位置上的 1 的个数，从而快速推算出最大值所需的位宽。这个算法层面的优化，直接让编码器的扫描速度提升了 **2 倍**。这再次证明了算法优化的收益往往高于底层指令优化。\n\n### 最终战果：纯 Go 实现全面超越 C\n最终的 Benchmark 结果令人振奋。在解码端，Go SIMD 版本成功匹配甚至略微超越了 C TurboPFor。在编码端，得益于 Positional Popcount 和 AVX512 优化，Go 版本比 DCS 原本使用的 C 库还要快。当然，作者也诚实地指出，这并不是说 Go 编译器比 GCC/Clang 强。如果将同样的 AVX512 内核和 Positional Popcount 技术反向移植回 C 代码，Go 大概会比 C 慢 1.4 倍。但这已经是一个巨大的胜利：DCS 终于删除了 cgo 依赖，构建更简单，部署更方便，而且性能更强了。这证明了 Go 在高性能计算领域，凭借现代 SIMD 支持，已经具备了与 C 分庭抗礼的实力。",
+      "source_name": "michael.stapelberg.ch",
+      "score": 19,
+      "depth": 10,
+      "novelty": 9,
+      "category": "engineering",
+      "keywords": [
+        "Go",
+        "SIMD",
+        "TurboPFor",
+        "performance"
+      ],
+      "rank": 1
+    },
     {
       "title": "Using Blender with coding agents on macOS",
       "title_zh": "ChatGPT Codex 直接调用 Blender 生成 3D 场景",
@@ -22,7 +41,26 @@
         "coding agents",
         "Python API"
       ],
-      "rank": 1
+      "rank": 2
+    },
+    {
+      "title": "Quoting Zach Kehs",
+      "title_zh": "代码没有下限：软件熵增的独特诅咒",
+      "link": "https://simonwillison.net/2026/Sep/6/zach-kehs/",
+      "pub_date": "2026-09-06T08:42:49.000Z",
+      "summary": "## 一句话总结\n作者借用建筑行业的对比，一针见血地指出了软件工程最令人绝望的特性：物理世界有重力兜底，烂到一定程度会塌；而代码没有底线，可以无限叠加层级和性能损耗，直到把开发者的心智彻底压垮。\n\n## 正文\n\n### 物理世界的“安全阀”在软件里失效了\nZach Kehs 引用了一句非常扎心的话：如果你无休止地给大楼加盖楼层和房间，它最终会因为承受不住重力而倒塌。这是物理世界给工程质量划定的硬性底线——烂透了就是一场灾难，但也意味着结束。但软件没有这种约束，代码不会因为写得太烂而物理坍塌。这就导致了一个更可怕的后果：代码**总是**可以变得更糟。\n\n### 代码腐坏的“无限性”\n这种“更糟”体现在哪里？作者点出了两个核心特征：新的间接层（layer of indirection）和性能下降（reduction in performance）。对于有经验的开发者来说，这简直是日常噩梦。每一次为了绕过旧逻辑而引入的新抽象，每一次不影响功能跑通但拖慢几毫秒的提交，都在为系统增加负重。不同于大楼会塌，软件系统会以一种“僵尸”的状态无限存活下去，持续折磨维护者。\n\n### 没有底线，才是最大的危机\n这段引述之所以值得深思，是因为它揭示了技术债务最本质的痛点。我们常说“重构”，往往是因为痛到了极点。但现实是，只要系统能跑，业务方往往认为它就是“好”的。这种反馈机制的缺失，让代码质量失去了物理世界的“重力”约束。结果就是，代码复杂度的上限，仅仅取决于开发者心智的承受极限——而在那之前，代码可以无限膨胀，直到没人能看懂为止。",
+      "source_name": "simonwillison.net",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "software entropy",
+        "code quality",
+        "technical debt",
+        "abstraction"
+      ],
+      "rank": 3
     },
     {
       "title": "Proof of the rank-trace theorem",
@@ -41,7 +79,7 @@
         "trace",
         "Cauchy-Schwarz"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "‘Bob and Van’",
@@ -60,7 +98,7 @@
         "community",
         "social norms"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "Introducing GPT-6 Astra for developers",
@@ -79,7 +117,7 @@
         "3D modeling",
         "rendering"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Gloria Steinem’s Final Essay",
@@ -98,7 +136,7 @@
         "activism",
         "equality"
       ],
-      "rank": 5
+      "rank": 7
     }
   ]
 }
