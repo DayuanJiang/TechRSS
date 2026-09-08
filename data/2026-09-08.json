@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 85,
   "total_articles": 2554,
-  "filtered_articles": 18,
+  "filtered_articles": 19,
   "articles": [
     {
       "title": "Creepy crawlies",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "What’s new in git-pkgs",
+      "title_zh": "git-pkgs 工具链扩展至 45 个仓库",
+      "link": "https://nesbitt.io/2026/09/08/whats-new-in-git-pkgs.html",
+      "pub_date": "2026-09-08T09:00:00.000Z",
+      "summary": "## 一句话总结\ngit-pkgs 项目从最初 14 个模块扩展到 45 个仓库，构建了一套完整的依赖管理工具链，核心突破在于用 Go 重写了笨重的 Python 许可证扫描器，实现了 145 倍的速度提升。\n\n## 正文\n\n### 从 CLI 到工具链：生态系统的全面扩张\n今年二月作者介绍 git-pkgs 时，它背后只有 14 个 Go 模块。现在这个组织已经扩张到约 45 个仓库，包含十个独立工具、三十个库模块，以及把它们串联进 CI 和 AI 编程助手的 GitHub Actions。主 CLI 从 v0.14 升级到了 v0.20，一口气新增了八个子命令。这些命令不再是简单的查询工具，而是直接切中开发痛点：`changelog` 拉取上游变更日志，`freshness` 报告依赖落后最新版本多少天，`deprecated` 检查注册表的弃用标记，`provenance` 验证供应链可信度。支持的语言生态也从主流的 npm、Go 扩展到了 Guix、Lean、Helm 等八种新环境，甚至 GitHub Actions 的锁文件支持也补上了。\n\n### 许可证扫描：把 710MB 的 Python 巨兽塞进 18MB 的 Go 二进制\n这是整个项目最亮眼的技术突破。ScanCode 是许可证检测的参考实现，但它是个 710MB 的 Python 安装包，其中 413MB 是预建的 Lucene 索引。运行时它要 fork 几个工作进程，每个进程 RSS 超过 1GB，这让嵌入其他工具或在每次 push 时运行变得很不现实。作者的解决方案很直接：把 ScanCode 的规则语料库编译进一个 18MB 的 Go 二进制文件。效果立竿见影——在 rust-lang/cargo 仓库（2950 个文件）上测试，新工具在 0.65 秒内完成，峰值 RSS 仅 239MB；而 ScanCode 需要 94 秒，跨九个进程吃掉 4.5GB 内存。简单说，快了 145 倍，轻了 19 倍。\n\n### 追踪历史变更：git-spdx 的巧妙设计\n有了快速的许可证匹配器，作者顺势推出了 git-spdx。它的任务是追踪仓库 git 历史中的许可证变化——什么时候改了声明、什么时候加了文件。这里有个巧妙的设计：它只对对象存储中的每个唯一 blob 运行一次匹配器，然后跨 commit diff 结果。这意味着如果一个文件出现在很多版本里，它只被匹配一次。在 cargo 仓库（23190 个 commit，1.3GB 历史数据）上，全历史扫描只需 4 秒左右。如果使用内置的 go-git 后端，甚至不需要 git 可执行文件，峰值内存还能压到 614MB。\n\n### 供应链安全：拆解验证逻辑的模块化思路\n在处理包来源验证时，作者发现现有的 Go 选项把解析和验证绑在一起，还拖家带口拉来一堆传递依赖。于是他拆出了五个独立模块。`attestation` 只负责解析 SLSA Provenance v1 身份字段，用标准库就能跑，把 TUF、Fulcio、Rekor 这些重依赖挡在下游之外。`sigstore` 专门负责验证，是对 sigstore-go 的薄封装，想要重依赖就显式引入。`integrity` 处理 Subresource Integrity 字符串的各种编码格式，边下载边哈希校验。`cooldown` 则是从 proxy 里提取出来的版本年龄过滤器，默认 48 小时的发布延迟策略，pin 和 proxy 都在用。\n\n### 格式处理：零依赖的极简主义\n处理 SBOM 和 SARIF 这些标准格式时，作者选择了造轮子而不是引入现有库。`sbom` 模块读取 CycloneDX JSON 和 SPDX JSON，统一到一个文档模型，再写回三种格式，全程零依赖。理由很实际：protobom 太重，而工具真正需要的只是包列表。`sarif` 同理，从 OASIS schema 生成类型，自带验证器。`cwe` 更有意思，它在构建时把 MITRE CWE 目录嵌入二进制，支持离线查询，每月自动刷新。Scrutineer 用它来分类和分组发现的问题。\n\n### 内容检测：为流式处理而生的 Magic\n当从裸 git 仓库或 tar 包里读文件时，你不想为了识别一个 40MB PNG 的类型就把它全读进内存。`magic` 模块解决了这个问题：它基于有限的前缀字节检测内容类型，报告格式、MIME 类型、文本编码，甚至告诉你是否需要更多字节才能确定。这个纯 Go 实现只用标准库，覆盖了归档文件、可执行文件（ELF、Mach-O、PE、WebAssembly）、图片、PDF 和结构化文本。brief、clone 和 archives 都在用它处理没有扩展名的文件。\n\n### 下游测试与项目分类：从理论到实践\n`downstream` 解决的是库维护者的经典痛点：我的改动会不会坑了下游依赖方？它从 ecosyste.ms API 克隆依赖方项目，先跑通它们的测试建立基线，再用本地检出替换，重跑测试，报告哪里崩了。目前支持 Go、Cargo 和 npm 系。`distill` 则在解决另一个问题：README 是营销材料，容易注水。它通过看代码而不是 README 来判断项目类型（Web 框架、ORM、CLI 工具等），用 LLM 标注训练语料，然后跑一个离线小分类器，不需要模型调用。\n\n### 工具链的整合：从 CLI 到 Agent\n这些工具不是散兵游勇。`actions` 把 CLI 封装成可复用的 GitHub Actions，带注解和作业摘要。`skills` 是 Claude Code 插件，指导 Agent 在动仓库前先跑 brief 和 git-pkgs，让它一开始就掌握工具链和依赖全貌。proxy 的 Web UI 和扫描钩子让它成为团队共享的缓存层，能跑 Trivy、ClamAV 或自定义扫描器，还能拦截恶意下载。整套工具链正在形成一个闭环：从依赖发现、许可证扫描、供应链验证到下游测试，每一步都有工具支撑。",
+      "source_name": "nesbitt.io",
+      "score": 16,
+      "depth": 9,
+      "novelty": 7,
+      "category": "tools",
+      "keywords": [
+        "git-pkgs",
+        "dependency management",
+        "license scanning",
+        "supply chain security"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Clickable whitespace",
       "title_zh": "技术人的伦理困境：从可点击空白说起",
       "link": "https://idiallo.com/blog/clickable-whitespace",
@@ -41,7 +60,7 @@
         "affiliate marketing",
         "AI responsibility"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Automatically detecting AI text in my browser",
@@ -60,7 +79,7 @@
         "local inference",
         "benchmark"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "McKinley 1.0",
@@ -79,7 +98,7 @@
         "icon editor",
         "AppleScript"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Ngram error rate",
@@ -98,7 +117,7 @@
         "data quality",
         "etymology"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "The Education of a Doomer",
@@ -117,7 +136,26 @@
         "disempowerment",
         "software-engineering"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "ActivityPub - Is it worth defending against replay attacks and message/signature time skew?",
+      "title_zh": "ActivityPub 重放攻击防护：时间戳校验的实际价值",
+      "link": "https://shkspr.mobi/blog/2026/09/activitypub-is-it-worth-defending-against-replay-attacks-and-message-signature-time-skew/",
+      "pub_date": "2026-09-08T11:34:51.000Z",
+      "summary": "## 一句话总结\n在 ActivityPub 协议中，防范重放攻击的核心在于校验消息签名和哈希，而非纠结于时间戳的偏差，哪怕消息迟到几个月，只要签名对得上，大概率是安全的。\n\n## 正文\n\n### 迟到的消息：是隐患还是常态？\n作者在维护自己的 ActivityPub 服务器 ActivityBot 时发现了一个有趣的现象：服务器偶尔会收到几个月前的旧消息。这让人不禁心里打鼓——处理这种“陈年旧账”会不会有安全风险？为了搞清楚这个问题，作者首先分析了消息延迟的原因。其实，联邦宇宙的传递机制像极了以前的连锁信，服务器处理能力有限，消息在层层转发中难免堵车。再加上有些服务器对标准执行不严，更新旧消息时保留了原始时间戳，导致“发布时间”和“接收时间”严重脱节。这看似奇怪，实则是分布式网络中的常态。\n\n### 时间校验的“标准”答案有多乱？\n既然消息可能迟到，那我们该在多大程度上容忍这种时间差？作者查阅了各方“标准”，结果发现业界对此并没有共识。Mastodon 的源码建议时间窗口设为一小时，Evan Prodromou 的实现则是 5 分钟，甚至有开发者建议严格限制在 30 秒以内。更有意思的是，不少主流服务器压根就不检查时间差。RFC 9421 标准虽然提到了 `Date` 头和签名创建时间（`created`）可能存在偏差，但把“多少偏差算大”的皮球踢给了开发者。这种“看着办”的态度，让时间校验显得有些主观和随意。\n\n### 重放攻击的假想敌并不可怕\n如果不校验时间，我们到底在担心什么？主要是重放攻击。假设攻击者截获了 Alice 的消息并重新发送，会有什么后果？作者分析后发现，其实威胁有限。如果攻击者篡改消息内容（比如把“我喜欢泰勒·斯威夫特”改成“我讨厌她”），消息体的哈希值会变，签名校验直接失败，根本不需要看时间戳。如果内容没变，只是重复发送，那就要看业务逻辑是否具备幂等性。好消息是，ActivityPub 的设计天然支持幂等：重复的“点赞”只记录一次，重复的“关注”也不会产生副作用。\n\n### 真正的防御逻辑：签名与哈希\n当然，重放攻击并非完全无害。作者设想了一种极端情况：Alice 先关注 Bob，随即取消关注，攻击者 Mallory 截获并重放了最初的“关注”请求，导致 Alice 在不知情下重新关注了 Bob。但这本质上不是时间戳的问题，而是消息去重机制的问题。如果攻击者能在毫秒级延迟内重放消息，时间校验根本形同虚设。因此，防御的核心思路其实很简单：独立计算消息哈希，验证其与 HTTP 头中的哈希是否一致，并检查消息的唯一 ID 是否已被处理。\n\n### 结论：别让时间戳成为绊脚石\n综合来看，作者认为过分纠结签名时间与接收时间的偏差是舍本逐末。只要签名和哈希校验通过，且服务器做好了消息去重，哪怕消息迟到几个月，处理起来也是安全的。作者建议，出于务实考虑，可以给消息留出 1 小时左右的宽限期，以应对网络延迟，但不必将其视为安全红线。毕竟，在联邦宇宙的混乱现实中，严格的时钟同步既不现实，也无必要。如果你觉得这个观点有漏洞，作者也非常欢迎反驳，毕竟安全无小事。",
+      "source_name": "shkspr.mobi",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "security",
+      "keywords": [
+        "ActivityPub",
+        "replay attack",
+        "HTTP signature",
+        "idempotence"
+      ],
+      "rank": 8
     },
     {
       "title": "★ It’s True That I Stole Your Lighter, and It’s Also True That I Lost the Map",
@@ -136,7 +174,7 @@
         "geographic names",
         "GNIS"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Video compressor",
@@ -155,7 +193,7 @@
         "WebAssembly",
         "video compression"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Mercator ↔ Equal Earth",
@@ -174,7 +212,7 @@
         "D3",
         "GPT-6"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "Matt Birchler’s Folding iPhone Predictions",
@@ -193,7 +231,7 @@
         "Apple",
         "hardware"
       ],
-      "rank": 10
+      "rank": 12
     },
     {
       "title": "Quoting Jakub Pachocki",
@@ -212,7 +250,7 @@
         "alignment",
         "defense"
       ],
-      "rank": 11
+      "rank": 13
     },
     {
       "title": "llm 0.35",
@@ -230,7 +268,7 @@
         "CLI",
         "release"
       ],
-      "rank": 12
+      "rank": 14
     },
     {
       "title": "The Onion’s Exclusive Interview With Larry Ellison",
@@ -249,7 +287,7 @@
         "Larry Ellison",
         "Oracle"
       ],
-      "rank": 13
+      "rank": 15
     },
     {
       "title": "[Sponsor] Glyphs 4",
@@ -268,7 +306,7 @@
         "typography",
         "macOS"
       ],
-      "rank": 14
+      "rank": 16
     },
     {
       "title": "Trackables 1.5",
@@ -287,7 +325,26 @@
         "health tracking",
         "privacy"
       ],
-      "rank": 15
+      "rank": 17
+    },
+    {
+      "title": "What happened to Compuserve?",
+      "title_zh": "Compuserve 从先驱到消亡的二十年兴衰史",
+      "link": "https://dfarq.homeip.net/what-happened-to-compuserve/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=what-happened-to-compuserve",
+      "pub_date": "2026-09-08T11:00:10.000Z",
+      "summary": "Compuserve 于 1979 年面向消费者开放，是拨号上网时代的市场领导者，1990 年拥有 60 万订阅用户。1991 年 AOL 以更低价格和更友好的图形界面挑战其地位，到 1997 年 AOL 已有 800 万用户而 Compuserve 仅 500 万且当年亏损。母公司 H&R Block 于 1997 年将 Compuserve 以 12 亿美元股票出售给 Worldcom，后者随即把在线服务业务转手给 AOL，仅保留网络资产。H&R Block 随即抛售 Worldcom 股票，四年后 Worldcom 因财务丑闻破产。AOL 将 Compuserve 定位为低价 ISP 品牌，原有论坛于 2017 年 12 月 15 日关闭，compuserve.com 作为门户网站仍存续但已边缘化。Compuserve 在 1980 年代提供了类似现代互联网的体验，包括论坛、购物、文件传输、在线游戏和电子邮件，按小时收费 5-36 美元，其最持久的遗产是发明了 GIF 图形格式。文章回顾了 Compuserve 从先驱到衰落的历史轨迹，反映了拨号上网服务在宽带时代的必然消亡。",
+      "source_name": "dfarq.homeip.net",
+      "score": 5,
+      "depth": 3,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Compuserve",
+        "AOL",
+        "dial-up",
+        "Internet history"
+      ],
+      "rank": 18
     },
     {
       "title": "I found an old interview mine (2017)",
@@ -305,7 +362,7 @@
         "software-engineer",
         "communication"
       ],
-      "rank": 16
+      "rank": 19
     }
   ]
 }
