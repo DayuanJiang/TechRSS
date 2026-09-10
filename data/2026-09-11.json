@@ -1,10 +1,29 @@
 {
   "date": "2026-09-11",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2500,
-  "filtered_articles": 11,
+  "success_feeds": 85,
+  "total_articles": 2555,
+  "filtered_articles": 12,
   "articles": [
+    {
+      "title": "Extending Raschka's GPT-2: an MoE trained from scratch on an RTX 3090",
+      "title_zh": "从零实现 MoE：GPT-2 改造与 RTX 3090 训练实录",
+      "link": "https://www.gilesthomas.com/2026/09/gpt-2-to-moe",
+      "pub_date": "2026-09-10T18:45:00.000Z",
+      "summary": "## 一句话总结\n作者基于 Sebastian Raschka 的 GPT-2 代码，从零实现了一个 Mixture-of-Experts (MoE) 模型，在单张 RTX 3090 上耗时 8 天完成训练，验证了 MoE 架构在消费级显卡上扩展模型参数的可行性。\n\n## 正文\n\n### 为什么要在 FFN 上动刀？\nMixture-of-experts (MoE) 模型最吸引人的地方在于\"花小钱办大事\"：它能拥有大模型的参数量和知识储备，推理速度却接近小模型。虽然显存占用和同等参数量的稠密模型相当，但因为每个 token 只激活部分参数，计算速度快得多。目前像 Claude 和 ChatGPT 等前沿模型都被广泛认为是 MoE 架构。\n\nMoE 的核心改造点在于 Transformer Block 中的 Feed-Forward Network (FFN)。在 GPT-2 中，FFN 虽然结构简单（先升维 4 倍，过 GELU，再降维回来），却占据了模型一半以上的参数量。如果把 Attention 机制比作\"决定想什么\"，FFN 就是\"进行思考\"的地方。MoE 的思路很直接：与其用一个大的 FFN，不如用多个小的 FFN（即多个 Expert），每次只激活其中几个。\n\n### 路由器设计的第一个坑\n实现 MoE 的第一个挑战是：如何决定把输入送给哪个 Expert？这需要一个 Router（或称 Gating Network）。最直观的想法是用一个线性层，输入是 context vector，输出是对 n 个 Expert 的评分，然后选 Top-k 个 Expert 处理输入，最后把结果相加。\n\n但问题来了：如果只是简单地选出 Expert 然后相加，Router 在反向传播中会被\"架空\"。计算图在回溯梯度时，会从输出向量一路追回到输入向量，却完全绕开了 Router 的决策过程——因为\"选择\"这个动作本身没有梯度。结果是，Router 永远学不会如何正确分配任务，只会保持随机分配的状态。\n\n### 把选择变成加权求和\n为了解决梯度断裂的问题，1991 年的经典论文《Adaptive Mixtures of Local Experts》提出了一个巧妙的思路：不要把 Router 的输出当作\"选择指令\"，而是当作\"权重\"。具体做法是，先对 Router 的原始输出做 Softmax，得到一组概率分布，然后把每个 Expert 的输出向量乘以对应的概率权重，最后加权求和。\n\n这样设计后，梯度就能顺畅地流回 Router：如果某个 Expert 的输出对最终 Loss 贡献大，它对应的权重就会调整，进而促使 Router 调整对该 Expert 的打分。Switch Transformers 论文进一步简化了这个设计，直接把 Router 输出经过 Softmax 后作为缩放因子，既保证了可微，又简化了计算。\n\n### 必须引入的辅助 Loss\n解决了梯度传播问题，还有一个棘手的训练稳定性问题：Expert 塌缩。模型很容易陷入一种局部最优解，即 Router 总是把所有 token 都分配给同一个或少数几个 Expert，剩下的 Expert 处于闲置状态。这不仅浪费了参数，也限制了模型的表达能力。\n\n为了强制 Expert 负载均衡，需要引入一个 Auxiliary Loss（辅助损失）。这个损失项的设计很精妙：它计算每个 Expert 在一个 batch 内被分配到的 token 比例，以及 Router 对该 Expert 的平均打分，然后求两者的乘积。如果分配越不均匀，这个惩罚项就越大。把这个辅助 Loss 加到原本的语言模型 Loss 上，就能在训练过程中\"逼迫\" Router 学会雨露均沾。\n\n### 消费级显卡上的实战结果\n代码实现完成后，作者在单张 RTX 3090 上进行了为期 8 天的训练。模型配置为：总参数量 446M（相当于 GPT-2 small 的 3 倍多），每个 token 激活 220M 参数（6 个 Expert 中激活 2 个）。这是一个典型的 Sparse MoE 配置。\n\n测试结果显示，这个 MoE 模型在测试集上的 Loss 优于作者之前训练的所有模型，也优于原始的 OpenAI GPT-2 small (124M)。但有意思的是，它略逊于 GPT-2 medium (345M)，尽管 MoE 模型的总参数量更大。这说明 MoE 的\"稀疏激活\"虽然提升了推理速度，但在同等总参数下，其\"有效容量\"仍不如稠密模型。\n\n### 验证实现的正确性\n作者对比了 Hugging Face 的 Mixtral 实现代码，发现除了辅助 Loss 的具体计算细节略有不同，整体架构基本一致。为了进一步确认，作者还把代码发给 ChatGPT、Claude 和 Kimi K3 三个 LLM 进行 Code Review，得到的反馈都是\"这是一个基于 Switch Transformers 思路的标准 MoE 实现\"。这从侧面印证了，只要遵循核心论文的设计原则，从零手搓一个 MoE 并不是什么黑魔法。",
+      "source_name": "gilesthomas.com",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "ai-ml",
+      "keywords": [
+        "MoE",
+        "GPT-2",
+        "mixture-of-experts",
+        "training"
+      ],
+      "rank": 1
+    },
     {
       "title": "AI Is Breaking This Thing We Call Trust",
       "title_zh": "AI 正在瓦解工作场所的信任基础",
@@ -22,7 +41,7 @@
         "AI-generated content",
         "workplace dynamics"
       ],
-      "rank": 1
+      "rank": 2
     }
   ]
 }
