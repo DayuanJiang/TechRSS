@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 84,
   "total_articles": 2525,
-  "filtered_articles": 23,
+  "filtered_articles": 22,
   "articles": [
     {
       "title": "OpenAI agents attacked RubyGems back in May",
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "Microcode in Intel's 8087 floating-point chip: the scale instruction",
+      "title_zh": "逆向工程揭示 8087 浮点芯片的 FSCALE 微码实现",
+      "link": "http://www.righto.com/2026/09/8087-microcode-reverse-engineering-fscale.html",
+      "pub_date": "2026-09-12T15:45:16.101Z",
+      "summary": "## 一句话总结\n看似简单的 `FSCALE` 指令，为了处理各种边界情况和硬件限制，竟然动用了 140 多条微指令和三层子程序调用，揭示了 8087 在追求“极致精确”背后的工程复杂性。\n\n## 正文\n\n### 浮点运算标准的“定海神针”\n在上世纪 70 年代，浮点运算的世界可谓群雄割据，各家厂商的标准互不兼容，甚至为了硬件实现的简便而牺牲数学上的严谨性，导致数值稳定性极差。Intel 在 1980 年推出的 8087 浮点协处理器改变了这一切。它不仅让 IBM PC 的浮点运算速度提升了上百倍，更重要的是，它确立了现代计算机通用的浮点标准。8087 的核心是一块存储了 1648 条微指令的 ROM，作为 Opcode Collective 团队的一员，我正在逆向工程这些微代码。本文要剖析的 `FSCALE` 指令，原本以为只是个简单的“2 的 N 次方缩放”，结果却让我大跌眼镜——它远比想象中复杂。\n\n### 芯片内部的“五脏六腑”\n打开 8087 的封装，在显微镜下可以清晰看到它的布局：中间是微代码 ROM，左侧是负责跳转和调用的微代码引擎，底部则是执行计算的“数据通路”。数据通路分为两部分：处理指数的 16 位通路和处理尾数的 64 位通路。为了执行 `FSCALE`，我们需要关注几个关键组件：存放常量的指数 ROM、负责格式转换的指数转换器、能进行任意位数移位的桶形移位器，以及核心计算单元加法器。此外，还有一组 8 个寄存器组成的栈，以及 `tmpA`、`tmpB` 等内部临时寄存器，每个寄存器都配有“标签位”来标记其内容是有效数值、特殊值（NaN/Inf）、零还是空。\n\n### 微指令的精妙设计\n8087 的微指令长度为 16 位，前 3 位决定了指令类型，剩下的位则负责具体的源/目的寄存器寻址、跳转条件等。虽然位宽有限，但它支持数据传输、移位、加法运算，甚至包括子程序调用和条件跳转。这种设计让 8087 能以极低的成本实现极其复杂的控制逻辑。对于 `FSCALE` 而言，其核心逻辑确实很简单：把栈顶的浮点数（`st(0)`）的指数部分加上第二个操作数（`st(1)`）。如果一切顺利，这只需要几步操作。但现实是，为了处理各种“不正常”的情况，微代码变得异常庞大。\n\n### 特殊值的“排雷”逻辑\n微代码一上来并没有直接计算，而是先进行一系列“排雷”。首先把 `st(0)` 移入 `tmpA`，如果它是零，直接返回——不管怎么缩放，零还是零。接着处理 `st(1)`（缩放因子），如果它是零，意味着缩放倍数为 1，原值不变，直接返回。如果这两个值都不是零，代码会检查它们是否为特殊值（如 NaN、无穷大或非规格化数）。如果检测到特殊值，代码会跳转到 `SPECIAL_TMPS` 子程序进行特殊处理，比如对 NaN 抛出异常或返回 NaN 结果。这一系列检查占据了微代码的前半部分，确保了只有“正常”的数值才会进入后续的计算流程。\n\n### 整数转换的迂回战术\n即便缩放因子是正常数值，它存储时也是浮点格式，我们需要把它转换成整数才能加到指数上。这里有个巧妙的设计：微代码并没有直接转换，而是利用了一个常数 `0x403e`（对应指数偏移量相关的值）。通过加法器计算 `tmpC - Breg`，算出需要移位的位数，然后利用桶形移位器将 `tmpB` 中的尾数部分右移，最终得到一个整数值存入 `Breg`。这一步展示了 8087 如何复用现有的硬件资源（加法器和移位器）来完成复杂的格式转换，而不是专门设计一个转换电路。\n\n### 指数溢出与隐藏特性\n拿到整数缩放因子后，下一步就是将其加到 `tmpA` 的指数上。但加完之后，麻烦还没结束——结果可能溢出或下溢。微代码会检查 `expConv` 的状态位，如果发现溢出，就会触发异常处理。有意思的是，`FSCALE` 还暴露了 8087 的一个隐藏特性：它支持一种被称为“非标准化”的内部格式。当结果太小，无法用标准浮点数表示时，8087 可以选择不直接抛出下溢异常，而是保留一个“非标准化”的中间结果，供后续指令使用。这种设计在标准文档中从未提及，但在微代码中却清晰可见。\n\n### 复杂背后的权衡\n最终，`FSCALE` 的微代码长度超过了 140 条微指令，甚至用到了三层子程序调用。这听起来有些夸张，毕竟它只是一个缩放指令。但这恰恰反映了 8087 设计的核心哲学：用微代码的复杂性换取硬件的简洁性和数学上的严谨性。它不仅要处理常规数值，还要完美应对 NaN、无穷大、零、非规格化数以及各种溢出情况。对于开发者来说，这意味这行代码背后有强大的硬件逻辑在保驾护航；而对于逆向工程者来说，这就像是在阅读一部充满了伏笔和转折的侦探小说。",
+      "source_name": "righto.com",
+      "score": 18,
+      "depth": 9,
+      "novelty": 9,
+      "category": "engineering",
+      "keywords": [
+        "8087",
+        "microcode",
+        "reverse engineering",
+        "floating-point"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Don't sleep on wrapture",
       "title_zh": "wrapture：同时搞定测试与追踪的 monkey patching 库",
       "link": "https://simonwillison.net/2026/Sep/11/wrapture/",
@@ -60,7 +79,7 @@
         "tracing",
         "Python"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "The Worst Spam Emails",
@@ -79,7 +98,7 @@
         "iLands",
         "email marketing"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Premium: The Hater's Guide To Broadcom",
@@ -98,7 +117,7 @@
         "TPU",
         "semiconductor"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Quoting Boris Cherny",
@@ -117,7 +136,7 @@
         "production",
         "guardrails"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Don't build tools for AI agents",
@@ -136,7 +155,7 @@
         "training data",
         "human-computer interaction"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Pluralistic: LLMs are real, AI is fake (12 Sep 2026)",
@@ -155,7 +174,7 @@
         "autonomous hacking",
         "security"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Quoting huggingface.co/security.txt",
@@ -174,7 +193,7 @@
         "CyberGym",
         "Hugging Face"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "So you want to use OpenRouter?",
@@ -193,7 +212,7 @@
         "provider selection",
         "LLM inference"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Soft-deprecating re.match()",
@@ -212,7 +231,7 @@
         "soft deprecation",
         "API design"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "You Can Drop SEO",
@@ -231,7 +250,7 @@
         "ChatGPT",
         "content creation"
       ],
-      "rank": 12
+      "rank": 13
     },
     {
       "title": "ActivityPub - How to send an updated user profile to Mastodon and the Fediverse",
@@ -250,7 +269,26 @@
         "Fediverse",
         "Update activity"
       ],
-      "rank": 13
+      "rank": 14
+    },
+    {
+      "title": "Yours Truly on Off Protocol With Jim Ray",
+      "title_zh": "Gruber 谈独立博客、Markdown 与去平台化互联网",
+      "link": "https://atproto.com/off-protocol/2026-09-11-make-your-own-thing-john-gruber",
+      "pub_date": "2026-09-12T15:36:53.000Z",
+      "summary": "## 一句话总结\nJohn Gruber 分享了如何凭“好品味”把 Daring Fireball 打造成独立写作的范本，并复盘了 Markdown 从个人工具演变为互联网标准的历程，最后落脚于他对去平台化互联网（AT Protocol）的拥抱。\n\n## 正文\n\n### 把“写字”变成事业，在争议中确立独立范本\n在如今网红遍地、知识付费泛滥的时代，我们很难想象，二十年前“在网上写字赚钱”这事儿本身还带着点离经叛道的色彩。John Gruber 就是个典型的例子，他靠着 Daring Fireball 这块自留地，硬是把对苹果和科技的犀利点评做成了一份正经事业，而且一干就是快二十五年。这不仅仅是个人成功，他实际上为后来的无数博主、播客主甚至整个创作者经济确立了一套框架。Gruber 的核心逻辑很硬：内容创作者不该依附于平台，而是要拥有自己的域名、自己的品牌，这种独立精神在今天看来依然不过时。\n\n### Markdown 的诞生：与其抱怨工具烂，不如自己造个轮子\n有意思的地方在于，Gruber 对技术圈的贡献远不止于评论，他造出的 Markdown 才是真正改变行业的那只蝴蝶。聊到这个，就不得不提那个老生常谈的痛点：早期的 HTML 手写起来太痛苦，而当时的替代方案（比如 Textile）又不够优雅。Gruber 的思路很直接，他想要一种既能像写邮件一样自然，又能直接转换成有效 HTML 的格式。说白了，Markdown 当年就是为了解决他自己的写作效率问题，是一种极简主义的“程序员美学”体现。\n\n### 从个人玩具到事实标准，慢火炖出的胜利\n但 Markdown 的成功并不是一夜之间发生的，Gruber 在访谈里提到了“慢煮”这个概念。从 2004 年发布，到后来 Aaron Swartz 参与开发 atx，再到 GitHub Flavored Markdown (GFM) 的出现，这个格式经历了一个漫长的迭代和分化过程。虽然现在 Markdown 已经无处不在，甚至成了很多开发者的标配，但 Gruber 似乎对这种“事实标准”的演变保持着一种旁观者的清醒。他没有试图去强控每一个变体，而是让社区去推动它，这种开放心态反而让 Markdown 的生命力更加顽强。\n\n### 拥抱去平台化，在 AT Protocol 上重建连接\n话题转到未来，Gruber 对现在的社交平台现状显然是不满的，尤其是算法推荐对内容分发权的垄断。这也是为什么他开始尝试 Bluesky 和 AT Protocol。对于一位坚持独立写作二十年的老兵来说，AT Protocol 的吸引力在于它把用户身份和数据的主权还给了个人。他提到的 Standard Site 项目和 at.pm 工具包，就是试图在去中心化的协议之上，重建那种早期的、纯粹的互联网写作体验。这不仅是技术上的尝鲜，更是对他一直坚持的“独立精神”的一次技术性回归。",
+      "source_name": "daringfireball.net",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "independent-blogging",
+        "Markdown",
+        "AT-Protocol",
+        "Bluesky"
+      ],
+      "rank": 15
     },
     {
       "title": "Pluralistic: Inefficiency is bad, actually (11 Sep 2026)",
@@ -269,7 +307,7 @@
         "monopoly",
         "framing"
       ],
-      "rank": 14
+      "rank": 16
     },
     {
       "title": "Feeling sad about AI",
@@ -288,7 +326,26 @@
         "software engineering",
         "career adaptation"
       ],
-      "rank": 15
+      "rank": 17
+    },
+    {
+      "title": "Tristan Buckmaster’s Statement on Getting Scooped by OpenAI on the Navier-Stokes Problem",
+      "title_zh": "数学家回应 OpenAI 抢先发表 Navier-Stokes 研究成果",
+      "link": "https://cims.nyu.edu/~tristanb/statement.pdf",
+      "pub_date": "2026-09-12T14:55:12.000Z",
+      "summary": "数学家 Tristan Buckmaster 发布公开声明，回应 OpenAI 在 Navier-Stokes 方程问题上抢先发表研究成果的事件。Buckmaster 承认 OpenAI 团队确实独立得出了相似结果，但强调自己团队的工作具有独立价值和原创性。声明涉及学术优先权争议、AI 在数学研究中的角色等敏感话题，但缺乏具体的技术细节或实验数据支撑。",
+      "source_name": "daringfireball.net",
+      "score": 9,
+      "depth": 3,
+      "novelty": 6,
+      "category": "opinion",
+      "keywords": [
+        "Navier-Stokes",
+        "OpenAI",
+        "priority dispute",
+        "mathematics"
+      ],
+      "rank": 18
     },
     {
       "title": "Weekly Update 521: Breach Perception v. Reality",
@@ -307,7 +364,7 @@
         "security",
         "perception"
       ],
-      "rank": 16
+      "rank": 19
     },
     {
       "title": "iPhone Duo Only Works With the $80 USB-C Apple Pencil, Not the $130 Apple Pencil Pro",
@@ -326,7 +383,7 @@
         "USB-C",
         "compatibility"
       ],
-      "rank": 17
+      "rank": 20
     },
     {
       "title": "XCancel Is Back",
@@ -344,7 +401,7 @@
         "Nitter",
         "Twitter"
       ],
-      "rank": 18
+      "rank": 21
     },
     {
       "title": "Clarus the Dogcow Easter Egg in iOS 27 Settings",
@@ -363,7 +420,7 @@
         "Easter egg",
         "Apple"
       ],
-      "rank": 19
+      "rank": 22
     },
     {
       "title": "Last Year’s iPhone Share Amongst Users of Widgetsmith",
@@ -381,7 +438,7 @@
         "market share",
         "adoption data"
       ],
-      "rank": 20
+      "rank": 23
     },
     {
       "title": "At 25, we are all New Yorkers, again",
@@ -400,7 +457,7 @@
         "community",
         "rebuilding"
       ],
-      "rank": 21
+      "rank": 24
     },
     {
       "title": "datasette-publish-fly 1.4",
@@ -418,7 +475,7 @@
         "Fly.io",
         "deployment"
       ],
-      "rank": 22
+      "rank": 25
     },
     {
       "title": "github-to-sqlite 2.9.1",
@@ -436,7 +493,7 @@
         "sqlite",
         "cli"
       ],
-      "rank": 23
+      "rank": 26
     },
     {
       "title": "This Week in Package Management: 12 September 2026",
@@ -454,7 +511,7 @@
         "releases",
         "security"
       ],
-      "rank": 24
+      "rank": 27
     },
     {
       "title": "Reading List — 09/12/2026",
@@ -473,7 +530,43 @@
         "semiconductor",
         "geothermal"
       ],
-      "rank": 25
+      "rank": 28
+    },
+    {
+      "title": "T-Mobile Is Charging $5/Month for iPhone Handoff",
+      "title_zh": "T-Mobile 对 iPhone Handoff 功能收费 5 美元/月",
+      "link": "https://www.t-mobile.com/news/devices/iphone-18-pro-iphone-duo-apple-watch-release",
+      "pub_date": "2026-09-12T15:24:09.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "iPhone",
+        "T-Mobile",
+        "pricing"
+      ],
+      "rank": 29
+    },
+    {
+      "title": "Gary Marcus on This Week in AI Drama",
+      "title_zh": "无法访问：Gary Marcus 谈 AI 领域的两大警告",
+      "link": "https://garymarcus.substack.com/p/two-dire-warnings-one-from-terence",
+      "pub_date": "2026-09-12T14:25:07.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Gary Marcus",
+        "AI criticism",
+        "Substack"
+      ],
+      "rank": 30
     },
     {
       "title": "This Week on The Analog Antiquarian",
@@ -490,7 +583,7 @@
         "blog",
         "newsletter"
       ],
-      "rank": 26
+      "rank": 31
     }
   ]
 }
