@@ -1,10 +1,48 @@
 {
   "date": "2026-09-14",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2525,
-  "filtered_articles": 8,
+  "success_feeds": 83,
+  "total_articles": 2505,
+  "filtered_articles": 9,
   "articles": [
+    {
+      "title": "Fixing an NZXT Signal 4K30 part 2: the green/pink video bug",
+      "title_zh": "用 Claude 逆向修复采集卡固件 bug",
+      "link": "https://www.downtowndougbrown.com/2026/09/fixing-an-nzxt-signal-4k30-part-2-the-green-pink-video-bug/",
+      "pub_date": "2026-09-13T21:02:59.000Z",
+      "summary": "## 一句话总结\n作者利用 Claude 辅助逆向工程，成功定位并修复了 NZXT 采集卡固件中一个由 ITE 官方驱动注释误导引发的 DVI 信号颜色空间配置错误。\n\n## 正文\n\n### �伏的“软故障”：修好的硬件还有颜色异常\n故事要从作者去年的一次维修说起。当时，他修好了一块因电感虚焊导致完全“暴毙”的 NZXT Signal 4K30 采集卡。硬件虽然复活了，但在测试时却发现了一个怪现象：当接入特定的 720p60 HDMI 信号源时，采集画面呈现出诡异的粉绿配色。作为一名经验丰富的开发者，作者一眼就看出这是典型的 RGB 与 YUV 颜色空间不匹配的表现。由于其他设备工作正常，且 Reddit 上也有用户反馈 PS5 和 Switch 存在类似问题，作者推测这大概率是固件层面的 Bug，而非硬件故障。\n\n### AI 加持的逆向工程：从猜测到定位\n直到最近，作者突发奇想：何不利用 Claude 来彻底解决这个遗留问题？他向 Claude 提供了采集卡的元器件清单、故障描述、Reddit 上的案例截图、NZXT 的最后版固件，以及 HDMI 接收芯片 IT6805 的官方驱动源码。仅仅 15 分钟，Claude 就给出了反馈。它不仅认同“颜色空间不匹配”的猜想，还敏锐地指出问题可能出在 DVI 模式的处理逻辑上。为了验证，作者甚至动用示波器找到了 PCB 上的隐藏调试串口，抓取日志确认：出问题的信号源确实是以 DVI 模式接入的。\n\n### 致命的注释：读懂代码里的陷阱\nClaude 在 ITE 的驱动代码 `iTE6805_SYS.c` 中精准锁定了嫌疑代码。这段逻辑负责根据输入信号类型配置寄存器 `0x6B` 的 bit 5:4，以告知芯片输入信号的颜色格式。如果是 HDMI 信号，代码会从 AVI InfoFrame 中读取格式；如果是 DVI 信号，代码注释明确写着“seting input format to RGB”（设置输入格式为 RGB）。但令人大跌眼镜的是，代码实际写入的值是 `0x10`（对应二进制 `01`）。根据寄存器定义，`00` 才代表 RGB，而 `01` 代表 YUV422。作者推测，这极有可能是原作者被那行略显歧义的注释“00: RGB mode - 01: YUV422”给误导了，大脑自动把“RGB mode”和“01”关联在了一起，导致了这一字节的笔误。\n\n### 大胆的“补丁”：直接修改固件字节\n既然找到了病灶，下一步就是验证。虽然 Claude 建议先通过 SWD 接口备份固件以防变砖，但作者决定“富贵险中求”，直接修改固件。他让 Claude 逆向分析了 NZXT 的固件更新工具，确认固件镜像没有校验和（Checksum）保护。修复方案极其简单且硬核：将固件中 `movs r2, #16`（对应十六进制 `0x10`）这条指令直接改为 `movs r2, #0`（对应十六进制 `0x00`）。作者编写了一个命令行工具绕过了官方更新程序的版本检查，强行刷入了修改后的固件。\n\n### 完美的收官：Bug 消失，项目闭环\n刷机过程有惊无险，重启设备后，作者迫不及待地打开 OBS 进行测试。结果令人欣慰：画面颜色完全恢复正常，那恼人的粉绿色调彻底消失。这证明了推断完全正确——这就是 ITE 驱动代码中的一个低级错误，而 NZXT 在集成时未做充分测试就直接沿用了这段有 Bug 的代码。作者已将修复后的固件和工具开源在 GitHub 上，供持有这款已停产设备的用户自救。这次经历不仅完美终结了这块采集卡的维修故事，也再次展示了 AI 在辅助固件逆向与 Bug 定位上的惊人潜力。",
+      "source_name": "downtowndougbrown.com",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "Claude",
+        "firmware",
+        "reverse engineering",
+        "HDMI"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Slow developer experience will bottleneck fast models",
+      "title_zh": "当模型推理快到极致，DevEx 才是瓶颈",
+      "link": "https://seangoedecke.com/slow-devex-will-bottleneck-fast-models/",
+      "pub_date": "2026-09-14T00:00:00.000Z",
+      "summary": "## 一句话总结\n当模型推理速度飙升至每秒数万 token 时，原本毫秒级的开发环境延迟将成为新的性能瓶颈，迫使技术栈向极致高效的工具链迁移。\n\n### 现在的毫秒级优化其实是在做无用功\n目前的开发体验度量单位是秒。测试跑一秒算快，三十秒算慢，大家觉得这就够了。再快一点意义不大，因为你的时间主要花在思考或者等 AI Agent 启动上。那些试图把开发服务器重载时间再压缩几毫秒的努力，在当下看来纯属闲得慌——反正那也不是瓶颈。\n\n### 模型推理速度正在打破所有人的认知\n但情况正在起变化。小模型越来越快，聪明的模型也在变小。虽然大多数工程师处理复杂逻辑时仍倾向于使用最聪明的模型（毕竟软件工程很难），但在处理定义明确的任务时，高速模型正逐渐成为 subagent 的首选。这是一片无人深水区。几乎没人建立过与每秒生成数千 token 的 Agent 协作的直觉。\n\n### 每秒一万七千 token 是一种什么体验\n现在的 GPT-6-Astra 大概每秒生成 60 个 token，你还得像等人类同事回消息一样等它思考，期间只能切换上下文去干别的。但你去试试 Taalas 的 Jimmy（基于 LLaMA-3.1-8B），它跑在专用芯片上，每秒能吐出一万七千个 token。不管回复多长，点击发送的瞬间答案就出来了。虽然这个模型还没强到能独立完成 Agent 任务，但它让你窥见了未来的模样：答案即时呈现。\n\n### 工具调用延迟将取代模型推理成为新瓶颈\n问题来了：模型生成快了，其他环节跟得上吗？当生成 token 不再是瓶颈，Agent 读文件是 100ms 还是 10ms、跑测试是 500ms 还是两秒，突然就变得至关重要了。工具调用的快慢，将决定你是瞬间得到结果，还是还得干等几分钟。这就是为什么未来 Agentic Coding 会向 Golang 这种编译和测试都极快的语言倾斜——整个开发闭环都需要极致优化。\n\n### DevEx 团队可能会在 AI 时代迎来复兴\n专注于 DevEx 的团队在 2010 年代很流行，那时候公司愿意花钱让工程师开心。后来大环境变了，这类团队被裁得七零八落。但到了 2020 年代后期，我们可能会看到 DevEx 的回归，只不过这次的重点不再是人类工程师的体验，而是为 AI Agent 加速。",
+      "source_name": "seangoedecke.com",
+      "score": 15,
+      "depth": 7,
+      "novelty": 8,
+      "category": "ai-ml",
+      "keywords": [
+        "inference speed",
+        "developer experience",
+        "agentic coding",
+        "LLaMA"
+      ],
+      "rank": 2
+    },
     {
       "title": "The spy in your living room",
       "title_zh": "LG 智能电视如何成为客厅里的间谍",
@@ -22,7 +60,7 @@
         "surveillance",
         "data collection"
       ],
-      "rank": 1
+      "rank": 3
     },
     {
       "title": "AI Forces You to Commit to Your Initial Belief",
@@ -41,7 +79,7 @@
         "LLM limitations",
         "creative process"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "Anecdotally, programmers dislike \"reduce\"",
@@ -59,7 +97,26 @@
         "functional programming",
         "code review"
       ],
-      "rank": 3
+      "rank": 5
+    },
+    {
+      "title": "Glyphs 4",
+      "title_zh": "字体编辑器 Glyphs 发布 4.0 大版本更新",
+      "link": "https://glyphsapp.com/",
+      "pub_date": "2026-09-13T21:44:17.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 7,
+      "depth": 2,
+      "novelty": 5,
+      "category": "tools",
+      "keywords": [
+        "Glyphs",
+        "font editor",
+        "typography",
+        "macOS"
+      ],
+      "rank": 6
     }
   ]
 }
