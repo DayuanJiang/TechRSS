@@ -1,10 +1,29 @@
 {
   "date": "2026-09-15",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2556,
+  "success_feeds": 84,
+  "total_articles": 2526,
   "filtered_articles": 15,
   "articles": [
+    {
+      "title": "Shadowing the Standard Library",
+      "title_zh": "Python 标准库劫持：从编码代理攻击看各语言模块搜索路径安全演进",
+      "link": "https://nesbitt.io/2026/09/15/shadowing-the-standard-library.html",
+      "pub_date": "2026-09-15T09:00:00.000Z",
+      "summary": "## 一句话总结\n文章通过分析一起针对 AI 编程智能体的攻击事件，揭示了 Python 等语言将当前目录置于模块搜索路径首位的遗留设计风险，并横向对比了各大语言运行时的处理方案。\n\n## 正文\n\n### 一个精心构造的“特洛伊木马”\n故事始于 Johann Rehberger 披露的一起针对 Claude Code 的攻击事件。攻击者诱导智能体解压一个 ZIP 包，包里藏着一个名为 `struct.py` 的恶意文件。智能体按照指令在解压目录下生成并运行一个 Python 解码脚本，该脚本执行 `import base64`，而 `base64` 内部会调用 `import struct`。问题的关键在于，Python 默认将脚本所在目录放在 `sys.path` 的第一位，于是解释器加载了攻击者的 `struct.py`，而非标准库。这个恶意模块不仅执行了攻击载荷，还巧妙地转发调用了真正的 `_struct` API，确保程序继续正常运行，甚至用 `python3 -I` 重启了一个干净的环境来掩盖痕迹。\n\n### 动态语言的“历史包袱”\n这并非新问题，而是动态语言运行时的老毛病。早期设计为了方便，默认将当前目录（`.`）加入模块搜索路径，这在今天看来极其危险。Ruby 在 2010 年发布的 1.9.2 版本中就移除了这个默认项，并提供了 `require_relative` 作为替代方案，当时甚至没有分配 CVE，因为 1.9 本身就是一次大规模的兼容性升级。Perl 则是在 2017 年的 5.26.0 版本中跟进，但这之前经历了一次严重的安全事件（CVE-2016-1238）：如果脚本切换到 `/tmp` 目录并加载可选模块，就会触发恶意代码。Perl 甚至不得不引入环境变量 `PERL_USE_UNSAFE_INC=1` 作为过渡期的逃生舱，让下游发行版慢慢修补那些依赖旧行为的代码。\n\n### 架构设计如何“避坑”\n有些语言通过架构设计直接规避了这个问题。Node.js 的 `require` 机制会优先检查核心模块，所以即便目录下有个 `http.js`，`require('http')` 依然加载的是内置模块；如果要加载本地文件，必须显式使用 `require('./http')`。Java 也是同理，Bootstrap Class Loader 优先加载 `java.*` 包，防止应用路径下的同名类篡改核心 API。Deno 则做得更绝，完全抛弃了模糊的路径搜索，强制要求所有导入必须是 URL 或相对路径。Julia 和 PowerShell 也有类似的保护机制，通过 Manifest 文件或限定搜索路径，确保不会意外加载到工作目录下的恶意文件。\n\n### Python 和 PHP 的“致命”顺序\n但 Python 和 PHP 的情况就不太乐观了。它们不仅保留了当前目录搜索，而且位置还极其靠前——直接排在标准库之前。这意味着攻击者只要在当前目录放一个同名文件，就能“劫持”标准库。虽然 Python 3.11 引入了 `-P` 参数（或 `PYTHONSAFEPATH` 环境变量）来移除这个路径，但核心开发者 Victor Stinner 提议将其设为默认值的 PEP 至今仍是草案状态。原因在于 Python 的显式相对导入（`from . import foo`）只能在包内使用，如果默认禁用当前目录，那些依赖 `import helper` 来加载同级脚本的独立脚本就会直接报错，这是一个难以打破的兼容性僵局。\n\n### 智能体时代的“新威胁模型”\n这就引出了最有意思的一点：威胁模型的变迁。以前的安全建议是“不要在 `/tmp` 这种不可信目录下运行脚本”，这假设操作者是人类或拥有固定工作目录的守护进程。但现在，AI 编程智能体成了主要的攻击目标。智能体下载 ZIP、解压、生成辅助脚本并执行，这一系列操作本质上就是把自己送进了“不可信目录”。对于 OpenAI 的 Code Interpreter 或 Anthropic 的代码执行工具来说，Python 是默认语言，这种“历史遗留设计”就成了致命的软肋。攻击者利用的正是智能体处理压缩包这一副作用，让原本需要用户“犯错”才能触发的漏洞，变成了自动化流程中的必经之路。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "Python",
+        "module hijacking",
+        "sys.path",
+        "coding agents"
+      ],
+      "rank": 1
+    },
     {
       "title": "AI Is Already In Dangerous Hands",
       "title_zh": "AI 行业的安全叙事是一场精心设计的烟雾弹",
@@ -22,7 +41,7 @@
         "OpenAI",
         "regulation"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Interpreting Pangram",
@@ -41,7 +60,26 @@
         "LLM writing",
         "false positive"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "Tell agents the why, not just the how",
+      "title_zh": "给 AI 代理讲清目标，而非只给指令",
+      "link": "https://seangoedecke.com/tell-agents-the-why/",
+      "pub_date": "2026-09-15T00:00:00.000Z",
+      "summary": "## 一句话总结\n与其给 AI Agent 下达精确的指令，不如告诉它你的目标和优先级，因为现代模型出错往往不是因为\"笨\"，而是因为\"误解了你的意图\"。\n\n## 正文\n\n### 早期的 Agent 像\"热情的傻瓜\"，只配听指令\n早期的 AI Agent 基本上是一群\"热情的傻瓜\"。那时候你想让它干活，必须把指令下得极其精确，比如告诉它\"类 B 上有方法 A，请在类 C 到 F 上添加同等方法\"。一旦指令模糊，它就会跑偏，干出完全错误的事情。那时候的交互逻辑很简单：你不仅要告诉它做什么，还得教它怎么做，否则结果就是灾难。\n\n### 现在的 Agent 不再是听不懂话，而是会错意\n但现在的 Frontier Models 已经完全不同了。如果今天的模型（比如文中假设的 GPT-6-Astra）写出了难以阅读的 minified code，并不是因为它能力不足，而是它错误地假设了目标——它以为代码是写给机器自己看的。只要告诉它代码是给人读的，或者在已有的代码库中工作，它完全能写出漂亮的 Golang 代码。现在的 Agent 出问题，大多是因为它对你的目标或优先级做了错误的假设。\n\n### 核心思路其实很简单：告诉它\"为什么\"，而不只是\"怎么做\"\n这就是作者想传达的最关键建议：给 Agent 提供关于你优先级的上下文，而不仅仅是具体的任务步骤。作者举了一个自己构建 Deckard 项目时的 Prompt 例子。他没有直接下达冷冰冰的技术指标，而是花了大篇幅描述背景：比如这是个人项目，长远目标是做个浏览器插件，短期目标是跑通检测模型，而且特别强调要在 MacBook 上跑得省电、不发烫。\n\n### 上下文比精确规格更重要\n有意思的地方在于，这个 Prompt 里大概有一半的内容是在分享宽泛的上下文。如果当时作者只是写了一份精确的技术规格书，他就会错过很多优化机会。比如，Agent 可能就不会建议使用 native messaging 来与本地模型通信，或者可能不会发现 Gradient 模型其实比作者最初设想的 EditLens 更合适。正是因为 Agent 知道了\"为什么\"，它才能在\"怎么做\"上给出更优解。\n\n### 明确\"相对优先级\"，允许 Agent 做权衡\n在工作中，作者也采用同样的策略，但会更强调技术价值观。他会专门写一段话来解释各项指标的\"相对优先级\"：避免 Bug、可观测性、代码风格契合度、性能表现等等。关键点在于，他不会把这些都列为\"很重要\"，而是明确告诉模型哪些是可以牺牲的。只有这样，Agent 才知道在发生冲突时该如何做权衡，而不是试图面面俱到却顾此失彼。\n\n### 别陷入 AI 时代的 XY 问题\n说到底，现在的模型已经足够聪明，能够对你的宏观目标提供有价值的建议。如果你只是扔给它一份具体的技术规格，其实是在犯经典的 XY 问题错误：你在向专家求助，却没给专家足够的背景信息。现在的 Agent 已经不是那个只会执行指令的脚本了，给它目标，它才能给你惊喜。",
+      "source_name": "seangoedecke.com",
+      "score": 14,
+      "depth": 7,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "AI agents",
+        "prompting",
+        "context",
+        "goal alignment"
+      ],
+      "rank": 4
     },
     {
       "title": "Quoting Laurie Voss",
@@ -60,7 +98,7 @@
         "software development",
         "cost"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "Why didn’t Read­Directory­ChangesW provide a way to correlate the two sides of a rename operation?",
@@ -79,7 +117,7 @@
         "file system",
         "rename"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "The contagion of fear",
@@ -98,7 +136,7 @@
         "bioweapons",
         "expertise"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "alt.time-capsule.reopened",
@@ -117,7 +155,45 @@
         "search engine",
         "digital history"
       ],
-      "rank": 6
+      "rank": 8
+    },
+    {
+      "title": "Pluralistic: Everybody pees (15 Sep 2026)",
+      "title_zh": "亿万富翁的唯我论：为何他们想用 AI 替代人类",
+      "link": "https://pluralistic.net/2026/09/15/bitter-lemon-energy-drink/",
+      "pub_date": "2026-09-15T07:27:02.000Z",
+      "summary": "",
+      "source_name": "pluralistic.net",
+      "score": 8,
+      "depth": 3,
+      "novelty": 5,
+      "category": "opinion",
+      "keywords": [
+        "billionaires",
+        "solipsism",
+        "AI",
+        "labor"
+      ],
+      "rank": 9
+    },
+    {
+      "title": "Diamond Rio PMP300",
+      "title_zh": "RIAA诉讼反助推Rio PMP300成为主流MP3播放器",
+      "link": "https://dfarq.homeip.net/diamond-rio-pmp300/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=diamond-rio-pmp300",
+      "pub_date": "2026-09-15T11:00:30.000Z",
+      "summary": "1998年9月Diamond Multimedia推出Rio PMP300便携式MP3播放器，售价200美元，配备32MB存储（可容纳约30分钟128kbps音乐），通过并行端口连接电脑传输文件。该设备并非首款MP3播放器，但因Diamond作为知名PC配件厂商的品牌效应和零售渠道，使MP3播放器首次进入主流消费电子市场。RIAA在产品发布三周后申请禁售令，但法院裁定设备本身不助长盗版，诉讼反而为产品带来巨大曝光，加速了MP3格式的普及。作者作为早期购买者描述了使用体验：需手动重编码音乐文件以延长播放时间，Music Match传输软件虽可用但不够友好，设备最终因容量限制和操作繁琐被搁置。产品销量达20万台，但很快被更成熟的方案取代，iPod最终主导了市场。文章展现了技术产品从早期采用者阶段走向大众市场的典型轨迹。",
+      "source_name": "dfarq.homeip.net",
+      "score": 8,
+      "depth": 5,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "MP3 player",
+        "Diamond Rio",
+        "RIAA",
+        "digital music"
+      ],
+      "rank": 10
     },
     {
       "title": "Dumpster Fire – Litterbox-Inspired Extension for Firefox",
@@ -136,7 +212,7 @@
         "x.com",
         "privacy"
       ],
-      "rank": 7
+      "rank": 11
     },
     {
       "title": "What blog posts influenced your thinking the most?",
@@ -154,7 +230,7 @@
         "migrations",
         "career"
       ],
-      "rank": 8
+      "rank": 12
     },
     {
       "title": "Apple’s 27.0 OS Updates",
@@ -173,7 +249,24 @@
         "release notes",
         "Apple"
       ],
-      "rank": 9
+      "rank": 13
+    },
+    {
+      "title": "[RSS Club] Sorry for breaking your feed readers!",
+      "title_zh": "RSS Club 专属内容页面",
+      "link": "https://shkspr.mobi/blog/2026/09/rss-club-sorry-for-breaking-your-feed-readers/",
+      "pub_date": "2026-09-15T11:34:26.000Z",
+      "summary": "",
+      "source_name": "shkspr.mobi",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "other",
+      "keywords": [
+        "RSS",
+        "feed"
+      ],
+      "rank": 14
     }
   ]
 }
