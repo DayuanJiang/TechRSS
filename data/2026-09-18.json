@@ -3,7 +3,7 @@
   "total_feeds": 92,
   "success_feeds": 83,
   "total_articles": 2501,
-  "filtered_articles": 18,
+  "filtered_articles": 16,
   "articles": [
     {
       "title": "Noam Brown – Agent swarms, alignment, & recursive self-improvement",
@@ -44,6 +44,44 @@
       "rank": 2
     },
     {
+      "title": "std::call_once vs. std::async",
+      "title_zh": "std::call_once 与 std::async 的内存开销对比",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260917-00/?p=112706",
+      "pub_date": "2026-09-17T14:00:00.000Z",
+      "summary": "## 一句话总结\n虽然 `std::async` 配合 `std::shared_future` 能实现类似 `std::call_once` 的延迟初始化效果，但前者会带来额外的堆内存开销和代码膨胀，且两者在异常处理上有关键差异。\n\n## 正文\n\n### 想用 `std::async` 替代 `std::call_once`？\n上一篇文章我们对比了 Magic statics 和 `std::call_once`，结论是 `std::call_once` 能帮非静态变量实现类似 Magic statics 的行为。这时候你可能会想：`std::async` 不也是做延迟执行的吗？能不能用它来替代 `std::call_once`？思路看起来很直接：用 `std::launch::deferred` 策略创建一个异步任务，它返回一个 `std::future`，等到需要结果的时候再调用 `get()` 触发执行。\n\n### 一次性取值是个大问题\n但这里有个坑：`std::future::get()` 是个破坏性操作。为了支持不可复制的类型，标准规定 `get()` 只能调用一次，再次调用就是未定义行为。这显然不符合我们要的“初始化一次，后续反复读取”的需求。解决办法也有，就是把它转换成 `std::shared_future`。通过调用 `share()` 方法，我们得到了一个 `shared_future`，它的 `get()` 方法不仅线程安全（因为是 `const` 的），而且返回的是缓存值的常量引用，可以反复调用。\n\n### 代码写出来挺像那么回事\n有了 `shared_future`，我们的 `Gadget` 类就可以这样设计：在构造函数里初始化一个 `shared_future` 成员，把复杂的检查逻辑塞进 lambda 里。以后不管谁调用 `can_reverse_polarity()`，内部都直接调用 `future.get()`。第一个调用者会触发 lambda 执行并缓存结果，后续调用者直接拿到缓存值。逻辑上看起来和 `std::call_once` 达成的效果一模一样。\n\n### 内存开销的隐形差距\n既然都能实现功能，为什么要选 `std::call_once` 而不是 `std::async`？这就得看底层的成本了。`std::call_once` 非常轻量，在 Visual Studio 里它底层就是 Win32 的 `INIT_ONCE`，大小也就一个指针。反观 `std::future` 和 `std::shared_future`，它们必须进行堆内存分配，用来管理共享状态、存储可调用对象及其参数，还得存放执行结果。这一套下来，内存开销明显大得多。\n\n### 强制引入的代码依赖\n除了内存，代码体积也是个考量点。`std::async` 是个通用组件，它得支持 `std::launch::async` 这种多线程模式。这意味着一旦你用了它，链接器就得把线程库等相关机制都链接进来，哪怕你只用了 `deferred` 模式。这就是典型的“杀鸡用牛刀”——为了一个简单的延迟初始化，引入了一整套异步执行的基础设施。\n\n### 异常行为才是真正的深坑\n文章最后指出了一个更关键但也更隐蔽的区别：异常处理。目前我们讨论的都只是“Happy Path”，如果 lambda 里抛出了异常，`std::call_once` 和 `std::shared_future` 的表现是完全不同的。这部分内容作者卖了个关子，留到了下一篇文章再详细展开，但这恰恰是我们在做技术选型时不能忽视的风险点。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "std::call_once",
+        "std::async",
+        "C++",
+        "thread-safety"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "Empirical fractal",
+      "title_zh": "分形理论源于海岸线测量的实证研究",
+      "link": "https://www.johndcook.com/blog/2026/09/17/empirical-fractal/",
+      "pub_date": "2026-09-17T16:48:14.000Z",
+      "summary": "## 一句话总结\n分形概念的诞生并非源于数学家的凭空构想，而是源于 Lewis Fry Richardson 对英国海岸线测量数据的实证分析，揭示了“尺子越短，海岸线越长”的幂律关系。\n\n## 正文\n\n### 海岸线长度竟然是个变量\n我们常在讨论分形时听到一种说法：海岸线的长度取决于你用的尺子有多小。我以前一直以为这只是个为了解释 Koch snowflake（科赫雪花）构造步骤而编造的假想实验。但事实上，这句话有着扎实的现实根基——它真的源于地理测量实践。这并不是数学家在书斋里的思维游戏，而是实打实的测量难题。\n\n### Richardson 的实测发现\nLewis Fry Richardson（1881–1953）在研究中敏锐地发现，苏格兰海岸线的长度并不是一个定值。它依赖于测量时所用的线段长度。更有意思的是，他发现这背后存在一种精确的数学规律：海岸线长度与测量尺度之间遵循 power law（幂律）。说白了，如果你把海岸线长度的对数和尺子长度的对数画在图上，会得到一条直线。\n\n### 从数据到理论的跨越\n文中复现了 Richardson 当年的散点图，那张图清晰地展示了这种线性关系。这一发现为后来的理论突破提供了关键证据。Mandelbrot 正是基于 Richardson 的这一观察，进一步定义了“分形维数”的概念。这意味着，分形维数不是先有理论再去套用现实，而是直接从经验数据中提炼出来的。\n\n### 理论与实践的反馈环\n这打破了我长久以来的一个误解：分形是先作为数学新奇物被发明出来，后来才找到应用场景的。但事实恰恰相反，至少在这个案例中，应用走在了理论前面。这其实是科技史上的常见模式：现实问题先被观测到，数学工具随后跟进建模。\n\n### Knuth 定律的完美印证\n理想情况下，应用和理论之间应该形成一个持续的反馈循环。正如 Donald Knuth 所言：“最好的理论源于实践，最好的实践源于理论。” Richardson 对海岸线的测量引发了分形理论的诞生，而分形理论反过来又帮助我们理解了更广泛的自然现象。这就是技术发展的最佳路径。",
+      "source_name": "johndcook.com",
+      "score": 12,
+      "depth": 6,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "fractal",
+        "Richardson",
+        "Mandelbrot",
+        "coastline"
+      ],
+      "rank": 4
+    },
+    {
       "title": "Corporate Sunset",
       "title_zh": "Cox 品牌消亡：65 年积累为何被 Spectrum 一笔勾销",
       "link": "https://feed.tedium.co/link/15204/17464641/cox-charter-spectrum-brand-retirement-analysis",
@@ -60,7 +98,7 @@
         "cable",
         "Cox"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "Phone words",
@@ -79,7 +117,7 @@
         "mnemonic",
         "word-matching"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Why Do U.S. Models of the iPhone 18 Pro Max, and Only U.S. Models of the 18 Pro Max, Use Qualcomm Cellular Modems Instead of Apple’s Own Superior C2 Modem?",
@@ -98,7 +136,7 @@
         "Qualcomm",
         "mmWave"
       ],
-      "rank": 5
+      "rank": 7
     }
   ]
 }
