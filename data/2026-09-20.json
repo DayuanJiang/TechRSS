@@ -1,10 +1,29 @@
 {
   "date": "2026-09-20",
   "total_feeds": 92,
-  "success_feeds": 80,
-  "total_articles": 2438,
-  "filtered_articles": 16,
+  "success_feeds": 84,
+  "total_articles": 2528,
+  "filtered_articles": 11,
   "articles": [
+    {
+      "title": "Finding Bugs",
+      "title_zh": "用 fuzzer 挖掘 Rust regex 的隐藏 bug",
+      "link": "https://matklad.github.io/2026/09/19/finding-bugs.html",
+      "pub_date": "2026-09-19T00:00:00.000Z",
+      "summary": "## 一句话总结\n通过引入“Oracle（神谕）”对比策略和“Swarm Testing”生成技巧，作者成功复现了 Rust `regex` 库的已知 Bug，并顺手发现了另一个新问题，有力证明了生成式测试在算法验证中的价值。\n\n## 正文\n\n### 争议的起点：Fuzzer 真的比单元测试强吗？\n事情的起因是一场关于测试有效性的争论。有人认为通用的 Fuzzer（模糊测试工具）并不比基于示例的单元测试高明多少，理由是一个已知的棘手 Bug 曾躲过了 Fuzzer 的检测。作者对此持怀疑态度，他认为生成式测试理应能揪出这类问题。为了证明观点，作者决定亲自下场，针对 Rust `regex` crate 的一个特定历史版本编写 Fuzzer。结果很有意思：不仅目标 Bug 无处遁形，还顺带发现了另一个之前未被察觉的 Bug。这不仅仅是为了赢得争论，更是一次关于如何高效进行随机测试的实战教学。\n\n### 核心策略：寻找可靠的“Oracle”\n要验证一个正则引擎是否正确，最笨但也最有效的办法是什么？说白了就是“找参照系”。正则引擎本质上是纯算法，测试算法的黄金法则是引入 Oracle：实现两个版本，一个快（可能错），一个慢（一定对），对比结果。在这个案例中，作者不需要自己重写一个正确的引擎，而是巧妙地利用了 `regex` 和 `regex_lite` 两个实现。既然它们 API 相同，那么对于同样的输入，输出必须一致。这种“差分测试”让断言逻辑变得异常简单，无需预知正确答案，只要两者不匹配，就是 Bug。\n\n### 生成策略：别贪大，要“刁钻”\n开始写 Fuzzer 时，新手的通病是想生成 5GB 的超大字符串把系统撑爆。但这往往是错误的路径。真实的 Bug 通常隐藏在极小的输入中，源于少数几个特性之间的微妙交互。比如，一个全是 'a' 的字符串往往比随机乱码更容易触发边界问题。作者的策略非常务实：限制输入长度（比如 0-8 字符），复用内存以减少分配开销，专注于生成那些“短小精悍”的测试用例。\n\n### Swarm Testing：让分布本身随机化\n如果每次都从同一个字符集中生成字符串，测试覆盖面会很窄。作者引入了一个叫“Swarm Testing”的巧妙设计。它的核心思路是：不仅随机生成字符串，还要随机生成生成字符串的“字母表”。在每一轮测试开始前，先随机选定一个字符子集（比如只用 'a' 和 'b'），然后再在这个子集上生成测试数据。这种“随机化分布”的方法，能极大增加发现那些隐藏在特定特性组合下的 Bug 的概率。\n\n### 递归生成与权重控制\n生成正则表达式本身比生成字符串更复杂。作者采用递归生成的方式，通过一个 `size` 参数控制生成的深度，避免无限递归。更有意思的是对特性的控制：作者没有简单地开关某个特性（如 `|`、`*`、`.`），而是给每个特性分配了一个随机权重（0-100）。这意味着在每次生成时，不同语法元素出现的概率都在变化。这种动态权重配合递归结构，能生成形如 `(e)|(fee)` 这样极具针对性的测试用例。\n\n### 高效的搜索循环\n具体的实现细节体现了性能优化的智慧。编译正则表达式是相对昂贵的操作，而匹配则很快。因此，代码架构被设计为：生成一个 Regex，然后用它去匹配 1000 个不同的随机字符串。在这个循环中，作者复用了 `Vec<u8>` 的内存空间，避免了百万次测试带来的频繁内存分配。这种微小的优化在 Fuzzer 这种高频运行场景下至关重要。\n\n### 结果验证：Fuzzer 确实管用\n最终，这套 Fuzzer 成功复现了原文提到的问题：对于正则 `.abb|b` 和输入 `zabb`，旧版 `regex` 错误地返回了 `b`，而 `regex_lite` 正确返回了 `zabb`。更有说服力的是，它还发现了另一个形态完全不同的 Bug（如 `(f..)*.d` 匹配 `xfcbdd` 时的错误）。这证明了只要策略得当，Fuzzer 完全有能力发现那些单元测试遗漏的“漏网之鱼”。\n\n### 最后的思考：Bug 是 Fuzzer 的错\n作者最后强调了一个极其重要的工程原则：如果你的系统有 Bug 躲过了 Fuzzer，那不仅是系统的错，更是 Fuzzer 的错。当发现 Bug 时，第一反应不应该是“修完 Bug 加个单测就完事”，而应该是“改进 Fuzzer 让它能覆盖这类情况”。只有不断进化你的测试工具，才能建立起真正的信心。毕竟，防御深度不仅仅靠代码，更靠能够持续挖掘问题的测试手段。",
+      "source_name": "matklad.github.io",
+      "score": 16,
+      "depth": 9,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "fuzzing",
+        "regex",
+        "oracle",
+        "swarm testing"
+      ],
+      "rank": 1
+    },
     {
       "title": "Austin Mann’s iPhone 18 Pro Camera Review, From Dunton, Colorado",
       "title_zh": "iPhone 18 Pro 相机实地评测：可变光圈与手动控制",
@@ -22,7 +41,7 @@
         "camera",
         "photography"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Notes on discrete-time Fourier series and transform",
@@ -41,7 +60,25 @@
         "Fourier analysis",
         "signal processing"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "Tyler Stalman’s iPhone 18 Pro Camera Review",
+      "title_zh": "iPhone 18 Pro 相机评测视频",
+      "link": "https://www.youtube.com/watch?v=m6cDErtCKAc",
+      "pub_date": "2026-09-19T16:29:00.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "iPhone 18 Pro",
+        "camera review",
+        "video"
+      ],
+      "rank": 4
     },
     {
       "title": "California Sea Lion, Brandt's Cormorant",
@@ -58,7 +95,7 @@
         "iNaturalist",
         "birding"
       ],
-      "rank": 3
+      "rank": 5
     }
   ]
 }
