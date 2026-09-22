@@ -3,8 +3,27 @@
   "total_feeds": 92,
   "success_feeds": 84,
   "total_articles": 2528,
-  "filtered_articles": 22,
+  "filtered_articles": 26,
   "articles": [
+    {
+      "title": "Package Manager Threat Model, Revisited",
+      "title_zh": "包管理器威胁模型实战：126 个漏洞的模式与教训",
+      "link": "https://nesbitt.io/2026/09/22/package-manager-threat-model-revisited.html",
+      "pub_date": "2026-09-22T09:00:00.000Z",
+      "summary": "## 一句话总结\n四个月实测验证表明：包管理器的安全软肋不再是解压漏洞，而是信任边界模糊、凭据泄露和功能组合带来的逻辑缺陷。\n\n## 正文\n\n### 四个月，十款软件，一百二十六个漏洞\n过去四个月，作者拿着之前整理的 CWE 漏洞清单和威胁模型问题，对十个目标进行了实战审计。这十個目标里既有客户端也有 Registry，既有老牌工具也有新晋网红。结果相当惊人：短短四个多月就产生了 126 个 Advisory，占到了这些工具历史漏洞总数的四分之一。这里面既有 pnpm、Homebrew 这种大规模审计的贡献，也有 OCI Registry 重演五年前语言级 Registry 才修过的授权漏洞。数据说明问题：包管理器的安全战场正在转移，但旧的火力点依然猛烈。\n\n### Manifest 字段成了路径遍历的重灾区\nPath traversal 依然是漏洞榜的“带头大哥”，独占 33 个 Advisory。但有意思的是，现在的攻击入口不再是传统的 Archive 入口，而是 Manifest 里的字段：包名、版本号、`bin` 字段、入口脚本名等等。比如四个 Python 安装工具在五周内接连爆出相同的入口点名遍历漏洞，Composer 修了一个 `bin` 字段遍历，结果不到一个月就被绕过了。这说明开发者对解压文件的防御已经轻车熟路，但对 Manifest 字段的处理还停留在“信任输入”的旧时代。\n\n### 凭据泄露的新花样：被服务器牵着鼻子走\n除了路径遍历，一个新的模式浮出水面：通过服务器响应头泄露凭据。这招在九个 Advisory 中出现，核心机制很简单：客户端请求 Registry A，A 返回一个指向恶意主机 B 的 `Location`、`Link` 或 `WWW-Authenticate` 头，客户端傻乎乎地跟着跳转，顺手就把凭据发给了 B。ORAS、Renovate、Cargo 纷纷中招。这其实是旧酒装新瓶，浏览器会过滤掉这些奇怪的头，但包管理器的客户端解析逻辑往往没那么严谨，给了攻击者可乘之机。\n\n### 通用扫描器搞不定的“逻辑坑”\n作者在审计中发现，通用的代码扫描器（如 Brakeman 和 CodeQL）在这里几乎派不上用场。为什么？因为扫描器只懂“污点到达执行”，不懂“谁有资格拥有这个包名”。包管理器的安全问题往往是业务逻辑问题：攻击者想要的是包名、发布权限或者依赖解析的控制权。扫描器找不到这种逻辑链条。反倒是作者设计的威胁模型问题，因为直接指向攻击者的目标，能精准定位到那些看似合法但逻辑有漏洞的代码路径。\n\n### 信任边界没划清，就是灾难的开始\n每次审计的第一步，现在都变成了明确“信任边界”。如果一个构建系统设计上就以用户权限运行依赖代码，那“依赖代码未沙箱化”就不是 Bug，而是设计特性。真正的高危漏洞往往发生在边界模糊的地方。比如“功能组合”问题：两个功能单独看都没事，但功能 A 能满足功能 B 授予权限的前置条件，这种逻辑缝隙没有任何 CWE 定义，也 Grep 不到危险函数，只能靠人工推演信任关系，这成了最高危发现的来源。\n\n### 被忽略的中间层：CDN 和镜像站\n五月份的模型漏掉了 CDN 和中间件层。RubyGems 曾爆出一个漏洞：Fastly 缓存了包含用户 API Key 的响应，发给下一个请求者。这根本不是应用代码的锅，而是 Rack 中间件顺序和 CDN 默认配置的锅。此外，企业内网常用的 Artifactory、Nexus 等代理镜像也带来了新问题：上游的撤包操作能否穿透缓存？代理是否会重新校验 Hash？这些“中间人”改变了信任链条，所以现在的模型专门给 Mirrors 和 Caching Proxies 开了新章节。\n\n### 工具自身的“后院”起火\n还有一个容易被忽视的攻击面：工具自身的发布流程和安装脚本。十个审计对象里有六个都在这出了问题：安装脚本不校验 Hash、CI 使用浮动 Tag 且持有发布凭证、构建过程中下载未哈希的二进制文件。这就好比安检员自己留着后门。现在的威胁模型要求把工具自身的更新路径（如 `rustup self update`）和它对第三方包的校验标准放在同一水平线上审视，毕竟工具自身的供应链安全是信任的基石。\n\n### 威胁模型的价值在于“收敛”\n四个月的实战验证了一个核心观点：虽然漏洞层出不穷，但模式是稳定的。新的 Advisory 有 19 次都能直接归类到现有的模式中，剩下的那 1 次才是模型需要扩充的地方。作者将所有发现和维护的模型整合到了一个长期维护的页面中。对于有经验的开发者来说，这份模型不仅是查漏补缺的清单，更是一套理解包管理器安全逻辑的思维框架——知道攻击者想要什么，比知道怎么修补一行代码更重要。",
+      "source_name": "nesbitt.io",
+      "score": 19,
+      "depth": 10,
+      "novelty": 9,
+      "category": "security",
+      "keywords": [
+        "package manager",
+        "threat model",
+        "path traversal",
+        "credential leakage"
+      ],
+      "rank": 1
+    },
     {
       "title": "Writing Rust code that's faster than state-of-the-art libraries by asking agents to make the code faster",
       "title_zh": "用 Agent 迭代优化让 Rust 代码跑赢 SOTA 库",
@@ -22,7 +41,7 @@
         "benchmark-driven",
         "prompt engineering"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "Matthew Butterick: ‘Big AI to Humanity: Drop Dead’",
@@ -41,7 +60,7 @@
         "copyright",
         "rule of law"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Jev introduces a new shape of LLM - System One, aka Decision Models",
@@ -60,7 +79,7 @@
         "classification",
         "TypeSafe AI"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Apple’s Performa in-store demo software from 1993",
@@ -79,7 +98,26 @@
         "MacroMind Director",
         "retro computing"
       ],
-      "rank": 4
+      "rank": 5
+    },
+    {
+      "title": "Unfinished Work in Package Security",
+      "title_zh": "软件供应链安全的十大未解难题",
+      "link": "https://nesbitt.io/2026/09/22/unfinished-work-in-package-security.html",
+      "pub_date": "2026-09-22T09:00:00.000Z",
+      "summary": "## 一句话总结\n\n包管理安全不仅仅是修补已知的漏洞，更在于填补配置策略失效、构建依赖失控、维护者断层以及误报噪音等“控制盲区”。\n\n## 正文\n\n### 策略配置的“假生效”与权限失控\n安全配置失效往往比没有配置更可怕。文章开篇就举了一个令人后怕的例子：2026年5月，Nx 项目的一个贡献者安装了一个刚刚发布仅 77 分钟的恶意依赖。明明仓库配置了七天的发布“冷静期”，但因为项目锁定的 pnpm 版本过旧，根本不支持这个策略检查，客户端直接放行。这导致凭证被盗，一周后恶意扩展得以发布。\n\n这说明了一个核心问题：**策略的生命周期管理必须与工具链版本强绑定**。此外，安装脚本的权限也是个老大难问题。pip 的 build-system interface 和 Composer 的 `allow-plugins` 都在尝试隔离构建环境，试图让编译器只写构建产物，而不是顺手偷走开发者的云凭证。但现实很骨感，像 Ledger Connect Kit 攻击那样，通过 CDN 动态加载最新代码的方式，下游开发者连审批更新的机会都没有，直接“中招”。\n\n### 防线之外的“影子”构建依赖\n我们通常只盯着 lockfile 里的直接依赖，却忽略了构建过程中的“影子”。2025年3月的 `tj-actions/changed-files` 攻击就是典型案例，它通过 SpotBugs、reviewdog 等一系列看似无关的项目串联起攻击链，最终在 CI 流水线的日志里暴露了 Secrets。这些关系根本不出现在应用的 package lockfile 里，却在暗中左右着构建结果。\n\n更有意思的是 Ultralytics 攻击的第一波操作。攻击者通过投毒 GitHub Actions 缓存，将恶意代码注入到了合法的发布工作流中。即便你移除了存储的 registry token，由于构建过程本身是被授权的，恶意代码依然能大摇大摆地发布出去。这告诉我们，**仅仅盘点 Actions 依赖是不够的，还得盯着那些从缓存中恢复的可执行文件和动态脚本**。\n\n### 源码与制品的“不一致”陷阱\n如果你以为检查 Git Tag 就能高枕无忧，那 xz 后门会给你上一课。当初的恶意构建逻辑只存在于发布的 tar 包里，Git 仓库里根本找不到。这意味着，如果你只 checkout 源码进行审查，完全会漏掉 tarball-only 的恶意部分。Go 语言的 reproducible-toolchain 工作虽然能校验二进制一致性，但这依然无法替代源码审查。\n\nUltralytics 事件的调查过程也很有启发性。第一波恶意发布带有真实工作流的证明，帮助调查者定位了攻击点；而第二波虽然用了旧的 API Token，却缺少这些证明。**同样的恶意结果，其“出生证明”却能揭示完全不同的攻击路径**。这也再次印证了，签名和证明不是为了晴天准备的，正是为了这种基础设施沦陷的“坏日子”准备的。\n\n### 维护者更迭中的信任黑洞\n包名没变，但背后的人变了，这是供应链攻击的经典套路。2018年的 event-stream 事件中，新维护者注入了恶意依赖；2022年的 `ctx` 接管事件则是因为域名过期，攻击者重置了密码并上传了恶意代码。Packagist 在2023年也遭遇了类似的账户接管，14个包被重定向到了恶意源。\n\n目前的解法通常是让消费者在发布者或源仓库变更时强制重新审查。但这有个前提：**Registry 必须提供关于权限变更的元数据**。如果连谁在发布代码都搞不清楚，所谓的安全审查就是空中楼阁。\n\n### AI Agent 带来的新型攻击面\n随着 AI 编程助手的普及，攻击面又多了一个。Johann Rehberger 的演示令人印象深刻：AI Agent 拒绝直接运行可疑的二进制文件，却在生成 Python 辅助代码时，被同一目录下恶意的 `struct.py` 劫持了导入路径。Agent 以为自己在写无害的解码助手，实际上却加载了攻击者的模块。\n\n这暴露了一个尴尬的现实：**我们盯着 Agent 执行的命令，却忽略了它生成的代码在运行时拥有的解释器权限**。如果不给生成的代码提供受限的执行环境和受控的导入路径，这种“借刀杀人”的攻击还会发生。\n\n### 重复的 Bug 与维护者的断层\n安全漏洞总是以相似的面孔反复出现。Composer 在2021年和2022年接连披露了命令注入漏洞，都是因为版本控制命令的参数处理不当。修复了 URL 处理，却留下了分支名的口子。pip 和 Go 也曾因 VCS 后端处理恶意版本字符串而中招。作者建议，包管理器在引入新的 VCS 后端时，应该先跑一遍现有的恶意 URL 和版本号回归测试，别总在同一个坑里跌倒。\n\n比 Bug 更可怕的是维护者的断层。作者5月份的调查显示，在 5,874 个仓库中，有 713 个已处于“死亡”状态，其中 391 个甚至没有归档。这意味着，即便发现了漏洞，你可能都找不到有权发布修复版本的人。像 Ruby 的 `httpclient` 那样，证书过期两年没人管，用户只能自己打补丁，这种“僵尸”依赖是供应链里的定时炸弹。\n\n### 噪音中的信号与度量的失真\nAI 辅助的安全研究正在制造巨大的噪音。ISC 在2026年初的三个月内收到了150份报告，只有8份是有效的，误报率极高。作者在扫描 curl 时，甚至生成了一个导致栈溢出的15万行配置文件，但这根本不在 curl 的安全边界内。维护者的时间被大量无效的沟通浪费，这才是真正的成本。\n\n与此同时，我们对依赖重要性的度量也严重失真。curl 每年下载量过万，但源码包下载量远不止此，且还没算上发行版和容器的内置。2015年的开源普查甚至因为贡献者数量这一指标，给了 xz 一个低风险评分，完全忽略了其关键性。**用下载量或 Star 数来分配安全资金，很可能会漏掉那些真正关键但“隐形”的基础设施**。\n\n### 责任边界的错位与未竟之业\n最后，文章回到了一个更深层的问题：**谁该为开源安全负责？** ENISA 的建议虽然提到了考察 Star、下载量和提交记录，但排除了操作系统包管理器和发布渠道，留给消费者的“作业”依然很多。SPDX 的 supplier 字段能标识提供者，但这绝不意味着志愿者维护者欠企业一个 SLA。\n\n文章总结得很到位：**把志愿者维护者的名字写进 SBOM，不代表你就拥有了事故响应的服务承诺**。这就是当前包管理安全的现状——我们在工具链上做了很多工作，但在维护者 succession（继任）、漏洞响应预算和责任归属上，还有大量未完成的工作。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "supply chain",
+        "package security",
+        "dependency management",
+        "vulnerability disclosure"
+      ],
+      "rank": 6
     },
     {
       "title": "Pluralistic: The Claude Delusion (21 Sep 2026)",
@@ -98,7 +136,7 @@
         "hallucination",
         "personhood"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "What’s the highest legal FILETIME? Is it safe to use?",
@@ -117,7 +155,7 @@
         "datetime",
         "sentinel value"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Raspberry Pi locks down Pi 5 RAM upgrades in firmware",
@@ -136,7 +174,7 @@
         "RAM",
         "hardware-lockdown"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Glenn Fleishman on the Increasing Impracticality of Shipping From the U.S. to the E.U.",
@@ -155,7 +193,7 @@
         "shipping",
         "small business"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Haversine law",
@@ -174,7 +212,64 @@
         "spherical trigonometry",
         "navigation"
       ],
-      "rank": 9
+      "rank": 11
+    },
+    {
+      "title": "Are LLMs still surprisingly bad at some simple tasks?",
+      "title_zh": "LLM 一年后仍搞不定简单问题",
+      "link": "https://shkspr.mobi/blog/2026/09/are-llms-still-surprisingly-bad-at-some-simple-tasks/",
+      "pub_date": "2026-09-22T11:34:27.000Z",
+      "summary": "## 一句话总结\n时隔一年再测同一道“找交集”的简单题目，主流 LLM 依然在幻觉、遗漏和冗余信息中挣扎，甚至输给了直接抄袭网页答案的 Siri。\n\n## 正文\n\n### 一道看似简单的“找交集”题\n作者在一年前给各大 LLM 出了一道题：“哪些顶级域名（TLD）的名字与有效的 HTML5 元素相同？”这不需要高深的推理能力，只需要拿一份 IANA 的 TLD 列表，对照一份 HTML5 元素列表，做个比对就行。这就像让一个聪明的中学生做查字典作业，虽然枯燥但逻辑上毫无难度。然而一年前的测试结果全军覆没，于是作者决定在 365 天后重测，看看号称突飞猛进的模型们是否达到了“实习生水平”。\n\n### 依然是幻觉与遗漏的“重灾区”\n结果令人大跌眼镜。Google Gemini 的默认 Flash 模型不仅编造了不存在的 `.a` 域名（TLD 最短长度为 2），还虚构了 `<art>`、`<bar>` 等 HTML 元素。换用 Gemini 的“扩展思考”模型后，虽然不再胡编乱造，却漏掉了 `<data>`、`<map>` 等真实存在的答案。Claude 也没好到哪去，漏掉了 `search` 和 `select`，且完全忽略了 ccTLDs（国家代码顶级域名）。至于 Perplexity，它一口气吐出了 54 个匹配项，其中大部分都是错的。\n\n### “一本正经胡说八道”的欺骗性\n更有意思的是模型们的“自信表演”。某个模型在答案末尾列出了一堆“近似匹配”，比如 `.codes` 和 `<code>`，甚至混入了 `.baseball` 这种完全不相关的词。这种看似严谨的补充说明，实则是为了营造一种“我做了详尽调研”的错觉，极具误导性。相比之下，表现最好的竟然是 Siri——因为它直接抄袭了作者博客上的正确答案。这讽刺地说明，在处理简单事实性问题时，一个只会检索的“笨办法”反而比大模型的“推理”更靠谱。\n\n### 隐藏在眼皮底下的“陷阱”\n那正确答案到底是什么？其实题目里藏了个大坑。HTML5 支持 Custom Elements（自定义元素），其命名规则要求必须包含连字符，且以小写字母开头。而在 TLD 列表中，存在大量 Punycode 格式的国际化域名，比如印地语的 `.com` 写作 `xn--11b4c3d`。这完全符合 Custom Elements 的语法规则！这意味着，仅 Punycode 这一类，就有超过 150 个合法答案。作者甚至写了一段 JS 代码验证了这一点：在浏览器控制台注册 `xn--vermgensberatung-pwb` 元素完全可行。\n\n### 还有 MathML 这个“漏网之鱼”\n除了 Custom Elements，HTML 规范还允许嵌入 MathML 元素。这意味着 `mn`、`mo`、`ms` 和 `mtr` 也是合法的 HTML 元素，且恰好对应有效的 TLD。Perplexity 在其长篇大论中提到了 MathML，却只说了 `.math` 不是 TLD，完全没意识到自己错过了真正的答案。这暴露了 LLM 的核心问题：它们能识别语法结构，却缺乏真正的逻辑验证能力，往往在最后一步功亏一篑。\n\n### “提示词不对”不是借口\n面对糟糕的测试结果，常有辩护声音称“提示词不够精确”。作者反驳道，如果必须写出像法律条文一样严谨的千字 Prompt 才能得到正确答案，那这本身就是产品体验的失败。普通用户不会去调整默认设置，也不会像律师一样斟酌字句。如果模型自诩为“智能助手”，就不应该让用户承担“把问题问对”的繁重工作。这种将责任推给用户的做法，掩盖了模型在基础任务上的不可靠。\n\n### 我们对计算机的信任正在被打破\n作者最后指出，我们对计算机的传统心智模型是“枯燥但精准”：Excel 算一千个数不会错，Photoshop 选红色像素不会选成蓝色。但 LLM 打破了这种信任。它们在处理这种简单但枯燥的任务时，既不快也不准，甚至还会用冗余信息掩盖错误。如果你不亲自去验证每一个输出，你就永远不知道它是在帮你还是在坑你。这就是为什么作者认为，LLM 在处理这类现实世界的“边缘案例”时，依然出奇地糟糕。",
+      "source_name": "shkspr.mobi",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "LLM",
+        "evaluation",
+        "HTML5",
+        "custom elements"
+      ],
+      "rank": 12
+    },
+    {
+      "title": "What’s the highest legal FILETIME? Is it safe to use?",
+      "title_zh": "FILETIME 哨兵值的陷阱与正确选择",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260921-00/?p=112711/",
+      "pub_date": "2026-09-21T14:00:00.000Z",
+      "summary": "## 一句话总结\n虽然 `FILETIME` 理论上的最大值是 `0xFFFFFFFFFFFFFFFF`，但由于各种 API 和语言运行时的限制，真正“安全”的哨兵值取决于你的使用场景，且绝不能溢出边界。\n\n## 正文\n\n### 理论上的最大值，实际上是个“雷区”\n故事的起因很简单：有位开发者想定义一个哨兵 `FILETIME`，让它在 `CompareFileTime` 比较大小时永远“胜出”。这就需要找一个最大值。如果只看定义，`FILETIME` 是从 1601 年 1 月 1 日开始的计数值，且是无符号 64 位整数，那理论最大值自然是 `0xFFFFFFFFFFFFFFFF`。但问题在于，Windows 的各个 API 对这个值的解读并不统一，直接用这个值就是在埋雷。\n\n### 高位一旦置位，语义就全乱了\n首先，`0xFFFFFFFFFFFFFFFF` 这个值在很多函数里都有特殊含义。比如 `SetFileTime` 看到它，会以为你想表达“不要更新这个句柄的时间”，而不是真的设置一个时间。更麻烦的是最高位（bit 63）。一旦你用了大于 `0x7FFFFFFFFFFFFFFF` 的值，也就是最高位置 1，像 `CreateWaitableTimer` 这样的函数会把它当成一个负的相对时间间隔，而不是绝对时间点。有些程序甚至认为这代表 1601 年之前的时间。所以，跨过 `0x7FFFFFFFFFFFFFFF` 这条红线，语义就全乱套了。\n\n### 想要安全？上限得砍一半\n既然最高位有歧义，那最稳妥的办法就是别超过 `0x7FFFFFFFFFFFFFFF`。有意思的是，如果你把这个值传给 `FileTimeToSystemTime`，它能成功转换出 30828 年的日期；但反过来，想用 `SystemTimeToFileTime` 转回去，却会失败。这属于“能输出但不能输入”。实际上，`SystemTimeToFileTime` 只支持到 30827 年年底。所以，如果你需要和 `SYSTEMTIME` 交互，这个理论最大值还得再缩水。\n\n### 跨语言交互的隐形大坑\n除了 Win32 API，你还得提防其他语言的限制。比如 .NET 的 `System.DateTime` 最大值只到 9999 年，如果你把那个表示 30828 年的值传给 C#，直接就溢出了。更离谱的是某些日历系统，比如 `ChineseLunisolarCalendar`，因为查表只到 2101 年初，最大支持日期比 `DateTime` 还要小得多。所以，你费尽心机找的“最大值”，在别的语言或日历库里可能根本就是个非法值。\n\n### 最好的哨兵值，是不流出内部的设计\n那到底该用什么值？这取决于你的“哨兵”要干什么。如果只是为了在 `CompareFileTime` 里比大小，且逻辑完全受控在你的代码内部，那用 `0xFFFFFFFFFFFFFFFF` 没问题，它确实最大。但核心原则是：**千万别让这个值流出你的控制范围**。一旦流出，别人可能会拿它做时区转换，或者算“一天后是几点”，甚至转成 C# 对象，这些操作都会因为溢出而崩溃。\n\n### 别玩火，用正规手段表达“无”\n如果你的需求是跨模块、跨语言传递“无限大”或“无效”的概念，别试图在 `FILETIME` 的数值上钻空子。正确的做法是使用各语言提供的空值表达机制。C++ 里用 `std::optional`，C# 里用 `Nullable<DateTime>`。说白了，就是别把特殊状态硬编码进数据值里，用类型系统来明确表达“无值”或“哨兵”状态，这才是最安全、最优雅的解法。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "FILETIME",
+        "Windows",
+        "sentinel value",
+        "date/time"
+      ],
+      "rank": 13
+    },
+    {
+      "title": "Cheaper LLM labelling",
+      "title_zh": "用流式训练的 LR 分类器为 LLM 标注提速",
+      "link": "https://entropicthoughts.com/cheaper-llm-labeling",
+      "pub_date": "2026-09-21T22:00:00.000Z",
+      "summary": "## 一句话总结\n通过引入一个可在线训练的轻量级 Logistic Regression 模型作为“守门员”，在调用昂贵的 LLM 之前先进行低成本的筛选，从而大幅降低标注任务的延迟和成本。\n\n## 正文\n\n### 21,000 次调用背后的性能隐忧\n故事始于一个看似简单的需求：给 21,000 个 Git commits 打上“维护”或“新开发”的标签。作者最初的方案非常直接，使用 `gpt 5.6 Luna` 模型配合 Simon Willison 的 `llm` CLI 工具进行标注。虽然单次调用的金钱成本很低，毕竟 Prompt 设计上 Input Token 远多于 Output Token，但延迟却是个大问题。每次调用耗时约 1.5 秒，如果老老实实跑完全部数据，等待时间将难以忍受。说白了，这就是一个典型的“虽然用得起，但等不起”的场景。\n\n### 让“守门员”来处理简单题\n那怎么办？作者敏锐地发现，很多 commits 其实一眼就能看出类别，完全不需要动用 LLM。比如带有 \"fix\" 字样的显然是维护，带有 \"add\" 的多半是新开发。于是，核心思路浮现出来：能不能在 LLM 前面加一个快速分类器？如果这个分类器很有把握，就直接返回结果；如果它拿不准，再交给 LLM。这就像给昂贵的专家配了一个聪明的实习生，简单的问题实习生直接答，难题再找专家。\n\n### 流式训练的 Logistic Regression\n问题来了，这个“快速分类器”该选什么模型？作者没有选择假设特征独立的 Naïve Bayes，而是选择了 Logistic Regression。有意思的地方在于，作者利用了梯度下降的特性，实现了模型的“在线学习”。代码实现非常优雅，核心逻辑就是根据预测误差不断调整权重。这意味着模型不需要预先收集海量数据离线训练，而是能一边干活一边变强，每从 LLM 那里拿到一个真实标签，它就进化一次。\n\n### 巧妙的双重校准机制\n但模型在训练初期或者引入正则化后，预测概率往往不准，这叫“校准问题”。为了解决这个问题，作者引入了 Platt Scaling。这是一个精妙的“套娃”设计：底层的 LR 模型负责根据词频做预测，上层的 Platt Scaler（其实也是一个 LR）负责修正前者的概率偏差。为了保证公正，作者还特意切分了数据流：90% 的数据喂给主模型，剩下 10% 独立的数据专门用来训练这个校准器。最终的数据显示，预测误差极小，模型校准得非常完美。\n\n### 46% 的请求被“拦截”了\n这套机制的效果如何？数据说明了一切。在实际运行中，约 46% 的标注任务被快速分类器“拦截”并处理，直接绕过了 LLM 调用。虽然看起来只快了一倍，但这主要得益于 LLM 本身延迟就不算太高。作者也提到，如果面对更昂贵的模型或更简单的分类任务，这种方法的收益可能会呈指数级增长。整个实现算上 Logistic Regression 和校准逻辑，只用了不到 40 行 Perl 代码，没有任何高级数学库依赖，简洁得令人惊讶。\n\n### 模型到底学到了什么？\n最后，作者还“偷看”了一眼模型学到的特征权重，结果非常符合直觉。维护类提交的高频特征词是 \"fix\"、\"move\"、\"cleanup\"；新开发类则是 \"add\"、\"support\"、\"implement\"。更有趣的是，这种特征规律在不同的开源仓库间竟然是通用的。这说明开发者的提交语言习惯具有高度的一致性，也侧面印证了为什么这个简单的词袋模型能如此有效。",
+      "source_name": "entropicthoughts.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "LLM",
+        "logistic regression",
+        "streaming training",
+        "classification"
+      ],
+      "rank": 14
     },
     {
       "title": "Cloudflare Python Workers are now generally available",
@@ -193,7 +288,7 @@
         "WebAssembly",
         "Pyodide"
       ],
-      "rank": 10
+      "rank": 15
     },
     {
       "title": "It's Not Just True, It's False",
@@ -212,7 +307,7 @@
         "productivity",
         "data pollution"
       ],
-      "rank": 11
+      "rank": 16
     },
     {
       "title": "Pluralistic: Bonta sold us out to Trump's oligarchs (22 Sep 2026)",
@@ -231,7 +326,26 @@
         "media consolidation",
         "Warner Bros"
       ],
-      "rank": 12
+      "rank": 17
+    },
+    {
+      "title": "Athlon 64: How AMD turned the tables on Intel",
+      "title_zh": "Athlon 64：AMD如何迫使Intel克隆自己的架构",
+      "link": "https://dfarq.homeip.net/athlon-64-how-amd-turned-the-tables-on-intel/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=athlon-64-how-amd-turned-the-tables-on-intel",
+      "pub_date": "2026-09-22T11:00:54.000Z",
+      "summary": "## 一句话总结\nAMD 通过坚持 x86 向后兼容性的策略推出 Athlon 64，不仅击败了 Intel 的 Itanium 架构，更迫使 Intel 反过来兼容 AMD 的指令集，彻底改变了 CPU 市场的格局。\n\n## 正文\n\n### Intel 想要扔掉历史包袱，重起炉灶\n早在 2003 年，x86 架构已经背负了沉重的历史包袱。它从 8 位起步，一路扩展到 16 位、32 位，虽然向后兼容性极佳，但也积攒了大量冗余设计。Intel 的算盘打得很响：与其在老旧架构上修修补补，不如推倒重来。他们理想中的方案是全新的 64 位架构 Itanium，既能摆脱兼容性束缚提升效率，又能通过专利壁垒把竞争对手挡在门外二十年。如果 Itanium 成功，AMD 等厂商可能就只能去授权 ARM 架构，彻底失去在 x86 领域的话语权。\n\n### AMD 的生死豪赌：兼容性才是王道\nAMD 当然清楚 x86 的局限性，但他们的处境与 Intel 截然不同。如果 Itanium 真的成了气候，AMD 作为 CPU 厂商基本就宣告出局。但 AMD 敏锐地发现 Itanium 推广受阻，被戏称为 \"Itanic\"。于是，AMD 赌了一把大的：推出完全向后兼容的 64 位 x86 架构。核心思路其实很简单：用户不需要为了 64 位而抛弃现有的 32 位软件。就像当年从 286 升级到 386 一样，平滑过渡才是市场最买账的方案。\n\n### Athlon 64 凭实力说话，32 位性能反而成了杀手锏\n2003 年 9 月 23 日，Athlon 64 上市。有意思的地方在于，它虽然名为 \"64\"，但真正让它大杀四方的却是其卓越的 32 位性能。当时的 64 位 Windows 和软件生态尚未成熟，用户购买这款处理器的初衷往往是为了跑 32 位程序更快。Athlon 64 做到了：同频率下比 Intel 更快，功耗却更低。这直接击中了企业级市场的痛点——当你的数据中心塞满了几百台服务器，每一瓦特的电费节省都是真金白银。\n\n### 数据中心的投票：发热量不会撒谎\n作者在文中提到，他在一家使用 Dell 服务器的大型企业任职时，亲眼见证了风向的转变。Dell 曾是 Intel 的铁杆盟友，AMD 创始人 Jerry Sanders 曾无奈地表示无论如何都无法把 CPU 卖给 Michael Dell。但 Athlon 64 让 Dell 破了例，开始在服务器产品线采用 AMD 芯片。运维人员站在机架后能明显感觉到，Intel Prescott 架构的服务器热浪逼人，而 AMD 服务器则凉爽得多。在 uptime 和性能指标都占优的情况下，质疑 AMD 的声音很快消失了。\n\n### Intel 最终低头，反向克隆 AMD\n结局大家都知道了：Intel 的 Itanium 战略在 2004 年宣告失败，不得不低头克隆 AMD 的 64 位扩展指令集，命名为 Intel64。由于早期的交叉授权协议，Intel 这样做并不违法，但这在历史上极其罕见——通常是 AMD 跟着 Intel 走，这次变成了 Intel 抄 AMD 的作业。Itanium 苦苦支撑到 2020 年最终退场，而 AMD 凭借这一役，从当年试图用高频 486 冒充 Pentium 的跟随者，真正变成了技术创新的引领者。",
+      "source_name": "dfarq.homeip.net",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Athlon 64",
+        "AMD64",
+        "Itanium",
+        "x86-64"
+      ],
+      "rank": 18
     },
     {
       "title": "NEC V20 CPU: A bit of pep for an XT",
@@ -250,7 +364,7 @@
         "retro computing",
         "CPU upgrade"
       ],
-      "rank": 13
+      "rank": 19
     },
     {
       "title": "Cursed Napster",
@@ -269,7 +383,7 @@
         "Saudi Arabia",
         "edtech"
       ],
-      "rank": 14
+      "rank": 20
     },
     {
       "title": "A Great Story Capturing the Essence of Being Online in 2026",
@@ -288,7 +402,7 @@
         "Bryan Cantrill",
         "Sideshow Bob"
       ],
-      "rank": 15
+      "rank": 21
     },
     {
       "title": "‘Measuring Nothing (With Great Accuracy)’",
@@ -307,7 +421,7 @@
         "quality",
         "proxy"
       ],
-      "rank": 16
+      "rank": 22
     },
     {
       "title": "Lex Friedman Brings Back Strategery",
@@ -326,7 +440,26 @@
         "indie developer",
         "acquisition"
       ],
-      "rank": 17
+      "rank": 23
+    },
+    {
+      "title": "On reading books",
+      "title_zh": "阅读从未离开，只是被其他事物掩埋",
+      "link": "https://herman.bearblog.dev/on-reading-books/",
+      "pub_date": "2026-09-22T09:20:00.000Z",
+      "summary": "",
+      "source_name": "herman.bearblog.dev",
+      "score": 5,
+      "depth": 3,
+      "novelty": 2,
+      "category": "opinion",
+      "keywords": [
+        "reading",
+        "attention span",
+        "post-literate society",
+        "Terry Pratchett"
+      ],
+      "rank": 24
     },
     {
       "title": "David Pogue: ‘125 Tests of the New AI Siri’",
@@ -345,7 +478,7 @@
         "AI assistant",
         "testing"
       ],
-      "rank": 18
+      "rank": 25
     },
     {
       "title": "[Sponsor] Mux: Turn Your Video Into Context",
@@ -364,7 +497,7 @@
         "AI",
         "streaming"
       ],
-      "rank": 19
+      "rank": 26
     },
     {
       "title": "GM Confirms They’re Still Smoking Crack",
@@ -382,7 +515,7 @@
         "GM",
         "EV"
       ],
-      "rank": 20
+      "rank": 27
     },
     {
       "title": "Ichiro, at 52, Throws 127-Pitch Shutout Against All-Star Girls Team in Japan",
@@ -400,7 +533,7 @@
         "baseball",
         "Japan"
       ],
-      "rank": 21
+      "rank": 28
     },
     {
       "title": "America’s Decline Can Be Measured by the Names of Ballparks and Arenas",
@@ -418,7 +551,7 @@
         "naming-rights",
         "sports"
       ],
-      "rank": 22
+      "rank": 29
     }
   ]
 }
