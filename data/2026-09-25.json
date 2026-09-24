@@ -2,8 +2,8 @@
   "date": "2026-09-25",
   "total_feeds": 92,
   "success_feeds": 84,
-  "total_articles": 2535,
-  "filtered_articles": 14,
+  "total_articles": 2530,
+  "filtered_articles": 16,
   "articles": [
     {
       "title": "Copland D11E4, Emulated in Your Browser",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "No, really, you need to pass all unhandled messages to DefWindowProc, part 2",
+      "title_zh": "DefWindowProc 未调用导致拖放内存泄漏",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260924-00/?p=112728/",
+      "pub_date": "2026-09-24T14:00:00.000Z",
+      "summary": "## 一句话总结\n窗口销毁后直接返回 0 而不调用 `DefWindowProc`，导致系统赖以清理缓存资源的“后续消息”被拦截，进而引发内存泄漏。\n\n### 看似普通的 API 调用，却引发了内存泄漏\n有客户报告了一个 Windows 内存泄漏问题，复现路径非常标准：调用 `RegisterDragDrop` 注册拖放目标，结束后调用 `RevokeDragDrop` 撤销注册。这套流程在 Windows 内部和成千上万的应用程序中广泛使用，按理说不应该有 bug。客户还贴心地附上了 Time Travel Trace，但唯独没给源码。\n\n### 习惯性的“偷懒”处理，切断了清理路径\n作者通过调试 Trace 发现了端倪。程序在收到 `WM_DESTROY` 消息时，清理了窗口的所有状态。问题出在随后的处理逻辑上：对于那些在 `WM_DESTROY` 之后才到达的消息，窗口过程（Window Procedure）去查找自己的状态数据，发现找不到，就直接返回了 0，完全没有把消息转发给 `DefWindowProc`。这看似是一个防御性的编程习惯，却成了问题的根源。\n\n### 遗漏的 DefWindowProc 里藏着清理线程的钥匙\n这正是 Raymond Chen 多年前强调过的经典错误：所有未处理的消息必须传给 `DefWindowProc`。在这个案例中，`WM_DESTROY` 之后到达的某些消息其实是系统的“清理消息”。`DefWindowProc` 内部逻辑需要依靠这些消息来触发收尾工作，释放那些还挂在窗口上的零碎资源。直接返回 0，等于把这些清理指令半路截杀了。\n\n### 所谓的“泄漏”，其实是系统设计的缓存策略\n有人可能会问：既然我都调用了 `RevokeDragDrop`，系统为什么不立刻把内存全释放了？这涉及到系统设计的一个细节。`RegisterDragDrop` 底层依赖一套多组件共享的基础设施，这块内存是在窗口首次需要时创建并挂载上去的，为了性能考虑，系统不会在撤销时立刻销毁它，而是将其缓存在窗口上，等待下一次使用。\n\n### 缓存的生命周期绑定在窗口销毁的那一刻\n这块缓存内存的清理时机，被设计在窗口彻底销毁的那一刻。系统预期通过标准的窗口销毁流程，由 `DefWindowProc` 处理最后的清理消息来释放缓存。所以，内存并没有真正“泄漏”，它只是还在那里等着被清理。如果你不给 `DefWindowProc` 执行的机会，这个清理逻辑就永远不会触发，缓存也就变成了没人认领的垃圾。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "DefWindowProc",
+        "RegisterDragDrop",
+        "memory leak",
+        "Windows"
+      ],
+      "rank": 4
+    },
+    {
       "title": "So yeah it was written using AI",
       "title_zh": "别用 AI 检测结果当借口否定文章观点",
       "link": "https://berthub.eu/articles/posts/so-yeah-it-is-written-using-ai/",
@@ -79,7 +98,62 @@
         "argumentation",
         "critical thinking"
       ],
-      "rank": 4
+      "rank": 5
+    },
+    {
+      "title": "Joanna Stern Interviews Mark Zuckerberg",
+      "title_zh": "Zuckerberg 谈 AI 安全与智能眼镜愿景",
+      "link": "https://thenewthings.com/p/exclusive-mark-zuckerberg-interview",
+      "pub_date": "2026-09-24T20:53:03.000Z",
+      "summary": "Meta CEO Mark Zuckerberg 在 Connect 大会发布新品后接受专访，谈及 AI 安全、智能眼镜愿景和隐私信任问题。Zuckerberg 认为不需要行业层面的统一监管，各 AI 公司应自行负责安全。他描绘的未来图景是大多数人将佩戴智能眼镜，配备个人 AI 助手，能看见用户所见、听见用户所闻。采访中 Stern 多次追问信任问题，因为这一愿景需要用户将大量个人生活数据交给 Meta。Zuckerberg 表示 Meta 正围绕 AI 和个人计算重新定位公司，与用户建立更亲密的关系。",
+      "source_name": "daringfireball.net",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "ai-ml",
+      "keywords": [
+        "Meta",
+        "smart glasses",
+        "AI agent",
+        "privacy"
+      ],
+      "rank": 6
+    },
+    {
+      "title": "commit-rewriter 0.2",
+      "title_zh": "commit-rewriter 0.2 支持非默认分支",
+      "link": "https://simonwillison.net/2026/Sep/24/commit-rewriter/",
+      "pub_date": "2026-09-24T20:06:53.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "tools",
+      "keywords": [
+        "commit-rewriter",
+        "git",
+        "branches"
+      ],
+      "rank": 7
+    },
+    {
+      "title": "datasette 1.0a41",
+      "title_zh": "Datasette 新增 OpenTelemetry 支持",
+      "link": "https://simonwillison.net/2026/Sep/24/datasette/",
+      "pub_date": "2026-09-24T19:15:23.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "tools",
+      "keywords": [
+        "Datasette",
+        "OpenTelemetry",
+        "Web Components"
+      ],
+      "rank": 8
     },
     {
       "title": "‘Apple Opens Apple Music Hall, a State-of-the-Art Live Music Venue in London’",
@@ -97,7 +171,7 @@
         "live venue",
         "London"
       ],
-      "rank": 5
+      "rank": 9
     }
   ]
 }
