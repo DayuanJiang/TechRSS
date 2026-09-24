@@ -1,10 +1,29 @@
 {
   "date": "2026-09-24",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2559,
+  "success_feeds": 82,
+  "total_articles": 2461,
   "filtered_articles": 14,
   "articles": [
+    {
+      "title": "Package Manager Sandboxing",
+      "title_zh": "包管理器沙箱机制全景：从 Homebrew 7.0 到 AI 代理",
+      "link": "https://nesbitt.io/2026/09/24/package-manager-sandboxing.html",
+      "pub_date": "2026-09-24T09:00:00.000Z",
+      "summary": "## 一句话总结\nHomebrew 7.0.0 强推沙箱机制并非孤立事件，它标志着包管理器正在借鉴 AI Agent 的安全思路，从简单的“运行许可”转向更细粒度的“权限隔离”，以应对日益复杂的供应链攻击。\n\n## 正文\n\n### 从“构建卫生”到“安全纲领”的跨越\nHomebrew 7.0.0 在 9 月 13 日发布，Release Notes 开篇第一句就是更强的沙箱机制。这不仅仅是版本的更新，而是过去四个月安全策略质变的成果。核心变化在于将安装过程拆分为“获取”和“安装”两个阶段：前者有网络权限和可写缓存，后者则离线运行且缓存只读。更有意思的是，沙箱构建默认禁止读取用户主目录，Cask 安装钩子也被限制运行。甚至为了堵住通过 LaunchServices 逃逸沙箱的漏洞，Homebrew 直接禁止了应用启动、Mach 服务和 Unix Socket 连接。这标志着 Homebrew 从 2015 年就开始使用的 `sandbox-exec`，终于从一种构建卫生措施升级为明确的安全纲领。\n\n### AI Agent 倒逼安全机制升级\n为什么包管理器突然开始重视沙箱？因为 AI Coding Agent 遇到了同样的问题。Claude Code、Codex CLI 和 Cursor 等 Agent 工具，在过去一年里纷纷采用了 Seatbelt (macOS) 和 Landlock/Bubblewrap (Linux) 这一套技术栈。原因很简单：这些工具需要运行未经审查的代码，而每次都弹窗请求权限不仅烦人，而且效果堪忧——Anthropic 的数据显示，用户会无脑批准约 93% 的权限请求。这和包管理器面临的困境如出一辙：信任一旦被滥用，后果不堪设想。\n\n### 供应链攻击的“交叉感染”\n最危险的地方在于，这两个领域的问题正在互相渗透。2025 年 9 月爆发的 Shai-Hulud 蠕虫通过 npm 的 postinstall 脚本传播，其中一个持久化手段就是写入 Claude Code 的配置文件。更早的 nx 泄露事件中，攻击载荷甚至试图利用本地 AI 工具扫描凭证。Mandiant 报告显示，攻击者甚至劫持了 AI 编程助手会话，通过投毒的包推荐将蠕虫扩散到约 100 个内部代码库。当 Agent 开始代替你安装依赖时，安装速率和爆炸半径同时被放大了。Homebrew 甚至专门处理了嵌套沙箱的场景，就是为了应对在 Agent 沙箱里运行 Homebrew 的情况。\n\n### 并不完美的先行者们\n其实，在默认开启 OS 级别沙箱这件事上，Homebrew 并不算早。opam 自 2018 年的 2.0 版本起就默认沙箱化，采用的就是现在 Homebrew 正在迁移的“下载与构建分离”模式。Nix 和 Guix 也在 Linux 上默认使用命名空间进行构建隔离，但它们的主要目的是保证构建的可复现性，而非纯粹的安全——2024 和 2025 年的 CVE 漏洞证明，这种隔离也能被本地用户提权突破。Swift Package Manager 虽然在 macOS 上有 Seatbelt 保护，但在 Linux 上却是个空操作。至于 Gentoo 的 Portage，其早期的 `sandbox` 只是一个 LD_PRELOAD 垫片，连静态二进制文件都挡不住，更多是 QA 手段而非安全防线。\n\n### JavaScript 生态的“门禁”策略\n面对供应链攻击，JavaScript 生态选择了另一条路：门禁。在经历了 nx 和 Shai-Hulud 的连环打击后，pnpm、Bun、Yarn 和 npm 等主流客户端纷纷默认屏蔽依赖生命周期脚本，改为基于 Allowlist（白名单）的放行策略。这确实解决了一部分问题，但 pnpm 的开发者指出，Allowlist 是二元对立的：你要么完全信任一个包，要么完全拒绝。而大多数带有构建脚本的包只需要编译自己目录下的东西，这完全可以在授予该权限的同时，扣留你的 SSH 密钥和网络访问权。毕竟，今天批准了 `esbuild` 的 postinstall，就等于信任了它未来的每一个版本。\n\n### 从“能不能跑”到“能跑多远”\n这就引出了包管理器安全的三个维度：Gating（门禁，控制代码能否运行）、Confinement（隔离，限制代码能访问什么）、Replacement（替换，用声明式数据代替可执行代码）。过去一年的 Allowlist 是 Gating，现在的沙箱提案是 Confinement，而 Homebrew 推崇的声明式 `*_steps` 则是 Replacement。但这三种手段殊途同归：无论你怎么限制输入，最终都要面对同一个难题——如何验证被限制阶段的输出是安全的？沙箱能限制程序不读你的家目录，但没法保证它写出来的东西是善意的。这场关于信任的博弈，才刚刚开始。",
+      "source_name": "nesbitt.io",
+      "score": 19,
+      "depth": 10,
+      "novelty": 9,
+      "category": "security",
+      "keywords": [
+        "sandbox",
+        "Homebrew",
+        "Landlock",
+        "supply chain"
+      ],
+      "rank": 1
+    },
     {
       "title": "The Year AI Came For Us: Teaching Entrepreneurship Will Never Be The Same",
       "title_zh": "AI 时代的创业教育：MVP 已死，判断力成为新瓶颈",
@@ -22,7 +41,7 @@
         "AI product development",
         "customer discovery"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "‘Prepare to Ship’ Is a Clever Software Solution That Allows iPhone 18 Pro Max to Ship With a Battery That Would Otherwise Exceed International Shipping Regulations",
@@ -41,7 +60,7 @@
         "firmware",
         "shipping regulations"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "★ The iPhone 4 ‘Antennagate’ Press Conference Q&A — Finally",
@@ -60,7 +79,26 @@
         "iPhone 4",
         "antennagate"
       ],
-      "rank": 3
+      "rank": 4
+    },
+    {
+      "title": "Shrinking a Fedora virtual disk",
+      "title_zh": "Fedora 虚拟磁盘收缩实战：从 290GB 到 150GB 的踩坑记录",
+      "link": "https://entropicthoughts.com/shrinking-fedora-virtual-disk",
+      "pub_date": "2026-09-23T22:00:00.000Z",
+      "summary": "## 一句话总结\n博主为了给物理机装系统腾空间，在压缩 Fedora 虚拟机磁盘的过程中，因计算失误导致分区表截断了引导分区，最终在绝望中通过重建分区表奇迹般地修复了系统。\n\n## 正文\n\n### 为了双系统，必须给虚拟机“瘦身”\n博主有一套独特的开发环境：在 Windows Hyper-V 虚拟机里跑 Fedora。虽然能凑合用，但因为没有 GPU 加速、内存管理也捉襟见肘，他早就想迁移到物理机双系统。这就陷入了一个死循环：要在物理机装系统，得先腾出空间；要腾出空间，就得压缩现有的虚拟机磁盘。当时的磁盘状况很尴尬：430 GB 的总容量，虚拟机磁盘占了 290 GB，Windows 占了 100 GB，只剩 40 GB 给新系统，根本不够用。博主决定放手一搏，把虚拟机磁盘体积压下来。\n\n### 清理容易，把空间“吐”出来难\n瘦身的第一步是清理垃圾。在 Windows 侧，博主用 WinDirStat 删掉了休眠文件 `hiberfil.sys` 和旧驱动，释放了 30% 的空间。在 Fedora 侧，考虑到默认的 Btrfs 文件系统有压缩和去重特性，普通的 `du` 命令看不准，博主特意用了 `btdu` 来分析，删掉了大文件和 Nix store 里的陈旧包，磁盘占用暴降 70%。然而，文件删了不代表虚拟机磁盘文件（`.vhdx`）会自动变小。文件系统里的空间虽然空出来了，但底层的数据块还在，必须通过文件系统层面的操作把这部分空间“吐”出来。\n\n### Btrfs 的碎片整理攻坚战\n为了让文件系统识别出空闲空间，博主决定将 Btrfs 文件系统强制压缩到 150 GB。这里有个技术细节：Btrfs 的数据块通常按 1 GB 分片，如果数据散落在 300 个碎片里，直接 resize 肯定失败。解决办法是运行 `btrfs balance` 进行碎片整理。博主采用了一种渐进式策略：先处理利用率 0% 的空块，再处理 5% 的，最后处理 20% 的。这种“蚕食”法把分散的数据慢慢归拢，最终成功把文件系统边界压缩到了 150 GB。此时，逻辑层面的准备工作完成了，接下来是更危险的物理分区操作。\n\n### 自信过头，埋下隐患的伏笔\n接下来要把分区表也跟着缩小。博主用 `parted` 的 `resizepart` 命令调整分区大小。这里有个容易踩坑的地方：`resizepart` 接受的参数是“结束位置”而不是“大小”。博主算了一笔账：分区起始位置 1.6 GB，文件系统 150 GB，再加 4 GB 余量，得出新的结束位置是 156 GB。操作执行得很顺利，但他忽略了一个致命问题：他只关注了分区起始位置，却忘了检查引导分区（Boot Partition）是否也在这个范围内。这个疏忽让他在后面的操作中付出了惨痛代价。\n\n### Hyper-V 的检查点合并“黑洞”\n到了 Hyper-V 这一层，博主又遇到了新麻烦。因为开启了检查点功能，必须先把差异盘合并到基础盘里。Hyper-V 的合并过程极其“反人类”：没有进度条，如果空间不足还会报错中断。博主在合并过程中遭遇了磁盘空间不足的尴尬——合并时基础盘会先膨胀，差异盘才会缩小。他不得不反复执行 `Optimize-VHD` 命令压缩差异盘，再重启虚拟机触发合并，折腾一番后，终于把基础盘压缩到了 150 GB 左右。看似大功告成，其实灾难才刚刚开始。\n\n### 系统无法启动，才发现闯了大祸\n当博主自信满满地重启虚拟机时，系统直接挂掉，无法引导。这时候他才意识到问题的严重性：之前用 `parted` 缩容时，把分区结束位置设在了 156 GB。然而，系统的 EFI 引导分区实际上位于文件系统的靠后位置，这个位置已经超出了 156 GB 的范围。换句话说，他刚才的操作直接把引导分区给“截断”甚至“删掉”了。这属于典型的“手滑”事故，分区表坏了，系统自然起不来。\n\n### 绝境中的“盲操”修复\n面对无法启动的黑屏，博主没有选择重装，而是决定死马当活马医。他祭出了 `gdisk` 这个强大的分区工具。核心思路是：既然分区表坏了，那就重建一个。他利用 `gdisk` 重建分区表，关键在于通过文件系统的线索（比如 Btrfs 的 superblock 位置）找回原来的分区边界。这需要极高的技巧和运气，相当于在不看地图的情况下，凭记忆把被撕碎的拼图拼回去。幸运的是，由于之前的数据并没有被新数据覆盖，只是分区表索引丢了，他成功恢复了引导分区的入口。\n\n### 惊险过关，教训深刻\n经过一番惊心动魄的抢救，虚拟机终于重新启动，数据完好无损。这次经历虽然结局圆满，但过程充满了“惊吓”。博主的故事给所有开发者提了个醒：磁盘缩容不仅仅是运行几个命令那么简单，每一步操作（Btrfs balance、分区表调整、虚拟磁盘合并）都环环相扣。最危险的不是不懂技术，而是像博主这样“懂一点但不够细”，在自信中忽略了关键细节（比如引导分区的位置）。下次再动分区表前，记得先用 `fdisk -l` 看清楚每一个分区的起止点，别让一时的疏忽变成一场数据恢复的噩梦。",
+      "source_name": "entropicthoughts.com",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Btrfs",
+        "virtual disk",
+        "partition",
+        "Hyper-V"
+      ],
+      "rank": 5
     },
     {
       "title": "Navigation with only addition, subtraction, and tables",
@@ -79,7 +117,7 @@
         "haversine",
         "Bowditch"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Gemini 3.8 TTS Playground",
@@ -98,7 +136,7 @@
         "voice cloning",
         "API playground"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Shadow roots, explained with live examples",
@@ -117,7 +155,7 @@
         "CSS encapsulation",
         "interactive examples"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "★ AppZapper 3000",
@@ -136,7 +174,7 @@
         "UI design",
         "Delicious Generation"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "When working with Win32 FILETIME, don’t forget that you have std::chrono now",
@@ -155,7 +193,26 @@
         "Win32",
         "C++"
       ],
-      "rank": 8
+      "rank": 10
+    },
+    {
+      "title": "Some thoughts on HTML's proposed previewsrc attribute",
+      "title_zh": "微软 previewsrc 提案的三个问题",
+      "link": "https://shkspr.mobi/blog/2026/09/some-thoughts-on-htmls-proposed-previewsrc-attribute/",
+      "pub_date": "2026-09-24T11:34:54.000Z",
+      "summary": "微软提议为 HTML <img> 元素添加 previewsrc 属性，用于在原图加载前显示预览图。作者 Terence Eden 对此提出三点质疑：首先，缺乏用户研究支撑——没有证据表明普通用户对当前的加载体验感到困惑，微软应先做用户访谈；其次，alt 文本在图片加载失败时可能比模糊预览图更有价值，previewsrc 可能损害可访问性；最后，命名不一致——<video> 元素已有 poster 属性用于相同目的，应保持一致而非引入新名称。作者认为渐进式 JPEG/PNG 等现有方案更简单，无需浏览器改动，且避免了预览图与原图同步的问题。该提案在 GitHub 上公开讨论，作者鼓励开发者参与反馈。",
+      "source_name": "shkspr.mobi",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "HTML",
+        "previewsrc",
+        "web standards",
+        "accessibility"
+      ],
+      "rank": 11
     },
     {
       "title": "Changes to App Tracking Transparency in the E.U.",
@@ -174,7 +231,7 @@
         "iOS 27.2",
         "European Union"
       ],
-      "rank": 9
+      "rank": 12
     },
     {
       "title": "App Store Scam of the Week: ‘Update My Phone & Apps: Guide’ by Tair Olzhasev",
@@ -193,7 +250,7 @@
         "phishing",
         "iOS"
       ],
-      "rank": 10
+      "rank": 13
     },
     {
       "title": "Make Money to Make More Websites",
@@ -212,7 +269,26 @@
         "indie-web",
         "product-philosophy"
       ],
-      "rank": 11
+      "rank": 14
+    },
+    {
+      "title": "Motorola born September 25, 1928",
+      "title_zh": "Motorola 的 CPU 历史：从 6800 到 PowerPC",
+      "link": "https://dfarq.homeip.net/motorola-born-on-this-day-in-1928/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=motorola-born-on-this-day-in-1928",
+      "pub_date": "2026-09-24T11:00:47.000Z",
+      "summary": "Motorola 于 1928 年 9 月 25 日成立，最初以汽车收音机起家，品牌名由 \"motor\" 和 \"Victrola\"（留声机品牌）组合而成。在计算机历史中，Motorola 的 CPU 业务占据重要地位。1974 年推出的 6800 虽然不如 Intel 8080 和 Zilog Z80 知名，但被用于早期的套件计算机，并衍生出用于 TRS-80 MC-10 的 MC6803。后续的 6809 处理器被 TRS-80 Color Computer 和 Dragon 家用电脑采用。最成功的是 68000 系列——首款商业成功的 32 位 CPU，被 Macintosh、Atari ST、Amiga、Sun 工作站和 Sega Genesis 游戏机采用。68000 系列后续推出了 68010、68020、68030、68040 和 68060，其中 68040 在同频下性能超过 486，但难以达到 Intel 的高时钟频率。Motorola 还与 IBM 合作开发 PowerPC，被 Apple、IBM RS/6000 工作站以及 Xbox 360、PlayStation 3、Wii 等游戏机采用。1996-1997 年间，Motorola 曾应 Apple 邀请生产 Mac 兼容机 StarMax，但 Steve Jobs 回归后取消了克隆授权，导致双方关系破裂。2004 年 Motorola 将 CPU 业务分拆为 Freescale（后并入 NXP），2011 年公司拆分为移动和通信设备两家公司，移动业务后被 Google 收购并转售给 Lenovo。",
+      "source_name": "dfarq.homeip.net",
+      "score": 5,
+      "depth": 3,
+      "novelty": 2,
+      "category": "engineering",
+      "keywords": [
+        "Motorola",
+        "68000",
+        "PowerPC",
+        "CPU"
+      ],
+      "rank": 15
     },
     {
       "title": "Super Intelligence, Indeed",
@@ -230,7 +306,7 @@
         "naming",
         "politics"
       ],
-      "rank": 12
+      "rank": 16
     }
   ]
 }
