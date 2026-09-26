@@ -1,9 +1,9 @@
 {
   "date": "2026-09-26",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2560,
-  "filtered_articles": 19,
+  "success_feeds": 84,
+  "total_articles": 2535,
+  "filtered_articles": 20,
   "articles": [
     {
       "title": "U.S. Soldier Gets 70 Months in Prison for AT&T, Verizon Extortions",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Debugging walkthrough: Access violation on nonsense instruction, episode 3",
+      "title_zh": "反恶意软件把 64 位代码注入 32 位进程导致崩溃",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260925-00/?p=112731/",
+      "pub_date": "2026-09-25T14:00:00.000Z",
+      "summary": "## 一句话总结\n这起看似随机的“内存写入错误”崩溃，实则是反恶意软件厂商错误地将 64 位代码注入到了 32 位进程中导致的。\n\n### 崩溃现场：执行了全零的“废话指令”\n故事始于客户报告的“内存写入错误”。这并不是单一程序的 Bug，而是跨越了多个不相关程序的随机崩溃。打开 Crash Dump 一看，崩溃点停在一个 `add byte ptr [eax], al` 指令上。有经验的开发者一眼就能看出来：这操作码是 `00 00`。说白了，程序正在执行全零的字节流。这通常意味着指令指针（EIP）跑飞了，跳到了一段空数据或者无效内存里。\n\n### 反汇编线索：失败的 Detour 尝试\n既然 EIP 跑飞了，我们就往回看。从函数入口反汇编，代码序列是：`nop`、`dec ecx`、`mov edx, 2F11160h`，紧接着就是那四个导致崩溃的 `00` 字节，最后是 `inc ecx` 和 `jmp edx`。这看起来非常像是一个 Inline Hook（Detour）。有意思的地方在于，中间那四个 `00` 字节把指令流截断了。如果把它们拿掉，前面的 `dec ecx` 和后面的 `inc ecx` 刚好抵消，剩下的逻辑就是加载一个绝对地址到 `edx` 然后跳转过去。\n\n### 抽丝剥茧：嫌疑 DLL 浮出水面\n那个跳转目标地址 `0x02f11160` 指向一块申请的 4KB 可执行内存。用 `!strings` 扫一下这块内存，赫然发现路径 `C:\\Program Files\\Common Files\\Contoso\\injcore.dll`。文件名里的 \"inj\" 很可能就是 \"injection\"（注入）。看来是有第三方组件试图 Hook 系统函数，但注入的代码格式不对，导致程序执行到一半就崩了。\n\n### 真相大白：位宽不匹配的注入\n核心谜题在于那四个多余的 `00` 字节。作者灵光一闪：如果把前面的 `mov edx` 换成 `mov rdx`，这四个 `00` 正好是 64 位立即数的高 32 位！虽然当前崩溃的是 32 位进程，但如果把这段机器码放到 64 位环境下反汇编，它就是完美的 `mov r10, 2F11160h` 加上 `jmp r10`。真相只有一个：Contoso 的驱动把 64 位的 Hook 代码强行注入到了 32 位进程里。\n\n### 尾声：谁该背锅？\n这就解释了为什么崩溃是“随机”的：用户大部分时间跑 64 位程序没事，偶尔跑起 32 位程序，就会因为指令解码错误而挂掉。罪魁祸首是 Contoso 的反恶意软件。虽然我们建议客户联系厂商更新或暂时禁用它，但客户因为合规流程拒绝更改，坚持认为这是 Windows 的问题并要求微软修复。这就是典型的“你的软件把我的系统搞崩了，但你却让我修系统”的尴尬局面。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "debugging",
+        "code injection",
+        "x86",
+        "Windows"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Brent Simmons on ‘Stock’ Mac UI",
       "title_zh": "Mac 标准组件的神话：自定义 UI 反而更省力",
       "link": "https://inessential.com/2026/09/22/that-about-wraps-it-up-for.html",
@@ -41,7 +60,26 @@
         "UI design",
         "Cocoa"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "Advice to a beginning software engineer",
+      "title_zh": "给 AI 时代初级工程师的六条生存建议",
+      "link": "https://seangoedecke.com/advice-to-a-beginning-software-engineer/",
+      "pub_date": "2026-09-26T00:00:00.000Z",
+      "summary": "## 一句话总结\n在行业从 ZIRP（零利率）时代转向 AI 时代的剧烈变革期，初级工程师生存的核心策略是：认清自身议价能力的下降，拒绝过时的“斗争”建议，通过保持友善、勤勉和独立思考来建立不可替代性。\n\n## 正文\n\n### 别被 ZIRP 时代的“老黄历”给坑了\n现在的很多职场建议都带有强烈的时代局限性。大多数资深工程师的职业生涯是在 ZIRP（Zero Interest Rate Period，零利率时期）度过的，那时候资本泛滥，工程师拥有极高的议价权，大厂为了留住人甚至允许员工对公司政治指手画脚。那时候的建议是鼓励你站出来反抗、组建工会或者抵制“不道德”的技术。但问题是，那个时代已经结束了。如果现在还有资深工程师给新人灌输这种“硬刚”的思想，作者认为这不仅过时，甚至是不道德的。因为新人往往最听话，也最缺乏政治资本，听信这种建议去“送人头”，后果只能自己承担。\n\n### 既然议价权不再，那就做一个“好用”的人\n既然环境变了，策略也得变。现在的现实是：除非你不可替代，否则你的议价权很低。作者的建议非常务实：收起那些不切实际的期望，别试图搞什么惊天动地的大动作，也不要陷入“必须做出惊人成就”的焦虑螺旋。核心思路其实很简单：让你的团队和经理觉得你“好用”。做一个令人愉快的人，尤其是在事情不顺你意的时候，这种情绪稳定的价值甚至能掩盖很多技术上的短板。在职业生涯初期，千万别主动挑起争端，那是资深人士的特权，新人玩不起。\n\n### 远离政治漩涡，把“靠谱”当成核心竞争力\n在职场政治方面，作者的态度很鲜明：能躲多远躲多远。哪怕是资深工程师，在公司政治面前往往也只是棋子，初级工程师更是如此。与其钻研什么马基雅维利式的权谋，不如老老实实听直属领导的话，别被其他乱七八糟的人使唤。在技术层面，初级工程师最大的价值就是“靠谱”（Conscientiousness）。说白了就是多问为什么，搞清楚系统的每一个细节，而不是想当然地认为“肯定有人兜底”。只要你花几周时间认真钻研，你就能掌握别人不知道的技术细节，这是最快建立个人护城河的方式。\n\n### AI 不是洪水猛兽，但也别当“甩手掌柜”\n关于 AI，行业里充斥着两种极端声音：要么说行业要完了，要么让你完全拒绝 AI。作者认为这两种都不对。历史上外包没干掉软件工程，高级语言也没干掉程序员，AI 也不太可能直接终结这个行业。拒绝使用 AI 更是愚蠢的，这就好比建筑工人拒绝使用电动工具，公司不会因为你的一意孤行就改变技术趋势。正确的姿势是：把 AI 当作工具，但绝不能把你的“判断力”外包给它。你可以用 AI 辅助理解，但绝不能直接复制粘贴它的结论给同事，不要做一个只会传递 AI 信息的“肉身代理”（Meat Proxy）。\n\n### 恐慌源于失控，思考才能带来希望\n很多人变成“肉身代理”是因为恐慌，觉得 AI 比自己聪明，自己已经没有价值了。这种心态非常危险。虽然现在的确是一个充满变数的时代，但恐慌从来做不出好决策。你需要保持清醒，确信自己的技能依然有价值。作者最后强调，虽然 2010 年代那种稳定舒适的日子一去不复返了，但这并不意味着绝望。在这个充满奇迹与恐怖的新时代，聪明、友善且靠谱的人依然会有位置。哪怕工作的性质变了，保持独立思考和希望，依然是应对不确定性的最佳解法。",
+      "source_name": "seangoedecke.com",
+      "score": 14,
+      "depth": 7,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "career advice",
+        "ZIRP",
+        "AI agents",
+        "software engineering"
+      ],
+      "rank": 4
     },
     {
       "title": "Quoting John Gruber",
@@ -60,7 +98,7 @@
         "Meta",
         "consumer AI"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "Using an LLM to Automate the Process of Archiving New macOS App Icons",
@@ -79,7 +117,7 @@
         "macOS",
         "workflow"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Note on 24th September 2026",
@@ -97,7 +135,7 @@
         "software engineering",
         "discipline"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "Regarding the Provenance of Charm Within Meta",
@@ -116,7 +154,7 @@
         "AI hardware",
         "wearable"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "★ I’ll Wait",
@@ -135,7 +173,7 @@
         "privacy",
         "Mac"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "I'm starting HomelabFest (in St. Louis, Sep 2027)",
@@ -154,7 +192,7 @@
         "conference",
         "community"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Pluralistic: Itch scratching (25 Sep 2026)",
@@ -173,7 +211,7 @@
         "self-determination",
         "community"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "Muse Looks Cute, but Looks Are Deceiving",
@@ -192,7 +230,7 @@
         "AI ethics",
         "apology"
       ],
-      "rank": 10
+      "rank": 12
     },
     {
       "title": "Stock UI in MacOS 27 Eschews Clarity",
@@ -210,7 +248,7 @@
         "UI design",
         "Apple"
       ],
-      "rank": 11
+      "rank": 13
     },
     {
       "title": "Mr. Choyka Is Apparently Doing Well",
@@ -228,7 +266,7 @@
         "hole-in-one",
         "odds"
       ],
-      "rank": 12
+      "rank": 14
     },
     {
       "title": "Northern Gannet, Great Blue Heron, California Brown Pelican",
@@ -246,7 +284,7 @@
         "photography",
         "iNaturalist"
       ],
-      "rank": 13
+      "rank": 15
     }
   ]
 }
