@@ -2,8 +2,8 @@
   "date": "2026-09-26",
   "total_feeds": 92,
   "success_feeds": 84,
-  "total_articles": 2540,
-  "filtered_articles": 21,
+  "total_articles": 2530,
+  "filtered_articles": 15,
   "articles": [
     {
       "title": "U.S. Soldier Gets 70 Months in Prison for AT&T, Verizon Extortions",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "Rusty thoughts on \"Parse, don't validate\"",
+      "title_zh": "Rust 类型系统如何实现 \"Parse, don't validate\"",
+      "link": "https://eli.thegreenplace.net/2026/rusty-thoughts-on-parse-dont-validate/",
+      "pub_date": "2026-09-26T15:25:00.000Z",
+      "summary": "## 一句话总结\n与其在运行时反复验证数据的某种特性，不如利用类型系统将其“解析”为更具体的类型，让编译器帮你强制保证不变量。\n\n## 正文\n\n### 验证过的数据，下次还得重新查户口？\n很多开发者都读过 Alexis King 的名篇《Parse, don't validate》。核心痛点其实很常见：你写了一个函数读取配置，并检查了环境变量列表不为空。逻辑上，函数返回后数据肯定非空。但问题是，当你随后调用 `first()` 方法时，Rust 标准库依然强制你处理 `Option`——也就是处理列表为空的情况。明明上一秒刚检查过不为空，下一秒编译器却逼着你写 `unreachable!()` 来应付那个根本不存在的空分支。这种代码既啰嗦，又埋下了隐患：万一以后有人改了校验逻辑，这里就会直接崩盘。\n\n### 用新类型把“承诺”写进类型里\n解决这个问题的思路很直接：既然 `Vec` 天生允许为空，那我们就换一个不允许为空的容器。比如 `nonempty` crate 里的 `NonEmpty` 结构体。它的设计很巧妙，直接把第一个元素 `head` 定义为必须存在的字段，后面再跟着 `tail`。这就从结构上杜绝了空的可能性：你要创建它，必须至少提供一个元素。相应地，它的 `first` 方法返回的是 `&T` 而不是 `Option<&T>`。只要类型是 `NonEmpty`，编译器就替你担保它非空，完全不需要运行时检查。\n\n### 解析的本质是“提炼”与“升维”\n这就是“Parse, don't validate”这一说法的由来。当函数返回 `Vec` 时，你只是做了一次“验证”，数据本质上没变，不变量也没被记录。但当函数返回 `NonEmpty` 时，你是在做“解析”——将泛泛的数据转化为携带特定约束的新类型。这种转化一旦成功，约束就永久生效。比如在 `posixutils-rs` 重写项目中，`Pipeline` 结构体直接持有 `NonEmpty<Command>`。这意味着解析器一旦构造出 `Pipeline`，后续代码就可以放心大胆地取用第一个命令，完全不用担心遇到空指针或 None。\n\n### 像剥洋葱一样层层提炼类型\n更有意思的设计出现在 `rust-analyzer` 里。它定义了一个 `AbsPathBuf` 类型，专门表示绝对路径。这其实是“渐进式解析”的典型案例：标准库的 `PathBuf` 并不保证编码有效，`camino` 库将其提炼为 UTF-8 有效的 `Utf8PathBuf`，而 `rust-analyzer` 进一步提炼出绝对路径 `AbsPathBuf`。每一层解析都在为数据增加约束（证明 UTF-8 有效、证明是绝对路径）。经过这层层筛选，最终得到的类型自带所有“良民证明”，后续逻辑再也不用反复查证件了。\n\n### 标准库里的 NonZero：不仅安全，还省内存\nRust 标准库自己也大量运用了这个模式，最典型的就是 `NonZero` 类型。比如 `thread::available_parallelism()` 返回 `NonZero<usize>`，直接在类型层面告诉你并行度不可能是 0。这不仅消除了无意义的判空逻辑，还有个意外之喜：内存布局优化。因为 `NonZero` 类型排除了 0 值，Rust 编译器可以利用 0 这个比特位来表示 `Option` 的 `None` 状态。结果是，`Option<NonZeroUsize>` 的大小竟然和 `NonZeroUsize` 一模一样，完全没有额外开销。\n\n### JSON 反序列化：隐式的类型约束大师\n我们习以为常的 JSON 反序列化，其实是这一模式的集大成者。当你用 `serde` 定义一个结构体，把某个字段声明为 `NonZeroUsize` 或某个特定枚举时，解析器就在默默工作。它不仅把字符串变成了对象，更在后台完成了类型校验：字段类型不对、枚举值非法、整数为 0，这些错误都在解析阶段被拦截了。一旦解析成功，你拿到的是一个类型完备、约束清晰的对象。相比之下，Python 的 `json.loads` 只给你一个泛泛的字典，后续所有校验都得靠程序员手动“人肉”检查，高下立判。",
+      "source_name": "eli.thegreenplace.net",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "Rust",
+        "type-system",
+        "NonEmpty",
+        "parse-dont-validate"
+      ],
+      "rank": 4
+    },
+    {
       "title": "Advice to a beginning software engineer",
       "title_zh": "给 AI 时代初级工程师的六条生存建议",
       "link": "https://seangoedecke.com/advice-to-a-beginning-software-engineer/",
@@ -79,7 +98,7 @@
         "AI agents",
         "software engineering"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Quoting John Gruber",
@@ -98,7 +117,7 @@
         "Meta",
         "consumer AI"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Using an LLM to Automate the Process of Archiving New macOS App Icons",
@@ -117,7 +136,26 @@
         "macOS",
         "workflow"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "No errors, no warnings, no gods, no masters - HTML Purity is a Fetish",
+      "title_zh": "HTML 有效性：一种不必要的洁癖",
+      "link": "https://shkspr.mobi/blog/2026/09/no-errors-no-warnings-no-gods-no-masters-html-purity-is-a-fetish/",
+      "pub_date": "2026-09-26T11:34:02.000Z",
+      "summary": "全球 Top 200 网站中仅 1% 使用有效 HTML，但浏览器对语法错误的宽容度正是 HTML 成功的关键。作者以 XHTML 的失败为例，说明严格验证会导致页面无法渲染，而 HTML 的容错设计让开发者能够",
+      "source_name": "shkspr.mobi",
+      "score": 11,
+      "depth": 6,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "HTML",
+        "validation",
+        "XHTML",
+        "browser"
+      ],
+      "rank": 8
     },
     {
       "title": "Note on 24th September 2026",
@@ -135,7 +173,7 @@
         "software engineering",
         "discipline"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "Regarding the Provenance of Charm Within Meta",
@@ -154,7 +192,7 @@
         "AI hardware",
         "wearable"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "★ I’ll Wait",
@@ -173,7 +211,7 @@
         "privacy",
         "Mac"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "I'm starting HomelabFest (in St. Louis, Sep 2027)",
@@ -192,7 +230,7 @@
         "conference",
         "community"
       ],
-      "rank": 10
+      "rank": 12
     },
     {
       "title": "Pluralistic: Itch scratching (25 Sep 2026)",
@@ -211,7 +249,7 @@
         "self-determination",
         "community"
       ],
-      "rank": 11
+      "rank": 13
     },
     {
       "title": "This Week in Package Management: 26 September 2026",
@@ -230,7 +268,7 @@
         "RubyGems",
         "security"
       ],
-      "rank": 12
+      "rank": 14
     },
     {
       "title": "Muse Looks Cute, but Looks Are Deceiving",
@@ -249,7 +287,7 @@
         "AI ethics",
         "apology"
       ],
-      "rank": 13
+      "rank": 15
     },
     {
       "title": "Stock UI in MacOS 27 Eschews Clarity",
@@ -267,7 +305,7 @@
         "UI design",
         "Apple"
       ],
-      "rank": 14
+      "rank": 16
     },
     {
       "title": "Reading List 2026-09-26",
@@ -286,7 +324,7 @@
         "semiconductors",
         "robotics"
       ],
-      "rank": 15
+      "rank": 17
     },
     {
       "title": "Mr. Choyka Is Apparently Doing Well",
@@ -304,7 +342,7 @@
         "hole-in-one",
         "odds"
       ],
-      "rank": 16
+      "rank": 18
     },
     {
       "title": "Northern Gannet, Great Blue Heron, California Brown Pelican",
@@ -322,7 +360,7 @@
         "photography",
         "iNaturalist"
       ],
-      "rank": 17
+      "rank": 19
     }
   ]
 }
