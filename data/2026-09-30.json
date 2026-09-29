@@ -1,9 +1,9 @@
 {
   "date": "2026-09-30",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2537,
-  "filtered_articles": 19,
+  "success_feeds": 83,
+  "total_articles": 2507,
+  "filtered_articles": 17,
   "articles": [
     {
       "title": "Dead Money",
@@ -25,6 +25,44 @@
       "rank": 1
     },
     {
+      "title": "Quoting Anthropic Frontier Red Team",
+      "title_zh": "GLM-5.3 首次突破二进制漏洞利用阈值",
+      "link": "https://simonwillison.net/2026/Sep/29/anthropic-frontier-red-team/",
+      "pub_date": "2026-09-29T22:20:28.000Z",
+      "summary": "## 一句话总结\nAnthropic 披露的最新红队测试数据显示，GLM-5.3 在内部二进制利用基准测试中实现了 4% 的控制流劫持成功率，标志着 AI 模型在高级网络攻击能力上已跨越关键阈值。\n\n## 正文\n\n### 来自未来的安全警报\n这篇发布于 2026 年 9 月的文章，引用了 Anthropic Frontier Red Team 的一份重磅评估报告。测试团队从内部的 Binary Exploitation benchmark 中随机抽取了 100 个任务，对多个前沿模型进行了严苛的安全测试。这并不是普通的性能跑分，而是专门针对模型\"作恶\"能力的红队演练，目的是看看现在的 AI 到底能攻破多复杂的系统。\n\n### 新秀与巨头的攻防对决\n测试结果很有意思。GLM-5.3 在这 100 个任务中，成功开发出完整的控制流劫持攻击的比例是 4%。作为对比，Anthropic 自家的 Claude Mythos Preview 达到了 6%。单看这个数据，GLM-5.3 似乎还略逊一筹，毕竟它比 Claude 的最新预览版低了两个百分点。如果只关注模型之间的胜负，你可能觉得这不过是又一次常规的能力追赶。\n\n### 真正的门槛已被跨越\n但问题的关键不在于谁高谁低，而在于\"从无到有\"的质变。报告明确指出，作为参照组的前代模型——Claude Opus 4.6 和 GLM-5.2——在这些任务上的成功率全部为零。说白了，上一代模型面对这些复杂的二进制漏洞利用任务时，基本是束手无策的；而这一代模型，无论是 GLM 还是 Claude，都已经具备了独立完成攻击的能力。\n\n### 能力扩散的现实隐忧\n这就是文章标题中提到的 \"spread of advanced cyber capabilities\" 的核心含义。这种高级网络攻击能力，以前可能只掌握在极少数顶尖安全研究员手中，现在却随着模型能力的提升开始\"扩散\"。当模型能够自主完成控制流劫持这种高难度动作时，意味着攻击门槛被大幅降低，防御方面临的压力将呈指数级增长。",
+      "source_name": "simonwillison.net",
+      "score": 18,
+      "depth": 9,
+      "novelty": 9,
+      "category": "security",
+      "keywords": [
+        "GLM-5.3",
+        "Claude Mythos",
+        "binary exploitation",
+        "red team"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Deser: Rethinking Rust Serialization",
+      "title_zh": "Deser：重新设计 Rust 序列化以解决 Serde 的架构缺陷",
+      "link": "https://lucumr.pocoo.org/2026/9/29/deser/",
+      "pub_date": "2026-09-29T00:00:00.000Z",
+      "summary": "## 一句话总结\n作者 Armin Ronacher（Flask 作者）推出了实验性库 Deser，通过颠覆 Serde 的核心架构——将“类型驱动反序列化”改为“格式推送事件流”，解决了 Serde 在缓冲丢失信息、栈溢出风险和适配器组合性差等方面的设计顽疾。\n\n## 正文\n\n### Serde 的光环下藏着难以愈合的伤\nSerde 无疑是 Rust 生态的基石，作者也坦言多年来因此受益匪浅。但在 Sentry 处理海量非受信 JSON 的经历让他痛苦不已：Serde 的许多问题并非 Bug，而是设计使然，且受限于稳定性承诺无法修复。比如 `serde_json` 开启 `arbitrary_precision` 时，魔法键会与内部标签 Enum 冲突；使用 `flatten` 时，JSON 的字符串键无法自动转换为整数；最让人头疼的是适配器无法组合，你想把 `from_hex` 用在 `Option` 包裹的字段里？对不起，编译器会报错，你得为每种容器单独写个 `from_opt_hex`。\n\n### 核心思路其实很简单：把控制权交还给格式\nDeser 的名字本身就是 Serde 的反写，寓意架构的翻转。在 Serde 中，类型（`Deserialize` trait）掌握主动权，向 Deserializer 索要值，这导致了深层的递归调用。Deser 则反其道而行之，由格式（Parser）掌握主动权，向类型推送事件流。当解析器遇到嵌套结构时，不再递归调用，而是让 Driver 在堆上管理状态。说白了，这就是把栈上的递归变成了堆上的状态机，彻底根除了栈溢出的隐患。\n\n### 三个设计决策引发的蝴蝶效应\n作者总结 Serde 的痛点源于三个根本决策：一是试图用一套 Trait 兼容自描述格式（JSON）和非自描述格式，导致特性割裂；二是缓冲机制会丢失元数据，比如错误位置、扩展类型信息；三是递归模型不仅吃栈空间，还让反序列化过程无法暂停。Deser 则做出了取舍：它直接放弃了对 Protobuf 等非自描述格式的支持，以此换取了更健壮的数据模型和更灵活的控制流。这就像是为了治好慢性病，决定切除一个不常用的器官。\n\n### 堆上的状态机换来了什么？\n这种“事件驱动”架构带来了几个立竿见影的好处。首先是安全，你可以放心解析任意深度的嵌套数据，只需设置一个限制层，不再受限于栈大小。其次是可暂停，因为状态都在 Driver 里，反序列化可以随时等待 IO，甚至跨线程传递，这对 Tokio 用户极其友好。最精妙的是“无损缓冲”，当遇到内部标签 Enum 需要缓冲内容时，Deser 会记录原始事件流，保留了格式特有的元数据，错误信息能精准定位到行号和路径，而不是像 Serde 那样指向文档末尾。\n\n### 终于能像搭积木一样组合适配器了\nDeser 解决了一个让开发者抓狂的问题：适配器的组合。在 Serde 里，你很难把一个转换逻辑套用在 `Vec` 或 `Option` 内部。Deser 通过将适配器设计为类型解决了这个问题。你可以直接写 `as = Option<Vec<DisplayFromStr>>`，把一个实现了 `FromStr` 的类型无缝嵌入到复杂的容器结构中。此外，验证逻辑也变成了适配器的一种，比如 `Check<NonEmpty, Vec<Hex>>`，在解码十六进制的同时校验非空，逻辑清晰且内聚。\n\n### XML 支持不再是二等公民\n有意思的地方在于，Deser 对 XML 的支持力度远超 Serde。Serde 一直拒绝原生支持 XML，而 Deser 则通过可扩展的数据模型接住了这个难题。XML 的命名空间是个典型的麻烦事，Deser 允许你通过宏定义命名空间，并在反序列化时正确解析，甚至能保留未知的标签和属性。这得益于其数据模型对扩展值的原生支持，不再依赖 Serde 那种“带内信令”在 Map 里塞魔法键的 Hack 手段。\n\n### 想要取代 Serde？没那么容易\n作者很清醒，由于 Rust 的孤儿规则，Serde 的生态位几乎不可撼动。Deser 并非要“弑君”，而是提供一个可行的替代方案。目前的代价是客观存在的：虽然编译时间略有改善，但二进制文件体积更大，运行时性能互有胜负。Deser 现在的状态是一个“原则上的替代品”，如果你深受 Serde 架构限制之苦，或者需要处理复杂的 XML、流式解析场景，它值得一试；但如果你追求极致的性能或依赖某些特定二进制格式，Serde 依然是首选。",
+      "source_name": "lucumr.pocoo.org",
+      "score": 18,
+      "depth": 9,
+      "novelty": 9,
+      "category": "engineering",
+      "keywords": [
+        "Serde",
+        "serialization",
+        "Rust",
+        "Deser"
+      ],
+      "rank": 3
+    },
+    {
       "title": "OpenAI DevDay 2026 live blog",
       "title_zh": "OpenAI DevDay 2026：Dots 个人助手、GPT-6.1 Sol 与 Ultrafast 模式",
       "link": "https://simonwillison.net/2026/Sep/29/openai-devday-2026-live-blog/",
@@ -41,7 +79,7 @@
         "Ultrafast",
         "Computer Use"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "The AI margin collapse is gathering pace",
@@ -60,7 +98,7 @@
         "DeepSeek",
         "GPT-6"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "VLM Enhanced Metadata For My Icon Galleries",
@@ -79,7 +117,7 @@
         "embedding",
         "image search"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "The Facebook Fake-out",
@@ -98,7 +136,7 @@
         "platform",
         "accountability"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "The Strangest Idea in the World",
@@ -116,7 +154,7 @@
         "innovation",
         "book announcement"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Destroy Any Website",
@@ -134,7 +172,7 @@
         "web",
         "interactive"
       ],
-      "rank": 7
+      "rank": 9
     }
   ]
 }
