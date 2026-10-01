@@ -1,10 +1,48 @@
 {
   "date": "2026-10-01",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2314,
-  "filtered_articles": 11,
+  "success_feeds": 84,
+  "total_articles": 2344,
+  "filtered_articles": 12,
   "articles": [
+    {
+      "title": "Windows on AArch64 also provides for hot-patching, but it’s much simpler than on x86",
+      "title_zh": "AArch64 热补丁机制的简洁设计",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20260930-00/?p=112744/",
+      "pub_date": "2026-09-30T14:00:00.000Z",
+      "summary": "## 一句话总结\nAArch64 的定长指令集特性让 Windows 的热补丁机制摆脱了 x86 复杂的边界处理，直接用 12 字节的固定空间配合一条跳转指令就能搞定。\n\n## 正文\n\n### x86 费劲心机，AArch64 却不用操心\"切分点\"\n熟悉 Windows 内核机制的朋友都知道，x86 架构为了支持热补丁，在函数头设计了不少精巧的机制。这是因为 x86 是变长指令集，指令指针可能正好停在一条多字节指令的中间，这时候如果你贸然修改指令，就会导致程序跑飞或崩溃。但 AArch64 完全没有这个烦恼，因为它是定长指令集，每条指令固定 4 字节。指令指针永远对齐在 4 的倍数上，根本不存在\"停在指令中间\"这种尴尬情况。\n\n### 既然没有历史包袱，设计就可以很直接\n既然不用担心指令指针的位置问题，AArch64 上的函数入口指令也就不需要像 x86 那样有什么特殊格式要求。任何指令都天然满足原子更新的条件，这直接简化了编译器和链接器的设计约束。Windows 在这里的设计思路非常清晰：既然指令本身是安全的，那我就直接在函数前面预留一段空间来放跳板代码。\n\n### 12 字节的跳板与寄存器约定\n具体怎么实现呢？Windows 在每个函数入口前预留了 12 字节的 \"patch space\"。这个大小不是拍脑袋定的，而是正好能放下三条 AArch64 指令，用来构建一个标准的跳板。当需要打补丁时，系统会往这块空间写入三条指令：`adrp` 加载页面地址，`add` 加上页内偏移，最后 `br` 跳转到替换函数。紧接着，在真正的函数入口处，只需覆盖一条指令：`br $-12`，直接跳回前面的 patch space。\n\n这里用到了 `xip0` 寄存器，它是 AArch64 架构中的过程调用间临时寄存器。按照调用约定，任何分支指令都可以随意覆盖这个寄存器的值。既然调用者本来就是通过跳转指令来到达函数入口的，那它此时此刻肯定不依赖 `xip0` 里的值，所以跳板代码可以放心大胆地用它来做中转。\n\n### 顺手提一句：入口指令通常是 PAC 指令\n文章最后还提到了一个有意思的细节：虽然入口指令没有格式限制，但在现代 Windows on ARM64 上，函数入口的第一条指令通常都是 `pacibsp`。这是用来对返回地址进行签名的指针认证指令，目的是防御 ROP 攻击和返回地址覆盖攻击。虽然这不是热补丁机制的强制要求，但确实是当前系统的常态配置。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "AArch64",
+        "hot-patching",
+        "Windows",
+        "trampoline"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Why do you need freedom?",
+      "title_zh": "当 AI 替你思考，自由还剩什么",
+      "link": "https://geohot.github.io//blog/jekyll/update/2026/10/01/why-do-you-need-freedom.html",
+      "pub_date": "2026-09-30T16:00:00.000Z",
+      "summary": "## 一句话总结\n文章警示我们：当超级智能比我们更了解自己并能优化一切选择时，\"自由意志\"将面临前所未有的存在主义危机——顺从虽好，但那还是你自己的人生吗？\n\n## 正文\n\n### 思想入侵：比强制更可怕的是\"为你好\"\n文章开篇抛出了一个令人不寒而栗的预言：当权者终将把目标对准你的思想。这不再是传统的洗脑或强制，而是一种基于数据和算法的\"完美建议\"。作者指出，对方甚至不需要欺骗你，因为他们构建的模型已经能够精确计算你的生活轨迹。他们会告诉你：\"根据计算，做这个选择你会更快乐。\"最可怕的是，从结果上看，他们往往是对的。\n\n### 有效利他主义的虚伪面具\n接着，作者谈到了\"有效利他主义\"（Effective Altruists）可能遭遇的失败。这一群体试图用某种虚构的全球公共利益来劝导人们牺牲个人利益。这种套路其实并不高明，人们很容易看穿这种把戏，毕竟大众并没有那么愚蠢，不会轻易为了某种抽象的概念去违背自身的切身利益。但这只是表层现象，真正的问题远比这深刻得多。\n\n### 真正的对手：那个比你还懂你的机器\n当那些拙劣的操纵者退场，真正的挑战才刚刚开始。作者将焦点转向了\"对齐的超级智能\"（aligned superintelligence）。这才是那个终极对手：一台比你自己更了解你的机器。它不是为了害你，而是真心实意地为你好。在这个语境下，传统的防御机制失效了，因为你面对的不是压迫，而是完美的保姆。\n\n### 顺从的代价：被算法优化的人生\n这就引出了文章的核心悖论：如果听从机器的建议，你的生活确实会变得更好、更快乐、更优。但如果你每一次都选择听从，这到底还是你的人生吗？这是一个关于主体性的终极拷问。如果每一个选择都是被算法计算后的最优解，那么\"选择\"本身的意义就不复存在了。我们为了追求幸福，却可能在不知不觉中交出了定义自我的权利。\n\n### 拥抱无意义：自由的本质\n文章最后引用了 Pat the Bunny 的歌词作为精神内核的注脚：\"自由没有目的。\"这句歌词点破了自由的本质——它往往伴随着混乱、废墟和无意义。作者似乎在暗示，我们拼命追求的\"最优解\"和\"意义\"，可能恰恰是自由的反面。有时候，为了保留作为人的尊严和自由，我们需要拥抱那些看似\"错误\"的选择，甚至拥抱某种程度的\"无意义\"。毕竟，如果生活只剩下完美的计算，那将是一片死寂的荒原。",
+      "source_name": "geohot.github.io",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "freedom",
+        "superintelligence",
+        "alignment",
+        "existentialism"
+      ],
+      "rank": 2
+    },
     {
       "title": "[Sponsor] WorkOS: How SSO Works and the Fastest Way to Add It",
       "title_zh": "SSO 集成完整指南：SAML 流程与最佳实践",
@@ -22,7 +60,7 @@
         "authentication",
         "IdP"
       ],
-      "rank": 1
+      "rank": 3
     },
     {
       "title": "Dear Software Makers",
@@ -41,7 +79,7 @@
         "creator economy",
         "metrics"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "Gurman Reports Apple Is Launching New ‘Smart Home’ Products on October 13",
@@ -60,7 +98,7 @@
         "HomePod",
         "Apple TV"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "Anthropic’s IPO Prospectus Is a Fucking Doozy",
@@ -79,7 +117,7 @@
         "Claude",
         "funding"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "He Built This City",
@@ -97,7 +135,7 @@
         "New York",
         "model"
       ],
-      "rank": 5
+      "rank": 7
     }
   ]
 }
