@@ -1,9 +1,9 @@
 {
   "date": "2026-10-03",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2320,
-  "filtered_articles": 10,
+  "success_feeds": 84,
+  "total_articles": 2345,
+  "filtered_articles": 8,
   "articles": [
     {
       "title": "Premium: How Has AI Changed The Economy?",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "Altera Quartus Linux jtagd bug fixes",
+      "title_zh": "借助 Claude 定位 jtagd 的两个 USB Blaster 兼容性 bug",
+      "link": "https://www.downtowndougbrown.com/2026/10/altera-quartus-linux-jtagd-bug-fixes/",
+      "pub_date": "2026-10-03T05:50:45.000Z",
+      "summary": "## 一句话总结\n作者利用 Claude Opus 5.5 成功定位了困扰多年的 Altera `jtagd` 两个 Bug：一个是导致 USB 数据损坏的未初始化变量，另一个是引发 30 秒延迟的 FTDI 命令序列顺序问题，并提供了二进制补丁方案。\n\n## 正文\n\n### 旧疾难愈，AI 意外破局\n两年前，作者在研究 Altera USB Blaster 克隆版问题时，遇到了两个极其恼人的间歇性故障。一个是 USB 流量中出现莫名其妙的数据损坏，另一个是首次 JTAG 操作时常有约 30 秒的卡顿。当时作者已经筋疲力尽，这些问题又难以复现，只能暂时搁置。直到最近，作者尝试将这些谜题喂给 Claude Opus 5.5，没想到 AI 轻松搞定了逆向工程，精准定位了两个 Bug 的根源。\n\n### 数据损坏的真凶：被遗忘的变量\n第一个 Bug 导致 USB 数据在到达硬件前就已损坏。AI 分析发现，`JTAG_SERVER_USB_BLASTER` 类的构造函数中存在一个未初始化变量。构造函数将周边变量都清零了，唯独漏掉了这一个。如果该变量值大于 0，`jtagd` 就会向 USB 数据中插入本应仅用于 Altera 新版 USB-Blaster II 的额外数据。这直接导致只支持原版协议的克隆设备混淆，报出 \"JTAG chain broken\" 错误。\n\n### 为什么以前很难复现？\n这个 Bug 的触发条件有点讲究。它通常只在 `jtagd` 保持运行、用户拔插设备时发生。因为对象首次分配时内存往往被清零，只有后续分配复用堆内存时，未初始化变量才可能携带非零垃圾值。作者当年在 Windows 虚拟机环境中频繁拔插测试，正好踩中了这个坑，但在其他环境下却难以复现，这也是该 Bug 隐藏了至少 8 年（从 Quartus 18.1 到 25.1）未被发现的原因。\n\n### 30 秒延迟的根源：命令顺序之过\n第二个 Bug 表现为首次连接时的 30 秒延迟。问题出在 `jtagd` 初始化 FTDI FT245 芯片的命令顺序上：先发 Reset、Purge TX、Purge RX，最后才发 Set Latency Timer。这个特定顺序会让部分克隆设备在约 250ms 内忽略输入数据。此时 `jtagd` 已经开始尝试查询 JTAG 链，结果只能傻等超时。解决方案出奇简单：把 Set Latency Timer 命令提到最前面执行，问题迎刃而解。\n\n### 补丁已就绪，官方何时修复？\n作者已在 GitHub 发布了补丁工具，修复了上述两个问题。对于第一个 Bug，官方只需在构造函数中补上那个初始化清零动作即可。第二个 Bug 虽然可能涉及克隆芯片与原厂芯片的行为差异，但调整命令顺序或在 Set Latency Timer 后增加 300ms 延迟也能规避。作者甚至利用 `uhubctl` 配合 USB Hub 自动化循环断电，进行了大量压力测试，确认补丁稳定有效。\n\n### 本可以用 Valgrind 解决的遗憾\n回顾这次排查，作者坦言其实用 Valgrind 这种传统工具本该能轻易发现第一个未初始化变量的问题。当时作者深陷 `rr` 调试器的兼容性问题泥潭，在不同机器间折腾导致错过了排查方向。实际上，早在 Altera 论坛上就有用户察觉到了异常，但发帖后石沉大海。这次借助 AI 的力量，不仅填补了技术遗憾，也证明了 AI 在辅助逆向工程和调试闭源软件时的巨大潜力。",
+      "source_name": "downtowndougbrown.com",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "jtagd",
+        "USB Blaster",
+        "reverse engineering",
+        "Claude"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Superpersuasion will look like bribery",
       "title_zh": "AI 的超级说服力其实就是贿赂",
       "link": "https://seangoedecke.com/superpersuasion-will-look-like-bribery/",
@@ -41,7 +60,7 @@
         "bribery",
         "alignment"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "★ Apple Is Going to Further Tighten the Screws on Full Disk Access on MacOS, in Response to Agentic AI Apps Running Amok",
@@ -60,7 +79,7 @@
         "AI agents",
         "privacy"
       ],
-      "rank": 3
+      "rank": 4
     }
   ]
 }
