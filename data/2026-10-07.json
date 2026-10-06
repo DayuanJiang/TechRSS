@@ -2,8 +2,8 @@
   "date": "2026-10-07",
   "total_feeds": 92,
   "success_feeds": 84,
-  "total_articles": 2345,
-  "filtered_articles": 17,
+  "total_articles": 2346,
+  "filtered_articles": 21,
   "articles": [
     {
       "title": "Credit Crunch",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "A Terminal Protocol for Program Status (OSC 7501)",
+      "title_zh": "OSC 7501：让终端程序主动报告状态的新协议",
+      "link": "https://mitchellh.com/writing/program-status-osc7501",
+      "pub_date": "2026-10-06T00:00:00.000Z",
+      "summary": "## 一句话总结\n作者提出了一种新的终端协议 OSC 7501，让运行在终端里的程序能主动、标准化地汇报自己的状态（如运行中、阻塞、完成），解决了长期依赖启发式猜测或私有 API 的痛点。\n\n## 正文\n\n### 终端里的长任务，全靠\"猜\"日子过不下去了\n在终端里跑长时间任务是家常便饭：编译构建、部署上传、数据处理，还有现在越来越火的 Coding Agent。这些程序在\"干活\"、\"等用户输入\"和\"结束\"之间来回切换，而用户往往切到别的窗口去了。现有的解决方案很原始：要么监控前台进程变化，要么傻等一段\"安静\"的时间。说白了，终端并不知道程序到底在干嘛，只能靠猜。作者认为，缺乏一个通用的、能准确传达进度、阻塞原因和任务完成状态的协议，是当前的核心痛点。\n\n### AI Agent 的\"收件箱\"成了重灾区\n如果你关注 AI，就会发现这个问题在 Coding Agent 上暴露得最彻底。现在大家习惯同时跑一堆 Agent 做后台研究或修 Bug，每个 Agent 跑着跑着就会停下来问权限或报结果。于是出现了像 Herdr、cmux 这种\"Agentic Inbox\"工具。但因为没有标准协议，这些工具只能用正则表达式去匹配窗口标题或屏幕输出——比如看到 Claude Code 的标题栏出现盲文转圈字符就认为它在\"运行\"。这种启发式规则维护成本极高，Claude Code 的匹配规则三个月改了十次，稍微改个 UI 前端就得崩。\n\n### 私有 API 看起来很美，实则把路走窄了\n另一种方案是让程序通过私有 API（比如本地 Socket）主动上报状态。这确实比正则猜谜准，但问题是每个程序得对接每个 Inbox 的私有协议，而且一旦涉及 SSH 远程连接或容器环境，本地 Socket 就得搞额外的端口转发，非常麻烦。其实，PTY（伪终端）本身就是一条现成的、通用的数据通道，不管是本地跑、SSH 连还是 Docker 里，它都在那儿。作者的核心思路很简单：既然程序的状态只有程序自己最清楚，为什么不直接通过 PTY 告诉终端？\n\n### OSC 7501：一条逃逸序列搞定状态同步\nOSC 7501 就是为了解决这个问题而生的新协议。它本质上是一个标准的 OSC（Operating System Command）逃逸序列，格式为 `ESC ] 7501 ; key=value... ESC \\`。终端（或任何监听工具）收到后可以直接解析，不知道这个序列的终端会直接忽略，不会产生乱码，兼容性极佳。协议体就是一串 `key=value` 对，用冒号分隔，核心字段 `state` 是必须的，定义了五种状态：`idle`（空闲）、`working`（运行中）、`done`（完成）、`blocked`（阻塞）、`error`（失败）。\n\n### 细节设计：从阻塞原因到层级任务\n有意思的地方在于细节设计。比如 `blocked` 状态可以带上 `kind` 字段，说明是等权限（`permission`）、等回答问题（`question`）还是等认证（`auth`），还能用 `msg` 字段（Base64 编码）传给用户一句人话，比如 Terraform 就能告诉终端：\"正等着确认是否要变更资源\"。更巧妙的是它支持层级 ID，一个部署工具根节点状态是 `working`，底下的 `us-east` 节点可能正在推镜像进度 40%，而 `eu-west` 节点可能正 `blocked` 等待生产环境审批。终端拿到这些结构化数据，想怎么展示都行。\n\n### 实现成本低到令人发指\n这个协议对开发者极其友好。你不需要引入什么重型 SDK，甚至不需要 JSON 解析器。作者给了一个 POSIX shell 的例子：用 `printf` 打印一行转义序列，把状态和 Base64 编码的消息塞进去，就能把 `rsync` 变成一个能主动汇报状态的\"好公民\"。如果任务结束了，发个 `clear` 状态就能清理记录。这种设计完全复用了现有的终端基础设施，没有额外的环境变量或 Socket 依赖。\n\n### 别再猜了，让程序自己开口说话\n作者已经在 Ghostty 终端模拟器和 Rex 工具中实现了该协议，并在 Terraform、Claude Code、Homebrew 等工具上做了概念验证，每个实现都不超过十几行代码。协议文档涵盖了状态生命周期、Feature Detection、Terminfo 以及安全限制等细节，非常完整。作者的呼吁很直接：别再通过读屏幕或进程树去猜程序在干嘛了，程序自己最清楚，给它们一条标准的开口说话的路吧。",
+      "source_name": "mitchellh.com",
+      "score": 18,
+      "depth": 9,
+      "novelty": 9,
+      "category": "engineering",
+      "keywords": [
+        "OSC 7501",
+        "terminal protocol",
+        "agentic inbox",
+        "PTY"
+      ],
+      "rank": 2
+    },
+    {
       "title": "Scrimshaw Jukebox",
       "title_zh": "Claude Opus 5.5 意外展现出音乐创作能力",
       "link": "https://simonwillison.net/2026/Oct/6/scrimshaw-jukebox/",
@@ -41,7 +60,26 @@
         "emergent capabilities",
         "text-to-audio"
       ],
-      "rank": 2
+      "rank": 3
+    },
+    {
+      "title": "Introducing Mistral Large 4: Le chonk",
+      "title_zh": "Mistral Large 4 发布：1T 参数重回竞争",
+      "link": "https://simonwillison.net/2026/Oct/6/le-chonk/",
+      "pub_date": "2026-10-06T20:18:19.000Z",
+      "summary": "## 一句话总结\nMistral 终于翻身了：新发布的 Mistral Large 4 虽然迟到，但凭借 MoE 架构和推理能力，性能评分从惨不忍睹的 9 分飙升至 38 分。\n\n## 正文\n\n### 1T 参数的“巨兽”与 MoE 架构的算盘\nMistral 这次算是重回牌桌了。他们发布了 Mistral Large 4 的预览版，这是一个参数总量高达 1 Trillion（万亿），但每次推理仅激活 49 Billion（亿）参数的模型。说白了，这就是典型的 MoE（Mixture of Experts）架构思路：把模型做得极大以容纳知识，但推理时只激活一小部分，以此在效果和成本之间找平衡。为了训练这个大家伙，Mistral 动用了自家集群里的 3,800 块 NVIDIA Grace Blackwell GPU。目前模型已经可以通过 API 体验，官方承诺开源权重会在“本月底”放出。\n\n### 推理等级的二元选择\n有意思的地方在于 API 的设计。Mistral Large 4 目前只支持两种推理等级：\"none\" 和 \"high\"。这有点像给模型装了个开关：要么不费脑子直接答，要么深思熟虑慢慢想。作者 Simon Willison 做了个很直观的测试——画一只鹈鹕骑自行车的 SVG 图。结果出人意料，设置为 \"high\" 的模型不仅画得更好，而且只消耗了 2,717 个 output tokens，反观设置为 \"none\" 的模型虽然画得差，却磨磨蹭蹭用了 3,275 个 tokens。看来在这个场景下，“多想一会儿”反而更高效。\n\n### 从“灵魂画手”到“及格画手”的跨越\n如果只看画图效果，你很难想象这是同一个模型的迭代。去年 12 月发布的 Mistral Large 3 在 Artificial Analysis 上的评分只有惨淡的 9 分，画出来的鹈鹕简直是对人类眼睛的冒犯。而 Large 4 直接把评分拉到了 38 分。虽然这个分数依然略逊于 DeepSeek 4.1 Flash（一个 552B 参数的模型），但考虑到 Mistral 从“不及格”直接跳到了“优等生边缘”，这个进步幅度是巨大的。这不仅是分数的胜利，也证明了新架构在多模态生成任务上的稳定性有了质的飞跃。\n\n### 距离 Frontier 还有半年\n当然，咱们得客观看。Mistral Large 4 并没有达到像 Fable 那种顶级模型的水准，它离当前的最前沿技术还有一段距离。但这对 Mistral 来说已经是个积极的信号了。之前的 Large 3 让人怀疑他们是不是掉队了，而现在 Large 4 证明他们依然紧跟大部队。用作者的话说，Mistral 现在的状态大概是“落后前沿水平 6 个月”。在 AI 这种按周迭代的领域，落后半年虽然尴尬，但至少还在牌桌上，没被踢出局。",
+      "source_name": "simonwillison.net",
+      "score": 15,
+      "depth": 7,
+      "novelty": 8,
+      "category": "ai-ml",
+      "keywords": [
+        "Mistral",
+        "MoE",
+        "benchmark",
+        "inference"
+      ],
+      "rank": 4
     },
     {
       "title": "Mistral Large 4",
@@ -60,7 +98,45 @@
         "Claude",
         "GPT"
       ],
-      "rank": 3
+      "rank": 5
+    },
+    {
+      "title": "EmbeddingGemma 2",
+      "title_zh": "为什么嵌入模型必须开源：EmbeddingGemma 2 的启示",
+      "link": "https://simonwillison.net/2026/Oct/6/hn-49983751/",
+      "pub_date": "2026-10-06T20:37:53.000Z",
+      "summary": "## 一句话总结\nEmbeddingGemma 2 的核心价值在于 Apache 2.0 开源协议提供的“逃生通道”：让你既能享受托管模型的便利，又彻底规避了供应商锁定带来的巨额迁移成本。\n\n## 正文\n\n### 为什么闭源 Embedding 模型是个隐形深坑？\n对于 Embedding 模型，使用闭源或仅托管的专有模型其实非常危险。说白了，这类应用的核心逻辑通常涉及成千上万、甚至百万级的向量计算，算完还得存起来留待后用。一旦供应商决定下线这个模型——哪怕他们提供了所谓“更好”的替代品——你之前存储的那些海量向量瞬间就变成了废数据。\n\n### 供应商更迭带来的昂贵“学费”\n问题的症结在于：为了升级到新模型，你不得不重新计算那几百万条存量数据。这不仅是算力成本的浪费，更是工程上的噩梦。文章提到了一个前车之鉴：2024 年 4 月 OpenAI 曾推出新模型，虽然他们当时提出“承担用户重新嵌入内容的财务成本”，但这显然不是行业常态。我们不能指望每个供应商都会这么大方地为自己的产品迭代买单。\n\n### 理想的姿势：托管便利与自主可控兼得\n有意思的地方在于，作者并不想自己运维模型。对于有经验的开发者来说，自建基础设施往往得不偿失。大家真正想要的是一种“进可攻，退可守”的状态：平时付费享受供应商的托管服务，一旦对方停止服务，手里握着开源权重的我们随时可以自己部署，或者换个供应商继续跑。EmbeddingGemma 2 正好满足了这一需求，它的 Apache 2.0 协议就是那个关键的安全网。",
+      "source_name": "simonwillison.net",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "EmbeddingGemma",
+        "embedding models",
+        "open source",
+        "vendor lock-in"
+      ],
+      "rank": 6
+    },
+    {
+      "title": "A topological model for provability logic",
+      "title_zh": "拓扑学视角下的可证明性逻辑",
+      "link": "https://www.johndcook.com/blog/2026/10/06/godel-lob/",
+      "pub_date": "2026-10-06T19:46:28.000Z",
+      "summary": "## 一句话总结\n文章揭示了 Gödel-Löb logic（可证性逻辑）的拓扑模型并不使用常见的“闭包”运算，而是依赖“导集”和“离散空间”这两个特定的拓扑概念来完成语义解释。\n\n## 正文\n\n### 真理与可证性之间的鸿沟\nGödel 的不完备性定理告诉我们要区分“真”与“可证”。有些语句虽然是真的，却无法在形式系统中被证明。如果我们用 □p 表示“p 在 Peano 算术中可证”，就得到了 Gödel-Löb logic，也就是所谓的可证性逻辑。这是一个正规模态逻辑，其核心在于一条特殊的公理——Löb's axiom：□(□p → p) → □p。\n\n### 拓扑模型并非直接复用\n既然模态逻辑有拓扑模型，那 Gödel-Löb logic 是否也有对应的拓扑解释？答案是肯定的，但它的构造方式与普通模态逻辑大相径庭。在一般的拓扑模型中，我们习惯将 ◇p 解释为集合 P 的闭包。但对于 Gödel-Löb logic，这种解释行不通，必须引入一个新的概念——导集。\n\n### 导集与闭包的微妙差异\n闭包和导集的区别虽然细微，但在这里至关重要。集合 P 的闭包是 P 本身加上它的所有极限点。而导集仅仅由极限点组成，不包含 P 中的孤立点。这里极限点的定义很严格：点 x 要成为 P 的极限点，意味着包含 x 的任何开集，除了 x 之外，必须还包含 P 中的其他点。\n\n### 空间必须是“离散的”\n更有意思的地方在于对拓扑空间本身的限制。一个能模拟 Gödel-Löb logic 的拓扑空间 X 必须是“scattered”（离散的）。这要求空间中的每一个非空开集都必须包含至少一个孤立点。孤立点就是那些没有极限点的点，它们在拓扑结构中显得格格不入。\n\n### 一个具体的例子\n文章给出了一个具体的例子来说明这种空间：设 X 为 {0} ∪ {1, ½, ⅓, ¼, …}。这个集合继承了实数轴上的标准拓扑。在这个空间里，除了 0 以外，其他所有点都是孤立点。这就满足了 scattered 空间的定义，即任何开集里都能找到孤立点。\n\n### 语义成立的条件\n最后，文章给出了判定标准。在 Gödel-Löb logic 中，一个命题被视为真，当且仅当它的拓扑解释在所有 scattered 空间中都成立。这完成了从逻辑公理到拓扑空间的映射，让我们能从几何角度审视可证性逻辑。",
+      "source_name": "johndcook.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "ai-ml",
+      "keywords": [
+        "Gödel-Löb logic",
+        "provability logic",
+        "topological models",
+        "modal logic"
+      ],
+      "rank": 7
     },
     {
       "title": "Using Parseable with Datasette for OpenTelemetry traces",
@@ -79,7 +155,7 @@
         "Datasette",
         "observability"
       ],
-      "rank": 4
+      "rank": 8
     },
     {
       "title": "Unofficial Command-Line Tool Removes Apple Intelligence From MacOS 27",
@@ -98,7 +174,43 @@
         "macOS",
         "open source"
       ],
-      "rank": 5
+      "rank": 9
+    },
+    {
+      "title": "llm-mistral 0.16",
+      "title_zh": "llm-mistral 插件更新至 0.16 版本",
+      "link": "https://simonwillison.net/2026/Oct/6/llm-mistral/",
+      "pub_date": "2026-10-06T21:32:34.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "tools",
+      "keywords": [
+        "llm",
+        "Mistral",
+        "plugin"
+      ],
+      "rank": 10
+    },
+    {
+      "title": "datasette-atom 0.11a0",
+      "title_zh": "datasette-atom 发布 0.11a0 修复兼容性",
+      "link": "https://simonwillison.net/2026/Oct/6/datasette-atom/",
+      "pub_date": "2026-10-06T17:35:39.000Z",
+      "summary": "",
+      "source_name": "simonwillison.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "tools",
+      "keywords": [
+        "Datasette",
+        "datasette-atom",
+        "compatibility"
+      ],
+      "rank": 11
     }
   ]
 }
