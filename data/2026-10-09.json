@@ -2,9 +2,47 @@
   "date": "2026-10-09",
   "total_feeds": 92,
   "success_feeds": 83,
-  "total_articles": 2323,
+  "total_articles": 2318,
   "filtered_articles": 16,
   "articles": [
+    {
+      "title": "Quoting Matthew Green",
+      "title_zh": "AI 时代加密标准可能跑不过攻击突破",
+      "link": "https://simonwillison.net/2026/Oct/9/matthew-green/",
+      "pub_date": "2026-10-09T15:02:29.000Z",
+      "summary": "## 一句话总结\nMatthew Green 警告称，AI 带来的密码学突破可能远超人类更新标准的速度，我们必须现在就为最坏情况（公钥加密失效）做提前准备。\n\n## 正文\n\n### 真正的风险在于“文明级”的底层假设崩塌\nMatthew Green 一上来就打破了对“体面”的顾虑，主动扮演那个提出最坏可能性的“傻瓜”。他给出了两个令人警醒的概率数字：我们有 1% 的可能性生活在 Minicrypt 世界，还有 15% 的可能性在功能上彻底失去对现有公钥加密算法的信心。这里提到的 Minicrypt 源自密码学家 Russell Impagliazzo 提出的理论模型，那是一个公钥加密在理论上就不存在的“荒漠”世界。说白了，这不仅仅是某个算法被攻破，而是我们赖以生存的公钥基础设施（PKI）可能面临彻底清零的风险。\n\n### AI 制造惊喜的速度与人类修补速度存在数量级鸿沟\n但问题来了，为什么这两个概率数字让人如此不安？核心矛盾在于“速度”。AI 制造“惊喜”——也就是突破性攻击——的速度，与人类更换标准、修补系统的速度，根本不在一个数量级上。即便我们拥有最先进的 AI 辅助，人类社会的标准制定、代码迁移、系统升级依然是一个极其缓慢的物理过程。当攻击者在几秒钟内通过 AI 找到破解方案时，防御者可能需要数月甚至数年才能完成标准的更替。\n\n### 唯一的解法是在危机爆发前完成“预置”\n既然速度上拼不过，那怎么办？Green 给出的结论非常直接：你无法在危机发生后恢复秩序，除非你提前做好了准备。这就像是一场不对称战争，防守方唯一的胜算在于“预置”——在黑天鹅事件发生之前，就把后量子密码学（PQC）或其他备选方案部署到位。如果等到 AI 真的撕开了现有加密体系的口子才开始行动，那这种速度上的代差将是致命的。这篇文章的核心启示就在于此：在密码学的世界里，由于 AI 的介入，迟到的防御等于没有防御。",
+      "source_name": "simonwillison.net",
+      "score": 17,
+      "depth": 8,
+      "novelty": 9,
+      "category": "security",
+      "keywords": [
+        "cryptography",
+        "Minicrypt",
+        "public-key encryption",
+        "AI safety"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Fun with low-rank vocab matrices (and a bonus test loss reduction?)",
+      "title_zh": "低秩词汇矩阵实验：参数压缩与损失变化的意外发现",
+      "link": "https://www.gilesthomas.com/2026/10/low-rank-vocab-matrices",
+      "pub_date": "2026-10-09T16:00:00.000Z",
+      "summary": "## 一句话总结\n文章探索了用低秩矩阵分解（LoRE）压缩 GPT-2 词表参数，意外发现仅对输入嵌入层做压缩反而能降低测试 Loss，起到了正则化的效果。\n\n## 正文\n\n### 参数“大户”的瘦身构想\n故事的起因是作者在 Hugging Face 上被“点名”了。有人问他有没有试过 Factorised Embeddings——就是把 ALBERT 和 LoRA 里用过的低秩分解 trick 用在模型的输入输出层。这招对参数量影响很大。以作者训练的 1.63 亿参数 GPT-2 风格模型为例，Embedding 和 Output Head 加起来占了近一半的参数（约 3900 万）。即便是更大的 MoE 模型，比如 Qwen 3.6 35B，活跃参数里也有 1/3 耗在这两个头尾矩阵上。如果能无损压缩这部分参数，就能把省下的“预算”投到更深更宽的网络结构里去。\n\n### 理论很丰满：把大矩阵拆成两个小的\n核心思路其实很简单：把一个巨大的 $m \\times n$ 矩阵，拆成 $m \\times r$ 和 $r \\times n$ 两个小矩阵相乘。只要 $r$（秩）足够小，参数量就会大幅下降。比如 GPT-2 的 Output Head，原本是 $768 \\times 50257$ 的矩阵，如果中间插一个 $r=128$ 的瓶颈层，参数量能直接缩小 6 倍。作者给这个 trick 起了个名字叫 LoRE（Low-Rank Embeddings）。直觉上，这会让模型变“笨”，因为信息必须经过一个狭窄的瓶颈，肯定会有损耗。\n\n### 实现里的细节坑：初始化决定成败\n既然要对比实验，控制变量就很关键。为了排除随机权重初始化不同的干扰，作者写了一套精巧的代码逻辑：不管用不用 LoRE，都先生成好所有可能的权重，再按需取用。此外，社区大神 Andrew 提醒了一个关键点：瓶颈层的初始化方差必须缩放，否则训练初期梯度会炸。具体做法是将靠近 Transformer 层的那个矩阵初始化标准差设为 $1/\\sqrt{r}$，这样能保证训练动态与全秩模型一致。\n\n### 意外的实验结果：输入层压缩反而涨点\n实验结果有点反直觉。如果在输入和输出层同时应用 LoRE，Loss 确实会上升（增加了 0.07 到 0.14），这符合预期。但有意思的地方在于，如果**只对输入嵌入层**应用 LoRE，测试 Loss 不升反降！通常减少参数意味着模型容量下降，Loss 应该变差，但这里却出现了“减量增效”的奇观。作者推测，这可能是因为低秩瓶颈起到了类似 Dropout 的正则化作用，迫使模型在输入端学习更鲁棒的特征，而不是死记硬背 Token ID。\n\n### 结论与启示\n虽然这个发现还需要更多实验验证，但它给模型压缩提供了一个新视角：低秩分解不只是“省参数”的工具，在某些位置（如 Input Embedding）可能本身就是一种有效的架构优化手段。对于资源受限的开发者来说，这意味着你可以用更少的显存跑更大的词表，甚至还能顺便刷一波 SOTA。作者最后也开放了代码，邀请大家一起继续探索这个有趣的现象。",
+      "source_name": "gilesthomas.com",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "ai-ml",
+      "keywords": [
+        "LoRE",
+        "low-rank factorization",
+        "embeddings",
+        "parameter efficiency"
+      ],
+      "rank": 2
+    },
     {
       "title": "Privacy policies and modal logic",
       "title_zh": "用线性时序逻辑形式化隐私政策",
@@ -22,7 +60,26 @@
         "LTL",
         "contextual integrity"
       ],
-      "rank": 1
+      "rank": 3
+    },
+    {
+      "title": "A new feature for my blog, built using my voice",
+      "title_zh": "用语音做饭时写完一个 Django 功能",
+      "link": "https://simonwillison.net/2026/Oct/9/built-using-my-voice/",
+      "pub_date": "2026-10-09T12:54:06.000Z",
+      "summary": "## 一句话总结\n作者利用 ChatGPT 的 Codex 语音模式，在做饭的半小时里“动口不动手”地完成了一个 Django 功能开发，展示了语音编程在多任务场景下的实用潜力。\n\n## 正文\n\n### 做饭时也能写代码？Codex 语音模式初体验\nSimon Willison 今天上线了一个新功能：Newsletters 索引页。这个页面聚合了他的免费 Substack 周刊和仅限赞助者查看的月刊。有意思的是，这个功能几乎全是他一边做晚饭，一边对着笔记本电脑“聊”出来的。他使用的是 ChatGPT 桌面端的 Codex 标签页，配合语音对话模式。核心流程很简单：在本地开发环境启动服务，让 AI 预览站点，然后点击“开始新的语音聊天”，就可以把电脑扔在一边，开始“口头编程”了。\n\n### 充满“废话”的指令，模型竟然听懂了\n作者对需求很清晰，但这涉及到 Django 的模型、迁移、视图模板以及多个数据源的导入脚本。按照常理，这需要精准的逻辑描述。但实际的语音转录却充满了口语停顿和自我纠正，比如“哦，等等……我不希望它出现在标签页里……但在日期归档页里得有”。即便指令支离破碎且包含大量语气词，运行在 GPT-6 Astra High 上的模型依然精准捕捉到了意图：新建模型、配置后台、编写导入逻辑，甚至处理好了搜索索引的集成。\n\n### 半小时搞定全套逻辑，连逆向工程都做了\n半小时的语音交互成果惊人。系统不仅创建了 Django 模型和迁移文件，还实现了四个数据源的导入：通过 RSS 抓取最新的 Substack 内容；利用 GPT-6 Astra 已知的未公开 API 分页抓取历史存档；从 GitHub 仓库拉取已发布的月刊；甚至读取了私有仓库中最新的赞助者专享内容。唯一的小插曲是，由于涉及私有仓库的 API Key 配置，作者不得不暂时中止语音操作，准备后续手动处理。\n\n### 代码审查环节，还是键盘更靠谱\n功能基本完成后，作者让 Codex 创建分支并提交 PR。在 GitHub 上审查代码时，他发现了一个问题：AI 在某个导入脚本中调用了 Git 子进程。考虑到要从私有 Git 仓库拉取数据，作者认为改用 API 调用会更稳妥。这时候他切回了传统的打字模式，让 Codex 修改了导入机制，并微调了页面展示。又花了半小时的键盘交互，代码才达到部署标准。\n\n### 语音编程虽好，但难成日常主力\nOpenAI 很喜欢演示这种语音编程场景，效果确实炫酷，尤其是配合了可视化预览功能。但作者认为这很难成为日常开发的主力。一旦涉及到细节调整，比如粘贴报错信息、精确指定代码块，打字依然比语音描述高效得多。而且，这种工作方式对环境要求极高——在开放式办公室里对着电脑自言自语，画面太美不敢想。\n\n### 杀手级应用：释放双手的多任务处理\n这个模式的真正价值在于“多任务”。以前做饭时只能听听播客，现在可以利用这段时间写代码。虽然还没法完全替代键盘，但在你需要双手忙碌时，这种能“听懂人话”且能实时看到开发界面的 Agent，确实提供了一种全新的生产力可能。",
+      "source_name": "simonwillison.net",
+      "score": 15,
+      "depth": 7,
+      "novelty": 8,
+      "category": "ai-ml",
+      "keywords": [
+        "voice coding",
+        "GPT-6 Astra",
+        "Codex",
+        "Django"
+      ],
+      "rank": 4
     },
     {
       "title": "“Getting off the Modernization Treadmill”",
@@ -41,7 +98,7 @@
         "accessibility",
         "ideology"
       ],
-      "rank": 2
+      "rank": 5
     },
     {
       "title": "Let’s Deconstruct Photoshop",
@@ -60,7 +117,7 @@
         "vibe coding",
         "open source"
       ],
-      "rank": 3
+      "rank": 6
     },
     {
       "title": "The Rise and Fall of the Plasma Screen",
@@ -79,7 +136,7 @@
         "LCD",
         "CRT"
       ],
-      "rank": 4
+      "rank": 7
     },
     {
       "title": "Apple Is Slow-Rolling iOS 27 Adoption, So Far",
@@ -98,7 +155,7 @@
         "Apple",
         "Siri"
       ],
-      "rank": 5
+      "rank": 8
     },
     {
       "title": "iFlac: Sync your FLAC files to your iPhone from Linux",
@@ -117,7 +174,7 @@
         "libimobiledevice",
         "SQLite"
       ],
-      "rank": 6
+      "rank": 9
     },
     {
       "title": "If one anti-malware software is good, does that make two better?",
@@ -136,7 +193,7 @@
         "Windows",
         "conflict"
       ],
-      "rank": 7
+      "rank": 10
     },
     {
       "title": "Swemak: Colemak for Swedish",
@@ -155,7 +212,7 @@
         "Swedish",
         "ergonomics"
       ],
-      "rank": 8
+      "rank": 11
     },
     {
       "title": "Get Player Stats From Your Minecraft Server Logs",
@@ -174,7 +231,7 @@
         "Go",
         "SQLite"
       ],
-      "rank": 9
+      "rank": 12
     },
     {
       "title": "ttok 1.0",
@@ -193,7 +250,7 @@
         "GPT-5",
         "GPT-6"
       ],
-      "rank": 10
+      "rank": 13
     },
     {
       "title": "When Apple Records sued Apple Computer",
@@ -212,7 +269,7 @@
         "lawsuit",
         "Beatles"
       ],
-      "rank": 11
+      "rank": 14
     },
     {
       "title": "20 Minutes of Political Debate, Brought to You by Commercial Breaks",
@@ -231,7 +288,26 @@
         "podcasts",
         "Neil Postman"
       ],
-      "rank": 12
+      "rank": 15
+    },
+    {
+      "title": "Commodore’s knockoff Atari joystick from 1982",
+      "title_zh": "1982 年 Commodore 抄袭 Atari 游戏杆败诉始末",
+      "link": "https://dfarq.homeip.net/commodores-knockoff-atari-joystick-from-1982/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=commodores-knockoff-atari-joystick-from-1982",
+      "pub_date": "2026-10-09T11:00:47.000Z",
+      "summary": "1982 年 10 月，Atari 起诉 Commodore 的 VIC-1311 游戏杆侵犯其 CX40 专利。VIC-1311 外观几乎与 Atari CX40 完全相同，仅颜色改为白色并印有 Commodore 标志，内部 PCB 也是手工临摹 Atari 的设计，零件甚至可以互换。Atari 指控 Commodore 使用低质量塑料导致产品易损坏，损害 Atari 声誉。同年 11 月 9 日，Atari 获得初步禁令，Commodore 被迫下架该产品。Commodore 随后推出重新设计的 1311 游戏杆，将按钮移至中间位置、摇杆改为三角形，但手感僵硬、质量低劣，于 1984 年停产。讽刺的是，1987 年 Atari 为其 XE 游戏系统推出了浅灰色版 CX40，外观酷似当年的 VIC-1311。这段历史展示了早期个人电脑行业专利战的激烈程度，也解释了为何收藏市场上会出现无 Commodore 标志的白色 Atari 风格游戏杆。",
+      "source_name": "dfarq.homeip.net",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "Commodore",
+        "Atari",
+        "joystick",
+        "patent"
+      ],
+      "rank": 16
     },
     {
       "title": "Quoting Carson Gross",
@@ -250,7 +326,7 @@
         "career",
         "problem-solving"
       ],
-      "rank": 13
+      "rank": 17
     },
     {
       "title": "ttok 0.4",
@@ -269,7 +345,7 @@
         "CLI",
         "token counting"
       ],
-      "rank": 14
+      "rank": 18
     },
     {
       "title": "Theatre Review: Hay Fever at Wyndham's Theatre ★★★★⯪",
@@ -287,7 +363,7 @@
         "review",
         "West End"
       ],
-      "rank": 15
+      "rank": 19
     },
     {
       "title": "Let’s Check In on Trump’s Blog",
@@ -304,7 +380,26 @@
         "blog",
         "politics"
       ],
-      "rank": 16
+      "rank": 20
+    },
+    {
+      "title": "Concert Review: London Voices - Video Games Go Choral ★★★★☆",
+      "title_zh": "伦敦合唱团演绎游戏音乐现场回顾",
+      "link": "https://shkspr.mobi/blog/2026/10/concert-review-london-voices-video-games-go-choral/",
+      "pub_date": "2026-10-09T11:34:09.000Z",
+      "summary": "",
+      "source_name": "shkspr.mobi",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "concert review",
+        "video game music",
+        "London Voices",
+        "a cappella"
+      ],
+      "rank": 21
     },
     {
       "title": "Joz Announces ‘Welcome Home’ Keynote Coming Tuesday, 13 October",
@@ -322,7 +417,7 @@
         "keynote",
         "announcement"
       ],
-      "rank": 17
+      "rank": 22
     }
   ]
 }
