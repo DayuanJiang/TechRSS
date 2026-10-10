@@ -1,9 +1,9 @@
 {
   "date": "2026-10-10",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2323,
-  "filtered_articles": 15,
+  "success_feeds": 82,
+  "total_articles": 2293,
+  "filtered_articles": 16,
   "articles": [
     {
       "title": "FBI Arrests Founder of Ransomware Negotiation Firm",
@@ -139,6 +139,25 @@
       "rank": 7
     },
     {
+      "title": "This Week in Package Management: 10 October 2026",
+      "title_zh": "本周包管理器动态：uv 默认 Python 3.15、Gradle 修复高危漏洞、SCORED 会议发布供应链安全研究",
+      "link": "https://nesbitt.io/2026/10/10/this-week-in-package-management.html",
+      "pub_date": "2026-10-10T10:00:00.000Z",
+      "summary": "## 一句话总结\n本周包管理动态：Astral 推动构建性能优化，pnpm 引入依赖权限管控，SCORED 会议揭示 SBOM 现状与恶意包治理难题。\n\n### Python 与 JS 工具链的新动作：性能与安全并重\n\nAstral 的 `uv 0.13.0` 把默认 Python 版本提到了 3.15，并开始支持 Windows ARM64 原生解释器。更有意思的是他们和 Python 社区合作的 `build-lazy-imports` 预览功能，让构建后端在懒加载模式下运行，实测 wheel 构建速度提升了 18%。这波优化直接切入了构建流程的痛点。\n\nJS 阵营这边，`pnpm 12.11` 带来了一个值得关注的特性：它开始管理 Rust 工具链，并能将依赖包里的 `SKILL.md` 技能文件链接到 `.claude/skills` 目录。这背后是一套新的 `permissions` 权限设置，明确记录每个依赖能做什么，把\"构建\"能力纳入了管控范围。`Bun 1.4.3` 则在安装速度上做文章，对于不进 `node_modules` 的包（比如捆绑依赖或跨平台包）直接跳过下载。安装 `react-native` 时，tarball 下载量从 196 个骤降到 1 个，这优化力度相当实在。\n\n### 安全漏洞频发，Gradle 与 Go 紧急修复\n\n安全方面，`Gradle 9.8.1` 修复了三个高危漏洞，核心问题都在反序列化上。Worker 到 Daemon 通道、Client 到 Daemon 通信都存在未经验证的反序列化风险。更隐蔽的是，SSL 连接失败后仓库配置依然生效，这可能导致构建过程被恶意构件劫持。`Go` 语言也在 1.27.2 和 1.26.9 版本中修复了 `go` 命令及相关库的安全问题。\n\n`pnpm` 也没闲着，`12.10` 版本堵住了路径穿越漏洞，防止依赖版本字符串写出全局虚拟存储之外。它还修复了锁文件覆盖配置依赖完整性的问题，现在 `pnpm audit signatures` 会严格检查锁文件记录的完整性。\n\n### SCORED 会议：SBOM 的理想与现实差距\n\n本周在布拉格举行的 SCORED 研讨会抛出了不少硬核研究。关于 SBOM（软件物料清单）的现状，结论有点扎心：Syft、Trivy 和 GitHub 依赖图对同一个项目生成的 SBOM 各不相同。研究发现，这种差异大部分是系统性的，源于各工具对依赖范围、命名和来源的处理方式不同。说白了，标准模糊导致了执行层面的混乱。\n\n那怎么解决？有人提出了新思路：与其依赖静态分析，不如直接盯着构建过程。《Over the Shoulder》论文介绍了 SBOMit 工具，它用 eBPF 监控构建时的文件系统和网络活动，将其转化为包的身份信息。这种方法虽然带来了约 12.4% 的运行时开销，但准确性有了质的飞跃。\n\n### 恶意包治理：八天隔离期与供应链风险\n\n在恶意包治理方面，一项针对 npm 的研究分析了 520 个恶意版本。数据显示，69% 的攻击窗口在发布后八天内关闭；如果按下载量加权，这个比例升至 94.2%。作者建议设立八天的\"最小发布年龄\"作为缓冲期，这为 `cargo-semver-checks` 等工具引入的 `-Z min-publish-age` 机制提供了数据支撑。\n\n供应链风险不仅存在于代码库。关于 Hugging Face 模型的研究发现，不同的模型序列化格式依赖各自的反序列化库。这意味着，加载一个模型就可能把一个反序列化库引入你的供应链，攻击面比想象中要大。另外，针对 Jenkins 插件的安全预测研究也提了个醒：初期高达 0.96 的 ROC-AUC 分数竟源于标签泄露，修正后的预测能力仅为 0.67。这再次印证了机器学习在安全领域应用的脆弱性。\n\n### 优化与反思：从元数据瘦身到依赖信任\n\nvlt 博客分享了一个极致的优化案例：通过裁剪 `packument` 元数据，把 Vite 的元数据从 4.41 MB 缩减到了 104 KB。核心思路是删掉那些压缩效果差的 base64 和十六进制字符串（如签名和摘要），但保留 `time` 和 `license` 等关键字段，以便支持最小发布年龄检查。\n\n与此同时，GNOME 开发者 Michael Catanzaro 的反思文章引发了关注。他观察到 GNOME 的 CVE 数量激增，主要源于 AI 分析工具对捆绑库的深度扫描。他直言不讳地反对在 GNOME 中引入 Rust，理由正是 Cargo 依赖带来的供应链风险。这番言论在推崇内存安全语言的当下，显得颇为另类，但也点出了依赖管理的核心矛盾：我们是否在用复杂的依赖树换取安全感？",
+      "source_name": "nesbitt.io",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "tools",
+      "keywords": [
+        "package management",
+        "supply chain security",
+        "SCORED",
+        "vulnerability"
+      ],
+      "rank": 8
+    },
+    {
       "title": "Pluralistic: Thwarted (09 Oct 2026)",
       "title_zh": "亿万富翁的「不可阻止」特权：从芝加哥鼠患到 AI 狂热",
       "link": "https://pluralistic.net/2026/10/09/impunitism/",
@@ -155,7 +174,26 @@
         "AI",
         "power"
       ],
-      "rank": 8
+      "rank": 9
+    },
+    {
+      "title": "Some quick thoughts on Unit Testing ActivityPub",
+      "title_zh": "ActivityPub 单元测试的四大难点与开源测试集",
+      "link": "https://shkspr.mobi/blog/2026/10/some-thoughts-on-unit-testing-activitypub/",
+      "pub_date": "2026-10-10T11:34:15.000Z",
+      "summary": "## 一句话总结\n作者在为 ActivityPub 编写单元测试时发现，真正的挑战不在于测试逻辑本身，而在于协议规范的碎片化以及难以在隔离环境中模拟真实的联邦通信。\n\n## 正文\n\n### 单元测试的理想很丰满，现实很骨感\n作者首先坦白，自己并不是 \"Test Driven Development\" 的信徒，比起写测试，他更喜欢直接在生产环境调试——虽然刺激，但对心脏不好。单元测试的核心逻辑听起来很简单：给函数喂数据，看它怎么吐结果。输入合法数据返回 true，输入非法数据返回 false，这看起来是 \"Easy peasy lemon squeezy\"。但当他真的开始为 NLnet 资助的 ActivityBot 项目编写测试时，才发现 ActivityPub 的水有多深。\n\n### 文本校验：规范藏在哪？\n最基础的测试，比如验证用户名格式（如 `@edent@mastodon.social`），一开始就碰了钉子。我们通常假设用户名以 `@` 开头，中间用 `@` 分隔用户和服务器，但细节经不起推敲。服务器域名可以包含非 ASCII 字符的国际化域名甚至 Emoji 域名，那用户部分呢？能不能有点号？能不能有撇号？核心痛点在于：ActivityPub 的各种组件规范散落各处，想找全定义并不容易。\n\n### 消息验证：如何确信对方能懂？\n搞定了文本，接下来是消息体。WebFinger 的响应到底长什么样？哪些字段是必须的？当你发出一条消息，怎么保证其他 ActivityPub 服务器能正确解析？虽然有社区提供的 JSON Schemas 可以用来校验某些消息类型，但这依然掩盖不了一个事实：规范太分散了。你很难找到一份统一的文档来告诉你，一条标准的 \"Follow\" 消息到底该长什么样。\n\n### 签名验证：最难啃的骨头\nHTTP Signatures 是 ActivityPub 安全的基石，也是测试的重灾区。验证签名需要收集大量真实的签名样本，并在测试中重放（Replay）它们，作者正在整理并分享这些样本。但生成签名更麻烦——你在本地测得再完美，也没法保证别的服务器真的认你的签名。唯一的真理在真实的联邦网络交互中。\n\n### 联邦通信：本地跑得通不代表上线能行\n这就引出了最尴尬的问题：单元测试全过，不代表你能和其他服务器通信。发送签过名的请求还算容易自动化，但接收消息就难了，因为你得控制一个外部服务器主动给你发消息。虽然 Mastodon API 提供了一些交互测试的可能，但前提是你的服务器必须是公开可访问的。这意味着很多测试无法在完全隔离的本地环境完成。\n\n### 开源共享，利人利己\n面对这些坑，作者的解决方案很务实：把所有测试代码、收集到的消息样本和签名都开源到了 GitLab 上。既然规范分散，就整理样本；既然签名难测，就共享数据集。如果你也在做 ActivityPub 相关开发，这些资源或许能帮你少走点弯路。",
+      "source_name": "shkspr.mobi",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "ActivityPub",
+        "unit testing",
+        "HTTP Signatures",
+        "federated systems"
+      ],
+      "rank": 10
     },
     {
       "title": "Lobbying",
@@ -174,7 +212,26 @@
         "corruption",
         "Super PAC"
       ],
-      "rank": 9
+      "rank": 11
+    },
+    {
+      "title": "The Infogrames-Atari merger of 2008",
+      "title_zh": "Atari 从破产边缘到复古游戏复兴的十六年",
+      "link": "https://dfarq.homeip.net/the-infogrames-atari-merger-of-2008/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=the-infogrames-atari-merger-of-2008",
+      "pub_date": "2026-10-10T11:00:09.000Z",
+      "summary": "2008 年 Infogrames 以 1100 万美元收购 Atari 剩余 49% 股份，当时《纽约时报》预测这将是 Atari 的终结。相反，Infogrames 于 2009 年更名为 Atari，经历 2013 年破产后出售大量 IP，尝试加密货币、赌博业务和新款主机均未成功。2021-2022 年 Atari 退出加密货币和赌博业务，转向复古游戏赛道，收购 Intellivision 主机及软件库，回购此前出售的部分资产。2026 财年 Atari 收入达 5600 万欧元，同比增长 66%，连续三年增长，创十多年来最高水平。现代 Atari 资产总额 1.051 亿欧元，主营复古游戏发行、复刻主机和卡带销售，其商业模式可能启发了 Commodore 2025 年的复出。",
+      "source_name": "dfarq.homeip.net",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "Atari",
+        "Infogrames",
+        "retro gaming",
+        "bankruptcy"
+      ],
+      "rank": 12
     },
     {
       "title": "Name Shame",
@@ -193,7 +250,7 @@
         "etymology",
         "onomastics"
       ],
-      "rank": 10
+      "rank": 13
     }
   ]
 }
