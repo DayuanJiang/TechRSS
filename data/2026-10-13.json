@@ -1,9 +1,9 @@
 {
   "date": "2026-10-13",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2563,
-  "filtered_articles": 11,
+  "success_feeds": 84,
+  "total_articles": 2533,
+  "filtered_articles": 10,
   "articles": [
     {
       "title": "from plesiochronous to synchronous",
@@ -44,6 +44,25 @@
       "rank": 2
     },
     {
+      "title": "C++ futures part 1: The mental model",
+      "title_zh": "C++ future 的心智模型：基于 source 的统一设计",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20261012-00/?p=112767/",
+      "pub_date": "2026-10-12T14:00:00.000Z",
+      "summary": "## 一句话总结\nC++ 标准库中看似复杂的 `std::future` 和 `std::promise` 体系，其实本质上都是基于一个名为“source”的底层状态对象构建而成的。\n\n## 正文\n\n### 抽象出一个“Source”，问题就清晰了\nC++ 标准库里有一组让人容易晕头转向的类：`std::promise`、`std::packaged_task`、`std::async` 还有 `std::future`。它们看起来各不相同，但其实都源于同一个核心概念。标准库把这个概念称为“state”，但为了方便理解，作者给它起了个更直观的名字：`source`。说白了，这玩意儿就像 C# 里的 `TaskCompletionSource`，是真正生产值的地方。它只负责做四件事：设值、设异常、等待结果、取值。\n\n### 一个简单的类，藏着并发编程的精髓\n为了把这事说透，作者展示了一个简化版的 `source` 类实现。它的核心数据结构其实很简单：用一个 `enum` 做判别式，记录当前是“空”、“有值”、“有异常”还是“已消费”。因为结果要么是值要么是异常，所以用了 `union` 来存。当然，既然是多线程环境，必须得有一把 `std::mutex` 和一个 `std::condition_variable` 来保平安。这套组合拳保证了线程安全，也提供了等待通知机制。\n\n### 只能设值一次，这是铁律\n往 `source` 里塞值的时候，有个硬性规定：只能设值一次。不管是调 `set_value` 还是 `set_exception`，进门第一件事就是检查当前状态是不是“空”。如果里面已经有东西了，直接抛出 `std::future_error` 异常，绝不姑息。如果检查通过，就用 `placement new` 把值或者异常存进 `union` 里，把状态标记好，最后通过条件变量通知所有在等的线程。这套逻辑非常严格，保证了状态转换的原子性。\n\n### 等待的艺术：为何 Condition Variable 不可或缺\n怎么把值取出来？第一步得先“等”。`wait()` 的逻辑很直白：加锁，看看有没有值，没有就死等条件变量。有意思的是作者提到了一个细节：为什么非要用 `condition_variable`？其实是为了支持 `wait_for` 这种带超时的等待。如果不需要超时功能，完全可以拿 `std::atomic` 的 `wait` 和 `notify_all` 来替代，代码还能更精简一点。\n\n### 取值时的“埋雷”设计\n等到状态变了，接下来就是取值。这里有个关键方法 `can_get()`，它做了两道防线。第一，检查状态是不是“已消费”，如果是，说明你取了两次，直接抛 `future_already_retrieved` 错误。第二，如果里面存的是异常，它不返回任何东西，直接 `rethrow` 把异常抛出去。这意味着，如果生产端出了错，消费端在 `get()` 的时候会重新遭遇那个异常，而不是拿到一个空对象。\n\n### Get 和 Consume 的区别，决定了所有权的归属\n最后，取值有两种姿势：`get()` 和 `consume()`。`get()` 返回的是 `const T&` 引用，你可以反复读，但值还在 `source` 里。而 `consume()` 就不一样了，它返回 `T&&`，直接把值 `move` 走，顺手把状态标记为“已消费”。这就像是租房和买房的区别：前者你只有居住权，后者你拿到了房产证，原来的地方就空了。理解了这个 `source` 的骨架，下次我们再看 `promise` 和 `future` 这些上层建筑，就会发现它们不过是这颗核心的皮囊而已。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "C++",
+        "std::future",
+        "concurrency",
+        "threading"
+      ],
+      "rank": 3
+    },
+    {
       "title": "Hello Python 3.15, goodbye 3.10, and now I can use 3.11",
       "title_zh": "Python 3.15 新特性：延迟导入、推导式解包与内置采样分析器",
       "link": "https://simonwillison.net/2026/Oct/12/python-3-15/",
@@ -60,7 +79,7 @@
         "profiling",
         "Tachyon"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Categorical models of logics",
@@ -79,7 +98,7 @@
         "modal logic",
         "categorical semantics"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "web-edit 0.1a0",
@@ -98,7 +117,7 @@
         "Tailscale",
         "GPT-6"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Nvidia’s first GPU: GeForce 256",
@@ -117,7 +136,7 @@
         "Nvidia",
         "3dfx"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "The X is Off-Target",
@@ -136,7 +155,7 @@
         "Bluesky",
         "platform fragmentation"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "datasette-ports 0.4",
@@ -154,7 +173,7 @@
         "profiler",
         "Python 3.15"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Now That’s What I Call Technical Debt!",
@@ -173,7 +192,7 @@
         "maintenance",
         "satire"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "The Dock on Mac, From OS 10 to macOS 27",
@@ -192,7 +211,7 @@
         "design history",
         "app icons"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Mark Stephens, a.k.a. Robert X. Cringely, Died at 73",
@@ -210,7 +229,7 @@
         "Robert X. Cringely",
         "journalism"
       ],
-      "rank": 11
+      "rank": 12
     }
   ]
 }
