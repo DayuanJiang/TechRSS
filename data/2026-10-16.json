@@ -1,9 +1,9 @@
 {
   "date": "2026-10-16",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2534,
-  "filtered_articles": 10,
+  "success_feeds": 83,
+  "total_articles": 2509,
+  "filtered_articles": 11,
   "articles": [
     {
       "title": "Anthropic tells investors quarterly revenue up nearly 50% to $16.8bn ahead of IPO",
@@ -44,6 +44,44 @@
       "rank": 2
     },
     {
+      "title": "Chirp Pong",
+      "title_zh": "用音频信号同步的双人 Pong 游戏",
+      "link": "https://simonwillison.net/2026/Oct/15/chirp-pong/",
+      "pub_date": "2026-10-15T19:47:52.000Z",
+      "summary": "## 一句话总结\n作者验证了一个疯狂的想法：让两台手机通过麦克风收发“chirp”音频信号来同步游戏状态，在纯静态 HTML 中实现了无需服务器的双人 Pong 对战。\n\n## 正文\n\n### 起因：一个反直觉的游戏构想\n作者想做一个实验性的双人游戏，但不想走常规的网络连接路子。他的想法很“野”：两台手机靠近，通过麦克风和扬声器收发音频信号来同步游戏状态。整个游戏跑在静态 HTML 里，不需要 WebSocket，不需要后端服务器，甚至连网络连接都不用。这听起来像是回到了红外传输的年代，但技术栈完全是现代的 Web API。\n\n### 核心挑战：把游戏状态塞进“叫声”里\n问题的核心在于，怎么用音频信号可靠地传输数据？作者选用了“chirp”技术——一种短促的、类似鸟叫的音频信号。这种技术之前多用于数据广播和设备配对，现在被拿来当“游戏服务器”用。麦克风 API 捕捉到对方的 chirp 信号后，解码出游戏状态，比如球的位置、速度和玩家的挡板位置。难点在于，音频传输既不可靠又容易受环境噪音干扰，还得保证实时性。\n\n### 实现细节：静态页面里的“黑科技”\n有意思的地方在于，这完全是浏览器端的技术秀。Web Audio API 负责生成和捕捉音频，WebRTC 的 getUserMedia 拿麦克风权限，所有逻辑都在前端跑。两台手机之间没有任何握手协议，就是单纯地“喊”和“听”。作者提到，这种设计对设备距离有要求——手机得靠得足够近，麦克风才能清晰捕捉到对方的扬声器发出的 chirp。\n\n### 结果：真的能玩\n实验结果是，这个方案可行。游戏能跑起来，两台手机能通过音频信号实时同步状态。虽然作者没有给出具体的延迟数据或丢包率，但他确认了核心机制是work的。这为那些需要“近场交互”但不想搭建网络基础设施的场景提供了一个新思路——比如面对面交换数据、本地多人游戏，或者某些离线场景下的设备协作。",
+      "source_name": "simonwillison.net",
+      "score": 15,
+      "depth": 7,
+      "novelty": 8,
+      "category": "tools",
+      "keywords": [
+        "Claude Code",
+        "Web Audio API",
+        "game",
+        "prototype"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "C++ futures part 4: What if I want an immediate on-thread std::async?",
+      "title_zh": "三种方法构造立即完成的 std::future",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20261015-00/?p=112776/",
+      "pub_date": "2026-10-15T14:00:00.000Z",
+      "summary": "## 一句话总结\n当接口强制要求 `std::future` 但你只想在当前线程同步执行时，可以用 `std::promise`、`std::packaged_task` 或 `std::async(std::launch::deferred)` 三种方式来包装一个“已完成的 Future”。\n\n## 正文\n\n### 标准库不支持，因为看起来没意义\n上回提到，C++ 标准库的设计者并没有提供“立即在当前线程执行”的 `std::async` 选项。这背后的逻辑很直白：如果你只是想在当前线程立刻算出一个结果，直接调用函数不就完了？何必非要绕一圈去创建一个 future 对象？在他们看来，这种需求纯属多此一举。\n\n### 但现实需求往往身不由己\n但问题在于，真实的开发场景往往不由你做主。你可能正在对接一个第三方组件，它的接口签名强制要求传入一个 `std::future`。这时候，你手里只有一个现成的计算结果，或者只想同步跑一段逻辑，却不得不把它“伪装”成一个 future 对象交出去。那怎么办？\n\n### 方案一：手动操作 promise\n最直观的思路是手动搭建管道。你可以创建一个 `std::promise`，直接把计算结果塞进去，然后把对应的 future 扔给调用方。代码逻辑很简单：在 `try` 块里调用函数并 `set_value`，捕获异常则 `set_exception`。这相当于手动完成了一次状态转移，把一个同步操作的结果“注入”到了异步框架里。\n\n### 方案二：让 packaged_task 代劳\n如果你觉得手动处理异常太繁琐，`std::packaged_task` 能帮你省点心。它内部封装了异常处理逻辑，你只需要把可调用对象包装成 task，直接在当前线程调用它，最后返回其 future。这就把“函数调用”和“future 生成”这两个步骤封装得更加紧凑，代码也更干净。\n\n### 方案三：利用 deferred 策略的“空城计”\n还有一个更巧妙的办法。既然 `std::async` 支持 `std::launch::deferred` 策略（延迟到 `wait()` 时才在当前线程执行），那我们可以利用这个特性：创建一个 deferred 任务，紧接着立刻调用 `wait()`。这相当于让任务“刚注册就被触发”，从而在当前线程同步执行完毕。虽然绕了个弯，但代码写起来最省事，连异常处理都由标准库接管了。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 12,
+      "depth": 7,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "std::future",
+        "std::async",
+        "C++",
+        "concurrency"
+      ],
+      "rank": 4
+    },
+    {
       "title": "What was a Token Ring network?",
       "title_zh": "Token Ring：输给以太网的 IBM 网络技术",
       "link": "https://dfarq.homeip.net/what-was-a-token-ring-network/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=what-was-a-token-ring-network",
@@ -60,7 +98,26 @@
         "networking",
         "IBM"
       ],
-      "rank": 3
+      "rank": 5
+    },
+    {
+      "title": "We Need All the Disciplines",
+      "title_zh": "AI 时代仍需多学科协作",
+      "link": "https://blog.jim-nielsen.com/2026/we-need-all-disciplines/",
+      "pub_date": "2026-10-15T19:00:00.000Z",
+      "summary": "软件开发需要产品、设计、工程、运维等多学科协作，每个学科都带来独特的价值判断和视角。作者指出，虽然与人类协作看起来比完全交给机器更",
+      "source_name": "blog.jim-nielsen.com",
+      "score": 8,
+      "depth": 3,
+      "novelty": 5,
+      "category": "opinion",
+      "keywords": [
+        "collaboration",
+        "disciplines",
+        "LLM",
+        "software development"
+      ],
+      "rank": 6
     },
     {
       "title": "Secret Documents Reveal Donors Behind $330 Million for Trump’s Ballroom — Apple and Nvidia Top the List at $25 Million Each",
@@ -79,7 +136,7 @@
         "fundraising",
         "transparency"
       ],
-      "rank": 4
+      "rank": 7
     }
   ]
 }
