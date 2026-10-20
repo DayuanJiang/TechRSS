@@ -6,6 +6,25 @@
   "filtered_articles": 17,
   "articles": [
     {
+      "title": "ClickHouse Will Let You Be Wrong at Scale",
+      "title_zh": "ClickHouse 生产踩坑：静默失败与 84 倍性能损失",
+      "link": "https://matduggan.com/clickhouse-will-let-you-be-wrong-at-scale/",
+      "pub_date": "2026-10-20T14:01:12.000Z",
+      "summary": "## 一句话总结\nClickHouse 极其强大但也极其“纵容”，它不会阻止你写出错误的查询，只会默默让你为错误付出性能代价，唯有建立严格的验证习惯才能驾驭。\n\n## 正文\n\n### “沉默”的 ClickHouse，是你最大的敌人\n作者这次是想搞个“压力测试”：每天摄入 20 亿行网络防火墙日志，保留 14 天，还要在 Grafana 里做复杂的即席查询。原本以为是个常规操作，结果踩了一堆坑。核心痛点在于，ClickHouse 简直就是那种“老好人”同事——你写错了它不报错，只会让你“错得轰轰烈烈”。比如一个看起来没问题的查询，可能扫描了原本不需要的 84 倍的数据量；一个配置错误的 Projection 也不会报错，只是慢得像蜗牛。所以，在这个栈里生存的第一法则，就是别信直觉，信数据，`system.query_log` 是你唯一的朋友。\n\n### 手写过滤条件？那是性能杀手\n一开始，作者像写普通 SQL 那样在 Grafana 里手写过滤条件，比如用 `WHERE (empty({{observer}}) OR observer IN {{observer}})` 这种“防护性”写法。结果惨不忍睹：同样的查询，这种写法比直接写 `observer = 'one-device'` 多读了 84 倍的行数，耗时增加了 10 倍。原因在于这种写法导致 Primary Key Pruning（主键裁剪）失效，变成了全分区扫描。解决办法是放弃手写 WHERE 子句，改用 Grafana 插件原生的 Ad-hoc Filter。它不会改写你的 SQL，而是通过 `additional_table_filters` 设置在查询规划阶段介入，从而实现精准裁剪。\n\n### 排序键的设计，一步错就是“重新来过”\n在设计表结构时，作者按常规思维把低基数的 `observer` 放在了排序键的最前面。但他忽略了一点：Grafana 的查询几乎总是带时间范围的。在 ClickHouse 里，排序键就像电话簿，只有前缀匹配才能走快速定位路径。如果你把时间戳放在后面，查询最新几条数据时，系统就得遍历所有“设备”的数据块去找时间戳，效率极低。修正方案是把时间桶 `toStartOfHour(Timestamp)` 提到最前面。最坑的是，`MODIFY ORDER BY` 并不能让你随意调整列的顺序，一旦设计失误，唯一的补救办法就是建新表、导数据、再做原子切换——这可是 520 GiB 的数据量啊。\n\n### Projection 很美好，但路由规则极其死板\nProjection（投影）看起来是个银弹，能在同一张表里存多份不同排序的数据。但它的路由机制非常“死板”，简直像个只认名单的夜店保安。如果你的查询里用了 `toStartOfInterval`，而 Projection 里定义的是 `toStartOfHour`，哪怕这两个函数在逻辑上等价，ClickHouse 也不会路由到 Projection，而是直接回原表全量扫描。更麻烦的是，Projection 默认不回填历史数据，而且查询里的聚合函数必须是 Projection 定义子集（比如定义了 `sum` 查 `avg` 就不行）。只要有一点不匹配，它就“静默失败”，让你在慢查询的泥潭里挣扎。\n\n### Grafana 插件的“坑”，往往在细节里\n虽然 Grafana 的 ClickHouse 插件很好用，但也有不少“暗礁”。比如在配置 Ad-hoc Filter 时，如果你填错了表名，或者没用完整的 schema 名，插件会“静默忽略”，导致查询结果看起来是对的，实际上扫描了 7000 万行多余数据。而且 Grafana 的 UI 目前不支持跨列的 OR 逻辑，时间桶的边界处理也容易出 bug。唯一的应对策略就是“防御性编程”：改一个过滤条件，就盯着面板上的行数变化，确认它真的生效了。\n\n### 生态缺失的痛：只能靠自己\n最后，作者吐槽了 ClickHouse 生态的缺失。他想找个 SQL Linter（代码检查工具）来避免低级错误，结果找不到，只能自己造轮子。做 Schema 变更时，也缺乏成熟的迁移工具来评估影响和回滚。归根结底，ClickHouse 是个极其强大的工具，但在复杂场景下，它缺乏足够的“护栏”。如果你想用它搞定大规模的定制化需求，必须做好心理准备：没人会替你挡子弹，你得自己穿上铠甲，时刻盯着 `query_log`，别让它“温柔”地把你带进坑里。",
+      "source_name": "matduggan.com",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "engineering",
+      "keywords": [
+        "ClickHouse",
+        "observability",
+        "query optimization",
+        "Grafana"
+      ],
+      "rank": 1
+    },
+    {
       "title": "Refactoring factorials",
       "title_zh": "阶乘分解的渐近估计获证明",
       "link": "https://www.johndcook.com/blog/2026/10/19/refactoring-factorials/",
@@ -22,7 +41,7 @@
         "number theory",
         "OEIS"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "My obituary for programming",
@@ -41,7 +60,7 @@
         "career satisfaction",
         "automation"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Why do we need ud2 when int 6 is right there?",
@@ -60,7 +79,7 @@
         "exception handling",
         "fault vs trap"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Time Magazine Profiles John Ternus",
@@ -79,7 +98,7 @@
         "foldable",
         "Siri AI"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Laypeople support technical fields for technology, not art",
@@ -98,7 +117,45 @@
         "art",
         "public perception"
       ],
-      "rank": 5
+      "rank": 6
+    },
+    {
+      "title": "NixOS Is Making Me Less Afraid",
+      "title_zh": "NixOS 如何消除我对维护副项目的恐惧",
+      "link": "https://entropicthoughts.com/nixos-is-making-me-less-afraid",
+      "pub_date": "2026-10-19T22:00:00.000Z",
+      "summary": "## 一句话总结\nNixOS 把原本繁琐易错的服务部署过程，变成了几行可复用、可预期的声明式代码，彻底消除了开发者维护 Side Project 的心理负担。\n\n## 正文\n\n### 想用个新工具，却成了维护噩梦\n作者最近想搭建一个服务端的 RSS 聚合器 FreshRSS，好让他能在多设备间同步阅读进度。这需求听起来简单，但他以前一直没动手。为什么？因为这本质上是在给自己增加“维护负担”。以前为了把 RSS 阅读状态保存在手机本地，他吃过不少苦头——换手机时数据迁移极其脆弱。他真正想要的是一个服务端方案，但一想到要在服务器上折腾环境、处理依赖、还要担心哪天服务挂了得花半天时间去修，这股“恐惧感”就让他望而却步。\n\n### 传统部署：步骤多到让人想放弃\n如果按传统路子装 FreshRSS，那简直就是一场“运维灾难”。你得下载解压、配权限、装 Nginx 和 PHP-FPM、调配置池、搞 Let's Encrypt 证书、还得自己写备份脚本。最要命的是，如果半年后服务器挂了要重装，你大概率已经忘了当初那个诡异的配置细节。用容器能稍微好点，但也只是把问题转移了：你还得搞定 TLS 终结、写 Systemd 服务、还要祈祷半年后拉下来的镜像版本没变。说白了，这些方案都没解决核心痛点——“不可重现”。\n\n### NixOS 的降维打击：9 行代码搞定一切\n有意思的地方在于，作者现在有了 NixOS 服务器。结果呢？配置一个带备份的 FreshRSS，只用了 9 行 Nix 代码（当然，加上 Nginx 反向代理配置也就几十行）。而且这东西装好后就“扔在那儿”不用管了，几个月来一直稳定运行。最关键的是，如果服务器炸了，他只要换台机器，用同样的配置文件跑起来，15 分钟就能恢复原状。这种“确定性”带来的安全感，让他敢于去尝试新软件，而不是像以前那样瞻前顾后。\n\n### 配置即代码，告别“笔记式运维”\n作者坦言自己极度厌恶维护 Side Project，哪怕是别人开发的软件。他试过 CFEngine、Ansible、Podman 甚至 k3s，结果发现这些工具并没有比“记笔记 + 写 Shell 脚本”好到哪去。Shell 脚本虽然能跑，但太依赖环境假设，时间一长环境变了，脚本就废了。而 NixOS 的配置文件读起来就像是给未来的自己写的详细说明书，但区别在于——它是可执行的，而且每次执行结果都一模一样。这种“声明式”的魔力，才是消除恐惧的真正解药。",
+      "source_name": "entropicthoughts.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "NixOS",
+        "declarative configuration",
+        "deployment",
+        "FreshRSS"
+      ],
+      "rank": 7
+    },
+    {
+      "title": "What happened to Epyx",
+      "title_zh": "Epyx 的兴衰：8 位机传奇的落幕",
+      "link": "https://dfarq.homeip.net/what-happened-to-epyx/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=what-happened-to-epyx",
+      "pub_date": "2026-10-20T11:00:42.000Z",
+      "summary": "Epyx 是 1980 年代 8 位机时代的传奇游戏发行商，代表作包括 Temple of Apshai、Jumpman 和 Summer Games 系列。1983 年销售额达 1000 万美元，成为第 16 大微机软件发行商。公司最初名为 Automated Simulations，凭借策略和角色扮演游戏起家，后因 Jumpman 的成功转向街机风格游戏。Epyx Fast Load 卡带让 Commodore 1541 磁盘驱动器速度提升 5 倍，成为 C-64 用户必备配件。1986 年后公司陷入困境，尝试转型开发游戏主机（后成为 Atari Lynx），但现金流问题导致 1989 年 10 月破产。Epyx 游戏严重依赖精灵图形，难以移植到晚期 PC 平台，错失 PC 游戏崛起的机会。破产后公司从 145 人缩减至不足 20 人，1993 年仅剩 8 人时出售剩余资产。Bridgestone Media Group 收购了 Epyx 游戏库并持有版权至今，授权推出复古产品如 TheC64 Mini，其中 65 款游戏有 20 款来自 Epyx。",
+      "source_name": "dfarq.homeip.net",
+      "score": 9,
+      "depth": 5,
+      "novelty": 4,
+      "category": "other",
+      "keywords": [
+        "Epyx",
+        "retro gaming",
+        "Commodore 64",
+        "bankruptcy"
+      ],
+      "rank": 8
     },
     {
       "title": "From the DF Archive: Should a CEO Be a Nerd About Their Company’s Products?",
@@ -117,7 +174,7 @@
         "product",
         "quality"
       ],
-      "rank": 6
+      "rank": 9
     },
     {
       "title": "No More Icons In Every Menu By Default",
@@ -136,7 +193,7 @@
         "menu",
         "icons"
       ],
-      "rank": 7
+      "rank": 10
     },
     {
       "title": "Ex-Apple Employee Fred Potter on HomeView",
@@ -154,7 +211,7 @@
         "HomeView",
         "teamwork"
       ],
-      "rank": 8
+      "rank": 11
     },
     {
       "title": "Netflix Lays Off 6 Percent of Staff",
@@ -172,7 +229,7 @@
         "layoffs",
         "media"
       ],
-      "rank": 9
+      "rank": 12
     },
     {
       "title": "★ Estimated Arrival Dates for DF Readers’ Pre-Ordered iPhone Duos",
@@ -190,7 +247,7 @@
         "pre-order",
         "shipping"
       ],
-      "rank": 10
+      "rank": 13
     },
     {
       "title": "Netflix Shitcanned Film Chief Dan Lin Too",
@@ -208,7 +265,7 @@
         "entertainment industry",
         "streaming"
       ],
-      "rank": 11
+      "rank": 14
     },
     {
       "title": "Barack Obama on the Trump Administration’s Intimidation Campaign Against Congresswoman Ilhan Omar",
@@ -227,7 +284,44 @@
         "Trump administration",
         "deportation"
       ],
-      "rank": 12
+      "rank": 15
+    },
+    {
+      "title": "[Sponsor] Sunnny",
+      "title_zh": "SUNNNY：B2B 客户数据整合平台",
+      "link": "https://sunnny.com/",
+      "pub_date": "2026-10-20T13:09:38.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "tools",
+      "keywords": [
+        "customer data",
+        "data integration",
+        "B2B",
+        "CRM"
+      ],
+      "rank": 16
+    },
+    {
+      "title": "Book Review: Quackery - A Brief History of the Worst Ways to Cure Everything by Lydia Kang ★★★⯪☆",
+      "title_zh": "一本关于医疗骗史的轻松读物",
+      "link": "https://shkspr.mobi/blog/2026/10/book-review-quackery-a-brief-history-of-the-worst-ways-to-cure-everything-by-lydia-kang/",
+      "pub_date": "2026-10-20T11:34:35.000Z",
+      "summary": "这本书回顾了人类历史上各种荒诞的伪医疗骗局，从放血疗法到动物器官移植，揭示了真假疗法难以分辨的困境。作者 Lydia Kang 以轻松幽默的笔调讲述沉重话题，穿插大量讽刺评论，让读者在震惊中会心一笑。书中反复强调一个核心问题：某些现代医学疗法（如从猪肠黏膜提取肝素）听起来同样离奇，与当年注射山羊睾丸治疗阳痿的骗局并无本质区别。作者还指出社会对医疗手段的矛盾态度——人们接受代孕却对母乳库感到不适。全书涵盖光疗、电疗、色彩疗法、动物磁力疗法等数十种「万能疗法」，但结尾仓促。遗憾的是，作为一本关于科学误信息的书，竟没有任何参考文献或脚注，读者无法进一步查证。",
+      "source_name": "shkspr.mobi",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "book review",
+        "medical history",
+        "quackery"
+      ],
+      "rank": 17
     },
     {
       "title": "Apple Event, in Los Angeles, Next Week: ‘Pro and Tell’",
@@ -245,7 +339,7 @@
         "event",
         "launch"
       ],
-      "rank": 13
+      "rank": 18
     }
   ]
 }
