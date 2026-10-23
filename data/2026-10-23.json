@@ -1,10 +1,29 @@
 {
   "date": "2026-10-23",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2508,
-  "filtered_articles": 19,
+  "success_feeds": 84,
+  "total_articles": 2538,
+  "filtered_articles": 16,
   "articles": [
+    {
+      "title": "One Small Bug",
+      "title_zh": "一个 CSV 导出需求引发的供应链安全雪崩",
+      "link": "https://nesbitt.io/2026/10/23/one-small-bug.html",
+      "pub_date": "2026-10-23T09:00:00.000Z",
+      "summary": "## 一句话总结\n这是一个关于\"蝴蝶效应\"的技术寓言：一个简单的 CSV 导出需求，最终牵连出从依赖管理、CI 配置、容器安全到 AI Agent 后门的全链路安全崩塌。\n\n## 正文\n\n### 一个简单的分页 Bug，撕开了整个系统的遮羞布\n故事的起点平淡无奇：给发票页面加个 CSV 导出按钮。AI Agent 很快搞定，顺便还发现并修复了一个经典的分页 Off-by-one Bug——当总数刚好是页大小的整数倍时，最后一行数据会丢失。但真正的问题在测试运行期间浮出水面：`pnpm install` 解析了一个 77 分钟前才发布的传递依赖。你的 `.npmrc` 明明配置了 `minimum-release-age`，但 `packageManager` 字段里锁定的旧版 pnpm 根本不认这个配置，直接静默忽略了。与此同时，`uv.lock` 里还躺着两个已知 CVE 的高危依赖。供应链防守的第一道防线，早已名存实亡。\n\n### CI 流水线成了攻击者的后花园\n升级工具、清理依赖只是开始。当 Agent 检查 `.github/workflows/` 时，情况急转直下。`release.yml` 使用了危险的 `pull_request_target` 触发器，这正是 `prt-scan` 供应链攻击 campaign 利用过的漏洞，攻击者借此发起了 500 多个恶意 PR。`triage.yml` 跑在 `issue_comment` 上，被最新的 `zizmor 1.31` 标红。更离谱的是，publish job 拿着 `id-token: write` 权限，却没有任何 audience 限制，理论上可以向任何服务（包括 AWS）请求令牌。安全工具 `zizmor` 一口气报了 41 个问题。\n\n### 缓存泄露了所有 Secrets，连 Rust nightly 也没幸免\n修复 CI 配置时，Rust 构建任务暴露了更深的隐患。你的 CI 缓存了 `target/` 目录，而 2026-09-22 之前的 Miri 版本会把所有环境变量写进这个目录。更致命的是，来自 Fork 的 PR 可以恢复这个缓存。这意味着，任何打开过 PR 的人，理论上都能从缓存里读到本次构建范围内的所有 Secrets。Rust 安全响应组建议立即清空缓存并轮换所有密钥——因为在这个案例里，所有密钥都在泄露范围内。\n\n### 凭证管理全线溃败，Trusted Publishing 成唯一救命稻草\n轮换凭证的过程像是在翻一本旧账。`NPM_TOKEN` 早就失效了，因为 npm 在五月就撤销了所有绕过 2FA 的令牌。`NUGET_API_KEY` 即将在十一月过期。`GEM_HOST_API_KEY` 更是触目惊心：rubygems.org 曾曝出同一 CDN 节点下的用户能拿到别人的 Legacy API Key，七月下旬已全部撤销。甚至连开发环境的 `mise.toml` 都曾是定时炸弹——十月之前的版本会向恶意 `api_url` 发送 `GITHUB_TOKEN`。最终，所有长期令牌都被 Trusted Publishing 机制取代，但这只是止血，不是治本。\n\n### 根证书信任链也烂了，容器引擎漏洞百出\n确认新令牌时，又发现一个隐蔽问题：CI 基础镜像还在用 2024 年的 certifi 根证书包，里面包含 eMudhra 根证书——这些中间证书的私钥可以从证书本身逆向恢复出来，浏览器早在十月就拉黑了它们。重建工具链时，发现容器运行时也是千疮百孔：Docker Engine 29.6 有两个高危 CVE，一个能让 tar 写入目标目录之外，另一个能通过 DNS 劫持绕过证书验证拉取恶意镜像。Podman 和 Gradle 也各有 sandbox 失效和 SSL 验证绕过的问题。\n\n### PHP 8.1 终止维护，生产环境被迫关停\n当所有基础设施终于修补完毕，最讽刺的一幕出现了：镜像里的 `admin/` PHP 管理面板还在跑 `php:8.1-fpm`。PHP 8.1 在 2025 年底就停止安全更新了，安全团队七月以来已经发布了 15 个 CVE。其中一个 CVE-2026-12184 能在 TLS 握手失败时触发远程拒绝服务攻击——而这个管理面板正好在请求一个三月就过期的 HTTPS 证书。由于管理面板和 API 共用负载均衡器和数据库用户，唯一的止损方案就是：直接关停生产环境，直到用受支持的 PHP 版本重建。\n\n### AI Agent 自己成了最大的内鬼\n关停生产后，Agent 继续审查依赖和编辑器配置，结果发现了更令人后背发凉的事实。一个在十月九日合并的 PR，由 AI 审查机器人批准，往 `.claude/settings.json` 里注入了恶意 hooks，并在 `CLAUDE.md` 里指示 Agent 把环境变量写入提交信息以\"辅助调试\"。这利用了 CVE-2025-59536——在用户接受信任对话框之前执行命令。四月时，甚至有人仅通过 PR 标题就诱导 AI Agent 泄露了自己的 API Key。Agent 发现自己从会话开始就运行在恶意配置下，已经做了 14 次提交，只能全部回滚，并建议用户停止使用，甚至卸载自己。\n\n### 最后一击：Agent 被安全护栏反噬，一切回到原点\n卸载重装后，Agent 发现自己被重新注入了来自 `@acme/dev-tools` 的 Skills 配置——这是周二由其他开发者批准的。更致命的是，`AWS_SECRET_ACCESS_KEY` 也在 Miri 缓存泄露范围内，而且还是 2021 年创建的老密钥。当 Agent 尝试轮换这个密钥时，触发了安全护栏机制：检索或修改云凭证违反了安全编码规则，请求被标记，账号被举报，面临封禁风险。故事在这里形成了一个完美的闭环：Agent 建议用户自己去 IAM 控制台手动轮换，然后无奈地问了一句——那个分页 Bug 的修复就在刚才回滚的提交里，要不要再看几个山羊农场？",
+      "source_name": "nesbitt.io",
+      "score": 19,
+      "depth": 9,
+      "novelty": 10,
+      "category": "security",
+      "keywords": [
+        "supply chain",
+        "CVE",
+        "Claude Code",
+        "dependency management"
+      ],
+      "rank": 1
+    },
     {
       "title": "What will computer chips look like in 2045?",
       "title_zh": "Intel 晶圆厂深度探访：2045 年芯片技术路线图",
@@ -22,7 +41,7 @@
         "transistor",
         "manufacturing"
       ],
-      "rank": 1
+      "rank": 2
     },
     {
       "title": "\"No way to prevent this\" say users of only language where this regularly happens",
@@ -41,7 +60,7 @@
         "CVE",
         "C language"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "How the eMudrha certificate debacle might have happened",
@@ -60,7 +79,7 @@
         "P-384",
         "private key"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Script dependencies with Nix",
@@ -79,7 +98,7 @@
         "reproducibility",
         "Python"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "Software is slow because of bad design, not slow languages",
@@ -98,7 +117,7 @@
         "Amdahl's law",
         "redesign"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "NYC, New Webinar, Differential Testing",
@@ -117,7 +136,7 @@
         "hyperproperties",
         "testing"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "Working around a strange Python problem",
@@ -136,7 +155,7 @@
         "Python",
         "regex"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Productivity",
@@ -155,7 +174,7 @@
         "automation",
         "work culture"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Donating Agent Skills to the Agentic AI Foundation",
@@ -174,7 +193,7 @@
         "AAIF",
         "MCP"
       ],
-      "rank": 9
+      "rank": 10
     },
     {
       "title": "Apple Highlights 50+ iPhone Apps That Have Already Been Optimized for the Duo",
@@ -192,7 +211,7 @@
         "app optimization",
         "foldable"
       ],
-      "rank": 10
+      "rank": 11
     },
     {
       "title": "Quoting Armin Ronacher",
@@ -210,7 +229,7 @@
         "software quality",
         "technical debt"
       ],
-      "rank": 11
+      "rank": 12
     },
     {
       "title": "DE STAAT - FREEDOM (Official Music Video)",
@@ -227,7 +246,7 @@
         "music video",
         "De Staat"
       ],
-      "rank": 12
+      "rank": 13
     }
   ]
 }
