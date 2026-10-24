@@ -1,9 +1,9 @@
 {
   "date": "2026-10-24",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2565,
-  "filtered_articles": 13,
+  "success_feeds": 84,
+  "total_articles": 2540,
+  "filtered_articles": 14,
   "articles": [
     {
       "title": "Introducing Kimi K3.1 Pro",
@@ -63,6 +63,44 @@
       "rank": 3
     },
     {
+      "title": "This Week in Package Management: 24 October 2026",
+      "title_zh": "eMudhra CA 泄露引发供应链大规模修复",
+      "link": "https://nesbitt.io/2026/10/24/this-week-in-package-management.html",
+      "pub_date": "2026-10-24T10:00:00.000Z",
+      "summary": "## 一句话总结\n这周包管理圈经历了“核弹级”安全事件：eMudhra CA 私钥泄露导致全生态链式反应，同时 PHP、LiteLLM、npm Trusted Publishing 等多处起火，各大工具纷纷发布安全更新。\n\n## 正文\n\n### CA 私钥泄露引发的全生态“链式反应”\n这周最大的新闻无疑是 eMudhra 中间 CA 证书私钥泄露事件。由于 eMudhra 生成的八个中间 CA 证书存在缺陷，任何人都能恢复其私钥。浏览器虽然通过吊销列表进行了拦截，但问题在于大量工具和语言运行时是自带 CA 捆绑包的。这直接导致了一场席卷全生态的“修补风暴”：从 uv、pip、conda 到 Rust、Go、Node.js，甚至 Docker、Git for Windows，几乎所有主流工具都发布了更新版本。作者在文中提到，Trust Stores 本质上也是一种依赖，这次事件就是最好的证明。\n\n### Python 生态的“套娃式”修补难题\n对于 Python 用户来说，这次修补尤其繁琐。因为 Python 生态里存在层层打包的情况：你需要升级虚拟环境里的 certifi，还要升级 pip 自带的 certifi，甚至 Python 自带的 ensurepip wheel 里也藏了一份。Michał Górny 在 Mastodon 上列了个清单，简直让人头大：你得把 certifi 从依赖冷却期里排除，还得处理 uv 这种自带根证书编译的工具。相比之下，Gentoo 的做法就聪明得多，他们的 certifi 直接用系统证书，pip 又用 certifi，Python 再用系统的 ensurepip wheel，升级系统包就一步到位了。\n\n### PHP 远程执行漏洞与“抢跑”的容器镜像\nPHP 这周也修了两个严重的远程代码执行漏洞，分别出在内存管理和错误处理上。其中有一个漏洞非常阴险，在 Apache mod_php 环境下，还没运行应用代码就能被未认证请求触发。有意思的是，这个漏洞的根因其实在 2024 年 Quarkslab 审计时就发现了，只是修复方案卡了几个月。更戏剧性的是，CVE ID 在 10 月 20 日泄露，发布不得不提前一天，结果 Chainguard 还在协调发布前六个多小时就发布了包含补丁的镜像，直接打破了 embargo。\n\n### LiteLLM 供应链攻击：三个账号失窃引发的灾难\nLiteLLM 项目今年第二次被攻破了。攻击者拿到了三名工程师的 GitHub CLI OAuth Token，然后利用这些权限修改了发布流水线。恶意版本发布到了 PyPI 和 GHCR，里面的 `.pth` 和 `sitecustomize.py` 文件会在 Python 启动时自动执行，窃取云凭证、SSH 密钥等敏感信息。最绝的是，攻击者把源仓库伪造成 `Berri-AI/litellm`（多了一个连字符），而真正的仓库是 `BerriAI/litellm`。这再次提醒我们，构建来源证明（Provenance）得看仔细了。\n\n### npm Trusted Publishing 的逻辑漏洞\nBloom Security 发现了 npm Trusted Publishing 的一个设计缺陷。原来 npm 在匹配配置时，用的是 `owner/repo` 的名字，而不是 OIDC Token 里包含的永久数字 ID。这意味着，如果维护者删除或重命名了仓库，攻击者就能注册同名仓库，然后发布新版本的包，还能拿到合法的来源证明。这个漏洞影响了超过 1500 个包。GitHub 的修复方案是：如果配置 48 小时内没验证，就直接过期。\n\n### Ruby 正则引擎的“坑”与 GitHub 的防火墙\nRuby 这周修复了 Onigmo 正则表达式引擎的几个 Bug，这些 Bug 被 GitLab 利用变成了远程代码执行漏洞。核心问题在于应用把用户控制的字符串传给了 `Regexp.new`。这事儿挺尴尬，因为即使启用了 `Regexp.timeout` 和长度限制，依然能被利用。Ruby 核心团队现在得讨论一下，编译不可信模式到底算不算支持的使用场景。另外，GitHub 推出了 Package Firewall 公测版，这是一个代理，能根据企业策略拦截恶意包、漏洞包，甚至强制执行冷却期，目前只支持 npm。\n\n### 锁文件与依赖管理的细节改进\n在工具更新方面，pnpm 12.15 引入了 `lockfile.integrityTarget: tar`，通过固定未压缩 tar 包的哈希值，解决了注册表重新压缩 tar 包导致锁文件变动的问题。Composer 2.11.0-RC1 则增加了 `cooldown` 策略，可以强制“冷却”新发布的版本。Bun 1.4.4 改进了 Yarn Berry 锁文件的迁移，并修复了安装重试逻辑——之前的版本五次重试全挤在 5 毫秒内，现在终于加上了指数退避。\n\n### curl 透明化策略与 Hex 的无密钥发布\n最后提两个值得关注的动向。curl 项目宣布从 10 月 26 日起，LOW 和 MEDIUM 严重级别的漏洞报告将直接在 GitHub 公开，不再设 embargo，只对 HIGH 和 CRITICAL 级别保留。原因很简单：安全团队人手不够，上周六一天就收到了 13 份漏洞报告。Hex 2.6 则引入了 Workload Identity，现在 GitHub Actions 可以直接用 OIDC Token 发布包或拉取私有包，彻底告别存储密钥的时代。",
+      "source_name": "nesbitt.io",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "security",
+      "keywords": [
+        "eMudhra",
+        "supply chain",
+        "CA",
+        "package managers"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "Elon Musk Just Gave Europe a Reason to Replace American Technology",
+      "title_zh": "Musk 切断 Starshield，欧洲警醒技术主权",
+      "link": "https://steveblank.com/2026/10/24/europe-gets-a-wake-up-call/",
+      "pub_date": "2026-10-24T13:00:33.000Z",
+      "summary": "## 一句话总结\nElon Musk 单方面切断乌克兰 Starlink 服务这一举动，打破了美国技术\"政治中立\"的幻想，迫使欧洲意识到必须建立自主技术栈，这将导致美国科技巨头在未来失去数千亿的盟友市场。\n\n### \"Kill Switch\" 从阴谋论变成了现实\n\n长期以来，欧洲的悲观主义者一直担心美国在武器系统和关键技术中留有\"后门\"，可以随时切断。大多数人，包括作者在内，都认为这不过是被害妄想。直到 Musk 这一刀砍下去，大家才发现，原来不需要复杂的政府阴谋，只要一个美国 CEO 心血来潮，就能在战争期间单方面瘫痪盟友的关键军事能力。这甚至不是美国政府的官方外交政策，纯粹是个人行为。这下，\"美国技术不可靠\"这个论调，再也没人敢说是笑话了。\n\n### 信任崩塌引发的连锁反应\n\n这件事给欧洲决策者带来的心理冲击是巨大的。大家开始问一个非常现实的问题：如果 Microsoft、Oracle、Palantir 或者 OpenAI 的老板哪天也不高兴了，是不是整个欧洲的企业软件和 AI 服务都要瘫痪？这种风险模型以前被认为是天方夜谭，现在却成了必须纳入考量的现实威胁。说白了，没有任何国家能把国家安全寄托在一个随时可能\"断供\"的外部供应商身上，不管它的技术有多好。\n\n### 美国科技巨头的\"灰犀牛\"\n\n对于美国科技行业来说，这不仅仅是政治风波，更是一场即将到来的商业灾难。如果美国的每一个供应商都被视为潜在的\"Kill Switch\"风险，那么盟友市场就会开始萎缩。欧洲各国迟早会寻找替代品，或者干脆自己造。这可能会让美国公司在未来几年损失成百上千亿的收入。美国花了几十年建立起来的\"不可或缺的技术供应商\"地位，可能因为这一时的冲动而毁于一旦。\n\n### AI 时代，造轮子不再遥不可及\n\n有意思的地方在于，就在地缘政治风险飙升的同时，技术门槛却在坍塌。以前欧洲想克隆 Microsoft Office 或 Oracle 的能力，听起来像是不可能完成的任务。但现在，AI 大幅降低了编写软件的成本。复制美国顶级产品的功能、特性和兼容性，突然变得触手可及。AI 让大多数国家都有能力在本地重建这些关键软件栈，这时间点卡得太准了。\n\n### 主权成了欧洲创业者的新卖点\n\n以后，美国的创始人去欧洲卖国防或政府软件，进门第一件事就得回答\"谁掌握着开关\"这个问题。这太尴尬了。反过来看，欧洲的创业者却意外获得了一个核心卖点：数字主权。以前大家觉得\"自主可控\"是虚的，现在它是实打实的商业优势。Musk 这一时的意气用事，不仅让美国丢掉了领导地位，还亲手把欧洲推向了技术独立的快车道。",
+      "source_name": "steveblank.com",
+      "score": 14,
+      "depth": 6,
+      "novelty": 8,
+      "category": "opinion",
+      "keywords": [
+        "Starshield",
+        "digital sovereignty",
+        "geopolitics",
+        "AI"
+      ],
+      "rank": 5
+    },
+    {
       "title": "Quick Study",
       "title_zh": "Claude 生成纯 JS 油画模拟器",
       "link": "https://simonwillison.net/2026/Oct/23/quick-study-painter/",
@@ -79,7 +117,7 @@
         "Sobel edge detection",
         "image processing"
       ],
-      "rank": 4
+      "rank": 6
     },
     {
       "title": "Pluralistic: Critique and writing (23 Oct 2026)",
@@ -98,7 +136,7 @@
         "peer critique",
         "creative writing"
       ],
-      "rank": 5
+      "rank": 7
     },
     {
       "title": "The Verge’s Duo Review: ‘Apple’s Folding Phone Is a Messy, Expensive Good Time’",
@@ -117,7 +155,7 @@
         "Apple",
         "hardware"
       ],
-      "rank": 6
+      "rank": 8
     },
     {
       "title": "Why didn’t we use the COM static store to clean up the unmarshalable delegate?",
@@ -136,7 +174,26 @@
         "Windows",
         "cleanup"
       ],
-      "rank": 7
+      "rank": 9
+    },
+    {
+      "title": "Commodore 1600 VICmodem",
+      "title_zh": "Commodore VICmodem：1982 年首款百美元以下的调制解调器",
+      "link": "https://dfarq.homeip.net/commodore-1600-vicmodem/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=commodore-1600-vicmodem",
+      "pub_date": "2026-10-24T11:00:08.000Z",
+      "summary": "Commodore 1600 VICmodem 是 1982 年 3 月上市的首款售价低于 100 美元的调制解调器，由 Anchor Automation 设计，采用 Motorola MC14412 芯片，PCB 上仅有 7 个芯片。它无法自动拨号，用户需要手动拨号后听到载波信号再将听筒线插入调制解调器。这种设计虽然降低了成本，但要求电话必须有模块化听筒，而当时旋转拨号电话仍普遍采用硬连线听筒。在加拿大，Commodore 将 VICmodem 与带有 Commodore 标志的 Northern Telecom 电话捆绑销售，但该电话是硬连线听筒的旋转拨号电话，无法直接与 VICmodem 配合使用。更复杂的是，模块化听筒在当时的加拿大是非法的。Commodore 因此推出了 VIC-1605 适配器解决兼容性问题。作者估计 VICmodem 销量约 14 万台而非传闻中的 100 万台。1986 年清仓时售价降至 19 美元。这款产品虽然功能简陋，但在 1982-1986 年间以最低价格让消费者体验了电信服务，是早期个人电脑时代的标志性产品。",
+      "source_name": "dfarq.homeip.net",
+      "score": 9,
+      "depth": 5,
+      "novelty": 4,
+      "category": "other",
+      "keywords": [
+        "Commodore",
+        "VICmodem",
+        "retro computing",
+        "modem"
+      ],
+      "rank": 10
     },
     {
       "title": "\"No way to prevent this\" say users of only language where this regularly happens",
@@ -155,7 +212,7 @@
         "Ruby",
         "Onigmo"
       ],
-      "rank": 8
+      "rank": 11
     },
     {
       "title": "Premium: The Hater's Guide To Blackstone",
@@ -174,7 +231,44 @@
         "AI infrastructure",
         "CoreWeave"
       ],
-      "rank": 9
+      "rank": 12
+    },
+    {
+      "title": "Book Review: Get Ahead of Being Dead by Evie King ★★★★☆",
+      "title_zh": "一本帮你提前安排身后事的实用指南",
+      "link": "https://shkspr.mobi/blog/2026/10/book-review-get-ahead-of-being-dead-by-evie-king/",
+      "pub_date": "2026-10-24T11:34:25.000Z",
+      "summary": "Evie King 的新书《Get Ahead of Being Dead》是一本关于死亡事务预规划的实用指南。作者延续前作《Ashes To Admin》的风格，将死亡相关的轶事与政治性思考巧妙结合。书中每章末尾提供数十个填空问题，从琐碎的图书卡号到敏感的葬礼宾客名单，帮助读者整理身后事务。全书对跨性别、非二元性别和多元关系群体保持高度包容，以轻松对话式的笔触处理沉重话题。书评作者认为这本书适合购买并亲自填写，但可能不太适合作为礼物送给亲友。",
+      "source_name": "shkspr.mobi",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "opinion",
+      "keywords": [
+        "death-planning",
+        "book-review",
+        "practical-guide"
+      ],
+      "rank": 13
+    },
+    {
+      "title": "Reading List 10/24/26",
+      "title_zh": "建筑与工业技术周报：住房、制造业与基础设施动态",
+      "link": "https://www.construction-physics.com/p/reading-list-102426",
+      "pub_date": "2026-10-24T12:01:24.000Z",
+      "summary": "",
+      "source_name": "construction-physics.com",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "housing",
+        "manufacturing",
+        "infrastructure",
+        "weekly-roundup"
+      ],
+      "rank": 14
     }
   ]
 }
