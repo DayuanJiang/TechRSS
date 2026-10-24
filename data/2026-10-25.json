@@ -1,0 +1,103 @@
+{
+  "date": "2026-10-25",
+  "total_feeds": 92,
+  "success_feeds": 85,
+  "total_articles": 2566,
+  "filtered_articles": 15,
+  "articles": [
+    {
+      "title": "Interesting systemd features you may not know about",
+      "title_zh": "systemd 的五个实用功能：资源限制、超时控制与文件监控",
+      "link": "https://martinalderson.com/posts/interesting-systemd-features/?utm_source=rss&utm_medium=rss&utm_campaign=feed",
+      "pub_date": "2026-10-24T00:00:00.000Z",
+      "summary": "## 一句话总结\nSystemd 不仅是系统启动和守护进程管理的工具，它内置的资源限制、定时器增强和路径监控功能，其实是运行 AI Agent \"一次性代码\"的绝佳瑞士军刀。\n\n## 正文\n\n### 告别\"OOM 惊魂\"，一行命令锁死资源上限\n你可能有过这种经历：让 Agent 写个脚本跑数据分析，结果代码有内存泄漏，机器瞬间卡死，只能等内核 OOM 杀进程后恢复。这非常烦人。Systemd 其实早就提供了解决方案，核心就是 `MemoryMax` 和 `CPUQuota` 这两个参数。说白了，它们底层用的就是和 Docker 一样的 cgroup 限制，但不需要你写 Dockerfile。比如你想限制 Claude Code 最多只能用 4GB 内存和 2 个 CPU 核心，只需执行 `systemd-run --user --scope -p MemoryMax=4G -p CPUQuota=200% claude`。这样即便代码写崩了，也不会波及宿主机。顺便提一句，用 `systemd-cgtop` 替代 `top`，还能按 cgroup 查看资源占用，监控更直观。\n\n### 给 Agent 设个闹钟，强制结束避免失控\n除了限制资源，运行时间也是个问题。如果你让 Autonomous Agent 自动化修 Bug，肯定不希望它无限期跑下去。Systemd 的 `RuntimeMaxSec` 参数就是干这个的。比如限制 OpenCode 最多跑 30 分钟，命令非常简单：`systemd-run --user -p RuntimeMaxSec=30m opencode ...`。这里有个细节要注意：OpenCode 默认可能在后台服务器运行，会绕过限制，所以必须加上 `--standalone` 参数确保它在独立进程中运行。这样，你就能放心让 Agent 在后台干活，不用担心它陷入死循环浪费一下午。\n\n### 合上笔记本也能跑，抑制休眠有妙招\n如果你用笔记本跑任务，合上盖子系统休眠是个大麻烦。Systemd 提供了 `systemd-inhibit` 工具，能阻止系统睡眠、空闲休眠甚至合盖动作。更有意思的是，你可以把它和前面的超时限制组合使用。比如，执行 `systemd-inhibit --what=sleep:idle:handle-lid-switch` 运行任务，既能防止合盖中断任务，又通过 `RuntimeMaxSec=30m` 避免电池被彻底耗干。这种\"防护组合拳\"非常实用。\n\n### 比 Cron 更懂生活的定时器\nSystemd Timer 远比传统的 Cron 强大。最实用的一个是 `Persistent` 参数：如果计划执行时电脑关机了，它会在下次开机时自动补跑错过的任务。这对于周期性的 Agent 任务（比如每周汇总报告）至关重要。此外，`OnSuccess` 和 `OnFailure` 参数允许你在任务结束或失败时触发特定动作，比如调用 Slack 通知服务，或者向 Healthchecks.io 发送\"死信开关\"信号。还有一个 `RandomizedDelaySec`，能在大规模部署时让任务随机延迟启动，避免成百上千台机器在同一秒冲击某个服务，造成\"惊群效应\"。\n\n### 文件夹变触发器，Path Unit 实现自动化\n这是最让我感到惊喜的功能。Systemd 有个 Path Unit，能监控文件系统的变化。配置一个 `DirectoryNotEmpty` 指向某个目录，一旦该目录有新文件进入，立即触发对应的 Service。想象一下这个场景：你建一个 `agent-inbox` 目录，每次把发票或报销单扔进去，Systemd 立刻唤醒 Agent 进行分类处理。这个 Service 还能复用前面的 `MemoryMax` 和 `RuntimeMaxSec` 限制。这简直就是为文件处理类的\"一次性\"任务量身定做的触发器。\n\n### 被低估的基础设施，值得重新审视\n总的来说，Systemd 不再只是那个启动系统的\"无聊管道工\"了。对于现在大量涌现的、由 AI 编写的\"一次性\"代码，Systemd 提供了一套现成的、细粒度的管控手段——从资源隔离、时间限制到文件监控，几乎覆盖了运行不可信脚本的所有痛点。与其自己造轮子去管理这些\"用完即弃\"的软件，不如直接利用 Systemd 这套成熟的基础设施。",
+      "source_name": "martinalderson.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "systemd",
+        "cgroups",
+        "resource-limits",
+        "agents"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "battledrones v14: Compass Rose, a four player map",
+      "title_zh": "Battledrones 新增四人地图 Compass Rose",
+      "link": "https://simonwillison.net/2026/Oct/24/battledrones/",
+      "pub_date": "2026-10-24T03:59:57.000Z",
+      "summary": "Battledrones 游戏新增四人在线对战模式，新地图 Compass Rose 采用四向旋转对称设计，支持最多四名玩家通过 WebSocket 加入，空位由 AI 填补。Claude Opus 5.5 完成了地图设计和网络代码修改，新增紫色和绿色机器人阵营。新地图使用寒冷冰原生物群落，视觉上呈现玫瑰形态。",
+      "source_name": "simonwillison.net",
+      "score": 9,
+      "depth": 4,
+      "novelty": 5,
+      "category": "tools",
+      "keywords": [
+        "Claude",
+        "WebSocket",
+        "game development",
+        "multiplayer"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Chan Karunamuni on the Duo’s Open/Close Translucent Transition",
+      "title_zh": "iPhone Duo 折叠屏的开合动画设计",
+      "link": "https://x.com/chan_k/status/2113622379050246243",
+      "pub_date": "2026-10-24T15:03:44.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 8,
+      "depth": 3,
+      "novelty": 5,
+      "category": "tools",
+      "keywords": [
+        "iPhone Duo",
+        "animation",
+        "design"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "Apple Built a Photo-Realistic Functional Original iPod for Apple Music’s 404 Page",
+      "title_zh": "Apple Music 用可交互 iPod 打造创意 404 页面",
+      "link": "https://music.apple.com/404",
+      "pub_date": "2026-10-24T15:50:02.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "Apple Music",
+        "iPod",
+        "404 page",
+        "web design"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "List of Vim forks",
+      "title_zh": "Vim 分支项目清单",
+      "link": "https://evanhahn.com/list-of-vim-forks/",
+      "pub_date": "2026-10-24T17:00:00.000Z",
+      "summary": "",
+      "source_name": "evanhahn.com",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "tools",
+      "keywords": [
+        "Vim",
+        "Neovim",
+        "forks",
+        "text editor"
+      ],
+      "rank": 5
+    }
+  ]
+}
