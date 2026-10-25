@@ -67,3 +67,12 @@ export function loadHnData(): HnData | null {
   if (!fs.existsSync(file)) return null;
   return JSON.parse(fs.readFileSync(file, 'utf-8'));
 }
+
+/** Load every HN item that has been on the list (written by scripts/hn.ts) */
+export function loadHnArchive(): HnStoredItem[] {
+  const dir = path.join(DATA_DIR, 'hn-archive');
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir)
+    .filter((f: string) => f.endsWith('.json'))
+    .map((f: string) => JSON.parse(fs.readFileSync(path.join(dir, f), 'utf-8')));
+}

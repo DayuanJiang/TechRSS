@@ -6,6 +6,8 @@ import { summarizeArticle } from '../src/lib/ai';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const HN_FILE = path.join(DATA_DIR, 'hn.json');
+// One file per item that has been on the list, so its page stays after it drops off
+const ARCHIVE_DIR = path.join(DATA_DIR, 'hn-archive');
 const NH_API = 'https://api.newshacker.me';
 const LIST_SIZE = 50;
 
@@ -120,6 +122,24 @@ async function main() {
   };
   await writeFile(HN_FILE, JSON.stringify(output, null, 2));
   console.log(`[hn] Written ${HN_FILE}`);
+
+  // Archive what the detail page shows
+  await mkdir(ARCHIVE_DIR, { recursive: true });
+  for (const item of items) {
+    const detail = item.detail as { aiSummary?: NhListItem['aiSummary']; aisummary?: NhListItem['aiSummary'] } | undefined;
+    const archived = {
+      id: item.id,
+      by: item.by,
+      title: item.title,
+      url: item.url,
+      score: item.score,
+      createdAt: item.createdAt,
+      aiSummary: detail?.aiSummary || detail?.aisummary || item.aiSummary || item.aisummary,
+      articleSummary: item.articleSummary,
+    };
+    await writeFile(path.join(ARCHIVE_DIR, `${item.id}.json`), JSON.stringify(archived, null, 2));
+  }
+  console.log(`[hn] Archived ${items.length} items`);
   console.log('[hn] Done!');
   } finally {
     await closeBrowser();

@@ -1,12 +1,14 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { loadHnData } from '../../lib/data';
+import { loadHnData, loadHnArchive } from '../../lib/data';
 import type { HnStoredItem } from '../../lib/data';
 import { marked } from 'marked';
 
 export function getStaticPaths() {
-  const hnData = loadHnData();
-  const items = hnData?.items || [];
+  // Archived items keep their page after they drop off the list; the list has the latest data
+  const byId = new Map(loadHnArchive().map(item => [item.id, item]));
+  for (const item of loadHnData()?.items || []) byId.set(item.id, item);
+  const items = [...byId.values()];
   return items.map(item => ({
     params: { id: String(item.id) },
     props: { item },
