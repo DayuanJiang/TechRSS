@@ -1,0 +1,108 @@
+{
+  "id": 47990675,
+  "by": "shad42",
+  "title": "The agent harness belongs outside the sandbox",
+  "url": "https://www.mendral.com/blog/agent-harness-belongs-outside-sandbox",
+  "score": 122,
+  "createdAt": 1777758657,
+  "aiSummary": {
+    "chinese_title": "LLM agent harness 外置 sandbox，权限层也得独立",
+    "discussion_overview": [
+      {
+        "category": "安全边界应外置",
+        "summary": "不少评论把核心问题视为安全边界：如果 harness 的可信度并不比 LLM 高，就不该让它承担约束模型的责任。因为一旦 harness 能做 LLM 本身做不到的事，而模型又能通过提示或状态触发这些能力，就要默认它会被利用，这被一些人视为 lethal trifecta 的风险放大。更稳妥的做法是把授权、secret 管理和访问控制放到 sandbox 之外，甚至做成类似 hypervisor 的独立安全层，只给 harness 极窄且有时限的凭证。",
+        "supportid": [
+          "47991503",
+          "47992420",
+          "47991000",
+          "47992777",
+          "47993487",
+          "47991419",
+          "47995385"
+        ]
+      },
+      {
+        "category": "作者定义：harness 是外部 loop",
+        "summary": "作者和支持者在评论里反复澄清，文中的 harness 主要是 agent 的外部 loop：它负责调用 LLM API、处理 function calls、做 memory 压缩，并把真正会碰用户代码的 bash/command 转发到 sandbox。这个视角下，harness 更像一个多租户 API server 的客户端，权限检查和 authZ 逻辑与普通 API 请求是同一层，而不是让模型直接拿到执行权。也因此，文章讨论的是如何构建 agent/harness，而不是如何安全地托管第三方 agent。",
+        "supportid": [
+          "47992217",
+          "47991161",
+          "47991891",
+          "47992169",
+          "47994351",
+          "47991043"
+        ]
+      },
+      {
+        "category": "harness 术语混乱与演化",
+        "summary": "评论区对 harness 的定义本身就不统一：有人把它叫 REPL、runner、runtime，也有人说把 model 拿掉之后剩下的那套工具、memory、sandboxing、steering 才是 harness。历史上它还被放进 orchestration layer、prompt engineering、context engineering 这些术语链条里，命名一直在漂移。很多人认为这更多是把早已存在的实践重新命名，而真正变化的是模型开始能自己驱动 workflow。",
+        "supportid": [
+          "47991208",
+          "47991256",
+          "47991403",
+          "47991426",
+          "47992034",
+          "47991680",
+          "47992187",
+          "47992563"
+        ]
+      },
+      {
+        "category": "多种架构替代单一 sandbox",
+        "summary": "另一派认为文章把问题框得太窄，默认只有一种 ephemeral sandbox 形态很不合理。评论里给出了很多替代方案：持久化的 computer/VM、跑在 GitHub Actions、用 k3d 或 Incus 起隔离实例、把工具做成 WASM modules，甚至让 harness 同时存在于容器内外。核心分歧不在“要不要隔离”，而在应该围绕什么资源来隔离、哪些能力该由哪一层承载，以及是否会因此掉进 path dependence。",
+        "supportid": [
+          "47991871",
+          "47992136",
+          "47992052",
+          "47992704",
+          "47993579",
+          "47992009",
+          "47996899",
+          "47991477",
+          "47991347",
+          "47995867"
+        ]
+      },
+      {
+        "category": "权限、memory 与并发一致性",
+        "summary": "还有一组评论聚焦 memory、skills 和并发写入的权限/一致性问题。有人指出，路径路由只决定请求送到哪里，不决定谁有权读写，所以 `/workspace`、`/memory`、`/skills` 这类映射前仍然要做 scope check 和 authN/authZ。多用户场景里同时写同一条 memory key 会带来 stale state、last write wins 和冲突重试，因此这更像一个带 row-level access control 的多租户系统，而不是简单的文件沙箱。",
+        "supportid": [
+          "47991755",
+          "47994351",
+          "47991214",
+          "47991796",
+          "47996437",
+          "47993958",
+          "47991477",
+          "47991683"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "harness",
+        "explanation": "agent 的外部运行循环、工具调度与状态管理层。"
+      },
+      {
+        "term": "sandbox",
+        "explanation": "限制代码/工具执行权限的隔离环境。"
+      },
+      {
+        "term": "MCP",
+        "explanation": "Model Context Protocol，一种让模型发现并调用外部工具的协议。"
+      },
+      {
+        "term": "authN/authZ",
+        "explanation": "身份验证与授权，决定谁能访问什么资源。"
+      },
+      {
+        "term": "lethal trifecta",
+        "explanation": "敏感数据、外部通信和可执行工具同时交给模型时的高风险组合。"
+      }
+    ],
+    "context": "这篇帖子讨论的是给 LLM agent 设计 harness（外部控制循环和工具层）时，应该把哪些部分放在 sandbox 外面。作者举的场景是一个 agent 监控 CI pipelines、自动修复测试失败并开 PR，而评论里又把这个问题延伸到 Claude Code（Anthropic 的编码代理产品）、OpenAI Codex（OpenAI 的编码代理系统）和 MCP（Model Context Protocol，一种工具发现与调用协议）等实现。争论焦点并不只是“能不能把 harness 放进 sandbox”，还包括 secret 管理、prompt injection、防越权访问，以及多租户服务里 memory 和文件的权限边界。很多人因此把 harness 类比成 API server、hypervisor 或 firewall：真正需要独立的往往是 authN/authZ 和安全策略，而不是把所有 agent 逻辑都塞进同一个隔离环境。",
+    "emoji": "🛡️",
+    "sarcastic_question": "把会骗人的LLM放进权限中枢就真更安全吗？"
+  },
+  "articleSummary": "# 一句话总结\n把 Agent 的控制循环放在沙箱之外，通过虚拟化文件系统接口，既实现了凭据隔离和资源弹性，又保留了模型原生的工具调用习惯。\n\n---\n\n### 生产级 Agent 的架构分水岭：控制循环该放哪？\nAgent Harness 本质上是一个驱动 LLM 的死循环：发 Prompt、拿回复、执行工具、喂回结果。这个循环跑在哪里，决定了整个系统的安全边界和扩展能力。对于单用户场景，像 Claude Code 那样把 Harness 放在沙箱里（容器内）最简单，所有东西都在一个文件系统里，开箱即用。但如果你要做一个多用户共享的企业级 Agent，这种“全内嵌”的架构就会遇到硬伤：凭据管理混乱、资源无法复用、状态同步变成了分布式文件系统的噩梦。\n\n### 为什么我们坚持把“大脑”搬出沙箱？\n把 Harness 放在沙箱外，最直接的好处是安全：LLM API Key、数据库权限这些敏感信息只留在后端，沙箱里只有纯粹的执行环境，逃逸了也捞不到任何东西。更重要的是，这让我们能把沙箱当成“牲口”而非“宠物”来用。因为控制逻辑在沙箱外，沙箱可以在空闲时随时挂起，需要时毫秒级恢复，甚至挂掉了也能无缝重建。如果 Harness 在沙箱里，那沙箱就是会话本身，它一挂，整个会话就断了，你还得为了维持会话一直养着这个昂贵的容器。\n\n### 长时间运行的 Agent，不能只靠内存活着\nAgent 会话动辄运行数小时，期间后端服务可能会重启、扩容或部署。如果 Harness 只是跑在 API Server 的内存里，一发版就全丢了。我们用了 Inngest 来解决这个问题，把 Agent 循环定义成一个持久化函数。循环的每一步都被 Inngest 记录为 checkpoint，哪怕进程挂了，也能从上一步断点续传。这让我们不用自己维护一套复杂的 Temporal 集群，就能获得容错能力。\n\n### 毫秒级冷启动：让沙箱像呼吸一样随启随停\n既然 Harness 在外面，沙箱就只有在 Agent 真正要执行命令时才需要干活，其余时间都在等 LLM 思考或等 CI 流程。为了省钱，我们希望这段时间沙箱是挂起的。但冷启动通常要几秒钟，这在交互式场景里是不可接受的。我们用了 Blaxel，它能把沙箱从待机状态唤醒的时间压缩到 25ms。这个速度对 Agent 来说是无感的，就像沙箱一直都在一样，但实际上我们只在它干活的那几毫秒里为它买单。\n\n### 文件系统：最大的拦路虎\n把 Harness 搬出来后，麻烦来了。现代 Agent（如 Claude Code）默认所有东西都是文件：技能是文件，记忆是文件，甚至计划书也是文件。如果沿用“本地文件系统”的假设，一旦沙箱销毁，这些状态就全丢了。更糟糕的是多用户场景，团队成员需要共享技能和记忆，如果每个沙箱都有自己的文件系统，你就得重新发明一个分布式文件系统来处理同步、冲突和一致性。\n\n### 一个接口，两个后端：欺骗 Agent 的最佳实践\n我们不想重写 Agent 的逻辑，也不想增加 `memory_read` 这种新工具来分散模型的注意力。解决方案是“虚拟化”：Agent 只看到一个标准的 `read/write` 工具，但 Harness 在中间做了一个路由层。如果是 `/workspace/` 下的路径，就转发给沙箱处理；如果是 `/skills/` 或 `/memory/` 下的路径，就转成数据库操作。对 Agent 来说，它还在操作文件，但实际上它的一部分“文件”是存在 Postgres 里的。这样既保留了模型训练时熟悉的 API Surface，又拿到了数据库的共享和持久化能力。\n\n### 这种架构的代价：Bash 漏洞与一致性难题\n这种方案也不是完美的。最大的漏洞是 Bash：Agent 可以在 Shell 里执行 `grep -r 'foo' /skills/`，这会绕过我们的工具层直接访问沙箱文件系统，导致找不到文件。我们目前靠 System Prompt 和 tree-sitter 解析来做防御，但这并不完美。另外，多用户并发修改记忆时的一致性问题也没完全解决，我们暂时用了“Last Writer Wins”，这在高并发场景下大概率会出问题，这也是下一步要啃的硬骨头。"
+}

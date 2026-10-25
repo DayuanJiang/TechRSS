@@ -1,0 +1,98 @@
+{
+  "id": 50086165,
+  "by": "jascha_eng",
+  "title": "Pg_vectorsearch: An index that is faster than pgvector's IVFFlat and HNSW",
+  "url": "https://github.com/timescale/pg_vectorsearch",
+  "score": 127,
+  "createdAt": 1791979843,
+  "aiSummary": {
+    "chinese_title": "pg_vectorsearch以PRISM挑战pgvector，但PG18、托管云与过滤能力成门槛",
+    "discussion_overview": [
+      {
+        "category": "部署门槛与成熟度疑虑",
+        "summary": "该扩展目前要求 PostgreSQL 18，仍在运行 PG14 或 PG15 的生产系统若想试用，可能先要承担昂贵的数据库迁移成本。PRISM 索引的向量维度上限为 1968，超过此限制的既有 HNSW 工作负载暂时无法直接迁入。项目刚发布且处于 alpha 阶段，尚未经历广泛的生产验证；Azure 等托管 PostgreSQL 的扩展白名单也尚未收录它。有人提出用截断向量做索引、再以完整向量复核，但这一办法被指出只适合 MRL embedding。",
+        "supportid": [
+          "50087814",
+          "50089522",
+          "50089972",
+          "50086972",
+          "50087203"
+        ]
+      },
+      {
+        "category": "放弃 pgvectorscale、转向分区索引的理由",
+        "summary": "开发方此前的 pgvectorscale 使用受 Microsoft DiskANN 启发的磁盘优化图索引，目标是让索引规模突破 RAM 限制。随着更多数据集测试，尤其是低维数据，图中局部区域可能变得不可达，导致 recall 不可预测地下降；这比单纯的延迟问题更难察觉和调优。由于未能从文献或启发式方案中找到稳定修复方式，团队改用分区列表与压缩的 PRISM 架构，并让 pgvectorscale 进入维护模式。没有直接向 pgvector 提交 PR 的原因包括项目稳定性标准、开发节奏和架构选择不同；新扩展仍可复用 pgvector 的数据类型，二者可以并存。",
+        "supportid": [
+          "50090420",
+          "50090761",
+          "50087673",
+          "50087986",
+          "50088340",
+          "50088395"
+        ]
+      },
+      {
+        "category": "性能宣称需要可复现且易发现的证据",
+        "summary": "公告宣称，在 1 亿个向量上，PRISM 可在比 HNSW 少 4 倍内存的机器上达到 6ms 查询延迟，索引构建速度超过 20 倍。这些数字促使评论者要求直接展示 QPS 与 precision/recall，而非仅以“更快”作为标题结论。开发方表示基准测试和测试套件均已公开，但有人指出 README 中几乎找不到 blog 或 benchmark 的明确入口，影响核验。社区也将其放在低 RAM 向量索引的竞争格局中比较，例如 VectorChord 依靠快速 NVMe 降低了 PostgreSQL 成本。",
+        "supportid": [
+          "50086249",
+          "50087018",
+          "50087145",
+          "50087400",
+          "50087454",
+          "50086834"
+        ]
+      },
+      {
+        "category": "过滤、多租户与排序仍是实际难点",
+        "summary": "评论者发现该项目当前只有 post-filtering，因此向量近邻结果出来后才过滤租户、用户或权限范围，未必能高效处理严格的数据隔离。多列索引以支持 multi-tenant 表被列为未来计划，而有人讽刺现实做法可能是每个客户、用户或项目各建一个数据库。PostgreSQL 的分区机制被认为相对自然，但如何同时加入 recency bias 仍然昂贵或很 hacky。作为对照，LanceDB 被提及可借助 DataFusion 下推过滤及 list/array membership 条件。",
+        "supportid": [
+          "50086544",
+          "50086873",
+          "50087379",
+          "50087548",
+          "50087011"
+        ]
+      },
+      {
+        "category": "替代平台与搜索类型边界",
+        "summary": "一些人希望 SQLite 也能获得同类能力，并列举 sqlite-vec、Vec1 及建立在 SQLite FTS 上的混合检索项目；但 SQLite 单写者限制会约束并发写入。DuckDB 也提供 VSS 扩展，说明向量检索并非 PostgreSQL 独有。pg_search 则被澄清主要是 full-text search，与 vector search 并非直接替代，不过实际应用常希望将两者结合，再使用 reranker 重排。",
+        "supportid": [
+          "50087773",
+          "50088087",
+          "50088138",
+          "50088437",
+          "50088071",
+          "50088172",
+          "50090546"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "PRISM",
+        "explanation": "pg_vectorsearch 使用的量化 IVF 向量索引，采用分区和压缩而非图结构，以降低内存占用并加快构建。"
+      },
+      {
+        "term": "HNSW",
+        "explanation": "Hierarchical Navigable Small World，一种常见的近似最近邻图索引，查询快但通常需要较多内存。"
+      },
+      {
+        "term": "IVFFlat",
+        "explanation": "Inverted File Flat，将向量划分到聚类列表中再搜索部分列表的近似最近邻索引。"
+      },
+      {
+        "term": "recall",
+        "explanation": "近似最近邻搜索找回真实近邻结果的比例；recall 降低会直接损害搜索质量。"
+      },
+      {
+        "term": "pgvectorscale",
+        "explanation": "此前面向 PostgreSQL 的向量扩展，使用受 DiskANN 启发的磁盘优化图索引，现计划进入维护模式。"
+      }
+    ],
+    "context": "pg_vectorsearch 是 Tiger Data（开发 PostgreSQL 扩展的公司）新发布的开源 PostgreSQL 向量搜索扩展，旨在以 PRISM 索引替代或补充 pgvector（PostgreSQL 常用向量扩展）的 IVFFlat 与 HNSW。向量搜索通常把文本、图像等内容转换为 embedding（高维数值向量），再以 ANN（近似最近邻搜索）在延迟、内存和 recall 之间取舍。该项目的核心主张是以分区与压缩取代图索引，从而减少 RAM 和加快索引构建；但其发布时仍是 alpha，且依赖 PostgreSQL 18，使托管云用户和旧版本生产环境难以立即采用。讨论也延续了 pgvectorscale（此前的磁盘优化图索引扩展）因图可达性问题造成 recall 不稳定而被逐步替换的背景。",
+    "emoji": "🧪",
+    "sarcastic_question": "号称更快的新索引，云上不能装又该给谁用？"
+  },
+  "articleSummary": "## 一句话总结\nTimescale 推出了 pg_vectorsearch 扩展，其核心 PRISM 索引利用 RaBitQ 量化和层级路由，在 1 亿向量规模下以更少内存实现了比 pgvector 的 HNSW 更快的查询速度和构建速度。\n\n## 正文\n\n### 向量检索的老难题：速度、内存和精度的不可能三角\n做向量检索的开发者对 pgvector 肯定不陌生。它的 IVFFlat 和 HNSW 索引虽然好用，但在数据量飙升到亿级时，往往面临两难：要么为了召回率忍受慢速查询，要么为了速度堆内存。HNSW 这种图索引虽然快，但内存开销巨大；IVFFlat 内存省点，但召回率和速度又难以兼顾。Timescale 开源的 pg_vectorsearch 扩展，就是为了打破这个瓶颈。它带来了一种名为 PRISM 的新索引，号称在 1 亿向量数据集上，以 HNSW 四分之一的内存，实现了同等召回率下更快的查询。\n\n### PRISM 索引的核心架构：层级路由与 RaBitQ 量化\nPRISM 全称 \"Partitioned Routing Index for Similarity Matching\"。说白了，它有点像 IVFFlat 的升级版，但引入了更先进的\"武器\"。核心思路是利用层级质心树将向量划分到不同的簇中，这棵树常驻 PostgreSQL 的 Buffer Cache，保证了路由的热数据访问极快。更有意思的是它采用的量化技术——RaBitQ。这不仅仅是压缩数据，它还携带了理论上的误差边界。这有什么用？它让索引在扫描时能直接排除那些\"绝无可能\"是最近邻的向量，极大减少了回表重排序的计算量。\n\n### 查询流程的精妙设计：两阶段过滤与 SIMD 加速\n看一眼它的查询流程，你会发现设计得很精巧。首先遍历质心树找到最近的簇，然后扫描 Posting List。关键点在于第三步：RaBitQ 的两阶段过滤。先用估算距离和误差边界筛掉大部分干扰项，只对剩下的少量候选者进行全精度重排序。这套组合拳下来，既利用了 PostgreSQL 原生的 Buffer Pool 管理机制，又通过 SIMD（支持 AVX2, AVX512, NEON）指令集榨干了 CPU 性能。结果就是，它不需要像 HNSW 那样把整个图结构塞进内存，也能跑得飞快。\n\n### 无缝迁移：直接复用 pgvector 的表结构\n对于已经在生产环境使用 pgvector 的团队来说，最怕的就是数据迁移。这里有个很贴心的设计：PRISM 支持直接在现有的 `vector` 和 `halfvec` 列上建索引。你不需要改动原有的表结构，也不用重写数据。安装扩展后，直接在现有的列上创建 PRISM 索引即可。由于 PRISM 通常比 HNSW 更快，PostgreSQL 的优化器会自动优先选择它。你可以通过 `EXPLAIN` 验证执行计划，确认走的是新索引后，再把旧的 HNSW 索引删掉，整个过程非常丝滑。\n\n### 动态更新的痛点解决方案\n很多 ANN 索引都有个通病：建索引快，但后续的增删改很麻烦，往往需要重建索引。PRISM 针对这点做了优化，支持动态的插入、更新和删除。它的 Posting List 会随着数据插入而增长，虽然不会自动分裂，但提供了 `prism_rebalance` 存储过程来手动处理过大的列表。这意味着在面对流式数据写入时，你不需要频繁地推倒重来，维护成本大大降低。\n\n### 调优极简，上手门槛低\n作者在设计这个扩展时，显然考虑到了易用性。大部分场景下，你只需要关注一个参数：`prism.nprobe`。默认设置能提供约 0.95 的召回率，如果你想要更高的召回率就调大它，想要更快的速度就调小它。这种\"开箱即用\"的设计思路，让开发者不需要深入研究复杂的参数配置就能享受到高性能红利。当然，如果你想深究，文档里也提供了详细的调优指南。\n\n### 技术底座与现状：PostgreSQL 18 与 Alpha 版本\n值得注意的是，这个扩展对环境有一定要求。它依赖 PostgreSQL 18+，编译需要支持 C11 的编译器（GCC 11+ 或 Clang 14+）。这表明它利用了较新的数据库内核特性。不过，目前项目状态还是 Alpha 阶段，官方明确表示仅供测试，不建议上生产。版本间升级可能不支持，甚至可能需要删掉索引重建。虽然架构看起来很美，但如果你想在生产环境尝鲜，建议再等等，或者先在测试环境跑跑 Benchmark。\n\n### 总结：不仅仅是又一个轮子\nPRISM 并不是简单地造了个轮子，它结合了学术界 RaBitQ（SIGMOD 2024）和工业界 SPFresh（SOSP 2023）等项目的最新成果。通过将向量搜索深度集成到 PostgreSQL 的存储和计算引擎中，它证明了在数据库内部做向量检索，只要算法选得对，完全可以比通用的图索引更省内存、更快速。对于追求高性价比向量检索方案的开发者，这个项目值得密切关注。"
+}

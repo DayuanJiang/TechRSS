@@ -1,0 +1,105 @@
+{
+  "id": 47208398,
+  "by": "ejholmes",
+  "title": "MCP is dead. Long live the CLI",
+  "url": "https://ejholmes.github.io/2026/02/28/mcp-is-dead-long-live-the-cli.html",
+  "score": 332,
+  "createdAt": 1772388028,
+  "aiSummary": {
+    "chinese_title": "MCP 之争：开发者偏好 CLI，可组合性与安全/认证仍让 MCP 存活",
+    "discussion_overview": [
+      {
+        "category": "开发者/技术场景：CLI 更适合可组合、调试与数据探索",
+        "summary": "许多技术用户认为在本地给 agent 运行 CLI 比远程 MCP 更高效且更可控：LLM 可以通过 --help 推断未知 flags，且 UNIX 风格的管道能用 jq、grep、DuckDB 等工具做精确抽样与转换，从而避免把大量数据塞入上下文。具体案例包括用 DuckDB 对大 CSV/Parquet 做 probing 查询、用 Opus 4.6 自动生成并调整查询策略，以及用 GitHub CLI/自制脚本把复杂任务拆成可复用的步骤。评论反复指出很多 MCP 服务器不稳定或冗长，CLI + skills 能减少 token 消耗、提升确定性并便于调试和复用脚本。",
+        "supportid": [
+          "47210295",
+          "47209977",
+          "47212065",
+          "47210172",
+          "47211331",
+          "47210786",
+          "47210344",
+          "47212474"
+        ]
+      },
+      {
+        "category": "企业与非技术用户：MCP 提供认证、权限与远程分发的实用性",
+        "summary": "另有大量评论强调 MCP 在企业和面向非技术用户的场景里具有明显优势：远程 MCP 通过 Streamable HTTP 和 OAuth 实现集中化登录、授权与遥测，免去用户本地安装并能做细粒度的权限划分（如 read vs write）。评论举例 Sentry 的 MCP 登录流、把 MCP 做为 sidecar 并接入 service mesh 来做策略控制、以及 k8s MCP 用于限制 exec/delete 等危险操作。对于需要多租户、受控访问或嵌入聊天界面的产品，MCP 的封装与标准化使得部署与审计更容易落地，尤其当不能或不愿给 agent 直接 shell 访问时。",
+        "supportid": [
+          "47211079",
+          "47208956",
+          "47209298",
+          "47208912",
+          "47209173",
+          "47210054"
+        ]
+      },
+      {
+        "category": "上下文/Token 成本是关键争论点（MCP 是否真更省 tokens）",
+        "summary": "评论里关于 token 成本的争论非常集中：支持者认为 MCP 的单次 RPC/JSON-RPC 描述能在理论上更节省 token，而反对者列举了实测问题——有 MCP server 会把冗长的工具定义或 GH spec 一次性塞进上下文（有人提到载入 GH spec 花费约 54k tokens），结果成本暴涨。作为替代，工程实践倾向用 CLI+DuckDB/jq 做抽样与探测、或用 skills 按需注入，避免把大型 plan 或数据直接放入 context。多位评论与作者给出的折衷是按场景选择：stateful、需要持续会话或复杂 auth 的场景用 MCP，确定性、原子性强且可链式操作的任务用 CLI。",
+        "supportid": [
+          "47208998",
+          "47209427",
+          "47209977",
+          "47209714",
+          "47210568",
+          "47212065"
+        ]
+      },
+      {
+        "category": "可组合性 vs 工具发现：CLI 的链式组合对比 MCP 的自描述 schema",
+        "summary": "可组合性（composition）和工具发现是两端的核心权衡：CLI 天生支持管道、重定向和文本工具的组合，便于构建复杂工作流并逐步调试；而 MCP 的优势在于自描述工具与参数 schema，模型可以直接发现可用工具而无需大量系统提示，从而降低幻觉或错误 flag 的概率。评论举了 Jira/issue schema 的例子说明复杂对象用 MCP 更方便，但也有人反驳称精心设计的 CLI JSON 输出或 --help 已能覆盖大部分场景。社区里有人提出工程折中方案——把 MCP 转为 CLI 或反之（mcpshim / mcporter 等工具）以兼顾发现与组合能力。",
+        "supportid": [
+          "47210327",
+          "47209977",
+          "47212346",
+          "47209595",
+          "47210377",
+          "47209594"
+        ]
+      },
+      {
+        "category": "工程实现与 agent 架构：skills、按需加载与 prompt cache 的现实问题",
+        "summary": "很多讨论集中在 agent 架构层面的实现细节：把能力封装成 skills（代码或元数据包）可以按需加载 MCP 或 CLI，从而控制上下文体积並复用逻辑，但按需插入工具定义又可能破坏 prompt caching，因为多数 LLM 仍假定工具定义在上下文开头。评论引用 Amp 的技能模型及其实践，有人把 MCP 当作 skill sidecar 启动，也有人指出这种按需方式在现有模型与代理实现上会带来缓存失效与复杂性。工程实践因此围绕容器隔离、sidecar/service-mesh、以及将 MCP 与 CLI 相互桥接的工具来寻找可落地的安全与性能折中。",
+        "supportid": [
+          "47209083",
+          "47211065",
+          "47209810",
+          "47209878",
+          "47209594",
+          "47208956"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "MCP (Model Context Protocol)",
+        "explanation": "一种为 LLM/agent 描述外部工具与能力的协议，通常采用 Streamable HTTP/JSON-RPC 来暴露工具、参数、返回格式与认证入口，便于在聊天界面或远程 agent 中做 OAuth 登录与工具自描述。"
+      },
+      {
+        "term": "CLI (Command Line Interface)",
+        "explanation": "传统命令行工具与 Unix 管道生态，LLM 可通过 --help 等文档推断用法，结合 jq/grep/DuckDB 等工具实现数据抽样、链式组合与确定性调试。"
+      },
+      {
+        "term": "skills",
+        "explanation": "agent 的能力包（可以是 markdown、脚本或代码文件夹），按需注入到 agent 上下文以实现懒加载、复用和更细粒度的权限控制；有的实现会在载入时启动 MCP server。"
+      },
+      {
+        "term": "DuckDB",
+        "explanation": "一个轻量级的 SQL OLAP 引擎，常用于对大 CSV/Parquet 做快速抽样与探查，评论中被多次举为让 agent 在不占用上下文的情况下处理大数据的典型工具。"
+      },
+      {
+        "term": "OAuth",
+        "explanation": "常见的 web 授权协议，远程 MCP 常用它完成第三级别的登录/委托流程，从而避免在 agent 端直接暴露长期凭据。"
+      },
+      {
+        "term": "tokens / 上下文成本",
+        "explanation": "指将工具定义或大文档放入模型上下文所消耗的 token 数与计算成本，决定了方案在经济性和实时性上的可行性。"
+      }
+    ],
+    "context": "这场讨论围绕一篇挑衅性博文（“MCP is dead. Long live the CLI”）展开，核心问题是 LLM agent 调用外部工具时应采用 MCP（Model Context Protocol）还是直接让 agent 调用本地/远程 CLI。评论从可组合性（pipe、jq、DuckDB）、上下文/token 成本、认证与权限（OAuth、k8s MCP）、可观测性与工程复杂度等多维度展开论证，引用了 Claude Code、Opus、Amp、mcpshim/mcporter、Sentry、k8s MCP 等具体实践与工具。结论并不一致：开发者偏好在本地用 CLI 做确定性与数据探索任务，企业/产品侧则更看重 MCP 带来的认证、沙箱和集中化治理，实际落地常是两者的工程折中。",
+    "emoji": "🛠️",
+    "sarcastic_question": "真的要把企业钥匙交给会乱跑终端的模型吗？"
+  },
+  "articleSummary": "Eric Holmes 指出 Model Context Protocol (MCP) 正在走向消亡，OpenClaw 和 Pi 等平台已不再支持该协议。LLM 经过大量 man pages、Stack Overflow 和 GitHub 脚本训练，擅长直接使用命令行工具（CLI），无需专门协议。CLI 具备可组合性，支持通过 `jq`、`grep` 进行管道操作，例如分析 Terraform 计划时，CLI 比将整个计划倾倒入上下文窗口更高效。在调试方面，CLI 允许人类执行与 LLM 相同的命令（如 `jira issue view`），而 MCP 仅存在于对话中，需检查 JSON 传输日志。认证方面，CLI 复用现有的 `aws` SSO、`gh auth login` 等成熟流程，无需 MCP 特定的故障排除。实际使用中，MCP 服务器作为子进程初始化不稳定，多重认证繁琐，且权限控制缺乏粒度，无法像 CLI 那样区分只读和写入操作。MCP 仅适用于没有 CLI 等效项的工具，对于大多数工作，CLI 更简单、可调试且可靠。"
+}

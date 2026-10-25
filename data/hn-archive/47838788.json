@@ -1,0 +1,114 @@
+{
+  "id": 47838788,
+  "by": "GreenGames",
+  "title": "We got 207 tok/s with Qwen3.5-27B on an RTX 3090",
+  "url": "https://github.com/Luce-Org/lucebox-hub",
+  "score": 142,
+  "createdAt": 1776716443,
+  "aiSummary": {
+    "chinese_title": "Qwen3.5-27B 在 RTX 3090 上 207 tok/s：DFlash/DDTree 方案引争议",
+    "discussion_overview": [
+      {
+        "category": "质疑 vibecoded 与标题党",
+        "summary": "不少人认为这个 repo 更像是 Claude Code / LLM 拼出来的 demo，把论文、上游实现和一堆优化片段缝在一起。争议点在于 207 tok/s 主要出现在标题或峰值视频里，真正的 benchmark 数字明显更低。评论者还指出，仓库里用了会牺牲质量的量化和取巧实现，像是在用大数字吸引眼球而不是展示稳健结果。",
+        "supportid": [
+          "47840377",
+          "47840440",
+          "47840564",
+          "47841819"
+        ]
+      },
+      {
+        "category": "作者强调这是单卡工程突破",
+        "summary": "反驳方强调，这不是简单改 README，也不是把现成方案直接搬到 24GB 3090 上。核心工作是把 DFlash block-diffusion、DDTree 和 ggml 的图执行真正接起来，并修掉了缓冲区越界、候选排序等细节 bug。对方还说明标题里已经区分了 peak 207.6 tok/s 和平均 129.5 tok/s，Q4 KV cache 的质量损失也有实测数据支撑。",
+        "supportid": [
+          "47841456",
+          "47838789"
+        ]
+      },
+      {
+        "category": "speculative decoding 与输出质量争论",
+        "summary": "一部分人强调 speculative decoding 如果实现正确，理论上是 lossless 的，输出分布应与原模型一致。另一部分人则把焦点放在 greedy-only 上，认为这离可用的采样策略还差一步。关于 Q4 KV cache 的争论也很激烈：有人觉得短上下文只掉 3% 还行，有人认为真实任务里的退化远比这个大，不能拿 tok/s 替代质量。",
+        "supportid": [
+          "47840137",
+          "47840395",
+          "47840249",
+          "47841679",
+          "47840764",
+          "47840638",
+          "47842175"
+        ]
+      },
+      {
+        "category": "本地 AI 的硬件/框架路线",
+        "summary": "讨论很快扩展到本地 AI 到底该跑在什么平台上。有人指出 Vulkan、Metal（Apple 的图形与计算 API）、ROCm、MLX、OpenVINO，甚至 Android/Termux 都能跑模型，不该把 CUDA 视为唯一出路。也有人认为 Apple Silicon 的 unified memory 很适合大模型本地推理，而 Vulkan 的体验则被吐槽为“设计委员会产物”；这反映出本地 AI 正在从单一 GPU 竞赛转向多平台生态竞争。",
+        "supportid": [
+          "47840035",
+          "47840564",
+          "47841934",
+          "47840477",
+          "47840732",
+          "47840169",
+          "47841863",
+          "47840312"
+        ]
+      },
+      {
+        "category": "RTX 3090 的显存价值与价格",
+        "summary": "很多评论把焦点放在为什么偏偏选 RTX 3090。共识是它不是最快的卡，但 24GB VRAM 对本地大模型很有吸引力，所以曾经被视为“性价比”选择。也有人提到二手价格已经大幅上涨，未必还算便宜；相比之下，更快但显存更小的卡在本地 AI 场景反而不一定更实用。",
+        "supportid": [
+          "47840134",
+          "47840173",
+          "47840217",
+          "47840208",
+          "47841098",
+          "47841951",
+          "47842108",
+          "47842138"
+        ]
+      },
+      {
+        "category": "Qwen3.5-27B 的实际可用性",
+        "summary": "有人质疑 27B 小模型通常“产出垃圾”，做这个优化到底有什么意义。回应则认为 Qwen3.5-27B 在代码任务上相当强，能在 C++、Python、Verilog 等多种语言之间协作，还能从其他 repo 抽取思路。对支持者来说，重点不是参数量本身，而是本地可运行、可反复试验、没有 per-token 成本的实用性。",
+        "supportid": [
+          "47840883",
+          "47841981"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "speculative decoding",
+        "explanation": "先用 draft model 预测多个 token，再由 verifier 批量验收；实现正确时输出分布与原模型一致。"
+      },
+      {
+        "term": "DFlash",
+        "explanation": "一种 block-diffusion 风格的 speculative decoding draft 方案，用来加速生成。"
+      },
+      {
+        "term": "DDTree",
+        "explanation": "树状验收/验证结构，用更大的候选树提高可接受前缀长度。"
+      },
+      {
+        "term": "Gated DeltaNet",
+        "explanation": "Qwen3.5 中的一类混合层，替代部分 attention，用于更高效地处理长上下文。"
+      },
+      {
+        "term": "KV cache",
+        "explanation": "Transformer 解码时保存的 key/value 状态缓存；压缩它能显著省显存。"
+      },
+      {
+        "term": "GGUF",
+        "explanation": "llama.cpp 生态常用的模型权重文件格式，便于本地加载和量化。"
+      },
+      {
+        "term": "Q4_0 / Q4_K_M",
+        "explanation": "4-bit quantization 格式；Q4_K_M 常用于目标模型权重，Q4_0 常用于更省显存的 KV cache。"
+      }
+    ],
+    "context": "这篇帖子讨论的是一个开源 C++/ggml 项目：它声称在单张 RTX 3090（24GB 显存）上，让 Qwen3.5-27B 通过 DFlash block-diffusion speculative decoding 和 DDTree 跑出 207.6 tok/s 的峰值，同时把 128K context 通过 Q4_0 KV cache 压进内存。Qwen3.5-27B 本身是 hybrid model，既有普通 attention，也有 Gated DeltaNet 之类的状态空间层，所以在 llama.cpp（流行的本地 LLM 推理引擎）或 SGLang（一个 LLM serving 框架）里做高性能适配并不简单。评论区一边争论这是不是 Claude Code 拼出来的 vibecoded demo、是否挑选了最漂亮的数字，一边追问 speculative decoding、greedy-only 和 KV cache 量化到底会不会损害真实质量。作者/支持者则强调，现成的 z-lab 方案主要跑在 BF16 大卡上，真正把这套东西落到 24GB 消费卡上需要不少工程工作，而且标题里已经区分了峰值和平均 benchmark。",
+    "emoji": "🤨",
+    "sarcastic_question": "207 tok/s，是不是只在标题里成立？"
+  },
+  "articleSummary": "## 一句话总结\n通过手写 CUDA Kernel 和移植 DFlash 投机采样算法，在单张 RTX 3090 上把 Qwen3.5-27B 的推理速度飙到了 207 tok/s，能效比是通用框架的 2 倍以上。\n\n### 通用框架的性能天花板太低了\n现在的通用推理框架，比如 PyTorch HF 或者 llama.cpp，为了兼容各种硬件，不得不牺牲掉大量性能。文章里的数据很扎心：在 RTX 3090 上跑 Qwen3.5-0.8B，PyTorch 的 Prefill 只有 7,578 tok/s，llama.cpp BF16 也才 11,247 tok/s。这主要是因为每一层计算都要 CPU 和 GPU 之间来回通信，一个 token 生成下来要发起近百次 kernel launch。这种频繁的“往返跑”，让 GPU 大部分时间都在空转，根本吃不满算力。\n\n### 把 24 层网络塞进一个 Kernel 里\n为了榨干 GPU，作者搞了个“Megakernel”，核心思路就是“拒绝中间商赚差价”。他们把 Qwen3.5-0.8B 全部 24 层网络的计算逻辑，融合到了单独一个 CUDA Kernel 里。这意味着整个前向传播过程，GPU 根本不需要跟 CPU 打交道，全是自己在内部通过 Cooperative Grid Sync 协调。效果立竿见影：Prefill 跑到了 37,800 tok/s，比 llama.cpp 快了 3 倍多。而且因为计算太紧凑，GPU 甚至还没撞到算力天花板，先撞到了 220W 的功耗墙，直接把能效比拉到了 1.87 tok/J。\n\n### 27B 模型的内存困局与 GGUF 破局\n搞定小模型后，挑战来了：怎么在 24GB 显存的 RTX 3090 上跑 27B 的大模型？这不仅是算力问题，更是内存“俄罗斯方块”。原本的 AWQ INT4 格式加上 BF16 Draft 模型，显存根本塞不下 DFlash 算法所需的 DDTree 验证状态。作者最终选择了 Q4_K_M 的 GGUF 格式（约 16GB），加上 3.46GB 的 Draft 模型和 KV Cache，刚好能塞进 24GB 显存。为了实现这一点，他们不得不在 ggml 之上手写 C++/CUDA 解码器，因为当时没有现成的运行时支持 GGUF 格式的 DFlash。\n\n### DFlash + DDTree 的暴力加速\n硬件准备好了，算法才是提速的关键。这里用到了 DFlash（基于目标隐藏状态的块扩散投机采样）和 DDTree（树结构验证）。传统的投机采样是链式验证，而 DDTree 允许并行验证一个树结构，在相同算力预算下效率更高。作者针对 RTX 3090 的特性，把 Budget 调优到了 22，并手写了三个专门处理树状 SSM 状态回滚的 CUDA Kernel。结果非常夸张：在 HumanEval 测试中，平均速度达到了 129.5 tok/s，比标准的自回归（AR）推理快了 3.43 倍，峰值甚至能冲到 207 tok/s。\n\n### 手写内核：AI 时代的“复古”新潮流\n这篇文章最让我触动的是它的底层逻辑。过去十年，大家都在追求“一套代码跑遍所有平台”，结果就是平庸的通用性掩盖了硬件的特殊性。现在有了 AI 辅助编程，手写针对特定芯片优化的内核成本大大降低了。作者不等待更好的硅片，而是通过重写软件来挖掘现有硬件的潜力。这种“为一块芯片、一个模型家族专门重写”的思路，可能是未来本地高性能推理的一个新方向。"
+}

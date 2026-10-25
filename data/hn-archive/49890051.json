@@ -1,0 +1,104 @@
+{
+  "id": 49890051,
+  "by": "czoido",
+  "title": "Using any C++ library in Godot",
+  "url": "https://blog.conan.io/cpp/conan/gamedev/godot/cmake/2026/09/29/Using-Any-Cpp-Library-In-Godot.html",
+  "score": 120,
+  "createdAt": 1790671874,
+  "aiSummary": {
+    "chinese_title": "Godot 通过 GDExtension 接入 C++：性能收益与 Linux ABI 分发陷阱",
+    "discussion_overview": [
+      {
+        "category": "用 C++ 承担 GDScript 跑不动的核心逻辑",
+        "summary": "有开发者制作 RTS 时碰到 GDScript 性能上限，便把重型模拟逻辑迁至 C++，而把菜单、对话等界面层继续留在 Godot。其体验是迁移过程繁琐，但模拟性能改善明显。选择 C++ 并非断言其必然胜过 C#，主要是已有 C++ 经验且身边有可求助的 C++ 开发者。也有人批评 GDScript 比 Lua 还慢，并认为 Godot 的层级和物理 API 容易触发 heap allocation，不过仍认可其轻量特性。",
+        "supportid": [
+          "49890793",
+          "49893048",
+          "49890999",
+          "49893268",
+          "49891023"
+        ]
+      },
+      {
+        "category": "C#、性能分析与跨平台限制",
+        "summary": "评论者认为在因性能跳到 C++ 前，应先 profile GDScript 或 C# 找到真正热点。Godot 对 C# 的内建 profiling 几乎没有，实际可借助 Rider 或 Superluminal 等外部工具。C# 是 Godot 的 first-class 语言且无需 GDExtension，但目前 web export 尚不兼容；相关 draft PR 会让 web 包增约 50 MB且功能未齐。还有观点称 GDScript 预期最多改善 interpreter，而非引入 JIT 或 AOT；.NET 的原生编译和主机平台支持也受限于远不止 CPU ISA 的平台认证与运行时问题。",
+        "supportid": [
+          "49890741",
+          "49891002",
+          "49891368",
+          "49894207",
+          "49894470",
+          "49892378"
+        ]
+      },
+      {
+        "category": "C# 游戏生态并不只属于 Unity",
+        "summary": "有人将 C# 说成主要属于 Unity 社区，但回复指出 Godot、Unity、Stride、Flax 和 NeoAxis 等引擎都提供了较成熟的 C# 集成。Stride 甚至使用 C# 物理引擎，而 BEPU physics 被作为高性能 C# 游戏库的例子。评论把这类生态追溯至 Xbox 360 时代的 Xbox Live Indie Games：该计划要求 C# 与 XNA，因而刺激了大量游戏库发展。XNA 的开源继承者 MonoGame、FNA 后来也支撑了 Stardew Valley、Celeste、Terraria 等独立游戏，且可能影响了 Unity 采用 C# 的决定。",
+        "supportid": [
+          "49893531",
+          "49894427",
+          "49895146"
+        ]
+      },
+      {
+        "category": "Rust 也是接入原生库的可行路径",
+        "summary": "熟悉 Rust 的开发者可使用 godot-rust 提供的 GDExtension bindings，将 Rust 库整合进 Godot，而不局限于 C++。评论特别指出它也可接入 tokio 和 async Rust，意味着异步任务不必另行转写为 GDScript。godot-iroh 被举为实例：它把 iroh 的 peer-to-peer networking 能力带入 Godot。多位使用者对该 bindings 的成熟度表达认可。",
+        "supportid": [
+          "49890189",
+          "49895189",
+          "49891379"
+        ]
+      },
+      {
+        "category": "Linux 发布的 C++ ABI 与运行时冲突",
+        "summary": "Linux 上分发 GDExtension 的难点是 Godot、扩展和用户发行版可能使用不同版本的 libstdc++，由此引发 C++ ABI 或动态链接符号冲突。建议要么用与 Godot 相近的旧发行版构建，要么借助 linker versioning script 隐藏扩展实现；也有人采用静态链接 libstdc++ 与 -fvisibility=hidden，但发现异常跨越边界时会失效。更激进的建议是游戏二进制使用 -static-libgcc、-static-libstdc++，只依赖兼容版本的常见 glibc 符号，其他私有库经 dlopen 动态载入。争论的核心是：若无法可靠随游戏交付 C++ 库，扩展机制的实用性将严重下降。",
+        "supportid": [
+          "49890133",
+          "49890517",
+          "49890684",
+          "49891370",
+          "49892428"
+        ]
+      },
+      {
+        "category": "GDExtension 的工程成本、数据布局与替代方案",
+        "summary": "有人认为接入流程需要 CMake、Python 和专门的 C++ glue code，工程上颇为繁琐；回应则强调其目标是兼容既有库，并非推荐所有项目都如此实现。示例中把 flecs 实体位置复制到 MultiMesh buffer，并不必然是 C++ 与 Godot 世界边界无法 zero-copy，而是 flecs 数据布局与 MultiMesh 所需布局不同。若重排数据布局，复制量可能下降，但是否能完全 zero-copy 尚未验证。若 GDExtension API 无法访问所需 engine internals，才应改用编入引擎的 engine module；后者需自建并发布 Godot、编辑器和各平台 export templates，但 Steam 分发通常并非障碍。",
+        "supportid": [
+          "49890542",
+          "49890635",
+          "49890281",
+          "49890611",
+          "49890937",
+          "49890996",
+          "49891142"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "GDExtension",
+        "explanation": "Godot 的原生扩展 ABI，可在运行时加载 C++、Rust 等编译语言写成的动态库，而无需修改引擎源码。"
+      },
+      {
+        "term": "C++ ABI",
+        "explanation": "C++ 二进制之间关于名称改编、对象布局、异常和标准库的兼容约定；编译器或 libstdc++ 版本不一致时，Linux 动态加载尤其容易出问题。"
+      },
+      {
+        "term": "libstdc++",
+        "explanation": "GCC 的 C++ 标准库运行时；游戏和 Godot 扩展若依赖不同符号版本，可能产生加载失败或难以复现的运行时错误。"
+      },
+      {
+        "term": "GDScript",
+        "explanation": "Godot 的内置脚本语言，开发方便但在大规模模拟等 CPU 密集任务中常被认为性能不及原生编译语言。"
+      },
+      {
+        "term": "AOT / JIT",
+        "explanation": "AOT 在发布前编译为原生代码，JIT 在运行时编译热点代码；两者常用于改善托管或脚本语言性能，但会增加平台部署复杂度。"
+      }
+    ],
+    "context": "该讨论围绕一篇展示如何借助 GDExtension（Godot 的原生扩展接口）在 Godot 游戏引擎中复用任意 C++ 库的文章展开，示例涉及 flecs（C++ Entity Component System 库）数据和 MultiMesh（Godot 的批量网格渲染容器）之间的转换。Godot 项目通常以 GDScript 编写玩法，但 RTS 模拟、网络或大量实体更新会促使开发者将热点移至 C++、C# 或 Rust。GDExtension 让扩展无需自行编译整个引擎，而 engine module（直接编入 Godot 的模块）可访问更多内部接口，代价是维护定制引擎及各平台构建产物。Linux 发布还会受到 C++ ABI、libstdc++ 版本和动态链接策略影响，因此“能编过”并不等于扩展能在不同发行版的玩家机器上稳定运行。",
+    "emoji": "🛠️",
+    "sarcastic_question": "为接个库，先学 ABI、CMake 和发行版考古吗？"
+  },
+  "articleSummary": "## 一句话总结\n通过 Conan 包管理器管理 godot-cpp 和第三方 C++ 库的依赖，可以彻底解决 GDExtension 开发中繁琐的跨平台编译匹配问题，让 C++ 库像原生节点一样无缝融入 Godot 引擎。\n\n## 正文\n\n### GDScript 很好用，但 C++ 库还得请进来\nGodot 引擎这几年火得一塌糊涂，开源免费、MIT 协议、下载即用，大部分游戏用自家的 GDScript 就能写得飞起。但项目做大了总会遇到坎：你想接入一个物理模拟库、数据库，或者是机器学习运行时，这些东西早就有了成熟的 C++ 版本。GDScript 没法直接调原生代码，这时候就得靠 **GDExtension**。它能让 Godot 在运行时加载动态库（`.dll` / `.so` 等），配合官方 C++ 绑定库 **godot-cpp**，你的 C++ 类就能像引擎原生节点一样出现在编辑器里，属性能在 Inspector 面板直接调，GDScript 也能直接用。\n\n### 写代码容易，编译配置才是噩梦\n把 C++ 代码写进 Godot 其实不难，难的是构建流程。godot-cpp 必须和你使用的 Godot 版本严丝合缝地匹配，而且你要发布的每一个平台（Windows、Linux、macOS...）都得单独编译一套。官方文档推荐用 SCons 构建，把 godot-cpp 作为 git submodule 引入。这在小项目里还行，一旦你要引入像 flecs 这样的第三方库，或者 Box2D、PyTorch 这种大家伙，你就得在每个平台上把这些依赖全编译一遍，还得保证编译参数和 godot-cpp 一致。这简直就是依赖管理的地狱，而这恰恰是 Conan 最擅长解决的问题。\n\n### 用 Conan 锁定版本，一次构建处处复用\n现在 godot-cpp 已经上了 ConanCenter，事情就简单多了。你不需要在每个项目里反复编译 godot-cpp，只需要在 `conanfile.py` 里声明依赖 `godot-cpp/10.0.0`。这里有个关键参数 `api_version`：从 godot-cpp 10.0 开始，一个版本就能支持 Godot 4.3 及以上的所有版本。你只需要指定你想支持的最低 Godot 版本，比如 4.3，生成的扩展包就能在更新的版本里跑，反过来不行。Conan 会把每一组参数（版本、目标平台、架构）构建一次并缓存起来，以后所有项目直接复用，省去了大量重复编译的时间。\n\n### 实战演练：用 flecs 驱动 10 万粒子\n为了证明这套方案靠谱，作者举了个硬核例子：用 **flecs**（一个 Entity Component System 库）在 Godot 里模拟 10 万个粒子。ECS 的特点就是快，组件在内存里连续排列，遍历起来效率极高，特别适合这种大规模模拟。在 `conanfile.py` 里，我们同时引入 `godot-cpp` 和 `flecs`。构建时，Conan 会读取 godot-cpp 的 `target` 选项（是 debug 还是 release），传给 CMake，保证生成的动态库名字和 Godot 预期的文件名一致。整个过程就是标准的 CMake 流程，生成的动态库直接丢进 Godot 项目的 `demo/bin` 目录，Godot 启动时自动加载。\n\n### 把 C++ 类伪装成 Godot 节点\n代码层面，核心是定义一个继承自 `Node2D` 的 `Swarm` 类。通过 `GDCLASS` 宏注册，用 `_bind_methods()` 暴露属性，这样 `count`（粒子数）和 `flee_radius`（逃跑半径）就能直接在 Godot 编辑器里改。逻辑上，`_ready()` 负责初始化 flecs 世界，创建 10 万个实体，每个实体挂载 `Position` 和 `Velocity` 组件。为了高效渲染，这里没用 10 万个 Godot 节点（那肯定卡死），而是用了 **MultiMesh**，一次 Draw Call 画完所有粒子。每帧 `_process()` 把鼠标位置传给 flecs，运行系统逻辑，再把算好的坐标刷进 MultiMesh 的缓冲区。\n\n### 编辑器里是占位符，运行时才是真身\n注册类的时候有个细节：使用了 `GDREGISTER_RUNTIME_CLASS`。这意味这个类在编辑器模式下只是个\"占位符\"，你可以把它加进场景、调参数，但逻辑代码（比如那 10 万粒子的模拟）不会在编辑器里跑起来。只有游戏真正运行时，动态库才会被加载执行。这样既保证了编辑器的流畅，又避免了编辑状态下产生意外的副作用。编译只需一条 `conan build . --build=missing`，Conan 自动拉取依赖、配置 CMake、生成动态库。打开 Godot 4.7 导入项目，`Swarm` 节点就已经静静地躺在节点列表里等你用了。\n\n### 告别依赖泥潭，专注逻辑本身\n这套方案的核心价值在于标准化。以前你想在 Godot 里用个 C++ 库，得先花半天时间折腾编译环境，还得祈祷各个平台的依赖版本别打架。现在有了 Conan，godot-cpp 和第三方库都变成了\"普通依赖\"。ConanCenter 里有超过 1900 个库任你挑，不管是物理引擎还是 AI 运行时，都能以一致的方式构建和分发。这不仅仅是省了点编译时间，更是让 Godot 的 C++ 扩展开发从\"手工作坊\"迈进了\"工业化\"时代。"
+}

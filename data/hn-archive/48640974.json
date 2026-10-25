@@ -1,0 +1,126 @@
+{
+  "id": 48640974,
+  "by": "CommonGuy",
+  "title": "The new HTTP QUERY method explained",
+  "url": "https://kreya.app/blog/new-http-query-method-explained/",
+  "score": 140,
+  "createdAt": 1782196819,
+  "aiSummary": {
+    "chinese_title": "HTTP QUERY：为查询请求正式支持 body",
+    "discussion_overview": [
+      {
+        "category": "支持 QUERY：解决 GET body 在浏览器和网关里不可靠",
+        "summary": "很多人支持 QUERY 的核心理由是：GET with body 在浏览器、框架和网关里并不可靠。有人提到 fetch 不接受 GET body，很多服务器默认会忽略或剥离它，API gateway 甚至会直接丢掉 body，因此“能跑”并不等于“可部署”。明确引入 QUERY 后，客户端就能清楚声明自己要发带 body 的只读查询，而不是把非标准技巧硬塞进 GET。对搜索、长参数过滤或需要传敏感条件的请求，这被认为比继续靠 hack 更稳妥。",
+        "supportid": [
+          "48642326",
+          "48642748",
+          "48642568",
+          "48642682",
+          "48642964",
+          "48643110",
+          "48642847"
+        ]
+      },
+      {
+        "category": "规范与中间层：QUERY 用来补足 GET body 的语义",
+        "summary": "另一派强调 QUERY 不是“GET 换个名字”，而是为了让中间层知道这次请求的 body 有语义。RFC 9110 里对 GET body 的表述本来就很弱，客户端不应生成，代理也可以忽略它；这会让缓存、CDN、负载均衡和安全设备做出不一致处理。有人担心如果把敏感内容塞进 GET，缓存可能按 method 复用却没看 body，带来隐私和误投递风险。支持者认为 QUERY 至少能通过一个明确的 method，把“这里有 body、且应按查询处理”这件事写进协议。",
+        "supportid": [
+          "48642261",
+          "48642320",
+          "48642945",
+          "48642749",
+          "48642363",
+          "48642130",
+          "48642843",
+          "48642305",
+          "48642635"
+        ]
+      },
+      {
+        "category": "质疑：这只是给 GET+body 套新名字",
+        "summary": "质疑者觉得这只是给 GET+body 套了一层新名字，语义几乎没变，却增加了 RFC、客户端和服务器的学习成本。有人认为如果规范一开始就该支持 GET body，现在再补票只是被 legacy 生态和中间件拖着走，而不是一个优雅的新设计。也有人说这份 RFC 说明得太多、改得太少，真正的 adoption 可能很低，因为大多数团队直接用 POST 就够了。还有人半开玩笑地说别再“make fetch happen”了。",
+        "supportid": [
+          "48643069",
+          "48641535",
+          "48641852",
+          "48641986",
+          "48642381",
+          "48642058",
+          "48642079",
+          "48642486",
+          "48641990",
+          "48642571",
+          "48642670",
+          "48641817"
+        ]
+      },
+      {
+        "category": "适用场景：搜索、GraphQL、SPARQL 和 CQRS",
+        "summary": "评论里提到的典型场景是搜索和复杂查询：Elastic/OpenSearch 的查询接口、GraphQL 的查询、SPARQL endpoint、反向图片搜索，以及各种需要大量 filter 的 read 请求。它们往往是幂等的、可缓存的，但 query string 很快会变长且难以维护，用 JSON body 更自然。有人还把它和 CQRS 联系起来，认为 QUERY 更像“读模型”的 HTTP 表达，而不是 CRUD 里那种单一资源读取。与此同时，DELETE 带 body 也被顺带讨论，但多数人觉得那是另一个问题。",
+        "supportid": [
+          "48641695",
+          "48642149",
+          "48642751",
+          "48642515",
+          "48641905",
+          "48642074",
+          "48643219",
+          "48642854",
+          "48642586",
+          "48641955",
+          "48642803"
+        ]
+      },
+      {
+        "category": "基础设施碎片化：代理、CDN 和企业设备的现实限制",
+        "summary": "大量评论都在强调现实世界里的 middlebox 问题：corporate proxy、API gateway、CDN、firewall、load balancer 以及 SSL intercepting proxy appliance。它们对 GET body 的处理经常不一致，有的直接剥掉 body，有的只支持 HTTP/1.1，甚至会因为新 verb 出现兼容性故障。支持 QUERY 的人认为，既然旧设备已经把“GET body”当成异常，那就用一个明确的新 method 作为硬边界，逼生态在可控范围内升级。反对者则觉得这正说明互联网基础设施太碎片化，任何新标准都会先撞墙。",
+        "supportid": [
+          "48642694",
+          "48642834",
+          "48642852",
+          "48642600",
+          "48642867",
+          "48642588"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "QUERY method",
+        "explanation": "新提议的 HTTP method，用来表达可缓存、幂等的查询请求，并允许携带 request body。"
+      },
+      {
+        "term": "GET body",
+        "explanation": "在 GET 请求里放 body 的做法；很多实现会忽略、剥离或不支持，兼容性很差。"
+      },
+      {
+        "term": "RFC 9110",
+        "explanation": "现行 HTTP semantics 规范，说明 GET 中的 content 没有通用语义，客户端通常不应随意发送。"
+      },
+      {
+        "term": "Accept-Query header",
+        "explanation": "用于声明服务器支持 QUERY 的协商 header，帮助客户端判断能否发送 QUERY。"
+      },
+      {
+        "term": "middlebox",
+        "explanation": "位于客户端与 origin 之间的中间设备，如 proxy、CDN、firewall、load balancer。"
+      },
+      {
+        "term": "idempotent",
+        "explanation": "重复执行多次结果相同的请求语义，适合安全重试和缓存。"
+      },
+      {
+        "term": "cacheability",
+        "explanation": "请求或响应可被缓存复用的属性，是 QUERY 被强调的重要目标之一。"
+      },
+      {
+        "term": "CQRS",
+        "explanation": "Command Query Responsibility Segregation，把写操作和读操作分离的架构模式。"
+      }
+    ],
+    "context": "这篇讨论围绕一个新的 HTTP method：QUERY，来自 IETF 的 RFC 10008，目标是给“读但带 body 的查询”一个正式语义。争议源头在于 HTTP 里 GET 传统上不应该携带 body，但现实里搜索、过滤、GraphQL、OpenSearch/Elasticsearch 这类接口常常需要，把参数都塞进 URL 会遇到长度、编码和日志泄露问题。更麻烦的是，WHATWG fetch（一个浏览器 JavaScript 网络 API 规范）和许多 server、proxy、API gateway、CDN、firewall 对 GET body 的支持不一致，常见做法是忽略或剥离 body。支持者希望 QUERY 让客户端和中间件明确这是“可缓存的查询”，反对者则担心这只是给既有碎片化生态再加一个新 verb。",
+    "emoji": "🤔",
+    "sarcastic_question": "既然只是GET加body，何必再造一个QUERY？"
+  },
+  "articleSummary": "## 一句话总结\nRFC 10008 新增的 HTTP QUERY 方法，本质上就是一个“允许携带请求体”的 GET，专门为了解决复杂查询场景下 GET 长度受限和 POST 语义不匹配的痛点。\n\n### REST 的老规矩碰到了硬骨头\n在 RESTful API 的世界里，我们一直守着一套严格的规矩：GET 读数据，POST 写数据。这套规矩运行了几十年，本来大家都相安无事，直到复杂查询的需求越来越多。以前我们用 `GET /api/v1/users?role=admin` 这种 URL 参数做简单过滤没问题，但一旦涉及深层嵌套、复杂逻辑或者数组结构，URL 就会变得巨长无比。这不仅难读，还容易撞上浏览器或服务器的字符数上限，甚至因为编码问题导致体积膨胀。更麻烦的是，URL 参数里怎么传数组、怎么传嵌套对象，业界根本没有统一标准，全看各家实现。\n\n### 给 GET 加个 body 行不行？\n既然 URL 装不下，那能不能给 GET 请求加个 body，把复杂的查询条件塞进 JSON 里发过去？从理论上讲，HTTP RFC 并没有明文禁止 GET 带 body，但这在工程实践中是个大坑。很多现存的代理、防火墙和 Web 服务器对“带 body 的 GET”处理方式完全不一致：有的直接拒绝，有的默默丢掉 body，有的虽然处理了但行为不可预测。如果你敢这么用，一旦用户躲在某个老旧的企业防火墙后面，你的服务可能就直接挂了。这也是为什么 RFC 不去修补 GET，而是宁愿搞个新方法的原因——为了不破坏现有的互联网基础设施。\n\n### 用 POST 查询是无奈的妥协\n既然 GET 带 body 不靠谱，业界目前的通用做法是“借用” POST 来做查询。虽然 POST 允许传 body，解决了数据传输的问题，但这在语义上其实是错误的。POST 被定义为非幂等的，通常用于创建资源，这意味着中间件（如缓存代理）默认认为它会修改服务器状态。这导致了一个很实际的麻烦：因为 POST 不是“安全且幂等”的，客户端和中间件都不敢随意自动重试失败的请求，也无法利用通用的缓存机制。说白了，用 POST 查询，虽然功能实现了，但把 HTTP 协议层面的优化红利全丢了。\n\n### QUERY 方法：语义正确的补丁\n为了彻底解决这个别扭的局面，经过多年的讨论，RFC 10008 终于定义了新的 QUERY 方法。核心思路其实很简单：它就是 GET 的语义，加上 POST 的 body。它被明确定义为安全、幂等的，专门用于那些需要携带复杂查询参数的只读操作。这意味着，未来的缓存中间件可以放心地缓存 QUERY 请求（只要把 body 内容也纳入缓存键），客户端也可以像处理 GET 一样安全地进行重试。它终于给了复杂查询一个名正言顺的身份。\n\n### 别急着全面迁移，坑还不少\n虽然 QUERY 看起来很美好，但别急着把现有的搜索接口全改了。首先，生态支持还非常初级，除了像 Kreya 这种新潮工具已经支持外，大多数浏览器、代理、服务器和老旧客户端可能根本不认识这个方法，直接给你拒掉。其次，如果你的查询需要支持分享链接或书签（URL 可见），那必须继续用 GET，因为 QUERY 的 body 是没法直接分享的。最后，实现 QUERY 的缓存比 GET 麻烦得多，因为缓存键的计算必须包含请求体，这对服务器的性能和逻辑都是个考验。"
+}

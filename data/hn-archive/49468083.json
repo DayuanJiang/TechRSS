@@ -1,0 +1,144 @@
+{
+  "id": 49468083,
+  "by": "TangerineDream",
+  "title": "Saving 100 terabytes of memory by optimizing 1.1.1.1's DNS cache",
+  "url": "https://blog.cloudflare.com/dns-cache-memory-optimization-1111/",
+  "score": 700,
+  "createdAt": 1787852406,
+  "aiSummary": {
+    "chinese_title": "Cloudflare 1.1.1.1 压缩 DNS 缓存，累计省 100TB 内存",
+    "discussion_overview": [
+      {
+        "category": "优化时机与成本回报",
+        "summary": "不少人把这类改造视为先做可用产品、后做深度优化的典型案例：先验证需求、把服务跑稳，再根据真实压力收紧成本。也有人反驳说，真正难的不是写出更紧凑的数据结构，而是生产环境里的分阶段发布、数据迁移和避免破坏兼容；缓存热路径一旦动起来，滚动上线本身就会拖很久。评论里还提到 Cloudflare（网络基础设施公司）本身有较强融资和规模优势，效率工作常常要等到预算压力、晋升材料或明显成本时才会被认真对待。另一些人则坚持，早点做对数据结构可以避免未来 scale-out 到 bazillion systems，也能减少长期技术债。",
+        "supportid": [
+          "49470370",
+          "49473112",
+          "49475384",
+          "49470650",
+          "49472705",
+          "49473254",
+          "49474397",
+          "49472238",
+          "49473072",
+          "49470761",
+          "49468539",
+          "49469149",
+          "49470006",
+          "49470090",
+          "49468447",
+          "49472334",
+          "49468543",
+          "49468768",
+          "49474610",
+          "49475442"
+        ]
+      },
+      {
+        "category": "Rust 内存布局与安全取舍",
+        "summary": "很多评论在拆解它为什么能省这么多内存：缓存条目一旦写入后就不再修改，所以用 Box<[u8]>、长度前缀和单次分配，比保留 Vec<T> 的 capacity 更合适。讨论随即扩展到 Rust 的 custom DST、arena、custom allocator、repr(C)、pointer casting 和对齐问题，大家的共识是这些技巧并不天然违背安全性，但通常需要自己包一层安全 wrapper。也有人指出，把多个列表压进一个连续块后，索引边界和生命周期就得自己负责，编译器不再自动替你兜底。少数人还吐槽这类底层布局在 C 或 Zig 里更顺手，在 Rust 里摩擦更大。",
+        "supportid": [
+          "49468431",
+          "49468606",
+          "49470391",
+          "49471263",
+          "49472939",
+          "49474058",
+          "49473581",
+          "49474730",
+          "49470066",
+          "49472443",
+          "49474411",
+          "49473601",
+          "49469283",
+          "49471284",
+          "49473671",
+          "49471627",
+          "49475258",
+          "49470489",
+          "49474335",
+          "49474407"
+        ]
+      },
+      {
+        "category": "DNS 缓存本质与 TTL 争议",
+        "summary": "有评论专门解释 1.1.1.1 不是静态数据库，而是 recursive resolver（递归 DNS 解析器）：它要向 authoritative name servers（权威 DNS 服务器）递归查询，再按 TTL 缓存结果。所谓 100TB 也不是一台机器的巨型缓存，而是分布在很多服务器上的总和；在这种场景下，减少每次 cache hit 的元数据和序列化开销，会直接提高吞吐和有效缓存容量。围绕 TTL 还引发了争论：有人强调 resolver 应该尊重原始 TTL，另一些人则引用 RFC 8767 说明在权威服务器不可达时可以提供 stale records。整体上，这更像面向全球流量的高性能 KV cache，而不是可以随意改成中心化 database 的对象。",
+        "supportid": [
+          "49468957",
+          "49468983",
+          "49469454",
+          "49469637",
+          "49469001",
+          "49470183",
+          "49470387",
+          "49470280",
+          "49469204",
+          "49469807",
+          "49470124",
+          "49470257",
+          "49470406",
+          "49470290",
+          "49470326",
+          "49470733",
+          "49474537",
+          "49474183",
+          "49471651",
+          "49470717",
+          "49474394"
+        ]
+      },
+      {
+        "category": "更紧凑的索引与编码方案",
+        "summary": "另一条线索是更紧凑的数据结构选择：hostname 型 qname 很适合 radix tree 或 BTree 的 prefix compression，因为像 com. 这样的公共前缀可以在父节点共享。也有人提到 TLV、netlink、数据库 row 这类 length-prefixed contiguous layout，本质上都是把可变长字段打包进一段连续内存，减少 pointer chasing。还有人把它类比为 C 里的 intrusive data structures、对齐良好的 struct，或者轻量压缩后的内存布局；但这些方案通常以实现复杂度和语言表达成本为代价。",
+        "supportid": [
+          "49473466",
+          "49472918",
+          "49474472",
+          "49470365",
+          "49471828",
+          "49473687",
+          "49468769",
+          "49472674",
+          "49471705",
+          "49472076",
+          "49473717",
+          "49475267",
+          "49474999",
+          "49474335",
+          "49474407",
+          "49474411"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Vec<T>",
+        "explanation": "Rust 的可增长连续数组，会携带容量等元数据，适合动态扩容但有额外开销。"
+      },
+      {
+        "term": "Box<[T]>",
+        "explanation": "Rust 的 boxed slice，把固定长度切片一次性分配到堆上，适合不再扩容的只读数据。"
+      },
+      {
+        "term": "TTL",
+        "explanation": "DNS 记录的缓存有效期上限，决定递归解析器可以复用结果多久。"
+      },
+      {
+        "term": "recursive resolver",
+        "explanation": "会向权威 DNS 服务器逐级查询并缓存结果的 DNS 解析器。"
+      },
+      {
+        "term": "TLV",
+        "explanation": "Tag/Length/Value 编码，常见于网络协议，靠长度字段处理可变长数据。"
+      },
+      {
+        "term": "arena",
+        "explanation": "一次分配、批量释放的内存管理方式，可减少大量小对象的分配开销。"
+      }
+    ],
+    "context": "Cloudflare（网络基础设施公司）的 1.1.1.1 是面向公众的 recursive resolver（递归 DNS 解析器），很多用户会把它设成系统 DNS，甚至作为 DNS-over-HTTPS（DoH，通过 HTTPS 传输 DNS 查询）的提供方。文章讲的是他们在缓存层把原本更通用的 Vec 式结构，改成更紧凑的 Box<[u8]> 和长度前缀布局，因为 DNS 响应一旦写入缓存后基本只读，热路径只需要读取并重新序列化。评论里补充说，这类节省是整个机群累计出来的，不是单机戏法：1.1.1.1 要对大量 authoritative name servers（权威 DNS 服务器）做递归查询，缓存只是为了减少延迟和上游负载。争论的背景还包括 TTL、stale records、以及如何在不破坏 DNS 规范的前提下，做出足够小、足够快、又容易分阶段发布的缓存结构。",
+    "emoji": "🛠️",
+    "sarcastic_question": "都能省100TB了，前面真没人看一眼吗？"
+  },
+  "articleSummary": "## 一句话总结\n\nCloudflare 通过重构 Big Pineapple DNS cache 的内存布局，把每条缓存记录的占用削减超过 50%，在 2500 亿条缓存规模下释放了约 100 TB 内存，同时让插入吞吐提升 43%、查找延迟降低 19%。\n\n## 正文\n\n### 2500 亿条记录里，浪费 1 byte 都是一场事故\n\nBig Pineapple 是 Cloudflare 多项 DNS 服务背后的平台，包括 1.1.1.1、Gateway DNS、DNS Firewall 和 AS112。它在任意时刻要保存超过 2500 亿条 DNS cache entry。这个规模意味着，每条 entry 多浪费 1 byte，整个 fleet 就要多付出超过 250 GB 内存。更麻烦的是 ECS，亦即 EDNS Client Subnet，会让权威 DNS 按客户端网络返回不同答案。于是同一个 query 必须缓存多个版本，entry 数量和单条占用都会继续上涨。作者的目标因此很明确：不是找一个大优化，而是逐字节审视缓存对象的布局。\n\n### 先把问题量出来，而不是盯着 struct 猜\n\nCloudflare 没有直接拿线上内存曲线做结论，而是构造了接近生产流量的 benchmark。测试数据中，`A` 记录占 56%，`AAAA` 占 25%，`TXT` 占 19%。每个 entry 包含 1 到 4 条 record，`TXT` 的大小随机落在 64 到 224 bytes。这里的 `TXT` 其实是其他变长 record 类型的替身，而不是说线上只有这三类记录。它们还用一个包装 Rust `System` allocator 的 custom allocator，逐条统计 allocation 的次数和大小。最后，线上 rollout 期间再观察 resident memory，因为真实进程内存还会受流量结构、cache occupancy 和 allocator 状态影响。\n\n### 不会再增长的 Vec，根本不该带着 capacity\n\n第一个突破点很朴素：DNS response 一旦进入 cache，就不会再被修改。可 Rust 的 `Vec<T>` 天生为可增长设计，内部始终带着 pointer、length 和 capacity 三个字段。对于 immutable cache entry，capacity 不仅没有意义，还要稳定占 8 bytes。更隐蔽的损耗在堆上，`Vec` 为未来扩容预留的空槽也会一直留着。于是作者将 `Vec<T>` 换成 `Box<[T]>`，将 `String` 换成 `Box<str>`。每条 entry 有 8 个这类字段，光是去掉 capacity 就节省 64 bytes；连同过度预分配的堆空间，累计节省超过 15 TB。\n\n### 三个 DNS section 不必带三套指针\n\nDNS response 原本将 answer、authority、additional 分别存为三个列表。这样做很直观，但每个 `Box<[T]>` 都需要一个 8-byte pointer 和一个 8-byte length。作者把它们合并为一个 record 列表，再用 offset 标记各 section 的起点。因为每个 section 的 record 数量能放进 `u16`，每个 offset 只需 2 bytes。这样去掉两套列表元数据，再加入两个 offset 后，每条 entry 节省 28 bytes。这里还有一个 Rust 布局层面的细节：删掉字段不一定只省字段本身的大小，因为 alignment padding 也可能随之消失。类似地，多个 boolean 被合并成一个 `bitflag`，进一步压缩了 struct 周围的 padding。\n\n### 大多数 record 的 owner，其实早就藏在 cache key 里\n\n每条 DNS record 都有 owner，也就是它所属的域名。通常 owner 就是查询的 domain，例如查询 `example.com A` 时，返回的多个 `A` record 都属于 `example.com`。但遇到 `CNAME`，后续 `A` record 的 owner 可能变成 `cdn.example.com`。DNS wire format 会用 RFC 1035 的 name compression 压缩重复域名，但 cache 为了避免热路径解引用 compression pointer，原先仍存储完整 owner。作者改为 `Option<Box<Name>>`：owner 与 query name 相同时存 `None`，只在 owner 不同时才分配并保存完整名称。构造 response 时，`None` 的 owner 从 cache key 恢复，代价是 record 不再完全自包含，但 lookup 时 cache key 本来就已在手边。\n\n### 真正昂贵的不是 A record，而是它被迫和 NAPTR 一样大\n\n接下来，问题落到了 `RecordData` 这个 Rust enum 上。enum 的大小由最大 variant 决定，而 `NAPTR` 因为包含多个变长文本字段和 domain name，达到 136 bytes。算上 tag 和 padding，整个 `RecordData` 变成了 144 bytes。可占流量超过 80% 的 `A` 和 `AAAA`，实际只分别需要 4 bytes 与 16 bytes。作者先尝试把较大的 variant 放进 `Box`，让常见的小 variant 内联，大 variant 单独分配。这样 `A` 与 `AAAA` 每条可省约 120 bytes，但代价是更多 allocation、jemalloc size class 向上取整，以及更差的 CPU cache locality。\n\n### 最终折中：结构化 metadata 留下，record data 改存 wire bytes\n\n只缓存完整 DNS wire message 看似最省空间，但会带来 DNSSEC 的麻烦。带 `DO` flag 的客户端需要 DNSSEC record，不带的客户端不需要；完整消息要么缓存两份，要么每次过滤。更重要的是，完整 message 每次 lookup 都要重新 parse，而 cache 原来的 parsed-record 设计正是为了避免这个成本。最终方案是中间路线：entry 的其余部分维持结构化字段，只把 record data 存成连续的原始 bytes。每条 record 使用“2-byte length prefix + raw bytes”的形式，整体放在一个 `Box<[u8]>` 中。这样既移除了 enum 的最大 variant 填充，也消除了每个 boxed variant 的独立 allocation，并让 record data 在内存中连续排列。代价是不能再按下标随机访问 record，像 `A`/`AAAA` round-robin rotation 这类功能需要顺序遍历 buffer。\n\n### 省内存并没有换来更慢的 cache\n\n这篇文章最值得注意的地方，是它没有把“压缩对象”简单等同于“减少字节数”。`Vec` 的 capacity、多个 section 的 pointer、重复 owner、enum padding、allocator bin rounding 和 cache locality，都是同一件事的不同侧面。前几步主要消除无用元数据和冗余分配，后一步则把 record payload 重新组织为连续存储。最终，五项连续调整让单条 cache entry 的 footprint 降低超过 50%。在整个 Cloudflare fleet 上，这释放了约 100 TB 内存，相当于 130 台 Gen 13 server 的 RAM。与此同时，更少的 allocation 和更好的 locality 让 insert throughput 提升 43%，lookup latency 降低 19%。"
+}

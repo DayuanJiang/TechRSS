@@ -1,0 +1,126 @@
+{
+  "id": 49184216,
+  "by": "weli",
+  "title": "The Valley of Webhooks",
+  "url": "https://weli.dev/blog/the-valley-of-webhooks/",
+  "score": 145,
+  "createdAt": 1785953454,
+  "aiSummary": {
+    "chinese_title": "Webhooks 状态同步困局：SCROLL、轮询与 Braid-HTTP",
+    "discussion_overview": [
+      {
+        "category": "HTTP 订阅协议标准化",
+        "summary": "有人指出，SCROLL 的设想其实和真正的 IETF 草案 Braid-HTTP Subscriptions 非常接近：都用 `GET` 加请求头建立订阅，再把响应保持打开来持续送更新。争议点不在于形式新不新，而在于能不能做成“bog-standard HTTP”——也就是不只支持 JSON，也不只限于特殊路径，而是让任何现有 HTTP 媒体类型和 URL 都能用。作者补充说 `/scroll/` 只是约定，不是强制路径，这让它更像标准化方向而不是单一产品方案。",
+        "supportid": [
+          "49187511",
+          "49187707",
+          "49186218",
+          "49186363"
+        ]
+      },
+      {
+        "category": "Webhooks 不能当真 source of truth",
+        "summary": "大量评论都在讲真实世界里 webhook 为什么不适合当状态同步主链路：QuickBooks 会出现返回错误但其实已经创建成功，Adyen、Stripe、WorkOS 也会有延迟、缺失、乱序、回滚或本地开发环境不同步的问题。大家普遍建议把 webhook 当成“提示”，真正的同步交给轮询、历史 API、快照导入和周期性 reconciler，这样即使丢消息也能靠重新拉取修复。很多人还强调，真正需要的是让本地状态重新和远端一致，而不是围着事件本身设计一堆 dedup 和补偿逻辑。",
+        "supportid": [
+          "49185926",
+          "49190743",
+          "49185629",
+          "49188753",
+          "49185821",
+          "49189123",
+          "49189411",
+          "49190022"
+        ]
+      },
+      {
+        "category": "长连接、轮询与 poke 折中",
+        "summary": "关于传输层，讨论集中在“持续连接到底贵不贵”。一边有人说永远为每个客户端保持连接在低频事件场景下很浪费，且 CDN 或提供方常有限制；另一边则举 APNS、Android push、Twitter hose、HTTP/2/3 multiplexing 说明长连接已经很常见。于是出现了一个折中模式：webhook 只负责发一个 poke，真正的数据由客户端按 cursor 去拉，这样漏掉通知也无所谓，cron 和事件驱动还能共用同一套 reconcile 逻辑。",
+        "supportid": [
+          "49188139",
+          "49189969",
+          "49188863",
+          "49189408",
+          "49189508",
+          "49189288",
+          "49190345",
+          "49188562",
+          "49184918",
+          "49185181",
+          "49186626"
+        ]
+      },
+      {
+        "category": "已有日志/事件 API 就能做",
+        "summary": "不少评论认为，这个问题其实已经有很多现成做法：Stripe 的 events API、Gmail 的 history.list、LDES、CouchDB replication、Kafka/Kinesis/SQS 消费模型，甚至直接给一个 SQLite 快照或按时间增量查询。它们共同的特点是把“可重放的日志/快照”与“通知”分开，或者至少提供一个带 cursor 的可排序事件流。站在这条线看，SCROLL 更像是把已有的日志复制和增量同步经验抽成一个 HTTP 规范，而不是从零发明新范式。",
+        "supportid": [
+          "49184908",
+          "49186400",
+          "49189689",
+          "49188914",
+          "49187499",
+          "49188932",
+          "49188876",
+          "49188910",
+          "49190582",
+          "49185491",
+          "49187283"
+        ]
+      },
+      {
+        "category": "LLM slop 与文章可信度",
+        "summary": "还有一大块讨论根本没放在协议上，而是在吐槽文章和 spec 的写法像 LLM 生成的 slop。有人认为只有一部分内容像 AI 改写过，也有人觉得这种文风会故意掩盖分布式系统里那些小而关键的细节。也有人反过来说，识别 LLM 文本本身就是一门技能，但整体情绪仍然是对内容可信度的怀疑。",
+        "supportid": [
+          "49186815",
+          "49186473",
+          "49188153",
+          "49190213",
+          "49190254",
+          "49190242",
+          "49186048",
+          "49187218",
+          "49188102"
+        ]
+      },
+      {
+        "category": "把一致性问题硬扯成 blockchain",
+        "summary": "最短的一支线是半开玩笑地说：既然多个系统要对同一份状态达成一致，那为什么不直接上 permissioned blockchain。随后很快被反驳：大多数场景其实只有一个 source of truth，问题是复制、重放和对账，不是共识。对这种需求，传统分布式数据库、顺序 ID 或更朴素的日志复制通常比 blockchain 更合适。",
+        "supportid": [
+          "49186826",
+          "49189084",
+          "49187093",
+          "49187840"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Webhooks",
+        "explanation": "通过 HTTP 回调把事件主动推给消费者的机制，常用于通知而不适合当作强一致状态同步。"
+      },
+      {
+        "term": "cursor",
+        "explanation": "增量拉取时的游标，用来标记上次读到哪里，方便继续获取后续变更。"
+      },
+      {
+        "term": "reconciliation",
+        "explanation": "对账/重建一致性的过程，用周期性拉取或比对来修正本地状态。"
+      },
+      {
+        "term": "at-least-once delivery",
+        "explanation": "至少一次投递语义，消息可能重复到达，因此接收方必须能幂等处理。"
+      },
+      {
+        "term": "deduplication",
+        "explanation": "去重机制，用来识别并忽略重复事件或重复投递。"
+      },
+      {
+        "term": "long polling",
+        "explanation": "长轮询，客户端发起请求后服务器暂时不立刻返回，直到有新数据或超时。"
+      }
+    ],
+    "context": "这篇帖子讨论的是把 Webhooks（通过 HTTP POST 推送事件）用于状态同步时的各种坑：重复投递、乱序、漏投、重试、对账和本地开发调试都很麻烦。作者提出的 SCROLL（一个订阅式 HTTP 草案）试图用 `GET`、游标和流式响应把“拉取增量更新”标准化，评论里又把它和 Braid-HTTP Subscriptions（一个计划提交 IETF 的 HTTP 订阅草案）、Stripe 的 events API、Gmail history.list、Kafka 之类的日志系统放在一起比较。讨论的核心其实不是“事件推送好不好”，而是跨服务时如何让一方的本地状态可靠地追上另一方的真实状态。很多人最终都落到一个折中方案：Webhooks 只做通知，真正的一致性靠可重放的事件 API、快照和周期性 reconciliation。还有一条明显的支线在争论这篇文章和 spec 是否带有 LLM 生成痕迹，因为这种主题本身就要求非常精确的失败语义。",
+    "emoji": "🤨",
+    "sarcastic_question": "既然都得轮询对账，webhooks 还叫同步？"
+  },
+  "articleSummary": "## 一句话总结\n\nWebhooks 本来适合“触发动作”，却被拿来做跨公司数据复制；作者认为应把推送箭头反过来，让消费者从提供方的有序变更日志中拉取数据，并为此提出了 SCROLL 协议草案。\n\n## 正文\n\n### 一个 webhook endpoint，最后总会长成一整套同步系统\n\n作者在三家公司做过三次同一种系统。用户在 Identity Provider，订阅在 Stripe，邮件退信在邮件服务商。产品却需要在本地拥有这些数据的可信副本。起初看起来很简单：加一个 endpoint，解析 JSON，然后更新一行数据库。可这个“半天活”很快膨胀成了一周，甚至更久。首先要验签，因为一个能直接修改数据库的公开入口显然不安全。接着要做 dedup，因为 webhook 是 at-least-once delivery，同一个事件会重复到达。然后还要处理乱序、补历史数据、同步期间的竞态，最后再加一个每天凌晨跑的 reconciliation cron。\n\n这个 cron 的存在很值得玩味。说白了，它是在承认：我们不相信自己维护的副本，而且不知道它什么时候已经错了。作者遇到过真实事故：客户数月前取消了订阅，本地状态却仍是 `active`。某个 `customer.subscription.deleted` 在 Stripe 与系统之间消失了。Stripe 侧只会显示重试后放弃，本地日志则不可能记录一条从未收到的请求。直到客服工单出现，团队才知道数据已经漂移。更麻烦的是，每家 Provider 又各有一套 webhook dashboard、密钥配置、测试环境和投递日志，排障变成在三四个标签页之间来回巡游。\n\n### 真正被重建的不是通知，而是一段完整历史\n\n第三次写 dedup table 时，作者终于问了那个更根本的问题：自己到底在重建什么？答案不是“接收几个通知”，而是在重建一个有序、完整、持续更新的事件日志。Provider 自己当然已经有这份日志。它靠这份历史渲染 dashboard、事件页和 replay 工具。可 Provider 先把有序日志切成一条条 HTTP POST，再通过一个既不保证顺序、也不保证最终送达的通道发给消费者。之后，每个消费者都要独立地把碎片重新拼成日志。每家都写自己的 dedup、缓冲、重试和对账逻辑，也各自承担不同的 bug。\n\n这不是任何一家 Provider 的 webhook 实现有问题。它们大多完全符合文档承诺。问题在于 webhook 的语义本来就是 notification：“发生了一件事，这是相关的 POST。”通知适合触发副作用，比如发收据、启动 CI、往 Slack 发消息。即使偶尔漏掉一次，很多此类场景也可以接受。可维护本地副本是另一种任务，它要求顺序、完整性、可恢复性和可验证性。我们在不知不觉间，把“通知机制”当成了“数据传输协议”。\n\n### Webhook 的流行，来自一个被混淆的需求\n\nWebhook 一词由 Jeff Lindsay 在 2007 年提出，早期用途其实很合理。GitHub 的 post-receive hook 触发 CI，支付成功后通知服务端发收据，这些都是“发生了事，所以去做事”。HTTP POST 成本低，Provider 实现便宜，消费者也只需新增一个 route。到了 2010 年代早期，“支持 webhook”成了 API 产品页上的标准勾选项。但这个勾选项掩盖了两个完全不同的需求。第一个是触发 side effect，第二个则是让消费者的数据库持续复制 Provider 的数据状态。\n\n前一个需求正是 webhook 的主场。后一个需求却恰好需要 webhook 不具备的能力：顺序、全量 bootstrap、删除语义和副本校验。作者的意思并不是 webhook 没用，而是它被用在了不擅长的地方。过去十五年，行业没有重新选工具。大家只是不断给这个工具补上它原本没有的属性。于是，真正的问题被掩盖在越来越成熟的工程实践之下。\n\n### 我们把大量优秀工程，铺在了“Webhook 山谷”里\n\n作者借用了 evolutionary biology 的 fitness landscape 概念。Webhook 做数据复制像一个 local optimum：比什么都没有强，所以大家不断往上加补丁；但它仍处在一个低谷，真正更好的设计在另一座山峰上。签名、idempotent handler、dedup store、指数退避、dead-letter queue、replay 工具，以及凌晨 3 点的 reconciliation cron，都是这座山谷里的基础设施。Svix 帮 Provider 做投递，Hookdeck 帮消费者接收 webhook。AWS 也能用 EventBridge、SQS 和 Lambda 拼出一条托管管道。Fivetran、Airbyte 和各种 unified API，本质上也在把 webhook 与 list API 拼成 pseudo-CDC。\n\n有意思的是，数据库内部的 change data capture 早就是成熟问题。它之所以能可靠工作，是因为数据库有 log。跨公司同步时，我们却把这件事拆成无数“门铃”：事件来了就响一下，但没人保证你没漏听。作者尤其喜欢拿 local tunnel 开刀。`stripe listen` 之类的 CLI，要专门开一条从公网到本机的隧道，因为 webhook 无法直接抵达 localhost。多个 Provider 都不得不重复造这个工具，恰好说明 primitive 问错了问题。优秀工程让这个低谷变得舒适，也让人更难抬头看别的路径。\n\n### Provider 已经在泄露答案：把日志直接交给消费者\n\n一些 Provider 已经部分走向另一条路。Stripe 保留 30 天事件，并提供有序可列举的 `/v1/events`，还建议用户拿它做 reconciliation。WorkOS 也提供了带 cursor pagination 的 Events API，并明确建议在数据一致性重要时优先使用它，而不是 webhooks。方向已经很明显：Provider 内部的 log 正在通过各种 API 形式“逃出来”。但这些实现仍各自为政。它们有不同 cursor 语义、不同 bootstrap 方案，也没有统一的副本验证契约。\n\n那么，一个真正替代 webhook replication 的方案需要什么？作者从三次实践中总结出五件事：有序性、从零开始的 bootstrap、把 delete 作为数据传递、可从断点恢复，以及可验证副本正确性。单纯加大 polling 频率不够。它只是把 reconciliation cron 升级成主策略，既消耗 rate limit，也无法表达顺序，还分不清“已删除”和“从未存在”。Svix、EventBridge、SQS 这类 managed delivery 也不够。它们让 push 更可靠，却仍是 push，仍没有 bootstrap 和验证能力。于是作者提出：别再让 Provider 推通知了，让消费者自己读取变更日志。\n\n### 翻转箭头后，整套补丁会自然消失\n\n作者设想 Provider 为每个 collection 提供一个有序、cursor-addressed 的 change feed。没有 cursor 时，从头读取，这既是 bootstrap，也不会与实时事件发生竞态。有 cursor 时，从上次位置继续，消费者的同步状态就只剩一个 cursor。每条事件携带完整对象状态，操作为 `upsert` 或 `delete`。例如 `upsert` 事件带完整 `object`，`delete` 事件带 `object_id`。加上 `Prefer: stream`，响应可以保持不断开，实时输出 NDJSON；不加它，则返回普通分页结果，供 cron polling 使用。流式和轮询共用同一个 endpoint、同一套 cursor，也能复用同一份消费者代码。\n\n这个设计的关键，不只是“用 pull 替代 push”。因为事件携带 full state，重复应用就是按 id blind upsert，dedup table 不再需要。因为日志有序，处理乱序的 buffer 也不再需要。因为从头读 feed 就能无缝进入实时变更，bootstrap importer 和锁机制也消失了。因为 delete 是持久存在于日志中的 tombstone，丢失删除不再是无声失败。消费者主动发起连接，因此不需要公开 endpoint、签名校验或 local tunnel。更进一步，Provider 可以在读到日志末尾时返回该 cursor 下的 count 与 checksum，消费者据此验证本地副本；那份“我不信任自己”的凌晨 cron，终于可以变成一次明确的正确性检查。\n\n### 第四次实现，作者希望只剩二十行循环\n\n在这个模型下，第四次构建同步系统会变得很朴素：`GET` feed，收到 `upsert` 就写库，收到 `delete` 就删库，然后保存最后一个 cursor。没有 webhook route，没有签名密钥轮换，没有 queue，也没有 reconciliation cron。最终，产品可以放心地在本地表上做 `JOIN`，而不是在每个查询结果后面附带一个“数据可能已漂移”的隐形注脚。问题是，今天几乎没有 Provider 提供这样完整的能力。也正因为如此，作者把它写成了一个协议草案。\n\n这个草案叫 **SCROLL**，全称是 **Synchronized Change Replication Over Line Logs**。它目前是 draft-00，定义了 feed、cursor、streaming 与 polling、checkpoint、tombstone 和 retention 等内容。作者也承认，设计中仍有自己信心不足的部分。SCROLL 不要求 Provider 立刻原生支持，因为可以先用现有 webhook 和 list API 做一个 shim，合成这样的 feed。作者最后的邀请也很直接：如果你写过 dedup table、修过 reconciliation cron，或者见过某个 delete 无声蒸发，那么去挑这个协议的毛病。因为对这种协议来说，分歧是有价值的反馈；真正危险的，仍然是无声的数据缺口。"
+}

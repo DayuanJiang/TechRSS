@@ -1,0 +1,106 @@
+{
+  "id": 47704729,
+  "by": "remilouf",
+  "title": "The M×N problem of tool calling and open-source models",
+  "url": "https://www.thetypicalset.com/blog/grammar-parser-maintenance-contract",
+  "score": 132,
+  "createdAt": 1776172819,
+  "aiSummary": {
+    "chinese_title": "开源模型工具调用 M×N：MCP 只解一半，格式仍碎片化",
+    "discussion_overview": [
+      {
+        "category": "标准化难在训练与厂商锁定",
+        "summary": "评论普遍认为，这不是简单的 I/O 解析问题，而是模型在训练阶段就要学会解释特定 token 结构。这样一来，训练团队必须提前参与工具语法设计，标准一变就会被新一轮训练周期拖慢，往往要等数月甚至数年才能真正落地。有人还指出，大厂并不总愿意推动统一，因为接口和格式本身就是 lock-in 的一部分。",
+        "supportid": [
+          "47767877",
+          "47770204",
+          "47766916",
+          "47764436"
+        ]
+      },
+      {
+        "category": "只是烦人的工程问题",
+        "summary": "另一派觉得问题被说得过重了：先写一个能兼容多种 wire format 的 parser 或库，就能覆盖大多数场景。甚至可以让模型先生成一个统一的解析库，再自动补上新格式。作者也承认这更多是烦人而不是困难，像是开放生态还没在某个通用库上收敛。",
+        "supportid": [
+          "47764861",
+          "47767575",
+          "47767701"
+        ]
+      },
+      {
+        "category": "MCP 只解决一半",
+        "summary": "有评论专门澄清，MCP（Model Context Protocol）只解决工具发现、名称和参数描述这一层，并不统一模型输出 tool call 的具体文本格式。真正执行时，client 仍要把模型特定的 JSON、XML-ish 或 Harmony 之类输出翻译成可执行动作。即使 vLLM、sglang 或托管服务做了 OpenAI/Anthropic 兼容层，per-model chat template 和 parser 维护也只是被推到下一层而已。",
+        "supportid": [
+          "47767815",
+          "47765038",
+          "47771590",
+          "47765364",
+          "47770965",
+          "47766016"
+        ]
+      },
+      {
+        "category": "格式碎片化让本地接入很痛苦",
+        "summary": "很多人从实际接入角度吐槽格式碎片化：在本地跑 Qwen、GLM 等模型时，经常要做 stripping、sanitization 和模板修补，才能塞进自己的 UI。Harmony（带 channels 的消息/工具调用格式）被认为最复杂，也有人猜它可能是为了应对 Bing 早期的 prompt injection 问题而过度设计。另一些人说，做 benchmarks 时本来就会用自定义 harness，所以工具能力评测并不天然依赖统一格式；更乐观的看法是 frontier models 越来越会适应新工具，标准化的重要性可能在下降。",
+        "supportid": [
+          "47764474",
+          "47771316",
+          "47766734",
+          "47764840",
+          "47772399"
+        ]
+      },
+      {
+        "category": "把工具调用塞回模型内部",
+        "summary": "有人提出把 tool calling semantics 直接塞进模型内部，比如用 engram layer（可按需注入的层）、classifier head，或者用 Orthogonal Procrustes（正交 Procrustes 对齐）把隐藏状态映射到目标空间。这个方向技术上很聪明，但评论认为它只是把协调问题提前：每个 model family 还是得单独训练或注入一套映射。结果往往会变成同一个模型又多出一堆变体，未必比现在更省事。",
+        "supportid": [
+          "47769733",
+          "47773215",
+          "47768283",
+          "47768356",
+          "47768472",
+          "47767949"
+        ]
+      },
+      {
+        "category": "安全与 prompt injection",
+        "summary": "还有一条线索是安全：把数据和 metadata 混在同一文本通道里，很容易被 prompt injection 利用。有人认为更直接的神经接口并不能真正消除这个问题，最多只是换一种 classifier head。也有人直言，交给 LLM 去处理这些边界会增加 attack surface，而且未必够快。",
+        "supportid": [
+          "47765296",
+          "47767694",
+          "47771316"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "M×N problem",
+        "explanation": "模型数 × 工具/协议数的组合爆炸；每新增一个模型或格式，都要额外做适配。"
+      },
+      {
+        "term": "MCP",
+        "explanation": "Model Context Protocol，一种让 Agent 发现工具、名称和参数的标准协议，主要管工具发现层。"
+      },
+      {
+        "term": "OpenAI-compatible API",
+        "explanation": "模仿 OpenAI 接口的兼容层，方便不同模型和推理服务接入现有 client 与 agent。"
+      },
+      {
+        "term": "chat template",
+        "explanation": "把统一消息渲染成某个模型能理解的提示模板，通常会随模型家族变化。"
+      },
+      {
+        "term": "Harmony format",
+        "explanation": "一种带 channels、层次标记的模型消息/工具调用格式，被认为较复杂且偏模型特定。"
+      },
+      {
+        "term": "prompt injection",
+        "explanation": "通过外部文本诱导模型误把内容当指令执行的攻击方式。"
+      }
+    ],
+    "context": "这篇帖文围绕开源模型的 tool calling 兼容性展开，讨论的 M×N 指的是模型家族、工具协议和客户端格式一多起来就会产生组合爆炸。评论里反复提到 MCP（Model Context Protocol，一种让 Agent 发现工具和参数的标准协议）、vLLM（开源推理服务器）、sglang（面向大模型推理与编排的框架）和 LiteLLM（OpenAI/Anthropic 接口兼容层），说明问题不只在前端调用。也有人提到 Harmony（带 channels 的模型消息/工具调用格式）、GLM（智谱的开源模型家族）、Qwen（阿里系开源模型家族）和 llama.cpp（本地推理引擎）等各自不同的 tool-call 语法，导致本地部署和跨模型切换都很痛苦。讨论还延伸到 prompt injection、安全边界，以及能否用 engram layer、classifier head 之类的方法绕开纯文本解析。",
+    "emoji": "😩",
+    "sarcastic_question": "既然每家都能自定义，标准还要来干嘛？"
+  },
+  "articleSummary": "## 一句话总结\n开源模型的 Tool calling 之所以难用，是因为缺乏统一的“线格式”描述标准，导致每个推理引擎都要为每个模型重复造轮子去解析和生成。\n\n### 闭源的顺滑与开源的“线格式”陷阱\n用闭源模型做 Tool calling 简直是享受，你把函数列表传给 API，拿回结构化 JSON，中间的数据格式完全不可见。但一旦切换到开源模型，你就会发现这事儿变得很麻烦。Tool calling 依赖于推理引擎必须理解的一种“线格式”。如果引擎还没支持这个模型的格式，返回的数据就会乱套：推理 token 混在参数里、JSON 格式错误、甚至直接丢掉工具调用。这时候你除了等引擎更新，就只能自己写解析器。\n\n### 同一个语义，N 种互不兼容的方言\n每个模型家族编码工具调用的方式都不一样，这简直是巴别塔。文章举了个例子，同样是调用 `search(query=\"GPU\")`，gpt-oss 用 `<|channel|>` 标记，DeepSeek 用 `tool_calls_begin` 这种特殊 token，而 GLM-5 干脆用 `"
+}

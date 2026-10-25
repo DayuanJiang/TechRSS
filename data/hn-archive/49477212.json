@@ -1,0 +1,132 @@
+{
+  "id": 49477212,
+  "by": "tosh",
+  "title": "OpenAI: Migrating to HTTPX2",
+  "url": "https://github.com/openai/openai-python/blob/main/httpx2.md",
+  "score": 148,
+  "createdAt": 1787919608,
+  "aiSummary": {
+    "chinese_title": "OpenAI 迁移到 HTTPX2：httpx 争议与 fork 之争",
+    "discussion_overview": [
+      {
+        "category": "维护者争议与 fork 替代",
+        "summary": "很多评论把焦点放在上游 httpx 的治理问题上：公开 issue/discussion 被关闭、PR 长期没人处理，稳定版很久没发版，而 1.0 的开发又转到 private repository 里。有人认为这种做法让项目失去可依赖性，既然存在能继续公开协作的 fork，就没有理由继续押注上游。还有人把这种模式和 MkDocs 的类似争议联系起来，认为同一维护者反复让开源社区受损。也有少数声音承认维护者有权按自己的价值观决定投入方向，但仍批评这种“先沉默再私有化”的做法太伤下游开发者。",
+        "supportid": [
+          "49477508",
+          "49478408",
+          "49478512",
+          "49478539",
+          "49478201",
+          "49479280",
+          "49477462",
+          "49477669",
+          "49479989",
+          "49478196",
+          "49481538",
+          "49480065",
+          "49478358",
+          "49478705",
+          "49481537"
+        ]
+      },
+      {
+        "category": "HTTPX2 与其他 Python HTTP 方案的竞争",
+        "summary": "另一条主线是在比较各种替代方案。HTTPXYZ 的 fork 维护者在 README 里明确说，原本是因为 HTTPX 没有活跃维护才开 fork，但后来选择把修复 upstream 到 HTTPX2，并把它视为更“blessed”的分支。评论里也提到 HTTPX2 得到 Pydantic 的赞助、并有新的 Starlette 维护者参与，因此起步条件不错；同时有人实际迁移到 niquests、pyqwest 或甚至 urllib.request，觉得这些方案在某些场景下更合适。也有人贴出内部流量 benchmark，显示 niquests 在非公网场景下吞吐量明显更高，但对其治理结构仍有疑虑。",
+        "supportid": [
+          "49477780",
+          "49478500",
+          "49477963",
+          "49480713",
+          "49479171",
+          "49479894",
+          "49479700",
+          "49480733"
+        ]
+      },
+      {
+        "category": "为何不直接用 requests",
+        "summary": "有人顺势问，既然要换库，为什么不直接用 requests（Python 里最老牌的 HTTP 库）？支持者认为 requests 的 API 已经足够成熟，而且现在由 PSF（Python Software Foundation）维护，稳定性很强。反对者的回应是，requests 已经被视为 feature complete，维护者也明确不打算把 native async support 放进核心，所以它并不能满足现代异步客户端的需求。这个对比把问题从“换不换 fork”转成了“同步老库和 async 新库到底服务什么场景”。",
+        "supportid": [
+          "49478575",
+          "49479341",
+          "49479375"
+        ]
+      },
+      {
+        "category": "版本号与 semver 的误解",
+        "summary": "评论区还花了不少篇幅解释版本号为什么看起来“倒着长”。有人拿 Python 2.7 vs 3.1、Linux kernel、Node odd versions 不进 LTS 来举例，说明同一个项目可以同时维护多个分支，数字大小不等于发布时间新旧。另一些人直接搬出 semver（Semantic Versioning）规则，强调 major release 负责 breaking changes，而 patch/minor 版本可能只是对旧分支的 backport。整体上这是在纠正“版本号越大就一定越新”的直觉。",
+        "supportid": [
+          "49477776",
+          "49477874",
+          "49479249",
+          "49478345",
+          "49477868",
+          "49478187",
+          "49478521",
+          "49478304"
+        ]
+      },
+      {
+        "category": "TLS trust store 变更的兼容性风险",
+        "summary": "迁移说明里还有一个看似小却会影响部署的变更：证书验证不再依赖 certifi（Python 的 CA bundle 包），而是改用操作系统的 TLS trust store（系统信任证书库）。评论指出这会改变企业网络里的证书路径，尤其是依赖内部 CA、代理或定制信任链的环境，可能直接变成 breaking change。也就是说，这不只是实现细节调整，而是会影响 HTTPS 能否在某些受管网络里正常工作。",
+        "supportid": [
+          "49477220",
+          "49477570"
+        ]
+      },
+      {
+        "category": "迁移文档、自动化与 frontpage 争议",
+        "summary": "还有人把重点放在迁移文档本身：如果两个库的接口足够接近，那么一份清晰的 migration document 就能被直接交给 agent（或脚本）去做升级。支持这种说法的人认为，这正是“几乎免费迁移”的前提，尤其适合大公司内部成百上千个调用点。也有评论质疑为什么这种事能上 frontpage，或者干脆用带点讽刺的口吻回应，说明并非所有人都把这类 SDK 迁移视为大新闻。",
+        "supportid": [
+          "49478377",
+          "49478533",
+          "49480362",
+          "49481353"
+        ]
+      },
+      {
+        "category": "HTTP/3 / QUIC 的更激进替代方向",
+        "summary": "讨论还顺带延伸到 HTTP/3 和 QUIC（HTTP/3 的底层传输协议）上。有人觉得大家推进 HTTP/3 太慢，是因为 QUIC 本身和传统 HTTP/TCP 栈差异太大，落地起来麻烦。另一种观点则认为，既然现代库本来就该封装这些复杂性，那么当服务端不支持 HTTP/3 时应该自动 fallback，别让落后方拖慢整个生态。",
+        "supportid": [
+          "49478461",
+          "49479347",
+          "49479901"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "HTTPX2",
+        "explanation": "基于 httpx 的 fork，目标是保留旧 API、避免 httpx 1.0 的 breaking changes。"
+      },
+      {
+        "term": "HTTPX",
+        "explanation": "Python 的 HTTP 客户端库，也是这次迁移争议的上游项目。"
+      },
+      {
+        "term": "fork",
+        "explanation": "从上游代码分叉出来的独立维护版本，常用于社区接管或保留旧行为。"
+      },
+      {
+        "term": "semver",
+        "explanation": "Semantic Versioning 规则，按 major/minor/patch 管理版本，major 通常允许 breaking changes。"
+      },
+      {
+        "term": "QUIC",
+        "explanation": "基于 UDP 的传输协议，是 HTTP/3 的底层基础，特性强但部署复杂。"
+      },
+      {
+        "term": "HTTP/3",
+        "explanation": "新一代 HTTP 协议，运行在 QUIC 上，旨在提升连接建立和传输性能。"
+      },
+      {
+        "term": "requests",
+        "explanation": "Python 里最经典的 HTTP 库，API 稳定，但核心不支持 native async。"
+      }
+    ],
+    "context": "OpenAI 在 Python SDK 的迁移说明里把底层 HTTP 客户端从 httpx（Python HTTP 客户端库）换成 HTTPX2（一个保持旧 API 的 fork），Anthropic（AI 公司）也被提到做了类似切换。背景是 httpx 正在走向 1.0，而社区抱怨上游把 issues/discussions 关闭、PR 长期不处理，甚至把 1.0 工作放到 private repository（私有仓库）里，引发对可维护性和开放协作的质疑。评论区又把 HTTPX2、HTTPXYZ（Codeberg 上的另一个 fork）、niquests（另一个 Python HTTP 客户端）、pyqwest（基于 Rust 的 Python HTTP 方案）拿来比较，重点讨论谁更像“blessed fork”、谁迁移成本更低。还有人提醒，certifi（Python 的 CA 证书包）被 OS TLS trust store（操作系统证书信任库）替代可能影响企业网络环境，而清晰的 migration document 甚至可以直接交给 agent 自动完成升级。",
+    "emoji": "😬",
+    "sarcastic_question": "一个 HTTP 库，怎么能吵成宗教战争还私有化？"
+  },
+  "articleSummary": "## 一句话总结\n\nOpenAI Python SDK 已将底层 HTTP 客户端从 HTTPX 切到 HTTPX2：普通 SDK 调用几乎无感，但凡是碰过 TLS、Transport、Mock、Hook 或 HTTPX 类型对象的代码，都需要按 HTTPX2 重新检查一遍。\n\n## 正文\n\n### 默认调用没变，真正变化藏在依赖边界里\n\n这次迁移的表面看起来很平静。你像以前一样 `OpenAI(timeout=30.0)`，再调用 `responses.create()`，同步、异步、流式响应、认证、重试和数值型 timeout 都仍然可用。对于只把 SDK 当成 API 客户端的应用，升级后通常不需要改业务代码。`pip install openai` 也依旧足够，因为 HTTPX2 会被自动安装。  \n但问题是，旧版 SDK 会传递安装 `httpx`，新版不再这么做。也就是说，如果你的项目曾经“顺手”从 SDK 的依赖里获得 `httpx`，现在 `import httpx` 可能会直接失败。此时要么显式把 `httpx` 加回自己的依赖，要么把相关代码迁到 `httpx2`。说白了，SDK 的 API 稳定了，但它不再替应用维护一个并非自身必需的 HTTPX 依赖。\n\n### 最可能出事故的不是 API，而是 TLS 信任链\n\n这次变化里最值得警惕的地方，其实是 TLS。以前 HTTPX 默认使用 `certifi` 提供的 CA bundle 验证服务器证书。HTTPX2 则改为使用操作系统的 trust store，而且 OpenAI SDK 也不再安装 `certifi`。  \n这意味着一些过去能正常运行的环境，升级后可能突然报证书校验错误。典型场景包括没有系统 CA 的极简容器、使用企业 TLS inspection proxy 的办公网络，以及依赖定制版 `certifi` bundle 的部署。作者给出的方向很明确：不要再假设 Python 包自带证书，而是把正确 CA 安装到操作系统信任库。  \n如果不能这么做，也可以通过 `SSL_CERT_FILE` 指向 PEM bundle，或者通过 `SSL_CERT_DIR` 指向证书目录。这两个环境变量在 `trust_env=True` 时生效，而这正是默认值。需要更强控制时，可以创建 `ssl.SSLContext`，再通过 `DefaultHttpx2Client(verify=ssl_context)` 注入 SDK；异步场景使用 `DefaultAsyncHttpx2Client` 即可。\n\n### 自定义 Client 的迁移，本质上是把 HTTPX 全部替换成 HTTPX2\n\n一旦你显式传入 `http_client`，这就不再是“升级后跑一下看看”的问题了。新的 SDK 推荐使用 `DefaultHttpx2Client` 和 `DefaultAsyncHttpx2Client`，它们会保留 SDK 推荐的 timeout、连接池和 redirect 默认配置。比如代理可以通过 `DefaultHttpx2Client(proxy=\"http://proxy.example.com:8080\")` 配置。  \n你也可以直接传入 `httpx2.Client` 或 `httpx2.AsyncClient`。但这样做意味着 timeout、连接池、重定向等行为将完全采用 HTTPX2 自己的默认值，除非你手动设置。旧名称 `DefaultHttpxClient` 和 `DefaultAsyncHttpxClient` 仍然能工作，但它们现在实际构造的也是 HTTPX2 client。  \n因此，新代码最好直接采用带 `2` 的名称，避免团队成员误以为它仍与旧 HTTPX 绑定。模块级配置也遵循同样规则，例如 `openai.http_client = openai.DefaultHttpx2Client()`。这不是一次简单的 import rename，而是一次明确 HTTP 客户端家族归属的切换。\n\n### Timeout 和 URL 看似简单，Transport 才是迁移的分水岭\n\n迁移清单本身很直接：`httpx.Client` 换成 `httpx2.Client`，`httpx.Timeout` 换成 `httpx2.Timeout`，`URL`、`Limits`、`HTTPTransport`、`AsyncHTTPTransport` 和 `MockTransport` 也都换成 HTTPX2 对应对象。像 `OpenAI(timeout=httpx2.Timeout(60.0, connect=5.0, read=20.0))` 这样的细粒度 timeout 配置，语义没有变化。字符串形式的 URL 也无需修改。  \n真正需要仔细审查的是自定义 Transport。无论是 Transport subclass、mounted transport、代理集成，还是连接池 instrumentation，都必须对接 HTTPX2 的 transport interface。以前围绕 HTTPX 编写的实现，不会因为对象名字相似就自动兼容。  \n这也是迁移中容易被忽略的一点：SDK 的高层调用没变，不代表 HTTP 层扩展点仍然是同一个协议。尤其是基础设施代码，往往比业务调用更依赖这些接口。\n\n### Hook、认证和 raw response 都会暴露新的类型边界\n\n如果应用实现了认证 handler、事件 hook 或 tracing middleware，收到的请求和响应对象现在将是 HTTPX2 类型。比如 request hook 的注解应该从 `httpx.Request` 改成 `httpx2.Request`。自定义认证类或 Transport 类也需要继承匹配的 `httpx2` 接口。  \n有意思的地方在于，SDK 解析后的 response model 并没有变化。你从 `responses.create()` 得到的业务数据，仍然按原有方式访问。变化只会在你进入 transport-facing API 时出现，例如 `with_raw_response` 返回的 `http_response` 和 `http_request`，对于原生 HTTPX2 client，它们分别是 `httpx2.Response` 与 `httpx2.Request`。  \n请求未解析响应时，也应该使用 `cast_to=httpx2.Response`。异常处理方面，应用通常仍应捕获 `openai.APITimeoutError`、`openai.APIConnectionError` 等 SDK 异常。只是当你进一步查看底层 cause 时，原生 client 的 transport exception 会来自 HTTPX2。\n\n### aiohttp 仍可用，但它也已经站到 HTTPX2 这一边\n\n对于异步应用，OpenAI 仍然支持 aiohttp transport。安装方式是 `pip install 'openai[aiohttp]'`，然后使用 `DefaultAioHttpClient()` 注入 `AsyncOpenAI`。但新版实现并不是通过旧 HTTPX 或外部 `httpx-aiohttp` adapter 拼接出来的。  \n`DefaultAioHttpClient()` 本身是一个 `httpx2.AsyncClient`，底层 transport 也是 HTTPX2-native。这样做的好处是，aiohttp 路径和默认 HTTPX2 路径共享同一套 TLS 配置模型。也就是说，上面提到的 trust store、`SSL_CERT_FILE` 和 `SSLContext` 逻辑，在这里仍然成立。  \n对于新项目，作者的建议很明确：直接用 `openai[aiohttp]` 和 `DefaultAioHttpClient()`。不要再把旧 `httpx-aiohttp` 当成默认方案，因为那条路径只保留给暂时无法迁移的兼容场景。\n\n### 测试体系要一起迁，不然 Mock 根本拦不住请求\n\n生产代码升级后，测试往往才是第一个报警的地方。因为 Mock 必须能拦截 HTTPX2 request，并返回 HTTPX2 response。文中的例子使用 `httpx2.MockTransport(handler)`，handler 接收 `httpx2.Request`，再构造带有原 request 的 `httpx2.Response`。  \n如果测试使用 RESPX，事情就更直接了：必须升级到兼容 HTTPX2 的 RESPX 版本，或者自行 fork。一个只能 patch legacy HTTPX 的 RESPX，无法拦截 SDK 默认使用的 HTTPX2 client。表面上看测试可能仍在运行，实际上请求可能已经绕过 mock，变成真实网络调用或直接失败。  \n所以迁移顺序最好反过来想：先确认 Mock、Tracing、Auth 和 Proxy 等外围组件支持 HTTPX2，再升级 SDK。HTTP client 的切换，最脆弱的从来不是请求代码，而是围绕请求建立的工具链。\n\n### 旧 HTTPX 仍能注入，但它只是有期限的逃生通道\n\n如果你暂时依赖只能支持 HTTPX 的 transport、mock library 或第三方集成，SDK 允许你显式安装 `httpx`，然后把 legacy client 注入 `OpenAI` 或 `AsyncOpenAI`。这条路径在运行时可以工作，HTTP request、response 和底层异常也会继续保持 legacy HTTPX 类型。  \n但它有一个明显限制：SDK 的公开类型标注已经只接受 HTTPX2 client。因此直接传 `httpx.Client()` 会让 mypy、Pyright 等静态检查器报错，需要使用 `cast(Any, ...)` 或定向 type ignore。请求 raw response 时也是同样逻辑，必须将 `cast_to` 处理为 legacy `httpx.Response`。  \n尤其不要误以为 `cast_to=httpx2.Response` 能把旧 HTTPX response 转换成 HTTPX2 response，它不会做任何转换。旧 HTTPX 的依赖也需要由应用自行安装和维护。作者把这条兼容路径定义得很清楚：它是 migration aid，未来可能被移除；包括旧 `httpx-aiohttp` adapter 在内，都应该尽快迁到 HTTPX2-native 方案。"
+}

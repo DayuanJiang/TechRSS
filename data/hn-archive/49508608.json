@@ -1,0 +1,91 @@
+{
+  "id": 49508608,
+  "by": "carlos-menezes",
+  "title": "Reverse Engineering Unknown File Formats with ImHex",
+  "url": "https://werwolv.net/posts/file_format_reverse_engineering/",
+  "score": 228,
+  "createdAt": 1788384609,
+  "aiSummary": {
+    "chinese_title": "用 ImHex 逆向未知文件格式：手工拆包、常见套路与 LLM 辅助",
+    "discussion_overview": [
+      {
+        "category": "手工逆向的经典流程",
+        "summary": "不少人分享了早年靠肉眼和自制工具拆二进制文件的经历：先用 hex dumper 观察是否存在固定长度记录，再改一个字段、重新对照 hex 变化，从而推断结构。有人在旅馆前台电脑上的数据库文件里摸出客户姓名间隔固定，最后不仅逆向出 DB 格式，还写出分析和自动纠错程序。另一个例子是把保险公司的 Btrieve database 倒成 CSV 再导入 MS Access，几乎把重复性工作自动化了。评论里把这种“边干边学”的逆向能力看成职业转折点。",
+        "supportid": [
+          "49543623",
+          "49544832"
+        ]
+      },
+      {
+        "category": "ImHex 的实际体验与工具比较",
+        "summary": "很多人把 ImHex 当成逆向未知格式时的首选可视化工具，尤其是配合 Pattern Language 去快速映射结构。有人用它分析 PS2 memory card（PlayStation 2 的记忆卡格式），也有人拿它看旧版 Minecraft Legacy Console Edition 的存档，说明它在真实项目里确实能派上用场。也有人提到它的短板：遇到中间有大量未知空洞、运行时长度数组，或者需要自由标注的场景时，工作流会变得别扭。评论还顺带比较了 HxD、010 Editor 和 Kaitai Struct，核心诉求都是更顺手地浏览、标注和描述二进制结构。",
+        "supportid": [
+          "49544775",
+          "49545435",
+          "49543340",
+          "49544126",
+          "49544584"
+        ]
+      },
+      {
+        "category": "逆向前先判断结构和编码模式",
+        "summary": "有人给出了很实用的逆向口诀：先看 entropy，判断是不是加密或压缩；再看上下文，因为语言和运行环境常常直接暗示文件格式。比如 C 程序更容易对应固定 struct，网络传输常见 run-length encoding，Python/JS 项目里则更容易见到 JSON 或 pickle。另一个总结是，数据回读到内存时通常逃不出固定布局、RLE 和 terminator 这几类模式。甚至有人认为，手工做一遍 ASN.1 parser 之后，很多文件格式都会变得没那么吓人。",
+        "supportid": [
+          "49545181",
+          "49543785"
+        ]
+      },
+      {
+        "category": "常见的“伪神秘”文件格式套路",
+        "summary": "不少评论把“未知文件格式”拆成了几个老套路：最常见的是 zip 里套 sqlite，或者游戏资源里用 .NET BinarySerializer，尤其是 Unity（一个游戏引擎）的 legacy serializer。也有人举出自定义数据库被 XOR key 混淆、再按列拆成多个文件的奇怪设计，解密一部分后再用 ImHex 手工对照修正。Outlook（微软邮件客户端）的本地二进制格式也被吐槽为“最糟糕之一”，说明很多厂商宁愿自造私有格式，也不直接用简单的 sqlite。",
+        "supportid": [
+          "49544166",
+          "49544724",
+          "49545170",
+          "49544385",
+          "49544673",
+          "49543451",
+          "49544291"
+        ]
+      },
+      {
+        "category": "LLM 辅助逆向与剧透插曲",
+        "summary": "讨论里还有人建议直接用 LLM 来辅助逆向，或者至少让它帮忙梳理代码和推断字段含义。有人把一份手写得很乱的解析器代码丢给 Claude 做摘要，也有人面对 Unreal 2.5 的 .unr 文件时，想借 LLM 指路去改游戏里的 enemy AI spawn types。与此同时，帖子还意外引出“游戏剧透”吐槽：有人担心文章会泄露关卡细节，另一些人则半开玩笑地说可以做个浏览器扩展来自动去 spoiler。",
+        "supportid": [
+          "49545559",
+          "49545600",
+          "49544291",
+          "49542740",
+          "49542808",
+          "49544033"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "ImHex",
+        "explanation": "一个开源 hex editor，用来查看、标注并解析二进制文件结构。"
+      },
+      {
+        "term": "Pattern Language",
+        "explanation": "ImHex 的结构描述语言，可用来定义字段、数组、对齐和嵌套结构。"
+      },
+      {
+        "term": "Kaitai Struct",
+        "explanation": "一种声明式二进制格式描述工具，可根据格式定义生成解析器。"
+      },
+      {
+        "term": "ASN.1",
+        "explanation": "一种抽象语法与编码规范，常用于协议和复杂二进制数据结构。"
+      },
+      {
+        "term": "LLM",
+        "explanation": "Large Language Model，可用于辅助推断字段、总结代码或给逆向提供思路。"
+      }
+    ],
+    "context": "这篇文章围绕 ImHex（一个开源 hex editor）展示如何通过观察 bytes、对照字段变化来逆向未知文件格式。ImHex 的 Pattern Language（结构描述语言）和基于 imgui（一个即时模式 GUI 库）的界面，让它比纯文本 hex dump 更适合快速标注和试探结构。评论把这个话题扩展到更广的 binary reversing 传统：从 PS2 memory card（PlayStation 2 的记忆卡格式）、旧版 Minecraft 存档，到 Unreal 2.5 的 .unr 文件、Outlook（微软邮件客户端）的本地邮件格式和游戏资源 DB，都属于“先猜结构，再验证”的工作。很多人还提到实战里的判断顺序：先看是否压缩/加密，再结合程序语言和上下文猜格式，必要时再用 Kaitai Struct、010 Editor 或 LLM 辅助。",
+    "emoji": "🧩",
+    "sarcastic_question": "神秘文件格式折腾半天，最后不还是zip套sqlite？"
+  },
+  "articleSummary": "无法获取正文内容，无法生成摘要。"
+}

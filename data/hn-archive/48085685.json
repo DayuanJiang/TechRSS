@@ -1,0 +1,91 @@
+{
+  "id": 48085685,
+  "by": "zdw",
+  "title": "Training an LLM in Swift, Part 1: Taking matrix mult from Gflop/s to Tflop/s",
+  "url": "https://www.cocoawithlove.com/blog/matrix-multiplications-swift.html",
+  "score": 209,
+  "createdAt": 1778509831,
+  "aiSummary": {
+    "chinese_title": "Swift 训练 LLM：矩阵乘法从 Gflop/s 到 Tflop/s",
+    "discussion_overview": [
+      {
+        "category": "文章质量与作者口碑",
+        "summary": "不少评论把这篇文章视为一篇难得的高质量性能优化教程，即使不关心 LLM 训练，也能从中学到 Swift 性能调优的细节。有人特别提到，Swift 早期高质量技术写作并不多，这类长文非常珍贵。也有人借机回忆 Matt Gallagher 和 CocoaWithLove 在 iOS/Swift 领域的影响力，认为他对 Swift concurrency 和内存所有权的讲解至今仍是标杆。",
+        "supportid": [
+          "48095698",
+          "48096719",
+          "48097951"
+        ]
+      },
+      {
+        "category": "AMX/SME 矩阵单元争议",
+        "summary": "讨论集中在 Apple 芯片上的矩阵加速单元到底该如何理解：有人疑惑所谓“secret AMX instructions”是否真的是秘密指令，也想知道在 M4 及以上芯片上能否通过 SME 访问类似能力。回复则指出，M4 上是 SME 取代了 AMX，而不是简单的“抽象 intrinsic”。另一条评论补充说，AMX 似乎并没有完全消失，而是被架构当作某种别名处理，并且同一进程内不能并发使用，这让实现细节更像硬件/架构层面的约束，而非纯粹的编译器接口问题。",
+        "supportid": [
+          "48095698",
+          "48096384",
+          "48096984"
+        ]
+      },
+      {
+        "category": "FMA 与编译器浮点选项",
+        "summary": "有人指出文章里 C 版本用的是 \"-ffast-math\" 来让编译器生成 fused multiply-add，也就是 FMA。评论强调，这在 ML/AI 场景下可能还能接受，但在一般数值计算里不应为了 FMA 直接开启整个 \"-ffast-math\"，因为它还会引入很多不希望出现的浮点变换。更推荐的做法是使用 \"-ffp-contract=fast\"，只打开乘加融合，而不放宽其他 IEEE 浮点语义。评论还批评现代编译器默认不开 FMA 是一种过度保守的旧兼容策略。",
+        "supportid": [
+          "48097120"
+        ]
+      },
+      {
+        "category": "Xcode/clang 的 OpenMP 支持",
+        "summary": "有评论补充说，Xcode 自带的 clang 其实也能编译 OpenMP，只要额外提供正确的编译参数、libomp.dylib 和相关头文件即可。对方还给出了 mac.r-project.org 的资源，说明 R 的 macOS 分发已经在使用这套组合，因此其可行性并不只是理论上的。这个补充对想在 macOS 上复现并行代码或性能实验的人很实用。",
+        "supportid": [
+          "48101049"
+        ]
+      },
+      {
+        "category": "GPU 峰值、实测与 CUDA 软件栈",
+        "summary": "围绕 GPU 性能，评论强调理论峰值和真实可达吞吐之间常常差很多。有人提到自己的 M3 Max GPU 标称约 15 Tflop/s，但这类任务真正更现实的上限只有 3–5 Tflop/s，因此不能把基础 benchmark 的数字当成实际能力。另一条评论把这种差距归因于 Nvidia 的 CUDA 软件护城河：大量针对不同数据集和 kernel 的细致优化，才是把峰值逼近现实的关键。",
+        "supportid": [
+          "48096423",
+          "48096801",
+          "48100001"
+        ]
+      },
+      {
+        "category": "GPU 优化难度的分歧",
+        "summary": "并不是所有人都接受“GPU 比 CPU 更难榨干性能”这个说法。有人直接表示，自己并不认为 GPU 的峰值优化比 CPU 明显更具挑战。虽然这条评论很短，但它说明讨论并非单向认同，而是存在对性能工程复杂度的判断分歧。",
+        "supportid": [
+          "48102074"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "AMX",
+        "explanation": "Apple 芯片上的矩阵加速指令/协处理器，评论里围绕它是否“secret”以及是否被 SME 取代展开。"
+      },
+      {
+        "term": "SME",
+        "explanation": "ARM 的 Scalable Matrix Extension，一种面向矩阵运算的硬件扩展，被提到与 M4 上的新单元相关。"
+      },
+      {
+        "term": "FMA",
+        "explanation": "Fused Multiply-Add，乘法和加法合并为一次运算的指令，通常更快且数值上更稳定。"
+      },
+      {
+        "term": "-ffast-math",
+        "explanation": "GCC/clang 的激进浮点优化选项，会放宽 IEEE 语义并启用多种可能改变结果的变换。"
+      },
+      {
+        "term": "-ffp-contract=fast",
+        "explanation": "允许编译器把乘法和加法折叠为 FMA，但不必打开整个 -ffast-math。"
+      },
+      {
+        "term": "CUDA",
+        "explanation": "Nvidia 的 GPU 计算平台和编程模型，评论中被用来解释 GPU 软件生态的性能优势。"
+      }
+    ],
+    "context": "这篇文章是“Training an LLM in Swift”系列的第一部分，重点在于把矩阵乘法这种 LLM 训练里的核心 kernel 从 Gflop/s 级别优化到 Tflop/s 级别。讨论主要围绕 Apple Silicon 上的低层矩阵加速能力展开，包括 AMX（Apple 的矩阵相关硬件接口）和 M4 上提到的 SME（ARM Scalable Matrix Extension）。评论还延伸到编译器浮点优化，尤其是 FMA、\"-ffast-math\" 和 \"-ffp-contract=fast\" 之间的差别，因为这些选项会直接影响性能与数值语义。另一个背景是 GPU 性能工程：理论峰值往往远高于实测，而 CUDA（Nvidia 的 GPU 计算平台）之所以强，很大程度上依赖大量针对具体 workload 的手工优化。",
+    "emoji": "🤓",
+    "sarcastic_question": "GPU 峰值报表一亮，CUDA 就自己变快了？"
+  },
+  "articleSummary": "## 一句话总结\n通过抛弃 Array 的 COW 开销、引入 `Relaxed` 数学指令利用 FMA、手动循环展开以及多线程并行，作者成功将 Swift 矩阵乘法的性能从仅相当于 1999 年 G4 处理器的水平（2.8 Gflop/s）提升到了接近 C 语言 Metal 实现的 300+ Gflop/s，证明了在 Apple Silicon 上用纯 Swift 训练 LLM 是可行的。\n\n### 从“玩具代码”到性能灾难：Swift 的起步比想象中更难\n作者的目标很明确：复刻 Andrej Karpathy 的 `llm.c`，但用 Swift 写，而且不用任何现成的 ML 框架。基准是 C 语言版本，在开启 `-O3` 优化后，每秒只能处理约 0.9 个 token，训练一次迭代要 7 秒。虽然慢，但好歹能跑。然而，当他把这段逻辑直译成 Swift 并在 Release 模式下运行时，结果简直是灾难：性能只有 C 版本的 7.3%，生成一个 token 要 19 秒。这相当于把现代 Apple Silicon 的算力退化回了 1999 年 PowerMax G4 的水平（2.8 Gflop/s）。问题出在哪？Instruments 显示，罪魁祸首是 `_ArrayBuffer.beginCOWMutation()`。Swift 的 `Array` 为了安全，即便没有发生实际复制，也会不断检查引用唯一性，这种“写时复制”的检查开销在密集计算循环中是致命的。\n\n### 抛弃 Array，拥抱 MutableSpan：绕过 COW 的隐形墙\n既然 `Array` 的安全检查是性能瓶颈，那就得换掉它。Swift 6.2 引入了 `MutableSpan`，这是一个零开销的抽象，本质上就是指向内存的指针加长度，绕过了 `Array` 的引用计数和边界检查机制。作者仅仅把 `out` 数组转换成 `mutableSpan`，并在整个代码库中应用这个模式。有意思的是，这个改动对前向传播速度提升不大，但让整个训练迭代（前向+反向+更新）的速度提升了 3 倍。这说明反向传播中的内存操作更频繁，受 COW 影响更大。虽然性能追到了 C 版本的 24%，但离目标还很远，核心计算依然慢。\n\n### 放弃精度，拥抱 FMA：Swift-Numerics 的“松弛”魔法\n解决了内存问题，接下来是计算本身。C 语言编译器有一个杀手锏叫 `-ffast-math`，它允许编译器使用 FMA（Fused Multiply-Add）指令，把 `a += b * c` 变成一条 CPU 指令完成，既快又减少精度损失。Swift 默认为了数学上的严格正确性，不会这么做，生成的汇编里乘法和加法是分开的，中间还夹杂着大量数据搬移指令。为了解决这个问题，作者引入了 `Swift-Numerics` 库中的 `Relaxed` 模块。通过把 `val += inp * weight` 改成 `val = Relaxed.multiplyAdd(inp, weight, val)`，他告诉编译器：“别纠结精度了，给我用 FMA”。这一改，汇编代码里立马出现了高效的 `fmla` 指令，性能直接起飞。\n\n### 循环展开与多线程：压榨 CPU 的最后一点余力\n有了 FMA 还不够，编译器的自动向量化有时候不够聪明。作者发现，手动把最内层的计算循环展开，一次处理多个数据，能进一步减少循环控制的开销。但这还不够，Apple Silicon 的核心优势在于多核。作者引入了多线程并行，把矩阵乘法的大任务切分成小块，分发给不同的 CPU 核心并行处理。这里有个细节：虽然多线程能大幅提升吞吐量，但也会增加功耗和散热压力。在测试中，随着线程数增加，性能确实在提升，但最终遇到了 CPU 的物理极限。\n\n### 硬件极限与 Metal 的诱惑：CPU 终究不是终点\n经过一系列优化，Swift 版本的性能已经非常接近 C 语言版本，甚至在某些配置下持平。但作者发现，无论怎么优化 CPU 代码，最终都会撞上功耗墙。当 CPU 满载运行时，机器发热严重，频率被迫降低。这时候，他把目光转向了 GPU。通过简单的 Metal 实现，利用 GPU 的大规模并行计算能力，性能直接飙升到了另一个量级（Tflop/s 级别）。虽然文章主要讲 Swift 优化，但这个对比很残酷：CPU 优化再极致，也干不过专门为矩阵计算设计的 GPU。不过，作者证明了纯 Swift 在 CPU 上也能达到可用的性能，这为后续探索 Apple 众多的 ML 框架打下了基础。"
+}

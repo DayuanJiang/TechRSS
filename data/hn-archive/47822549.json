@@ -1,0 +1,122 @@
+{
+  "id": 47822549,
+  "by": "krupitskas",
+  "title": "Modern Rendering Culling Techniques",
+  "url": "https://krupitskas.com/posts/modern_culling_techniques/",
+  "score": 147,
+  "createdAt": 1776720644,
+  "aiSummary": {
+    "chinese_title": "UGC 场景下的现代渲染剔除：PVS、动态 occlusion 与 ray tracing",
+    "discussion_overview": [
+      {
+        "category": "UGC 场景里遮挡剔除很难",
+        "summary": "在可由用户随意添加内容的世界里，occlusion culling 很难做，因为窗户、半透明材质、层叠衣物和长视线都会让“看不见”变成“其实能看见”。评论指出，固定关卡可以通过避开窗户和长直街道来配合剔除，但 UGC/元宇宙场景做不到这么多预设。还有人强调，剔除本身也要算成本，大场景里计算遮挡查询的开销甚至可能超过直接绘制。这个问题被拿来解释 Second Life 的慢，也被说成是 metaverse 时代长期没解决的硬问题。",
+        "supportid": [
+          "47842699"
+        ]
+      },
+      {
+        "category": "GPU 驱动的动态 occlusion 流程",
+        "summary": "有评论给出一种常见的动态 occlusion culling 流程：先默认上一帧可见的物体仍然可见并直接绘制，再对上一帧不可见的对象做 bounding box query，挑出一个保守候选集。接着只对这个短名单继续绘制，并挂上 query，最终得到这一帧保守的可见集合。它的优点是不需要预处理，适合每帧变化不太剧烈的场景；缺点是 camera cut 这类突变会让假设失效。",
+        "supportid": [
+          "47843630"
+        ]
+      },
+      {
+        "category": "Roblox / UGC 城市布局与视线控制",
+        "summary": "有人提到 Roblox 在 GDC 上正好讲了“大型用户生成世界的高性能 culling”这个交叉问题，说明这个方向已经有实际工程需求。另一条思路是把城市规划成 Voronoi 或规则 tessellation，用可预测、可重复的街区形状来缩短 sight lines。回复进一步提出用 S 曲线道路等方式限制视线，并指出真正难的是“避免无限长直线”的铺装，而不只是 periodic 或 aperiodic 之分。",
+        "supportid": [
+          "47844563",
+          "47845001",
+          "47843217",
+          "47846017"
+        ]
+      },
+      {
+        "category": "PVS / BSP / portal culling 仍适用于静态地图",
+        "summary": "PVS 在静态室内游戏里仍然有价值，因为 bake time 可接受，而且早期 Quake、Half-Life、DOOM 这类引擎就把它和 BSP tree 结合得很成熟。评论还提到，它甚至被用来辅助 Quake 3 Arena 一类游戏的 netcode，说明它不只是图形优化。另一位则强调 PVS 不一定要求层级式表示，但在实际项目里，层级切分或手工分区往往更方便；Source/Source 2 仍在使用 PVS 和预烘焙 lightmaps。有人顺带问 portal culling 是否还在用，体现出它更多是老式室内地图技术。",
+        "supportid": [
+          "47843221",
+          "47839456",
+          "47844869",
+          "47845014",
+          "47845212",
+          "47845493",
+          "47844832"
+        ]
+      },
+      {
+        "category": "ray tracing 让屏幕外内容重新重要",
+        "summary": "关于 ray tracing，评论指出反射会把屏幕外的物体“拉回”当前画面，所以单纯依赖 screen-space 的方法天生不完整。Tiny Glade 的做法被概括为：先做 screen-space pass，没命中的像素再交给 ray tracing 处理。进一步的工程建议包括用 RTX 的 TLAS/BLAS，或者软件 BVH/Octree，配合简化材质表示、短 rays、半分辨率和 temporal accumulation 来压成本。这里的核心不是完全剔除世界，而是为不同表示准备更便宜的近似路径。",
+        "supportid": [
+          "47844777",
+          "47846267",
+          "47846317"
+        ]
+      },
+      {
+        "category": "基础剔除与老派优化技巧",
+        "summary": "另一组评论在纠正基础概念：backface culling 通常是按三角形 winding order 判断，而不是按 face normals。有人补充说 normals、flat shading、Gouraud shading、per-pixel rendering 和 normal maps 是不同层次的渲染历史，不该混为一谈。老派 frustum culling 还出现过按帧计数跳过重算的技巧：每个多边形被判定在视锥外后，接下来 N 帧都不再检查，但相机转得太快就会出现 pop-in。",
+        "supportid": [
+          "47839983",
+          "47841230",
+          "47843394",
+          "47845682",
+          "47843767",
+          "47841856",
+          "47841502",
+          "47844114"
+        ]
+      },
+      {
+        "category": "把“渲染”玩成现实哲学梗",
+        "summary": "还有一小撮玩笑把“剔除”概念延伸到现实世界：上班时公寓还在不在渲染、没人观察的树会不会发声、是不是要找“Time”的管理者。它更像是对 rendering 术语的哲学梗，而不是技术争论。这个分支主要提供了讨论里的轻松气氛。",
+        "supportid": [
+          "47840846",
+          "47845171",
+          "47842884",
+          "47842531",
+          "47843399"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "occlusion culling",
+        "explanation": "遮挡剔除；利用前景物体挡住后景的关系，跳过看不见对象的绘制。"
+      },
+      {
+        "term": "PVS（Potentially Visible Set）",
+        "explanation": "预计算的“可能可见集合”；从某个区域出发，列出理论上可能看见的场景部分。"
+      },
+      {
+        "term": "BSP tree",
+        "explanation": "Binary Space Partitioning tree；把空间递归切分，常用于老式室内地图和可见性分区。"
+      },
+      {
+        "term": "frustum culling",
+        "explanation": "视锥剔除；把不在相机视锥内的对象直接排除。"
+      },
+      {
+        "term": "backface culling",
+        "explanation": "背面剔除；按三角形绕序丢弃朝向相机背面的面片。"
+      },
+      {
+        "term": "TLAS/BLAS",
+        "explanation": "ray tracing 的两层 acceleration structure：TLAS 管实例层，BLAS 管底层几何。"
+      },
+      {
+        "term": "BVH",
+        "explanation": "Bounding Volume Hierarchy；用包围盒层级加速射线、碰撞和可见性查询。"
+      },
+      {
+        "term": "screen-space reflections (SSR)",
+        "explanation": "只利用屏幕内信息生成反射的方法，无法直接反射屏幕外内容。"
+      }
+    ],
+    "context": "这篇帖子讨论的是现代图形渲染里的 culling（剔除）技术：从最基本的 frustum/backface culling，到 Quake 时代的 PVS/BSP，再到 GPU 查询驱动的动态 occlusion culling。评论把重点放在“静态关卡”与“用户生成内容（UGC）/metaverse”之间的差异上，因为后者会不断出现窗户、透明材质、长视线和可移动建筑，让预计算可见性很难成立。Roblox（一个面向 UGC 的游戏平台）在 GDC（Game Developers Conference，游戏开发者大会）上还专门讲过大规模场景优化，说明这个问题已有现实工程需求。另一条线索是 ray tracing 与反射：当光线能看到屏幕外内容时，传统 screen-space 方案就不够了，只能用 hybrid pipeline 和 acceleration structure 来补足。",
+    "emoji": "🤔",
+    "sarcastic_question": "用户都能造窗户了，剔除还剩啥优势？"
+  },
+  "articleSummary": "## 一句话总结\n现代渲染优化的核心不在于画得更快，而在于通过从 CPU 到 GPU 的多层级剔除策略，坚决不画那些看不见的东西。\n\n### 别被 AI 画饼忽悠，剔除才是硬道理\n现在的技术圈总喜欢炒作 AI 生成游戏或虚幻引擎 5 的黑科技，让人觉得渲染问题已经解决了。但作者泼了一盆冷水：无论技术怎么进步，你依然得面对性能预算的限制。说白了，80% 的优化工作其实就是“别做无用功”。剔除就是这一理念的最高体现——既然看不见，就别提交给 GPU。这篇文章要讲的，就是现代引擎如何组合各种剔除技术，在复杂的开放世界和室内场景中榨干性能。\n\n### 基础三件套：距离、背面与视锥体\n最底层的剔除手段往往最简单粗暴。距离剔除就是“太远了就不画”，为了防止物体突然消失，通常会配合淡出或 Billboard。背面剔除利用三角形的绕组顺序，让 GPU 自动丢弃物体背面的三角形，这能省下一半的光栅化工作，但要注意在传统管线里它发生在顶点着色器之后，所以省不了顶点计算。视锥体剔除则是把物体包围盒和摄像机的六个裁剪平面做比对，把视野外的物体直接掐掉。这里有个有趣的权衡：大物体（如远处的山）哪怕只有 1% 在屏幕内，你也得画整个模型，导致大量顶点着色器算力浪费在屏幕外的几何体上。\n\n### 遮挡剔除：看不见的不仅是视锥体外\n在密集的城市或室内场景，视锥体剔除根本不够用，因为大量物体虽然被视野覆盖，但被前面的墙挡住了。硬件遮挡查询让 GPU 渲染物体的包围盒，看有没有通过深度测试，但这通常有一帧的延迟。为了解决延迟问题，CPU 软件剔除（如 Intel 的 MSOC）会在 CPU 上光栅化一个低分辨率深度缓冲，虽然零延迟但占 CPU 资源。更现代的做法是 Hi-Z（层次 Z 缓冲），它生成深度缓冲的 Mipmap 链，允许用粗糙的层级快速测试物体是否被遮挡。为了兼顾性能和准确度，很多引擎采用“两遍剔除”：先用上一帧的 Hi-Z 剔除大部分，渲染完可见物体后，再用新生成的 Hi-Z 把刚才误杀的物体救回来。\n\n### 从屏幕空间到预计算：因地制宜的补充手段\n除了几何空间，屏幕空间也是重要的剔除依据。屏幕尺寸剔除不看世界距离，而是看物体投影到屏幕上占多少像素，如果只有几个像素就直接跳过，这比单纯距离阈值更科学。对于静态场景，PVS（潜在可见集）预计算了每个区域能看到哪些区域，运行时查表即可，极快但不适合动态场景。室内关卡常用的 Portal Culling 则通过门洞把视野限制在连通的房间内，这天然缩小了视锥体，效率极高。这些技术各有优劣，通常是针对特定场景的“补丁”。\n\n### GPU-Driven 渲染：把决策权交给显卡\n随着 Draw Call 越来越多，CPU 逐渐成了瓶颈，现代引擎开始转向 GPU-Driven 渲染。核心思路是利用 Indirect Drawing，让 Compute Shader 遍历所有物体，做剔除测试后，把幸存物体的绘制参数写入一个 GPU Buffer。CPU 只需要发一个指令，GPU 就根据这个 Buffer 自己决定画什么。这彻底解放了 CPU，让它不再需要遍历场景树。代码里的 `InterlockedAdd` 用来原子地分配缓冲区槽位，`ExecuteIndirect` 则直接消费 GPU 生成的命令列表。\n\n### Meshlet 剔除：解决大物体的顶点浪费\n回到视锥体剔除留下的那个大难题：大物体大部分在屏幕外，却要跑全部顶点着色器。GPU-Driven 架构带来的终极解决方案是 Meshlet Culling。它把大网格拆成小的 Meshlet（比如 64-128 个三角形一组），在 Compute Shader 或 Task Shader 阶段就对这些小簇进行剔除。这样，哪怕只有 1% 的模型可见，你也只需要处理这 1% 对应的 Meshlet 的顶点工作。这种细粒度的控制，配合 Amplification Shader，才是现代高负载场景下真正的性能杀手锏。"
+}

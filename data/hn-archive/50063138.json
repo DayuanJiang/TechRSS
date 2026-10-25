@@ -1,0 +1,79 @@
+{
+  "id": 50063138,
+  "by": "pngmangi",
+  "title": "Who Is Vfmaddrnd231pd?",
+  "url": "https://purplesyringa.moe/blog/who-is-vfmaddrnd231pd/",
+  "score": 148,
+  "createdAt": 1791844863,
+  "aiSummary": {
+    "chinese_title": "幽灵 x86 指令 VFMADDRND231PD：编码遗留还是硬件禁用？",
+    "discussion_overview": [
+      {
+        "category": "神秘指令可能是未启用的硬件遗留",
+        "summary": "有评论指向 Felix Cloutier 的 x86 指令参考页，认为 VFMADDRND231PD 可能曾因硬件问题而被移除，因而从未真正可用。另一种更具体的猜测是，FMA 舍入实现的某个深层边角情形存在错误，厂商宁可用类似“chicken bit”的开关禁用该指令，也不愿带着错误语义发布。该观点将怪异名称视为 Intel vector ISA 长期积累的难懂命名和异常语义中的又一个遗迹，而非特别深奥的新设计。",
+        "supportid": [
+          "50064930",
+          "50064530"
+        ]
+      },
+      {
+        "category": "VEX 编码优先，汇编语法并非为人类而设",
+        "summary": "评论援引旧版 binutils 文档解释 DDS：VEX.vvvv 字段可编码第二个寄存器操作数，而结果会覆盖第一个源寄存器；但对 assembler 而言，VEX.NDS、VEX.DDS 与 VEX.NDD2 没有差别。回应者指出，FMA 使用 1/2/3 形式而非要求两个寄存器相同的四操作数写法，是为了让文本形式直接对应指令编码，并保持寄存器/内存操作数位于末尾的既有惯例。类似地，vector 指令的 immediate byte 往往塞入 shuffle mask 或操作选项，汇编语法也不试图帮助人手构造它；ARM 虽较一致，load/store 的操作数顺序同样存在为编码与惯例妥协的反直觉处。",
+        "supportid": [
+          "50065430",
+          "50064730",
+          "50065869"
+        ]
+      },
+      {
+        "category": "可读性下降会削弱人类理解与创新",
+        "summary": "一派认为，难以一眼读懂的指令名像“锁的钥匙”，虽然 compiler 能正确选择指令，却让人类更少直接接触底层模型。若仍有更多人写 asm，可能会形成足够的共同理解，进而改进指令表示、降低 chip designer 与 compiler writer 的认知负担。该担忧不只针对 AI，而是自动化和抽象层迁移后旧知识逐渐无人审视的普遍现象；也有人进一步担心公司会有意压制其控制范围外的创新。",
+        "supportid": [
+          "50064367",
+          "50065568",
+          "50064897"
+        ]
+      },
+      {
+        "category": "以高层语义重造 assembler 的尝试与质疑",
+        "summary": "symbolasm（一个试图改善汇编可读性的项目）提出用接近表达式的形式表示运算，例如以带向量类型的 a = round(fma(a, b, c)) 替代冗长 mnemonic，并在变量首次赋值时用 @zmm1 标注寄存器。项目作者认为这种表示可同时帮助人类和 LLM coder，且已有评论支持至少为 CPU extension 加 namespace，改善传统 ASM 的原始与难用状态。反方则强调，x64 本就是兼容性与历史妥协层层堆叠的结果；即使从零设计新 ISA，成功后也难免重新积累类似包袱。",
+        "supportid": [
+          "50065687",
+          "50066137",
+          "50066405",
+          "50065869"
+        ]
+      },
+      {
+        "category": "RISC-V 命名的反讽",
+        "summary": "有人初见 VFMADDRND231PD 时以为它像 RISC-V extension 的名字，查看后才发现它属于 x86。随后的玩笑指出，RISC-V 那些荒谬的名称也并非凭空出现，而是延续了既有 ISA 命名文化。这个插曲凸显了讨论的核心观感：即使宣称更简洁的新架构，也常继承底层指令体系的缩写传统与可读性问题。",
+        "supportid": [
+          "50064829",
+          "50064847"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "VEX.vvvv / VEX.DDS",
+        "explanation": "x86 AVX 的 VEX 前缀编码字段；DDS 表示该字段承载第二个寄存器操作数，而运算结果覆盖第一个源寄存器。"
+      },
+      {
+        "term": "FMA",
+        "explanation": "Fused Multiply-Add，融合乘加运算，将乘法与加法作为一次浮点运算完成，以减少舍入并提高吞吐。"
+      },
+      {
+        "term": "1/2/3（如 231）操作数形式",
+        "explanation": "x86 FMA mnemonic 中用于标示各操作数在编码和破坏性目标寄存器关系中的位置的后缀约定，不是简单的版本号。"
+      },
+      {
+        "term": "assembler / asm",
+        "explanation": "将汇编文本转换为机器码的工具及其所用语言；讨论焦点是其语法应优先映射二进制编码还是服务人类理解。"
+      }
+    ],
+    "context": "VFMADDRND231PD 是一个看似 x86 vector FMA 指令的冗长 mnemonic，其名称中的 RND、231 与操作数位置和舍入相关语义有关，但评论者质疑它是否曾因实现缺陷而在硬件中被禁用。x86 的 AVX/VEX（Advanced Vector Extensions 的向量指令编码机制）会把额外寄存器信息压入前缀字段，FMA 的多种 132、213、231 形式也服务于有限编码空间和破坏性目标寄存器规则。Felix Cloutier 的 x86 reference（由 Intel 手册整理而成的指令参考网站）以及 binutils（GNU 的汇编、链接和二进制工具集）成为追溯这种罕见指令和编码术语的线索。争论进一步扩展到 ASM 是否应保持对机器编码的忠实映射，还是应采用更接近高层表达式的 syntax，让人类与 LLM 更易理解和操作。",
+    "emoji": "🕵️",
+    "sarcastic_question": "芯片都不敢执行，文档为何还给它起这么长的名？"
+  },
+  "articleSummary": "## 一句话总结\nIntel 手册里详细记载的指令 `vfmaddrnd231pd` 根本不存在，这很可能是一次临阵撤回的硬件设计，却留下了文档未同步的\"幽灵\"。\n\n## 正文\n\n### 一个本该改变游戏规则的指令\n故事始于 Intel FMA 指令集中一个看似特殊的成员：`vfmaddrnd231pd`。大多数 FMA 指令名为 `vfmadd231pd`，而这个多出的 `rnd` 颇有深意。根据 Intel Software Development Manual (SDM) 的描述，这是一条支持\"逐指令舍入控制\"的 Fused Multiply-Add 指令。这可是个大杀器：常规 x86 浮点指令依赖全局舍入模式，修改起来开销很大，而这条指令能通过立即数直接控制舍入、DAZ、FTZ 和异常抑制。理论上，这意味着无需 AVX-512 就能实现可控舍入算术，对于依赖特定舍入精度的算法来说，性能提升将是巨大的。\n\n### 编译器和汇编器集体\"失忆\"\n但有意思的地方在于，当你真想去用它时，却发现到处都是坑。GNU assembler 根本不认这条指令。SDM 里提到的 Intel C/C++ Compiler intrinsics `_mm_fmaddround_pd` 和 `_mm256_fmaddround_pd`，不仅 Clang 里找不到，连 Intel 自家的 ICC 编译器里也没有。这就像说明书上写着有这个功能，但厂家却忘了装按钮，甚至连厂家自己的遥控器都没适配。\n\n### 诡异的 OpCode 与神秘的 DDS\n既然编译器靠不住，作者尝试按照 SDM 提供的 OpCode 手写机器码。OpCode 是 `VEX.DDS.128.66.0F3A.W1 B8 /r /r ib`。这里有个非常可疑的细节：`DDS`。在整个 SDM 中，这是唯一一处提到 `DDS` 的地方。Stack Overflow 上有人解释说 `DDS` 只是文档用的占位符，后来版本已经移除，但它依然顽强地出现在这里，显得格格不入。\n\n### 硬件给出的最终判决\n更实锤的证据来自 CPU 的真实反馈。作者在支持 FMA 的 Haswell CPU 上尝试运行这条指令，结果直接触发了 `#UD`（UnDefined instruction）异常。这说明 CPU 根本不认识它。此外，SDM 中只列出了 `vfmaddrnd231pd` 这一种变体，完全没有其他 FMA 指令常见的 `pd`/`ps`/`sd`/`ss` 或 `132`/`213`/`231` 组合。这种\"孤家寡人\"的状态，显然不符合指令集设计的常规逻辑。\n\n### 消失在 2026 版手册中的幽灵\n带着这些疑问，作者查阅了最新版的 SDM。结果发现，2024 版手册里还存在的这条指令，到了 2026 版里已经彻底消失。这更加印证了之前的猜想：这根本不是简单的文档笔误。毕竟，文档里不仅有详细的 OpCode，还有专门的伪代码和表格，这显然是有人认真编写过的内容。\n\n### 疑似一次\"临阵脱逃\"的硬件设计\n核心思路其实很简单：这很可能是一次 Intel 内部沟通失误。最合理的推测是，Intel 原本计划加入 `vfmaddrnd*` 指令集，文档都写好了，但在最后时刻（可能是硬件验证阶段）发现了问题，于是从 CPU 中移除了该功能。然而，文档同步工作却出现了纰漏，导致 2024 版手册里留下了这个\"幽灵指令\"。虽然这只是推测，但面对这个有完整文档却无法运行的指令，我们似乎也找不到更好的解释了。"
+}

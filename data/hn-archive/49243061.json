@@ -1,0 +1,79 @@
+{
+  "id": 49243061,
+  "by": "pdet",
+  "title": "Asynchronous I/O in DuckDB: Work, Thread, Work",
+  "url": "https://duckdb.org/2026/07/31/asynchronous-io",
+  "score": 266,
+  "createdAt": 1786846211,
+  "aiSummary": {
+    "chinese_title": "DuckDB 异步 I/O：线程超配、CSV 并行解析与大内存基准",
+    "discussion_overview": [
+      {
+        "category": "线程超配可行性",
+        "summary": "评论集中讨论 async I/O 线程池是否可以按核心数甚至略微超配。有人拿 Rust 里的 Rayon + Tokio 组合举例：在 6 vCPU 上同时跑 4 个 worker 线程和 2 个 async 线程，网络延迟仍然正常。回应认为 I/O 线程大多在等 syscall，kernel 调度通常能很好处理这种 oversubscription；即使偶尔被饿住，对纯网络客户端也不算灾难。还有人补充说，DuckDB 的 memory governor 会把这些线程约束在合理范围内，因此可以在默认情况下保留更高吞吐。",
+        "supportid": [
+          "49317845",
+          "49318269",
+          "49318206"
+        ]
+      },
+      {
+        "category": "CSV 并行解析",
+        "summary": "关于 CSV 读取，讨论焦点是带 quoted newlines 的文件如何在异步线程里从中间切入，而不用先扫完整个文件。回应解释 DuckDB 用的是 speculative parallel CSV parsing：先在随机 byte 位置猜测解析器状态，再据此推断下一行起点。随后还会在收尾阶段做 validation，防止切分时对引号状态判断错误。另有人补充说实现上通常是读取大块数据后再 decode，这也是并行切分能成立的原因。",
+        "supportid": [
+          "49318600",
+          "49318687",
+          "49318633"
+        ]
+      },
+      {
+        "category": "大内存基准设计",
+        "summary": "有人质疑用 512GB RAM 去测一个 22GB 的远程文件是否过于夸张。回应指出，大内存机器便于统一做 benchmark，而且 CSV 数据集本身可能超过 80GB，数据库场景也常常依赖 large buffer cache。另有评论提到，云厂商和数据库工作负载本来就经常采用较高的内存/CPU 配比。为了让实验可控，还可以用 DuckDB 的 memory_limit、threads 设置，或者用 cgroups 把进程资源收紧。",
+        "supportid": [
+          "49316878",
+          "49316952",
+          "49318232",
+          "49318167"
+        ]
+      },
+      {
+        "category": "文章深度与实现细节争议",
+        "summary": "一部分评论把这篇文章视为高性能数据处理的工程干货，认为关于 async I/O 和执行模型的拆解很有价值。另一部分则觉得内容还不够深，因为没有交代队列类型、磁盘子系统如何处理 random reads 等关键实现细节。也有人直接把它当成长期等待的功能发布来欢迎，说明读者对这类执行器优化非常关注。总体上，这组评论既肯定方向，也在追问实现是否已经足够完整。",
+        "supportid": [
+          "49316232",
+          "49317330",
+          "49318618",
+          "49316300"
+        ]
+      },
+      {
+        "category": "DuckDB 路线与生态期待",
+        "summary": "还有一组评论把话题延伸到 DuckDB 的产品路线和生态需求。有人认为 DuckDB 正在朝着最快的 analytical query engine 方向演进，也有人用 Quack.Ducks 的梗设想多个 DuckDB 实例如何协同并行。除此之外，还有人关心 SSL/HTTPS 更新是否到位，以及是否存在聚合官方文档的入口，说明大家开始把它当成需要正式部署和维护的系统来期待。",
+        "supportid": [
+          "49316809",
+          "49317006",
+          "49316865",
+          "49317872"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "oversubscription（线程超配）",
+        "explanation": "让线程数超过 CPU 核心数；在 I/O 场景中常见，因为很多线程大部分时间都在等待 syscall。"
+      },
+      {
+        "term": "speculative parallel CSV parsing（推测式并行 CSV 解析）",
+        "explanation": "先猜测 CSV 解析状态并并行切分，再在收尾阶段校验修正，适合处理 quoted newlines。"
+      },
+      {
+        "term": "buffer cache（缓冲缓存）",
+        "explanation": "操作系统或数据库用于缓存磁盘数据的内存页，常显著影响数据库基准测试表现。"
+      }
+    ],
+    "context": "这篇文章讨论 DuckDB（一个面向分析型查询的嵌入式数据库/查询引擎）如何把 worker 线程、async 线程和 I/O 任务拆开，让计算与等待重叠，从而提高吞吐。评论进一步追问 CSV 读取如何处理 quoted newlines，以及如何从文件中间并行切入而不必先扫描整文件。基准测试之所以用到 512GB RAM 和 22GB 远程文件，是因为数据库类 workload 往往依赖 large buffer cache（大缓冲缓存），而作者也提到可以用 memory_limit、threads 或 Linux cgroups（控制组）把实验环境缩小。整个讨论也反映出 DuckDB 正从“好用的小工具”变成需要认真看待其执行器、CSV parser 和部署边界的系统。",
+    "emoji": "🚀",
+    "sarcastic_question": "512GB 内存跑 22GB 文件，也叫基准吗？"
+  },
+  "articleSummary": "## 一句话总结\n\nDuckDB v2.0 通过“`REGULAR` 线程算数据、`ASYNC` 线程提前拉数据”的双线程池和受内存约束的 read-ahead 队列，解决了 S3/EC2 场景下同步 I/O 吃不满网络带宽的问题，并在 TPC-H SF100 上将 Parquet 查询从 8.230 秒降至 2.844 秒。\n\n## 正文\n\n### DuckDB 原本不太需要关心 I/O，因为数据就在本机 SSD 上\n\n过去 DuckDB 的典型使用方式，是直接查询本机 SSD 上的文件。  \n它依靠 filter pushdown 和 projection pushdown，尽早裁掉不需要的数据。  \nParquet 按 row group 切分，CSV 按固定大小 buffer 切分，本地存储的低延迟和高带宽足以支撑同步读取。  \n于是性能瓶颈通常出现在 joins、aggregations、subqueries 等计算算子，而不是读文件本身。  \n说白了，过去的 DuckDB 可以假设：线程发起一次读取后，等一会儿并不是什么大问题。  \n\n但这个前提已经变了。  \nDuckDB 开始适合查询 data lake，例如基于 S3 的远程数据集，也可以通过 Quack protocol 作为服务端运行。  \n此时计算在 EC2 上，数据在 S3 或其他 blob storage 里，即使两者同 Region，网络延迟也不再可以忽略。  \n如果每个 worker 都同步等待 HTTP range request 返回，CPU 线程会大量空转。  \n更糟的是，请求并发度不够时，机器明明有网络带宽，却根本跑不满。  \n\n### 同步读取的问题不是“慢”，而是线程被迫什么都不做\n\n文章用一个简单的 Parquet scan 说明问题：\n\n```sql\nFROM read_parquet('s3://bucket/file.parquet');\n```\n\nDuckDB 会把 Parquet scan 切成以 row group 为单位的 jobs。  \n每个 job 又可能拆成一个或多个 fetch tasks，用 byte-range request 拉取实际需要的数据。  \n在同步 I/O 模式下，worker 发出读取请求后必须阻塞，直到数据到达本机才能继续 decode、aggregate 等工作。  \n也就是说，网络等待和 CPU 解码是串行发生的。  \n\n这正是远程 I/O 场景里最浪费的地方。  \n线程不是没有任务可做，而是被同步读取 API 卡在了等待状态。  \n即便还有其他 pipeline task，当前 scan 的执行也会因此失去连续性。  \n而网络侧也只有少量请求同时在飞，无法覆盖 S3 请求延迟。  \n因此，异步 I/O 的目标并不神秘：让“等数据”和“处理数据”重叠起来。  \n\n### 双线程池把“搬数据”和“做计算”拆开了\n\nDuckDB v2.0 为此引入了两个独立的 thread pool。  \n`REGULAR` pool 默认每个可用 CPU thread 配一个 worker，负责 decoding、joins、aggregations 等真正消耗 CPU 的工作。  \n这些 worker 优先执行常规任务，但在空闲时也可以协助 I/O task。  \n`ASYNC` pool 则专门承担异步任务，主要是那些会阻塞在远程 HTTP I/O 上的 fetch tasks。  \n这里的关键设计是，`ASYNC` 线程数远多于 CPU 线程数，默认是 `4 * system threads`，总数最多 256。  \n\n为什么敢开这么多？  \n因为远程读取线程大多数时候不占 CPU，它们只是在等响应。  \n如果仍然按 CPU 核数限制这些线程，很多网络等待时间就无法被并发请求覆盖。  \n有了 `ASYNC` pool，多个 fetch task 可以持续在飞。  \n与此同时，`REGULAR` worker 不再因为某个请求没返回就被彻底占住。  \n\n### read-ahead 队列让请求在真正需要前就出发\n\n仅仅把读取放到异步线程还不够。  \n如果 worker 到了某个 row group 才临时发请求，延迟依然会暴露在执行路径上。  \n所以 DuckDB 采用 read-ahead：在 regular worker 还在 decode 当前 job 时，`ASYNC` 线程已经开始拉取后续 jobs 的数据。  \n目标是让足够多的 fetch task 始终处于 in-flight 状态，从而隐藏远程存储的请求延迟。  \n这也是整套设计最核心的吞吐量来源。  \n\n不同文件格式里，job 的定义不同。  \n对 Parquet 来说，一个 job 对应一个文件的一个 row group；具体会拆成多少 fetch task，取决于 projection、filter pushdown、物理列位置和相邻 range 是否可以合并。  \n对 CSV 来说，job 是一个 scan boundary，通常覆盖文件中的固定字节范围。  \nCSV 没有 Parquet 那么丰富的元数据，因此它会读取起始 buffer，并在一行跨 buffer 时继续读取下一个 buffer。  \n目前异步 I/O 已支持 Parquet，以及未压缩、可 seek 的 UTF-8 CSV；DuckDB native format 和 JSON 仍在后续计划中。  \n\n### 队列的巧妙之处，是生产、读取和唤醒都不需要专职调度者\n\nDuckDB 没有额外安排一个专门生产 read-ahead job 的线程。  \n任何一个来领取 scan work 的 regular worker，都会先尝试把 read-ahead queue 补满。  \n只要 queue slot 或内存预算允许，它就创建新的 job 和对应 fetch tasks。  \nfetch tasks 会立刻提交到 `ASYNC` pool，而 job 按批次顺序进入 read-ahead queue。  \n因此，队列补充是执行路径中的协作行为，而不是又一个独立的调度瓶颈。  \n\n`ASYNC` 线程以 fetch task 为粒度独立执行，不需要按 job 的领取顺序工作。  \n同一个 job 的多个 fetch task 可以并发，它们共享一个 countdown。  \n最后完成的 fetch task 将 countdown 归零，也就标志着该 job 的 I/O 已准备完毕。  \nregular worker 总是领取队列中最早的 job；如果数据已到，就直接 decode。  \n如果数据还没到，worker 会 park 当前 scan task，转而运行其他 pipeline task，最后由完成 I/O 的 fetch task 将它唤醒。  \n\n还有一个重要细节：worker 一领取 job，对应 queue slot 就立即释放。  \n这意味着其他 regular worker 可以继续在队尾补充新的预读 job。  \n整个循环因此形成了稳定的流水线：队首消费、队尾生产、异步线程并发下载。  \n数据准备和数据处理从串行关系，变成了可重叠的关系。  \n这也是标题里 “Work, Thread, Work” 所表达的节奏：线程不该在 I/O 等待里失去工作机会。  \n\n### 预读会吞内存，所以 DuckDB 把它接入了统一的内存治理\n\nread-ahead 的代价很直接：提前拉下来的数据需要先放在内存里。  \n如果网络很快、解码很慢，预取数据可能不断积压，最终触发 out-of-memory。  \n因此 DuckDB 增加了 `read_ahead_depth` 配置项，用来限制预读深度。  \n`-1` 是默认值，表示深度不限，但受内存预算控制；`N > 0` 表示最多预读 N 个 job，但不设内存预算；`0` 则关闭 read-ahead。  \n例如可以执行：\n\n```sql\nSET read_ahead_depth = 5;\n```\n\n默认模式没有单独发明一套内存逻辑。  \n它直接与 DuckDB 的 temporary memory manager 协商预算。  \n这个 manager 本来就负责在 joins、sorts、window operators 等并发算子之间分配内存。  \n当某个算子内存压力很大时，read-ahead queue 的可用预算会迅速收缩，最极端时只能保留一个 job。  \n这时 scan 的行为会退化得接近同步读取；当内存密集型算子结束，预读队列又会重新填充。  \n\n### S3 上的 Parquet 终于能接近 25 Gbit/s 网络上限\n\n文章用 TPC-H Query 6、SF100 数据集测试这一设计。  \n数据在 S3 上，计算运行在同 Region 的 EC2 `r7i.16xlarge`，机器有 64 vCPU、512 GB RAM。  \n每张表写成单个文件，`lineitem` 有 600,037,902 行；测试关闭 external file cache，确保每次都从 S3 读取。  \nParquet 文件约 22 GB，包含约 4,880 个 row group，每组约 122,880 行。  \n五次执行取平均值后，DuckDB v1.5.5 的同步版本耗时 8.230 秒。  \n\n启用异步 I/O 的 v2.0.0-dev 将平均耗时降到 2.844 秒，接近 3 倍加速。  \n更有意思的是，进一步调优后，性能还能继续提升。  \n测试将 read-ahead 限制为 64 个 in-flight jobs，并设置 `async_threads = 48`、`http_retries = 8`、`http_retry_wait_ms = 50`、`http_retry_backoff = 2`。  \n调优版本耗时 2.227 秒，比未调优的异步版本再快 21.7%，相对 v1.5.5 约快 3.7 倍。  \n网络曲线解释了原因：同步版大约停在 5 Gbit/s，而调优后的异步版本几乎持续跑满 25 Gbit/s。  \n\n### 本地 SSD 也会受益，但它不是异步 I/O 的主战场\n\n作者也测试了本地冷读场景。  \n测试在一台 Apple M4 Max MacBook Pro 上进行，机器有 14 核和 36 GB RAM。  \n每次运行前使用 macOS 的 `purge` 清理 OS cache，确保文件确实需要从本地磁盘读取。  \n同样的 SF100 Parquet Query 6，v1.5.5 同步读取耗时 1.321 秒。  \nv2.0.0-dev 的异步 I/O 耗时 0.883 秒，约快 1.5 倍，运行时间下降约 33%。  \n\n但这个结果也反过来说明了异步 I/O 的适用边界。  \n本地 SSD 延迟更低、带宽更高，因此同步读取本来就没那么难以饱和。  \n数据已经被缓存的热读场景下，几乎没有实际磁盘访问，异步 I/O 的收益也接近于零。  \n它真正瞄准的还是 EC2/S3 这类高延迟、可提供高总带宽、但需要足够请求并发才能跑满的环境。  \n文章最后还开始讨论多小文件的 Parquet 数据集：将 SF100 切为 976 个文件、每个约 22 MB、含 5 个 row group；但所提供的原文在该 benchmark 结果处截断。"
+}

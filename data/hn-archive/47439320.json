@@ -1,0 +1,107 @@
+{
+  "id": 47439320,
+  "by": "defrost",
+  "title": "OpenBSD: PF queues break the 4 Gbps barrier",
+  "url": "https://undeadly.org/cgi?action=article;sid=20260319125859",
+  "score": 127,
+  "createdAt": 1773928819,
+  "aiSummary": {
+    "chinese_title": "OpenBSD PF 队列整形修复 32 位上限，突破 4Gbps",
+    "discussion_overview": [
+      {
+        "category": "32 位上限与静默回绕修复",
+        "summary": "这篇文章的核心不是 PF 过滤包有多快，而是 HFSC 队列里的 bandwidth 上限长期被 32-bit 字段卡在约 4.29Gbps。问题不只是“到不了 10G”，而是当你把更高的值写进配置时会静默回绕，导致调度行为错误且难以排查。补丁把相关字段扩到 64-bit，把可配置上限提高到约 999G / 1Tbps，等于直接移除了这个历史瓶颈。评论区普遍把它看成一次必要的底层修复，而不是性能噱头。",
+        "supportid": [
+          "47440715",
+          "47441660",
+          "47439484",
+          "47439649",
+          "47439627",
+          "47439922"
+        ]
+      },
+      {
+        "category": "高端网卡与数据中心支持短板",
+        "summary": "不少评论认为，真正限制 OpenBSD 进入数据中心的不是这次队列修复，而是高端网卡和光模块支持一直不够完整。DOM stats、SFP+、QSFP 之类能力在 OpenBSD 上长期缺位或不稳定，而 FreeBSD 往往能开箱即用。驱动移植还会碰到 OpenBSD 更严格的安全机制、代码风格和许可偏好，导致很多 vendor driver 不能直接搬过来。也有人反驳说 OpenBSD 仍然广泛用于路由器和小型环境，强调它在简单、可靠和安全上的优势。",
+        "supportid": [
+          "47440681",
+          "47441927",
+          "47443300",
+          "47442611",
+          "47442904",
+          "47443166",
+          "47443165",
+          "47443336",
+          "47443422"
+        ]
+      },
+      {
+        "category": "安全优先 vs 性能优先",
+        "summary": "讨论里反复出现的观点是，OpenBSD 更重视 security、可读性和可维护性，而不是极限性能。有人回顾它在 90 年代和 2000 年代初曾经很强，但后来 Linux 在企业支持、用户规模和易用性上快速扩张，差距越来越大。也有人补充说 OpenBSD 最近几年已经在性能上补了很多课，比如多 peer BGP full-table refresh 就明显比以前好，但整体仍落后于 FreeBSD。另一些评论把这和“worse is better”式的 Unix 传统联系起来，认为这解释了为什么某些问题会长期存在。",
+        "supportid": [
+          "47440269",
+          "47440767",
+          "47443605",
+          "47441740",
+          "47442451",
+          "47442952"
+        ]
+      },
+      {
+        "category": "10G+ 下内核整形还是用户态处理",
+        "summary": "有评论认为，一旦带宽进入 multi-gig 时代，hot path 更适合搬到 userland，用 DPDK、netmap、XDP 这类框架做批处理和跨核扩展。这样可以尽量绕开传统 kernel 的 per-packet 路径，把内核更多当作 control plane。反对者则指出，traffic shaping 本身不一定需要 kernel bypass，真正麻烦的是跨核通信、NIC 队列绑定和 OpenBSD 目前的 SMP 能力。这个分歧本质上是在争论：高吞吐网络里，数据面到底该留在内核里，还是交给更激进的 packet processing 框架。",
+        "supportid": [
+          "47441902",
+          "47442563",
+          "47442511",
+          "47441740"
+        ]
+      },
+      {
+        "category": "4Gbps 以上整形是否有现实需求",
+        "summary": "一部分人觉得 10G 以上还做 per-queue shaping 很少见，因为大多数场景根本不会把队列限制设到 4G 以上。也有人认为随着链路变快，很多传统 shaping 场景会变得没那么重要，至少不再像低速线路时代那样关键。另一边则强调，备份、CCTV、voice 和 customer circuits 混跑在同一 uplink 上时，短时饱和依然会带来明显的 latency 和抖动。评论还延伸到 800G NIC、IEEE 802.3dj 的 1.6T Ethernet、LACP/LAGG 以及 VPP，说明这种“看起来离谱”的带宽讨论其实已经很接近现实。",
+        "supportid": [
+          "47440399",
+          "47440436",
+          "47442961",
+          "47443207",
+          "47442144",
+          "47443256",
+          "47439484",
+          "47439626",
+          "47440241",
+          "47440383",
+          "47440543",
+          "47440728",
+          "47439536"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "PF",
+        "explanation": "OpenBSD 内置的 packet filter/防火墙系统，也负责 queue 和 traffic shaping 配置。"
+      },
+      {
+        "term": "HFSC",
+        "explanation": "Hierarchical Fair Service Curve，一种用于 PF queue 的 traffic shaping 调度算法。"
+      },
+      {
+        "term": "DOM stats",
+        "explanation": "Digital Optical Monitoring，光模块的温度、功率等诊断数据。"
+      },
+      {
+        "term": "SFP+/QSFP",
+        "explanation": "高速光模块接口规格，常见于 10G、40G、100G 及更高速链路。"
+      },
+      {
+        "term": "VPP",
+        "explanation": "Vector Packet Processing，一个面向高吞吐的用户态 packet processing 框架。"
+      }
+    ],
+    "context": "OpenBSD（一个以安全和代码审计著称的 BSD Unix）里的 PF（packet filter/防火墙系统）使用 HFSC（Hierarchical Fair Service Curve，一种 traffic shaping 调度算法）来做队列整形。原文说这次补丁把 HFSC 里的 bandwidth 字段从 32-bit 改成了 64-bit，修复了长期存在的约 4.29Gbps 上限，避免在 10G 以上配置时发生静默回绕。评论区把话题延伸到 OpenBSD 在高速光口、DOM stats（光模块诊断信息）和 SFP+/QSFP 高端网卡驱动上的支持短板，以及它与 FreeBSD、Linux 在数据中心场景中的定位差异。随着 800G 设备和 1.6T Ethernet 进入视野，大家也在争论高带宽时代到底还需不需要传统的内核级 packet shaping。",
+    "emoji": "😬",
+    "sarcastic_question": "4G都没撑住，999G就敢说够未来？"
+  },
+  "articleSummary": "# 一句话总结\nOpenBSD 将 PF 防火墙 HFSC 调度器的带宽字段从 32-bit 升级到了 64-bit，彻底打破了 4.29 Gbps 的隐形限制，让队列配置在 10G/100G 网络环境下终于能按预期工作了。\n\n### 4Gbps 限制的元凶竟是一个 u_int\nOpenBSD 的 PF 防火墙一直支持通过 `queue` 规则做 HFSC 流量整形，这在过去是个很棒的功能。但随着 10G、25G 甚至 100G 网卡越来越普及，一个古老的内部限制开始显形了。问题出在 HFSC 服务曲线结构体 `struct hfsc_sc` 上，它内部使用了一个 `u_int`（32 位无符号整数）来存储带宽值。这意味着无论你配置多大的带宽，系统内部都会在约 4.29 Gbps 处遭遇“天花板”，超过的部分会被静默截断。\n\n### 配置不报错，但调度行为全乱了\n这最坑人的地方在于它的“静默”特性。当你试图配置 `bandwidth 10G` 时，系统不会报错，而是接受配置，但数值会发生溢出回绕。结果就是，你以为给队列分配了 10G 带宽，实际上内核看到的可能是一个极小的数值。这会导致调度器的行为完全不可预测，流量整形不仅没生效，反而可能因为错误的计算引发网络拥塞或丢包，排查起来非常困难。\n\n### 核心修复：把字段从 32-bit 撑大到 64-bit\n为了解决这个问题，开发者提交了一个补丁，思路非常直接粗暴：把内核 HFSC 调度器里的带宽字段全部从 32-bit 整数升级为 64-bit 整数。这一改动直接移除了性能瓶颈，让带宽上限不再受限于 4.29 Gbps。同时，补丁还顺手修复了 `pftop(1)` 工具里的一个显示 Bug——以前超过 4G 的带宽显示出来是错的，现在也能正常展示了。\n\n### 用户体验：语法没变，但上限到了 999G\n对于最终用户来说，这次升级最友好的地方在于“无痛”。你不需要学习新的配置语法，原来的 `pf.conf` 写法完全照旧，只是现在它真的能支持高速网络了。比如，你现在可以放心地写 `queue rootq on em0 bandwidth 10G`，系统会如实执行。新方案支持高达 999G 的带宽值，这对目前的硬件和未来很长一段时间的需求来说都绰绰有余。\n\n### 向后兼容，老配置无需改动\n如果你现在的网络环境还在 4G 以下，也不用担心兼容性问题。这次改动只涉及内部数据类型的扩展，原有的逻辑和计算方式保持不变。这意味着你现有的配置文件不需要做任何修改，继续跑在 `-current` 分支上完全没问题。OpenBSD 社区已经完成了代码审查，确认这个补丁已经准备好合并进主分支了。"
+}

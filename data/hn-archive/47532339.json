@@ -1,0 +1,73 @@
+{
+  "id": 47532339,
+  "by": "tanelpoder",
+  "title": "OpenTelemetry Profiles Enters Public Alpha",
+  "url": "https://opentelemetry.io/blog/2026/profiles-alpha/",
+  "score": 125,
+  "createdAt": 1774543242,
+  "aiSummary": {
+    "chinese_title": "OpenTelemetry Profiles 公测：可接 Pyroscope，低开销遭质疑",
+    "discussion_overview": [
+      {
+        "category": "与 Pyroscope 的分工和兼容性",
+        "summary": "有人把它和 Grafana Pyroscope 拿来对比，想知道这次发布到底是不是在做同类产品。随后有评论澄清，Pyroscope 更像是 profiles 的存储与查询后端，本身不是 profiler；OpenTelemetry Profiles 才是负责采集和上报的那一层。也有人直接指出，OpenTelemetry 收集到的 profiles 可以发送到 Pyroscope，因此两者更像是组合关系而不是竞争关系。",
+        "supportid": [
+          "47534567",
+          "47534972",
+          "47535542"
+        ]
+      },
+      {
+        "category": "对传统日志链路 rsyslog 的可靠性与替代方案讨论",
+        "summary": "一条分支把话题从 profiling 拉到分布式日志，询问 rsyslogd 在转发日志到中心节点时的性能和可靠性，尤其是是否有人做过类似 Jepsen 的压力测试。实际使用者表示，rsylog 到中心 rsylog 再到 Elasticsearch 的链路在几十 GiB/天的规模下是稳定的，但配置非常痛苦，文档也参差不齐，排障时常得深入 C 代码。随后又有人说 syslog 现在几乎没人关心，但这个判断也被指出只是样本太小的推断；同时还有人提到准备迁移到 Alloy + Loki。",
+        "supportid": [
+          "47533021",
+          "47534710",
+          "47534204",
+          "47534603"
+        ]
+      },
+      {
+        "category": "实际使用中的正面反馈",
+        "summary": "有评论直接表达了对这个发布的期待，并提到在工作中已经用过 Elixir 版本多次。反馈认为它非常有用，说明 continuous profiling 并不是纯概念，而是在某些语言生态里已经有实际收益。这个声音也为整场讨论提供了少见的明确正面评价。",
+        "supportid": [
+          "47534180"
+        ]
+      },
+      {
+        "category": "对低开销与实现细节的质疑",
+        "summary": "一开始就有人怀疑，OpenTelemetry 社区设计的东西怎么可能真正满足 low-overhead 的生产要求。回应则解释说，这个 profiler 的参考实现最早来自 Optimyze 团队，后来被 Elastic 收购并捐给 OpenTelemetry，而那批工程师在 profiling 上经验很深。接着讨论进入技术细节：有人提到通过 .eh_frame 做栈回溯、在 eBPF 里直接执行 unwinding，可以避免把大量 stack 数据先搬到 userspace；另有人纠正说 .eh_frame 本身并不新，真正新的在于把这套逻辑下沉到内核态。维护者最后表示，他们已经尽量在协议和各组件上优化效率，并欢迎反馈问题。",
+        "supportid": [
+          "47532777",
+          "47533134",
+          "47535733",
+          "47536488",
+          "47533056",
+          "47532812"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "OpenTelemetry Profiles",
+        "explanation": "OpenTelemetry 生态中的 profiling 方向，用于连续采集运行时性能剖析数据。"
+      },
+      {
+        "term": "Pyroscope",
+        "explanation": "Grafana 的 profiles 后端，用来接收、存储和查询性能剖析数据。"
+      },
+      {
+        "term": "eBPF",
+        "explanation": "Linux 内核中的扩展机制，常用于低开销观测、采样和追踪。"
+      },
+      {
+        "term": ".eh_frame",
+        "explanation": "ELF 文件中的栈回溯与异常处理元数据，常被用于无 frame pointer 的 stack unwinding。"
+      }
+    ],
+    "context": "OpenTelemetry Profiles 这次进入 public alpha，讨论重点是能否在生产环境里持续采集低开销的 performance profiles。OpenTelemetry（一个可观测性标准/生态）试图把 profiling 也纳入统一的观测体系，而不是只停留在 logs、metrics 和 traces。评论里把它和 Grafana Pyroscope（一个 profiles 存储与查询后端）区分开来，强调两者可以互补。另一条分支深入到实现层，围绕 eBPF（Linux 内核扩展机制）、.eh_frame（用于栈回溯的 ELF 元数据）以及 Optimyze/Elastic 传承下来的无 frame pointer 栈展开技术争论。还有人顺手把话题延伸到 rsyslogd（Linux 和 FreeBSD 上的 syslog 守护进程）与 Alloy + Loki（Grafana 的日志采集和存储组合），讨论传统日志方案的可靠性和运维复杂度。",
+    "emoji": "🤔",
+    "sarcastic_question": "OTel 这次真能既低开销又不翻车？"
+  },
+  "articleSummary": "## 一句话总结\nOpenTelemetry Profiles 正式进入 Alpha 阶段，通过统一的 OTLP 数据格式和 eBPF 实现，让连续性能分析真正成为继 Traces、Metrics、Logs 之后的第四大可观测性信号。\n\n### 统一数据格式，兼容 pprof 只是第一步\n做连续性能分析最大的痛点是数据格式不统一，JFR、pprof 各自为战，导致工具链割裂。OpenTelemetry 的目标很明确：搞一个行业标准。这次发布的 Alpha 格式虽然灵感来自 pprof，但已经演变成了一个独立标准。最妙的是，它和 pprof 可以无损双向转换，这意味着你现有的 pprof 数据不会变成废数据，迁移成本极低。为了确保大家都能遵守规矩，官方还顺手发布了一个 conformance checker 工具，专门用来检查数据是否符合规范。\n\n### 存储效率与关联能力的平衡艺术\n设计数据格式时，团队在“采样”和“追踪”、“原生语言”和“解释型语言”之间做了大量权衡。最终方案采用了去重策略，每个唯一的调用栈只存一次，配合字典表对常见实体进行归一化，大大压缩了存储体积。更有意思的是，它不仅支持聚合数据，还能记录带时间戳的事件（比如 off-CPU 事件）。通过引入 String dictionary，线上的数据体积甚至能缩小 40%，这对于生产环境的高吞吐量至关重要。\n\n### 让 Profile 和 Trace 真正“连”起来\n单纯看 Profile 没大用，能把它和 Trace、Metrics 关联起来才是王道。新格式允许 Profile 样本直接关联 `trace_id` 和 `span_id`，这样你就能直接定位到“某条慢 Trace 到底是哪个函数拖了后腿”。同时，Resource attributes 的支持让 Profile 能携带和同源 Logs、Metrics 一致的元数据。这种跨信号的关联能力，才是 OpenTelemetry 生态最大的杀手锏。\n\n### eBPF Agent：无需代码插桩的全栈监控\n光有标准不行，还得有好用的工具。基于 Elastic 捐赠的代码，eBPF Profiling Agent 现在已经变成了 OpenTelemetry Collector 的一个官方 Receiver。这意味着你可以直接利用现有的 OTel 处理管道和 K8s 元数据，无需重复造轮子。这次更新还带来了不少硬核特性：支持 Go 的自动符号解析、ARM64 架构下的 Node.js V8，以及 .NET 9/10 和 BEAM (Erlang/Elixir) 的初步支持。\n\n### 生态整合：Collector 成为了核心枢纽\n为了让 Profile 无缝融入现有体系，Collector 承担了大部分脏活累活。新增的 `pprof receiver` 能直接接收 pprof 格式的文件，而 `k8sattributesprocessor` 则负责给 Profile 打上 Kubernetes 的标签。配合 OTTL (OpenTelemetry Transformation Language)，你甚至可以写自定义规则来过滤或转换 Profile 数据。这种横向集成，让 Profile 不再是一个孤岛，而是整个可观测性数据流中有机的一环。\n\n### 现在能上手了吗？可以，但别直接上生产\n虽然还是 Alpha 版本，但想尝鲜的开发者已经有路可走了。最简单的办法是搭配 eBPF profiler 和支持 OTLP Profiles 的后端。为了方便大家本地调试，Elastic 还开源了一个叫 `devfiler` 的桌面应用，它把数据收集、存储、符号解析和 UI 都做进去了，适合用来做实验。不过要提醒一句，这玩意儿不是给生产环境准备的，目前也没有成熟的商业后端完全支持，主要还是用来测试和反馈。\n\n### 下一步：符号标准化与进程上下文共享\n未来的路还很长，但方向很清晰。团队正在推进符号化 API 和存储格式的标准化，这是生产级 Profile 的基石。更关键的是“进程上下文”和“线程上下文”的共享机制，这能让 eBPF Agent 和进程内 SDK 互通有无。一旦搞定，你就能回答类似“99% 延迟的 Trace 到底经历了哪些 off-CPU 事件”这种高难度问题。如果你正在做相关工具，现在就可以开始接入 OTLP Profiles，或者给 Collector 提 PR 了。"
+}

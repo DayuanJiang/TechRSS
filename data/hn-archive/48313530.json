@@ -1,0 +1,142 @@
+{
+  "id": 48313530,
+  "by": "KraftyOne",
+  "title": "Just Use Postgres for Durable Workflows",
+  "url": "https://www.dbos.dev/blog/postgres-is-all-you-need-for-durable-execution",
+  "score": 286,
+  "createdAt": 1779994211,
+  "aiSummary": {
+    "chinese_title": "Postgres 做 durable workflows：DBOS、Temporal 与自研队列之争",
+    "discussion_overview": [
+      {
+        "category": "Postgres 直做工作流很轻量",
+        "summary": "不少人认为，把 durable workflows 直接建在 Postgres 上非常实用，尤其是在吞吐量不是特别夸张时。这样可以把业务状态和队列消息放进同一个 transaction 里，减少丢消息、补偿和多系统同步的复杂度。评论里提到的 absurd、DBOS 以及一些 Rust/TypeScript 自研实现，都强调客户端代码更简单，状态也更容易被人或 coding agent 理解。有人还举例说，AI 工作流、视频处理、通知投递、甚至内部控制面都已经在用这种模式。",
+        "supportid": [
+          "48314295",
+          "48314984",
+          "48315400",
+          "48318514",
+          "48315943",
+          "48314331",
+          "48313666",
+          "48316818",
+          "48316104",
+          "48314010",
+          "48314969",
+          "48314218"
+        ]
+      },
+      {
+        "category": "系统复杂度会悄悄回流",
+        "summary": "另一派的核心担忧是：一旦系统需要 retries、backoff、timeouts、cancellation、versioning、visibility、task routing、heartbeats、replay/debugging 和运维工具，所谓“只是用数据库”很快就会长成一个简化版 workflow engine。很多人指出，最初看起来只是几张表和几个 worker，但随着需求增长，最终会自己补齐一整套专业系统才有的能力。评论里还强调，是否值得这么做，不应只看数据库是否够用，而要看这部分复杂度是不是你的核心业务。也有人把这类自研形容为“买系统”与“自己背维护成本”之间的取舍。",
+        "supportid": [
+          "48313909",
+          "48316760",
+          "48313760",
+          "48317805",
+          "48314375",
+          "48316787",
+          "48316986",
+          "48316864"
+        ]
+      },
+      {
+        "category": "Temporal/DBOS/Restate 的取舍",
+        "summary": "Temporal 被反复拿来对比：支持者认为它在 workflow 编排、parent/child workflow、Signal/Update 和事件驱动场景上非常强，开发体验也不错。批评者则集中抱怨它的基础设施太重，on-prem 可能要面对 Cassandra 集群、CPU 和运维成本，Cloud 价格与 payload 限制也被认为不够友好。DBOS 和 Restate 则被视为更轻的替代品，前者强调与 Postgres transaction 的原子集成，后者则主打 self-host 和较少 vendor lock-in。也有人直接指出，DBOS 的 tradeoff 是性能上限更容易被 Postgres 卡住。",
+        "supportid": [
+          "48313750",
+          "48315794",
+          "48314464",
+          "48314087",
+          "48316355",
+          "48316482",
+          "48316524",
+          "48314442",
+          "48317702",
+          "48313782",
+          "48317970",
+          "48313997",
+          "48314146",
+          "48317081",
+          "48317032"
+        ]
+      },
+      {
+        "category": "Postgres 的边界、索引和队列原语",
+        "summary": "评论里也讨论了 Postgres 作为队列和工作流后端时的具体物理边界。有人提到 LISTEN/NOTIFY 在高负载下会遇到全局锁问题，不过 pg19/pg18 的改进被认为会有所缓解；也有人强调 SKIP LOCKED、advisory lock、分区表和更合理的主键设计，才是高并发队列的关键。与此同时，日志、metrics、timeseries 这类高读写负载数据，很多人仍然建议放到 ClickHouse、VictoriaMetrics 之类的专用系统，而不是硬塞进 Postgres。对于 TB 级数据、vacuum、索引扫描和查询放大，有人直接提醒：别把“小规模可行”误读成“永远可行”。",
+        "supportid": [
+          "48313666",
+          "48314686",
+          "48314392",
+          "48314836",
+          "48316618",
+          "48314331",
+          "48314996",
+          "48315640",
+          "48314435",
+          "48314663",
+          "48316218",
+          "48315026",
+          "48316402",
+          "48316811",
+          "48318355",
+          "48315988"
+        ]
+      },
+      {
+        "category": "正确性、幂等与替代方案",
+        "summary": "还有一组评论把重点放在 correctness 上，认为 workflow 示例往往过于乐观，忽略了 crash 后恢复、重复执行、补偿失败等真实问题。有人提出 idempotent operations 是另一条更稳的路，也有人说过去尝试把一切塞进 stored procedures，最后会因为版本控制、语言笨重和维护困难而变成灾难。线程里还出现了很多替代方案：Oban、Conductor OSS、PgFlow、pgque、Convex、SpacetimeDB，甚至 SQLite-based 的小规模 durable workflow 实现。另一个细节是 secrets 的处理，很多人都认为它应该与 workflow 状态分离，而不是直接塞进数据库消息里。",
+        "supportid": [
+          "48313916",
+          "48314288",
+          "48314591",
+          "48315306",
+          "48316208",
+          "48316939",
+          "48318043",
+          "48314969",
+          "48313917",
+          "48314502",
+          "48314884",
+          "48314100",
+          "48315524",
+          "48313828",
+          "48316865",
+          "48314483",
+          "48315702",
+          "48318355"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "durable workflows",
+        "explanation": "可在崩溃、重启或失败后继续执行的工作流；状态和进度会被持久化。"
+      },
+      {
+        "term": "atomic messaging",
+        "explanation": "把业务写入和队列/事件入队放在同一个 database transaction 里提交，避免消息丢失或状态不一致。"
+      },
+      {
+        "term": "LISTEN/NOTIFY",
+        "explanation": "Postgres 的通知机制，用来在数据变化时唤醒 worker 或触发异步处理。"
+      },
+      {
+        "term": "SKIP LOCKED",
+        "explanation": "Postgres 的行锁工作模式，允许多个 worker 安全抢任务而不互相阻塞。"
+      },
+      {
+        "term": "advisory lock",
+        "explanation": "一种应用级锁，常用于跨进程协调任务、避免重复执行。"
+      },
+      {
+        "term": "idempotent",
+        "explanation": "幂等：同一操作重复执行多次，结果仍然一致，不会额外污染状态。"
+      }
+    ],
+    "context": "这条讨论围绕“Just Use Postgres for Durable Workflows”展开，核心是在问：能不能把 workflow state、队列、重试和业务数据都放进 Postgres，让 ACID 直接提供持久性。评论里反复提到的 absurd（一个基于 Postgres 的 durable workflows 实现）、DBOS（一个把 workflow 状态放进 Postgres 的平台）、Temporal（一个成熟的 workflow engine）和 Restate（一个可自托管的 orchestration 系统）都是这类方案的代表。大家争论的不是“数据库能不能做”，而是“做到什么规模后应该切换到专用系统”，以及切换前会不会自己先长成一个复杂的 workflow engine。评论也补充了很多具体原语和边界条件，比如 LISTEN/NOTIFY、SKIP LOCKED、advisory lock、Cassandra、ClickHouse、VictoriaMetrics 以及大数据量下的 vacuum 和索引问题。",
+    "emoji": "🤔",
+    "sarcastic_question": "要不连运维和重试也一起用 Postgres 写了？"
+  },
+  "articleSummary": "## 一句话总结\n既然持久化工作流的核心本质就是“把状态存进数据库”，那不如直接用 Postgres 本身作为协调器，省去维护独立中间件的麻烦，顺便把可观测性、高可用和安全性问题“顺手”解决了。\n\n### 外部协调器架构其实有点“杀鸡用牛刀”\n大家熟悉的 Temporal、Airflow 或 AWS Step Functions，本质上都遵循**外部协调**模式。这种架构引入了一个独立的中央协调器来管理 Worker 的执行：客户端提交任务，协调器落库并派发给 Worker，每完成一步，Worker 就把结果回传给协调器，协调器再次落库后才能派发下一步。这就像玩游戏时必须有个专门的“存档管理员”，你每过一关都得通知他帮你存盘，管理员挂了，游戏就玩不了了。作者认为，这种模式为了实现“状态持久化”这个单一目标，引入了不必要的系统复杂度。\n\n### 核心思路：让数据库自己当“协调器”\n那怎么办？文章提出了一个更极简的思路：既然核心诉求是 Checkpoint，那直接用 Postgres 作为协调器不就行了？在这种架构下，应用服务器直接和 Postgres 打交道。客户端提交任务就是往 Postgres 表里插一条记录，服务器通过轮询配合锁机制抢占任务。执行完一步后，Worker 直接把状态写回 Postgres。如果某个 Worker 挂了，别的服务器直接从表里读取上次 Checkpoint 的记录继续跑。说白了，就是把原本由中间件承担的调度逻辑，下放到了数据库层面，通过数据库的原子性和锁机制来实现协作。\n\n### 性能瓶颈转移到了数据库，但这反而是好事\n这种设计最大的好处是，系统的扩展性和可用性完全由底层的 Postgres 决定。应用服务器是无状态的，想扩容直接加机器就行，唯一的瓶颈就是数据库能不能抗住。但这恰恰是优势所在，因为 Postgres 的扩展性是经过几十年验证的。数据显示，单机 Postgres 每秒能处理数万个工作流，如果还不够，你可以用 CockroachDB 这种分布式方案，或者直接分库分表。你不需要去研究怎么优化一个冷门的协调器，只需要用现成的、成熟的数据库扩展方案就行。\n\n### 用 SQL 查工作流状态，可观测性直接“免费”送\n有意思的地方在于可观测性。因为工作流和步骤状态都作为普通数据存在 Postgres 表里，你根本不需要集成复杂的监控 SDK，直接写 SQL 就能搞定。比如，你想查“上个月报错的所有工作流”，一句带 WHERE 条件的 SELECT 语句就能解决。这比那些基于 Key-Value 存储的协调器强太多了，后者往往不支持复杂的关联分析。利用 Postgres 强大的查询优化器和索引，你相当于“白嫖”了一套企业级的监控分析系统。\n\n### 少一个组件，就少一个故障点和攻击面\n从运维和安全角度看，这种架构更是降维打击。传统的协调器模式有两个单点故障（协调器服务本身和它的存储），而且因为它们要处理敏感的业务数据，你还得专门做安全加固。而在 Postgres 方案里，唯一的依赖就是数据库本身。如果你的业务本来就依赖 Postgres，那引入工作流并不会增加新的故障点，也不需要把数据流转给第三方组件。数据库本来就是你要重点保护的核心基础设施，现在只是多存了几张表而已，风险完全可控。"
+}

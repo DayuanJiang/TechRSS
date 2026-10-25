@@ -1,0 +1,84 @@
+{
+  "id": 47650312,
+  "by": "g0xA52A2A",
+  "title": "A tail-call interpreter in (nightly) Rust",
+  "url": "https://www.mattkeeter.com/blog/2026-04-05-tailcall/",
+  "score": 133,
+  "createdAt": 1775406648,
+  "aiSummary": {
+    "chinese_title": "Rust nightly `become` 尾调用解释器与字节码 VM 性能争论",
+    "discussion_overview": [
+      {
+        "category": "专用 VM / bytecode 解释器的性能优势",
+        "summary": "评论区最热的一条线索是：在序列化、反序列化和解析器这类工作负载里，专用 VM 或 bytecode interpreter 往往能比直接生成的大段代码更快。有人举了 Go protobuf 的 HyperPB、微软的 MIDL、Protobuf 的 upb，以及 Swift 的 value witnesses 作为例子，核心理由是 bytecode 更紧凑，能减少代码体积并改善 instruction cache 和 branch prediction。还有人补充 Clang 的 `musttail`、`preserve_none` 和 `Copy-and-Patch`，说明这种“先解释再优化”的路线甚至可以往小型 JIT 延伸。整体观点是：抽象层更多不一定更慢，关键看控制流是否更规整、更小、更适合 CPU。",
+        "supportid": [
+          "47651430",
+          "47654356",
+          "47652538",
+          "47653326",
+          "47655090",
+          "47655984"
+        ]
+      },
+      {
+        "category": "Rust `become` 带来的显式尾调用保证",
+        "summary": "夜间版 Rust 的 `become` 关键字被看作是把 tail call 变成显式、可检查语义的一步。支持者认为，编译器如果做不到就直接报错，比“看起来像尾递归、实际上后来因为一点改动就退化成压栈”要可靠得多。有人把它类比为 Rust 里默认 move、显式 copy 的风格，也有人拿 Clojure 的 `recur` 和 Scheme 的 proper tail calls 对比，强调语言级保证比依赖优化器更符合预期。围绕这一点还有争论：这个性质更像是 caller 的承诺，而不是 callee 的属性，尤其在 Rust 里还牵涉到 RAII 和 borrow checker 对调用前后资源生命周期的约束。",
+        "supportid": [
+          "47652327",
+          "47654040",
+          "47654790",
+          "47655389",
+          "47654988",
+          "47654868",
+          "47656343"
+        ]
+      },
+      {
+        "category": "tail recursion 让宏和循环抽象更自然",
+        "summary": "另一组评论把焦点放在 tail recursion 对宏和循环抽象的意义上。有人直言自己很期待 Rust 里真正好用的 tail calls，因为这会让人像在 OCaml、Scheme 那样把循环写成递归，再用宏包装成更优雅的控制结构。示例里给出了 Scheme 的 `for-loop` 宏：宏展开后是一个尾递归函数，借助 proper tail calls 就能无限迭代而不炸栈。也有人追问 Rust 里到底能写出哪些非平凡宏，暗示这类能力很酷，但实际适用面可能没那么大。",
+        "supportid": [
+          "47651897",
+          "47654761",
+          "47656484"
+        ]
+      },
+      {
+        "category": "标题措辞与实现方式的精确定义",
+        "summary": "也有评论纠正标题措辞，认为更准确的说法应是 “tail-call optimized interpreter”，因为关键不只是代码里有 tail call，而是编译器是否真的复用了调用者栈帧。有人指出，如果无法强制生成 tail call，这个解释器就只是换了种写法，甚至可能在栈上越跑越深，因此 `become` 的价值就在于把“必须尾调用”从建议变成约束。对应地，`trampoline` 被提出来作为备选：它能模拟同样的控制流，但每个 opcode dispatch 都要多一次函数调用，性能和结构都不如真正的 tail call 直接。该线程还援引了标准定义，强调 tail-call optimization/elimination 的本质就是不再新开栈帧。",
+        "supportid": [
+          "47653304",
+          "47654108",
+          "47654470",
+          "47656104",
+          "47654588"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "tail-call optimization (TCO)",
+        "explanation": "尾调用优化；编译器或运行时复用当前栈帧来执行尾位置调用，避免栈继续增长。"
+      },
+      {
+        "term": "`become`",
+        "explanation": "Rust nightly 中用于显式要求 tail call 的关键字，若无法满足就应报错。"
+      },
+      {
+        "term": "`musttail`",
+        "explanation": "Clang 的尾调用约束属性，要求编译器必须生成真正的 tail call。"
+      },
+      {
+        "term": "trampoline",
+        "explanation": "用循环或中转函数模拟递归调用的控制流，避免调用栈继续变深。"
+      },
+      {
+        "term": "bytecode interpreter / specialized VM",
+        "explanation": "把控制流编成 bytecode，由小型虚拟机解释执行，常用于减少代码体积并提升缓存友好性。"
+      }
+    ],
+    "context": "这篇帖子源自一篇在 nightly Rust（Rust 的不稳定预览版）里用 `become` 关键字实现 tail-call interpreter 的文章。它的目标是让解释器在不同 opcode 之间用 tail call 串起来，从而避免栈帧增长，并把控制流写成更接近递归的形式。评论区把它放到更大的背景里：在 protobuf（Google 的二进制序列化协议）、MIDL（微软的接口定义语言工具）和 Swift 的 value witnesses（编译器生成的类型元操作表）里，bytecode 或表驱动方案常常是为了缩小代码体积并改善缓存命中。讨论还延伸到 Rust 的 `become`、Clang 的 `musttail`、Scheme 的 proper tail calls，以及 RAII（资源获取即初始化）和 borrow checker（借用检查器）如何影响“能不能真的尾调用”这一问题。",
+    "emoji": "🤔",
+    "sarcastic_question": "不是说抽象层越多越慢吗，怎么又更快了？"
+  },
+  "articleSummary": "## 一句话总结\n利用 Rust nightly 引入的 `become` 关键字实现尾调用优化，作者用纯安全代码写出了一个比手写汇编还快的虚拟机解释器。\n\n### 从 Rust 到汇编的性能追逐战\n作者一直在折腾 Uxn 这个栈式虚拟机的高性能实现。最早的 Rust 版本虽然写得顺手，但受限于分支预测和内存访问模式，性能并不理想。为了榨干 CPU 性能，作者曾硬着头皮用 ARM64 和 x86-64 汇编重写了核心逻辑，采用了“线程代码”技术。这种做法把状态全塞进寄存器，每条指令执行完直接跳转下一条，确实快了不少——比 Rust 快了 40-50%。但代价是惨痛的：两千行汇编代码，不仅难维护，还极其不安全，一个指针越界就能让程序在退出时莫名其妙崩溃。\n\n### 想要汇编的性能，又想要 Rust 的安全\n既然手写汇编太痛苦，能不能让编译器自动生成类似的代码？核心思路其实很简单：把虚拟机的所有状态（栈指针、内存地址等）都作为函数参数传递，利用调用约定让它们住在寄存器里；每执行完一条指令，不返回，而是直接调用下一条指令。理论上这能复刻汇编的“寄存器+跳转”模式。但在之前的 Rust 版本里，这招行不通，因为普通的函数调用会不断压栈，跑不了多久就会栈溢出。\n\n### `become` 关键字带来的魔法\n问题的症结在于编译器生成了 `bl`（带链接的跳转）而不是 `br`（直接跳转），导致栈帧无法复用。Rust 最近新增的 `become` 关键字完美解决了这个问题。只要把函数调用前的 `TABLE.0[...]` 换成 `become TABLE.0[...]`，编译器就会保证用被调用者的栈帧直接替换调用者的，不再产生额外的栈开销。这就相当于在高级语言里直接拿到了汇编级别的控制权，而且不需要写一行 `unsafe` 代码。\n\n### 用宏消除样板代码\n虽然思路通了，但要把 256 条指令都改成这种形式，样板代码会多到让人怀疑人生。作者写了一个相当“硬核”的宏来自动化这个过程。这个宏负责把分散的参数重新组装成 `UxnCore` 结构体，执行完逻辑后再拆散传给下一个函数。虽然宏本身看起来很丑陋，但生成的代码非常干净。编译器也很争气，把那些组装和拆解的开销全优化掉了，最终生成的汇编指令和手写版几乎一模一样。\n\n### 性能实测：在 ARM 上逆袭，在 x86 上惜败\n跑分环节很有意思。在作者的 M1 Mac（ARM64）上，这个尾调用解释器竟然反超了手写汇编，Fibonacci 测试快了约 10%，Mandelbrot 测试也快了 12%。这主要归功于编译器更聪明的寄存器分配策略。但在 x86-64 平台上，情况就不那么乐观了。虽然比纯 Rust 实现快了一大截，但相比手写汇编还是慢了大约 75%（Fibonacci 测试）。看汇编代码会发现，Rust 版本在加载跳转表基址时多了一次内存访问，这在 x86 上可能比在 ARM 上更伤性能。\n\n### 纯安全代码的胜利\n不管 x86 上的性能差距如何，这个项目依然是个巨大的胜利。作者在 `#![forbid(unsafe_code)]` 的严格限制下，仅凭一个语言特性就达到了接近甚至超越手工汇编的性能水平。对于那些既需要极致性能又不想陷入汇编泥潭的开发者来说，这绝对是一个值得尝试的新方向。毕竟，维护两千行汇编代码的痛苦，只有经历过的人才懂。"
+}

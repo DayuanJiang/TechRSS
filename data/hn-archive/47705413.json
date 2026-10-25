@@ -1,0 +1,163 @@
+{
+  "id": 47705413,
+  "by": "randerson_112",
+  "title": "I built a Cargo-like build tool for C/C++",
+  "url": "https://github.com/randerson112/craft",
+  "score": 125,
+  "createdAt": 1775752851,
+  "aiSummary": {
+    "chinese_title": "Craft：仿 Cargo 的 C/C++ 构建工具引发离线、交叉编译与 CMake 争论",
+    "discussion_overview": [
+      {
+        "category": "离线、可复现与默认编译参数",
+        "summary": "很多评论先不谈功能，而是直接提出真实落地的硬要求：必须支持离线构建、允许手工指定 dependency 路径，并且能被其他 build tool 从源码重建。有人强调 `-march=native` 不该是默认值，因为它会把二进制绑定到宿主机 CPU，分发到别的机器后很容易触发 illegal instruction。关于 `-O3` 也有类似警惕：它会拖长编译时间，而且不一定比 `-O2` 更快。讨论里还多次提到 cross-compilation 应该被当成常态来设计，而不是后补功能。",
+        "supportid": [
+          "47706887",
+          "47711067",
+          "47711567",
+          "47708163",
+          "47708328",
+          "47710848",
+          "47712920",
+          "47708281",
+          "47709942",
+          "47711200",
+          "47712635",
+          "47711467",
+          "47712522",
+          "47710139",
+          "47711629",
+          "47710689"
+        ]
+      },
+      {
+        "category": "现有工具与互操作：xmake、Meson、Conan2、vcpkg、Nix",
+        "summary": "不少人把这类工具放进现有生态里比较：xmake 被夸能同时生成 CMakeLists.txt 和 compile_commands.json，还能接 Conan、vcpkg 和 Git 依赖，但也有人吐槽它文档不足、语义有些怪。Meson 则被视为另一种高层构建定义方式，只是它更像现有生态里的 build tool，而不是完整 package manager。Conan2 被反复提到是最接近“C/C++ 的 Cargo”的方案，具备 profiles、ABI、lockfiles、offline/online 等能力；vcpkg 和 Nix flakes 也被看作各自解决依赖与可复现环境的一部分。还有人把 Python 的 pyproject.toml 拿来类比，认为真正有用的不是再造一个孤立工具，而是让既有工具逐步收敛到共同标准。",
+        "supportid": [
+          "47706326",
+          "47706584",
+          "47709713",
+          "47706384",
+          "47709980",
+          "47710784",
+          "47710924",
+          "47708059",
+          "47706234",
+          "47706308",
+          "47706265",
+          "47708500",
+          "47708626",
+          "47705645",
+          "47705978",
+          "47706235",
+          "47711072",
+          "47711385",
+          "47706707",
+          "47705850",
+          "47708131"
+        ]
+      },
+      {
+        "category": "CMake 该修还是该换",
+        "summary": "一派认为这个项目只是又一层 wrapper，属于“meta-meta build system”，正确方向是直接做一个更好的原生 build system，而不是继续生成 CMake。另一派则替 CMake 辩护，认为它背后做了大量脏活：兼容 Windows、Visual Studio、Xcode、不同编译器和 IDE 的历史包袱，远比“语法难看”更重要。围绕 Make 的争论也很典型：有人说 GNU Make 更可调试、心智模型更直观，另一边则指出它根本扛不住多平台、多配置、子仓库和复杂依赖。总体上，大家不是不想换，而是在问：你是要取代 CMake，还是只是给 CMake 再套一层壳？",
+        "supportid": [
+          "47705770",
+          "47706070",
+          "47708837",
+          "47706529",
+          "47706552",
+          "47706600",
+          "47707884",
+          "47706332",
+          "47712742",
+          "47708040",
+          "47708715",
+          "47709417",
+          "47706139",
+          "47706014",
+          "47706189"
+        ]
+      },
+      {
+        "category": "复杂度与可行性怀疑",
+        "summary": "另一批评论更像是在提醒，这个问题的难点不是“写个工具”，而是把 C/C++ 世界里所有长尾场景都兜住。桌面、Linux 各发行版、BSD、Windows、嵌入式、bare metal、QNX、vxWorks、不同 ABI、静态/动态链接、传递性依赖和闭源二进制，任何一个都能把简单方案拖垮。有人直接说一个人不可能把这类问题完整解决，也有人反驳说先把最常见的 80% 做好再扩展才有意义。还有人提到，哪怕是已经成熟的 C++ 依赖管理器，面对 ABI 和古老项目时也仍然会出现很多缝隙。",
+        "supportid": [
+          "47706302",
+          "47706427",
+          "47707997",
+          "47708534",
+          "47708389",
+          "47710535",
+          "47712398",
+          "47706306",
+          "47708474"
+        ]
+      },
+      {
+        "category": "安装方式、信任与 AI 疲劳",
+        "summary": "对项目本身的信任也受到质疑，尤其是 `curl | sh` 这种安装方式还会把内容写进 `.bashrc`，让不少人觉得不够安全。评论里有人认为这类脚本至少是可读的，但也有人强调它比下载一个固定二进制更难审计，因为返回内容可以变化。另一些人则把矛头指向 AI：既然现在只要让 Claude 写一个 build.ts、Makefile 或 CMake 配置就能跑，新工具的学习成本未必划算。再加上项目描述和 HN 帖子本身也被怀疑是 AI 生成，整体观感就更像“AI slop”而不是认真打磨的基础设施。",
+        "supportid": [
+          "47706008",
+          "47706039",
+          "47706561",
+          "47707741",
+          "47707989",
+          "47710369",
+          "47706520",
+          "47708709",
+          "47706769",
+          "47708079",
+          "47707010",
+          "47709039",
+          "47709285"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "CMake",
+        "explanation": "跨平台构建系统生成器，用来生成 Ninja、Visual Studio、Xcode 等原生工程文件。"
+      },
+      {
+        "term": "cross-compilation",
+        "explanation": "在宿主机上为不同架构或平台生成目标二进制。"
+      },
+      {
+        "term": "-march=native",
+        "explanation": "让编译器按当前 CPU 的指令集优化；不适合作为分发默认值。"
+      },
+      {
+        "term": "pkg-config",
+        "explanation": "查询已安装库的编译和链接参数的标准工具。"
+      },
+      {
+        "term": "CPS",
+        "explanation": "Common Package Specification，C/C++ 包元数据交换标准，目标是提升互操作性。"
+      },
+      {
+        "term": "Conan2",
+        "explanation": "C/C++ 包管理器，支持 profiles、lockfiles、ABI 和二进制缓存。"
+      },
+      {
+        "term": "vcpkg",
+        "explanation": "微软推动的 C/C++ 依赖管理工具，常与 CMake 搭配使用。"
+      },
+      {
+        "term": "Nix flakes",
+        "explanation": "Nix 中用于固定依赖和构建输入的可复现配置形式。"
+      },
+      {
+        "term": "xmake",
+        "explanation": "既是构建工具也是包管理器，可生成 CMakeLists.txt 和 compile_commands.json。"
+      },
+      {
+        "term": "Meson",
+        "explanation": "以简洁 DSL 定义构建的构建系统，常与 Ninja 配合。"
+      }
+    ],
+    "context": "这篇 Show HN 介绍的是 Craft，一个仿 Cargo 的 C/C++ 构建工具，目标是把工程模板、依赖管理和构建流程收拢到统一入口。评论几乎立刻把它放到 CMake、Conan2、vcpkg、Meson、xmake、Bazel 和 Nix flakes 的对照框架里，讨论焦点不是“能不能编译”，而是能否在离线、可复现、交叉编译和跨平台 IDE 集成这些硬约束下真正落地。C/C++ 社区长期依赖 CMake 这种构建系统生成器来适配 Visual Studio、Xcode 和各种编译器，同时又用 Conan2、vcpkg、pkg-config 这类工具补足依赖发现与分发。评论里还反复提到 `-march=native`、`-O3`、ABI、toolchain file 以及 `curl | sh` 安装方式，说明大家关心的是能否在真实生产环境里稳定交付，而不只是把一个 demo 跑起来。",
+    "emoji": "🤨",
+    "sarcastic_question": "再生成一层 CMake，就等于 Cargo 了？"
+  },
+  "articleSummary": "## 一句话总结\nCraft 是一个受 Rust Cargo 启发的 C/C++ 构建工具，它通过简单的 `craft.toml` 配置文件自动生成 `CMakeLists.txt` 并接管依赖管理，让你不用再手写复杂的 CMake 脚本。\n\n---\n\n### C++ 开发者的 Cargo 梦\nC/C++ 开发一直有个痛点：配置构建系统和管理依赖简直是场噩梦。CMake 虽然强大，但写起来繁琐且容易出错，更别提手动管理 Git 依赖了。作者受 Rust Cargo 的启发，开发了 Craft。说白了，就是想给 C/C++ 也来一套“声明式配置 + 自动化构建”的现代体验。你只需要写一个简单的 `craft.toml`，剩下的生成 CMake 配置、拉取依赖、构建项目，全由 Craft 接管。\n\n### 核心思路：做 CMake 的“前端”\nCraft 并没有试图重新发明轮子去替代 CMake，而是选择站在它的肩膀上。它的核心逻辑是：你维护 `craft.toml` 作为“唯一事实来源”，Craft 负责把它翻译成 `CMakeLists.txt`。这样做的好处很明显，既利用了 CMake 强大的编译能力，又把开发者从复杂的 CMake 语法中解放了出来。所有的依赖声明、编译标准、源码目录配置，都在那个 TOML 文件里搞定。\n\n### 依赖管理终于像样了\nCraft 解决的最棘手问题莫过于依赖管理。以前你想用个第三方库，得写 `FetchContent` 或者手动 `add_subdirectory`。现在你只需要一行命令：`craft add --git <url>`。Git 仓库会被自动克隆到 `.craft/deps/`，并且 CMake 的链接配置也会自动帮你处理好。对于本地的库，直接用 `craft add --path` 即可。这种体验和 Cargo 几乎一模一样，更新和删除依赖也都有对应的命令。\n\n### 现有项目也能无痛迁移\n如果你担心只能在新建项目里用，那就多虑了。Craft 提供了一个 `craft init` 命令，专门用来“接管”现有项目。它扫描你的目录结构，自动识别语言、源码和头文件目录，然后生成配置。如果目录里已经有 `CMakeLists.txt`，它甚至会帮你备份成 `CMakeLists.backup.cmake`。对于一些特殊的 CMake 需求，作者还留了个“逃生舱”——你可以写一个 `CMakeLists.extra.cmake`，它会被自动追加到生成的文件末尾。\n\n### 模板与脚手架提升效率\n除了构建，Craft 还贴心地解决了项目初始化的问题。它内置了可执行文件、静态库、动态库等模板。你可以把当前项目保存为模板，以后用 `craft project new_game --template my_template` 秒开新坑。配合 `craft gen` 命令生成源码和头文件骨架，这套工作流能让 C++ 项目的启动速度追上现代框架。\n\n### 安装与使用门槛极低\n使用 Craft 的前置条件非常少，只要你系统里装了 `git` 和 `cmake` 就行。安装脚本一行 curl 或 PowerShell 命令搞定。日常操作也就是 `craft build` 和 `craft run`。有意思的是，`craft build` 支持在子目录运行，它会自动向上遍历寻找项目根目录，这点细节处理得挺人性化。对于厌倦了 CMake 繁琐配置的开发者来说，这确实是个值得尝试的轻量级解决方案。"
+}

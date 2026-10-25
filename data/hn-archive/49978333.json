@@ -1,0 +1,99 @@
+{
+  "id": 49978333,
+  "by": "Tomte",
+  "title": "What Is Codemode",
+  "url": "https://lucumr.pocoo.org/2026/10/6/codemode/",
+  "score": 132,
+  "createdAt": 1791348651,
+  "aiSummary": {
+    "chinese_title": "Codemode：让 LLM 在 harness 内用 JS 编排 MCP 工具，省 token 还是徒增复杂度？",
+    "discussion_overview": [
+      {
+        "category": "核心定义与效率收益",
+        "summary": "Codemode 的实质是给 agent 的 harness 提供一个受控代码运行时，通常是 JavaScript，让模型用程序连续调用工具、筛选和组合结果，再只把最终结果放回模型 context。传统 MCP 流程中，模型需逐次请求客户列表、逐个查销售额并汇总；Codemode 可将循环和聚合交给服务器端的一次代码执行，显著减少 tool calls 与 context token。它尤其适合大 JSON 返回值：中间数据可在运行时处理，而不必全部塞进 context window。支持者认为这使工具具备真正的可组合性，并可将大量文件检查等重复任务并行化。",
+        "supportid": [
+          "49992116",
+          "49992276",
+          "49989503",
+          "49989867",
+          "49991925"
+        ]
+      },
+      {
+        "category": "JavaScript 还是 Bash：运行位置决定差异",
+        "summary": "不少人认为 Codemode 不过是“沙箱化 JavaScript 替换 Bash”，而 Bash 已是模型熟悉的胶水语言，能以管道、curl 和自定义命令调用 MCP 或工具。JavaScript 的支持者则指出，Code mode 运行在 harness 一侧的“brain”，可直接编排模型侧原生能力；Bash 通常运行在执行环境“hands”，若两者不在同一机器，就需要 socket 等反向通信层。JS 还更易通过 QuickJS 等嵌入式运行时沙箱化，模型训练语料也更充足，并有 Promise 便于表达并发。另一方反驳 Bash 的线性、随 token 从左到右执行方式对 agent 更自然，且 TypeScript 的静态检查或 Nushell 等替代方案也许比裸 JS 更稳妥。",
+        "supportid": [
+          "49988381",
+          "49988730",
+          "49989219",
+          "49989535",
+          "49990099",
+          "49992337"
+        ]
+      },
+      {
+        "category": "安全、故障恢复与小模型可靠性",
+        "summary": "让 MCP server 执行模型生成的 glue code，意味着服务器直接运行不可信代码，因此严格 sandbox 是部署前提，而不是附加功能。权限也应分层：有人会封锁 Bash 的网络访问，却允许受控的 MCP 工具在沙箱外按限定方式访问服务。实践中，嵌入代码内任一工具因参数校验失败，就可能使整个父调用失败；小型 local LLM 随后会反复重写大片代码，反而消耗更多 token。评论还提出中断恢复的难题：系统必须区分已经产生副作用的调用与可以安全重试的调用。",
+        "supportid": [
+          "49992116",
+          "49990595",
+          "49989208",
+          "49988422"
+        ]
+      },
+      {
+        "category": "harness 正在重演操作系统与并发问题",
+        "summary": "一派将 Codemode 视为从 LLM token stream 倒推出来的临时拼装，认为最终需要更系统的语言运行时设计，而不应不断给 harness 打补丁。其设想包括 homoiconicity 来统一代码和自然语言数据、Actor model 来处理隔离与并发，以及 object capabilities 来避免 ambient authority。agent 与 subagent 的关系也被类比为线程和进程：共享资源、协作式多任务和封装问题都会重新出现。由此有人主张借鉴 Common Lisp、Scheme、Erlang BEAM 或 Lisp machine 的历史思想，让 LLM 成为编程语言 runtime 的参与者，而非只输出文本。",
+        "supportid": [
+          "49989387",
+          "49990254",
+          "49989747",
+          "49990935",
+          "49992950"
+        ]
+      },
+      {
+        "category": "原文定义失焦，名称与文档遭批评",
+        "summary": "多名读者表示，标题明明询问“什么是 Codemode”，文章却在很后面才给出定义，阅读大量术语后仍无法建立基本模型。关于普通 Bash 调用只回传末尾输出、而 Codemode 可获得结构化大输出的段落，也被认为是在错误抽象层次解释问题。读者更认可直接说清“模型在 harness 层以代码组合工具”的表述，并推荐 Cloudflare 的入门文章作为更易理解的材料。即使认可功能的人也觉得“codemode”这个名字不好，说明概念传播的障碍主要不只在技术本身。",
+        "supportid": [
+          "49991317",
+          "49989660",
+          "49989556",
+          "49991584",
+          "49990531",
+          "49991091"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Codemode（代码模式）",
+        "explanation": "让 LLM 提交一小段受控代码，在 agent harness 内部编排多个工具调用、处理其中间数据并返回结果的机制。"
+      },
+      {
+        "term": "harness",
+        "explanation": "包裹 LLM 的 agent 执行框架，负责提供工具、管理 context、执行调用以及连接模型与外部环境。"
+      },
+      {
+        "term": "MCP（Model Context Protocol）",
+        "explanation": "向模型或 agent 暴露外部工具及其输入输出 schema 的协议；Codemode 常用它来发现和调用工具。"
+      },
+      {
+        "term": "context window",
+        "explanation": "模型单次可读取和推理的 token 容量；大工具返回值会占用它，甚至触发 context compaction。"
+      },
+      {
+        "term": "subagent",
+        "explanation": "由主 agent 派生的独立代理实例，可分担检索或执行任务，但会增加上下文、缓存和协调成本。"
+      },
+      {
+        "term": "homoiconicity（同像性）",
+        "explanation": "一种编程语言性质：代码与数据采用相同或统一的表示形式，典型见于 Lisp，便于程序生成和操作程序。"
+      }
+    ],
+    "context": "讨论围绕 Pi（一个面向终端的 AI agent harness）及 Cloudflare 对 Codemode 的介绍展开：传统 LLM 往往以 JSON 格式逐次调用 MCP（Model Context Protocol，向模型暴露工具的协议）工具。Codemode 将 JavaScript 等受限运行时放到 harness 一侧，使模型发送的代码能在不持续占用 context window（模型可见 token 容量）的情况下组合工具、过滤大型返回值并降低往返次数。争议的关键在于，Bash 和 CLI 是否已足够充当这种编排层，以及当模型侧能力、图像输入或 subagent（由主 agent 派生的独立代理）与外部执行机器分离时，通信、权限和沙箱该如何设计。它也延续了 AI agent 工程中的更大问题：工具调用框架会不会逐渐演变成需要处理并发、隔离、重试和能力控制的操作系统式 runtime。",
+    "emoji": "🤔",
+    "sarcastic_question": "省下的 token，够把 Codemode 解释清楚吗？"
+  },
+  "articleSummary": "## 一句话总结\nCodemode 通过在受信任的 Harness 端嵌入一个沙箱化的 JavaScript 运行时，让 LLM 能以代码逻辑编排工具调用，解决了传统 Bash 工具无法处理并发、状态保持及原生模型交互的痛点。\n\n## 正文\n\n### 为什么 Bash 总是差点意思\n作者过去一直鼓吹“Code Is All You Need”，建议开发者尽量用脚本而非加载一堆自定义工具。原因很简单：CLI 和 Bash 天然支持组合操作，而且模型在训练时就学会了 `echo foo > /tmp/test.txt` 意味着文件系统里多了个文件。但 Bash 有个致命短板——它只能组合“能运行的程序”。有些东西根本不是程序，比如 LLM 的原生能力。如果模型需要读图，它没法用 `cat`，因为 Harness 必须把图像载荷直接注入到协议里。再比如子代理的编排，理论上可以通过环境变量和 Unix Socket 搞定，但那过程太粗糙，而且引入了更麻烦的问题：代码到底在哪跑？\n\n### 大脑和双手必须分家\n要理解这个问题，得先搞清楚架构里的“大脑”和“手”。大脑是 Harness，运行在受信任的机器上；手是执行环境，负责跑 Bash 和工具。这两者之间有一条清晰的界限，意味着它们文件系统不同、信任级别也不同。如果你用 Gondolin 这样的沙箱方案，Bash 操作是被隔离的，但 Harness 本身不受影响。问题的核心在于：我们需要一种机制，让 LLM 能在 Harness 这一侧——也就是“大脑”这边——表达复杂的编排逻辑，而不是每次都要挤进 LLM 的上下文窗口里去推理。\n\n### Codemode 就是在 Harness 里跑代码\n这就是 Codemode 登场的时刻。说白了，它就是让 LLM 在 Harness 端写代码（Pi 选的是 JavaScript）来调用工具。这代码跑在 QuickJS 的 WASM 沙箱里，故意设了限制：没网络、没文件系统、没定时器，内存也有限。唯一的能耐就是调用工具。这设计很巧妙：比如 Bash 输出太长，普通工具调用只能截取后 2000 行塞进 Context；但用 Codemode，结构化的大输出可以直接传给代码侧处理。更重要的是，因为它是 JavaScript，Agent 可以轻松表达并发操作，比如先探测 5 到 10 个条目，再写个脚本批量处理剩下的 N 个。\n\n### 状态保持与原生能力的桥梁\nCodemode 还有个杀手锏：能把状态扔进 Transcript（对话记录）。这意味着一次 Codemode 调用存下的数据，后续的会话还能读出来。记住，这是在 Harness 主机上，不是在沙箱里。此外，它还打通了原本不适合作为普通工具暴露的 API。比如图像生成和文本分类，如果走常规工具接口，既浪费 Context 又显得突兀。现在 Agent 可以直接在 Codemode 里调用 Pi 内部的模型 API。比如生成图片，代码跑完后直接调用 `image()` 函数，图片就发回给 LLM 了，同时也存一份在磁盘上备用。\n\n### 实战：从情感分析到玩游戏\n看个真实案例。Agent 用 Codemode 调用 Jev 分类器模型，批量处理 100 个 GitHub Issues。它先调 Bash 拿数据，再用 `Promise.all` 并发跑情感分析，最后用 `store()` 把结果存下来。整个过程行云流水，完全不需要人类干预。更绝的是用它调试游戏引擎。Agent 写了个 30 步的循环，每一步都去读游戏状态，然后让 Jev 决定坦克是该攻击、躲避还是吃道具，接着生成指令发给游戏引擎。这种“读状态-做决策-发指令”的闭环，如果硬塞进普通的 Tool Call 逻辑里，Context 早就炸了。\n\n### MCP 的最佳搭档\nCodemode 也是 MCP（Model Context Protocol）的完美补充。Pi 并不把 MCP 的工具直接暴露给 LLM，而是让 Agent 在 Codemode 里通过 API 去发现和调用。比如连接 Sentry 的 MCP 服务器，Agent 会直接写 JS 代码去查组织和项目，逻辑清晰且高效。这比让模型在 Context 里瞎猜工具定义要靠谱得多。这种渐进式发现机制，让 MCP 在实际应用中终于能跑通了。\n\n### 别在套娃里写代码\n有意思的是，Cloudflare 之前搞了个“Codemode in MCP Server”的方案，结果搞成了套娃：Agent 写 JS，里面再套一层 JS。这不仅导致双重 JSON 转义，小模型容易被绕晕，而且内层代码根本调不到外层工具。作者直言这“really not optimal”。正确的姿势应该是 Codemode 统一在 Harness 侧编排，而不是让 MCP Server 自己再去实现一套代码执行环境。这不仅是架构洁癖，更是为了避免让模型去处理那些令人头大的转义字符。"
+}

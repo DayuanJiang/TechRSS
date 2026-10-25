@@ -1,0 +1,116 @@
+{
+  "id": 48236122,
+  "by": "azhenley",
+  "title": "Bytecode VMs in surprising places (2024)",
+  "url": "https://dubroy.com/blog/bytecode-vms-in-surprising-places/",
+  "score": 121,
+  "createdAt": 1779700857,
+  "aiSummary": {
+    "chinese_title": "字节码 VM 藏身游戏、固件、Regex 与安全风险",
+    "discussion_overview": [
+      {
+        "category": "游戏与图形系统里的脚本 VM",
+        "summary": "评论里举了很多游戏与图形系统的例子。Uncharted 在 PS3 上把图形任务编译成自定义 bytecode，让它在 SPU（Synergistic Processing Unit）上跑，编译器甚至是 Scheme 写的。Quake 1 有 QuakeC，Quake 2 转向 native binaries，Quake 3 又回到新的 VM；Another World、Neverwinter Nights、Dragon Age、Jade Empire 也都有自家脚本字节码。这里的共同点是把玩法逻辑或图形任务放进更容易移植、更新和跨平台复用的中间层。",
+        "supportid": [
+          "48271136",
+          "48267679",
+          "48265103",
+          "48266546",
+          "48270994"
+        ]
+      },
+      {
+        "category": "固件、启动链与跨平台兼容",
+        "summary": "这组评论把焦点放在 firmware 和 boot 生态上。SBus 周边在 PROM 里用 Forth 初始化，OpenFirmware/OpenBoot 和 FCode 则把设备描述做成可移植字节码，启动时解释后再重编译成原生词。UEFI 里的 EFI ByteCode（EBC）也是类似思路，PCI Option ROM、PXE boot 以及 Power Mac 上的 x86 ROM emulation 都说明跨 CPU、跨平台启动往往要靠一层 VM 来兜底。有人还补充了 CForth 在 OLPC 和各类 microcontroller 上的延伸，说明这种设计并不只是“古董固件”，而是仍在被嵌入式系统沿用。",
+        "supportid": [
+          "48265600",
+          "48265765",
+          "48266006",
+          "48269629",
+          "48270708",
+          "48271114",
+          "48270859"
+        ]
+      },
+      {
+        "category": "安全风险、RCE 与 VM 滥用",
+        "summary": "一些评论对“到处都是小解释器”持明显警惕态度。只要子系统携带自己的 Turing-complete bytecode 或 JIT，安全审计面就会被成倍放大，因为每个解释器都必须同样可靠、同样能处理恶意输入。线程里举了 Python pickle 的 RCE 风险、TikTok 的 XOR-ciphered bytecode + interpreter、Denuvo 的复杂 VM，以及 iOS exploit 里基于 JBIG2 的 VM 作为反例；RarVM 也被提到，且新版 RAR 已经去掉了它。有人甚至建议把 bytecode 先编译成受控的 x86 子集，再用验证工具检查安全性。",
+        "supportid": [
+          "48266536",
+          "48269005",
+          "48267369",
+          "48270126",
+          "48264992",
+          "48265106",
+          "48265655",
+          "48269677",
+          "48265217"
+        ]
+      },
+      {
+        "category": "正则表达式与 DSL 的 VM 化",
+        "summary": "这里把 regular expression 当成最典型的“小语言 VM”案例。Go 的 regexp 包、Russ Cox 的文章，以及 Ken Thompson 1968 年的正则搜索算法都被拿来说明：很多实现并不是先转成 DFA，而是直接用 NFA/VM 方式模拟。评论里还讨论了 DFA 与 NFA 的差异，以及从 NFA 转 DFA 可能带来的指数级膨胀，所以对复杂 regex 来说，运行时解释器往往更务实。延伸讨论则转向编译时处理：Rust 的宏/生成、C# 的 source generator 等能把一部分解析前移，但开发体验往往更复杂。",
+        "supportid": [
+          "48265040",
+          "48265104",
+          "48265628",
+          "48265088",
+          "48265797",
+          "48265064",
+          "48265465",
+          "48265241"
+        ]
+      },
+      {
+        "category": "基础设施里的隐形 bytecode",
+        "summary": "另一条线索是，很多日常基础设施早就悄悄用上了 bytecode VM。Busicom 141 PF calculator 这种早期产品就不是直接跑 Intel 4004 machine code，而是先解释更高层的指令集；今天 Apple 的 Mach-O/dyld 用 opcodes 做 symbol binding 和 rebasing，libpcap 里还有给 BPF 的 optimizing compiler。Excel 的 formula interpreter 被形容成 stack machine，这也被拿来解释某个浮点误差为何能跨架构保留几十年；Smithereen 的 execute API 和 yt-dlp 的 jsinterp.py 则说明 VM 也常被用来快速接入平台逻辑。这个视角下，bytecode 更像一种把复杂规则收进小解释层的工程手段。",
+        "supportid": [
+          "48267402",
+          "48267525",
+          "48269472",
+          "48269528",
+          "48270256",
+          "48265257"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Forth",
+        "explanation": "一种以栈为核心、常用于固件和嵌入式系统的编程语言，常被拿来做可移植的启动解释器。"
+      },
+      {
+        "term": "OpenFirmware / OpenBoot",
+        "explanation": "Sun 推广、后被 IEEE 1275 标准化的可移植固件框架，启动时可解释驱动和设备描述。"
+      },
+      {
+        "term": "FCode",
+        "explanation": "OpenFirmware 里的可移植设备字节码格式，先在启动阶段解释，再转成本机 Forth 词执行。"
+      },
+      {
+        "term": "EFI ByteCode (EBC)",
+        "explanation": "UEFI 中用于 Option ROM 的可移植字节码，目标是让设备固件跨架构运行。"
+      },
+      {
+        "term": "Option ROM",
+        "explanation": "显卡、网卡等 PCI 设备里的扩展固件镜像，BIOS/UEFI 会在启动时加载并执行。"
+      },
+      {
+        "term": "BPF",
+        "explanation": "Berkeley Packet Filter，一种用于网络包过滤和观测的字节码/虚拟机体系。"
+      },
+      {
+        "term": "RarVM",
+        "explanation": "旧版 RAR 压缩格式里的虚拟机，用于解压或执行过滤逻辑，后来在新版格式中被移除。"
+      },
+      {
+        "term": "NFA / DFA",
+        "explanation": "非确定有限自动机/确定有限自动机，是正则表达式实现里常见的两种自动机模型。"
+      }
+    ],
+    "context": "这篇帖子在盘点那些“看起来不像语言运行时”的 bytecode VM：它们可能藏在游戏引擎、固件、加载器、压缩格式、网络过滤器甚至电子表格里。评论里最常被拿来说明可移植性的，是 Sun 的 OpenFirmware（后来标准化为 IEEE 1275 的启动固件体系）和 UEFI 里的 EFI ByteCode（EBC），它们都试图让设备代码跨 CPU 运行。另一条历史线从 QuakeC、BPF（Berkeley Packet Filter）和 regex VM 一路延伸到现代应用，说明“把规则编成字节码再解释执行”早就是成熟工程套路。帖子同时也把安全问题摆在台面上：只要 bytecode 来自不可信输入，解释器、JIT、反序列化器和 obfuscation VM 都可能成为攻击面。更早的例子甚至可以追到 Busicom 141 PF calculator 这类 1970 年代设备，说明这种设计并不新，只是不断换了载体。",
+    "emoji": "🤯",
+    "sarcastic_question": "每个子系统都配个 VM，安全就自动了？"
+  },
+  "articleSummary": "## 一句话总结\nBytecode VM 不仅仅是 Python 或 Java 的专利，从 Linux 内核、调试器到压缩软件和图形渲染，凡是涉及“安全性”、“灵活性”或“动态执行”的底层场景，往往都藏着一个虚拟机。\n\n### SQLite 引发的思考：VM 不只是解释器的专利\n事情的起因是 SQLite 的作者 Richard Hipp 在网上解释为什么 SQL 执行要用 bytecode VM。这其实打破了很多人的刻板印象：我们通常认为 VM 是为了实现 Python 或 JavaScript 这种通用语言才存在的。但仔细想想，VM 的本质是一种“中间表示”，它能把复杂的逻辑解耦，让前端只管生成指令，后端只管执行。这种思路在很多意想不到的底层系统里其实早就被用烂了。\n\n### eBPF：从网络包过滤到内核里的“瑞士军刀”\n最典型的例子就是 Linux 内核里的 eBPF。它最早叫 BPF（Berkeley Packet Filter），诞生于 1993 年，目的非常单纯：为了在内核里高效地过滤网络包。那时候的设计是基于寄存器的 VM，比旧的栈式实现快了 20 倍。有意思的地方在于它的进化路径：2011 年引入了 JIT 编译器，2014 年更是把寄存器从 2 个扩展到了 10 个，增加了 64 位支持和调用内核函数的能力。说白了，它已经从一个网络过滤器变成了一个通用的内核级虚拟机，允许你在不重新编译内核的情况下安全地扩展内核功能。\n\n### DWARF 表达式：用 VM 来解决“变量在哪”的难题\n编译器优化后的代码，局部变量可能被优化掉，或者在寄存器和栈之间来回倒腾，调试器想知道 `ans` 的值简直是噩梦。DWARF 调试格式的解决方案是：让编译器生成一段“计算指令”，而不是直接告诉地址。这段指令其实就是一种基于栈的 bytecode。GDB 和 LLDB 都内置了解释器来执行这些表达式。这里的核心逻辑是：既然内存布局太复杂、无法静态描述，那就用一段动态执行的程序来算出它在哪里。\n\n### GDB 的远程代理：为了省资源，再搞一套 VM\nGDB 里其实还藏着另一套 bytecode 解释器，这事儿很多人可能都不知道。当你用 GDB 进行远程调试（`trace` 和 `collect`）时，如果让目标机自己去解析复杂的 C++ 表达式，开销太大了。GDB 的做法是先把源语言表达式翻译成一种极简的 bytecode，发给目标机上的“代理”去跑。这个代理只认机器值，不需要符号表，内存占用和执行时间都极其可控。说白了，就是为了在资源受限的嵌入式环境里，用最轻量的方式完成动态求值。\n\n### WinRAR 与字体渲染：为了压缩率和显示效果\n这种思路甚至延伸到了应用层。Google 的安全研究员发现，WinRAR 的 RAR 格式里居然也塞进了一个叫 RarVM 的东西。它的目的是在解压前运行一段过滤器，对数据进行可逆变换，以此增加冗余度，提高压缩比。同样，TrueType 字体和 PostScript 里也包含指令集。TrueType 用 200 多条指令来控制字形的渲染和微调，本质上也是在一个受限环境里跑小程序，保证字体在不同分辨率下都清晰。\n\n### GPU 渲染的终极妥协：用 Uber Shader 换取流畅\n最后看看图形学领域。在渲染复杂的隐式曲面时，如果为每个模型单独编译 shader，开销大得离谱；而在模拟老游戏主机（如 Dolphin 模拟器）时，游戏切换 shader 的速度快到编译器根本跟不上。这时候，“万能 shader”登场了。它本质上是一个在 GPU 上跑的解释器：虽然比专用 shader 慢，但它避免了频繁的编译卡顿。这再次印证了一个道理：当编译速度跟不上业务变化时，用 VM 解释执行往往是性价比最高的解法。"
+}

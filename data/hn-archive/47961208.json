@@ -1,0 +1,114 @@
+{
+  "id": 47961208,
+  "by": "heresie-dabord",
+  "title": "Tar files made in macOS generate \"xattr\" errors when expanded in Linux",
+  "url": "https://aruljohn.com/blog/macos-created-tar-files-linux-errors/",
+  "score": 126,
+  "createdAt": 1777852898,
+  "aiSummary": {
+    "chinese_title": "macOS tar 打包 xattr 元数据致 Linux 解压警告",
+    "discussion_overview": [
+      {
+        "category": "Apple 以保真归档为先",
+        "summary": "有评论认为，macOS 这么做是为了保留 Finder（macOS 文件管理器）、Gatekeeper（macOS 应用安全机制）和其他文件元数据语义，避免把归档解压回 Mac 时静默丢信息。对 Apple 来说，`tar` 更像是“忠实记录文件系统对象”，而不是纯粹的跨平台交换格式，这也和 `copyfile(3)`（macOS 的文件复制 API）以及 Archive Utility（macOS 自带归档工具）的行为一致。有人把这解释成“最小惊讶原则”：如果源文件系统本来就有这些信息，那打包时带上它们才更安全。与此同时，`COPYFILE_DISABLE=1` 或 `--no-mac-metadata` 被提到是可用开关，只是很多人希望有更明确的系统级选项。",
+        "supportid": [
+          "47961470",
+          "47990015",
+          "48004317",
+          "48004987",
+          "48005208",
+          "48003126",
+          "48003746"
+        ]
+      },
+      {
+        "category": "这只是元数据警告，不是出错",
+        "summary": "另一派强调，这里显示的并不是致命错误，而是解压端对未知扩展属性的警告。评论指出，任何近几十年设计的现代文件系统都会有 ACL、xattr（extended attributes，扩展属性）和高精度时间戳，传统 `tar`/`cpio` 本来就装不下这些信息。还有人补充，这不只是 Apple/macOS 的问题，BSD 上默认的 `bsdtar`（来自 libarchive 的 tar 实现）和 Linux 上带 SELinux（Linux 的强制访问控制系统）元数据的文件也会出现类似现象。真正该被怀疑的往往是旧工具或旧格式，而不是“苹果把文件弄坏了”。",
+        "supportid": [
+          "48006497",
+          "48006274",
+          "48004970",
+          "48005728",
+          "48008670",
+          "48003646",
+          "48006569"
+        ]
+      },
+      {
+        "category": "更稳妥的方案是用 PAX/明确参数",
+        "summary": "很多人给出的实操建议是：直接换成更合适的格式和参数。`PAX`（POSIX 扩展归档格式）被反复提到，因为它比老式 tar 格式更适合保存现代元数据，`bsdtar --format=pax` 也被视为较稳妥的备份和迁移方案。对于只想把包从 macOS 拿到 Linux 的场景，`tar --no-xattrs --no-mac-metadata` 和 `COPYFILE_DISABLE=1` 可以避免把 macOS 私有元数据塞进归档。另有评论提醒，不同实现对 `SCHILY.*` 和 `LIBARCHIVE.*` 这类 xattr 编码的兼容性并不一致，所以“同名 tar”不等于同一种行为。",
+        "supportid": [
+          "48002876",
+          "48003717",
+          "48006569",
+          "48003546",
+          "48005112",
+          "48005413",
+          "48005208"
+        ]
+      },
+      {
+        "category": "构建链别依赖宿主机 tar",
+        "summary": "还有一条更大的争论线是：构建和发行流程不该依赖宿主机自带的 `tar`。评论认为，macOS、Linux、BSD、Docker 和 VM 里的原生工具差异太大，最稳妥的做法是让构建系统自己带上固定版本的归档工具，或者用发行版包管理器、Nix/NixOS（以内容哈希固定依赖的系统）来锁定行为。Mac 用户也提到可以用 Homebrew（macOS 包管理器）安装 GNU tar 并把 `gtar` 设成默认，省得记苹果版和 GNU 版的差别。反对者则觉得，Linux 社区本来就会按自己的生态优化，不必为了别的平台牺牲本地体验。",
+        "supportid": [
+          "48002989",
+          "48003743",
+          "48003432",
+          "48003446",
+          "48003204",
+          "48003734",
+          "48004974",
+          "48005773",
+          "48003047",
+          "48004460"
+        ]
+      },
+      {
+        "category": "对 macOS 隐藏文件与替代格式的吐槽",
+        "summary": "讨论还顺带发散到 macOS 的隐藏文件和交换格式上，`.DS_Store`（Finder 写入的隐藏文件）、`.Spotlight-V100` 和 `.Trashes` 常被视为最烦人的“系统私货”。有人希望能全局禁止 Finder 往网络盘和 USB 盘上写这些文件，也有人说如果只是跨平台分享，`zip`（常见压缩交换格式）更省心。另一部分人则提醒，`zip` 本身也能保存 extended attributes，只是很多人平时没注意。总体上，这条线反映的是：大家想要的是“可控的元数据”，不是无脑把一堆 OS 专属信息塞进每个压缩包。",
+        "supportid": [
+          "48002916",
+          "48003257",
+          "48003367",
+          "48006319",
+          "48003766",
+          "48005350",
+          "48005408",
+          "48005437",
+          "48005671",
+          "48005738"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "xattr / extended attributes",
+        "explanation": "文件的额外元数据，独立于正文内容存放，例如标签、ACL 或签名信息。"
+      },
+      {
+        "term": "bsdtar / libarchive",
+        "explanation": "来自 libarchive 的 tar 实现，常见于 macOS 和 BSD，支持多种归档格式与元数据。"
+      },
+      {
+        "term": "PAX",
+        "explanation": "POSIX 扩展归档格式，比老式 tar 格式更适合保存现代文件系统元数据。"
+      },
+      {
+        "term": "AppleDouble",
+        "explanation": "macOS 用来保存资源叉和元数据的封装方式，常见于跨平台归档。"
+      },
+      {
+        "term": "COPYFILE_DISABLE",
+        "explanation": "macOS 环境变量，可阻止 `copyfile(3)` / tar 附带 Apple 专有元数据。"
+      },
+      {
+        "term": ".DS_Store",
+        "explanation": "Finder 写入的隐藏文件，保存文件夹视图、排序等设置。"
+      }
+    ],
+    "context": "这条讨论围绕一篇博客文章：macOS 生成的 tar 包在 Linux 上解压时会提示 xattr 警告。根因是 macOS 常用的 `bsdtar`（来自 libarchive 的 tar 实现）会把 Finder（macOS 文件管理器）设置、ACL、xattr（extended attributes，扩展属性）等元数据一起打包，必要时还会用 AppleDouble（macOS 的元数据封装方式）保存。Linux 侧看到不认识的元数据时通常只给出警告，所以争议点不是“文件坏了没有”，而是归档到底该追求跨平台可移植性还是源文件系统保真。常见规避方式是加 `COPYFILE_DISABLE=1`、`--no-xattrs`、`--no-mac-metadata`，或直接改用 `PAX`（POSIX 扩展归档格式）/ GNU tar 来获得更可预测的行为。",
+    "emoji": "😒",
+    "sarcastic_question": "连 tar 都得先认识苹果祖传元数据才算合格？"
+  },
+  "articleSummary": "## 一句话总结\n在 Mac 上打 tar 包传到 Linux 解压报错，本质是因为 macOS 自带的 BSD tar 默认会把扩展属性（xattr）和元数据文件（`._` 前缀文件）打包进去，而 Linux 的 tar 读不懂这些私有格式。\n\n### 问题复现：Mac 打包，Linux 报错\n作者在 Mac 上用常规命令 `tar -cvzf pix.tar.gz pix` 打包图片目录，然后通过 SCP 传到 Linux 服务器解压。结果解压时并不顺利，控制台疯狂刷屏，提示 `Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.quarantine'`。除了这些警告，解压出来的目录里还多出了一堆以 `._` 开头的文件，看起来像是原文件的重复。这显然不是我们想要的“干净”部署包。\n\n### 罪魁祸首：BSD tar 的“过度热情”\n为什么会有这些奇怪的文件和报错？核心原因在于 macOS 默认使用的是 `bsdtar`（libarchive 版本），而不是 Linux 上常见的 GNU tar。BSD tar 会默认把 macOS 特有的扩展属性（Extended Attributes，xattr）和资源分支打包进去。这些信息在 Mac 上可能很有用（比如隔离标志、最后使用日期），但在 Linux 环境下就是无法识别的“乱码”，于是 Linux tar 只能报错并忽略，同时留下了那些 `._` 文件。\n\n### 方案一：加个参数屏蔽扩展属性\n既然问题出在 BSD tar 默认打包了 xattr，那最直接的思路就是告诉它“别打包这些”。作者给出的第一个方案是在打包时加上 `--no-xattrs` 参数。命令变成了 `tar -cvzf --no-xattrs pix.tar.gz pix`。这样做的好处是不需要安装额外软件，只要记住加个参数，就能阻止扩展属性被写入 tar 包，从而在 Linux 端实现静默解压。\n\n### 方案二：禁用元数据拷贝机制\n除了屏蔽扩展属性，BSD tar 还提供了一个针对 macOS 文件元数据的开关：`--disable-copyfile`。这个参数的作用是禁止 `copyfile` 机制，该机制原本用于在打包时处理 macOS 的资源分支。使用 `tar -cvzf --disable-copyfile pix.tar.gz pix` 同样可以避免生成 `._` 文件和那些烦人的 xattr 警告。这两个方案本质上都是通过参数限制 BSD tar 的行为，适合偶尔需要打包的场景。\n\n### 方案三：一劳永逸，换用 GNU tar\n如果你觉得每次打包都要记参数太麻烦，或者你本身就是 Linux 重度用户，作者推荐了一个更彻底的方案：直接换掉 Mac 自带的 tar。通过 Homebrew 安装 `gnu-tar`，安装后它会位于 `/usr/local/opt/gnu-tar/libexec/gnubin/tar`（Intel 芯片）或 `/opt/homebrew/opt/gnu-tar/libexec/gnubin/tar`（Apple Silicon 芯片）。GNU tar 的行为和 Linux 上的 tar 完全一致，默认就不会包含 macOS 的私有元数据。\n\n### 彻底解决：修改 PATH 变量\n安装好 GNU tar 后，关键的一步是让它成为系统默认。你需要修改 `~/.bash_profile` 文件，将 GNU tar 的路径添加到 PATH 的最前面。这样当你再次输入 `tar --version` 时，看到的就会是 `tar (GNU tar) 1.35` 而不是 `bsdtar`。之后，你就可以像在 Linux 上一样，直接使用最原始的 `tar -cvzf pix.tar.gz pix` 命令，生成的包在 Linux 服务器上解压既无报错也无多余文件。"
+}

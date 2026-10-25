@@ -1,0 +1,152 @@
+{
+  "id": 49119063,
+  "by": "mfiguiere",
+  "title": "JEP 401: Value Objects (Preview) merged to OpenJDK master",
+  "url": "https://github.com/openjdk/jdk/pull/31120",
+  "score": 133,
+  "createdAt": 1785479417,
+  "aiSummary": {
+    "chinese_title": "JEP 401 合入 OpenJDK：Java value object 进入 Valhalla 首阶段",
+    "discussion_overview": [
+      {
+        "category": "Java 语言与运行时持续进化",
+        "summary": "很多评论把这次合并看成 Java 又一次实质性演进，尤其是它补上了长期缺失的 value types/value objects。有人直接把缺少 value types 视为 Java 在高性能场景里的最大短板，也有人认为 Java 本身这些年已经比早期顺眼得多，records、标准库和运行时都在持续变好。还有人强调 Valhalla 的设计不是简单“对象 vs 值”的二选一，而是把不同语义和性能约束拆成多个层级，这种精细化思路本身就很值得称道。",
+        "supportid": [
+          "49120033",
+          "49121415",
+          "49121260",
+          "49120365",
+          "49120068",
+          "49120424",
+          "49119934"
+        ]
+      },
+      {
+        "category": "JEP 401 只是 Valhalla 的第一步",
+        "summary": "不少人提醒这只是 Valhalla 的第一部分，不要把 JEP 401 当成最终形态。有人把它描述为“能工作就先落地的最小增量”，后续还有更多内容要补上。评论里还提到 specialized generics、vectors/SIMD、reified generics 等能力会依赖这套基础，因此这次更像是打地基而不是封顶。",
+        "supportid": [
+          "49120932",
+          "49119553",
+          "49119740",
+          "49120007",
+          "49120008",
+          "49119624"
+        ]
+      },
+      {
+        "category": "对象身份、Integer 缓存与 struct 化收益",
+        "summary": "围绕 Integer 的讨论集中在“失去对象身份”到底意味着什么。有人指出 Java 早就对小范围 Integer/Long 做了缓存，`==` 在部分场景下本来就已经像值语义，相关项目如果依赖 identity 也早就该收到预警。另一些人则认为真正的收益是把值对象做得更像 struct：更省内存、布局更紧凑，对 gRPC 这类数据密集型场景会更有用。",
+        "supportid": [
+          "49119804",
+          "49119879",
+          "49120095",
+          "49120412",
+          "49120604",
+          "49120125",
+          "49121009"
+        ]
+      },
+      {
+        "category": "原子性、tearability 与内存模型",
+        "summary": "另一大焦点是原子性和 tearability，也就是多线程读写时能不能看到被拆开的中间状态。评论里反复强调，Java 之所以默认保守，是因为一旦放松 atomic write 和 safe publication，开发者可能在无感知的情况下引入并发 bug。Valhalla 的做法是把“可撕裂”作为显式选择，让真正追求性能的类型自行放弃一部分保证，而不是让所有人默认承担风险。",
+        "supportid": [
+          "49119921",
+          "49120042",
+          "49120421",
+          "49121194",
+          "49120243",
+          "49120699",
+          "49121157",
+          "49120348",
+          "49120423",
+          "49121165",
+          "49120572",
+          "49121205",
+          "49121333"
+        ]
+      },
+      {
+        "category": "String 与 flattenability 的边界",
+        "summary": "有一部分讨论集中在为什么 String 不能像 Integer 那样完全变成不可区分的值对象。回复指出问题并不是“理论上不行”，而是 String 的底层是动态数组，想彻底消除间接层需要更强的 templating、immutable arrays 或 multifields 之类的后续能力。讨论的结论更偏向工程现实：这类优化受制于兼容性、对象布局和 JVM 实现细节，而不是概念本身。",
+        "supportid": [
+          "49120376",
+          "49120444",
+          "49121240",
+          "49120541",
+          "49121662"
+        ]
+      },
+      {
+        "category": "OpenJDK 的大规模协作方式",
+        "summary": "有人对这次工作量之大印象深刻，但也解释了 OpenJDK 的协作方式：大量 pull request 会被 bot squash 成一个最终 commit，所以“2934 commits”并不代表所有历史都直接进了主线。对这种做法是否“毁掉历史”有人持保留意见，不过也有人指出 Skara 工具和 bug tracker 里能恢复讨论与细碎改动。更广泛的共识是，这是一项持续多年、逐步推进的工程，不是一次性的大补丁。",
+        "supportid": [
+          "49119509",
+          "49120386",
+          "49120416",
+          "49120469",
+          "49119845",
+          "49119934",
+          "49119976",
+          "49120008"
+        ]
+      },
+      {
+        "category": "Java 生态文化与框架体量",
+        "summary": "有一串评论把问题归结为 Java 生态文化，而不是语言本身。大家批评的是像 `IStatusChangeEntityCreationManagerFactory` 这种臃肿命名，以及 Spring（一个功能极其完整的 Java 企业框架）这类巨型框架带来的粘性和复杂度。与此同时也有人为 Spring 辩护，认为它之所以大，是因为它长期覆盖了数据库、中间件、Kubernetes 等企业场景，而 Helidon（一个更轻量的 Java 框架）和 Quarkus（一个面向云原生的 Java 框架）在某些边缘能力上仍会受限。",
+        "supportid": [
+          "49120797",
+          "49121008",
+          "49121271",
+          "49121152",
+          "49121275",
+          "49121404",
+          "49120365"
+        ]
+      },
+      {
+        "category": "Java 与 JavaScript 的对比争议",
+        "summary": "还有人把 Java 和 JavaScript 拿来对比，觉得 Java 在功能演进上似乎更靠前：Java 已经有更现代的 Date 替代品、switch expressions，以及现在的 value objects，而 JavaScript 的 Temporal API 还在不同浏览器里推进不一，record/tuple 提案也已撤回。反对者则认为这两门语言本来就不是一个量级，语法相像更多只是历史上的命名和市场因素，不值得硬比。这个分歧本质上是在争论“语言演进速度”是否能用邻近生态来衡量。",
+        "supportid": [
+          "49120038",
+          "49120838",
+          "49120812",
+          "49121289",
+          "49121239",
+          "49120528",
+          "49120634",
+          "49121591"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Project Valhalla",
+        "explanation": "Java 的长期项目，目标是引入 value types/value classes 以及相关 JVM 支持。"
+      },
+      {
+        "term": "JEP 401",
+        "explanation": "JDK Enhancement Proposal 401，Java value objects 的预览提案，也是 Valhalla 的首阶段之一。"
+      },
+      {
+        "term": "value object / value class",
+        "explanation": "按“值”而不是按对象身份来理解的类型，强调内容相等和更高效的内存布局。"
+      },
+      {
+        "term": "tearability",
+        "explanation": "允许值在并发读写中被“撕裂”的可选语义，用来换取更好的性能。"
+      },
+      {
+        "term": "reference flattening",
+        "explanation": "把值对象直接内联存放，而不是通过对象引用间接访问。"
+      },
+      {
+        "term": "IntegerCache",
+        "explanation": "JVM 对部分装箱 Integer 的缓存机制，小范围内会复用同一对象。"
+      }
+    ],
+    "context": "JEP 401 是 OpenJDK（Java 的官方开源实现）中 Project Valhalla（为 Java 引入 value types/value classes 的长期项目）的一部分，目标是在尽量不破坏向后兼容的前提下，让某些类型按“值”而不是按“对象身份”来处理。这个预览阶段先解决最基础的语义和 JVM 支持，例如 value objects 的身份模型、对象扁平化以及与 Java memory model（Java 的并发内存模型）相关的安全保证。评论里提到的 IntegerCache、tearability、safe publication 等概念，都是因为一旦类型不再依赖 identity，性能、并发语义和现有代码兼容性都会一起变化。后续相关工作还会牵涉 specialized generics（针对具体类型生成更高效实现的泛型）以及 vector/SIMD（单指令多数据）等更深层的 JVM 能力。",
+    "emoji": "🚀",
+    "sarcastic_question": "Java连值类型都要等三十年才算现代语言？"
+  },
+  "articleSummary": "## 一句话总结\nJava 终于迈出了摆脱“万物皆对象”性能包袱的关键一步，JEP 401 合并入主分支，通过引入 Value Objects 让对象不再依赖 Identity，从而彻底解决了内存占用和缓存伪共享的顽疾。\n\n### 25 年的“身份”包袱终于要卸下了\n从 Java 第一天起，对象就默认拥有“身份”，也就是内存地址。这虽然方便了用 `==` 做引用比较，但也带来了沉重的代价：每个对象都要有对象头，还要在堆上分配内存。对于像 `Point`、`Complex` 这种只装数据的简单对象，这种开销简直是奢侈。JEP 401 的核心目标，就是把“值”和“身份”解绑。说白了，就是让开发者能定义一种没有 Identity 的对象，它们在行为上像对象，但在内存布局和性能上像 primitive。\n\n### 不再是“不可变”那么简单\n以前我们想优化性能，只能把类写成不可变的，但这治标不治本。不可变对象依然有对象头，依然会占用堆内存，依然会因为缓存伪共享拖累多线程性能。Value Objects 的设计思路其实很简单：它允许 JVM 在底层把这些对象“拆解”开来。如果一个 Value Object 是某个类的字段，JVM 可以直接把它扁平化嵌入到父对象里，既消除了对象头开销，也避免了间接寻址。\n\n### 让 JVM 接管内存布局\n这里有个巧妙的设计：Value Objects 对开发者是透明的，但对 JVM 来说是扁平化的。你依然可以用 `.` 操作符访问字段，代码看起来和以前一样。但在运行时，JVM 不再需要通过指针跳转去拿数据，而是直接把数据塞进寄存器或者栈上。这意味着你写的是高级的 OOP 代码，跑出来的却接近 C 语言 struct 的性能。这种优化在处理数组时尤为明显，原本是“指针数组”，现在变成了真正的“结构体数组”，内存连续性大幅提升。\n\n### 兼容性是最大的技术挑战\n但问题是，Java 生态里现有的代码都默认对象有 Identity。比如 `System.identityHashCode`，或者 `synchronized` 锁住对象，这些操作对 Value Objects 都是非法的。为了平滑过渡，JEP 401 引入了严格的规定：Value Objects 不能作为锁对象，也不能依赖基于 Identity 的哈希值。这不仅仅是语法糖，而是 JVM 底层内存模型的根本性调整。这次合并包含了大量的 JVM 内部改动，就是为了在 HotSpot 里区分开“引用对象”和“值对象”。\n\n### 从 Preview 到生产环境的必经之路\n这次 PR 的合并意味着 JEP 401 的实现代码正式进入了 OpenJDK master 分支。虽然目前还处于 Preview 阶段，默认不开启，但这标志着核心功能已经开发完毕，Reviewers 也已经完成了代码审查。对于有经验的开发者来说，现在就可以开始关注源码变动了，特别是关于 `ValueObject` 类的加载机制和垃圾回收器的适配部分。这是 Java 自 Project Valhala 启动以来，最具里程碑意义的一次实装。"
+}

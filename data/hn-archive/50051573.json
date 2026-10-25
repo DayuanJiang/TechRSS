@@ -1,0 +1,97 @@
+{
+  "id": 50051573,
+  "by": "lukaslalinsky",
+  "title": "Type-safe HTML templating in Zig",
+  "url": "https://lalinsky.com/2026/10/11/type-safe-html-templating-in-zig.html",
+  "score": 225,
+  "createdAt": 1791781855,
+  "aiSummary": {
+    "chinese_title": "Zig 类型安全 HTML 模板：编译期渲染、原生 include 与生态成熟度之争",
+    "discussion_overview": [
+      {
+        "category": "编译期生成与类型安全模板的取舍",
+        "summary": "评论者普遍认可把模板在构建期转成宿主语言代码的路线：模板变量成为函数或构造器参数，IDE 能补全、重构和检查类型，运行时无需解析或解释模板。Kotlin 的案例以生成 `MyTemplate(foo, myname)` 类为例，避免为非一一对应的数据额外创建 view model；Go 的 Templ 也采用 generate 命令。Rust 的 `rsx!`、Leptos 和类似 JSX 的宏则将组件、条件和 HTML 写进 Rust 源码，能获得 LSP 与格式化支持。反对者指出这往往不是原生 HTML，而是受宿主语言语法约束的新 DSL，简洁性与熟悉的 HTML 写法之间仍有权衡。",
+        "supportid": [
+          "50053360",
+          "50053670",
+          "50051667",
+          "50051890",
+          "50051961",
+          "50051856"
+        ]
+      },
+      {
+        "category": "HTML include 的历史方案与标准边界",
+        "summary": "有人希望 HTML 直接提供 `<includes>` 一类的文件组合机制，但讨论指出这类能力并非不存在，而是分散在不同层次和时代。SGML（HTML 的历史元语言）已有实体引用和类型检查能力，XInclude 是 XML 的包含规范；Server Side Includes 则由 Web 服务器处理，Apache 和 nginx 仍可使用但不属于 HTML 标准。HTML Imports 曾在 Chrome 中推出后又被废弃，说明浏览器原生方案未必能稳定落地；iframe 能隔离和嵌入内容，却过于笨重。另一种担忧是，若在文档标记中逐步加入 include、逻辑和更多能力，最终很容易演化成图灵完备的模板语言。",
+        "supportid": [
+          "50051874",
+          "50052403",
+          "50052812",
+          "50052209",
+          "50052006",
+          "50052022",
+          "50052518",
+          "50054271"
+        ]
+      },
+      {
+        "category": "模板引擎的安全价值及跨语言复用局限",
+        "summary": "支持模板引擎的一方认为，直接在普通程序中拼接 HTML 字符串很容易在局部漏掉 escaping，最终造成 HTML injection；引擎可将默认转义制度化。Google Soy、Helm 和 Go Templates 被提及为带有 HTML、JavaScript 等上下文转义的既有路线。也有人期待同一模板复用于 Django 后端和 React 前端，但 Mustache 曾广泛跨语言实现的历史表明，实际很少出现“更换宿主语言却保留模板”的需求，纯展示逻辑也通常不足。替代设计包括 Kotlin type-safe builders、Ur/Web 的类型安全 XML/HTML，以及 Python/Django 中以 Python 组件生成 HTML 的 htpy、PyJSX。",
+        "supportid": [
+          "50052361",
+          "50052382",
+          "50052610",
+          "50051808",
+          "50052321",
+          "50052024",
+          "50052039",
+          "50054018"
+        ]
+      },
+      {
+        "category": "Zig 标准库取消语义的成熟度争议",
+        "summary": "一条延伸讨论质疑 Zig 标准库的 Io 接口仍有 bug，尤其 Reader/Writer 与 Io 组合时对 cancellation error 的处理可能不可靠。辩护者认为 Zig 配合 `defer` 和 `errdefer` 可提供较强的取消清理保证，甚至允许比 Rust Future 的 `Drop` 更复杂的异步清理；真正难点是非泛型 Reader/Writer 接口无法传递实现返回的具体错误。对比中，Rust 取消 Future 会停止 polling 并执行 `Drop`，因取消不作为普通错误传播而不易被忽略；Zig 将取消表示为命名错误，灵活却可能被接口隐藏或库错误吞掉。评论者认为这不是 Zig 独有问题，Kotlin 的 `CancellationException` 被通用 `Exception` 捕获吞掉也长期导致 bug，但 Zig 是否会修改接口或形成可靠最佳实践仍受质疑。",
+        "supportid": [
+          "50052813",
+          "50052984",
+          "50053292",
+          "50053391",
+          "50053667",
+          "50053851",
+          "50053417"
+        ]
+      },
+      {
+        "category": "低层语言做 Web 并非回归异端",
+        "summary": "有资深开发者指出，Web 开发早期本就常用 Perl、C、Tcl、C++ COM、Apache 模块和 IIS ISAPI；PHP 3.0 功能有限时也经常依赖 C 扩展。因此把 Zig 这类低层、手动内存管理语言用于 Web 并不完全是新鲜或反常的想法，而更像对早期实践的回归。另一方的经验则相反：其 Web 入门就是 CGI/Perl，并将大量临时字符串和字典操作与带 GC 的脚本语言关联，Go 已是其首个用于 Web 的编译型语言。这种分歧反映的是不同世代和项目规模形成的工具直觉，而非单纯的技术可行性问题。",
+        "supportid": [
+          "50052406",
+          "50052548",
+          "50052717"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "类型安全模板（type-safe templating）",
+        "explanation": "将模板变量、组件参数和输出结构纳入宿主语言的编译期类型检查，尽早发现缺失字段或类型不匹配，而非在运行时渲染失败。"
+      },
+      {
+        "term": "cancellation（取消）",
+        "explanation": "异步或 I/O 操作在任务终止时进行清理和错误传播的语义；难点在于取消信号不能被通用错误处理无意吞掉。"
+      },
+      {
+        "term": "Reader/Writer 与 Io 接口",
+        "explanation": "Zig 标准库中用于读写数据和管理 I/O 操作的抽象接口；讨论聚焦它们组合时是否能保留具体的取消错误。"
+      },
+      {
+        "term": "RSX / JSX",
+        "explanation": "将类似 HTML 的组件标记嵌入 Rust、JavaScript 等宿主语言源码的语法形式，通常经宏或编译器转换为组件构造代码。"
+      }
+    ],
+    "context": "Zig（强调显式内存管理与编译期元编程的系统编程语言）上的这篇文章讨论如何让 HTML 模板在编译期获得类型检查，而不是把模板当作运行时解析的纯文本。评论将它放入更广泛的谱系：Google Soy、Go Templ、Rust 的 RSX/Leptos 宏、Kotlin type-safe builders 与 Ur/Web（带静态类型保证的函数式 Web 语言）都试图把页面结构和数据接口连接起来。争论的核心不仅是语法，而是应保留独立 `.html` 文件，还是生成宿主语言代码或使用 DSL，以及默认 escaping 能否降低注入风险。与此同时，链接的 Zig 社区讨论暴露了标准库 Io cancellation 的接口设计争议，使部分人将模板实验与 Zig 生态整体成熟度联系起来。",
+    "emoji": "🧩",
+    "sarcastic_question": "为拼个 header，HTML 也要长成图灵完备语言？"
+  },
+  "articleSummary": "## 一句话总结\n作者受 Go 语言 Templ 库启发，利用 Zig 的 `comptime` 特性构建了一个编译期类型安全的 HTML 模板引擎 zt，在保证原生 HTML 书写体验的同时，彻底消灭了运行时模板错误和常见的 XSS 漏洞。\n\n## 正文\n\n### 逃离动态语言的“运行时陷阱”\n作者是个从 PHP 3.0 时代一路写过来的老 Web 开发，经历过字符串拼接、Smarty、Jinja 等各种模板方案的洗礼。后来转战底层语言 Zig，本以为不再碰前端，但在构建 zio 和 Dusty 等 API 框架时，他发现利用 arena allocator 管理内存，配合 htmx 这种现代工具，在 Zig 里写 Web 并非异想天开。但他不想回到 CGI 时代去搞字符串拼接，也不想忍受动态语言那种“改错字段名等到运行时才报错”的痛苦，更不想再处理烦人的 XSS 问题。他需要的是一个编译期就能检查类型、默认防 XSS、零分配且写起来像 HTML 的模板方案。\n\n### 灵感迸发：把 JSX 的思路搬进 Zig\n找了一圈没现成的轮子，直到看到 Ziex 项目，作者才意识到 JSX 的思路竟然能在 Zig 里实现。虽然 Ziex 是个 WASM 框架不符合他的需求，但这给了他关键启发。随后他研究了 Go 语言的 Templ 库，思路瞬间清晰：做一个 Templ 的 Zig 版本。于是 zt 诞生了。核心机制很简单：在 `zig build` 阶段，把模板文件解析并转译成 Zig 源码。这意味着模板和业务代码可以互相导入，所有的参数类型都在编译期敲定，如果类型不匹配，Zig 编译器会直接报错拦住你。\n\n### 编译期就能抓住的 Bug\nzt 最香的地方在于，模板错误就是 Zig 编译错误。比如你在模板里手滑把 `{u.name}` 写成了 `{u.nmae}`，编译器会立马甩出错误：`struct 'models.User' 没有名为 'nmae' 的字段`。虽然报错指向生成代码，但每行都贴心地注释了原始模板的位置。同样的，如果你在调用侧传错了参数类型，比如给期望 `?User` 的模板传了个字符串，代码根本编译不过去。这种“类型安全”的强约束，把动态语言里最头疼的模板调试难题前置到了开发阶段。\n\n### 安全默认值与零分配的性能\n在安全设计上，zt 选择了“默认安全”策略。所有动态值默认都会进行 HTML 转义，URL 属性里的值也会检查危险协议。如果你确实需要输出原生 HTML，必须显式使用 `{!value}` 语法，这让危险代码在 Review 时非常显眼。在性能方面，生成的代码非常干净，就是一系列对 `std.Io.Writer` 的直接写入操作。没有中间状态，没有额外的内存分配，你可以直接往 Socket 里写，也可以写到 Buffer 里，性能拉满。\n\n### 还在纠结的语法细节\n当然，项目还有个未定的语法设计。目前 zt 沿用了 Templ 的设计，行首的 `if`、`for` 会被解析为控制流代码。这导致了一个尴尬问题：如果你写了一句纯文本 \"if you forgot your password...\"，解析器会报错，你得把它包在标签里或者写成字符串。作者正在考虑改用 `@if`、`@for` 这种带前缀的语法，虽然稍微增加了噪音，但能彻底消除歧义。如果你对这种权衡有想法，可以去 GitHub Issue 里参与讨论。"
+}

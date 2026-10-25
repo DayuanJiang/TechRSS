@@ -1,0 +1,91 @@
+{
+  "id": 47963316,
+  "by": "ferriswil",
+  "title": "Durable queues, streams, pub/sub, and a cron scheduler – inside your SQLite file",
+  "url": "https://honker.dev/",
+  "score": 131,
+  "createdAt": 1777566616,
+  "aiSummary": {
+    "chinese_title": "SQLite 文件内的持久队列、streams、pub/sub、cron：每毫秒轮询 data_version 引争议",
+    "discussion_overview": [
+      {
+        "category": "每毫秒轮询的性能争议",
+        "summary": "评论最集中地质疑每毫秒对 SQLite 做一次 SELECT/PRAGMA data_version 轮询，认为这本质上是 busy-wait，而不是“轻量”的事件通知。有人拿“每秒 1000 次查询”来算账，指出如果一次查询要几百微秒，CPU 时间会被轮询吃掉不少；和 kernel file watcher 相比，这个比较对象并不占优。也有人觉得文案里反复强调“不要 kernel file watcher”有点喧宾夺主，像是在把本来没进实现的东西写成卖点。整体上，这一派最关心的是实际吞吐、CPU 占用和是否真有必要把轮询包装成通用库。",
+        "supportid": [
+          "47965587",
+          "47965827",
+          "47966654",
+          "47966266",
+          "47967943",
+          "47965939",
+          "47967075",
+          "47967038",
+          "47968017",
+          "47966998"
+        ]
+      },
+      {
+        "category": "SQLite 场景下轮询未必糟",
+        "summary": "另一部分评论则提醒不要过度相信对 SQLite 性能的直觉。有人提到 Kine（k3s 用来把 etcd watch 映射到 SQL 数据库的组件）已经在 SQLite 上用轮询实现 watch，而且家用服务器上跑了几年也没有明显 CPU 问题。也有人分享自己用文件系统轮询的经验：虽然不优雅，但在“1 秒内通知”的需求下完全够用。整体观点是，在 SQLite 这种嵌入式数据库里，朴素方案有时比想象中更实用。",
+        "supportid": [
+          "47965046",
+          "47966296",
+          "47966077",
+          "47966242",
+          "47967090"
+        ]
+      },
+      {
+        "category": "更合适的通知/队列原语",
+        "summary": "不少评论把话题拉回更传统的并发原语，认为如果本来就是单进程或少量线程的 SQLite 应用，就不该先想到 Redis + Celery。有人建议直接用 ring buffer 存任务，再用 futex 或 eventfd 做唤醒；也有人提到可以盯住 -wal 文件，或利用 wal_hook 这类 SQLite 回调来减少轮询。与此同时，评论也指出 wal_hook 只对本连接有效，跨连接或跨进程写入仍然麻烦，所以多连接写 SQLite 本身就容易变成 minefield。这个主题的核心不是“能不能做”，而是“既然都走 SQLite 了，为什么不用更贴合它的同步方式”。",
+        "supportid": [
+          "47968104",
+          "47967952",
+          "47968048",
+          "47968255",
+          "47967579",
+          "47967043",
+          "47965969"
+        ]
+      },
+      {
+        "category": "生态参照与适用边界",
+        "summary": "也有人把它看成一个有明确边界的中间方案：比 in-memory queue 更持久，比 Kafka 那套又轻得多，适合新项目或中小规模系统。评论里顺手提到 Oban（Elixir 的后台任务库）、Graphile Worker（一个基于 Postgres 的后台任务库）、Litestack（面向 Rails 的 SQLite 应用栈）等现成工具，说明这个方向并不新，只是实现路径不同。还有人问它是否能配合 Turso（基于 SQLite/libSQL 的托管服务）使用，显示大家关心的是生态兼容性而不只是理论可行性。对这类方案，社区最期待的仍然是吞吐、延迟和资源占用的硬数据。",
+        "supportid": [
+          "47967064",
+          "47965607",
+          "47965477",
+          "47967052",
+          "47966655",
+          "47964945"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "PRAGMA data_version",
+        "explanation": "SQLite 的 PRAGMA 计数器，任意连接提交后会递增，可用来检测数据库变化。"
+      },
+      {
+        "term": "WAL",
+        "explanation": "Write-Ahead Logging 模式，SQLite 常见的日志写入机制，读写并发和 -wal/-shm 文件都围绕它展开。"
+      },
+      {
+        "term": "wal_hook",
+        "explanation": "SQLite 提供的回调，事务写入 WAL 后触发，但通常只覆盖本连接。"
+      },
+      {
+        "term": "inotify",
+        "explanation": "Linux 的文件变更通知 API，可用来监听 -wal 文件的修改。"
+      },
+      {
+        "term": "futex/eventfd",
+        "explanation": "Linux 的低开销同步与事件通知原语，常用于线程唤醒和任务通知。"
+      }
+    ],
+    "context": "这篇文章介绍的是一个把 durable queue、streams、pub/sub 和 cron scheduler 直接做进 SQLite 文件里的方案，评论里还把它叫作 honker。它通过轮询 SQLite 的 PRAGMA data_version 来感知变更，这个计数器会在任意连接提交时递增，因此可以当作跨连接、跨进程的唤醒信号。争议点在于 SQLite（嵌入式关系型数据库）没有 Postgres 那样现成的 NOTIFY/LISTEN，作者选择每毫秒轮询，而读者则在讨论这到底是简洁的工程取舍，还是把 busy-wait 包装成“轻量”。相关讨论还牵涉到 WAL（Write-Ahead Logging）模式、k3s（一个轻量级 Kubernetes 发行版）里的 Kine（把 etcd watch 映射到 SQL 数据库的组件）、以及 Oban（Elixir 的后台任务库）和 Litestack（面向 Rails 的 SQLite 应用栈）这类方案。",
+    "emoji": "🤨",
+    "sarcastic_question": "每毫秒轮询 SQLite，还敢叫自己“轻量”吗？"
+  },
+  "articleSummary": "## 一句话总结\nHonker 把任务队列、消息流和 Pub/Sub 做成了 SQLite 的一个扩展，让你在同一个数据库文件里就能搞定业务逻辑和异步任务，既保证了 ACID 事务一致性，又把跨进程唤醒延迟压到了 0.7ms。\n\n### SQLite 越来越重，队列却还在外面流浪\n现在的 SQLite 早就不是那个玩具数据库了，Bluesky、Fly.io 的 LiteFS 还有 Turso 都在拿它跑核心业务。但一旦上了生产环境，光存数据不够，你还得处理异步任务。传统的解法是“加 Redis + Celery”，这招虽然稳，但代价也不小：你得维护两套存储，还得操心 Redis 的备份，最头疼的是业务表和队列之间的“双写”问题——万一业务写成功了但队列挂了，数据就对不上了。\n\n### 既然都在一个文件里，干嘛不把队列也塞进去？\nHonker 的核心思路很简单：既然 SQLite 是你的主存储，那队列就该住在同一个文件里。这意味着 `INSERT INTO orders` 和 `queue.enqueue(...)` 可以在同一个事务里提交。要么一起成功，要么一起回滚，彻底消灭了数据不一致的隐患。说白了，队列本质上就是几张带部分索引的普通表，所有的任务、消息都跟你的业务数据躺在同一个 `.db` 文件里，共享同一套磁盘格式。\n\n### 不需要守护进程，一个扩展搞定一切\nHonker 不是一个独立运行的 Broker 或 Daemon，它只是一个 SQLite 的 Loadable Extension。不管你用 Python、Node、Rust 还是 Go，只要能执行 `SELECT load_extension('honker_ext')`，就能获得完全一致的队列和通知能力。这种设计让多语言协作变得异常轻松，不同语言的 Worker 可以同时消费同一个数据库文件里的任务，完全不用担心兼容性问题。\n\n### 巧妙的“伪轮询”：用 PRAGMA 换取低延迟\n既然没有独立的 Broker，那 Worker 怎么知道有新任务来了？Honker 没用复杂的文件监听，而是用了一个极其巧妙的设计：每毫秒轮询一次 SQLite 的 `PRAGMA data_version`。这是一个单调递增的计数器，任何连接的提交都会让它增加。读取它只需要约 3 微秒，几乎没有开销。一旦发现版本号变了，后台线程就会通知所有订阅者去拉取新数据。这种“一呼百应”的机制，让跨进程唤醒延迟的中位数只有 0.7ms。\n\n### 极致的资源控制：一个轮询线程服务所有监听者\n这种设计最大的好处是省资源。不管你有多少个 Listener 在监听，每个数据库文件只需要一个轮询线程。它不会给 Page Cache 带来压力，也不会抢占写锁，更不需要在内核层搞文件监听。Idle 状态下的成本，仅仅是每毫秒一次极轻量的 SELECT 查询。随着监听者数量增加，唤醒成本几乎是线性的，因为大家共享的是同一个“发令枪”。\n\n### 站在巨人的肩膀上，填补 SQLite 的生态位\nHonker 并不是凭空发明了新轮子，它借鉴了 Postgres 的 `NOTIFY/LISTEN` 语义，以及 Python 任务队列 Huey 的设计理念。如果你已经在用 Postgres，那 `pg-boss` 或 `Oban` 依然是更好的选择。但如果你是 SQLite 的重度用户，Honker 提供了一种无需引入额外基础设施就能获得生产级队列能力的方案，完美填补了 SQLite 在异步处理生态上的空白。"
+}

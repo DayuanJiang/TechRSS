@@ -1,0 +1,111 @@
+{
+  "id": 48809574,
+  "by": "EvgeniyZh",
+  "title": "Girls Just Wanna Have Fast MPMC Queues with Bounded Waiting",
+  "url": "https://nahla.dev/blog/waitfree_queue/",
+  "score": 150,
+  "createdAt": 1783621214,
+  "aiSummary": {
+    "chinese_title": "Rust 高速 MPMC 队列：bounded waiting 但非 wait-free",
+    "discussion_overview": [
+      {
+        "category": "wait-free 说法被纠正，讨论转向研究现状",
+        "summary": "帖子最先被指出的重点是：原文把这个队列写成了 wait-free，但这其实不成立，后来已经改口为 bounded waiting。评论里有人因此对标题很感兴趣，并顺势追问近十年是否出现了更低复杂度的 wait-free queue 新突破。回应提到 LCRQ、LPRQ 以及一篇 2022 年的相关论文，但整体判断是，低复杂度 wait-free queue 的设计空间可能已经被挖得差不多了。",
+        "supportid": [
+          "48849737",
+          "48850215",
+          "48850645",
+          "48850509",
+          "48850738",
+          "48851403"
+        ]
+      },
+      {
+        "category": "现有实现：Aeron、Vyukov、rigtorp 这些更实用",
+        "summary": "有评论拿 Aeron 的 MPSC/MPMC 结构举例，强调它对 producers 是 wait-free 的：一个 producer 不会阻塞另一个。另一些人提到基于 node 的简单算法也能提供类似保证，但实现细节和适用场景并不相同。Vyukov 的 queue 和 rigtorp 的 MPMCQueue 被反复提起，大家普遍承认它们在工程上很快、很常用，但也指出它们在严格的进度性质上并不强。",
+        "supportid": [
+          "48852956",
+          "48853469",
+          "48851896",
+          "48853520"
+        ]
+      },
+      {
+        "category": "形式性质与工程取舍",
+        "summary": "评论区反复强调，bounded queue、global FIFO、multiple producers、非原子 reserve/commit 这几件事很难同时完美满足。有人直接总结：慢 consumer 会顶住 producer，慢 producer 也可能卡住 consumer，因此所谓“完全 non-blocking”并不是免费午餐。大家把这些权衡归结为“先知道自己放弃了什么”，并指出真正需要 wait-free 的场景往往是 hard real-time industrial automation。",
+        "supportid": [
+          "48854003",
+          "48854208",
+          "48854308",
+          "48854408",
+          "48854637"
+        ]
+      },
+      {
+        "category": "缓存一致性、false sharing 与 CPU 架构优化",
+        "summary": "有人指出文章没充分讨论 slot 之间的 false sharing，建议把每个 slot padding 到 cache line 大小，或者用 bijective hashing 打散连续 ticket。前者更利于 stream prefetcher，后者能省内存，但可能让预取器失效。还有人从更宏观的硬件演进谈起，提到更宽的 dispatch、更深的 pipeline、NUMA 和更常见的 asymmetrical fencing，让这类细粒度优化比十年前更值得做。另一个 SPSC 例子把吞吐从 12M 提到 305M ops/s，也说明这类优化确实可能带来数量级收益。",
+        "supportid": [
+          "48850457",
+          "48853974",
+          "48851057",
+          "48851869",
+          "48854656"
+        ]
+      },
+      {
+        "category": "Rust 安全性：Send/Sync 约束写错了",
+        "summary": "有评论直接指出代码里的 `unsafe impl` 不够严格：`WFQueue<T, N>` 不能在没有约束 `T: Sync` / `T: Send` 的情况下实现 `Sync` 和 `Send`。否则就可能构造出 `WFQueue<Rc<T>, N>` 这类把非线程安全类型跨线程传递的情况。后面还提到另一个类似失误，只是出现在某个 `impl` 上漏了约束。这个问题把讨论从算法性能拉回到 Rust 的类型安全边界，说明并发结构不仅要快，还要把 trait 条件写对。",
+        "supportid": [
+          "48854483"
+        ]
+      },
+      {
+        "category": "标题玩梗与代码审查元吐槽",
+        "summary": "标题本身是对《Girls Just Wanna Have Fun》的戏仿，评论里也顺手拿 HN 的男性比例开了个玩笑。另一条元讨论则质疑“agent comments”到底有没有价值，认为真正的代码审查应该直接看问题和 workaround，而不是依赖 AI 注释。回应则强调，这类低层并发代码未必是为了“让每个人都看着舒服”而写的，开源项目里愿意深入的人可以自己花时间核对。",
+        "supportid": [
+          "48851129",
+          "48852566",
+          "48851177",
+          "48851185",
+          "48851563",
+          "48852830",
+          "48853562"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "MPMC queue",
+        "explanation": "Multiple-Producer Multiple-Consumer queue，允许多个生产者和多个消费者并发访问的队列。"
+      },
+      {
+        "term": "wait-free",
+        "explanation": "一种并发进度保证：每个线程都能在有限步内完成操作，不会因为别的线程停顿而被卡住。"
+      },
+      {
+        "term": "lock-free",
+        "explanation": "系统整体总能继续前进，但单个线程可能一直失败或饿死。"
+      },
+      {
+        "term": "obstruction-free",
+        "explanation": "只要没有竞争干扰，线程就能完成操作；但在持续竞争下不保证前进。"
+      },
+      {
+        "term": "false sharing",
+        "explanation": "不同线程修改同一 cache line 上的不同数据，导致缓存一致性流量暴涨、性能下降。"
+      },
+      {
+        "term": "ABA problem",
+        "explanation": "CAS 看到值从 A 变到 B 又回到 A，就误以为状态没变，从而引发并发错误。"
+      },
+      {
+        "term": "NUMA",
+        "explanation": "Non-Uniform Memory Access，不同 CPU 节点访问本地和远端内存的延迟不同。"
+      }
+    ],
+    "context": "这篇帖子讨论的是一个 Rust 实现的高性能 MPMC queue（多生产者多消费者队列），目标是在 bounded buffer 下尽量提供强的等待上界。原帖最初把实现描述成 wait-free，但后来被指出定义不成立，因此更正为 bounded waiting，而不是“某个线程停顿时其他线程仍完全不受影响”。评论区把话题扩展到 Vyukov MPMC queue、Aeron（一个高性能 messaging 框架）、LCRQ/LPRQ 等经典并发队列算法，并比较它们在速度、复杂度和形式化进度保证之间的取舍。与此同时，大家还讨论了 cache line、false sharing、NUMA、CAS 以及 Rust 的 Send/Sync 约束，说明这类数据结构的难点不仅在算法设计，也在硬件与类型系统边界。",
+    "emoji": "⚙️",
+    "sarcastic_question": "连 wait-free 都不是，还先拿来当招牌？"
+  },
+  "articleSummary": "抱歉，我无法直接阅读这篇文章。\n\n你提供的文本内容并不是文章正文，而是 Cloudflare 的安全验证页面（DDoS 保护页面的 HTML 和 JavaScript 代码）。这通常是因为该网站启用了严格的安全防护，导致抓取工具被拦截了。\n\n如果你能提供文章的**原文链接**或者**复制粘贴文章的正文内容**，我很乐意按照你的要求，用讲故事的方式为你解读这篇关于 MPMC 队列的技术文章。"
+}

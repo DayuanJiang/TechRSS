@@ -1,0 +1,80 @@
+{
+  "id": 47756321,
+  "by": "mbitsnbites",
+  "title": "How to make Firefox builds 17% faster",
+  "url": "https://blog.farre.se/posts/2026/04/10/caching-webidl-codegen/",
+  "score": 149,
+  "createdAt": 1776108030,
+  "aiSummary": {
+    "chinese_title": "缓存 Rust 过程宏让 Firefox 构建快 17%",
+    "discussion_overview": [
+      {
+        "category": "proc macro 缓存与增量编译",
+        "summary": "讨论焦点落在 Rust 的 proc macros（过程宏）上：如果输入的 token stream 没变，就可以复用上一次宏展开的结果，避免重复执行宏。有人提到曾有实验性 PR 把 proc macros 当成 idempotent（幂等）处理，但要正式落地还需要解决 backcompat（向后兼容）问题。线程里还讨论了是否能给 proc macros 引入类似 editions 的 v2 机制，让未来版本允许破坏性改动。有人顺手贴出相关 Rust PR 链接，说明这并不是纯理论想法，而是已有原型在推进。",
+        "supportid": [
+          "47759018",
+          "47759101",
+          "47759488",
+          "47760410",
+          "47759511",
+          "47760557",
+          "47759663",
+          "47760534"
+        ]
+      },
+      {
+        "category": "buildcache / sccache 的缓存基础设施",
+        "summary": "另一组评论在解释 buildcache、ccache 和 sccache 这类工具的作用。buildcache 可以把编译产物放到远程 server，sccache 也能接 S3、Redis、memcache，甚至用 MinIO 在本地部署。有人指出在 ephemeral containers（临时容器）里构建时，本地缓存天然不可靠，因此外部 cache 往往是必须的。关于为什么 Firefox 还会有 clobber builds（整仓库清理重编），讨论更像是在承认大型仓库和复杂构建环境的现实，而不是简单地说“把构建系统修好就行”。",
+        "supportid": [
+          "47757529",
+          "47758058",
+          "47759201",
+          "47758423",
+          "47760622",
+          "47759758",
+          "47759960",
+          "47760368"
+        ]
+      },
+      {
+        "category": "“删代码/拆项目”式的调侃方案",
+        "summary": "有人用讽刺口吻把 17% 提速解读成“删掉 17% 代码”，也有人认真但略带调侃地提议把构建拆成独立项目，只把 WebIDL 文件当依赖来拉取。反驳很快指出，这种拆分会带来日常维护摩擦，尤其是依赖文件经常变更时，协调成本会很高。这个分支的核心并不是认真给出最终方案，而是在提醒：看似简单的架构调整，往往只是把复杂度转移到依赖管理上。",
+        "supportid": [
+          "47759151",
+          "47758051",
+          "47760351"
+        ]
+      },
+      {
+        "category": "Mozilla 优先级之争：用户份额 vs 开发体验",
+        "summary": "最有火药味的部分是对 Mozilla 优先级的质疑：有人认为与其优化构建，不如先解决 Firefox 的用户份额下滑。反驳则指出，这是把所有工程工作都强行归结为市场策略，忽视了开发者每天等待编译的成本。作者随后说明，这个优化是他利用业余时间做的个人项目，目标只是让自己工作更高效，并强调 Mozilla 官方还在继续维护 sccache。也有人补充说 Firefox 主要依赖贡献者生态，开发者体验本身就是产品竞争力的一部分。",
+        "supportid": [
+          "47758372",
+          "47761196",
+          "47761380",
+          "47758600",
+          "47759614",
+          "47758735"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "proc macros（过程宏）",
+        "explanation": "Rust 中在编译期执行的宏，能把输入 token stream 转成新的代码；如果输入不变，理论上可复用展开结果。"
+      },
+      {
+        "term": "buildcache",
+        "explanation": "一种把编译缓存放到远程 server 上复用的工具，用来减少重复编译、加快构建。"
+      },
+      {
+        "term": "sccache",
+        "explanation": "Mozilla 维护的 compiler cache，可配合 S3、Redis、memcache、MinIO 等后端存取缓存。"
+      }
+    ],
+    "context": "这篇讨论围绕 Firefox（Mozilla 的开源浏览器）构建流程的性能优化展开，标题中的 17% 来自把 buildcache（一个可将编译缓存放到远程服务器上的工具）接入 Firefox 仓库后的速度收益。评论把重点放到 Rust（系统编程语言）里的 proc macros（过程宏）上，因为宏展开如果每次都重跑，会让增量编译更慢。另一条线索是 Mozilla 生态里的 sccache（Mozilla 维护的 compiler cache）和 buildcache 这类工具，它们常借助 S3、Redis、memcache 或 MinIO 提供远程缓存，特别适合 ephemeral containers（临时容器）或频繁 clobber build（整仓库清理重编）的场景。整串回复既讨论了工程细节，也延伸到 Mozilla 应该优先改善开发者效率还是用户增长的老问题。",
+    "emoji": "⚙️",
+    "sarcastic_question": "要提速17%，先删掉17%代码吗？"
+  },
+  "articleSummary": "## 一句话总结\n通过利用 buildcache 的 Lua 插件系统缓存 WebIDL 绑定代码生成，Firefox 的构建时间在缓存命中时缩短了 15 秒，整体 warm build 降至 1 分 12 秒。\n\n### WebIDL 生成是块难啃但适合缓存的骨头\n在 Firefox 的构建流程中，有一个早期步骤必须运行 `python3 -m mozbuild.action.webidl`。它的任务是把几百个 `.webidl` 文件转换成成千上万个 C++ 绑定文件，包括头文件、cpp 文件和事件实现等。单看这一步其实不算特别慢，但它在每次 clobber build（完全清理构建）时都会跑一遍。最关键的是，只要输入不变，它的输出就是完全确定的。这简直就是为缓存量身定做的场景。\n\n### 之前的缓存方案完美错过了这个环节\n问题在于，虽然大家都在用编译器缓存，但这个 WebIDL 生成步骤一直被漏掉了。传统的 ccache 和 sccache 只能拦截真正的编译器调用，根本管不到 Python 代码生成这一层。Buildcache 虽然也在用，但也只是用来包装编译器，并没有去包装这个 Python 脚本。结果就是，哪怕你把 C++ 编译缓存得再好，每次构建还是得老老实实等 Python 把这些绑定代码从头生成一遍。\n\n### 给 Makefile 动个小手术就能接上缓存\n修复方案其实很简单，核心就是在 `dom/bindings/Makefile.in` 里做点改动。现在的逻辑是：如果检测到正在使用 buildcache，就把 `$(CCACHE)` 作为一个命令包装器传给 `py_action` 调用。这样，原本直接执行的 `python3 -m mozbuild.action.webidl ...` 就变成了 `buildcache python3 -m mozbuild.action.webidl ...`。Buildcache 只要能拦截到这个命令，就有机会接管后续的缓存逻辑。当然，这个改动只对 buildcache 生效，因为 ccache 和 sccache 根本不支持缓存这种任意命令。\n\n### Lua 脚本教会了 buildcache 如何理解 Python\nBuildcache 能拦截命令，但它怎么知道哪些是输入、哪些是输出呢？这就用到了它的 Lua 插件系统。作者写了一个 `webidl.lua` 脚本，专门用来回答三个问题：这是不是我要管的命令？输入文件有哪些（所有的 `.webidl` 源文件和 Python 脚本）？输出文件有哪些（生成的各种绑定文件）？有了这个脚本，buildcache 就能直接对输入文件做哈希，去查缓存。这里用的是 `direct_mode`，直接哈希源文件而不是预处理后的输出，这非常适合处理这种读取源文件的 Python 脚本。\n\n### 实测数据：15 秒的优化与巨大的潜力\n来看一下 Linux 下的实测数据。在没有任何缓存的情况下，构建大约需要 5 分 35 秒。使用 buildcache 并开启 Lua 插件后，warm build（缓存命中）的时间从 1 分 27 秒进一步降到了 1 分 12 秒。这 15 秒的节省完全来自于跳过了 WebIDL 生成步骤。虽然听起来不算惊天动地，但这证明了机制的可行性。相比之下，传统的 ccache 和 sccache 在 warm build 上分别需要 3 分 21 秒和 2 分 49 秒，buildcache 的优势非常明显。\n\n### 配置起来也不麻烦，未来还有更多优化空间\n如果你想试试这个功能，配置起来也很简单。只要在 `~/.buildcache/config.json` 里设置 `lua_paths` 指向 wrapper 脚本所在的目录，或者在 mozconfig 里设置 `BUILDCACHE_LUA_PATH` 环境变量就行了。需要注意的是，因为有些 Rust crate 会产生很大的缓存条目，作者建议把 `max_local_entry_size` 设置得大一点（比如 2.5 GB）。这次优化只是个开始，Firefox 构建流程里还有其他类似的代码生成步骤，完全可以用同样的套路去优化。"
+}

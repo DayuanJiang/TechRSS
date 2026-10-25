@@ -1,0 +1,128 @@
+{
+  "id": 47215427,
+  "by": "prvnsmpth",
+  "title": "Show HN: Omni – Open-source workplace search and chat, built on Postgres",
+  "url": "https://github.com/getomnico/omni",
+  "score": 125,
+  "createdAt": 1772443204,
+  "aiSummary": {
+    "chinese_title": "Omni：基于 Postgres 的开源工作区搜索与聊天（pgvector + ParadeDB；权限与自托管争议）",
+    "discussion_overview": [
+      {
+        "category": "ParadeDB 支持与部署兼容性",
+        "summary": "评论中指出 ParadeDB 被用于 Omni 的搜索层，ParadeDB 的维护者对该用例表示支持并愿意协助。ParadeDB 通过带入 pgsearch 扩展并内嵌 Tantivy（类似 Lucene）来提供 BM25 与全文检索能力，这被用来补强 Postgres 的搜索功能。有人担心托管平台（例如 Render）对扩展的白名单策略会影响部署兼容性，因此在实际上线前需要确认扩展可用性和调优。维护者和作者在评论里也讨论了 ParadeDB 索引设置的调优需求。",
+        "supportid": [
+          "47220435",
+          "47221472",
+          "47220606",
+          "47215920"
+        ]
+      },
+      {
+        "category": "Postgres-only 搜索后端的实用性与隐患",
+        "summary": "多位评论者认为把全文检索（tsvector）、模糊匹配（pg_trgm）和语义向量（pgvector）都放在 Postgres 中在实践上能显著简化运维和提高一致性。Postgres 的事务一致性避免了外部索引同步滞后问题，省去了 Elasticsearch + 向量库那类额外服务的运维负担，对小团队尤其友好。但需要警惕 GIN 索引膨胀（index bloat）、autovac 跟不上以及大量 schema 或索引时的开销问题，这些都会带来长期维护成本。总体结论是：对中小到中等规模组织 Postgres-only 是务实选项，但应提前规划索引维护和扩展策略。",
+        "supportid": [
+          "47218875",
+          "47215968",
+          "47215920",
+          "47216516",
+          "47215813",
+          "47218166"
+        ]
+      },
+      {
+        "category": "权限模型与多用户/组织数据隔离",
+        "summary": "权限目前大多在应用层通过 WHERE 过滤实现，作者表示计划未来使用 Postgres 的 RLS（Row Level Security）把权限下沉到数据库层以增强安全性。对 Google Workspace，采用域级委托（domain‑wide delegation）和服务账号模拟用户进行索引，并在索引时持久化文件的 ACL（用户/群组）信息，但 Google Drive 的权限模型复杂，存在采集与映射的缝隙。Slack 连接当前只索引公共频道，私有频道和随时间变动的成员关系的实时同步仍具有工程难点。评论普遍认为权限同步与边界复现是自托管工作区搜索中最棘手的部分，需要额外工程投入来保证准确性与实时性。",
+        "supportid": [
+          "47219441",
+          "47220063",
+          "47215803",
+          "47218166"
+        ]
+      },
+      {
+        "category": "自托管声明与 BYO LLM 的隐私矛盾",
+        "summary": "项目宣传中写到“Self-hosted: Runs entirely on your infrastructure. No data leaves your network.”，但评论指出如果用户选择 Anthropic、OpenAI 或 Gemini 等云端模型并通过网络调用，就并非真正“数据不出网”。企业可以采用云厂商提供的私有模型端点把推理留在 VPC 内，但对于受出口管制或需限定为特定国籍人员访问的敏感工作，仍需 govcloud 或真正的本地部署。作者在评论里表示会对文案做出澄清，并支持多种 BYO LLM 的部署选项。总体提醒是：“自托管”需要明确是否包含外部模型调用，否则会误导对隐私有严格要求的用户。",
+        "supportid": [
+          "47217045",
+          "47217243",
+          "47217060",
+          "47217267",
+          "47217157"
+        ]
+      },
+      {
+        "category": "超越基础 RAG：用 LLM 做索引查询的编排",
+        "summary": "关于“not just a basic RAG”的讨论指出，传统 RAG 直接用用户查询的 embedding 去检索常常产生效果欠佳的结果。更优的实现是先把用户查询发给 LLM，利用模型通过工具调用（tool calling）构造精确的检索请求或 SQL/查询表达，再去索引检索并生成答案。作者表示 Omni 采用这种 LLM‑driven 的查询编排方法，以提高检索相关性和最终回答质量。评论认为这类做法不是革命性发明，但确实比简单用 query embedding 直搜要好得多。",
+        "supportid": [
+          "47217008",
+          "47217092",
+          "47215968"
+        ]
+      },
+      {
+        "category": "与 Onyx/Danswer（vespa.ai） 的关键区别",
+        "summary": "对比 Onyx（前身 Danswer），评论指出两者在本质上很相似，但检索后端不同：Onyx 使用 vespa.ai 提供 BM25 与向量搜索，而 Omni 选择走 Postgres‑only 路线。这一差异带来运维与扩展的权衡：vespa.ai 是为信息检索优化的专用引擎，适合大量 IR 需求；Postgres‑only 则降低运维复杂度，更适合资源有限或偏向快速迭代的小团队。评论将此视为工程权衡而非技术优劣的绝对判断，依据团队规模与运维能力选择后端。",
+        "supportid": [
+          "47217434",
+          "47217577"
+        ]
+      },
+      {
+        "category": "性能基准与大规模向量索引的操作问题",
+        "summary": "作者在小规模实验（100–500k 行）中观察到 p95 延迟仍然小于 1 秒，并准备公开基准工具链，但 ParadeDB 的索引设置还需调优以便进行大规模测试。评论经验提示，当向量数量接近或超过百万级时，HNSW 等近邻索引的重建时间会成为瓶颈，需要采用增量插入、后台重建或分片策略来缓解。实战经验亦表明多数企业在成长早期不会立即触达 Postgres 的极限，但一旦达到瓶颈需要专门工程来拆分或水平扩展。因此对中等规模数据 Postgres 可用，但必须事先规划索引维护和扩展方案。",
+        "supportid": [
+          "47215813",
+          "47215920",
+          "47216516",
+          "47218166"
+        ]
+      },
+      {
+        "category": "API 文档与可用性差距",
+        "summary": "有用户发现多个页面指向的 API Reference 返回 404，项目方承认该页面仍在开发中并尚未推送完整文档。原计划是公开主要搜索与聊天 API 以方便第三方集成（例如 Slack 等），但文档不完整会增加集成门槛并阻碍采用。评论建议尽快补齐 API 文档和示例以降低用户试用成本并吸引更多集成贡献。",
+        "supportid": [
+          "47215911",
+          "47215956"
+        ]
+      },
+      {
+        "category": "术语语义争议与 Microsoft Teams 集成难度",
+        "summary": "社区中有人反感将“chat”一词扩展为智能 agent 界面，认为语义漂移会造成混淆，产品在宣称“chat”能力时应明确是纯文本接口还是带工具调用的代理系统。另有针对 Microsoft Teams 的讨论：作者表示已有微软连接器但主要覆盖 SharePoint、OneDrive、Outlook，Teams 本身需要特殊设置尚未完整支持；评论者抱怨 Teams API 难以对接，有人通过解析系统日志来绕过复杂的 REST API。综上，术语定义和第三方平台（尤其微软生态）的接入限制都对自托管搜索系统的可用性造成实际影响。",
+        "supportid": [
+          "47217384",
+          "47217621",
+          "47217027",
+          "47217128",
+          "47217058"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "ParadeDB",
+        "explanation": "ParadeDB（为 Postgres 提供的扩展/发行方案）通过 pgsearch 扩展将 Tantivy（类似 Lucene 的全文检索引擎）引入 Postgres，使数据库支持 BM25 等传统 IR 能力与全文检索。"
+      },
+      {
+        "term": "pgvector",
+        "explanation": "pgvector（Postgres 扩展）为 PostgreSQL 增加向量数据类型和相似度查询函数，常用于存储文本 embeddings 并在数据库内做近邻搜索，作为一种内嵌的 vector DB 方案。"
+      },
+      {
+        "term": "RAG",
+        "explanation": "RAG（Retrieval‑Augmented Generation，检索增强生成）是一种结合检索器与生成式模型的策略：先检索相关文档再让 LLM 基于检索结果生成回答，用于提升生成内容的事实性与上下文相关性。"
+      },
+      {
+        "term": "BM25",
+        "explanation": "BM25 是信息检索领域常用的打分函数，用于评估文档与查询的相关性，广泛应用于传统全文检索引擎（如 Lucene、Tantivy、Vespa）。"
+      },
+      {
+        "term": "vector DB",
+        "explanation": "向量数据库（vector DB）用于存储高维 embedding 并支持近邻搜索（例如 ANN 算法），既可以是专门的外部服务，也可以通过扩展如 pgvector 在 Postgres 内实现。"
+      }
+    ],
+    "context": "Omni 是一个开源的工作区搜索与聊天系统，设计核心是尽可能把全文检索与向量搜索放在 Postgres（借助 pgvector、tsvector、pg_trgm 或 ParadeDB 的 pgsearch/Tantivy）里，从而减少外部检索服务。项目提供多种数据源连接器（如 Google Workspace、Slack、SharePoint/OneDrive/Outlook），并支持“Bring Your Own LLM”，这同时引发了关于“自托管”与数据是否离网的讨论。评论主要围绕部署兼容性（扩展白名单）、权限与 ACL 的同步复杂性、以及大规模向量索引的重建与索引膨胀等工程挑战展开。作者在评论中回应了权限方案（应用层过滤与将来引入 RLS）、文档缺口与用 LLM 做查询编排以提升 RAG 效果的实现思路。",
+    "emoji": "🔧",
+    "sarcastic_question": "把模型交给 OpenAI，你还叫“自托管”吗？"
+  },
+  "articleSummary": "Omni 是一个开源的工作场所搜索和聊天平台，基于 Postgres 构建，定位为 Workplace AI Assistant and Search Platform。该项目托管在 GitHub 上，仓库地址为 getomnico/omni，目前拥有 405 个 Star 和 11 个 Fork，采用 Apache-2.0 许可证。Omni 旨在提供企业级的 AI 助手和搜索功能，允许用户通过单一平台整合和检索工作场所信息。其技术核心依赖于 Postgres 数据库，强调开源和可扩展性，适用于需要内部知识管理和智能问答的团队或企业。"
+}

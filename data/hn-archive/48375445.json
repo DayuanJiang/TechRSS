@@ -1,0 +1,92 @@
+{
+  "id": 48375445,
+  "by": "birdculture",
+  "title": "Branchless Quicksort faster than std:sort and pdqsort with C and C++ API",
+  "url": "https://tiki.li/blog/blqsort",
+  "score": 131,
+  "createdAt": 1780611633,
+  "aiSummary": {
+    "chinese_title": "无分支 quicksort 基准快过 std::sort、pdqsort，Rust 的 ipnsort/driftsort 也被拿来对比",
+    "discussion_overview": [
+      {
+        "category": "Rust 标准库排序性能对比",
+        "summary": "有人把讨论延伸到 Rust 标准库：同一批作者还做了两个排序实现，ipnsort（unstable）和 driftsort（stable），普通用户直接调用 `[T]::sort` 和 `sort_unstable` 就能用上。评论里给出 Apple M2 上的基准，显示 ipnsort 在 50 million doubles 和 `(i32, i32)` struct 上都领先 blqs、`std::sort` 和 `std::stable_sort`。当输入变成“前 90% 已经有序、后 10% 随机”时，driftsort 作为稳定排序反而明显更快，说明不同输入分布会改变排序算法的相对优势。这个对比把话题从单个实现扩展成了“语言标准库排序到底该怎么选”的问题。",
+        "supportid": [
+          "48405747"
+        ]
+      },
+      {
+        "category": "branchless 依赖可预测性而非完全无分支",
+        "summary": "评论重点解释了所谓 branchless 代码并不是“没有任何 branch”，而是尽量避开会被误判的条件跳转。像 `numbers[i] < 500` 这种表达式在 C 里会直接变成 0 或 1，再通过算术更新 `smlen`，不需要显式 `if`。有评论进一步说明，循环回边本身仍然有 branch，但它通常高度可预测；真正拖慢程序的是排序里那种接近 50/50、让 branch predictor 容易猜错的条件。还有人指出编译器未必会把显式 `if` 自动改写成同样的汇编，所以手工改写或把赋值提到 `if` 外面，往往才能得到接近的 branchless 代码。",
+        "supportid": [
+          "48408471",
+          "48406834",
+          "48407050",
+          "48406890",
+          "48406931",
+          "48406984",
+          "48408389",
+          "48406995",
+          "48407170",
+          "48408242",
+          "48407222"
+        ]
+      },
+      {
+        "category": "基准是否覆盖了足够多的算法和输入分布",
+        "summary": "有人质疑只拿随机数据做 benchmark 还不够，应当把 vectorized bitonic sort network 之类的实现也拉进来比较，尤其是 Intel 那类高度优化的版本。另有评论指出，仓库里的测试几乎只覆盖 random values，但排序算法在部分有序、重复值多或模式明显的数据上可能表现完全不同。评论甚至提醒，项目内部本身就用了 sorting network，所以拿同类更成熟的实现来对照会更公平。这个分歧的核心不是“谁一定更快”，而是“你到底在什么数据分布上证明它更快”。",
+        "supportid": [
+          "48405324",
+          "48405500",
+          "48405701"
+        ]
+      },
+      {
+        "category": "C++ 类型 trait 与构造成本",
+        "summary": "有评论细看了 C++ 版本的实现，指出它似乎默认 `T` 必须 default-constructible，而且还假设默认构造很便宜。代码里像 `heap_sort` 和 `partition_small` 这样的地方会先创建临时对象或缓冲区，再很快覆盖掉，这对某些类型来说等于白白付出构造成本。评论还举了 `std::reference_wrapper<int>` 这类 trivially copyable 但不是 default-constructible 的例子，说明算法宣传的适用范围可能比表面上更窄。有人建议把 trait 条件从 `is_trivially_copyable` 再补上 `is_trivially_default_constructible`，也有人追问为什么强调 trivial copy 而不是 trivial move。",
+        "supportid": [
+          "48406960",
+          "48407176",
+          "48408232"
+        ]
+      },
+      {
+        "category": "简洁实现的理解成本",
+        "summary": "也有评论纯粹在夸这段代码写得很简洁，但“简洁”并不等于“好懂”。几位评论把它类比成一封被压缩得很短的信：真要完全理解，反而需要花更多时间仔细拆解每一行在做什么。相比之下，写成很多显式 `if` 的版本虽然更长，却更容易一眼看懂流程和边界条件。这个观点的重点是，高性能代码常常把复杂性从运行时转移到了阅读和验证成本上。",
+        "supportid": [
+          "48405275",
+          "48405406",
+          "48405985",
+          "48408243",
+          "48407158"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "branch prediction（分支预测）",
+        "explanation": "CPU 根据历史执行情况猜测条件跳转方向，以减少流水线停顿。"
+      },
+      {
+        "term": "branch misprediction（分支误判）",
+        "explanation": "CPU 预测错分支方向后带来的回滚、刷流水线和性能损失。"
+      },
+      {
+        "term": "sorting network（排序网络）",
+        "explanation": "预先固定比较-交换步骤的排序方案，通常没有数据依赖分支，适合 SIMD/向量化。"
+      },
+      {
+        "term": "trivially copyable",
+        "explanation": "C++ 中可安全按位复制的类型特性，常用于判断对象能否直接 memcpy。"
+      },
+      {
+        "term": "default-constructible",
+        "explanation": "能用无参构造函数创建的类型；如果算法默认构造临时缓冲，就会限制适用范围。"
+      }
+    ],
+    "context": "这篇帖子讨论一个名为 blqs 的 branchless quicksort（无分支快速排序）实现，它同时提供 C 和 C++ API，并声称在基准里快过 C++ 标准库的 `std::sort` 以及 pdqsort（pattern-defeating quicksort，一种针对输入模式优化的快速排序变体）。评论把焦点放到现代 CPU 的 branch prediction（分支预测）和 branch misprediction（分支误判）上：对于随机或难预测的数据，条件跳转猜错会拖慢排序，而把条件转成 0/1 的算术更新可以减少这种损失。有人还把话题扩展到 Rust 标准库的 `ipnsort`（unstable 排序）和 `driftsort`（stable 排序），并引用 Apple M2 与 Apple clang 17 的结果来说明不同算法在随机数据和部分有序数据上的差异。讨论默认读者知道 benchmark、sorting network（排序网络）和 C++ 类型 trait 之类的性能术语，因此也涉及实现是否依赖 default-constructible 和 trivially copyable。",
+    "emoji": "🤓",
+    "sarcastic_question": "只测随机数据，就敢说分支预测没用了？"
+  },
+  "articleSummary": "## 一句话总结\n通过引入辅助缓冲区消除分支预测失败，并配合排序网络处理小数组，`blqsort` 在排序基础类型和自定义结构体时，性能均显著优于 `std::sort` 和 `pdqsort`。\n\n### 现状：std::sort 并不是终点，还有提升空间\n在排序算法的 Benchmark 里，`std::sort` 通常是那个“够用”的标准答案，但作者在 Apple M1 和 AMD Ryzen 3 上的实测数据告诉我们，它还有很大的优化空间。当排序 5000 万个 `double` 时，`std::sort` 在 M1 上耗时 1.33 秒，而在 AMD 上更是慢到了 5.56 秒。即便是目前公认较快的 `pdqsort`，在 AMD 平台上也需要 2.81 秒。相比之下，作者实现的 `blqsort` 单线程版本分别跑出了 0.97 秒和 2.06 秒的成绩。这不仅是快一点的问题，而是通过改变底层逻辑，彻底释放了现代 CPU 的流水线潜力。\n\n### 核心痛点：分支预测失败是性能杀手\n为什么现有的算法还不够快？核心问题在于“分支”。传统的快速排序在 Partition 阶段会写大量的 `if (element < pivot)` 语句。这种写法在数据随机分布时会让 CPU 的分支预测器频繁失效，一旦猜错，CPU 流水线就要清空重排，代价极其昂贵。作者引用了 Edelkamp 和 Weiß 的论文，指出如果能消除这些条件分支，就能大幅提升性能。说白了，就是不要让 CPU 去“猜”，而是让它不管三七二十一先把活干了，哪怕多算一点，也比猜错了重跑要强。\n\n### 破局之道：用空间换时间的无分支 Partition\n那怎么消除分支呢？`blqsort` 借鉴了 `fluxsort` 的思路，用了一个巧妙的设计：辅助缓冲区。它会在栈上分配一个 1024 元素的数组（不涉及堆内存分配），先把数据的一块拷贝进去腾出位置。然后，算法不再用 `if` 判断元素该去左边还是右边，而是通过算术运算直接计算偏移量。比如，利用比较结果的布尔值（0 或 1）来决定指针移动。这样做虽然导致数据拷贝量翻了一倍多，但对于 `double` 这种廉价拷贝的类型，内存带宽的消耗远小于 CPU 等待分支预测的代价。\n\n### 细节打磨：排序网络与 Pivot 策略\n光有 Partition 还不够，递归到底层时的小数组处理也很关键。对于 2 到 12 个元素的小数组，`blqsort` 放弃了递归，转而使用“排序网络”。这是一种预先定义好的、固定步骤的比较交换序列，完全没有分支，且通过显式循环展开来优化。此外，为了防止最坏情况下的 $O(n^2)$ 复杂度，算法在处理大数据块时使用了“中位数的中位数”策略来选 Pivot，并且在检测到分区严重不平衡或已经有序时，会智能切换到堆排序。这些组合拳保证了算法在极端数据下依然稳健。\n\n### 通用性妥协：针对复杂类型的 BlockQuicksort\n对于 `double` 这种简单类型，缓冲区拷贝法很爽，但遇到 `std::string` 这种拷贝成本高的类型怎么办？如果还用缓冲区法，光移动内存就能把性能优势耗尽。这时候 `blqsort` 会自动切换策略，采用 Edelkamp 和 Weiß 提出的 BlockQuicksort 变体。它的核心思路是：只对索引进行无分支处理，最后再根据索引移动实际数据。这样既保留了无分支带来的流水线优势，又避免了昂贵的大对象拷贝。这种根据数据类型特性自动选择最优实现的机制，是它能在 C++ 泛型编程中立足的关键。\n\n### 实战效果：结构体排序依然碾压\n很多 SIMD 优化库（如 Google Highway）虽然在处理数字时极快，但一遇到自定义结构体就很难用。而 `blqsort` 保持了和 `std::sort` 一样的易用性，只需传入迭代器或比较函数。在排序包含 `id` 和 `value` 的自定义结构体时，`blqsort` 的优势依然明显：在 M1 上耗时 0.96 秒，而 `std::sort` 和 `pdqsort` 都需要 3.46 秒；在 AMD 上则是 2.20 秒对 4.75 秒。这说明，通过消除分支预测失败带来的性能提升是普适的，并不局限于基础数值类型。"
+}

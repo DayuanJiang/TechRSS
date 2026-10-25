@@ -1,0 +1,75 @@
+{
+  "id": 50158138,
+  "by": "doener",
+  "title": "OpenBSD 8.0 release will have inteldrm/radeondrm/amdgpu drivers from Linux 6.18",
+  "url": "https://bsd.network/@brynet/117407035545900963",
+  "score": 127,
+  "createdAt": 1792446037,
+  "aiSummary": {
+    "chinese_title": "OpenBSD 8.0沿用 Linux 6.18 DRM 驱动，跨至8.0并非重大版本",
+    "discussion_overview": [
+      {
+        "category": "8.0只是固定节奏的版本进位",
+        "summary": "评论指出，OpenBSD 7.9 实际上已经使用基于 Linux 6.18.y LTS 的 drm(4) 驱动；8.0 是该移植工作的延续，而非首次引入。OpenBSD 每六个月发布一次，每次版本号递增 0.1，因此 7.8→7.9 与 7.9→8.0 在变更规模上原则上没有区别。所有发布都可能含有不兼容改动，但这不表示 8.0 被开发者特意定义为里程碑式大版本。此编号方式早于如今流行的 Semantic Versioning，更接近 Linux kernel 的连续编号习惯。",
+        "supportid": [
+          "50158876",
+          "50158957",
+          "50160108",
+          "50160451",
+          "50160527",
+          "50160787"
+        ]
+      },
+      {
+        "category": "GPL、逐文件许可与固件分发",
+        "summary": "提问者质疑 GPL 的 Linux 驱动如何能进入坚持 BSD 许可的 OpenBSD，回应称大量 DRM 通用代码和 GPU 驱动因历史原因本就采用 MIT/X 等宽松许可。将宽松许可代码纳入 GPL 项目不会自动改变原作者授予的许可；代码文件可保留各自版权与许可证，因而可在不带 GPL 依赖部分的条件下重新使用。也有评论强调实际边界取决于代码与 GPL 部分的耦合程度，但 OpenBSD 的内核明确不接纳 GPL 代码，并持续从 userland 移除 GPL 组件、以 Clang 取代 GCC。专有 firmware blobs 则不随内核源码移植，而是在安装末尾由 fw_update 下载。",
+        "supportid": [
+          "50159345",
+          "50159396",
+          "50160649",
+          "50161288",
+          "50160947",
+          "50160742",
+          "50160843",
+          "50160891",
+          "50160915",
+          "50161056",
+          "50159407",
+          "50160442"
+        ]
+      },
+      {
+        "category": "LLM是否会改变硬件驱动移植",
+        "summary": "有人借此设想 LLM 是否能加速逆向缺乏公开规格的硬件，从而改善 Linux 休眠及 FreeBSD 对特殊硬件的支持。反驳意见认为，*BSD 移植 Linux 视频驱动已持续多年，本次只是定期与上游重新同步，不能据此归因于 LLM。另一方认为即使资深维护者也可能用 LLM 消除重复劳动，而社区对 AI 辅助的敌意会降低实际使用者的披露意愿。现实兼容性并非全然悲观：有用户报告 MSI Modern 15 笔记本在 FreeBSD 上连 S3 hibernation 都能正常工作。",
+        "supportid": [
+          "50158758",
+          "50158911",
+          "50160472",
+          "50160604",
+          "50160651",
+          "50160670",
+          "50160698",
+          "50158855"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "DRM / drm(4)",
+        "explanation": "Direct Rendering Manager，Linux 与 OpenBSD 中管理 GPU 显示、图形加速及相关内核驱动的框架；drm(4) 是 OpenBSD 的相关手册页名称。"
+      },
+      {
+        "term": "GPL",
+        "explanation": "GNU General Public License，一类 copyleft 开源许可证；分发其衍生或紧密组合的软件通常需遵守相应的源码与许可义务。"
+      },
+      {
+        "term": "firmware blob",
+        "explanation": "设备运行所需、通常以二进制形式发布的专有固件；它与内核驱动代码分开，常在安装后单独下载。"
+      }
+    ],
+    "context": "OpenBSD 是强调代码审计和许可证简洁性的 Unix-like 操作系统，其显卡支持长期通过移植 Linux 的 DRM（Direct Rendering Manager，GPU 内核驱动框架）代码来更新。此次所说的 inteldrm、radeondrm 和 amdgpu 分别对应 Intel、较早期 AMD Radeon 与现代 AMD GPU 驱动，但评论补充称相关 Linux 6.18.y LTS 代码已在 OpenBSD 7.9 中落地。OpenBSD 采取每六个月一次的固定发布节奏，版本从 7.9 滚动到 8.0 不表示语义化版本中的“主版本升级”。争议的核心是 Linux 内核中可移植部分的逐文件许可：OpenBSD 只纳入宽松许可的驱动代码，而专有 GPU firmware blobs 则通过 fw_update（OpenBSD 的固件下载工具）另行获取。",
+    "emoji": "⚖️",
+    "sarcastic_question": "版本翻到8.0，GPL代码就自动洗成BSD了吗？"
+  },
+  "articleSummary": "## 一句话总结\nOpenBSD 8.0 不仅把 DRM 图形驱动升级到了 Linux 6.18 内核水平，更完成了全架构向 Clang 工具链的迁移，并在虚拟化与硬件支持上实现了多项关键突破。\n\n## 正文\n\n### 图形栈大换血，追平 Linux 6.18\n对于桌面用户来说，这次最直观的升级莫过于图形栈。Jonathan Gray (jsg@) 持续推进 DRM 子系统的更新，直接将 `inteldrm`、`radeondrm` 和 `amdgpu` 驱动拉到了 Linux 6.18.y 的水平。这意味着 OpenBSD 终于支持 Intel Arc A-Series (DG2/Alchemist) 显卡了。不仅如此，amd64 架构上的 KVA（内核虚拟地址）空间也从原来的规模扩展到了 512G。这个改动直接解决了大显存显卡的痛点：现在系统可以映射超过 4G 的 VRAM，让 Vulkan 进行 GPU 计算成为可能。\n\n### 彻底告别 GCC，全架构拥抱 Clang\n编译工具链方面，OpenBSD 这次迈出了决定性的一步。Clang/LLVM 22 现已确立为 base 系统的默认编译器，连带 libc++、compiler-rt 等运行库也一并更新。最值得一提的是 sparc64 架构：这是最后一个切换到 Clang 的“钉子户”，如今也终于完成了迁移。这标志着 OpenBSD 成了目前唯一一个能在 sparc64 平台上提供现代工具链支持的操作系统。这不仅仅是编译器的更替，更是对老旧架构维护能力的一次重要宣示。\n\n### 虚拟化性能怪兽：单 VM 支持 64 vCPU\n如果你关注虚拟化，Mike Larkin 和 Dave Voutila 在 Edmonton 的成果绝对值得一看。他们重写了 vmm/vmd(8)，现在支持 SMP 虚拟机，单台虚拟机最高能配 64 个 vCPU。这个数字对于在 OpenBSD 上跑重型服务器负载的开发者来说，意味着性能瓶颈被大幅推后了。配合底层的改进，swap 加密在 amd64 和 arm64 上也利用 AES CPU 指令集进行了加速。安全依然是 OpenBSD 的底色，但这次他们让安全变得更“轻”了。\n\n### 硬件支持与“跑马灯”的小情趣\n在硬件驱动层，8.0 加入了不少新面孔。针对高通 WCN7850 芯片的 `qwz(4)` 驱动让 WiFi 支持跟上了时代；针对三星 Galaxy Book4 Edge 的 `sambat(4)` 驱动则补全了电池状态监控。甚至还有一个颇具极客范儿的功能：arm64 和 riscv64 开发板现在可以通过闪烁 LED 灯来显示系统负载。Das Blinkenlights，这不仅是实用的调试手段，更是系统状态可视化的经典致敬。\n\n### 基础设施与 Web 服务的细节打磨\n系统服务层面，自带的 httpd(8) 也迎来了久违的功能更新。现在你可以设置自定义 HTTP 响应头，或者基于接收到的 HTTP 头（比如 User-Agent）配置新的阻塞和过滤规则。这些看似不起眼的小功能，对于在 OpenBSD 上部署 Web 服务的运维人员来说，却是解决实际问题的利器。作者最后还提到，他在这个周期向 OpenSSH 提交了第一个 commit，虽然文章没展开细节，但这暗示了整个生态系统的活跃度。"
+}

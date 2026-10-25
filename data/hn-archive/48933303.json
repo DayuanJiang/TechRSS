@@ -1,0 +1,76 @@
+{
+  "id": 48933303,
+  "by": "onatm",
+  "title": "Let's Build PlanetScale from Scratch: Infrastructure",
+  "url": "https://onatm.dev/2026/07/16/homescale-part-1/",
+  "score": 125,
+  "createdAt": 1784204467,
+  "aiSummary": {
+    "chinese_title": "Ceph快照分支版仿PlanetScale数据库原型",
+    "discussion_overview": [
+      {
+        "category": "不像真正的PlanetScale",
+        "summary": "不少评论认为，这个项目被拿来类比 PlanetScale 有点牵强。PlanetScale 的核心是通过 sharding 做横向扩展，并配套 bouncer、gateway 或 reverse proxy 来实现零停机切换；而当前内容更像一个托管单实例数据库，和 RDS 一类产品更接近。有人直接指出，帖子里没有触及数据分片和故障迁移这些真正困难的部分，所以“建了 PlanetScale”这个说法会误导目标边界。也有人补充，很多 cloud SaaS 本质上只是把现成技术托管起来，单看“从零搭建”并不能说明已经接近完整产品。",
+        "supportid": [
+          "48934153",
+          "48934400",
+          "48935041"
+        ]
+      },
+      {
+        "category": "Ceph快照/分支思路受认可，但性能是隐患",
+        "summary": "也有评论认可把 snapshots 和 branching 放到数据库服务器下方、交给 Ceph 存储层实现的想法，认为这种设计在 API 和开发流程上可能很优雅。举例来说，像 dev-db/feature-login 这样的分支数据库非常适合用 COW（copy-on-write）式快照来快速复制。问题在于，曾经在虚拟化关系数据库上叠加 Ceph 中央存储的体验并不理想，性能很容易成为瓶颈。围绕这一点，讨论又转向希望看到更具体的 Ceph 配置、工作负载和数据规模，以判断性能问题到底有多严重。",
+        "supportid": [
+          "48939269",
+          "48939357"
+        ]
+      },
+      {
+        "category": "与Xata、Neon等架构路线对照",
+        "summary": "评论区把这个方案放进更大的数据库基础设施图景里比较，提到 Xata 和 Neon 也在做类似方向，但技术路线不同。Xata 的做法是自建存储系统而不是直接依赖 Ceph，主要考虑的是多卷扩展性和一定程度的性能；另有人提到自己做过基于 ZFS 的类似系统。讨论里反复出现一个现实判断：compute 和 storage 分离虽然带来弹性，但 EBS 之类的块存储性能通常一般。也有人补充，如果已经有高可用和实例迁移能力，很多扩容问题并不一定要靠紧急弹性来解决。",
+        "supportid": [
+          "48935169",
+          "48935759",
+          "48935866",
+          "48935890"
+        ]
+      },
+      {
+        "category": "当前只是基础设施原型，后续还有完整服务链路",
+        "summary": "有评论明确说明，这篇内容目前只是为了支撑后续正式服务的 infrastructure 部分，真正的服务还要继续补 operator、coordinator、API 和 CLI。另一些人则表示自己在 homelab 里研究 PITR（point-in-time recovery，按时间点恢复），愿意试用并在发现问题时贡献代码。关于快照如何清理，也有人提出 branch 深度阈值和 RBD flattening 方案，用来在层级太深时压平依赖。整体上，这组评论关心的是数据库的生命周期管理和工程落地，而不只是展示一个能跑的 demo。",
+        "supportid": [
+          "48934137",
+          "48934164",
+          "48935067",
+          "48935995"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Ceph",
+        "explanation": "一种分布式存储系统，可提供块存储、对象存储等能力，常被用作底层数据层。"
+      },
+      {
+        "term": "sharding",
+        "explanation": "把数据库数据拆分到多个节点上，以横向扩展容量和吞吐。"
+      },
+      {
+        "term": "COW（copy-on-write）",
+        "explanation": "写时复制；创建快照或分支时尽量复用旧数据，只记录变化部分。"
+      },
+      {
+        "term": "PITR",
+        "explanation": "point-in-time recovery，按时间点把数据库恢复到某一时刻。"
+      },
+      {
+        "term": "RBD flattening",
+        "explanation": "Ceph RBD 的扁平化操作，用来打断快照依赖、减少分支层级过深。"
+      }
+    ],
+    "context": "这篇帖子讨论的是一个从零搭建的数据库服务基础设施原型，重点先放在存储层，而不是完整的 PlanetScale（一个以数据库分片和无停机扩容著称的平台）。评论里提到，方案把 snapshot、branching 和 COW（copy-on-write，写时复制）放到 Ceph（分布式存储系统）之下，让开发者可以像 dev-db/feature-login 这样快速克隆数据库分支。有人认为这更像 Xata（一个面向 Postgres 的托管数据库服务）或 Neon（一个把 compute 与 storage 分离的 Serverless Postgres 平台），而不是 PlanetScale，因为真正的 sharding、gateway 和零停机切换还没有出现。讨论还延伸到 Ceph、ZFS（文件系统）、EBS（AWS 弹性块存储）等存储方案的性能取舍，以及后续会补上的 operator、coordinator、API、CLI 和 PITR（point-in-time recovery，按时间点恢复）能力。",
+    "emoji": "🤨",
+    "sarcastic_question": "只做快照分支也叫PlanetScale吗？"
+  },
+  "articleSummary": "# 一句话总结\n通过将存储层与计算层分离，并利用 Ceph RBD 的 Copy-on-Write 机制，在 Kubernetes 上构建了一个支持即时分支、低成本克隆的类 PlanetScale 数据库基础设施。\n\n---\n\n### 从 Docker 模型中汲取灵感\n\n作者想构建一个 \"Homescale\" —— 一个家庭版的 PlanetScale。核心需求是创建可写的数据库实例和基于时间点的分支，但绝对不能复制整个数据库文件。他借鉴了 Docker 的镜像和容器模型：数据库镜像是不可变的起始点，容器是基于镜像的可写克隆，而分支则是基于现有容器当前状态的另一个容器。这种设计让 `dev-db` 和 `feature-login` 看起来是两个独立的数据库，但在底层存储上，它们有着明确的血缘关系。这种抽象不仅直观，而且让存储模型与具体的数据库引擎（如 Postgres）解耦，引擎特定的逻辑只需要放在适配器层处理。\n\n### 存算分离是实现分支的关键\n\n要实现这种分支模型，必须把数据库存储和计算进程剥离开。这就像云厂商的做法，数据库进程读写的是一个看似普通的块设备，但背后的持久化数据并不在计算节点的本地磁盘上。这个边界让 Homescale 可以在启动数据库进程之前先准备好存储，或者在进程停止后依然保留数据。更重要的是，这让分支操作可以在存储层直接完成，根本不需要数据库引擎自己支持分支功能。无论你是用 Postgres 还是 MySQL，看到的都是一个标准的块设备，而底层的快照和克隆逻辑对上层完全透明。\n\n### COW 机制让 100GB 数据库秒级克隆\n\n既然不能全量复制数据，那怎么让分支看起来像是一个完整的数据库呢？秘密在于 Copy-on-Write (COW)。当创建 `feature-login` 分支时，Homescale 会先捕获 `dev-db` 的当前状态作为一个只读快照。新分支最初共享这个快照的数据，只有在第一次写入共享数据时，存储层才会把对应的数据块复制到分支自己的存储空间。这意味着，一个 100GB 的数据库分支在创建时几乎不占用额外空间，只有随着数据差异变大，存储占用才会增加。当然，这也带来了依赖管理的挑战：只要分支还存在，作为中间状态的只读快照就不能被删除。\n\n### Ceph RBD 提供了完美的底层支持\n\n为了实现 COW，作者选择了 Ceph 的 RBD (RADOS Block Device)。RBD 将块设备切分成对象存储在底层，默认对象大小是 4MB。当你对克隆卷进行写操作时，Ceph 可能需要复制整个 4MB 的对象，这就是为什么小写入也可能导致较大存储分配的原因。通过 RBD 的 snapshot layering 功能，一条简单的命令序列（创建快照、保护快照、克隆）就能实现数据库分支。数据库进程依然像操作普通磁盘一样读写文件系统，完全感知不到底层 Ceph 的存在，这种透明性极大地简化了系统设计。\n\n### 用 Kubernetes 统筹控制面与存储\n\n作者不想自己写一套管理进程和挂载卷的代码，而是选择让 Kubernetes 来做这些脏活累活。Homescale 只需要通过 Kubernetes 的资源（如 PVC 和 VolumeSnapshot）来描述期望的状态，剩下的就交给控制器去协调。CLI 请求创建分支，Homescale API 就会创建对应的 PVC 和 VolumeSnapshot 资源，然后 Ceph CSI Driver 会把这些请求转化为底层的 RBD 操作。这种设计让 Homescale 既能利用 Kubernetes 的自我修复能力，又避免了重复造轮子，控制逻辑和存储逻辑被清晰地划分开了。\n\n### Rook 让部署形态灵活多变\n\n为了让这套系统既能跑在本地单机，也能跑在云端集群，作者引入了 Rook。Rook 通过自定义资源（如 `CephCluster` 和 `CephBlockPool`）来管理 Ceph 集群，并配置 CSI 驱动。在本地 macOS 环境下，可以配置单 OSD 和单副本；而在 Hetzner 的私有集群上，则可以配置跨主机的三副本高可用模式。对于 Homescale 来说，只要底层暴露了兼容的 `StorageClass`，它就不需要关心底层是一个硬盘还是一堆硬盘，这种解耦让基础设施的扩展变得非常简单。"
+}

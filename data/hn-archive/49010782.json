@@ -1,0 +1,90 @@
+{
+  "id": 49010782,
+  "by": "HenryNdubuaku",
+  "title": "Show HN: Cactus Hybrid: We taught Gemma 4 to know when it's wrong",
+  "url": "https://github.com/cactus-compute/cactus-hybrid",
+  "score": 129,
+  "createdAt": 1784762413,
+  "aiSummary": {
+    "chinese_title": "Gemma 4 学会估计自己何时会错",
+    "discussion_overview": [
+      {
+        "category": "把“知道自己错了”理解成不确定性估计",
+        "summary": "最强烈的争议是标题里的“知道自己错了”是否过度拟人化。评论者认为模型最多只能估计不确定性、内部一致性或失败概率，而不是像人一样拥有正确/错误的自我意识，因此更合适的说法是“知道自己不确定”。也有人觉得这并不神秘，本质上就是 Bayesian stats：只要有足够实验数据，就能训练一个分类器或回归器来预测哪类输出更可能出错。另一些人把讨论落到断言类型上，区分偏好、可核验事实和复杂判断，认为不同命题本来就有不同的可判定性。",
+        "supportid": [
+          "49015694",
+          "49018009",
+          "49015744",
+          "49016135",
+          "49016519",
+          "49018526",
+          "49017634",
+          "49018286",
+          "49018377"
+        ]
+      },
+      {
+        "category": "从 hidden state 读出错误信号",
+        "summary": "也有人从技术路线解释它：先让模型 step by step 生成，再把每一步送进 classifier 或 probe 重新打分，必要时让模型回查。评论提到早期数学推理里就常见 generate→classify loop，因为分类“这一步像不像错了”有时比生成完整推理链更容易。作者补充说他们对 Gemma 4 做了 mechanistic study，发现不同层的 hidden state 里确实有可读出 p(wrong) 的信号，于是训练了一个 probe layer 来利用这些信号。还有人进一步设想，可以把错误来源分成训练数据、prompt/context、或后续 token 自己滚偏了几类。",
+        "supportid": [
+          "49018206",
+          "49011476",
+          "49013096"
+        ]
+      },
+      {
+        "category": "机械可解释性与 activation steering",
+        "summary": "另一条线索把它放进 mechanistic interpretability 和 activation steering 的语境里。评论者猜测，像“代码写得 clean 还是 crufty”“实现过程顺不顺”这类开发者直觉，也许都能变成可提取的内部信号。有人问它是否和 Goodfire 的研究类似，对方回复说思路是 loosely similar，说明双方都在试图从模型内部表示里找可操纵、可解释的概念。这个方向更像是在给模型列一份“要检测的信号清单”，而不只是单纯做一个二分类器。",
+        "supportid": [
+          "49015640",
+          "49014892",
+          "49014942",
+          "49018345"
+        ]
+      },
+      {
+        "category": "路由、fallback 和本地部署的实际用途",
+        "summary": "评论里还讨论了它的实际用途：能否把这个小模型当作 coding tasks 的前置筛子，交给更大的本地模型做 fallback，或者把简单子任务分派给它。作者回应说他们正在做 larger models，也认可这种多模型路由思路。另有用户提到项目已经能在 Framework Desktop 上运行，并给出仓库链接，说明它不是纯论文概念，而是可以本地试跑的原型。整体看，大家把它想成便宜的 judge、摘要器或任务分发器。",
+        "supportid": [
+          "49015274",
+          "49018327",
+          "49015646"
+        ]
+      },
+      {
+        "category": "冻结主权重，避免破坏原模型",
+        "summary": "也有人直接追问副作用：把这种自检能力加上去，会不会把原模型质量弄坏。作者的回答是不会，因为主 weights 被 freeze，只训练额外加上的权重。这个设计意味着底模能力尽量不变，而“知道自己会不会错”的能力被外包给旁路模块。换句话说，它更像一个外挂的判别器，而不是重写模型本身的思考方式。",
+        "supportid": [
+          "49015777",
+          "49018333"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "hidden state",
+        "explanation": "模型各层生成的内部表示，常用来探测是否含有错误或不确定性信号。"
+      },
+      {
+        "term": "probe / probe layer",
+        "explanation": "冻结主模型后训练的小探测器，用 hidden state 预测某个属性，例如 p(wrong)。"
+      },
+      {
+        "term": "mechanistic interpretability",
+        "explanation": "通过分析模型内部电路、表示和层间作用来理解其行为的研究方向。"
+      },
+      {
+        "term": "activation steering",
+        "explanation": "直接干预模型内部激活，诱导输出朝某种概念或行为偏移的技术。"
+      },
+      {
+        "term": "confidence score / p(wrong)",
+        "explanation": "模型对答案把握程度或出错概率的量化输出，用于判断是否需要复查。"
+      }
+    ],
+    "context": "这个 Show HN 项目 Cactus Hybrid 声称通过 post-training 让 Gemma 4（Google 的 Gemma 系列开源模型）在回答时给出自己是否可能出错的判断和 0-1 confidence score。作者说他们冻结主模型权重，只训练额外权重，并从各层 hidden state（模型内部激活）里用 probe 读出 p(wrong) 信号。评论把它与早期数学推理里的 generate→classify loop、mechanistic interpretability（机械可解释性）和 activation steering（激活引导）联系起来，因为这些方法都在尝试从内部状态中提取可用反馈。项目作者还提到它已经能在 Framework Desktop（Framework 的桌面硬件）上跑，后续会整理成更完整的报告，并继续扩展到更大的模型和更多下游任务。",
+    "emoji": "🤔",
+    "sarcastic_question": "模型先知道自己错了，再知道为什么错？"
+  },
+  "articleSummary": "## 一句话总结\n给小模型装个“自知之明”的探针，让它能精准评估自己的置信度，从而在 85% 的任务上用本地小模型搞定，剩下的再丢给云端大模型，最终用小模型的成本跑出了大模型的效果。\n\n### 小模型快但容易错，大模型准但太贵\n端侧模型虽然快且隐私性好，但硬伤是能力有限，遇到复杂问题容易一本正经地胡说八道。传统的做法是全量跑大模型，但这成本和延迟谁都受不了。Cactus 的思路很直接：能不能让小模型自己知道“这题我不会”，然后只把搞不定的难题丢给大模型？说白了就是给模型加一个自我审查机制，实现能力的按需分配。\n\n### 核心是把置信度变成结构化数据，而不是猜出来的\n为了实现这个想法，他们在 Gemma 4 的 checkpoint 里植入了一个 probe（探针）。这个探针不是去解析生成的文本，而是直接读取模型的 hidden state，输出一个 0 到 1 之间的置信度分数。这样做的好处是置信度是模型推理时直接算出来的结构化数据，非常可靠。开发者拿到这个分数后，写个简单的 if 逻辑就能做路由：置信度高就自己答，低于 0.85 就转发给大模型。\n\n### 路由策略极其精准，大部分请求根本不需要大模型\n这套 Gemma 4 E2B Hybrid 模型跑出来的数据非常漂亮。在大多数基准测试中，它只需要把 15% 到 35% 的查询转发给 Gemini 3.1 Flash-Lite，剩下的全靠自己跑，最终得分就能跟全量跑 Flash-Lite 打平。比如在 ChartQA 上，它只需要转发 15-20% 的请求；即便是在较难的 MMLU-Pro 上，也只需要转发 45-55%。这意味着你用极低的大模型调用量，就换来了顶级的性能。\n\n### 探针不是死记硬背，而是读懂了“正确性”的通用信号\n更有意思的是这个探针的泛化能力。数据显示，它在音频任务上的表现炸裂，AUROC（衡量区分对错能力的指标）达到了 0.79 到 0.88，远超传统的 Token Entropy 方法（后者只有 0.3-0.5）。关键在于，这个探针在训练时根本没见过任何音频数据。这说明它不是在记忆特定模态的特征，而是真的从 hidden state 里读出了一种跨模态的、通用的“正确性”信号。\n\n### 量化后依然能打，但要注意加载细节\n对于资源受限的场景，他们还测试了量化效果。即便在 4-bit 量化下，路由质量依然保持得很好，只是需要转发给大模型的比例会稍微上升一点（比如 ChartQA 从 20% 涨到 30%）。不过在使用时有个坑：在 Transformers 库里加载时，必须显式调用 `.to(device)`，不能用 `device_map=\"auto\"`。因为探针是在 `forward()` 路径外计算分数的，如果用了自动设备映射，可能会导致权重加载不完整而崩溃。\n\n### 接入非常平滑，支持主流推理框架\n从工程落地的角度看，这套方案对开发者很友好。不管你是用 MLX、Transformers 还是 llama.cpp，都有现成的接入方式。特别是在 MLX 和 llama.cpp 中，获取置信度非常简单，前者直接读 `model.last_confidence`，后者在 API 返回的 JSON 里自带 `confidence` 字段。MIT 协议开源，想给自家应用加个智能路由层的开发者，可以直接上手试了。"
+}

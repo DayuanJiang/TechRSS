@@ -1,0 +1,86 @@
+{
+  "id": 48784777,
+  "by": "theanonymousone",
+  "title": "Explanation of everything you can see in htop/top on Linux",
+  "url": "https://peteris.rocks/blog/htop/",
+  "score": 331,
+  "createdAt": 1783174259,
+  "aiSummary": {
+    "chinese_title": "Linux htop/top 指标详解：RSS、进程树、btop 替代与 GPU 争论",
+    "discussion_overview": [
+      {
+        "category": "现代替代监控工具",
+        "summary": "不少评论把 btop 视为更现代的终端监控替代品，认为它比 htop/top 更直观，也更符合日常使用习惯。有人特别提到它还能直接显示 Watts、network、GPU 和 disks 等信息，信息密度明显更高，甚至已经替代了 Mac 上的 iStatMenu。除了 btop，nmon 也被推荐出来，尤其适合看 disk throughput 和 I/O；powertop 则补上了功耗分析这一块。整体氛围是：经典工具仍有价值，但新工具在界面和可见性上已经明显更强。",
+        "supportid": [
+          "48785704",
+          "48785850",
+          "48786344",
+          "48785848",
+          "48786919",
+          "48785680",
+          "48786857"
+        ]
+      },
+      {
+        "category": "内存指标与 RSS 的误读",
+        "summary": "这组评论最认同文章的一点，是它明确指出 virtual memory 并不可靠，真正更接近实际占用的是 Resident Set Size（RSS）。有人举例说，memory-mapped files 会让虚拟内存看起来巨大，但其中很多页面并不会真的常驻物理内存，所以用户常常把“映射了很多”误读成“吃了很多 RAM”。评论还提到 Chrome 过去也受过这类误解影响，后来减少依赖 memory-mapped files，不是因为映射本身不好，而是因为用户会被数字吓到。另一个细节是，在 HPC 集群里，内存映射页面是否计入 RSS 可能直接影响作业是否被调度器杀掉。",
+        "supportid": [
+          "48786723",
+          "48787062"
+        ]
+      },
+      {
+        "category": "htop/top 的实用设置与操作",
+        "summary": "有人分享了几个很实用的 htop/top 用法：关掉 user threads 可以减少界面噪音，打开 process tree 则更容易看出某个进程是从哪里派生出来的。对排查编译器、批处理或某个子进程链条来说，树状视图比单纯的平铺列表更有上下文。top 里按内存或 CPU 排序也被反复提起，尤其是用 uppercase 的 M 和 P，或者直接用 > 看内存占用，能更快定位卡顿元凶。另有人补充说，如果目标只是找 PID，pgrep 往往比在 htop 里翻找更顺手。",
+        "supportid": [
+          "48785690",
+          "48786199",
+          "48785628",
+          "48786792",
+          "48785569",
+          "48785577"
+        ]
+      },
+      {
+        "category": "GPU 时代是否让 htop 过时",
+        "summary": "讨论里出现了一条分歧：随着很多计算转向 GPU，htop/top 是否会逐渐失去意义。支持者认为系统监控应该跟上变化，至少要能把 GPU 利用率也纳入视野，否则只能看到 CPU 这层“调度者”，却看不到真正干活的地方。反对者则强调，这只是某些工作流的体验，不代表所有场景都如此；很多常见软件开发负载仍然主要吃 CPU 和 RAM，比如编译、IDE、test suites、local containers、local databases、浏览器、压缩加密和搜索索引。也有人直接指出，GPU 还不能替代数据库、VM、web server 这些通用系统工作，所以传统监控工具并没有“过时”。",
+        "supportid": [
+          "48785693",
+          "48785825",
+          "48785875",
+          "48786481",
+          "48785932",
+          "48786220",
+          "48786513",
+          "48786307"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Resident Set Size (RSS)",
+        "explanation": "进程当前实际驻留在物理内存中的部分，比 virtual memory 更能反映真实 RAM 占用。"
+      },
+      {
+        "term": "virtual memory",
+        "explanation": "进程可用的地址空间总量，包含映射和预留部分，常常比真实物理内存占用大得多。"
+      },
+      {
+        "term": "memory-mapped file / mmap",
+        "explanation": "把文件映射进进程地址空间的机制，方便访问，但会让内存统计看起来更复杂。"
+      },
+      {
+        "term": "process tree",
+        "explanation": "按父子关系展示进程层级的视图，适合追踪进程来源和子进程链路。"
+      },
+      {
+        "term": "load average",
+        "explanation": "一段时间内系统中可运行或不可中断任务的平均数，用来粗看系统压力，不等于 CPU 使用率。"
+      }
+    ],
+    "context": "这篇文章是在逐项解释 Linux 上 top/htop（两个终端进程监视器）里能看到的各种字段和含义，目标是让用户真正读懂 CPU、内存、load average、进程状态等信息。评论区把话题扩展到了多个相关工具：btop（一个更现代的终端系统监视器）因界面更友好、还能显示 Watts、GPU、磁盘和网络而受到推荐，nmon（性能监控工具）和 powertop（电源分析工具）也被拿来对照。讨论里还强调了一个常见误区：virtual memory 往往会误导人，RSS（Resident Set Size，常驻物理内存）才更接近真实内存占用，而 memory-mapped files（文件映射）会让数字变得很吓人。另一条延伸线是如何更高效地使用 htop/top，例如树状视图、线程显示、排序键，以及在 GPU 负载越来越多时，这类经典工具是否需要扩展到 GPU 监控。",
+    "emoji": "🤓",
+    "sarcastic_question": "GPU 都上班了，CPU 监控就该退休？"
+  },
+  "articleSummary": "## 一句话总结\n这篇文章通过剖析 Linux 的 `/proc` 文件系统和 `htop` 的界面细节，澄清了 Load Average 的计算逻辑、进程状态（特别是 D 状态）的含义以及 VIRT/RES/SHR 等内存指标的本质区别。\n\n### Load Average 不等于 CPU 使用率，它是个指数衰减的\"平均值\"\n很多人误以为双核机器上 Load Average 为 `1.0` 意味着 CPU 占用 50%，这其实不准确。Load Average 统计的是处于\"运行\"或\"不可中断睡眠\"状态的进程数量。如果是 CPU 密集型任务，Load 为 `1.0` 确实意味着单核跑满；但如果是双核，跑满应该是 `2.0`。更有意思的是它的计算方式：它并不是简单的过去 1 分钟或 5 分钟的算术平均，而是一个\"指数衰减移动平均\"（exponentially damped moving average）。这意味着 1 分钟的数值里，其实包含了 63% 最近 1 分钟的负载和 37% 系统启动以来的历史负载。这也是为什么有时候你会发现 CPU 很闲但 Load 却很高，通常是因为有大量进程卡在不可中断的 I/O（D 状态）上。\n\n### htop 的所有秘密都藏在 `/proc` 这个伪文件系统里\n`htop`、`top` 这些工具本身并不产生数据，它们只是个\"展示层\"。真正的数据来源是 Linux 内核提供的 `procfs`，通常挂载在 `/proc` 目录下。作者用 `strace` 跟踪了 `uptime` 命令，发现它其实就是去读取 `/proc/uptime` 和 `/proc/loadavg` 这两个文件的内容。对于每个进程，你都能在 `/proc/<pid>/` 下找到它的详细档案。比如 `cmdline` 存的是启动命令（用空字符分隔），`cwd` 是软链接指向当前工作目录，`exe` 指向执行的二进制文件。说白了，这些监控工具就是把这些枯燥的数字读出来，画成彩色的条形图给你看。\n\n### 进程状态里的 \"D\" 才是让你服务器卡顿的真凶\n在 `htop` 的 `S` 列，我们经常看到 `R`（Running）和 `S`（Sleeping），但最值得警惕的是 `D`（Uninterruptible Sleep）。`R` 代表正在运行或在 CPU 运行队列里排队；`S` 是可中断睡眠，比如在等网络响应。而 `D` 状态的进程正在等待 I/O 操作（通常是磁盘 I/O），而且处于\"不可中断\"状态。这意味着你连 `SIGKILL`（kill -9）都杀不掉它，因为它正在执行内核态的关键任务。如果服务器 Load 很高但 CPU 利用率很低，大概率就是有一堆进程卡在 `D` 状态，这时候去查磁盘或 NFS 往往能找到元凶。\n\n### 看懂内存占用：VIRT 是虚的，RES 才是实的\n很多新手看到 VIRT（Virtual Memory）几百兆就吓一跳，其实这大多是虚的。VIRT 包含了进程申请的所有虚拟内存，包括加载的二进制文件、映射的库文件，以及还没真正用到的堆栈空间。真正需要关注的是 RES（Resident Set Size），这才是进程实际占用的物理内存。还有一个容易被忽视的是 SHR（Shared Memory），它是多个进程共享的内存区域（比如动态链接库或共享内存段）。所以在计算总内存占用时，不能简单地把所有进程的 RES 加起来，因为 SHR 部分是被重复计算的。`MEM%` 这一列就是 RES 占总物理内存的百分比，这才是判断内存压力的硬指标。\n\n### 进程树揭示了父子进程的\"继承\"关系\n你在 `htop` 里按 `F5` 切换到树形视图，就能看到进程间的血缘关系。这背后是 Unix 的设计哲学：除了 PID 为 1 的 `init`（现在是 systemd）进程是\"无父而生\"的，其他所有进程都是由父进程 `fork` 出来的。当你登录 SSH 时，`sshd` 会 `fork` 出一个子进程，这个子进程再去 `exec` `bash`。你在 `bash` 里敲命令，`bash` 再 `fork` 自己，然后 `exec` 你要运行的程序。理解了这个逻辑，你就明白为什么有时候关掉一个终端窗口，它里面跑的程序也会跟着挂掉——因为父进程挂了，子进程通常也会收到信号退出。\n\n### Tasks 不等于 Processes，内核里只有 Task\n你可能会注意到 `htop` 右上角写的是 `Tasks` 而不是 `Processes`。这不是为了省墨水，而是因为在 Linux 内核眼里，进程和线程都被统称为 `task_struct`。默认情况下，`htop` 把线程也看作任务。如果你想看更细粒度的线程信息，可以按 `Shift+H` 开启线程视图，你会看到任务数量激增，并且状态栏会显示 `thr`（threads）的数量。同样，按 `Shift+K` 可以显示内核线程（kthr）。这些内核线程也是 Task，但它们运行在内核空间，负责处理像内存回收、磁盘刷新等底层工作，通常没有对应的用户空间进程。"
+}

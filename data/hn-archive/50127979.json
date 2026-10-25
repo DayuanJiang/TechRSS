@@ -1,0 +1,103 @@
+{
+  "id": 50127979,
+  "by": "albinstman",
+  "title": "Show HN: Llmspeed – feel how fast a local LLM runs before you buy the hardware",
+  "url": "https://llmspeed.dev/",
+  "score": 230,
+  "createdAt": 1792218641,
+  "aiSummary": {
+    "chinese_title": "Llmspeed本地LLM购机测速模拟器：tok/s不等于真实可用性",
+    "discussion_overview": [
+      {
+        "category": "旧硬件、MoE与优化推翻保守估算",
+        "summary": "多位用户认为，通用 benchmark 往往按主流 dense model 和默认推理栈估算，低估了旧硬件的实际潜力。一台配 GTX 1070 Max-Q 的九年旧笔记本，借助 Turboquant 版 llama.cpp、4-bit quant 和 131k context，可运行微调的 35B-A3B 模型并达到 16–19 tok/s。评论尤其强调 MoE 模型只激活部分参数，通常比同等总参数量的 dense model 更适合本地运行；一张 10GB RTX 3080 配 32GB RAM 据称可跑 127B 的 Qwen-next coder，达到 40–50 tok/s。RX580 等旧卡配合 Qwen 9B、缓存量化和新版引擎，也已足以完成简单重构、邮件分类或家庭语音指令等“够用”的任务。",
+        "supportid": [
+          "50128999",
+          "50129753",
+          "50129393",
+          "50129803",
+          "50128569",
+          "50129043"
+        ]
+      },
+      {
+        "category": "长上下文、Prefill与Agent工作流才是瓶颈",
+        "summary": "评论认为单一输出 tok/s 无法代表 coding agent 的体验，因为读取代码库时的 Prefill、TTFT 和 context window 往往更关键。16k context 容易让模型在跨文件问题上反复兜圈，实用的 agent 至少需要约 32k，较理想是 65k 以上，且即使 frontier model 也无法真正一次审阅完整大型项目。KV cache 可通过将 key/value 从 fp16 降至 q8、必要时仅将 value 降至 q4 来换取更大 context，但过度量化会迅速损害效果。M4 Max 与 M5 Max 上相同 Gemma4 模型的数秒至数十秒 TTFT 差异，也说明用户需要看到 Prefill 与缓存阶段，而非只看生成速度。",
+        "supportid": [
+          "50129445",
+          "50129784",
+          "50129769",
+          "50129807",
+          "50130708",
+          "50128720",
+          "50130351"
+        ]
+      },
+      {
+        "category": "模拟器数据、模型覆盖与质量指标不足",
+        "summary": "部分用户质疑估算来源和准确性：有人实际使用 M2 Ultra 128GB 的速度几乎是网站所列 M3 Ultra 512GB 数据的两倍。网站本质上是按所选配置以对应速度播放 dummy text 的 tok/s simulator，并不执行真实模型任务，因此容易被误认为是在回答问题。评论希望补充更多热门模型、不同 quant、推理 harness 及其依赖版本，因为实际端到端性能会受这些实现细节乃至 NVIDIA driver 版本影响。也有人指出模型清单再长不如明确展示最佳选择，并增加质量感知指标；速度快但代码质量差时，本地模型未必比免费 ChatGPT 更有价值。",
+        "supportid": [
+          "50128532",
+          "50129556",
+          "50129743",
+          "50128529",
+          "50128901",
+          "50130270",
+          "50129389"
+        ]
+      },
+      {
+        "category": "多GPU与互连配置需要可定制",
+        "summary": "用户希望工具支持双卡及异构多卡，例如 2×4090 或 RTX 5070 加 RTX 5080，而非只展示单一预设硬件。PCIe 3.0/4.0/5.0、bifurcation、CPU 原生通道和 Threadripper Pro 等平台差异，会影响多卡加载模型和通信时的真实性能。评论还要求标注 NVLink 状态，但也指出消费级 NVIDIA 的 NVLink 实际上在 RTX 3090 之后到 B200 数据中心卡之前基本缺席。Dual Strix Halo 和 Dual Nvidia Spark 等新型组合也被列为遗漏项。",
+        "supportid": [
+          "50128915",
+          "50130724",
+          "50129157",
+          "50128720",
+          "50128785",
+          "50128804",
+          "50130737"
+        ]
+      },
+      {
+        "category": "应以真实任务或短租云机验证购机决策",
+        "summary": "企业用户关心的并非聊天演示，而是模型能否先理解任务、生成并执行数据库查询，再把可靠结果返回客户端；这同时涉及模型质量、工具调用和完整工作流。低显存用户的经验是，小型本地模型能以约 20 tok/s 完成局部工作，但难以像 Opus 一样一次完成复杂架构重构。对此有人建议先短租云端 GPU 实测，花费可低于 0.50 美元，甚至可用注册赠金覆盖，以验证 context window、准确率与延迟是否符合需求。结论是硬件模拟可用于初筛，但不能替代针对自身 prompt、代码库和 agent 流程的实测。",
+        "supportid": [
+          "50128820",
+          "50129043",
+          "50129389",
+          "50128971"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "MoE（Mixture of Experts）",
+        "explanation": "混合专家模型；每次推理只激活部分“专家”参数，因而总参数量很大时仍可能比 dense model 更适合本地硬件。"
+      },
+      {
+        "term": "Prefill / TTFT",
+        "explanation": "Prefill 是处理输入 prompt 和已有上下文的阶段；TTFT（Time to First Token）是首个输出 token 出现前的等待时间，长上下文和 agent 场景尤其受其影响。"
+      },
+      {
+        "term": "KV cache",
+        "explanation": "保存 Transformer 已处理 token 的 Key/Value 状态的缓存；它能避免重复计算，但会大量占用显存或内存，可通过 q8、q4 等量化压缩。"
+      },
+      {
+        "term": "量化（quantization，Q4/Q8）",
+        "explanation": "把模型权重或缓存从 fp16 等高精度格式压缩为较低比特表示，以降低内存占用并让更大模型能在本地运行，但可能损失质量。"
+      },
+      {
+        "term": "harness",
+        "explanation": "围绕 LLM 的调用与 agent 执行框架，负责装载上下文、工具调用、并发等；它会影响端到端延迟，不能只用裸模型 tok/s 代表。"
+      },
+      {
+        "term": "tok/s",
+        "explanation": "每秒生成的 token 数，是常见的输出速度指标；它不直接反映长 prompt 的 Prefill、首 token 延迟、并行能力或回答质量。"
+      }
+    ],
+    "context": "Llmspeed 是一个面向购机前评估的本地 LLM 速度模拟器：用户选择硬件和模型配置后，页面按估算的 tok/s 播放文本，而非实际在浏览器中运行模型。讨论的背景是开源权重模型、llama.cpp（本地 C/C++ 推理引擎）、量化和 GPU offload 的进展，令旧 GPU、Apple Silicon 与消费级显卡也能运行较大的模型。对代码 agent 而言，模型需把代码库、工具输出和推理过程装入 context window，因此长输入的 Prefill、KV cache 占用和并行请求常比逐 token 输出速度更决定体验。用户也在比较本地部署的隐私和零订阅成本，与云端 frontier model 在复杂代码、工具调用和可靠性上的优势。",
+    "emoji": "🤔",
+    "sarcastic_question": "只播假文字的tok/s，凭什么替我买显卡？"
+  }
+}

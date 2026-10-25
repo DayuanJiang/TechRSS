@@ -1,0 +1,86 @@
+{
+  "id": 47656730,
+  "by": "stonecharioteer",
+  "title": "Understanding Traceroute",
+  "url": "https://tech.stonecharioteer.com/posts/2026/traceroute/",
+  "score": 124,
+  "createdAt": 1775675427,
+  "aiSummary": {
+    "chinese_title": "traceroute 误区：ICMP、fast path 与 mtr/tracepath",
+    "discussion_overview": [
+      {
+        "category": "ICMP 星号往往是 router CPU/fast path 限制",
+        "summary": "许多评论纠正了“路由器只是把 ICMP 降级处理”这种说法，指出真正的问题通常是控制平面和数据平面的分工。路由转发大多走 ASIC 驱动的 fast path，而生成 ICMP TTL exceeded 这类报文要交给 CPU，老式或繁忙的路由器 CPU 往往很弱，还可能因为 ACL 过多、bogon 流量等因素掉出 fast path。于是 traceroute 里的星号或某一跳看似丢包，未必代表链路故障；如果后续跳又恢复，很多时候只是该设备回包能力有限。还有人补充了关于 ICMP 生成延迟和限速的研究，强调这类现象有明确的工程背景。",
+        "supportid": [
+          "47696129",
+          "47697642",
+          "47697541",
+          "47699057",
+          "47698979"
+        ]
+      },
+      {
+        "category": "更现代的网络诊断工具",
+        "summary": "另一条主线是推荐更好用的诊断工具，而不是只盯着传统 traceroute。很多人提到 mtr、WinMTR、Trippy、tracepath，以及把 fast traceroute 和 ASN、地理位置、CIDR、DNSBL、reverse IP 结合起来的自定义 IP 情报工具。Trippy 还新增了 forward loss 和 backward loss 的启发式列，用来更好识别中间设备的限速或回包问题。整体观点是：traceroute 只是入口，真正排障通常需要更持续、更丰富的测量。",
+        "supportid": [
+          "47696701",
+          "47698236",
+          "47696771",
+          "47697642",
+          "47696218"
+        ]
+      },
+      {
+        "category": "学习资料、历史梗与“traceroute 不真实”争议",
+        "summary": "评论区也在分享各种老牌资料和网络梗：NANOG 演讲、Cloudflare 的 mtr 说明、YouTube 教程，以及 90 年代关于 traceroute 的鹦鹉笑话。有人还贴出“Traceroute isn't real”这类文章，强调大家常把输出当成地图，却没意识到它只是基于 TTL 和 ICMP 的间接推断。对有些人来说，这篇帖子像是在重新发现基础知识；也有人顺手建议对 bad.horse 地址跑 traceroute 取乐。整体氛围既怀疑又怀旧。",
+        "supportid": [
+          "47698606",
+          "47698714",
+          "47699811",
+          "47696846",
+          "47697527",
+          "47700888",
+          "47699484",
+          "47700944"
+        ]
+      },
+      {
+        "category": "实现差异与权限模型",
+        "summary": "还有一小段讨论聚焦在实现和权限差异上。有人指出 Linux 的 tracepath 可以不依赖 CAP_NET_RAW，因为它利用了 socket error queue 的行为；另有人推测 OpenBSD 上的 traceroute 会先打开所需 socket 再降权。这个话题说明，不同系统对路径探测的封装方式并不相同，安全模型也会影响工具能否以非 root 方式运行。它和前面的路由器机制一起，解释了为什么看起来同样是 traceroute，实际行为却差很多。",
+        "supportid": [
+          "47696933"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "traceroute",
+        "explanation": "通过逐跳递增 IP TTL 来探测路径，并收集中间路由器返回的 ICMP 响应。"
+      },
+      {
+        "term": "ICMP",
+        "explanation": "Internet Control Message Protocol，用于错误报告和诊断消息，例如 ping 和 TTL exceeded。"
+      },
+      {
+        "term": "TTL",
+        "explanation": "Time To Live，IP 包的跳数上限；每经过一跳都会递减，减到 0 时触发 ICMP 回应。"
+      },
+      {
+        "term": "fast path",
+        "explanation": "路由器/交换机上的高速转发路径，通常由硬件处理，速度快但对特殊报文支持有限。"
+      },
+      {
+        "term": "mtr",
+        "explanation": "把 ping 和 traceroute 结合起来的持续网络探测工具，常用于看延迟和丢包变化。"
+      },
+      {
+        "term": "tracepath",
+        "explanation": "Linux 上的路径探测工具，常可不使用 root 权限运行。"
+      }
+    ],
+    "context": "这篇讨论围绕 traceroute（一种通过逐跳递增 IP TTL 来探测路径的网络诊断工具）展开，重点是如何理解中间出现的星号、延迟和看似丢包。评论指出，很多路由器用 ASIC 走 fast path 做转发，而生成 ICMP TTL exceeded 这类控制报文往往要交给较弱的 CPU，所以异常输出不一定代表真正的链路故障。大家还提到 mtr、tracepath、Trippy 等工具，以及 Linux 的 CAP_NET_RAW、OpenBSD 的权限处理，说明不同系统对路径探测的实现差异很大。讨论里也引用了 NANOG（网络运营商和工程师社区）的演讲、研究论文和一些老梗文章，用来补充 traceroute 的历史与误区。",
+    "emoji": "🤓",
+    "sarcastic_question": "看不懂第一行就敢重写 traceroute 吗？"
+  },
+  "articleSummary": "## 一句话总结\nTraceroute 的核心原理不是“询问路由”，而是利用 IP 包头的 TTL 字段故意制造“超时错误”，通过监听路由器回传的 ICMP 报错消息来逐级定位网络路径。\n\n### Traceroute 的核心是 TTL 而不是询问\n很多人直觉上以为 Traceroute 是在向沿途路由器问路，其实完全不是那么回事。它用的是一种“故意找死”的策略：IP 协议里有个 TTL 字段，每经过一个路由器就减 1，减到 0 时路由器必须丢弃包并回传一个 ICMP Time Exceeded 消息。Traceroute 就利用这一点，先发 TTL=1 的包，第一跳路由器减到 0 就回话；再发 TTL=2，第二跳回话。以此类推，直到收到目标主机的回复，路径就画出来了。说白了，它就是通过制造错误来让路由器“自报家门”。\n\n### 用 UDP 发包是因为它“轻量且用完即弃”\n为了实现这个逻辑，作者选择用 UDP 协议来发送探测包。为什么选 UDP？因为这些包本来就是设计要在半路“死掉”的，不需要 TCP 那种繁重的握手和可靠传输机制。代码里创建了一个 UDP socket，把 TTL 设得很低，然后往目标的高端口（通常是 33434）发 32 字节的空数据。这个端口一般没服务在监听，所以万一包真到了目的地，目标主机也会回一个 ICMP “Port Unreachable” 错误，这正好告诉我们“到了”。这设计很巧妙：半路死是 Time Exceeded，到了死是 Port Unreachable，全靠 ICMP 报错来区分。\n\n### 接收 ICMP 报错需要 Raw Socket 的硬核权限\n光发包不行，还得能“听”到路由器的哭诉。这就需要第二个 socket：一个 Raw ICMP Socket。因为它是用来接收所有到达本机的 ICMP 控制报文的，所以必须用 `libc::SOCK_RAW`，这也意味着运行程序得有 root 权限。收到数据后，代码直接解析 IP 包头的前 20 个字节，从中提取出源 IP 地址——这个 IP 就是刚才丢弃我们包的那个路由器。作者这里用了 `MaybeUninit` 和 `unsafe` 来做底层字节操作，虽然看起来硬核，但逻辑很清晰：只要收到包，就把发送方 IP 挖出来。\n\n### 仅仅解析 IP 头还不够，得看 ICMP 类型\n第一版代码虽然能跑通，但有个大问题：它不知道什么时候该停。因为它只解析了 IP 头拿到源地址，却忽略了 ICMP 报文本身的内容。ICMP 消息里有个 Type 字段，Type 11 代表 Time Exceeded（还在路上），Type 3 代表 Destination Unreachable（到了）。作者修复了逻辑，检查 buffer 的第 20 个字节（ICMP Type），如果是 3 且 IP 匹配目标，就说明到了终点；如果是 11，说明只是中间的一跳。加上这个判断后，程序就能精准地在到达目的地时停下，而不是傻傻地跑完最大跳数。\n\n### 加上 RTT 统计和三次探测，结果才接近真实\n有了路径和终点，还差最后两样东西：时间和稳定性。真实的 Traceroute 会显示毫秒级的 RTT（Round-Trip Time），这很简单，在发包前记录 `Instant::now()`，收包后计算 `elapsed()` 即可。此外，每一跳通常会发 3 个包。这不仅是为了取平均值，更是为了发现网络抖动和负载均衡——如果同一个跳数返回了不同的 IP，说明后面藏着负载均衡器。代码里加了个内层循环发 3 次包，打印时把相同的 IP 合并，只显示 3 个时间值，这下输出格式就和系统自带的 Traceroute 一模一样了。\n\n### 实现虽简单，但网络世界的真相很复杂\n最后作者对比了一下，发现虽然核心功能都实现了，但还缺了不少细节，比如 DNS 反向解析、TCP 模式（绕过防火墙）、IPv6 支持等。更重要的是，Traceroute 展示的路径其实只是“单行道”。因为 ICMP 的回包可能走的是完全不同的返回路径，而且中间可能还有 MPLS 隧道等看不见的底层技术。所以，Traceroute 给出的更像是一张网络路径的“草图”，而不是全貌。但对于开发者来说，理解这背后的 TTL 机制和 ICMP 交互，已经足够解决大部分网络排查问题了。"
+}

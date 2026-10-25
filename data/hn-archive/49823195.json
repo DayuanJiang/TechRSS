@@ -1,0 +1,92 @@
+{
+  "id": 49823195,
+  "by": "thisisfatih",
+  "title": "We just shipped support for the ugliest part of HTTP: Vary – Cloudflare Blog",
+  "url": "https://blog.cloudflare.com/vary-support/",
+  "score": 130,
+  "createdAt": 1790204446,
+  "aiSummary": {
+    "chinese_title": "Cloudflare终于支持HTTP Vary：内容协商可缓存，复杂性仍受质疑",
+    "discussion_overview": [
+      {
+        "category": "Vary补齐内容协商缓存能力",
+        "summary": "评论者认为这是 Cloudflare 长期缺失的关键 HTTP 缓存语义。过去同一 URL 若按 Accept 返回 HTML 或 JSON，Cloudflare 可能缓存 JSON 后错误地发给期待 HTML 的客户端，因而无法安全部署这种模式。有人曾误以为 Cloudflare 已支持 Vary，结果在 SaaS 应用中引发严重 bug；因此这次发布被视为迟到多年的“真正内容协商”。但也有人担心：若某次源站响应遗漏 Vary，那个无差异的缓存对象会不会抢先命中并污染后续变体缓存。",
+        "supportid": [
+          "49823961",
+          "49823965",
+          "49824063",
+          "49824234"
+        ]
+      },
+      {
+        "category": "显式URL优于依赖Accept协商",
+        "summary": "不少评论者偏好让 URL 明确表示资源格式或版本，例如以 .json 后缀提供 JSON、用 /v2/ 表示 API 版本。这样链接可预测、可分享，发送者和接收者更容易确认看到的是同一份文档，也避免服务端要求精确的自定义 Accept media type 才返回内容。反方指出 Accept 本身能表达“可接受的多个表示及偏好顺序”，比客户端依次尝试 article.es.md、article.en.html 等 URL 更有效。对于只需正文的自动化 agent，协商得到文本表示也有现实价值；争议主要在于它是否适合承载整个 API 的版本管理。",
+        "supportid": [
+          "49823961",
+          "49825471",
+          "49827406",
+          "49825948"
+        ]
+      },
+      {
+        "category": "Vary机制与个性化缓存的危险边界",
+        "summary": "一些人认为 Vary 不丑陋，真正复杂的是对 Accept-Language 等头部按 RFC4647 规则解析和匹配。另一些有 Apache mod_cache 实践的评论者则回忆，实现 Vary 曾暴露大量 User-Agent bug、异常后端，以及按地理位置伪头部甚至 Date 变化的荒谬需求，维护成本很高。对 session cookie 或 Authorization 变化的响应尤其危险：缓存若没有按认证身份隔离，用户退出再登录另一个账号时，SPA 可能将旧缓存与新响应拼成错误页面。评论者因此强调，既然 CDN 作为 HTTP 中间层主动缓存，就应实现客户端和源站预期的完整语义，而不是为性能而删减协议功能。",
+        "supportid": [
+          "49827557",
+          "49825920",
+          "49824820",
+          "49826022",
+          "49826784"
+        ]
+      },
+      {
+        "category": "语言、地区与缓存键的取舍",
+        "summary": "动态按 Accept-Language 返回内容的网站此前无法在 Cloudflare 上缓存这些页面，因此期待新功能降低动态语言页的成本。评论者也质疑将 en-US 和 en-GB 归并是否会让用户收到拼写或本地化不匹配的页面。另一种看法是，多数网站只维护一种英语；涉及商品、价格和市场时，应使用地区选择器而非语言头，因为语言偏好不等于用户所在国家。基于 IP 强制切换语言同样受到批评，旅行或漫游用户会每天被切到不同语言，且完全无视 Accept-Language。",
+        "supportid": [
+          "49825831",
+          "49826351",
+          "49826697",
+          "49827672"
+        ]
+      },
+      {
+        "category": "HTML默认不缓存与CMS验证成本",
+        "summary": "评论指出 Cloudflare 默认并不缓存 HTML，这解释了为何许多站点没有立刻遭遇 Vary 相关问题。支持保守默认值的一方认为，CMS 编辑文章后若未主动 purge 缓存，用户会继续看到旧页面；而缺失正确 Cache-Control 的 CMS 本身就已不合规范。围绕 ETag、Last-Modified 和 must-revalidate 的讨论显示，条件请求只有在后端能以 304 Not Modified 避免完整渲染时才真正节省负载，单纯每次重新验证并不能达到反向代理缓存的效果。也有人反驳不必依赖 HEAD：正确实现 GET 的条件处理即可在 304 时不渲染页面。",
+        "supportid": [
+          "49824849",
+          "49825196",
+          "49825481",
+          "49826042",
+          "49829976",
+          "49825205"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Vary",
+        "explanation": "HTTP 响应头，声明缓存除 URL 外还必须按哪些请求头区分响应，例如 Accept 或 Accept-Language。"
+      },
+      {
+        "term": "内容协商（Content Negotiation）",
+        "explanation": "客户端通过 Accept、Accept-Language 等 HTTP 请求头声明可接受的格式或语言，服务器据此选择同一资源的不同表示。"
+      },
+      {
+        "term": "Accept / Accept-Language",
+        "explanation": "HTTP 请求头；前者表达可接受的媒体类型及优先级，后者表达语言偏好，均可成为 Vary 的缓存区分维度。"
+      },
+      {
+        "term": "ETag / Last-Modified / 304 Not Modified",
+        "explanation": "HTTP 条件请求机制：客户端或代理用实体标签、修改时间验证缓存；内容未变时服务器返回 304，避免重新传输响应体。"
+      },
+      {
+        "term": "Cache-Control / must-revalidate",
+        "explanation": "HTTP 缓存指令；用于规定响应能否缓存、缓存多久以及使用前是否必须向源站重新验证。"
+      }
+    ],
+    "context": "Cloudflare 是提供 CDN、反向代理和边缘缓存服务的平台；其新功能开始让边缘缓存依据 HTTP Vary 响应头区分同一 URL 的不同版本。HTTP 内容协商允许源站根据 Accept 返回 HTML 或 JSON、根据 Accept-Language 返回不同语言，但若缓存键忽略这些请求头，就可能把一种版本错误发给另一类用户。此前 Cloudflare 对这类语义的支持不足，迫使许多网站改用 .json、/v2/、/en/ 等显式 URL，或干脆不缓存动态语言页面。讨论还延伸到 CMS（内容管理系统）的编辑失效、认证态页面隔离，以及 ETag 和 304 组成的 HTTP 条件缓存验证机制。",
+    "emoji": "😬",
+    "sarcastic_question": "代理缓存都不懂Vary，还算什么HTTP中间层？"
+  },
+  "articleSummary": "## 一句话总结\nCloudflare 正式支持了 HTTP 协议中“最丑陋”的 `Vary` 头，允许开发者通过 Cache Rules 灵活控制缓存键的生成逻辑，解决了传统 `Vary` 机制在灵活性和缓存命中率之间的两难困境。\n\n## 正文\n\n### HTTP 协议里“最丑陋”的角落\n`Vary` 这个响应头名声一直不太好，甚至被业内专家称为“HTTP 中尚未改进的最丑陋部分”。文章毫不客气地引用了评价，说它是一个“可怕的、拼凑的机制”，而且在中间件之间的互操作性“极其糟糕”。通常听到这种描述，理智的工程师都会绕道走。但丑陋不代表没用，Cloudflare 这次偏偏迎难而上，把它做成了产品功能。\n\n### 一个 URL，多种响应：缓存的噩梦\n问题的根源在于，同一个 URL 完全可能对应多个正确的响应。比如服务器可能根据请求头的不同，向浏览器发送 WebP 格式的图片，向 API 客户端发送 JSON 数据。这时候，`Vary` 头就登场了。它告诉中间缓存（比如 Cloudflare）：别光看 URL，还得看请求头里的特定字段（比如 `Accept`），否则就会把 JSON 发给浏览器，把 HTML 发给 API 客户端，导致解析报错。\n\n### 传统机制的死结：非此即彼\n虽然 `Vary` 解决了错发响应的问题，但它带来了新的麻烦。它只告诉缓存“哪些请求头可能影响响应”，却没说“哪些差异真正重要”。如果缓存严格按 `Vary` 头的原始值来区分缓存条目，那么哪怕请求头里的细微差别（比如 User-Agent 里的版本号微调），都会导致缓存命中率暴跌，成千上万个几乎一样的请求会把缓存撑爆。这就是所谓的“互操作性糟糕”的核心原因。\n\n### Cloudflare 的解法：把控制权交给你\nCloudflare 现在在 Cache Rules 里正式支持了 `Vary`。核心思路其实很简单：源站依然负责声明“什么可能变化”，但作为缓存方的 Cloudflare 允许你决定“怎么处理这些变化”。你不必再被动地接受原始请求头的所有细微差异，而是可以主动制定规则。\n\n### 灵活应对三种场景\n具体怎么控制？文章提到了几种策略。对于那些标准的协商头（比如 `Accept`），你可以选择标准化处理，忽略那些无关紧要的差异；如果某些差异确实关键，你可以选择透传原始值，确保缓存精准匹配；如果变化实在太不可预测，甚至可以直接绕过缓存。说白了，就是把“一刀切”的粗放管理变成了精细化的策略配置。\n\n### 源站声明，你来裁决\n这个功能的设计逻辑很清晰：分工明确。源站通过 `Vary` 头声明了哪些字段可能影响响应，这是协议层面的“告知”。而 Cloudflare 的 Cache Rules 则让你决定这些变化在缓存层面“有多大意义”。这种架构既尊重了 HTTP 协议的标准规范，又给了开发者足够的灵活性去平衡正确性与缓存命中率。目前该功能已向所有计划开放，开发者可以在 Cloudflare 控制台的 Cache Rules 设置中找到它。"
+}

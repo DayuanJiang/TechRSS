@@ -1,0 +1,140 @@
+{
+  "id": 48763035,
+  "by": "IngoBlechschmid",
+  "title": "Since Linux 6.9, LUKS suspend stopped wiping disk-encryption keys from memory",
+  "url": "https://mathstodon.xyz/@iblech/116769502749142438",
+  "score": 358,
+  "createdAt": 1783008019,
+  "aiSummary": {
+    "chinese_title": "Linux 6.9 回归：Debian LUKS suspend 密钥不再清空",
+    "discussion_overview": [
+      {
+        "category": "Debian 扩展被内核回归击穿",
+        "summary": "有评论认为标题把问题说得过于泛化，因为出事的是 Debian 维护的 cryptsetup luksSuspend 扩展，而不是所有 stock Linux 配置。这个扩展后来被移植到一些发行版和私有部署里，所以影响面并不只局限于 Debian，但也谈不上是“Linux 通用加密失效”。关键点是 6.9 之前依赖的 thread-keyring 生命周期保证被破坏了，导致原本应被销毁的 key 没有真的消失。也有人肯定这次补上了 NixOS 的测试，至少能防止同类回归再出现。",
+        "supportid": [
+          "48764234",
+          "48764438",
+          "48763753",
+          "48767495"
+        ]
+      },
+      {
+        "category": "suspend/hibernate 与密钥风险模型",
+        "summary": "很多人先把 suspend、hibernate 和磁盘加密的关系理清楚：普通 suspend to RAM 时，系统还活在内存里，master key 往往也在 kernel memory 中。Debian 这套额外方案之所以要 luksSuspend，就是为了在挂起时清掉 key，并在 resume 时再次要求输入 passphrase。bug 的尴尬在于，表面上流程还是会提示输入密码，实际上内核里还残留了一份 volume key，用户会误以为更安全。围绕这一点，评论还讨论了 cold boot、DMA、live boot 等物理攻击：是否“严重”完全取决于攻击者是否能接触到运行中的机器和 RAM。",
+        "supportid": [
+          "48763695",
+          "48764181",
+          "48764240",
+          "48764539",
+          "48764049",
+          "48764189",
+          "48764298",
+          "48764304",
+          "48764265",
+          "48766335",
+          "48767598"
+        ]
+      },
+      {
+        "category": "更强的缓解手段：hibernate、TPM、内存加密",
+        "summary": "不少人认为如果真想防 cold boot，最直接的是 hibernate 或在 suspend 后转成 encrypted swap，而不是只擦 LUKS key，因为 RAM 里的其他敏感数据同样会暴露。也有人提到 Intel/AMD 的 memory encryption、AMD 的透明内存加密模式，以及 TPM 封存密钥的做法，认为这类方案能减少 DIMM swap 和部分侧信道风险。另一些评论补充了 FridgeLock 之类学术原型，以及 MemoryOverwriteRequestControl 这种固件选项，说明“让内存更难被偷读”有很多硬件/固件层思路。与此同时也有人提醒，这些技术更多是缩小攻击面，不等于解决这个 bug 本身。",
+        "supportid": [
+          "48764413",
+          "48764575",
+          "48764469",
+          "48764335",
+          "48765428",
+          "48765475",
+          "48766194",
+          "48766745",
+          "48764987",
+          "48767666",
+          "48767721"
+        ]
+      },
+      {
+        "category": "测试与回归防护",
+        "summary": "这次回归被视为典型的“功能看起来还在，但安全属性已经退化”的例子，所以评论里反复强调 regression test 和 integration test 的价值。NixOSTests 被拿来当范例：它不仅能把行为固定住，还能用 git-bisect 快速定位到底是哪次 kernel refactoring 破坏了约束。有人直接总结成一句话：如果一个安全特性没有相应测试，那它就还不算真正可靠。讨论的重点不是 bug 本身多复杂，而是如何把这种高层行为写成可长期维持的测试。",
+        "supportid": [
+          "48764043",
+          "48764211",
+          "48764931",
+          "48765133",
+          "48765488",
+          "48767495"
+        ]
+      },
+      {
+        "category": "C / OSS / 不变量之争",
+        "summary": "另一条线索把问题上升到大型 C codebase 的可验证性：少了一行 check、跨文件重构、接口语义变化，这些都很容易打破安全不变量。有人认为这不只是 C 的问题，换成 Rust、Lisp 或 assembly 也一样，真正困难的是先意识到“resume 后不得保留 credentials”是一个必须维护的系统不变量。随后讨论扩展到 open source vs closed source：开源更可审计，但不代表真的有人看；闭源则更难确认 bug、回归或后门到底发生了什么。",
+        "supportid": [
+          "48764537",
+          "48764947",
+          "48765393",
+          "48765180",
+          "48764863",
+          "48764635",
+          "48764802",
+          "48764860",
+          "48764939",
+          "48765038",
+          "48765177",
+          "48765658",
+          "48765956"
+        ]
+      },
+      {
+        "category": "跨平台加密方案与企业 UX",
+        "summary": "评论后半段大量比较 BitLocker、FileVault、VeraCrypt 和 LUKS 的默认行为、企业部署和 recovery key 管理。有人认为 BitLocker 在企业 fleet 管理里很顺手，但也有人批评它默认偏向 TPM-only、Microsoft account 绑定和 recovery key escrow，普通用户根本不容易理解自己到底把钥匙交给了谁。FileVault 也被指出存在 iCloud escrow，说明“云端备份钥匙”并不只发生在 Windows。对个人而言，许多人更偏好强 passphrase、TPM+PIN 或完全本地化的方案，而不是把安全性建立在隐藏的默认设置上。",
+        "supportid": [
+          "48763842",
+          "48764112",
+          "48764646",
+          "48766148",
+          "48766268",
+          "48767170",
+          "48765355",
+          "48765861",
+          "48764560",
+          "48764596",
+          "48764310",
+          "48764415",
+          "48764453",
+          "48766024",
+          "48766403",
+          "48766813"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "LUKS",
+        "explanation": "Linux Unified Key Setup，Linux 上常用的磁盘加密标准。"
+      },
+      {
+        "term": "cryptsetup-suspend",
+        "explanation": "Debian 上的可选扩展，用于挂起时擦除 LUKS 密钥、恢复时重新验证口令。"
+      },
+      {
+        "term": "thread keyring",
+        "explanation": "Linux 的线程级 keyring 机制，密钥按线程生命周期管理。"
+      },
+      {
+        "term": "cold boot attack",
+        "explanation": "冷启动攻击，借助残留 RAM 内容或低温等手段提取内存中的密钥。"
+      },
+      {
+        "term": "TPM",
+        "explanation": "Trusted Platform Module，硬件安全模块，可封存密钥并做反暴力破解。"
+      },
+      {
+        "term": "memory encryption",
+        "explanation": "内存加密，CPU 或内存控制器对 RAM 内容透明加密，降低物理读内存风险。"
+      }
+    ],
+    "context": "这次讨论围绕 Debian 上的 cryptsetup-suspend（Debian 给 LUKS 加的可选挂起扩展）出现的回归：它会在 suspend 前调用 luksSuspend，原本依赖 Linux thread keyring（线程密钥环）在线程结束时销毁密钥的行为。Linux 6.9 的内核改动改变了这一语义，导致 resume 时看起来还要重新输入 passphrase，但内核里其实残留了额外的 volume key。这个问题牵涉到 suspend to RAM、hibernate to disk、cold boot attack（冷启动攻击）和 DMA 取内存等物理攻击模型。评论里还把话题扩展到 TPM（可信平台模块）、memory encryption（内存加密）以及 BitLocker/FileVault 这类跨平台磁盘加密方案的默认配置与恢复密钥管理。",
+    "emoji": "⚠️",
+    "sarcastic_question": "都让 key 留内存了，还叫清空？"
+  },
+  "articleSummary": "# 一句话总结\nLinux 6.9 的一次内核重构导致 LUKS 加密密钥在挂起时未被清除，暴露了长达两年的安全漏洞，最终通过一行代码修复，但也揭示了系统级编程中“静默失败”的可怕。\n\n---\n\n### 一个令人背脊发凉的发现：安全机制其实从未生效\nIngo Blechschmidt 最近经历了一场极其惊心动魄的调试之旅。起因是他发现，从 Linux 6.9（2024 年 5 月）开始，自己用来在笔记本挂起时锁定硬盘的工具一直在“静默失败”。这听起来可能只是个小 Bug，但后果很严重：虽然他一直依赖全盘加密（LUKS）来保护数据，但在过去两年里，一旦电脑进入挂起状态，加密密钥其实一直残留在内存中。这意味着，任何拿到这台仍处于通电状态笔记本的人，都能轻易提取出密钥解密数据。最让人不安的是，这种“信任了多年的安全机制其实从未起作用”的感觉，就像你一直锁着门，结果发现锁芯早就坏了。\n\n### 罪魁祸首：一次看似无害的内核重构\n为了搞清楚原因，Ingo 使用 `git-bisect` 对内核代码进行了地毯式搜索。最终，他把锅锁定在了一个特定的 commit 上（`a28d893eb3270cf62c10dd8777af0d8452cdc072`）。有意思的是，这并不是一段恶意的代码修改，而是一次“合情合理且有用”的重构。这次重构改变了内核某些底层的行为，但它与加密代码之间产生了一种意想不到的“长距离相互作用”。说白了，就是改了 A 模块，结果莫名其妙地搞崩了 B 模块的功能，而且这种关联在代码审查时极难被发现。\n\n### 修复方案：一行代码与无法消除的疑虑\n找到问题根源后，修复方案出人意料地简单：只需要修改一行代码。Ingo 提交了一个补丁，直接切断了那个导致密钥清除失败的逻辑链路。虽然补丁很短，但 Ingo 也坦诚了自己的担忧：在没有形式化证明（Formal Proofs）的情况下，谁也不敢拍着胸脯保证这个补丁是绝对正确的，或者它不会引发新的“长距离相互作用”。这其实反映了系统级编程的一个核心困境——我们往往是在复杂的依赖网络中修修补补，很难做到万无一失。\n\n### 防御措施：从“静默失败”到“大声报警”\n既然无法保证代码永远完美，那至少得让问题更容易被发现。Ingo 并没有止步于修复内核，他还推动了两个重要的改进。首先，他在 NixOS 的 nixpkgs 中添加了一个自动化测试，用来检测未来是否会出现类似的回归问题。其次，他为 `cryptsetup` 项目提交了一个合并请求，修改了工具的行为：以后如果清除密钥失败，系统不再一声不吭，而是会发出一个明确的警告。毕竟，安全机制失效不可怕，可怕的是失效了你还以为它在工作。"
+}

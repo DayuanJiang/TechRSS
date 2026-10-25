@@ -1,0 +1,144 @@
+{
+  "id": 48077971,
+  "by": "Deeg9rie9usi",
+  "title": "FreeBSD: Local Privilege Escalation via Execve()",
+  "url": "https://www.freebsd.org/security/advisories/FreeBSD-SA-26:13.exec.asc",
+  "score": 124,
+  "createdAt": 1778360409,
+  "aiSummary": {
+    "chinese_title": "FreeBSD execve() 本地提权：已修复、无 workaround、引发安全争论",
+    "discussion_overview": [
+      {
+        "category": "代码风格与算术歧义",
+        "summary": "评论首先盯住的是这段内存计算代码为什么会写得这么难读。很多人认为，凡是括号一加就可能改变理解的地方，就应该强制写括号，尤其是混合了 +、-、指针偏移和 memmove 这类危险调用时。有人进一步指出，真正的问题不只是 operator precedence，而是这种写法会让审查者花额外时间确认到底是在加还是在减。还有人提醒不要把 associativity 当成绝对安全，尤其在 floating-point 场景里它会失效，甚至引出更严重的 bug。",
+        "supportid": [
+          "48080855",
+          "48081415",
+          "48080908",
+          "48080935",
+          "48081052",
+          "48080984",
+          "48079789",
+          "48079939"
+        ]
+      },
+      {
+        "category": "漏洞触发条件与 SUID 误解",
+        "summary": "有评论把这个问题具体解释成 execve() 路径里的 buffer overflow，而不是单纯的 setuid 包装程序漏洞。后续补充说，利用时会注入 environment variables，但不一定需要 SUID binary；关键是让某个以 root 运行的进程走到这个 execve() 路径。也就是说，威胁面更广，任何高权限上下文里调用该 syscall 的场景都可能成为入口。几轮回复主要是在澄清这个提权条件，而不是在争论漏洞是否存在。",
+        "supportid": [
+          "48078707",
+          "48078998",
+          "48079315",
+          "48079523"
+        ]
+      },
+      {
+        "category": "补丁状态与运维应急",
+        "summary": "讨论里有人直接指出，这个漏洞在 15.0R-p7 就已经修复，而当前 15.0-RELEASE 甚至已经到了 p8。官方写明没有 workaround，所以现实路径就是升级到受支持的 stable/security branch，再 reboot。有人认为这就是标准安全响应，但也有人强调并不是所有环境都能立刻重启，尤其是生产系统。于是话题又转向如何用 Ansible 之类做分批 rollout，以及系统本身是否应该设计成能短时间内接受重启。",
+        "supportid": [
+          "48078259",
+          "48078300",
+          "48078081",
+          "48078184",
+          "48078227",
+          "48078268",
+          "48078279",
+          "48078727",
+          "48078741"
+        ]
+      },
+      {
+        "category": "FreeBSD 安全响应 vs 漏洞面",
+        "summary": "一部分评论把这件事当成 FreeBSD 安全流程的正面例子：漏洞可以出现，但补丁流转、协调披露和已发货二进制的修复都做得很快。另一部分则强调，哪怕响应流程优秀，`execve()` 这种核心 syscall 里出现 LPE 仍然说明 code base 的 bug surface 不能被忽视。还有人认为 BSD 圈子里确实存在一些反 Linux 的身份认同，所以每次出现这种新闻都会有人急着拿来“证明”自己的立场。反驳方则说，这里讨论的是安全响应质量，不是 FreeBSD 有没有漏洞这种显而易见的事。",
+        "supportid": [
+          "48078384",
+          "48078489",
+          "48078698",
+          "48078678",
+          "48079024",
+          "48078630",
+          "48078661"
+        ]
+      },
+      {
+        "category": "FreeBSD 的现实使用理由",
+        "summary": "不少人把话题拉回为什么还在用 FreeBSD，而不是只讨论安全口号。常见理由包括 ports collection、jails 和 ZFS，这些都被视为服务器环境里很顺手的技术栈，也有人说自己几十年前就在 ISP 场景里用它，习惯已经固定。虚拟化方面，评论里出现了 bhyve、vm-bhyve、GPU passthrough，甚至有人提到类似 Proxmox 的 FreeBSD 方案 sylve.io。与此同时，systemd 绑定、GNOME/KDE 的生态争议也被拿来解释为什么有些人更愿意留在 BSD 阵营。",
+        "supportid": [
+          "48078437",
+          "48078541",
+          "48078778",
+          "48078666",
+          "48078710",
+          "48078846",
+          "48078867",
+          "48080369",
+          "48078788",
+          "48079274",
+          "48079653"
+        ]
+      },
+      {
+        "category": "Linux/Windows 横向比较",
+        "summary": "还有一条明显的分支是把这次 FreeBSD 漏洞当成 OS 对比题。有人拿最近的 Linux privilege escalation 事件和 Windows 的 CVE 一起算账，想看谁最近“翻车”更多；也有人提醒 Microsoft 自己有安全团队专门做攻击测试，只是闭源让外界看不到太多细节。关于 Windows，评论认为 local privilege escalation 在今天桌面环境里没那么核心，因为多用户共享机器少见，而且应用 sandboxing 一直不算强。另一些人补充 Chrome 和 Microsoft Store 之类的隔离尝试，说明真正重要的不只是有没有 LPE，而是平台的实际使用方式和隔离模型。",
+        "supportid": [
+          "48078234",
+          "48078289",
+          "48078405",
+          "48078266",
+          "48078329",
+          "48078631",
+          "48079695",
+          "48081047",
+          "48079779",
+          "48078576",
+          "48078621",
+          "48079115",
+          "48081213",
+          "48080464"
+        ]
+      },
+      {
+        "category": "公开复现材料与研究展示",
+        "summary": "有评论专门提到，这个漏洞不仅有 blog walkthrough，还有 GitHub 上的 prompts、AI-generated working exploit 和 write-up。也就是说，读者看到的不只是一个简短 advisory，而是一套可以复现和研究的材料。评论区顺带对发布这些内容的团队表示了很高评价，认为最近几个月的输出很强。这个分支更多是在说安全研究的展示方式，而不是漏洞本身。",
+        "supportid": [
+          "48078660",
+          "48078693"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "execve()",
+        "explanation": "Unix/Unix-like 系统调用，用新程序替换当前进程映像；这里是漏洞触发点。"
+      },
+      {
+        "term": "LPE",
+        "explanation": "local privilege escalation，本地提权，从普通用户提升到 root 或 Administrator。"
+      },
+      {
+        "term": "SUID",
+        "explanation": "set-user-ID 权限位，让可执行文件以文件所有者权限运行。"
+      },
+      {
+        "term": "jails",
+        "explanation": "FreeBSD 的轻量级隔离机制，用于把服务放进独立环境里。"
+      },
+      {
+        "term": "ZFS",
+        "explanation": "支持快照、校验和和卷管理的文件系统/存储平台。"
+      },
+      {
+        "term": "systemd",
+        "explanation": "Linux 的 init 和服务管理系统，也常被拿来指代其生态绑定问题。"
+      },
+      {
+        "term": "bhyve",
+        "explanation": "FreeBSD 自带的虚拟化器/Hypervisor。"
+      }
+    ],
+    "context": "这条帖子讨论的是 FreeBSD（类 Unix 操作系统）里 execve()（执行新程序并替换当前进程映像的系统调用）出现的本地提权漏洞，属于 LPE（local privilege escalation，本地提权），可以把普通用户提升到 root。评论提到该问题已经在 15.0R-p7 修复，15.0-RELEASE 后续又到了 p8，而且官方说明没有临时 workaround，只能升级到受支持的 stable/security branch（releng 分支）并重启。有人还贴了 Calif（Thai Duong 新创的安全公司）的博客 walkthrough，以及 GitHub 上的 AI-generated exploit/write-up，说明这不是纯公告，而是有复现材料的安全研究发布。因为 execve() 是 Unix-like 系统里非常基础的 syscall，讨论很快延伸到 FreeBSD 的安全响应流程、系统运维如何快速打补丁，以及和 Linux、Windows 在漏洞暴露和隔离模型上的差异。",
+    "emoji": "⚠️",
+    "sarcastic_question": "execve 都能出提权，还谈什么安全神话？"
+  },
+  "articleSummary": "## 一句话总结\nFreeBSD 内核在处理 `execve(2)` 系统调用时出现了一个低级但致命的运算符优先级错误，导致缓冲区溢出，攻击者可借此直接从普通用户提权至 root。\n\n---\n\n### 一个经典的系统调用，藏着一个低级错误\n`execve(2)` 是 Unix 系统中最核心的系统调用之一，负责启动新的可执行程序，包括那些以 `#!` 开头的脚本。它接收文件路径、参数和环境变量，把当前进程替换成新的进程。这个机制我们用了几十年，本来应该稳如泰山，但这次出问题的恰恰是内核中最基础的部分。\n\n### 根源不在逻辑复杂，而在运算符优先级\n这次漏洞的描述非常简短，但字字诛心：Kernel 里出现了一个运算符优先级错误。说白了就是写代码时把运算顺序搞错了，导致本该先算的没算，先写了别的。这种错误在业务代码里可能只是个 Bug，但在内核里就是灾难。因为它直接导致了缓冲区溢出，让本该受限的数据越界写入。\n\n### 越界写入的目标是参数缓冲区\n有意思的地方在于溢出的后果。攻击者控制的数据并没有乱跑，而是精准地覆盖了相邻的 `execve(2)` 参数缓冲区。这意味着攻击者不仅能控制溢出的数据，还能决定写入什么内容。对于内核来说，它以为自己在处理正常的参数，实际上内存已经被悄悄篡改了。\n\n### 没有任何花哨的绕过，直接本地提权\n这种级别的内核内存错误，通常意味着极其严重的后果。官方的 Impact 描述很直接：未授权用户可以利用这个漏洞获得超级用户权限。不需要复杂的堆喷射，也不需要特定的内存布局，只要触发这个逻辑错误，就能完成 Local Privilege Escalation。\n\n### 补救措施只有一个：升级并重启\n面对这种内核层面的漏洞，没有什么配置文件能改，也没有什么服务能关。官方给出的 Workaround 是“无”。唯一的办法就是升级到最新的 Stable 或 Release 分支（包括 13.5、14.3、14.4、15.0 等版本），然后重启系统。无论是用 `pkg`、`freebsd-update` 还是源码打补丁，重启这一步是绕不开的。"
+}

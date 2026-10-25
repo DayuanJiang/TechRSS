@@ -1,0 +1,100 @@
+{
+  "id": 49879702,
+  "by": "ibobev",
+  "title": "Hijacking the PS5's RTMP Stream",
+  "url": "https://yashgarg.dev/posts/hijacking-ps5-rtmp-stream/",
+  "score": 248,
+  "createdAt": 1790613084,
+  "aiSummary": {
+    "chinese_title": "劫持 PS5 的 RTMP 流：绕过平台限制转播 Discord，却暴露 TLS 缺口",
+    "discussion_overview": [
+      {
+        "category": "用户要求开放自定义推流与 Discord 分享",
+        "summary": "多位用户最关心的不是破解本身，而是 PS5 无法直接把游戏画面分享给 Discord 或任意自定义服务。现有方案需要配置 dnsmasq、重定向 DNS 和本地转发链路，对只想分享屏幕的人而言门槛过高。评论认为 Sony 本可直接提供自定义 RTMP destination，平台限制迫使用户采用 MITM 式绕行。",
+        "supportid": [
+          "49884689",
+          "49884622",
+          "49884067",
+          "49883098"
+        ]
+      },
+      {
+        "category": "劫持链路依赖 Twitch 的未认证末跳",
+        "summary": "技术讨论指出，PS5 先解析服务地址；直接伪造受 TLS 保护的主服务器会因自签名证书不被主机信任而失败。可行路径是启用真实 Twitch 推流、观察 DNS 请求，并只把接收实际 RTMP 流的末跳服务器重定向到本地 Mac，因此避开了证书校验。有人补充 Twitch 同时支持 1935 端口的明文 RTMP 和 443 端口的 RTMPS；文章从 YouTube 转向 Twitch，正是其步骤看似跳跃的原因。",
+        "supportid": [
+          "49881683",
+          "49880790",
+          "49881330",
+          "49883329",
+          "49883446",
+          "49884267"
+        ]
+      },
+      {
+        "category": "明文 RTMP 的隐私与漏洞风险之争",
+        "summary": "批评者认为 2026 年仍让视频和音频以未加密 RTMP 传输很不合理，私密直播可能被窃听，stream key 被截获后还可能被他人冒用频道推流。更激进的担忧是复杂媒体协议实现可能存在可用于攻击主机的漏洞，且客户端的权限边界值得审查。反方认为 RTMP 的握手和服务器响应往往被最小化实现，单靠外发比特流推断 remote code execution 风险过度；风险更直接地属于隐私和服务端攻击面，且 PS5 进程未必拥有 root 权限。",
+        "supportid": [
+          "49883100",
+          "49883998",
+          "49883136",
+          "49883750",
+          "49884699",
+          "49881530",
+          "49882772",
+          "49883082"
+        ]
+      },
+      {
+        "category": "不必劫持的转播与采集替代方案",
+        "summary": "有人指出可将 nginx、mpv、OBS、GStreamer 等步骤合并，直接在本地接收、处理和播放流。另一条路线是使用 HDMI capture device：RK3588（一款 Rockchip ARM SoC）开发板的 HDMI RX 输入被提及，并可能涉及 HDCP 处理。对此也有质疑，认为板载 HDMI input 本质仍像采集芯片，普通 USB 采集卡虽便宜，但低端型号实际帧率可能只有 2–3 fps。",
+        "supportid": [
+          "49881714",
+          "49881697",
+          "49882156",
+          "49883785",
+          "49884703"
+        ]
+      },
+      {
+        "category": "买 Gaming PC 是否能摆脱主机封闭性",
+        "summary": "部分评论把问题归因于封闭主机生态，建议改用 Gaming PC，以 Steam 及 Linux 发行版获得更自由的推流和软件选择。支持者称 Steam Deck 和 Linux 上许多游戏已接近“安装即玩”，并推荐 SteamOS、CachyOS、Bazzite 等方案。反对者强调 PC 仍有驱动、画质设置、DRM 与 kernel anti-cheat 的维护成本，主机的锁定环境反而对某些玩家有价值；此外高价 GPU、DDR5 和 RAM 也使“换 PC”并非廉价解法。",
+        "supportid": [
+          "49882497",
+          "49882965",
+          "49883049",
+          "49883077",
+          "49883178",
+          "49884334",
+          "49884310",
+          "49883069"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "RTMP / RTMPS",
+        "explanation": "RTMP 是传统实时音视频推流协议；RTMPS 通常指将 RTMP 封装在 TLS 加密连接中，用于保护传输内容和认证服务端。"
+      },
+      {
+        "term": "TLS",
+        "explanation": "Transport Layer Security，用证书验证服务器身份并加密网络连接；自签名证书若未被客户端信任，无法冒充目标服务器。"
+      },
+      {
+        "term": "MITM（Man-in-the-Middle）",
+        "explanation": "中间人拦截或改写通信的方式；此处通过改写解析结果，让 PS5 的推流连接改为指向本地机器。"
+      },
+      {
+        "term": "DNS spoofing",
+        "explanation": "伪造或覆盖域名解析结果，把原应连接的服务域名导向另一台服务器；该方法被用于劫持 RTMP 的末跳地址。"
+      },
+      {
+        "term": "HDCP",
+        "explanation": "High-bandwidth Digital Content Protection，HDMI 等数字接口的内容保护机制，会限制未获授权设备直接采集受保护的视频输出。"
+      }
+    ],
+    "context": "PS5 内建直播功能通常将游戏画面推送至 Twitch 或 YouTube 等预设平台，而非让用户填写任意 RTMP destination。该实验利用 Twitch 的推流路径中一个可使用明文 RTMP 的末跳节点：先保持真实 Twitch 会话，再通过 DNS spoofing（篡改域名解析）把最后的媒体连接导向本地转发器，从而接收 PS5 画面。主服务器的 TLS（用于加密和验证服务器身份的协议）证书校验不能被自签名证书轻易绕过，因此攻击重点是未受同等验证保护的后续连接。讨论也延伸到 HDMI capture device（从 HDMI 输出采集画面的设备）、OBS（直播录制软件）与 GStreamer（多媒体管线框架）等更常规的本地采集和转播方案。",
+    "emoji": "🔓",
+    "sarcastic_question": "连自定义 RTMP 地址都不让填，主机是在防谁？"
+  },
+  "articleSummary": "## 一句话总结\n作者通过 DNS 劫持将 PS5 的 Twitch 直播流重定向到本地 Mac，绕过了采集卡，实现了零成本的 Discord 屏幕共享。\n\n## 正文\n\n### 想在 Discord 直播 PS5？索尼不让你干这事\n事情的起因很简单：作者想在 Discord 上跟朋友直播玩游戏。但 PS5 的系统相当封闭，虽然主机上有个诱人的“Broadcast”按钮，但只支持 YouTube 和 Twitch 等寥寥几个平台。如果你想通过 Discord 屏幕分享，官方给出的“标准答案”是买采集卡——把 HDMI 输出接到采集卡，再连到电脑上的 OBS。但这得多花一百多美元，作者不想为了这个需求当冤大头。\n\n### 官方的 Remote Play 不好用，问题全在控制权上\n那不用采集卡行不行？索尼官方提供了 Remote Play 功能，可以在 Mac 上远程玩 PS5。理论上，只要在 Mac 上开 Remote Play，再把 Mac 屏幕分享给 Discord 就行了。但实际用起来很别扭：手柄和耳机都得连到 Mac 上，而且画质和延迟完全由 PS5 控制，用户没法调参数。最要命的是偶尔会有输入延迟，体验并不稳定。作者不想每次直播都得重新折腾物理连接，于是把目光投向了 PS5 自带的直播功能。\n\n### 既然 PS5 能推流给 Twitch，能不能推给我自己？\nPS5 直播用的是 RTMP 协议。当你按下直播键时，PS5 会通过 DNS 查询 Twitch 服务器地址，然后建立连接推流。作者的核心思路很巧妙：既然 PS5 是通过 DNS 找服务器，如果我控制了 DNS 解析结果，让它把流量发给我的 Mac，不就能截获视频流了吗？这样一来，既不用采集卡，也不用忍受 Remote Play 的输入延迟，直接拿到原始的高清流。\n\n### 直接伪造域名行不通，卡在了 HTTPS 证书上\n一开始作者尝试直接伪造 `ingest.twitch.tv`，结果碰了壁。这个地址其实是个 HTTPS 的发现端点，PS5 会先问它“我该连哪个区域的服务器？”，拿到具体的内网地址后再去推流。更麻烦的是，真正的推流走的是 RTMPS（RTMP over TLS），PS5 会校验证书。既然没法在 PS5 里装自签名 CA 证书，这条路就堵死了。作者试了试 YouTube，虽然它是明文传输的 RTMP，但 PS5 会定期检查 YouTube API 确认直播状态，发现没数据就自动掐断了。\n\n### 柳暗花明：找到了那个不加密的“漏网之鱼”\n既然 RTMPS 搞不定，YouTube 又有状态检测，唯一的希望就是找到一个不加密的 Twitch 端点。通过分析 DNS 日志，作者发现了关键线索：PS5 会解析 `ingest.global-contribute.live-video.net`，最终指向 `aps30.contribute.live-video.net`。这才是真正的 RTMP 服务器地址，而且它跑在 1935 端口上，走的是普通 RTMP，没有 TLS 加密。只要劫持 `contribute.live-video.net` 及其子域名，就能绕过证书校验，把流骗过来。\n\n### DNS 劫持配合 Nginx，在本地搭个假 Twitch 服务器\n方案落地主要靠两个工具：`dnsmasq` 和 `nginx-rtmp`。作者写了个 macOS 菜单栏应用，把这两个工具打包管理。`dnsmasq` 负责把 Twitch 相关的域名解析到 Mac 的局域网 IP。为了让 PS5 自动用这个 DNS，作者在路由器（OpenWRT）上做了手脚，通过 DHCP 配置，专门给 PS5 指定 Mac 作为 DNS 服务器。这样 PS5 一上线，就会不知不觉地把推流请求发到作者的 Mac 上。\n\n### 拿到 1080p60 的原始流，延迟不到一秒\n接收端用 `nginx-rtmp` 监听 1935 端口，PS5 过来推流时，Nginx 会通过 `on_publish` 回调通知应用。这时候，你就拿到了 PS5 推出来的 1080p60、H.264 编码、AAC 立体声的原始流。最后一步是播放，作者没用 OBS，而是直接用 `mpv` 播放器拉流。加上 `--profile=low-latency` 参数后，延迟能控制在 1 秒以内，效果出奇地好。这套方案作者已经用了好几周，非常稳定，完全替代了昂贵的采集卡方案。"
+}

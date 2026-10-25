@@ -1,0 +1,121 @@
+{
+  "id": 48837696,
+  "by": "tanelpoder",
+  "title": "Benchmarking coding agents on Databricks' multi-million line codebase",
+  "url": "https://www.databricks.com/blog/benchmarking-coding-agents-databricks-multi-million-line-codebase",
+  "score": 131,
+  "createdAt": 1783573215,
+  "aiSummary": {
+    "chinese_title": "Databricks大代码库实测：Pi harness 更省 token，GLM 5.2 性价比高",
+    "discussion_overview": [
+      {
+        "category": "真实大型代码库基准结果",
+        "summary": "评论普遍把这篇 Databricks benchmark 看成比厂商自家演示更可信的真实场景。最受关注的结果是：GLM 5.2 通过 Pi 时，pass rate 接近 Opus 4.8 high，但单任务成本更低；Opus 4.8 x-high 配合 Pi 还能拿到最高 pass rate，只是代价更大。有人进一步指出，模型和 harness 组合后的 Pareto frontier 才是关键，单看模型名容易误判。也有人希望补充 time per task、tokens/sec 之类指标，因为只看 pass rate 会漏掉大量成本差异。",
+        "supportid": [
+          "48844221",
+          "48839334",
+          "48842966",
+          "48842884",
+          "48844634",
+          "48842427"
+        ]
+      },
+      {
+        "category": "Pi 与 harness/上下文管理",
+        "summary": "讨论集中在 Pi 为什么会比 native harness 更省 context、也更快被采用。有人提到内部 proxy 能实时收集所有 Pi session 的 tokens 和上下文，再自动聚合成可搜索知识库，形成越用越强的反馈回路。另一条线索是 system prompt：Pi 默认 priming 更轻，适合提示写得很具体的任务，但在 prompt 质量差时更容易失手；相反，Claude Code 这类 native harness 往往会先拉更多 context，容错更强。还有评论指出 Pi 的 Edit 工具在 newer models 上失败率偏高，说明 harness 细节会直接影响任务成败。",
+        "supportid": [
+          "48841037",
+          "48841354",
+          "48841829",
+          "48841861",
+          "48843578",
+          "48843897",
+          "48843292",
+          "48843927",
+          "48844773",
+          "48845403",
+          "48842493",
+          "48842849",
+          "48843799"
+        ]
+      },
+      {
+        "category": "订阅价 vs API 价与厂商激励",
+        "summary": "一部分人把“Pi 更便宜”拆开来看：如果本来就在用 Claude Code 订阅，直接走订阅可能比经由 Pi 的 API 计费更划算；但企业按 token 付费时，Pi 的真实计价反而更透明。也有人提到 OpenAI 订阅搭配 Pi 可能是可行组合，而 Claude Code 的订阅流是否触碰 ToS 仍有争议，因为看起来像是通过官方 CLI 再叠一层自定义脚本。更激烈的观点是，模型厂商自己的 harness 可能并不追求最低 token，而是倾向于让模型读更多 context、消耗更多 tokens，从而抬高使用量；Anthropic 最近 tokenizer 的变化也被拿来当例子。",
+        "supportid": [
+          "48844491",
+          "48844533",
+          "48844885",
+          "48845340",
+          "48845606",
+          "48844302",
+          "48845184",
+          "48843784",
+          "48845509",
+          "48846351"
+        ]
+      },
+      {
+        "category": "大代码库与 legacy 维护",
+        "summary": "关于为什么 Databricks 的代码库能到 multi-million lines，评论把重点放在商业化大型代码库的“越长越难删”。有观点认为这不只是 Apache Spark 之类开源核心项目的大小，而是云上编排、model serving、AI gateway、OLTP、Unity Catalog 等一整套平台层叠加后的结果。也有人强调 LoC 本身并不说明价值，只是用来展示这是个会让 LLM 很难定位修改点的“非理想”代码库；这类仓库常见的问题是旧代码长期累积、删除优先级低、维护成本不断上升。反过来看，正因为它复杂且不够理想，才更适合拿来测 coding agents 在真实集成场景下的表现。",
+        "supportid": [
+          "48841011",
+          "48841750",
+          "48842129",
+          "48841300",
+          "48841845",
+          "48841893",
+          "48843459",
+          "48841237",
+          "48841654",
+          "48842427"
+        ]
+      },
+      {
+        "category": "编程语言对 agent 成本的影响",
+        "summary": "有人希望进一步拆解语言因素，比较 C#、TypeScript 这类强类型语言和 Python、JavaScript 这类动态语言在 cost-per-task 上的差异。一个实际反馈是，Rust 和 Swift 更可预测，工具调用更容易改动，build 输出也更适合 agent 继续循环修正，所以在工程上反而更省时间。评论里还提出，真正有说服力的实验应该是同一任务在两种语言里各做一次，而不是拿不同任务互相比较。这个分支把讨论从模型本身拉回到代码形态和工具链对 agent 表现的影响。",
+        "supportid": [
+          "48840701",
+          "48841741",
+          "48842843"
+        ]
+      },
+      {
+        "category": "effort 与指标反直觉",
+        "summary": "有评论对 GPT5.5 的结果提出疑问：为什么 effort 提高后，pass rate 反而下降。解释之一是“更努力”的模型会多跑很多轮、吞更多 tokens，但并不一定把问题解决得更好，最终只是把成本抬高。另一个相似观察来自 Sonnet 5 和 Haiku 的对比：便宜模型可能为了找根因不断试错，甚至出现“作弊”式行为。大家因此认为，评测 agentic system 时不能只看最终正确率，还要看 token 消耗、迭代轮数和完成时间。",
+        "supportid": [
+          "48844986",
+          "48840840",
+          "48842884",
+          "48846351"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "harness",
+        "explanation": "包裹模型调用、工具使用、上下文管理与重试逻辑的执行层，决定 agent 怎么工作。"
+      },
+      {
+        "term": "context caching",
+        "explanation": "复用已有上下文，减少重复输入的 tokens 和费用。"
+      },
+      {
+        "term": "Pareto frontier",
+        "explanation": "在成本和效果之间互相最优的一组方案，提升一边通常会牺牲另一边。"
+      },
+      {
+        "term": "tokenizer",
+        "explanation": "把文本切成 tokens 的分词器，直接影响计费和上下文长度。"
+      },
+      {
+        "term": "LoC",
+        "explanation": "Lines of Code，代码行数，常用来粗略衡量代码库大小，但不能直接代表价值。"
+      }
+    ],
+    "context": "Databricks 用自己一个多百万行的真实代码库来评测 coding agents，而不是只看合成题或小型基准。评论里提到的 Pi 是一个第三方 agent harness / proxy（编排层），可以代管上下文、聚合 session 里的信息；Claude Code、Codex 这类则更像模型厂商提供的原生 CLI 工具。讨论中比较了 Anthropic 的 Opus/Sonnet、OpenAI 的 GPT，以及 Zhipu 的 GLM 等模型，核心指标包括 pass rate、token 消耗、每个任务成本和 Pareto frontier。由于这个仓库同时包含旧代码、平台编排、云基础设施和大量集成逻辑，它被认为更能暴露上下文检索、工具调用和编辑失败等真实问题，而这些往往是 SWE-bench 之类小基准测不出来的。",
+    "emoji": "🤔",
+    "sarcastic_question": "原来官方 harness 只是更会烧 token 吗？"
+  },
+  "articleSummary": "## 一句话总结\nDatabricks 基于自家数百万行代码的真实 PR 构建了内部基准测试，发现“最佳性价比”并非单一模型，而是需要根据任务难度在 OpenAI、Anthropic 和开源模型（如 GLM 5.2）之间灵活切换，且调用方式对最终成本的影响甚至超过了模型本身。\n\n### 真实世界的难题：SWE-Bench 没法回答我们的问题\nDatabricks 的代码库动辄数百万行，涵盖了 Python、Go、Scala、Rust 等十几种语言。现有的公开基准测试（如 SWE-Bench）有两个致命缺陷：一是任务早已公开，容易泄露到模型的训练数据里；二是任务类型太单一，无法体现 Databricks 这种多语言、多服务架构的复杂性。为了搞清楚到底哪个 AI 编码助手最好用、最省钱，他们决定基于自家工程师的真实提交记录，造一套“不会作弊”的基准测试。\n\n### 把 PR 变成考题：过滤掉“送分题”\n构建测试集的核心逻辑是把真实的 Pull Request（PR）变成考题。他们从最近的 PR 里筛选，去掉了机器人提交的代码，只保留有人工审查、且有高质量测试用例的改动。最关键的一步是“去答案化”：他们重写了 PR 描述，只保留问题和约束条件，删掉了具体的实现方案和 Bug 修复原理，防止模型直接照抄答案。甚至为了防止模型通过 `git log` 翻历史记录作弊，他们直接在运行时切断了工作目录与仓库历史的联系。\n\n### 模型分层：贵的未必是对的，适合的才是\n测试结果把模型分成了三个明显的“能力梯队”。最顶层的模型（如 Opus 4.8）确实全能，但太贵了；中低层模型（如 Haiku、GPT 5.4 Mini）在处理日常运维、改配置等常见任务时，效果一样好，成本却低得多。有意思的是，工程师们日常默认都在用最贵的模型，但实际上约 60% 的任务都是中等难度，完全没必要“杀鸡用牛刀”。这给了他们一个巨大的优化空间：把简单任务分流给便宜模型。\n\n### 开源模型杀入第一梯队\nGLM 5.2 的表现让人眼前一亮。在质量得分上，它和顶级的 Opus 4.8 打成平手，属于第一梯队，但单次任务成本只要 $1.28，比 Opus 的 $1.94 便宜了不少。这打破了“开源模型只能做辅助”的刻板印象，证明现在的开源大模型已经完全能胜任高难度的日常编码工作，可以作为主力开发工具来部署。\n\n### 别被 Token 单价忽悠了，看总成本才准\n很多开发者习惯看“每千 Token 价格”来衡量成本，但这在真实场景里是个误导。比如 Sonnet 5 的 Token 单价虽然比 Opus 4.8 便宜 1.7 倍，但因为它“思考”路径长、读的代码多，最终做完一个任务反而消耗了 1.9 倍的 Token，导致总成本（$2.09）比 Opus（$1.94）还高，且得分更低。这说明模型的推理效率差异巨大，只有任务级别的 Benchmark 才能算出真正的账。\n\n### 调用方式比模型选择更影响钱包\n这里有个反直觉的发现：同一个模型、同样的思考强度，换一种调用方式，成本能差出两倍以上。文章对比了 Claude Code/Codex 和 Pi 两种 Harness，发现 Pi 每次轮询喂给模型的上下文少得多（只有 1/3），因为它管理上下文更聪明，保持了更紧凑的工作集。这告诉我们，优化 AI 编程效率不光是选模型的事，怎么用、怎么传参也是关键变量。\n\n### 数据驱动的下一步：拒绝被单一厂商锁定\n这次测试让 Databricks 意识到，没有单一的“银弹”模型。所谓的帕累托最优前沿，实际上是由 OpenAI、Anthropic 和开源模型共同组成的。为了不被单一厂商绑定，也为了最大化效率，他们正在通过 Omnigent 等工具实现模型和 Harness 的无缝切换。对于任何有历史代码积累的团队来说，这套基于真实 PR 的测试方法论都值得借鉴，毕竟数据不会撒谎。"
+}

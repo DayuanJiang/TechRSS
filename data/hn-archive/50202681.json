@@ -1,0 +1,108 @@
+{
+  "id": 50202681,
+  "by": "psxuaw",
+  "title": "Docker Is Weird",
+  "url": "https://codeandcake.dev/posts/2026-10-22-docker-is-weird",
+  "score": 699,
+  "createdAt": 1792714859,
+  "aiSummary": {
+    "chinese_title": "Docker并非VM：命名空间、守护进程与包装革命",
+    "discussion_overview": [
+      {
+        "category": "真正的创新是可复现的交付工作流",
+        "summary": "评论认为 Docker 的决定性价值不在于发明容器，而在于把已有的 Linux 隔离能力包装成易用的开发体验。Dockerfile 的分层构建和缓存让镜像迭代、CI 构建及依赖声明变得可重复；镜像 registry 则让应用能以统一格式分发。许多人尤其认可 Docker Compose 和源代码挂载：本机保留熟悉的编辑与调试工具，却把运行时和依赖整体隔离，从而大幅缓解“works on my machine”。早期围绕 AUFS 镜像层和集中式镜像分享服务形成的完整工作流，被认为比单一底层技术更具突破性。",
+        "supportid": [
+          "50203975",
+          "50203171",
+          "50203475",
+          "50204118"
+        ]
+      },
+      {
+        "category": "容器本质是隔离后的进程，而非轻量VM",
+        "summary": "多条评论强调 Linux 内核并没有一个名为“container”的单独对象；容器由 mount、pid、net、ipc、uts、user、cgroup、time 等 namespace 及资源控制机制组合而成。镜像在实践中接近一个 root filesystem，运行时通过 chroot 或 pivot_root 改变进程看到的根目录，再启动普通进程。因此把 Docker 当作 VM 的黑箱，会在网络、权限、进程可见性和文件系统行为上产生误解。理解这一模型也直接有助于排障，例如可从宿主机的 /proc 定位容器进程，并用 gdb 附加调试。",
+        "supportid": [
+          "50204138",
+          "50203865",
+          "50203293",
+          "50203573",
+          "50203321"
+        ]
+      },
+      {
+        "category": "root daemon 曾有合理性，如今却是争议焦点",
+        "summary": "批评者将 Docker 的 client/server 架构和常驻 daemon 视为权限管理复杂、攻击面更大的“怪异”设计，因此偏好无 daemon、可 rootless 运行的 Podman。反方指出，Docker 早期必须以特权用户创建容器；若要让普通用户操作，只能选择 setuid 程序或 client/server 代理，而 user namespace 尚未成熟。daemon 当时还提供了 Mac、Windows 与 Linux 间相近的操作体验，且无 daemon 的 rkt 曾未能成功；Podman 则受益于后来的内核和 systemd 改进。评论同时纠正“Docker 必须 root”的绝对说法：Docker 多年前已支持 rootless，只是默认 root daemon 仍更便利。",
+        "supportid": [
+          "50203300",
+          "50204065",
+          "50204060",
+          "50203900",
+          "50202976",
+          "50203658"
+        ]
+      },
+      {
+        "category": "Docker 的历史路径与商业化缺口",
+        "summary": "Docker 并非简单“商业化 LXC”：其早期曾基于更早的 OpenVZ，随后使用 LXC 的低层能力，最终因其不可靠而替换为自研 Go 实现 libcontainer。它从 dotCloud（一个 PaaS）长期迭代而来，2008 年开始探索、2013 年推出 Docker；当时已有 Solaris Zones、cgroups、Vagrant 等相邻方案，但 Docker 将部署痛点整合得更完整。商业化方面，有观点认为开源基础设施难以靠支持合同支撑 VC 规模回报；也有人认为公司长期忽略 rootless、私有 registry、systemd 兼容和防火墙等企业需求，让 Podman、Quay 等后来者填补空白。",
+        "supportid": [
+          "50203555",
+          "50203071",
+          "50203211",
+          "50203719",
+          "50203990",
+          "50203878"
+        ]
+      },
+      {
+        "category": "Go 运行时与容器运行时的语言取舍",
+        "summary": "Docker 采用 Go 的历史理由主要是发布单个编译二进制，避开当年 Ruby、Python、Java 等 DevOps 工具运行时阵营，从而降低采用门槛，而不是单纯追求性能。批评者指出容器运行时频繁处理 clone、fork、线程局部 namespace 状态，Go 的 goroutine 可在线程间迁移，早期曾导致网络 namespace 清理不完整、复用线程网络异常等棘手问题。有人因此主张今天应选 Rust 或 C，并提到 crun、youki 等替代运行时；但也有人反驳，容器启动开销并未因语言更换而有普遍显著改善，Go 的问题主要是实现时需与其 runtime 周旋。",
+        "supportid": [
+          "50203120",
+          "50203152",
+          "50204132",
+          "50203907",
+          "50203844",
+          "50203590"
+        ]
+      },
+      {
+        "category": "反对把 Docker 当作所有部署问题的答案",
+        "summary": "部分评论认为文章列出的底层设计并不“怪”，只是新手把 Docker 误解为 VM 后才觉得反直觉；理解历史演进后，多数选择都有技术脉络。另一部分人则厌倦社区将“Just use Docker”作为 Linux 部署的万能回答，认为这催生了 cargo cult，并选择自建非 Docker 的部署自动化。对于学习问题，意见偏向 Dockerfile 语法本身很小、容易查阅，真正值得理解的是层缓存、文件系统状态和隔离边界，而非死记指令。nspawn、Incus、KVM/QEMU 等系统容器与 VM 工具也被视为不同隔离和运维需求下的可选方案。",
+        "supportid": [
+          "50203265",
+          "50203950",
+          "50203484",
+          "50203501",
+          "50203483",
+          "50203750"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Linux namespaces（命名空间）",
+        "explanation": "Linux 内核的隔离机制；分别隔离进程 ID、网络、挂载点、用户身份等视图，是容器的核心组成部分。"
+      },
+      {
+        "term": "rootless",
+        "explanation": "让容器以宿主机非特权用户运行的模式，通常依赖 user namespace 映射容器内 root 与宿主机普通 UID。"
+      },
+      {
+        "term": "daemon（守护进程）",
+        "explanation": "后台常驻服务；传统 Docker 由客户端把操作交给 Docker daemon 执行，而 Podman 等工具可采用无 daemon 模式。"
+      },
+      {
+        "term": "Dockerfile",
+        "explanation": "描述构建容器镜像步骤的声明式文本文件，常利用分层与缓存加速构建和复现依赖环境。"
+      },
+      {
+        "term": "OCI image",
+        "explanation": "遵循 Open Container Initiative 开放规范的容器镜像格式，可由 Docker、Podman、Incus 等不同工具构建或运行。"
+      }
+    ],
+    "context": "Docker 起源于 dotCloud（一个早期 PaaS）的长期基础设施探索：项目自 2008 年持续迭代，2013 年以 Docker 名称发布，将 Linux 的 namespaces、cgroups 和 root filesystem 切换等底层能力变成标准化的应用打包与运行接口。它并未创造容器隔离本身，早期路径经历 OpenVZ、LXC，后因 LXC 用户态工具不可靠而发展出 libcontainer；其关键影响还包括 Dockerfile 分层镜像、registry 分发和 Docker Compose 本地编排工作流。讨论所称“怪异”，主要指容器只是宿主机进程却被包装成近似独立机器、以及早期为特权操作和跨平台体验形成的 root daemon 架构。如今 Podman（支持无 daemon 与 rootless 的容器工具）、nspawn（systemd 的容器工具）、Incus（统一管理 VM、LXC 与 OCI 容器的平台）及 Dagger（面向 CI/CD 的容器化工作流引擎）反映了容器生态对安全、隔离与构建自动化的不同取舍。",
+    "emoji": "🐳",
+    "sarcastic_question": "既然只是进程，何必养个root守护进程？"
+  },
+  "articleSummary": "## 一句话总结\n作者通过手写容器运行时的实践发现，Docker 的\"容器\"本质上是多个 Linux 内核特性的组合，而其运行时 `runc` 为了用 Go 语言实现这些底层功能，不得不采用了一些令人咋舌的\"补丁\"式设计。\n\n## 正文\n\n### 容器根本不是什么\"实体\"，只是穿了马甲的进程\n我们常把容器和虚拟机（VM）混为一谈，但这两者有着本质区别。VM 是实打实的虚拟硬件实例，而容器说到底还是宿主机内核运行的一个进程。既然是进程，你完全可以在宿主机的 `/proc` 目录下找到它，它并没有什么神秘的隐身术。所谓的\"容器\"，不过是被施加了特殊限制的普通进程罢了。\n\n### 没有\"容器\"这个 API，只有五个穿风衣的\"内核特性\"\n如果你去翻 Linux 内核文档，根本找不到一个叫\"容器\"的特性。说白了，容器就是五个 Linux 内核特性拼凑起来的\"缝合怪\"。Namespaces 负责让容器\"看不见\"宿主机的资源，Cgroups 负责限制它能用多少 CPU 和内存，再加上一堆复杂的网络隔离魔法。这就像是一个侦探小说里的经典桥段：看起来像是个新角色，其实只是几个老熟人套了一件风衣。\n\n### 镜像没什么黑科技，核心就是文件夹的搬运\nDocker Image 听起来很高大上，实际上它就是一堆文件夹。Docker 把镜像下载下来，扔到某个目录里，然后调用 `chroot` 或者 `pivot_root` 把这个目录变成容器进程的根目录。比如你跑 `docker run -it ubuntu /bin/bash`，Docker 做的无非就是把 Ubuntu 的文件解压到 `/some/weird/docker/path`，然后让进程在这个新\"根目录\"里跑起来。\n\n### Go 语言写运行时，简直是给自己挖坑\nDocker 的运行时 `runc` 是用 Go 写的，但这其实是个挺别扭的选择。Go 的运行时天生就是多线程的，而很多 Linux 系统调用（比如创建 Namespace 的某些操作）必须在单线程环境下执行。结果就是，`runc` 被迫引入了一个极其 Hack 的 C 语言模块。这个模块必须在 Go 运行时初始化之前就跑起来，专门用来处理那些\"只能单线程干\"的脏活累活。\n\n### 没有 fork？那就\"自己 exec 自己\"来模拟\nGo 语言还有一个让人头疼的设计：它没有真正的 `fork`。在多线程环境下调用 `fork` 只会克隆主线程，这简直是并发程序的脚底板（footgun）。但容器运行时偏偏需要\"fork 一个新进程，设置一堆限制，再 exec 用户程序\"这套流程。为了绕过这个限制，`runc` 搞了个奇招：直接 `exec` `/proc/self/exe`，带上特殊参数把自己重新运行一遍，以此来模拟 fork 的效果。\n\n### 必须要 root 权限？这是历史遗留的安全噩梦\n如果你在 MacOS 上用 Docker，可能很容易忽略一点：在 Linux 上，Docker 守护进程通常是以 root 权限运行的。这是因为很多容器化所需的内核 API，过去都强制要求 root 权限。虽然现在 Rootless 容器技术有所进步，但网络隔离依然是个大坑。如果你想在没有 root 权限的情况下实现完整的网络功能，往往不得不在用户空间重写整个网络协议栈，这工程量可想而知。\n\n### 造轮子是理解轮子最好的方式\n虽然作者才刚刚起步，但通过手写运行时，他对 Docker 的理解已经远超普通使用者。这再次印证了一个老道理：如果你想真正搞懂一个工具，最好的办法就是自己动手造一个轮子。哪怕只是尝试一下，你也能发现那些文档里没写、代码里藏着的\"怪癖\"。"
+}

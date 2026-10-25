@@ -1,0 +1,141 @@
+{
+  "id": 48356625,
+  "by": "kurmiashish",
+  "title": "NPM packages from RedHat have been compromised",
+  "url": "https://github.com/RedHatInsights/javascript-clients/issues/492",
+  "score": 585,
+  "createdAt": 1780321239,
+  "aiSummary": {
+    "chinese_title": "Red Hat npm 包遭入侵：cooldown、install 脚本与供应链防护",
+    "discussion_overview": [
+      {
+        "category": "冷却期 / 最小发布时间",
+        "summary": "很多评论主张给新发布的包加 1 到 7 天的 cooldown 或 minimum release age，理由是大多数恶意版本会在几小时到几天内被发现。支持者举了 event-stream、axios、xz、PyPI 包等案例，认为延迟能让自动扫描器和人工复核先介入，降低“刚发就被装”的命中率。pnpm、Yarn 4、npm v11、uv、pip 都被提到已经支持类似机制，甚至有人认为这应该成为默认值。反对者担心如果全行业都统一一个等待期，攻击者会改成更晚触发，但支持者仍认为这至少能争取宝贵的检测时间。",
+        "supportid": [
+          "48358190",
+          "48356771",
+          "48358135",
+          "48357436",
+          "48358272",
+          "48358998",
+          "48358289",
+          "48357782",
+          "48357744",
+          "48357702",
+          "48357513",
+          "48356830",
+          "48356980"
+        ]
+      },
+      {
+        "category": "install 脚本默认执行",
+        "summary": "争论的核心之一是 npm 默认允许包在安装后以当前用户权限执行 arbitrary code，这被认为比很多生态更危险，因为安装动作本身就会触发代码。有人承认 sharp 这类原生依赖确实需要安装时构建，但更多人认为这类能力应该是显式 opt-in、受 sandbox 约束，或者至少默认关闭 pre/postinstall hooks。也有人指出 npm v11 已开始朝默认禁用 lifecycle scripts 的方向走，并考虑单包授权机制。另一派则认为真正的问题是 trust model 和权限边界，而不是“代码何时执行”这一个维度。",
+        "supportid": [
+          "48356757",
+          "48356891",
+          "48356967",
+          "48357031",
+          "48357534",
+          "48357204",
+          "48358509",
+          "48358875",
+          "48357937",
+          "48358764",
+          "48357083",
+          "48358523"
+        ]
+      },
+      {
+        "category": "不是 npm 独有的生态问题",
+        "summary": "不少评论反对把问题完全归咎于 npm，认为 PyPI、Cargo、Composer、RubyGems、Homebrew、apt/dpkg、dnf/yum 等生态同样会跑脚本或遭遇 supply chain attack。有人提到 TrapDoor、Shai-Hulud 等攻击已经横跨 npm、PyPI、Composer、crates，说明攻击者是顺着最热的生态和最松的默认值走，而不是只盯着 npm。另一种解释是 npm 之所以看起来特别多，是因为 Node.js 应用数量巨大、依赖图更碎、历史上又偏向很多小包，所以暴露面更大。批评“只是规模问题”的人则强调，npm 的默认行为和使用习惯确实让它更容易被滥用。",
+        "supportid": [
+          "48356867",
+          "48356816",
+          "48357621",
+          "48357270",
+          "48357433",
+          "48356904",
+          "48358338",
+          "48358976",
+          "48356823",
+          "48358483",
+          "48357375"
+        ]
+      },
+      {
+        "category": "锁文件、vendoring 与私有仓库",
+        "summary": "有人把重点放在版本策略上：package.json 里的 range 只是允许解析自由度，真正决定安装内容的是 lockfile，但把依赖精确 pin 进 manifest 仍能减少重新生成 lockfile 时的风险。讨论里还出现了 vendoring、把 node_modules 提交进仓库、通过私有 registry 或 pull-through cache 代理依赖，目标都是把供应链根源收回到可审计的 source repo 和 commit hash。支持者认为这能提升可复现构建并降低第三方仓库暴露面，反对者则指出 transitive dependencies 太多，维护成本会迅速爆炸。还有人提醒，若长期 fork 且不持续合并上游安全修复，fork 本身也可能变成永久脆弱的旧版本。",
+        "supportid": [
+          "48359177",
+          "48359248",
+          "48356827",
+          "48356962",
+          "48357041",
+          "48356961",
+          "48357463",
+          "48356924",
+          "48358335",
+          "48357899",
+          "48357915"
+        ]
+      },
+      {
+        "category": "CI/开发机隔离与最小权限",
+        "summary": "另一条主线是把 `npm install`、`npm test` 这类会执行代码的步骤放进没有高权限的容器或独立 job 中，避免开发机、CI runner 或发布流程被一次安装脚本直接拿下。有人建议把构建、测试、签名、发布拆成不同 GitHub Actions job，并安装像 zizmor 这样的工作流安全审计工具，减少 workflow compromise 的机会。也有人强调 AI coding agents、vibe coders 和被入侵的开发者笔记本会把大量生产凭证集中在一台机器上，让“wormable” 风险更严重。整体上，这是一种通过隔离和最小权限来减轻 supply chain worm 扩散面的思路。",
+        "supportid": [
+          "48357436",
+          "48357383",
+          "48358608",
+          "48357972",
+          "48356818",
+          "48358366",
+          "48358565",
+          "48357009"
+        ]
+      },
+      {
+        "category": "Red Hat 供应链信任受挫",
+        "summary": "很多人对这次事件的第一反应是讽刺：一家以 enterprise security 和打包体系著称的公司，居然在自己的 npm 相关发布链路上失守。评论里有人怀疑是 GitHub Actions workflow compromise、开发者笔记本被入侵，或是同一 publishing pipeline 一口气波及了 32 个包，也有人提到这和 Red Hat 与 IBM 同日发布的供应链检测项目形成了戏剧性反差。还有人借机追问，若像 Red Hat 这样的“可信供应商”都无法守住发布链，那普通团队更难依赖默认信任。",
+        "supportid": [
+          "48357085",
+          "48356929",
+          "48356849",
+          "48357274",
+          "48356760",
+          "48357318",
+          "48357722",
+          "48358304",
+          "48357244",
+          "48357327",
+          "48356988"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "minimum release age / cooldown",
+        "explanation": "给刚发布的包设置最小发布时间阈值，发布不满 N 天的版本默认不安装，用来给安全扫描和人工复核留时间。"
+      },
+      {
+        "term": "lockfile",
+        "explanation": "记录实际解析到的依赖版本，确保多次安装时拿到同一组包，而不是每次按范围重新选择最新版。"
+      },
+      {
+        "term": "postinstall/preinstall hooks",
+        "explanation": "包在安装前后自动执行的脚本，常用于构建原生依赖，但也会把任意代码执行带进安装流程。"
+      },
+      {
+        "term": "vendoring",
+        "explanation": "把依赖源码直接纳入仓库或自家构建流程，而不是每次从公共仓库临时拉取。"
+      },
+      {
+        "term": "Artifactory / Nexus",
+        "explanation": "企业常用的私有包仓库或代理缓存，可通过缓存和准入策略在内部控制依赖更新。"
+      }
+    ],
+    "context": "这次讨论围绕 Red Hat 旗下与 cloud services 相关的 npm 包被篡改展开，原始披露来自 Step Security（一家做供应链安全分析的公司）。评论补充说同一 publishing pipeline 影响了 32 个包，这让问题从单个包泄露变成了发布链路被攻破。背景里还叠加了近几年多次 software supply chain attack：npm、PyPI、Composer、crates 以及 xz、axios 等案例，说明“发布后很快被恶意利用”已经是常见模式。围绕 npm（Node.js 的包管理器）默认执行 install scripts、依赖范围解析和大量 transitive dependencies 的风险，大家提出了 cooldown / minimum release age、lockfile、vendoring、容器隔离等防线。",
+    "emoji": "😬",
+    "sarcastic_question": "Red Hat 都中招了，npm 还要默认放行脚本？"
+  },
+  "articleSummary": "## 一句话总结\n攻击者通过劫持 Red Hat 开发者的 NPM 发布 Token，向 `@redhat-cloud-services` 下的 30 多个官方包注入了恶意代码，专门用于窃取 AWS 和 GitHub 的访问凭证。\n\n### 供应链攻击的源头：Token 泄露而非代码漏洞\n这次事件不是代码逻辑出了 Bug，而是发布权限被偷了。攻击者拿到了某个 Red Hat 开发者的 NPM publish token，这相当于拿到了仓库大门的钥匙。有了这个 token，攻击者就能以官方维护者的身份发布新版本。因为 NPM 生态默认信任官方发布者，下游项目在 `npm install` 时根本不会察觉到异常。这再次提醒我们，CI/CD 流程中的凭据管理往往比代码审计更关键。\n\n### 隐蔽的版本号跳跃：攻击者很懂“掩耳盗铃”\n有意思的地方在于攻击者选择发布的版本号。比如 `@redhat-cloud-services/chrome`，正常版本是 2.3.0，攻击者发布的是 2.3.1、2.3.2 和 2.3.4。他们刻意跳过了 2.3.3，这可能是为了制造一种“正常迭代”的假象，或者是为了绕过某些自动化的版本号监控规则。这种对版本号的精心设计，说明攻击者对 NPM 生态的发布习惯非常熟悉，不想引起任何不必要的注意。\n\n### 恶意代码的伪装：藏在 `postinstall` 里的黑手\n那这些包到底做了什么？核心思路其实很简单：利用 NPM 的生命周期钩子。恶意代码被埋在 `package.json` 的 `postinstall` 脚本里，这意味着只要你运行 `npm install`，脚本就会自动执行。它会从外部服务器下载并运行一个 JavaScript 文件。这个文件会扫描用户的文件系统，寻找 AWS 和 GitHub 的凭证文件。一旦找到，它就把这些敏感信息发送到攻击者控制的服务器。\n\n### 攻击者的精准收割：只盯着高价值目标\n这里有个巧妙的设计：攻击者并没有无差别攻击。恶意代码在执行前会先检查运行环境，只有在特定条件下才会触发后续的窃密行为。这说明攻击者不想要普通开发者的机器，他们瞄准的是那些在 CI/CD 环境中运行构建、或者拥有云服务权限的高价值目标。这种“定向打击”大大降低了恶意流量被防火墙或安全系统发现的概率。\n\n### 受影响的范围：30 多个包被全线植入\n这次受波及的范围相当广，涵盖了 `@redhat-cloud-services` 命名空间下的 30 多个包。从 `frontend-components` 这种前端组件库，到 `insights-client`、`vulnerabilities-client` 这种核心业务客户端，无一幸免。Red Hat 官方已经确认了这些受影响的版本号（如 `eslint-config-redhat-cloud-services` 的 3.2.1, 3.2.2, 3.2.4 等），并建议用户立即升级到修复后的版本。\n\n### 事件后的补救：撤销 Token 与强制撤包\n事情败露后，Red Hat 的反应还算迅速。他们不仅撤销了泄露的 Token，切断了攻击者的发布权限，还联系 NPM 官方下架了所有恶意版本。现在，如果你尝试安装这些受影响的版本号，NPM 会直接报错。但这依然给所有依赖这些包的项目敲响了警钟：仅仅锁定版本号是不够的，你还得监控你的依赖是否在“悄无声息”地更换了发布者。"
+}

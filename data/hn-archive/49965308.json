@@ -1,0 +1,79 @@
+{
+  "id": 49965308,
+  "by": "Vosporos",
+  "title": "Making a GTK application in Haskell, part 1",
+  "url": "https://floreal.tech/blog/2026/making-a-gtk-app-in-haskell-part-1/",
+  "score": 121,
+  "createdAt": 1791214845,
+  "aiSummary": {
+    "chinese_title": "Haskell GTK 教程引发 GTK4 通用性、GUI 架构与包管理争议",
+    "discussion_overview": [
+      {
+        "category": "GTK4 是否仍是通用跨平台工具包",
+        "summary": "评论者认为 GTK 仍被广泛使用，已有专门收录 GTK4/Adwaita 应用的站点，且 GTK3 的传统界面外观仍受一些开发者喜爱。但批评者认为 GTK4 更服务于 GNOME 的平台理念，而非独立开发者所需的通用控件库；许多旧 API 和行为被移除，使从 GTK2/GTK3 迁移代价很高。具体不满包括不能按旧方式定位窗口、菜单机制变动，以及把字体选择等功能交由尚不普适的 XDG portals。有人指出这些设计在 macOS 和 Windows 上难以成立，并称 GTK4 后端是其开发过的多个 IUP 后端中最难适配的一个。",
+        "supportid": [
+          "49968937",
+          "49969725",
+          "49972032",
+          "49971522",
+          "49969910"
+        ]
+      },
+      {
+        "category": "Haskell 的 GUI 编程模型与 FFI",
+        "summary": "有人以玩笑方式称 Haskell 是优秀的 imperative language，理由是 IO monad 加上 FFI 能以较强的约束处理副作用并调用 C 生态。讨论澄清 GTK 的 Widget 在这里并不是 Monad，而是围绕原生指针的 newtype，并通过 typeclass 模拟 GTK 自身的类层级。实际写 Haskell GUI 的开发者则认为直接手工连接 gtk-gi 的 signal 很快会变得混乱，因此更常使用 react-banana 或 Reflex 等响应式框架。教程采用的 Elm architecture 虽然整洁，但评论者追问如何把控件树的异步 GI callbacks 汇入 update loop，避免 callback hell；这一关键实现细节尚未从帖子中得到回答。",
+        "supportid": [
+          "49969946",
+          "49971019",
+          "49971415",
+          "49966839",
+          "49968697"
+        ]
+      },
+      {
+        "category": "Linux 上 Haskell 软件包依赖负担",
+        "summary": "一部分用户因 Haskell 在 Linux 发行版中的包依赖问题而回避它，并以 Pandoc 为典型例子，甚至建议直接使用 C++。反驳意见认为问题主要来自特定发行版的打包策略：Arch Linux 将 Haskell 库动态链接，导致安装程序时拉取大量传递依赖，据称规模可接近 1GB。相比之下，静态链接的发行方式安装 Pandoc 可能只需 libgmp；Fedora 用户也称未遇到同类问题。NixOS 的 Nix flakes、或在 Arch 中用 GHCup、Stack 将工具链置于用户目录，被视为绕开系统包管理摩擦的实际方案。",
+        "supportid": [
+          "49967536",
+          "49971057",
+          "49968438",
+          "49967554",
+          "49968836",
+          "49968784",
+          "49967747"
+        ]
+      },
+      {
+        "category": "教程页面本身的性能与细节瑕疵",
+        "summary": "评论者发现页面使用 backdrop-filter 会造成明显的滚动卡顿，建议改为对 picture 元素使用 filter，以获得更好的滚动性能。有人讽刺讨论 GUI 的文章本身却难以流畅阅读，并建议使用浏览器 Reader Mode 绕过复杂页面样式或弹窗。代码示例中的 GI.Awd 也被指出疑似拼写错误；查证 gi-adwaita 包后确认正确模块缩写应为 Adw。另有一句“花两年做 todo list”的调侃，反映部分读者对教程项目进展或 GUI 开发成本的怀疑。",
+        "supportid": [
+          "49966577",
+          "49967483",
+          "49968628",
+          "49968214",
+          "49968273",
+          "49968354",
+          "49967584"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "GTK / GTK4",
+        "explanation": "GTK 是源自 GNOME 的图形界面工具包；GTK4 是其较新主版本，改动了 API、窗口管理和平台集成方式。"
+      },
+      {
+        "term": "GI / gtk-gi",
+        "explanation": "GObject Introspection（GI）为 GObject 库提供语言绑定元数据；gtk-gi 是 Haskell 调用 GTK/GNOME 库的绑定体系。"
+      },
+      {
+        "term": "动态链接与静态链接",
+        "explanation": "动态链接让程序在运行时依赖共享库，可能引入大量包依赖；静态链接将所需库更多地打入产物，部署依赖较少。"
+      }
+    ],
+    "context": "原帖是一个用 Haskell 编写 GTK 图形桌面应用的系列教程开篇，涉及 gi-gtk（基于 GObject Introspection 的 Haskell GTK 绑定）和 Adwaita（GNOME 的界面设计库）。评论中的架构争论建立在 Haskell GUI 需要把 GTK signal、异步事件和纯函数式状态更新结合起来这一前提上，Elm architecture（单向状态更新模式）被视为可能的组织方式。更大的争议来自 GTK4：它正逐步围绕 GNOME 与 Wayland（Linux 的新一代显示服务器协议）设计，因此旧式跨桌面、跨系统的窗口控制能力受到限制。Haskell 的采用门槛也与 Linux 发行版如何打包 GHC（Haskell 编译器）及其库密切相关，Arch Linux 的动态链接策略尤其被批评会放大依赖体积。",
+    "emoji": "🤨",
+    "sarcastic_question": "连窗口都不能定位，GTK还算通用工具包吗？"
+  },
+  "articleSummary": "## 一句话总结\n这篇文章展示了如何用 Haskell 结合 GTK 4 和 Adwaita 库开发 GUI 应用，核心在于引入 Elm Architecture (TEA) 模式来驯服 GTK 的命令式特性。\n\n## 正文\n\n### 为什么选择 Adwaita 和 haskell-gi\n故事从一个经典的选择开始：工具栈。作者选择了 Adwaita 库，这不仅仅是 GTK 的皮肤，而是 GNOME 项目 Human Interface Guidelines (HIG) 的直接封装。说白了，它帮你搞定了响应式设计和深浅主题切换这些繁琐的 UI 细节。连接 Haskell 和 GTK 的桥梁是 `haskell-gi`，它的特点是直接从 GTK 库自动生成 Haskell 绑定。这意味着你写出来的代码虽然披着 Haskell 的外衣，但依然能清晰地映射回 C API，对于有经验的开发者来说，查阅文档毫无心智负担。\n\n### 用 Elm Architecture 驯服命令式 UI\nGTK 本质上是命令式的，而 Haskell 是函数式的，这两者怎么磨合？作者引入了 The Elm Architecture (TEA)。核心思路其实很简单：把应用拆解成 Model（状态）、View（视图）和 Update（更新逻辑）。所有的用户交互都被抽象成 Message（消息），Update 函数接收 Message 并产出新的 Model 和副作用（Effects）。这种设计让应用的状态流转变得完全可预测，把 GTK 那些原本散落在各处的信号处理逻辑收拢到了一个纯函数里。\n\n### 数据模型的设计细节\n具体的代码实现从定义数据结构开始。作者定义了 `TodoId`、`Todo` 和 `Model`，结构非常清晰。有意思的地方在于 `update` 函数的设计：它不仅返回新的 Model，还返回一个 Effect 列表。比如，当数据发生变化时，它会生成 `Save [Todo]` 的 Effect。这种设计把“状态变更”和“持久化操作”解耦了。作者还在 GHCi 里演示了如何测试这段逻辑，通过手动调用 `update` 函数，你可以清晰地看到状态变化和 Effect 的生成过程，完全不需要启动 GUI 就能验证核心逻辑。\n\n### 视图层如何组装\nView 的构建过程就像是搭乐高积木。虽然数据结构决定了业务逻辑，但 UI 设计并不直接从数据推导，作者甚至建议先画草图。代码中组合了 `Adw.HeaderBar`、`Gtk.Box`、`Adw.EntryRow` 等组件。这里有个巧妙的设计：`view` 函数接收一个 `dispatch` 函数作为参数。当 `EntryRow` 被激活时，它并不直接修改状态，而是调用 `dispatch (Add text)`。这让 View 彻底变成了一个无状态的渲染函数，所有的交互都化作了 Message 的发送。\n\n### 运行时如何驱动状态流转\n最后是连接 Model 和 View 的 Runtime。这是整个应用的“心脏”。作者定义了 `dispatch` 和 `step` 两个核心函数。`dispatch` 把消息推入 GLib 的主循环，确保线程安全；`step` 则负责读取当前 Model，调用 `update` 更新状态，写回新状态，并重新渲染 View。通过 `IORef` 持有状态，配合 `idleAdd` 调度，这套机制在 Haskell 的纯函数世界和 GTK 的 IO 世界之间架起了一座桥梁。最终，一个功能完整的 Todo 应用就此诞生。"
+}

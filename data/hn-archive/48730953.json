@@ -1,0 +1,70 @@
+{
+  "id": 48730953,
+  "by": "peterparker204",
+  "title": "Hunting a 16-year-old SQLite WAL bug with TLA+",
+  "url": "https://ubuntu.com/blog/hunting-a-16-year-old-sqlite-bug-with-tla-is-dqlite-affected",
+  "score": 160,
+  "createdAt": 1783093845,
+  "aiSummary": {
+    "chinese_title": "用 TLA+ 验证 dqlite 不复现 SQLite 16年 WAL bug",
+    "discussion_overview": [
+      {
+        "category": "TLA+ 与符号体系",
+        "summary": "评论先把 TLA+ 解释成一种用于软件和硬件抽象建模的形式化语言，强调它是 Leslie Lamport 的代表性工作之一。有人指出它的符号风格很像 LaTeX，很多运算符直接沿用数学记号，但也有些地方改成了 ASCII 写法，初看会显得很怪。还有人补充说 Lamport 也是 LaTeX 的原始创造者，这让这种“像排版系统又像数学论文”的风格更容易理解。",
+        "supportid": [
+          "48776079",
+          "48777464",
+          "48778770"
+        ]
+      },
+      {
+        "category": "标题与文章范围澄清",
+        "summary": "有评论认为标题容易误导，因为文章真正描述的是用 TLA+ 证明 dqlite 没有 SQLite 的同类 bug，而不是亲手修复那个 SQLite bug。也就是说，文中重点是形式化验证一个实现是否会落入相同的状态机错误，而 SQLite 那个历史 bug 的修复是另一件事。作者本人也在评论区露面，顺带提到文章被送上首页让自己有些意外，另外还有人挑出了正文里的一个缺词。",
+        "supportid": [
+          "48778940",
+          "48781074",
+          "48779460"
+        ]
+      },
+      {
+        "category": "罕见 bug 的发现方式",
+        "summary": "读者对这种“几乎无法复现”的 SQLite 旧 bug 是怎么被发现的表示好奇，因为官方文档也强调它极其罕见。回复推测，发现过程很可能先来自代码审查时察觉某个逻辑不对，再用手工测试去验证猜想是否成立。有人还分享了类似经历：在检查状态清理代码时，凭直觉发现某个字段在特定条件下没有被清掉，最后果然证实有 bug。",
+        "supportid": [
+          "48780679",
+          "48780882"
+        ]
+      },
+      {
+        "category": "TLA+ 工具链与可用性",
+        "summary": "一部分评论表达了对 TLA+ 的喜爱，并开始讨论是否可以移植到 Lean（一个定理证明器）以及加入 tactics。也有人提醒，过度追求自动化会碰到 Rice's theorem（Rice 定理），并不意味着把形式化工具一路“语义化到底”就能轻松解决所有问题。另有人推荐了 tlaplus-process-studio（一个面向初学者的本地高层建模工具），同时认为 TLA+ 更需要改善 devEx（开发者体验）而不是急着做 Lean 版本。",
+        "supportid": [
+          "48778746",
+          "48778811",
+          "48779566"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "TLA+",
+        "explanation": "一种由 Leslie Lamport 提出的形式化规格语言，用来对软件系统的状态、并发和时序行为建模。"
+      },
+      {
+        "term": "TLC",
+        "explanation": "TLA+ 的模型检查器，用于枚举和验证规格中的状态转移是否满足性质。"
+      },
+      {
+        "term": "LaTeX",
+        "explanation": "一种排版系统，Lamport 也是其原始创造者；TLA+ 的记号风格和它有明显相似之处。"
+      },
+      {
+        "term": "Rice's theorem",
+        "explanation": "关于程序语义性质不可判定的经典结果，常用来提醒不要把自动化分析工具想得过于万能。"
+      }
+    ],
+    "context": "SQLite（一个嵌入式关系型数据库）里曾有一个与 WAL（write-ahead logging，预写日志机制）相关、拖了十多年的边缘 bug。原文讨论的是用 TLA+（一种系统级形式化建模语言）为 dqlite（一个基于 SQLite 的分布式实现）写规格，并借助 TLC（TLA+ 的模型检查器）验证它不会落入同类错误。评论区补充说，标题把“验证不共享该 bug”和“修复 SQLite bug”混在了一起，实际上两件事是分开的。大家也借机讨论了 TLA+ 的符号风格、Lamport 对 LaTeX 的贡献，以及形式化方法在发现罕见状态机错误时的价值。",
+    "emoji": "🔍",
+    "sarcastic_question": "明明是证明没同样 bug，怎么标题还叫抓 bug？"
+  },
+  "articleSummary": "## 一句话总结\nCanonical 团队通过 TLA+ 建模，复现并验证了一个潜伏了 16 年的 SQLite WAL checkpoint 竞态条件 bug，确认 dqlite 不会受其影响。\n\n### 潜伏 16 年的 WAL 隐患\nSQLite 最近修复了一个存在于 WAL（Write Ahead Log）机制中的陈年 bug，它会导致数据库损坏。这个 bug 从 2010 年就藏在代码库里，足足存活了 16 年。有意思的地方在于，它的实际影响极低，但极难被发现和复现。对于 dqlite 团队来说，最紧迫的问题不是 SQLite 怎么修的，而是：dqlite 会受这个 bug 牵连吗？为了搞清楚这一点，他们没有去跑模糊测试，而是选择用形式化验证工具 TLA+ 来建模分析。\n\n### WAL 机制的精简模型\nSQLite 的 WAL 模式允许读写并发，核心在于把修改先写到 WAL 文件，再通过 checkpoint 搬运回主数据库。为了防止 WAL 无限增长，SQLite 会在 checkpoint 完成后尝试“重置”WAL（覆盖旧数据）。这个过程依赖两个关键锁：`WRITE_LOCK`（写锁）和 `CKPT_LOCK`（检查点锁）。TLA+ 建模的第一步就是做减法：忽略读者，只保留 `walSalt`（重置计数器）、`mxFrame`（WAL 长度）和 `nBackfill`（已回填页数）这几个核心变量，把复杂的文件操作抽象为简单的数字序列。\n\n### 抽丝剥茧：从 C 代码到 TLA+ 规约\n建模最难的不是写代码，而是决定“不写什么”。作者直接阅读 SQLite 中负责追加帧的 C 源码（`walFrames` 函数），将其逻辑转化为 TLA+ 的数学规约。他们把每一页数据建模为一个唯一的数字，WAL 就是数字序列，数据库则是数字集合。Checkpoint 的过程，就是按顺序把序列里的数字移到集合里。这种抽象既保留了并发控制的本质逻辑，又让模型足够简单，能够被 TLA+ 模型检测器快速遍历。\n\n### 锁与共享内存的竞态条件\nBug 的根源在于 `walRestartLog` 函数中的锁逻辑。当 WAL 需要重置时，代码会检查 `nBackfill` 是否等于 `mxFrame`（即所有页都已 checkpoint）。如果是，它就会尝试获取所有 reader 的锁，以便安全地重置 WAL。但这里有个微妙的竞态条件：在检查 `nBackfill` 和实际获取锁之间，或者在更新共享内存头信息的过程中，如果并发操作打乱了时序，就可能导致 `mxFrame` 和 `walSalt` 的状态不一致。TLA+ 模型清晰地展示了这个导致损坏的特定执行序列。\n\n### dqlite 的幸运“免疫”\n有了 SQLite 的模型，作者接着构建了 dqlite 的模型。dqlite 基于 SQLite，但架构不同：它通过 Raft 共识层管理所有写入，本质上是一个单写入者（Single-Writer）系统。在 dqlite 的模型中，不存在 SQLite 那种多个客户端并发抢占 `WRITE_LOCK` 和 `CKPT_LOCK` 的复杂场景。TLA+ 的验证结果证实了这一点：在 dqlite 的约束下，触发该 bug 的执行路径是不存在的。\n\n### 形式化验证的降维打击\n这篇文章展示了 TLA+ 在排查复杂并发 bug 时的威力。面对一个潜伏 16 年、极难复现的竞态条件，传统的测试手段往往力不从心，而 TLA+ 通过穷举所有可能的并发状态，直接给出了反例路径。对于 dqlite 团队来说，这不仅确认了系统的安全性，更重要的是提供了一种可复用的方法：下次再遇到底层依赖的诡异 bug，不用再靠猜，直接建个模跑一遍就知道了。"
+}

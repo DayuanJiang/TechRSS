@@ -1,0 +1,135 @@
+{
+  "id": 48558018,
+  "by": "mrshu",
+  "title": "TIL: You can make HTTP requests without curl using Bash /dev/TCP",
+  "url": "https://mareksuppa.com/til/bash-dev-tcp-http-without-curl/",
+  "score": 357,
+  "createdAt": 1781629862,
+  "aiSummary": {
+    "chinese_title": "Bash /dev/TCP 手写 HTTP：最小镜像、telnet 怀旧与安全争论",
+    "discussion_overview": [
+      {
+        "category": "手动协议时代的怀旧",
+        "summary": "很多人回忆起 90 年代用 telnet 直连 80/25/110 端口，手工敲 GET、HELO、RCPT TO、POP3 命令，第一次意识到网络协议其实只是文本。有人还提到当年 SMTP 没有 DKIM/SPF 时可以轻易伪造发件人，甚至拿来挑起邮件或论坛冲突。对他们来说，这类操作的意义不只是炫技，而是让人明白系统没有魔法，协议和软件都能被直接看见和理解。也有人把这种经验延伸到 IRC、Winsock 和数据库文本文件，认为亲手拆开协议才算真正学过计算机。",
+        "supportid": [
+          "48560726",
+          "48564171",
+          "48563497",
+          "48563801",
+          "48560769",
+          "48561029",
+          "48562827",
+          "48563173",
+          "48559368",
+          "48559640",
+          "48560107",
+          "48560969",
+          "48561609"
+        ]
+      },
+      {
+        "category": "容器最小化与健康检查",
+        "summary": "原帖的实际场景是容器里没有 curl/wget/nc，只能用 Bash 的 /dev/TCP 做连通性测试或 health check。很多人表示在 Python slim、alpine、FROM scratch 或 distro-less 镜像里，这类做法并不罕见，因为镜像越小，CVE 和合规扫描压力越低。也有人指出，在 Kubernetes 里 ephemeral debug container、nsenter 或直接把 curl 带进镜像，通常比让业务镜像自己承担调试工具更合理。反对者则认为把 curl 装上只要两行 Dockerfile，排障便利性往往比省掉几 MB 更重要。",
+        "supportid": [
+          "48558019",
+          "48558577",
+          "48558763",
+          "48558817",
+          "48558864",
+          "48558970",
+          "48558985",
+          "48560237",
+          "48561403",
+          "48562168",
+          "48562629",
+          "48559355",
+          "48559293",
+          "48560419",
+          "48562431",
+          "48561585",
+          "48558713"
+        ]
+      },
+      {
+        "category": "这不是 HTTP client，而是手写协议",
+        "summary": "不少评论纠正了标题：Bash 只是通过 /dev/TCP 打开 TCP socket，真正的 HTTP 还是要自己拼报文。这样做适合临时测试，但对 redirects、chunked encoding、TLS/HTTPS、HTTP/2、proxy 和各种编码细节都很脆弱。大家普遍认为 curl 或 nc 更适合正式使用，而所谓“纯 Bash Web server”其实也往往借助了外部 C 代码。",
+        "supportid": [
+          "48558771",
+          "48561018",
+          "48558843",
+          "48559663",
+          "48559847",
+          "48562690",
+          "48560285",
+          "48562515",
+          "48560012",
+          "48560503",
+          "48559523"
+        ]
+      },
+      {
+        "category": "受限 shell 与攻防用途",
+        "summary": "这招也被视为典型的 post-compromise 技巧：当目标里没有 curl、wget、nc、python 时，/dev/TCP 仍能用来连回外部、下载 payload 或做 exfiltration。做过 OSCP、CTF 或渗透测试的人表示，在拿到低权限 shell 且系统极简时，这种纯 shell 连接方式非常实用。另一边也有人直言，这正说明封掉常见工具并不等于更安全，攻击者只会换一条更隐蔽的路。",
+        "supportid": [
+          "48560747",
+          "48562650",
+          "48559169",
+          "48559231",
+          "48560216",
+          "48563892",
+          "48559768",
+          "48564173"
+        ]
+      },
+      {
+        "category": "HTTP 明文探测与 captive portal",
+        "summary": "有人用 example.com 这种稳定返回明文 HTTP 的域名做连通性测试，尤其是在公共 Wi‑Fi 或 captive portal 场景下确认是否被重定向。也有人更喜欢 neverssl.com、detectportal 一类专门为此准备的站点，因为它们明确不强制 HTTPS。讨论里还提到很多域名已经默认跳转到 HTTPS，所以找一个仍能响应纯 HTTP 的目标，反而成了这类小技巧里最关键的一步。",
+        "supportid": [
+          "48558915",
+          "48559258",
+          "48559561",
+          "48560121",
+          "48564040",
+          "48560423",
+          "48560226",
+          "48561399",
+          "48559726"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "/dev/TCP",
+        "explanation": "Bash/KornShell 的特殊重定向伪路径，能把 TCP 连接当成文件描述符读写。"
+      },
+      {
+        "term": "curl",
+        "explanation": "功能完整的 HTTP client，能处理 redirects、proxy、TLS、压缩等细节。"
+      },
+      {
+        "term": "netcat（nc）",
+        "explanation": "轻量网络工具，适合直接收发 TCP/UDP 数据和做调试。"
+      },
+      {
+        "term": "open relay",
+        "explanation": "不需要认证就能转发邮件的 SMTP server，早年常被滥用来发垃圾邮件或伪造邮件。"
+      },
+      {
+        "term": "DKIM/SPF/DMARC",
+        "explanation": "邮件身份验证机制，用来确认发件域和消息签名，减少 spoofing。"
+      },
+      {
+        "term": "FROM scratch / distro-less image",
+        "explanation": "几乎不含 OS 组件的容器镜像，减小攻击面和 CVE 噪音，但排障更难。"
+      },
+      {
+        "term": "HEALTHCHECK",
+        "explanation": "Dockerfile 里的容器健康检查指令，常用来探测服务是否还能响应。"
+      }
+    ],
+    "context": "这篇 TIL 的核心是 Bash（GNU shell）里的 /dev/TCP 特性：把 TCP socket 当成文件打开，再用 printf 和 cat 手工发送 HTTP 报文。这个技巧在容器里尤其常见，因为 slim、alpine、FROM scratch（几乎空白的 Docker 基础镜像）或 distro-less（极简）镜像里经常故意不带 curl、wget、nc 等工具。评论把它和 90 年代用 telnet 直连 SMTP、POP3、HTTP 的玩法联系起来，也提到那时常见 open relay（不认证就转发邮件的 SMTP server）和缺少 DKIM/SPF 的邮件环境。大家同时提醒，HTTPS/TLS、HTTP/2、代理和各种编码细节会让这种手写报文方式很脆弱，真正排障或自动化时通常还是 curl、nc 或 debug container 更稳。",
+    "emoji": "🛠️",
+    "sarcastic_question": "没装 curl，就只能让 Bash 硬写 HTTP？"
+  },
+  "articleSummary": "## 一句话总结\n在精简容器无法安装 `curl` 时，直接利用 Bash 内置的 `/dev/tcp` 虚拟设备文件描述符，手写 HTTP 请求即可完成网络连通性调试。\n\n### 精简容器的两难：没工具怎么查网络？\n作者遇到的问题很典型：需要在 Docker 内部网络里，从一个容器访问另一个服务的 `/health` 接口。常规操作肯定是 `curl http://service:8642/health`，但这个应用镜像被极致精简了，别说 `curl`，连 `wget` 这种能开 Socket 的工具都没有。这时候重装包不现实，环境也不允许随意变更。那怎么办？其实 Bash 本身就藏着一种“原生”的网络能力，根本不需要额外依赖。\n\n### Bash 的隐藏技能：把网络当文件读写\n核心思路其实很简单：Bash 允许直接打开 TCP Socket，并把连接当作文件描述符来操作。你不需要任何外部二进制文件，只要用 Shell 自带的重定向和 `printf` 就行。具体做法是先用 `exec 3<>/dev/tcp/service/8642` 建立连接，这里 `3` 是自定义的文件描述符。接着用 `printf` 把标准的 HTTP 请求文本“写”进这个描述符，最后用 `cat` 把响应“读”出来。说白了就是绕过 HTTP 客户端库，直接跟 Socket 对话。\n\n### 手写 HTTP 协议的细节与坑\n这里有个巧妙的设计：`/dev/tcp` 并不是磁盘上真实存在的文件，你用 `ls` 根本找不到它。这是 Bash 内部处理的重定向逻辑，它会自动帮你完成 DNS 查询和底层的 `connect(2)` 系统调用。在构造请求时，记得手动加上 `\\r\\n` 作为换行符，并在 Header 结束处留空行。如果需要鉴权，直接在 Header 里插入 `Authorization: Bearer` 即可，变量替换也完全支持，就像拼字符串一样简单。\n\n### 为什么必须加 Connection: close？\n有个坑特别值得注意：HTTP/1.1 默认是保持连接的。如果你不显式加上 `Connection: close`，服务端发完数据后会傻傻地等着你继续发请求，而你的 `cat` 命令也会一直挂起等数据，导致脚本卡死。加上这个 Header 后，服务端就会主动断开连接，`cat` 收到 EOF 信号后正常退出。为了保险起见，作者还建议在外面套一层 `timeout` 命令，防止因为意外情况无限等待。\n\n### 这不是 curl，别指望它处理复杂逻辑\n必须承认，这招只是个“野路子”，它不是真正的 HTTP 客户端。它不会处理重定向、Chunked 传输编码、Gzip 压缩，更别提 TLS 加密了。如果你需要访问 `https`，还是得靠 `openssl s_client`，那复杂度可能还不如直接装个 `curl`。这招的最佳适用场景，就是在极度受限的环境里做一次性的连通性检查，或者调试最基础的 Plain HTTP 接口。\n\n### 兼容性提醒：这是 Bash 的特权\n最后提醒一下环境要求，这是 Bash 的特有功能，不是 POSIX 标准。如果你用的是 `dash`（Debian 的 `/bin/sh`）或者 `zsh`，这招是行不通的。此外，这个功能依赖于编译时的 `--enable-net-redirections` 选项，虽然现在主流的 Linux 发行版都默认开启了，但在一些老旧系统或极度定制的最小化镜像里，可能还是得先确认一下 Bash 是否支持。"
+}

@@ -1,0 +1,97 @@
+{
+  "id": 49920896,
+  "by": "trickypr",
+  "title": "How to speed up the Rust compiler in September 2026",
+  "url": "https://nnethercote.github.io/2026/09/30/how-to-speed-up-the-rust-compiler-in-september-2026.html",
+  "score": 236,
+  "createdAt": 1790859735,
+  "aiSummary": {
+    "chinese_title": "Rust 编译器两月提速4.57%，但 Agent 并发仍受构建拖累",
+    "discussion_overview": [
+      {
+        "category": "近期优化带来可测量改进",
+        "summary": "基准数据显示，两个月内 629 个测试的平均 wall time 降低了 4.57%，而且部分提升来自算法替换而非微调热点代码。借由改变 CFG 遍历方式，EverInitializedPlaces 案例中的 apply_effects_in_block 调用从约 150 万次降到约 9 万次。另有设想是在完整 type checking 前提前产出函数类型元数据，让下游 crate 更早开工；在 rust-analyzer 这类深层依赖项目中，估计可降低约 40% wall time，启用 parallel frontend 时仍可能有 10% 至 15% 收益。值得注意的是，约 5% 的提速同时伴随更严格、更正确的 borrow checker 验证，而非以检查能力换速度。",
+        "supportid": [
+          "49921238",
+          "49923594",
+          "49921549",
+          "49921147"
+        ]
+      },
+      {
+        "category": "慢的根源是代码膨胀、优化与链接",
+        "summary": "Rust 编译时间相对 clang 的差距因项目而异，有评论估计常见范围可达 1 至 5 倍，但“慢”必须结合编译目标和硬件判断。Rust 的 trait resolution、type inference、borrow checker、macro 以及泛型单态化都会增加编译工作，其中 idiomatic Rust 的 Option、Result 和 Iterator 已使泛型代码无处不在。许多人认为主要瓶颈并非静态分析本身，而是单态化产生大量 IR、LLVM 为高质量机器码执行昂贵优化和 debug info 生成，以及最终 linker 汇总大量对象文件。Go 编译更快被解释为其检查和优化较少、语言及构建模型也刻意减少依赖解析工作，因此不能在保留 Rust 保证的前提下简单期待相同速度。",
+        "supportid": [
+          "49921597",
+          "49921610",
+          "49921667",
+          "49921568",
+          "49921660",
+          "49922917",
+          "49922702"
+        ]
+      },
+      {
+        "category": "工程层面的缓解手段仍有边界",
+        "summary": "将一个大型 crate 拆成多个 crate 能提高并行度，并让日常修改只重编主应用；配合 dyn trait 的依赖注入，也可能减少某些编译耦合。代价是链接阶段仍然存在，CI 中若未复用 release artifact cache，干净构建依旧需要重建全项目。wild 等现代 linker 能显著改善某些项目，甚至有 Chromium 在 1 至 2 秒完成链接的案例，但另一些符号密集项目中链接仍可占总时间三分之一。Cranelift 可用更快的后端替代部分 LLVM 工作，不过目前会破坏调试器体验；而 process macro 缓存等增量编译方案也仍处于 nightly 或需要 crate 明确 opt-in 的阶段。",
+        "supportid": [
+          "49922260",
+          "49923477",
+          "49923011",
+          "49923088",
+          "49923407",
+          "49923002"
+        ]
+      },
+      {
+        "category": "Agent 时代的迭代成本促使人转向 Go",
+        "summary": "一位使用 Agent fleet 的开发者称，24 核、2TB HDD 的机器因每个 sandbox 都独立构建 Rust 项目而迅速被磁盘和编译任务压垮，只能把并发 worker 限为 5 个。相同工作流在 TypeScript、Go 和 Elixir 项目上可同时运行十多个 Agent，因此有人最终重写为 Go，认为性能收益不足以覆盖构建与测试延迟。另一派认为 Rust 仍适合 native desktop app，egui 等跨平台 GUI 场景也有价值，但承认快速迭代对这类应用同样关键。建议包括让 artifact cache 支持非阻塞的并发访问，避免多个 Agent 重复构建；也有人认为足够快的硬件已能缓和问题。",
+        "supportid": [
+          "49923560",
+          "49922865",
+          "49922904",
+          "49922867",
+          "49922969"
+        ]
+      },
+      {
+        "category": "AI 资助与开源治理的拉扯",
+        "summary": "有人希望 OpenAI 等依赖 Rust 的 AI 团队提供大量 token 或资源，以换取更快的编译器开发；回应指出 OpenAI 已是 Rust Foundation 的 platinum donor，直接现金可用于支付维护者。支持者认为只要捐助者没有独裁控制权，就不应排斥对基础开源项目的资助。反对者则指出，持续资助本身足以塑造维护者的优先级：迎合大客户的复杂需求可能挤压普通用户所需的改进。与此同时，Rust 项目对 LLM 生成的提交代码有限制，但维护者仍可在自行编写代码和文本的前提下使用 LLM 辅助分析。",
+        "supportid": [
+          "49922252",
+          "49922950",
+          "49923401",
+          "49923537",
+          "49922321",
+          "49923363"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "单态化（monomorphization）",
+        "explanation": "编译器为每种泛型实参生成专门实现，以获得静态派发和高运行时性能，但会扩大 IR、目标文件和编译工作量。"
+      },
+      {
+        "term": "增量编译（incremental compilation）",
+        "explanation": "复用未变化代码的中间结果，仅重编受修改影响的部分；其效果会受 macro 缓存、crate 划分和链接机制限制。"
+      },
+      {
+        "term": "Cranelift",
+        "explanation": "强调快速代码生成的编译器后端，可作为 LLVM 的替代选择，通常以部分优化能力或调试兼容性为代价。"
+      },
+      {
+        "term": "链接器（linker）",
+        "explanation": "将多个目标文件和库合成为可执行文件的工具；Rust 可并行完成前端和代码生成，但链接常成为串行瓶颈。"
+      },
+      {
+        "term": "孤儿规则（orphan rule）",
+        "explanation": "Rust 要求 trait 或目标 type 至少有一个定义在当前 crate，借此维护 trait 实现的一致性，但会限制多 crate 项目的组合方式。"
+      }
+    ],
+    "context": "这篇文章汇总 Rust（强调内存安全与零成本抽象的系统编程语言）官方编译器 rustc 在 2026 年 9 月的性能改进，评论引用的基准结果是 629 项测试平均 wall time 降低 4.57%。Rust 的 Cargo（构建与包管理工具）通常按 crate 编译；泛型单态化、macro 展开和 LLVM（以高质量优化代码著称的编译器后端）会产生大量中间代码，随后还要经过链接器处理。讨论还涉及 Polonius（Rust 新一代借用检查分析引擎）和 trait solver（解析 trait 约束的组件），其目标是把昂贵分析推迟到真正需要时才执行。生成式 AI Agent 普及后，同机多 sandbox 的重复构建、磁盘占用和缓存争用，使编译速度从开发体验问题变成并发生产力问题。",
+    "emoji": "🐢",
+    "sarcastic_question": "24核2TB硬盘，竟只养得起五个 Rust Agent？"
+  },
+  "articleSummary": "## 一句话总结\nRust 编译器在两个月内实现了 4.57% 的整体性能提升，这得益于 PGO 优化、LLVM 升级以及针对新借用检查器和 Trait 求解器的关键性能回退修复。\n\n## 正文\n\n### 整体性能迎来“一片绿”\n距离上次性能报告才过去两个月，Rust 编译器的速度又有了肉眼可见的飞跃。数据显示，平均编译耗时减少了 4.57%。在 629 个 benchmark 中，有 555 个变快了，只有 74 个变慢了。甚至有不少项目实现了两位数的性能提升。用技术行话来说，这叫“a sea of green”（一片绿），意味着编译器在普遍变快，而不是仅仅优化了某些极端案例。\n\n### 基础设施升级带来的红利\n有些性能提升不需要改动 Rust 代码本身，升级依赖就能拿到。Nikita Popov 将编译器使用的 LLVM 升级到了 23 版本，单这一个 PR 就让所有 benchmark 的平均耗时减少了 1.2%。别小看这 1.2%，对于这种基础依赖的升级来说，这已经是相当亮眼的成绩了。另外，Jakub Beránek 给 Clippy 启用了 PGO（Profile-Guided Optimization），效果立竿见影，大部分 Clippy benchmark 都变快了，最好的情况甚至提升了 18%。\n\n### 新借用检查器的性能回退修复\n新的借用检查器 Polonius Alpha 虽然更精确，但因为做了更多工作，不可避免地拖慢了编译速度，连 `serde` 这种常用 crate 都受到了影响。Jack Huey 接手了这个问题。他首先将活跃性计算改为惰性求值，这让 `serde` 的指令数减少了 3-5%。接着，他又调整了数据结构并微调了内联策略。虽然这些改动看起来很细碎，但它们成功压制了 Polonius 带来的性能回退，保证了整体性能依然是“绿”的。\n\n### 新 Trait 求解器的攻坚战\n新的 Trait 求解器同样面临性能挑战。Jana Dönszelmann 专门写了一篇长文来分析其中的优化工作。作者自己也提交了一系列 PR，针对一些极端的 outlier crate 进行了优化，有些甚至获得了 50% 的性能提升。虽然新求解器在少数情况下仍然更慢，但社区正在通过一系列针对性的修补，努力填补这个性能缺口。\n\n### 新贡献者的“精准打击”\n新贡献者 xmakro 的表现相当抢眼，他连续提交了几个高质量的优化 PR。最显著的一个改动是优化了构建特化图时的 impl 处理，单这一个 PR 就让平均指令周期减少了 1.58%。此外，他还优化了增量编译数据的加载逻辑，并消除了热点路径上的内存分配。有意思的是，作者之前尝试过类似的优化，但因为内联属性的位置没放对而失败了，这次 xmakro 终于把这个明显的性能痛点给治好了。\n\n### 数据流分析的算法优化\n作者在数据流分析这块也挖到了宝。编译器里的分析需要迭代直到不动点，而遍历算法的选择直接影响收敛速度。对于 `cranelift-codegen` 这种包含超过 18000 个基本块的“巨无霸”函数，旧算法需要调用 150 万次 `apply_effects_in_block`，而新算法只需要 9 万次。这一改动直接让该 crate 的检查构建速度提升了约 30%。随后作者又顺手优化了 `EverInitializedPlaces`，让 `match-stress` benchmark 的指令数减少了 17%。\n\n### 意料之外的收益与“幸福的烦恼”\n有些优化纯属无心插柳。作者本想清理一下 AST 到 HIR 的降低代码，结果意外发现指令数减少了 1.5%。还有一个有趣的插曲：因为性能优化的 PR 实在太多，CI 排队太长，Jonathan Brouwer 不得不把 10 个性能优化 PR 合并成一个 Rollup PR 来处理。这真是个“幸福的烦恼”。另外，Chris Denton 增加了编译器的默认栈大小，移除了手动的栈扩展机制，这也带来了最高接近 3% 的性能提升。"
+}

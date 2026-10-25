@@ -1,0 +1,130 @@
+{
+  "id": 47933257,
+  "by": "dochtman",
+  "title": "GitHub Actions is the weakest link",
+  "url": "https://nesbitt.io/2026/04/28/github-actions-is-the-weakest-link.html",
+  "score": 179,
+  "createdAt": 1777395642,
+  "aiSummary": {
+    "chinese_title": "GitHub Actions 成供应链最弱环节",
+    "discussion_overview": [
+      {
+        "category": "SHA 固定与供应链防护",
+        "summary": "不少评论认为，`uses:` 里继续用 tag 或 major version tag 太危险，至少第三方 action 应该直接固定到 commit SHA。原因是 tag 随时可能被重定向，甚至出现 `v5.2.3` 之类的“正常更新”外衣下的投毒版本。大家还提醒，光锁顶层 action 不够，composite action 里还可能继续引用其他可变目标，NPM 依赖和远程下载也会把风险继续向外扩散。有人补充说，SHA collision 在 Git/GitHub 场景下几乎没有现实可利用性，但组织级 whitelist 也不是绝对保险，安全供应商自己都可能出问题。",
+        "supportid": [
+          "47936403",
+          "47936736",
+          "47936779",
+          "47938339",
+          "47939881",
+          "47936498",
+          "47939868",
+          "47939192",
+          "47940053"
+        ]
+      },
+      {
+        "category": "自动更新、漏洞告警与维护代价",
+        "summary": "另一条讨论线聚焦在“锁死以后怎么维护”。Renovate、ratchet、pinact 被提到可以自动把 action 从 tag 改成 SHA，并在后续更新时继续同步哈希和注释，减少人工处理。问题在于，SHA pinning 会让 GitHub 自带的 vulnerability alerts 变得不完整，团队只能借助 zizmor 这类外部工具补回漏洞信息。评论还指出，如果把这些更新 PR 全自动合并，就等于放弃了真正的人工审查；但如果不自动化，维护成本和集中治理压力又会迅速上升。",
+        "supportid": [
+          "47936663",
+          "47937859",
+          "47939156",
+          "47939129",
+          "47939966",
+          "47939982",
+          "47940281",
+          "47940097",
+          "47940146",
+          "47940333"
+        ]
+      },
+      {
+        "category": "工作流执行时的信任边界",
+        "summary": "有人认为真正的风险不只是版本是否固定，而是工作流本身能否在运行时接触到不该碰的秘密。`pull_request_target` 被直接批评为危险触发器，因为它可能让未验证的 PR 代码拿到仓库 secrets；而 OIDC federation（runner 与云资源的身份联邦）则会把云端临时凭证提前发出去，后续即使 action 变了，这些权限也已经存在。评论还说，静态解析 YAML 不足以看穿深层 composite action 树和 runtime template injection，因此更需要运行时检测。像 hasp、zizmor 这类工具被当作补丁：前者通过 sandbox、token broker、landlock、seccomp 和 eBPF 把 runner 当成潜在恶意环境来处理，后者则尽量补足审计能力。",
+        "supportid": [
+          "47939733",
+          "47938831",
+          "47939773",
+          "47937843"
+        ]
+      },
+      {
+        "category": "YAML 式 CI 的可调试性很差",
+        "summary": "不少人把矛头指向 GitHub Actions 的编程体验本身，认为 YAML 只是表象，真正糟糕的是大量 action 本质上像 `curl | bash`。评论里有人想要的是一种更像脚本语言、带可观测性和本地 mock 环境的混合式 CI 运行时，而不是一堆隐藏行为的配置拼图。也有人拿 Jenkins 来对比，说它的 Groovy/DSL 语言和报错同样糟糕，但至少直接写 shell 脚本更容易理解。另一些人指出，现代 GHA 已经复杂到很难本地模拟，开发者常常要花很多时间“盲飞”排查，而 `act` 只能部分缓解这个问题。",
+        "supportid": [
+          "47936602",
+          "47937370",
+          "47937622",
+          "47938486",
+          "47939620",
+          "47939676",
+          "47939701",
+          "47940316",
+          "47940301"
+        ]
+      },
+      {
+        "category": "转向自托管或替代 CI 平台",
+        "summary": "还有一批评论把问题上升到平台选择：GitHub Actions 之所以还能用，很多时候只是因为它最省事，尤其适合 Windows、macOS、Linux 三平台一起跑的项目。可一旦考虑到黑箱、卡顿、宕机和难以排查的问题，大家就开始看向自托管 runner、Spot instance、WarpBuild、runs-on、Buildkite、RWX 之类的替代方案。Dagger（一个可编程的 CI 运行时）也被拿来举例，强调它想把 CI 从“绑定 GitHub 事件”里拆出来，让流水线运行层和 git 触发层解耦。即便如此，很多人仍承认 GitHub 的 UI 和 `gh` CLI 体验很好，真正难的是找到一个能同时替代代码托管、PR 流程和 CI 的完整方案。",
+        "supportid": [
+          "47936836",
+          "47939178",
+          "47937904",
+          "47938246",
+          "47939530",
+          "47936406",
+          "47936510",
+          "47939700",
+          "47936306",
+          "47937626",
+          "47936468",
+          "47936500",
+          "47939157"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "SHA pinning",
+        "explanation": "把 action 依赖固定到某个 commit hash，避免 tag 被改写或指向恶意版本。"
+      },
+      {
+        "term": "composite action",
+        "explanation": "由多个 step 或其他 action 组合而成的 action，可能继续引用更多外部依赖。"
+      },
+      {
+        "term": "lockfile",
+        "explanation": "记录精确依赖版本的文件；GitHub Actions 原生并没有完整的 lockfile 机制。"
+      },
+      {
+        "term": "Immutable Releases",
+        "explanation": "GitHub 计划中的不可变发布机制，目标是让已发布内容无法被悄悄替换。"
+      },
+      {
+        "term": "Renovate",
+        "explanation": "自动创建依赖升级 PR 的机器人，可把 GitHub Actions 的 tag 更新为 SHA。"
+      },
+      {
+        "term": "Dependabot",
+        "explanation": "GitHub 的自动依赖更新与漏洞提醒工具。"
+      },
+      {
+        "term": "zizmor",
+        "explanation": "针对 GitHub Actions 的安全审计工具，用来补足静态检查和漏洞信息。"
+      },
+      {
+        "term": "pull_request_target",
+        "explanation": "GitHub Actions 的一种触发器，容易在 PR 场景下把高权限 secrets 暴露给未验证代码。"
+      },
+      {
+        "term": "OIDC federation",
+        "explanation": "runner 与云厂商通过 OIDC 交换临时身份凭证的机制，若流程失守会放大权限泄露。"
+      }
+    ],
+    "context": "这篇讨论围绕 GitHub Actions（GitHub 提供的 CI/CD 自动化系统）里 action 依赖到底该用 tag 还是 commit SHA 固定。评论把焦点放在供应链安全：第三方 action、composite action（会继续调用其他 action 的复合 action）、NPM 依赖和云端凭证都会让工作流在执行时暴露出更大的攻击面。有人提到 GitHub 正在推进 Immutable Releases（不可变发布）来减少 tag 被改写的问题，也有人借助 Renovate、Dependabot、zizmor 等工具做自动更新和审计。讨论还延伸到 self-hosted runner、Buildkite、Dagger（一个可编程的 CI 运行时）和 Forgejo（一个开源 Git 服务平台），说明大家不只是想修补一个漏洞，而是在重新思考 CI 的信任模型。",
+    "emoji": "⚠️",
+    "sarcastic_question": "不用 SHA 固定，难道要等被投毒才改吗？"
+  },
+  "articleSummary": "## 一句话总结\nGitHub Actions 的默认安全模型是为私有企业 CI 设计的，将其直接用于开源供应链导致了 `pull_request_target`、可变 Tag 和权限滥用等设计缺陷，使其成为当前软件供应链中最薄弱的一环。\n\n### 供应链攻击的终点都在 YAML 文件里\n回顾过去十八个月的安全事件，无论是 Ultralytics 向 PyPI 投递挖矿程序，还是 tj-actions 泄露 23,000 个仓库的密钥，追溯源头最后都会指向一个 `.github/workflows` YAML 文件。虽然我之前写过 Actions 缺乏 Lockfile 和完整性校验的问题，但这只是冰山一角。核心问题在于，整个平台由一系列各自便利但组合起来极其危险的功能堆砌而成。大多数开源项目的构建和发布都运行在这个平台上，而它的默认配置是为了私有仓库设计的，从未针对匿名 Fork 和“路过式”PR 进行重新审视。\n\n### `pull_request_target` 是最危险的触发器\n最近一连串攻击的最早一环是 2024 年 11 月的 spotbugs 事件，问题出在 `pull_request_target` 这个触发器上。它的设计初衷是为了让仓库能给来自 Fork 的 PR 打标签，因此它运行在基础仓库的上下文中，拥有完整的 Secret 访问权限和写入范围的 Token。如果你把它和检出 Fork 代码的操作结合起来，就等于把代码执行权交给了攻击者。GitHub 文档从 2021 年就警告过这种组合，但除了文档里的一段话，平台层面没有任何护栏来阻止这种危险操作。\n\n### 缓存投毒与 Tag 劫持的双重打击\n一个月后的 Ultralytics 事件展示了另一种攻击路径：攻击者无法直接获取发布凭证，于是通过 `pull_request_target` 恶意污染了 GitHub Actions 的缓存条目。当合法的发布工作流稍后恢复这个缓存时，它在构建 wheel 的过程中执行了恶意代码。更糟糕的是 tj-actions 事件，攻击者利用了 Action 版本本质上是可变的 Git refs 这一特性，强制推送了恶意代码并移动了 `v1` 标签。由于下游仓库普遍使用未固定的 Tag 引用，导致 23,000 个仓库运行了内存抓取器，将 Secret 泄露到了公共构建日志中。\n\n### 平台层面的设计缺陷\n这些攻击并非偶然，而是利用了 GitHub Actions 的几个核心设计缺陷。首先是“冒充提交”，GitHub 将仓库和所有 Fork 存储在一个共享的对象池中，Runner 解析 `uses:` 时会从这个池子里查找，这意味着一个从未经过审查、只存在于陌生人 Fork 里的 SHA 也能被父仓库引用。其次是模板注入问题，像 nx 仓库那样，如果工作流直接将 PR 标题插入了 Shell 步骤，攻击者只需在标题里注入命令替换就能执行代码。到了 2026 年，攻击者甚至开始像 `prt-scan` 行动那样，自动化地扫描并利用这些配置错误的仓库。\n\n### 默认权限的过度授权\n为什么这些攻击能造成如此大的破坏？因为默认的 `GITHUB_TOKEN` 权限太大了。对于 2023 年 2 月之前创建的仓库，Token 默认拥有写入权限。在 elementary-data 的事件中，一个两天的账号在旧 PR 下留了一条评论，触发了监听 `issue_comment` 的工作流。由于没有 `permissions:` 限制，这个工作流默认拿到了写入 Token，最终伪造了 `github-actions[bot]` 的提交，并在十分钟内将恶意包发布到了 PyPI。这些维护者并没有做错什么特别的事，他们只是照搬了 GitHub 文档里的示例，而这些示例的默认设置在公网环境下是致命的。\n\n### 依赖 OIDC 并没有解决根本问题\n为了解决长期 Token 泄露的问题，PyPI、npm 和 RubyGems 等注册中心集体转向了基于 OIDC 的可信发布。这确实比把 `PYPI_API_TOKEN` 永久存在仓库里要好，但这意味着注册中心的完整性保证现在完全取决于 GitHub Actions 工作流的安全性。我们花了十年时间用 Lockfile、2FA 和签名来加固包管理器，结果通过 OIDC 把信任集中到了一个没有任何这些特性的 CI 平台上。现在攻击者想要在 PyPI 或 npm 上投毒，更多时候是在研究工作流文件而不是钓鱼维护者，这给 GitHub 带来了巨大的责任。\n\n### GitHub 的回应与社区的现实\nGitHub 上个月发布了安全路线图，承诺提供工作流 Lockfile、策略控制和 Egress 防火墙等修复。但这让人感到沮丧，因为所有功能都是可选的，而且都在“预览”阶段。社区讨论中，GitHub 员工一直在解释更改默认设置会破坏现有工作流。但我认为破坏现有工作流正是目的所在，因为正是这些现有的工作流在不断出问题。数据显示，91% 使用第三方 Action 的 PyPI 包至少引用了一个可变 Tag，三分之二没有设置 `permissions` 块。在 GitHub 愿意为了安全而“破坏”现有功能之前，开发者能做的就是运行 zizmor 工具、固定 SHA、设置 `permissions: {}`，并假设任何未认证用户能通过 PR 标题注入的内容都是不可信的。"
+}

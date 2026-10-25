@@ -1,0 +1,142 @@
+{
+  "id": 49454764,
+  "by": "tilt",
+  "title": "Serve Markdown to AI Agents with Accept Headers",
+  "url": "https://acceptmarkdown.com/",
+  "score": 134,
+  "createdAt": 1787778010,
+  "aiSummary": {
+    "chinese_title": "Accept header 给 AI 送 Markdown：缓存、语义 HTML 与注入争议",
+    "discussion_overview": [
+      {
+        "category": "CDN缓存与 Vary 兼容",
+        "summary": "这组评论主要在纠正“Accept 协商一定会把缓存搞坏”的泛化说法：只要响应里带上 Vary: Accept，理论上 CDN 就能把不同表示形式拆成不同缓存键。争议在于现实实现并不统一，Cloudfront（AWS 的 CDN）要靠预先配置的缓存/Origin Request Policy，Akamai（企业 CDN）甚至可能因为 Vary 直接不缓存。Cloudflare（CDN 厂商）和 Fastly（边缘缓存服务）的行为也要看具体版本和文档，说明旧经验未必还成立。有人进一步认为，与其依赖通用 Vary，不如把缓存逻辑做在 edge 上，避免 Accept 值过多导致缓存稀释。",
+        "supportid": [
+          "49456793",
+          "49457188",
+          "49459899",
+          "49461792",
+          "49457269",
+          "49457583",
+          "49458098",
+          "49457275",
+          "49458506",
+          "49457120",
+          "49458643"
+        ]
+      },
+      {
+        "category": "同 URL 协商 vs 显式后缀",
+        "summary": "另一派更在意 API 设计的优雅性：同一个 URL 通过内容协商返回 Markdown、HTML 或 JSON，再配合 /foo.md 这类显式后缀，客户端就能按需取用。反对者则觉得“一个 URL 返回不同内容”会让人难以预判、难做归档，也不利于事后知道服务器到底支持哪些格式。很多人顺势把话题拉回 semantic HTML：如果 HTML 结构足够干净，nav、article 之类的语义本来就对搜索引擎、辅助技术和机器处理更友好，不必强行改成 Markdown。还有人提到浏览器若原生显示 Markdown 当然很方便，但 Markdown 生态本身松散，甚至能夹带原始 HTML/script，因此并不能把所有问题都消掉。",
+        "supportid": [
+          "49457099",
+          "49458280",
+          "49459979",
+          "49461693",
+          "49456343",
+          "49458070",
+          "49461246",
+          "49459111",
+          "49456327",
+          "49457375",
+          "49457409",
+          "49458906"
+        ]
+      },
+      {
+        "category": "采用率与实现成本",
+        "summary": "围绕“有没有人会真的用”意见分裂很大。悲观者认为，除非主流聊天机器人公开开始带这个 header，否则它只是个小众巧思，采用率可能长期很低。乐观者指出 Claude Code 已经在做类似事情，且实现成本很低：现有系统本来就会抓 HTML 再转 Markdown，只是把这一步前移到请求协商而已。还有人补充，这个功能即使不面向 AI，也能让普通用户直接拿到更干净的文本版本。",
+        "supportid": [
+          "49455934",
+          "49461524",
+          "49458324",
+          "49457886",
+          "49458566",
+          "49455778"
+        ]
+      },
+      {
+        "category": "HTML 到 Markdown 的取舍",
+        "summary": "更底层的争论是：LLM 输入到底该不该直接吃 HTML。支持方认为 raw HTML 对模型并不友好，应该由 harness、plugin 或 subagent 先做清洗、抽取和转 Markdown，尤其是现代页面里 div/span 噪音太多。反对方则强调 Markdown 会丢语义，比如 superscript/subscript 可能被压扁成错误文本，而转换器往往不会报错，只会悄悄产出不准确的内容。token 成本也没有共识：有人说 HTML 只比 Markdown 大一点，有人则在真实网页里看到 HTML 体积远大于内容本身，但大家都承认更短的上下文通常更利于模型准确性。",
+        "supportid": [
+          "49456470",
+          "49456467",
+          "49460066",
+          "49457154",
+          "49461772",
+          "49457203",
+          "49458680",
+          "49457222",
+          "49456630",
+          "49457357",
+          "49457206",
+          "49461489",
+          "49459808"
+        ]
+      },
+      {
+        "category": "激励不足与反爬现实",
+        "summary": "不少人从激励层面否定这件事：网站为什么要花额外精力把内容“喂”给 AI，却得不到回报？有人明确说自己发布的是给人看的，不是给 bot 的；也有人指出如今 bot 流量本身就足以拖垮站点，所以团队正转向 Anubis（反爬/反机器人工具）之类的防护方案。另一边又有人期待这种协商能减少广告、JS 和 bloat，但现实里站点更可能被 paywall、Cloudflare（CDN/安全中间层）和各种 gatekeeper 约束，而不是主动给 LLM 让路。这个观点把问题看成发布方和爬虫方之间的利益冲突，而不是纯技术优化。",
+        "supportid": [
+          "49459562",
+          "49457494",
+          "49455503",
+          "49455585",
+          "49455839",
+          "49461547",
+          "49458679",
+          "49459461",
+          "49456257",
+          "49455987",
+          "49460983",
+          "49458492"
+        ]
+      },
+      {
+        "category": "prompt injection 与 SEO 污染",
+        "summary": "安全视角几乎立刻冒了出来：如果有专门给 agent 的 Markdown 版本，攻击者就能把 prompt injection、误导性描述或纯垃圾文本藏进去。因为这份内容不一定会被人直接看到，它比普通网页上的显式恶意更难被发现，也更适合做“人看正常、机器中招”的分流。评论还把它和 SEO 联想在一起：过去是为了搜索排名堆内容，现在可能变成面向 AI crawler 的 SEO slop 或反向污染。甚至有人开玩笑要用 Markov Chain 垃圾把 crawler 拖慢，说明大家对这种攻击面的想象非常具体。",
+        "supportid": [
+          "49455769",
+          "49455908",
+          "49456192",
+          "49456274",
+          "49461538",
+          "49457502",
+          "49456076",
+          "49456738",
+          "49458970"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Accept header",
+        "explanation": "HTTP 请求头，用来声明客户端希望接收的媒体类型，例如 text/html 或 text/markdown。"
+      },
+      {
+        "term": "Vary header",
+        "explanation": "HTTP 响应头，告诉缓存系统哪些请求头会影响响应内容，从而拆分缓存键。"
+      },
+      {
+        "term": "content negotiation",
+        "explanation": "同一 URL 根据请求头返回不同表示形式的机制，比如 HTML、Markdown 或 JSON。"
+      },
+      {
+        "term": "semantic HTML",
+        "explanation": "用 article、nav、main 等有语义的标签表达结构，便于解析、搜索和无障碍访问。"
+      },
+      {
+        "term": "edge caching",
+        "explanation": "在 CDN 边缘节点缓存响应并按规则分流，避免简单 Vary 造成缓存膨胀。"
+      },
+      {
+        "term": "prompt injection",
+        "explanation": "把恶意指令藏进网页或文档中，诱导 LLM 按攻击者意图行动。"
+      }
+    ],
+    "context": "这场讨论围绕一种 HTTP 内容协商做法：服务器根据请求里的 Accept header，给 AI agent 返回 Markdown、HTML 或其它表示形式。评论者把焦点放在 CDN（内容分发网络）的缓存行为上，尤其是 Cloudflare（CDN 厂商）、Cloudfront（AWS 的 CDN）和 Akamai（企业 CDN）对 Vary: Accept 的支持并不一致。另一条主线是“到底该由网站直接提供 Markdown，还是由 agent/harness 把 HTML（超文本标记语言）清洗后再转成 Markdown”，其中 semantic HTML（语义化 HTML）和无障碍访问也被反复提到。讨论还顺带延伸到 llms.txt（面向 LLM 的站点说明文件提案）、prompt injection（提示词注入）以及 Anubis（反爬/反机器人工具）等 Web 与 AI 的交叉问题。",
+    "emoji": "🤨",
+    "sarcastic_question": "连 Vary 都管不好，还谈什么 AI 协商？"
+  },
+  "articleSummary": "## 一句话总结\n\n这篇文章的核心主张是：网站不必另建“AI 版内容”，只要通过 HTTP `Accept` 内容协商为 `text/markdown` 返回 Markdown，就能让 AI Agent 更快、更准确地消费现有文章。\n\n## 正文\n\n### AI Agent 访问网页时，真正浪费的是 DOM\n\n现在的网站内容通常已经写好了，问题不在于 AI Agent 找不到正文，而在于它拿到的往往是完整 HTML。HTML 里除了文章，还混着导航栏、样式、脚本、广告位、相关推荐和弹窗等页面结构。对浏览器来说，这些东西不可或缺。对一个要抓取、检索或总结内容的 Agent 来说，它们却大多是噪声。说白了，Agent 想读的是你的 prose，不是你的 DOM。文章因此提出一个直接的做法：当客户端声明自己希望接收 `text/markdown` 时，服务端就返回同一内容的 Markdown 版本。\n\n### Markdown 的第一个收益：把 token 留给正文\n\n文章首先从 token 成本切入。Markdown 会移除导航、CSS、JavaScript，以及各种布局包装元素。这样一来，AI 不需要把上下文窗口浪费在页面骨架上。它读到的是标题、段落、列表、链接和代码等真正有语义的内容。原文用 “a fraction of the bytes” 概括这种差异：相比完整网页，Markdown 通常只占其中一小部分字节。对于受 context window 和 token 计费约束的 Agent，这不是格式偏好，而是实际的资源节省。\n\n### 检索质量提升，关键在于信噪比\n\n第二个收益是 Retrieval，也就是给 RAG pipeline 或搜索索引提供更干净的输入。HTML 页面中常见的广告、相关内容栏、浮层和站点级导航，都会进入抓取结果。随后这些文本可能被切分、嵌入，并参与向量检索。问题是，它们会污染 embedding，让“文章到底在讲什么”的语义中心变得模糊。Markdown 则把这些非正文内容剥离掉，留下高信噪比的文本。于是 RAG 系统嵌入的主要是文章本身，而不是“订阅我们”“你可能还喜欢”之类的模板化文案。\n\n### 更少的字节，也意味着更快开始推理\n\n文章的第三个角度是延迟。Agent 在开始推理之前，通常要经历获取页面、解析内容、提取正文，再把文本塞进模型上下文的过程。完整 HTML 越大，这条链路就越慢。返回 Markdown 后，需要下载的数据更少，解析成本也更低，进入 context window 的内容也更紧凑。原文将其概括为 “faster first token”：模型能更早拿到可用内容并开始生成。这里的重点不是 Markdown 本身有什么神奇性能，而是它减少了内容到模型之间的无效搬运。\n\n### 方案不是加一个 URL，而是正确使用内容协商\n\n有意思的地方在于，文章并不建议专门维护一个 `/article.md` 之类的平行入口。它主张使用标准 HTTP content negotiation：同一个 URL，根据请求头 `Accept` 返回不同表示形式。普通浏览器通常请求 HTML，因此仍得到 `text/html`。支持 Markdown 的 Agent 则会发送 `Accept: text/markdown`，服务器据此返回 Markdown。这样，URL 仍然是同一个 canonical URL，内容也仍是同一份内容。区别只在于服务端根据客户端表达的媒体类型偏好，选择最合适的 representation。\n\n### 真正实现时，四个 HTTP 细节不能省\n\n文章给出了一份很简洁但很关键的检查清单。第一，服务端必须在收到 `Accept: text/markdown` 时真正返回 Markdown。第二，响应必须设置 `Vary: Accept`，告诉 CDN 和缓存层：这个 URL 的响应会随 `Accept` 请求头变化，否则 HTML 和 Markdown 可能被错误地互相缓存。第三，如果客户端请求的类型无法满足，服务端应该返回 `406 Not Acceptable`，而不是悄悄回退成不匹配的内容。第四，必须遵守 `Accept` 头中的 `q-values`，也就是客户端对不同媒体类型给出的优先级。内容协商看起来只是一次 header 判断，但缓存正确性和优先级处理，才决定它能否在真实生产环境稳定工作。\n\n### 文章把它定位为“让 URL 对 AI 更友好”的基础能力\n\n原文还提供了一个检测入口：用 `Accept: text/markdown` 从边缘节点请求某个 URL，查看源站实际返回什么。它评估的也正是前面四项能力：Markdown 响应、`Vary: Accept`、`406` 和 `q-values`。随后文章把进一步实践拆成几个方向，包括最小可运行的 Quick Start、关于缓存和协议正确性的 Guides，以及 Nginx、Caddy、Cloudflare Workers、Next.js、Astro、Express、Go、Django 等框架和服务器的 Recipes。最后还有一份 AI Agent support matrix，用来追踪哪些 Agent 的 browse 或 fetch 工具已经会主动发送 `Accept: text/markdown`。整篇文章想推动的其实是一件很朴素的事：既然站点已经有内容，就让 Agent 能通过标准 HTTP 机制拿到最适合机器阅读的那一版。"
+}

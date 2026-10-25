@@ -1,0 +1,115 @@
+{
+  "id": 47589856,
+  "by": "tjgreen",
+  "title": "Show HN: How This Graybeard Built the Fastest and Freest Postgres BM25 Search",
+  "url": "https://github.com/timescale/pg_textsearch",
+  "score": 131,
+  "createdAt": 1774986618,
+  "aiSummary": {
+    "chinese_title": "pg_textsearch：免费开源的 Postgres 原生 BM25/混合搜索",
+    "discussion_overview": [
+      {
+        "category": "性能与可扩展性",
+        "summary": "评论里最集中的问题是能不能真正在大数据量下跑得动。有人关心内存占用、lock contention 和初始建索引时间，尤其是几百万到上亿文档时扩展是否会先卡在导入而不是查询。回应给出的数字很亮眼：MS-MARCO v2 1.38 亿文档、约 50GB 原始数据，索引时间略低于 18 分钟；在 200 万行规模上，低端硬件也大约 1 分钟。与此同时，维护者也承认高频写入和查询性能之间确实有权衡，当前用 memtable spill 和 compaction 的可调参数缓解，但这部分还没有完全做完。",
+        "supportid": [
+          "47593140",
+          "47593201",
+          "47593233",
+          "47593379",
+          "47593516",
+          "47597039"
+        ]
+      },
+      {
+        "category": "Postgres 原生 BM25 与 RAG/混合搜索",
+        "summary": "很多人把它看成 Postgres 里补齐 BM25 的关键拼图。讨论焦点不是单纯关键词搜索，而是和 pgvector（PostgreSQL 向量检索扩展）一起做 hybrid search，服务 RAG（检索增强生成）和 rerank 场景。有人提到可以在 SQL 里做 reciprocal rank fusion（RRF）把 lexical 和 semantic 两路结果合并，也有人强调输入清洗和预处理往往比检索算法本身更决定效果。项目方的态度是：混合检索是核心目标之一，但怎么组合 keyword、vector 和 reranking 主要留给应用层决定。",
+        "supportid": [
+          "47592690",
+          "47593412",
+          "47593474",
+          "47593280",
+          "47597706",
+          "47593508",
+          "47593836",
+          "47593320",
+          "47593773"
+        ]
+      },
+      {
+        "category": "过滤、索引范围与 BM25 语义边界",
+        "summary": "也有人抓住了功能边界问题。一个明显担忧是 term positions：如果扩展依赖词位信息，它对日志、商品描述这类人类可读搜索会不会不够灵活。README 里那个用 `-5.0` 作为过滤阈值的例子也被认为很别扭，因为 BM25 分数和阈值会随数据集变化，很难事先猜对。回复里提到可以用后过滤、按条件先过滤再排序、分区表，甚至未来的 expression indexes，但也承认这种查询体验还不是很优雅。",
+        "supportid": [
+          "47597441",
+          "47592690",
+          "47592974",
+          "47593548",
+          "47593650"
+        ]
+      },
+      {
+        "category": "生产可用性与云托管支持",
+        "summary": "生产可用性是另一条主线。有人已经在生产里跑了几周，反馈稳定且很快，并拿它和 ParadedB / pg_search 做对比，认为后者曾带来不稳定甚至数据损坏，最后只好先退回 trigram search。与此同时，很多人直接在问 GCP、Cloud SQL、Aurora、Supabase、Neon 和 Alloy 这些 managed Postgres 平台什么时候能支持这个扩展。回复显示至少在部分云环境里已经有推进，但最终还要看各家是否把它列进支持的 extension 清单。",
+        "supportid": [
+          "47596006",
+          "47593838",
+          "47594912",
+          "47593615",
+          "47593819",
+          "47595671",
+          "47593301",
+          "47593374",
+          "47593538"
+        ]
+      },
+      {
+        "category": "开源许可与项目口碑争议",
+        "summary": "线程里还夹着一段明显的 license 和口碑争论。有人把 AGPL 视为商业上难以接受的限制，反过来称赞这个新项目用更宽松的 Postgres license 做了一个 OSS 替代方案。另一些人则认为把 TigerData 之类的团队骂成“有害实体”太过火，真正该讨论的是软件质量而不是阵营。也有人替作者辩护，强调他不是那种只会 vibe coding 的人，而是有实际履历、甚至曾在 API credits 上花过不少钱。",
+        "supportid": [
+          "47592709",
+          "47593059",
+          "47594769",
+          "47592350",
+          "47594131"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "BM25",
+        "explanation": "一种常见的相关性排序算法，结合词频、文档长度等因素给搜索结果打分。"
+      },
+      {
+        "term": "hybrid search",
+        "explanation": "把关键词检索和向量语义检索一起用，通常先召回再重排。"
+      },
+      {
+        "term": "RAG",
+        "explanation": "Retrieval-Augmented Generation，先检索相关资料，再交给生成模型回答。"
+      },
+      {
+        "term": "pgvector",
+        "explanation": "PostgreSQL 的向量扩展，用于 embedding 相似度检索。"
+      },
+      {
+        "term": "RRF",
+        "explanation": "reciprocal rank fusion，按多个结果列表中的名次融合重排。"
+      },
+      {
+        "term": "term positions",
+        "explanation": "索引中记录词在文档里的位置，便于短语和邻近查询。"
+      },
+      {
+        "term": "memtable",
+        "explanation": "先写入内存、再批量刷盘的结构，常见于 LSM 风格索引。"
+      },
+      {
+        "term": "compaction",
+        "explanation": "把多个索引段合并压缩，减少碎片并提升查询性能。"
+      }
+    ],
+    "context": "这是一条 Show HN，介绍 pg_textsearch（一个为 PostgreSQL 提供 BM25 搜索能力的开源扩展）的 v1.0。讨论把它放在更大的搜索栈背景下：很多团队原本用 PostgreSQL 的 `ts_vector()` 做全文检索，再叠加 pgvector（一个 PostgreSQL 向量检索扩展）做 hybrid search，或者直接上 Elasticsearch（独立搜索引擎）。这次发布之所以引发关注，是因为它承诺把 BM25、向量检索、RAG（检索增强生成）相关工作更多地收回到数据库里，同时还强调免费、自托管和高性能基准。评论里还穿插了对 ParadeDB / pg_search（另一套 PostgreSQL 搜索扩展）、以及 GCP、Cloud SQL、Aurora、Supabase、Neon 等托管数据库能否支持该扩展的现实讨论。",
+    "emoji": "🚀",
+    "sarcastic_question": "连 BM25 阈值都得靠魔法数字拍脑袋？"
+  },
+  "articleSummary": "## 一句话总结\nTimescale 推出的 `pg_textsearch` 通过引入 Block-Max WAND 算法和 LSM Tree 风格的索引结构，在 PostgreSQL 内部实现了原生级别的 BM25 全文检索，既保留了 SQL 的灵活性，又达到了媲美专用搜索引擎的性能。\n\n### Postgres 原生搜索的痛点：快是快，但不够智能\n\nPostgres 自带的全文检索（GIN/GiST 索引）虽然成熟，但在处理现代搜索需求时显得力不从心。它主要解决的是\"有没有\"的问题，也就是布尔匹配，但在\"哪个更相关\"的排序上表现平平。传统的 `ts_rank` 函数不仅性能一般，而且缺乏像 BM25 这样业界标准的评分算法支持。这就导致很多开发者不得不把数据同步到 Elasticsearch 或 OpenSearch，仅仅为了用上更好的相关性排序。Timescale 团队觉得这太折腾了，他们想直接在 Postgres 里解决这个问题，而且要做得比外部引擎还快。\n\n### 核心思路：把 Block-Max WAND 算法搬进数据库\n\n为了实现高性能的 BM25 排序，作者并没有造轮子，而是直接借鉴了信息检索领域的经典算法——Block-Max WAND。这个算法的巧妙之处在于，它不需要计算每一个文档的得分就能找到 Top K 结果。它把倒排索引分成一个个 Block，预先记录每个 Block 里的最大得分上限。在查询时，如果某个 Block 的上限连当前的候选分数线都够不着，算法就会直接跳过整个 Block。这种\"动态剪枝\"机制让查询速度不再随着数据量线性下降，非常适合处理海量数据的 Top K 查询。\n\n### 索引架构：借鉴 LSM Tree 的 Memtable 设计\n\n在索引存储结构上，`pg_textsearch` 采用了类似 LSM Tree 的 Memtable 架构，而不是传统的 B-Tree 或 GIN。写入数据时，先写在内存中的 Memtable，满了再 flush 到磁盘形成不可变的 Segment。这种设计极大提升了写入吞吐量，避免了频繁的随机 I/O。对于大规模数据，它还支持并行构建索引（Parallel Index Builds），只要把 `maintenance_work_mem` 调到 64MB 以上，Postgres 就会自动拉起多个 Worker 并行处理。这种架构让它在处理大规模日志或文档流时，比传统索引更具优势。\n\n### 查询体验：为了兼容 Postgres，不得不做的\"负分\"设计\n\n使用体验上，作者极力贴合 SQL 开发者的习惯，引入了一个 `<@>` 操作符。你只需要写 `ORDER BY content <@> 'search terms'`，就能按相关性排序。这里有个有趣的技术细节：因为 Postgres 的索引扫描默认只支持升序（ASC），而 BM25 得分是越高越好，所以作者在实现时返回了\"负的 BM25 分数\"。这样，分数越低（负得越多），代表相关性越高，正好符合 Postgres 的排序逻辑。虽然听起来有点绕，但对开发者来说是透明的，而且完美利用了现有的 Order By Index Scan 机制。\n\n### 现实妥协：没有位置信息，意味着无法做短语查询\n\n当然，为了极致的性能和架构简洁，这个方案也做了一些取舍。最明显的限制是它不支持短语查询（Phrase Query），比如搜索 \"database system\" 并不要求这两个词必须紧挨着。这是因为 BM25 索引只存储词频（Term Frequency），没有存储词的位置信息，这大大减小了索引体积。如果你非要做短语匹配，文章建议的方案是\"先宽后严\"：先用 BM25 找出相关的 Top 100 条，再用 `ILIKE` 或正则做二次过滤。虽然听起来有点笨拙，但在大多数场景下，这种混合查询的性能是可以接受的。\n\n### 性能调优：Top K 查询才是它的主场\n\n最后，关于性能调优，有几个关键点值得注意。首先，一定要配合 `LIMIT` 使用，因为 Block-Max WAND 算法只有在需要 Top K 结果时才能发挥最大威力。如果没有 LIMIT，它可能不得不评分大量文档。其次，对于过滤条件，建议使用\"预过滤\"（Pre-filtering），即先用 B-Tree 索引把数据范围缩小，再对剩下的数据跑 BM25 排序。如果先跑 BM25 再过滤，一旦过滤条件把大部分高分结果都剔除了，你就得重新去索引里捞数据，效率会大打折扣。说白了，这个工具是专门为\"搜索 + 排序 + 少量结果\"这种场景量身定做的。"
+}

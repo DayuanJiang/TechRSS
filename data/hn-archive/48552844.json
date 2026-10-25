@@ -1,0 +1,124 @@
+{
+  "id": 48552844,
+  "by": "rdmuser",
+  "title": "Correlated randomness in Slay the Spire 2",
+  "url": "https://tck.mn/blog/correlated-randomness-sts2/",
+  "score": 251,
+  "createdAt": 1781611264,
+  "aiSummary": {
+    "chinese_title": "Slay the Spire 2 相关随机 bug：seed 复现与 RNG 偏差",
+    "discussion_overview": [
+      {
+        "category": "把 RNG 放进游戏代码而不是平台库",
+        "summary": "评论认为关键是把 gameplay RNG 放在游戏代码里，而不是调用 C#/.NET 标准库的随机类。这样 desktop/mobile 或不同引擎版本的 seed 才能完全一致，否则标准库实现一变，旧 seed 就会失效。有人提到 .NET 6（C# 运行时）已经把无参 Random 改成 xoshiro256*，但带 seed 的 Random 仍锁在旧算法上，说明 seeded RNG 一旦进 API 就很难再改。也有人指出 Godot 引擎里的 GDScript（Godot 的脚本语言）自带 RNG 用的是 PCG32，所以问题出在使用了 System.Random（.NET 内置随机类）这一层。",
+        "supportid": [
+          "48554947",
+          "48554333",
+          "48554196",
+          "48554245",
+          "48555071",
+          "48554500"
+        ]
+      },
+      {
+        "category": "多 RNG 流与 seeded run 的公平性",
+        "summary": "评论里最核心的设计目标不是绝对不可预测，而是同一个 seed 下的 run 要足够稳定。Combat 里的一次额外随机事件不该把后面的 card rewards、relics、map layout 全部带偏，否则不同水平玩家或不同路线会在第一场小战斗后就分叉。有人因此强调要把 RNG 拆成树状多路流，或者用 master RNG 先派生子 seed，避免一个地方改动让整个 seed 漂移。也有人补充，seed 还能用于 daily runs、分享特别的开局、以及 tool-assisted speedrun 和 savescumming。",
+        "supportid": [
+          "48553938",
+          "48554213",
+          "48554546",
+          "48555003",
+          "48554180",
+          "48554614",
+          "48554817",
+          "48555422",
+          "48555937",
+          "48555580",
+          "48554115",
+          "48554138",
+          "48553997",
+          "48556143",
+          "48554824",
+          "48555392",
+          "48554788"
+        ]
+      },
+      {
+        "category": "程序性生成里的 nondeterminism 陷阱",
+        "summary": "另一些评论把问题扩展到 procgen 的通用坑：只要输入流里混进了未控制的 nondeterminism，复现就会崩。最典型的例子是遍历 unordered map，顺序一变结果就变，所以有人建议用 B-tree map、固定插入顺序，或者先排序再插入。还有人提到 `wasm freestanding`（不依赖宿主平台标准库的 WebAssembly 构建方式）下标准库调用都可能失效，甚至某些 deterministic runtime 在初始化 `System.Random` 时会被 `/dev/urandom` 的异常输入卡住。评论还提到，有的程序会保存 RNG 调用次数，载入时把调用重放一遍，以便恢复同一条随机状态。",
+        "supportid": [
+          "48555015",
+          "48555352",
+          "48555425",
+          "48556269",
+          "48555557",
+          "48555892",
+          "48556140",
+          "48554163",
+          "48555465"
+        ]
+      },
+      {
+        "category": "替代实现与密码学 RNG 的边界",
+        "summary": "不少人给出替代方案：用 PCG、把 seed 和事件类型/计数拼成 `sha256(seed || event || counter)`，或者从一个 master RNG 一次性导出多个子 seed。这样可以去掉相邻 seed 的线性相关，同时还能在所有平台上得到一致输出。讨论里也顺带区分了 CSPRNG（密码学安全伪随机数生成器）和游戏 RNG：前者追求不可预测，后者追求可复现，二者目标几乎相反。性能方面，`sha256` 确实慢一点，但对回合制 roguelike 来说通常远小于可接受成本。",
+        "supportid": [
+          "48556095",
+          "48555326",
+          "48555479",
+          "48555675",
+          "48555745"
+        ]
+      },
+      {
+        "category": "玩家实感、怪种子和速通玩法",
+        "summary": "很多人把这事直接代入到实战体验里：像 Rebound 这种卡居然会在某些 seed 里几乎拿不到，说明 correlated RNG 已经不是理论问题。也有人联想到原作里曾经出现过的 unwinnable seed，以及反复刷出同一 trash heap relic 的怪现象，觉得自己长期遇到的玄学坏运气终于有了解释。另一些评论拿 Minecraft（程序化生存游戏）、Hades（动作 roguelike）和 Super Mario Bros. 3（经典平台游戏）的速通案例类比，说明程序化随机一旦可预测，就会变成可路由、可操控的隐藏玩法。也有人顺手吐槽，这看起来不像 skill issue，更像 seed issue。",
+        "supportid": [
+          "48556164",
+          "48555213",
+          "48554749",
+          "48554912",
+          "48554251",
+          "48554507",
+          "48555777",
+          "48556013",
+          "48554893",
+          "48556264"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "PRNG（伪随机数生成器）",
+        "explanation": "给定同一 seed 会输出可复现随机序列的算法。"
+      },
+      {
+        "term": "LCG（线性同余生成器）",
+        "explanation": "一种老式且简单的 PRNG，常见于兼容性历史包袱，也更容易暴露相关性。"
+      },
+      {
+        "term": "PCG32",
+        "explanation": "一种现代 PRNG，Godot 的 GDScript 默认 RNG 使用它。"
+      },
+      {
+        "term": "System.Random",
+        "explanation": "C#/.NET 的内置随机类，seeded 版本往往受历史兼容约束。"
+      },
+      {
+        "term": "CSPRNG（密码学安全伪随机数生成器）",
+        "explanation": "强调不可预测性，但不以游戏里的可重放和稳定 seed 为目标。"
+      },
+      {
+        "term": "procgen（procedural generation，程序化生成）",
+        "explanation": "用算法和 seed 生成地图、房间、奖励等内容。"
+      },
+      {
+        "term": "seeded run（固定 seed 跑）",
+        "explanation": "玩家指定 seed 的可重放对局，常用于分享、竞速和复盘。"
+      }
+    ],
+    "context": "《Slay the Spire 2》是卡牌 roguelike 续作，和前作一样依赖 procedural generation（程序化生成）来生成房间、奖励和地图，也允许玩家使用 seed 重放同一局面。文章指出，续作在 Godot 引擎中使用了 C#/.NET 的 `System.Random`，而不是专门为游戏设计、可稳定复现的 RNG，于是相邻 seed 之间出现了明显相关性，导致某些卡牌或奖励组合几乎不可能出现。评论区把这个问题扩展到 Slay the Spire 1、Minecraft（程序化生存游戏）和 Hades（动作 roguelike）等例子，强调 seeded run、分享开局和速通路线都依赖“同一个 seed 能得到同一条大致体验”。讨论还涉及 .NET/标准库 RNG 的历史兼容、跨平台一致性，以及保存/载入时如何恢复 RNG state。",
+    "emoji": "🎲",
+    "sarcastic_question": "说好的随机，怎么连奖励都提前排班了？"
+  },
+  "articleSummary": "### 一句话总结\nSlay the Spire 2 为了解决一代的随机数预测问题，采用了不同的种子初始化多个 RNG，但因为 C# `System.Random` 算法的线性缺陷，导致不同随机事件之间存在强关联，玩家可以利用这些关联精准预测遗物、卡牌甚至战斗弹道。\n\n### 试图修复一代的 Bug，却掉进了二代的陷阱\nSlay the Spire 1 曾有个著名的 CRNG（Correlated RNG）问题：所有随机数生成器（RNG）共用一个初始状态，导致玩家可以通过前一个随机结果推算后一个。二代开发者显然想解决这个问题，代码里为不同场景（如洗牌、地图生成、战斗 AI）创建了独立的 RNG 实例，并用 `seed + hash(\"string\")` 的方式给每个实例分配了不同的种子。**核心思路其实很简单**：只要初始状态不同，产生的随机序列就不一样，理论上就能隔绝不同系统的随机性。但问题在于，他们用的是 C# 自带的 `System.Random`，这个算法在种子处理上几乎是线性的。\n\n### 种子差值是固定的，随机结果也就“有迹可循”\n这里有个巧妙的设计，但也是个致命的漏洞：`hash` 函数对同一个字符串总是返回相同的数值。这意味着，虽然不同 RNG 的种子不同，但它们之间的差值是固定的。比如 `Neow` 的种子和 `Niche` 的种子，差值恒定为 `hash(\"NEOW\") - hash(\"niche\")`。**说白了就是**，如果你知道了其中一个 RNG 的第一个输出，你就能反推它的种子范围，进而算出其他 RNG 在对应位置的输出。这种关联性并不是完全确定的，但足以把概率分布扭曲得面目全非。\n\n### 选 Neow 的骨头？其实你大概率只能选 Debt\n这种关联性最直观的体现就在开局 Neow 的奖励上。比如“Neow's Bones”这个遗物，本该随机给一个诅咒，但在 Underdocks 地图，你有 54% 的概率拿到 Debt，而在 Overgrowth，这个概率是 0%。**有意思的地方在于**，这并不是简单的概率偏差，而是三个 RNG 联动的结果：Neow 的遗物池 RNG、诅咒生成的 `Niche` RNG 以及决定地图的 `StartRunLobby` RNG。这三个 RNG 的种子差值锁定了结果范围，导致像 Clumsy、Guilty 这种“软”诅咒几乎绝迹，而 Debt 这种“硬”诅咒成了常客。\n\n### 遗物稀有度也被“暗箱操作”了\n不仅是诅咒，连遗物稀有度也受到了影响。比如“Large Capsule”，它的第一件遗物**从来不是**普通（Common）品质。在 Underdocks，它有 63% 的概率是稀有；在 Overgrowth，则是 70% 是罕见。更离谱的是，Large Capsule 本身出现的概率也被关联锁死：在 Underdocks 它只出现 1.65% 的时间，而在 Overgrowth 则高达 23.24%。如果你在 Underdocks 看到了这个遗物，那你的运气确实好到了极点，或者说是 RNG 的关联性“强行”让你刷出来的。\n\n### 甚至能精确预测第一张变形卡是什么\n这种预测能力还能深入到具体的卡牌内容。比如“Leafy Poultice”能变形两张卡，但它的**第一张变形卡只有 22 种可能**（而非全卡池的 80 种）。在 Underdocks，它极大概率变成 Aggression、Anger 或 Armaments 这种防御卡；而在 Overgrowth，则更偏向 Setup Strike 或 Shrug ItOff。同理，“Hefty Tablet”在 Underdocks 只有 3 种可能，其中 72.5% 是 Juggernaut。**这带来的好处是**，如果你记住了这些规律，看到 Neow 给的选项就能大致知道这把 run 的核心卡牌流向。\n\n### 战斗里的随机弹道，其实也是算好的\n关联性甚至延伸到了战斗机制里。比如 Defect 在 Underdocks 的第一场战斗，**你的第一个闪电球有 75% 的概率打左边的敌人**。如果你结合开局看到的 Neow 遗物池选项，预测精度还能进一步提高。比如如果你看到了“Precarious Shears”，且对面 Corpse Slug 的攻击模式符合特定条件，你的闪电球打右边的概率会超过 95%。这对于 Dualcast 起手这种需要精确打击伤害的流派来说，信息价值巨大。\n\n### 有些卡牌在特定条件下，根本刷不出来\n最极端的例子是 Underdocks 的“Trash Heap”事件。因为该事件专属 Underdocks，其 RNG 输出被地图 RNG 强力约束。数据显示，**在单局游戏中，你绝对不可能从 Trash Heap 获得 Rebound 这张卡**，概率严格为 0%。这并不是 Bug，而是种子差值导致的事件输出区间根本覆盖不到 Rebound 对应的 ID。同样，某些遗物组合的出现概率也被这种关联性完全抹杀或极度放大。"
+}

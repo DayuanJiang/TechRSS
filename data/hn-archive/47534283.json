@@ -1,0 +1,107 @@
+{
+  "id": 47534283,
+  "by": "russellthehippo",
+  "title": "Show HN: Turbolite – a SQLite VFS serving sub-250ms cold JOIN queries from S3",
+  "url": "https://github.com/russellromney/turbolite",
+  "score": 131,
+  "createdAt": 1774554634,
+  "aiSummary": {
+    "chinese_title": "Turbolite：S3 承载 SQLite 冷 JOIN <250ms，引发本地DB、HA、多写争论",
+    "discussion_overview": [
+      {
+        "category": "页布局与前瞻预取",
+        "summary": "讨论最集中的点是远程 object storage 下的布局问题：SQLite 的 page number 原本按文件顺序分布，但对网络读取来说，文件里相邻并不等于查询相关。作者因此把同一棵 B-tree、表或索引相关的 pages 分组，减少随机 GET，把预取从“盲目拉近邻页”变成“按查询路径拉页”。还有人认为 interior B-tree pages 虽然很小，却几乎是所有查询的关键路径，所以应优先保护和预热；query-plan frontrunning 也被认为很有潜力，因为 SQLite 往往比存储层更早知道自己要扫表还是走索引。大家同时也承认 scans 仍然最难优化，远程对象存储再怎么调，也很难真正接近本地 SSD。",
+        "supportid": [
+          "47534387",
+          "47539580"
+        ]
+      },
+      {
+        "category": "本地 SQLite 与对象存储取舍",
+        "summary": "许多评论把它和“本地 SQLite + 备份/复制到对象存储”的路线对比，结论通常是：如果能把 DB 留在本地盘上，本地读延迟还是更强。Litestream（把本地 SQLite 的 durability/replication 放到对象存储的工具）和 haqlite（作者另一个围绕 leader election、WAL replication 的项目）被拿来作为更偏高可用的替代方案，而 Turbolite 则被定位成对象存储本身就是主存储、专门服务 cold reads 的系统。也有人指出，单机 persistent disk 会妨碍 zero-downtime deploy，而 ephemeral compute、Lambda、spot instances 这类环境反而更需要这种“冷读也能跑”的设计；另一些人则强调 database-per-tenant、热表少冷表多的高偏斜工作负载里，BigQuery 加内存预热 gold tables 的混合方案往往比纯本地或纯远程更实用。整个争论的底色是：它适合 read-mostly、按天刷新、分层缓存的场景，而不是 OLTP 通吃。",
+        "supportid": [
+          "47535455",
+          "47536751",
+          "47536176",
+          "47538819",
+          "47539092",
+          "47538112"
+        ]
+      },
+      {
+        "category": "多写、一致性与 leader election",
+        "summary": "关于多写和一致性，评论几乎一致认为 conditional PUT 可以做 leader election 或轻量锁，但很难真正变成可靠的 multi-writer。作者解释说，问题不只是“能不能写”，而是写入前必须知道自己拿到的是最新数据；对有 upsert 的 OLTP 来说，这个前提很难稳妥保证，因为还要协调其他 writer 是否已经 checkpoint。有人提出用 Redis 之类的 lock lease holder，再配合 manifest version、事务超时和 checkpoint 流程来保证读写顺序，但作者也承认这仍然是 single writer，只是在故障转移和提交确认上更自动化。rqlite 被提到作为一个已经能做类似事情的 server-based 方案，进一步说明这块真正难的是分布式一致性，而不是对象存储 API 本身。",
+        "supportid": [
+          "47535505",
+          "47536272",
+          "47536884",
+          "47538973"
+        ]
+      },
+      {
+        "category": "页面回收、空洞与 eviction",
+        "summary": "另一条明显的讨论线是如何管理 pages、free space 和 eviction。有人建议把相关 pages 分组后，再额外处理 empty pages、free pages 或 hole punching，以便在不做大规模 vacuum 的情况下回收空间；作者也表示可以在 S3 object 里预留空洞，或者在 checkpoint 后把空页回收给 OS，甚至考虑 LSM-like writing 来把相关写入聚拢。项目的当前取向更偏“宁可多存一点，也别把 read path 搞复杂”，因为 free pages 压缩效果通常不错，而主要目标还是让 cold reads 变得可用。真正悬而未决的是 eviction 触发时机：按缓存大小、checkpoint、写入次数还是 idle 时间，最后可能需要 VFS 内部策略和应用侧“这个 tenant 已经 cold 了”的显式控制结合。",
+        "supportid": [
+          "47534846",
+          "47535056",
+          "47536781",
+          "47534811",
+          "47534960",
+          "47535372"
+        ]
+      },
+      {
+        "category": "成本、GET 计费与延迟波动",
+        "summary": "关于成本的讨论非常具体，焦点是 S3 GET/PUT 计费、缓存命中率和 checkpoint 频率。作者给出的估算认为，真正决定月账单的不是存了多少 bytes，而是每次请求会触发多少次 GET，以及你多久把 cache 冷掉一次；在较激进的缓存策略下，哪怕是持续的小流量也可能只花几美元，S3 Express One Zone 还会更便宜。相反，PUT 通常比 GET 贵得多，所以频繁写入、频繁 checkpoint 的成本会迅速上升，尤其在对象数量较多时。还有人提醒，不同 region、对象大小和存储后端（S3、S3 Express、GCS、Wasabi）对延迟的影响很大，250ms 这个数字的稳定性也要看 schema/statistics 预取和具体数据分布。",
+        "supportid": [
+          "47535552",
+          "47536540",
+          "47535721",
+          "47535606"
+        ]
+      },
+      {
+        "category": "agent / WASM 落地想象",
+        "summary": "也有人把 Turbolite 看成更通用的嵌入式状态层，而不只是后端数据库。Tigris 相关评论提到 agent 可能会 suspend / continue 会话，这类场景很依赖可恢复状态和共享存储。还有人直接问能不能支持 WASM（WebAssembly，一种能在浏览器运行的低级字节码格式），说明有人想把这种 SQLite 语义带到浏览器端，而不是只在服务器上用。",
+        "supportid": [
+          "47539029",
+          "47538976"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "SQLite VFS",
+        "explanation": "SQLite 的 Virtual File System 接口，决定页如何映射到磁盘、S3 或其他后端。"
+      },
+      {
+        "term": "B-tree",
+        "explanation": "SQLite 用来组织表和索引的树结构，直接影响查询会访问哪些 interior/leaf pages。"
+      },
+      {
+        "term": "WAL",
+        "explanation": "Write-Ahead Logging，SQLite 先把变更写入日志，再在 checkpoint 时合并。"
+      },
+      {
+        "term": "checkpoint",
+        "explanation": "把 WAL 或增量写入落回主数据页的过程，会影响延迟、持久化和对象存储写放大。"
+      },
+      {
+        "term": "manifest",
+        "explanation": "记录当前数据版本与页布局的元数据文件，常用于一致性检查和切换。"
+      },
+      {
+        "term": "conditional PUT",
+        "explanation": "对象存储里的条件写操作，可用来做 leader election、lease 或原子提交。"
+      },
+      {
+        "term": "write amplification",
+        "explanation": "一次小修改引发多个页或对象被重写，尤其在分组页面和 LSM-like 写入时明显。"
+      }
+    ],
+    "context": "Turbolite 是一个 SQLite VFS（Virtual File System，SQLite 的底层文件系统接口），把 S3/Tigris 这类 object storage 当成数据库后端，目标是在 cold JOIN 和 cold point reads 上把延迟压到 250ms 以内。讨论的核心不是“SQLite 能不能走网络”，而是当存储从本地 filesystem 变成远程对象存储后，页布局、prefetch、checkpoint、cache 和 write amplification 这些假设如何变化。评论里频繁拿它和 Litestream（把本地 SQLite 的 durability/replication 放到对象存储）、LiteFS（SQLite 复制/高可用方案）、haqlite（作者另一个围绕 leader election 和 WAL replication 的项目）以及 Graft 等项目对照。整个讨论也不断回到 workload 边界：它更像是为 ephemeral compute、read-mostly analytics、按 tenant 分库或需要会话恢复的场景找一条可用路径，而不是替代本地盘的通用数据库。",
+    "emoji": "🤔",
+    "sarcastic_question": "本地盘都赢不了，还谈什么 S3 冷 JOIN？"
+  },
+  "articleSummary": "## 一句话总结\nTurbolite 是一个用 Rust 写的 SQLite VFS，它通过把 B-tree 页面按类型分组、利用查询计划预取以及增大页面尺寸，直接在 S3 上实现了低于 250ms 的冷查询 JOIN 响应。\n\n### 面向 S3 的架构设计：别把云存储当硬盘用\n传统的 SQLite VFS 只是把文件系统调用映射到 S3，这在性能上是灾难。Turbolite 的核心思路是彻底拥抱 S3 的物理特性：**往返延迟高、带宽便宜、按请求收费、对象不可变**。为了适应这些约束，作者没有试图模拟文件系统，而是引入了一个 \"Manifest\"（清单文件）作为元数据索引。所有的写操作都不会原地修改数据，而是写入新的 Page Group，然后通过原子更新 Manifest 来提交。这不仅避免了 S3 上的部分写入问题，还让数据版本管理变得极其简单，旧版本留给 GC 清理即可。\n\n### 页面分组的智慧：把随机读变成顺序读\nSQLite 的 B-tree 结构意味着页面在逻辑上是连续的，但在物理存储上可能很分散。如果在 S3 上逐页读取，一次查询可能触发上千次 GET 请求，延迟会爆炸。Turbolite 的解决方案是 **B-tree Introspection（内省）**：它知道每个页面属于哪个表或索引。基于这个认知，它将页面按类型（Interior 页、Index 叶子页、Data 叶子页）分组打包成大的 S3 对象（默认 256 页，约 16MB）。这样，原本随机的点查询，现在只需要 fetch 少量几个大对象就能拿到所需数据，极大减少了网络往返次数。\n\n### 大页面与可寻址压缩：为了吞吐与点查的平衡\n既然 S3 的瓶颈是请求次数而非字节数，Turbolite 干脆抛弃了 SQLite 默认的 4KB 页面，改用 **64KB 大页面**。更大的页面意味着 B-tree 的扇出更高，到达叶子页面的深度更浅，直接减少了 S3 的 Round Trip。但这带来了一个问题：如果我只查一行数据，难道要解压 16MB 的 Page Group 吗？Turbolite 引入了 **Seekable Compression**，它将 Page Group 切分为多个独立的 zstd 帧（约 4 页一帧）。Manifest 里记录了每个帧的偏移量，点查询时只需通过 S3 Range GET 拉取并解压包含目标页面的那几百 KB 数据，既节省了带宽又保持了低延迟。\n\n### 预取策略：比 SQLite 更懂查询计划\nTurbolite 最激进的设计在于它的预取机制。它利用 `EXPLAIN QUERY PLAN` 接口，在实际执行查询前就截获了执行计划。如果是五表 JOIN，它会在第一行代码运行前，就把这五个表涉及的所有 Page Group 并行抛给线程池。这种 \"Query-plan frontrunning\" 彻底消除了传统 \"Miss -> Fetch -> Wait\" 的串行等待。对于无法获取执行计划的情况，它还有基于 B-tree 粒度的 Reactive Prefetch：针对 `SEARCH` 和 `Lookup` 采用不同的激进策略，且只预取同一个 B-tree 下的兄弟页面，避免跨表预取浪费带宽。\n\n### 真实性能表现：快得像本地，前提是选对存储\n在 AWS S3 Express One Zone（同区域，GET 延迟约 4ms）的测试环境下，Turbolite 的表现确实惊艳：包含 5 个 JOIN 的 Profile 查询冷启动仅需 188ms，简单的 Point lookup + Join 只要 77ms。这直接击败了 Neon 500ms+ 的冷启动目标。但作者也诚实指出了局限性：如果是全表扫描且机器配置很低（单核），性能会显著下降，因为瓶颈会从网络转为 CPU 的串行处理。它的最佳甜点是高并发的点查询或中等规模的 JOIN，且需要配合 S3 Express 或 Tigris 这类高性能对象存储。"
+}

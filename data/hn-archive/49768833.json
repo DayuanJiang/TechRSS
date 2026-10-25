@@ -1,0 +1,141 @@
+{
+  "id": 49768833,
+  "by": "farlight",
+  "title": "Btrfs/ZFS/bcachefs under workloads classic benchmarks skip",
+  "url": "https://bartosz.fenski.pl/modern-fs-benchmark/",
+  "score": 123,
+  "createdAt": 1789843236,
+  "aiSummary": {
+    "chinese_title": "Btrfs/ZFS/bcachefs：传统基准遗漏工作负载的对比与方法争议",
+    "discussion_overview": [
+      {
+        "category": "共享 GitHub Runner 基准的可信度",
+        "summary": "很多人质疑这套基准跑在共享的 GitHub Actions 虚拟机上，loop device 和 sparse file 只能说明“在这类环境里谁更快”，很难代表真实磁盘表现。作者回应说已经加入校准步骤来过滤明显不稳定的 VM，而且累计 593 次运行后平均值仍有参考意义，但他也承认这只能缓解，不能根治 noisy neighbours 问题。讨论中还多次提到应该转向 bare metal，至少把共享云环境和真实硬件的结果并列展示，避免把绝对 MB/s 误当成通用结论。",
+        "supportid": [
+          "49769285",
+          "49769328",
+          "49769402",
+          "49769423",
+          "49769735",
+          "49769775",
+          "49769621",
+          "49769388"
+        ]
+      },
+      {
+        "category": "测试场景、布局和指标定义不够清楚",
+        "summary": "不少评论不是反对测试本身，而是要求把每个场景说清楚：每组 RAID/EC 到底几块盘、scrub 或 integrity test 的失败含义是什么、哪些结果能恢复、哪些不能。有人建议加入更多能暴露文件系统差异的拓扑和工作负载，比如 HDD/SSD 混用、单盘容量远大于其他盘、nocow、DRBD、CephFS、现代 Gen5 NVMe 等。也有人指出某些结果看起来像测试代码问题，例如 XFS 在不同 `ftruncate` 场景下表现异常，已经引发了 bug issue。",
+        "supportid": [
+          "49770209",
+          "49769448",
+          "49769780",
+          "49770326",
+          "49773900",
+          "49773328",
+          "49769260",
+          "49770327",
+          "49770707"
+        ]
+      },
+      {
+        "category": "bcachefs 的特性吸引力与主线缺席",
+        "summary": "评论里对 bcachefs 的技术特性评价很高：可以混用不同大小和类型的设备，区分 foreground/background devices，还能按文件或目录设置 replicas，甚至提到 parity RAID 的 erasure coding。支持者认为它在现实存储场景里很有吸引力，尤其是存储成本上升时，这些功能比纯粹跑分更重要。与此同时，很多人也在意它不再是 Linux mainline 的一部分，担心部署、维护和长期可用性；于是 DKMS 包、NixOS/NASty 这类替代部署方式被拿来缓解“装得上但不够稳”的焦虑。",
+        "supportid": [
+          "49770026",
+          "49769750",
+          "49769508",
+          "49769862",
+          "49769888",
+          "49769466",
+          "49773895",
+          "49772941",
+          "49770529",
+          "49772979",
+          "49769999"
+        ]
+      },
+      {
+        "category": "ZFS/Btrfs/ext4 的现实选择与调优",
+        "summary": "很多人最后还是回到 ZFS、Btrfs、ext4/xfs+lvm 这些更现实的选择：ZFS 常被当成 NAS 首选，Btrfs 则因为“几乎总在 Linux 里”而被继续使用，简单方案则是 ext4 或 xfs 配合 lvm-raid10。讨论里出现了不少 ZFS 调优细节，比如 `record size`、`ashift`、dRaid、压缩和 VDO，这些设置会显著改变吞吐和小块工作负载表现。Btrfs 也没被无条件拥护，有人提到带 quota/discard 的大文件删除会卡很久；而发行版政策也影响选择，例如 RHEL 不带 Btrfs、Fedora 和 Alma 的策略又不一样。",
+        "supportid": [
+          "49769215",
+          "49769238",
+          "49769350",
+          "49770507",
+          "49770085",
+          "49771593",
+          "49769813",
+          "49770511",
+          "49771787",
+          "49773578",
+          "49772417",
+          "49773235",
+          "49770459",
+          "49769875",
+          "49771801",
+          "49773128",
+          "49773655"
+        ]
+      },
+      {
+        "category": "维护者、bus factor 与“drama”",
+        "summary": "一部分评论认为存储文件系统不是只看技术指标，还要看维护者和社区是否可靠，因为项目可能因为冲突、退出主线或维护停滞而影响长期使用。另一部分人则觉得用户并不关心这些“drama”，他们只想要一个能稳定工作的文件系统，不想每次讨论都被社区恩怨淹没。ReiserFS 被拿来当反面教材：一个曾经很有前景的文件系统，如果过度依赖单人和脆弱社区，最后会让用户对未来失去信心。",
+        "supportid": [
+          "49769377",
+          "49769605",
+          "49770512",
+          "49769652",
+          "49769708",
+          "49769927",
+          "49770090",
+          "49770234",
+          "49773684",
+          "49773300",
+          "49773780"
+        ]
+      },
+      {
+        "category": "页面可读性与数据呈现方式",
+        "summary": "有人觉得这个页面数据很多但太难读：字体小、信息堆得满、先展示运行元数据和大量 caveat，却没有先讲清楚到底在测什么。评论还点名一些分类标签没有定义，比如 `Overall Core`、`Core I/O`，导致普通读者很难把表格和结论对应起来。也有开发者表示自己反而喜欢这种“信息墙”，因为能一眼看出瓶颈在哪；不过如果面向一般用户，Phoronix 那种更易消化的呈现方式显然更合适。",
+        "supportid": [
+          "49769156",
+          "49769687",
+          "49770064",
+          "49770102",
+          "49770178",
+          "49770219"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "CoW（Copy-on-Write）",
+        "explanation": "先写新位置再切换元数据的存储方式，Btrfs、ZFS、bcachefs 都属于这类文件系统。"
+      },
+      {
+        "term": "DKMS",
+        "explanation": "Dynamic Kernel Module Support，会在内核升级时自动重建外部模块，常用于 ZFS/bcachefs 这类 out-of-tree 组件。"
+      },
+      {
+        "term": "dRaid",
+        "explanation": "ZFS 的分布式 RAID 布局，把数据和校验分散到多块盘上以提升并行吞吐。"
+      },
+      {
+        "term": "bus factor",
+        "explanation": "项目对少数核心维护者的依赖程度；越低，越容易因人事变动出问题。"
+      },
+      {
+        "term": "scrub",
+        "explanation": "扫描并校验存储数据、尝试修复不一致或损坏块的维护操作。"
+      },
+      {
+        "term": "record size",
+        "explanation": "ZFS 的数据记录大小设置，会影响压缩效率、小块 I/O 和整体性能表现。"
+      }
+    ],
+    "context": "这篇讨论围绕 modern-fs-benchmark，一个比较 Btrfs、ZFS、bcachefs 这类多设备 CoW 文件系统的基准项目，重点是传统 benchmark 常忽略的真实工作负载。当前主结果多跑在 GitHub Actions（GitHub 提供的 CI 虚拟机）上，使用 loop device（Linux 的循环块设备）和 sparse file，因此不少人质疑 noisy neighbours 会让绝对数值失真。作者解释说他们加入了校准步骤来过滤明显不可靠的 VM，并且已经在少量真实硬件上开始补充测试，只是进度更慢。评论区还延伸到 bcachefs 被移出 Linux 主线、ZFS/Btrfs 的部署与调优，以及存储项目的维护者稳定性等长期争议。",
+    "emoji": "🧪",
+    "sarcastic_question": "共享云 VM 跑存储基准，信心来自噪声吗？"
+  },
+  "articleSummary": "## 一句话总结\n这是一份针对 Btrfs、ZFS 和 bcachefs 在模拟故障下的压力测试报告，核心发现是：bcachefs 在写入性能上碾压对手，ZFS 在数据完整性上一骑绝尘，而传统 RAID 方案在静默数据损坏面前毫无招架之力。\n\n## 正文\n\n### 测试环境有点\"特殊\"，看的是相对值\n别被标题里的 \"Real hardware\" 迷惑了，这次 CI 跑的其实是 GitHub-hosted 的 Ubuntu VM。每个文件系统配置都独占一个新虚拟机，用的是四个 16 GiB 的 loop devices。说白了，这是在共享存储上跑模拟测试，底层物理盘是同一块。所以，文章开头就打了预防针：别太纠结绝对的 MiB/s 数字，要看的是不同配置之间的**形态和比例**。这里模拟了单盘、镜像和校验三种布局，涵盖了从 ext4 到 bcachefs 的主流选手。\n\n### 数据完整性：传统 RAID 的\"阿喀琉斯之踵\"\n最有意思的是 \"Corruption Probe\"（静默数据损坏探测）。测试方法很硬核：直接覆盖掉盘上 2 GiB 的原始数据，然后看文件系统能不能通过 scrub 把数据救回来。结果相当震撼：ZFS 的所有配置，无论是 mirror、RAIDZ1 还是 RAIDZ2，全部显示 **SURVIVED**。Btrfs 和 bcachefs 的冗余配置也顺利过关。但传统的 ext4/xfs 配合 mdraid 或 LVM 的组合，几乎全军覆没，状态栏里一片刺眼的 **FAIL**。这再次印证了那个老生常谈的观点：没有端到端校验的 RAID，在静默错误面前等于裸奔。\n\n### 写入性能：bcachefs 的\"降维打击\"\n看性能数据，bcachefs 简直像是在作弊。在 \"Random write, 4k + fsync\" 这个最考验持久化能力的指标上，bcachefs/single 跑出了 **12,099 IOPS**，几乎是 ext4/single (6,715) 的两倍，更是把 ZFS 和 Btrfs 远远甩在身后。更夸张的是 fsync 延迟，bcachefs 的 p99 延迟低至 **2.41 ms**，而 ZFS 的 mirror 配置居然飙到了 **190 ms**。这说明在同步写入场景下，bcachefs 的架构设计有着巨大的代际优势，特别适合高并发的数据库类负载。\n\n### 读取性能与延迟：ZFS 的\"防守反击\"\n虽然写入被碾压，但 ZFS 在读取上找回了场子。在 \"Random read, 4k cold cache\" 测试中，ZFS 的 RAIDZ2 跑出了 **16,010 IOPS** 的高分，bcachefs 紧随其后。但在延迟控制上，画风突变。在 \"Trivial-op under streaming write\"（持续写入时的响应能力）测试中，ext4 和 xfs 的 LVM-RAID10 表现最稳，延迟控制在 50ms 左右。而 ZFS、Btrfs 和 bcachefs 的大部分配置都出现了严重的 IO 饥饿，很多甚至直接显示 \"starved\"（饿死），只完成了个位数的操作。这暗示了 CoW 文件系统在处理并发读写流时的复杂性，确实比传统文件系统更难调优。\n\n### 元数据操作：ZFS 的\"主场优势\"\n在创建和删除文件树的测试中，ZFS 展现了惊人的效率。创建 20k 文件树，ZFS/mirror 只用了 **1,037 ms**，比 ext4 还快，而 Btrfs/raid1 竟然慢到了 **8,903 ms**，差距接近 9 倍。这说明 ZFS 在处理大量小文件和元数据操作时，其架构依然非常强悍。反观 Btrfs，在元数据密集型操作上似乎有些吃力，尤其是在 RAID 模式下。不过，在删除操作上，Btrfs/raid6 又反杀回了第一名（315 ms），展现了其快照/删除机制的高效。\n\n### 稀疏文件处理：ZFS 的\"强迫症\"\n最后看一个细节：稀疏文件。测试创建了一个 1G 的稀疏文件，ext4、xfs、Btrfs 和 bcachefs 都很聪明，实际分配空间是 **0 bytes**。唯独 ZFS，不管什么配置，都实打实地分配了 **512 bytes**。这是 ZFS 的设计哲学决定的——它记录了更多的元数据结构，虽然牺牲了一点点空间效率，但换来的是更强的数据一致性保障。这就像是一个有强迫症的管家，哪怕你只是说一声\"我要个空房间\"，它也要先把地给扫干净。"
+}

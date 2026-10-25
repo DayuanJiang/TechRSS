@@ -1,0 +1,107 @@
+{
+  "id": 47637116,
+  "by": "mpweiher",
+  "title": "Signals, the push-pull based algorithm",
+  "url": "https://willybrauner.com/journal/signal-the-push-pull-based-algorithm",
+  "score": 122,
+  "createdAt": 1775460615,
+  "aiSummary": {
+    "chinese_title": "signals 的 push-pull 算法、glitch-freedom 与旧式 FRP 传承",
+    "discussion_overview": [
+      {
+        "category": "glitch-freedom 与调度代价",
+        "summary": "不少评论把焦点放在 glitch-freedom 上，认为只讲 dirty 标记和懒计算还不够，因为真正难的是避免 UI 短暂进入不可能的中间态。有人举例说，多个派生值如果没有 batching，就可能在同一帧里分别读到新旧混合数据，导致错误数值闪现。评论里还讨论了 pull 阶段的拓扑顺序、priority queue、全局栈和并发 CAS 的复杂度，说明“无 glitch”并不是免费午餐。也有人强调 batching 不是纯性能优化，而是事务语义的一部分。",
+        "supportid": [
+          "47657993",
+          "47660146",
+          "47661909",
+          "47658504",
+          "47659031",
+          "47658280",
+          "47658760"
+        ]
+      },
+      {
+        "category": "FRP 前史与实现谱系",
+        "summary": "很多人把这套算法放进更长的历史脉络里看：Flapjax（早期 JavaScript FRP 项目）、ReacTcl（Tcl 里的响应式实现）、Sodium FRP（一个 FRP 库）和 Jane Street incremental（Jane Street 的增量计算系统）都被拿来对照。评论还提到，在“reactive”流行之前就已经有 one-way dataflow constraints 和相关算法研究。有人补充 monadic、applicative 以及带 state/history 的变体，说明 signals 并不是单一模型，而是一整族设计选择。Angular（主流前端框架）和 Svelte（前端框架）也开始采用 signals，被视为这些旧思想的再次收敛。",
+        "supportid": [
+          "47662417",
+          "47657993",
+          "47658883",
+          "47658183",
+          "47658178",
+          "47659981",
+          "47658676",
+          "47660442",
+          "47660146"
+        ]
+      },
+      {
+        "category": "实现细节与工程权衡",
+        "summary": "评论区对实现细节追问很多，比如为什么遍历 Set 时要先拷贝一份，答案是回调里的 cleanup 可能会删元素，不拷贝会让迭代行为不可预测。也有人质疑全局 priority queue 或 stack 的线程安全和 contention 成本，甚至指出 lock-free 方案也会牵涉多次 CAS。错误处理被建议用 Result<T> 来包裹，而 weak references、可维护性和实现复杂度也被认为是把算法落地时必须面对的问题。整体上，这一组评论承认示例是“naive implementation”，但希望后续能继续优化。",
+        "supportid": [
+          "47658840",
+          "47658850",
+          "47658878",
+          "47657893",
+          "47657910",
+          "47658177",
+          "47658760",
+          "47661909"
+        ]
+      },
+      {
+        "category": "文章呈现与交互设计",
+        "summary": "不少评论其实是在夸文章的呈现方式，尤其是正文和代码同步滚动的阅读流程。有人专门问实现原理，得到的解释是左栏用 sticky，右栏用 absolute 加 translateY，再由 IntersectionObserver（浏览器原生可见性观察 API）触发章节切换。也有人觉得这种动态排版比静态技术文更适合解释算法，甚至比“模拟印刷品”的网页更像真正的数字媒体。与此同时，也有人问源码是否开源，并给出代码样式区分度的小建议。",
+        "supportid": [
+          "47657923",
+          "47658283",
+          "47658035",
+          "47658218",
+          "47659161",
+          "47659791",
+          "47660182",
+          "47658750",
+          "47658843"
+        ]
+      },
+      {
+        "category": "示例与术语表达的误导感",
+        "summary": "也有评论直接质疑示例本身的建模方式，认为“2 * x” 那组演示过度展示了中间增量，和真实 signals 框架通常只体现最终值的行为不一致。后面的级联示例里，把 Signal 讲成 button 也让人困惑，因为直觉上变化中的值才更像 signal，而不是按钮这个 UI 元素。评论者认为这些图示虽然好看，但可能把读者带进不准确的心智模型。换句话说，视觉表达很强，但概念边界还可以更清楚。",
+        "supportid": [
+          "47658733"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "glitch-freedom",
+        "explanation": "保证依赖更新过程中不会短暂出现自相矛盾的中间状态。"
+      },
+      {
+        "term": "push-pull",
+        "explanation": "先 push 标记脏，再在 pull 时按需重算的更新方式。"
+      },
+      {
+        "term": "topological sorting",
+        "explanation": "按依赖顺序排列计算节点，避免先用后算。"
+      },
+      {
+        "term": "FRP",
+        "explanation": "Functional Reactive Programming，围绕随时间变化的值和事件流的编程范式。"
+      },
+      {
+        "term": "batching",
+        "explanation": "把多次变更合并后统一处理，常用于减少中间态和提升性能。"
+      },
+      {
+        "term": "dirty flag",
+        "explanation": "用“已过期/需重算”的标记延迟计算，是很多响应式系统的基础技巧。"
+      }
+    ],
+    "context": "这篇文章讲的是前端 signals 的一种 push-pull 更新算法：先把依赖节点标成 dirty，再在读取时按需重算。评论区把它放进 Functional Reactive Programming（FRP，函数式响应式编程）和更早的 dataflow constraints 传统里比较，并提到 Flapjax（早期 JavaScript FRP 项目）、ReacTcl（Tcl 里的响应式实现）、Sodium FRP（一个 FRP 库）和 Jane Street incremental（Jane Street 的增量计算系统）。争论焦点集中在 glitch-freedom、batching、topological sorting 和 transactional semantics 这些保证 UI 不会出现瞬时错误状态的机制。文章本身还因为滚动时正文与代码联动的排版被称赞，背后用了 sticky、absolute 位移和 IntersectionObserver（浏览器原生可见性观察 API）等常见前端技术。",
+    "emoji": "🤓",
+    "sarcastic_question": "不讲 glitch-freedom，也配叫 signals 讲解？"
+  },
+  "articleSummary": "## 一句话总结\nSignals 的高性能秘密不在于简单的发布订阅，而在于一种结合了“主动推送”和“按需拉取”的混合算法，它通过在更新阶段标记脏状态，在读取阶段才真正执行计算，从而精准地只更新必要的部分。\n\n### 响应式系统的两难困境：推还是拉？\n\n我们在做前端开发时，处理状态更新无非就两种思路。一种是“推”，数据变了主动通知所有依赖更新，像 React 的早期实现或者 MobX；另一种是“拉”，数据变了只打个标记，等组件渲染时再重新计算，像 React Hooks 或者现在的 React Compiler。但这两种都有明显的硬伤：纯“推”模式容易造成无效计算，比如一个组件用了两个 State，变了一个却重算了两次；纯“拉”模式虽然精准，但每次都要全量检查依赖，开销也不小。\n\n### Push-Pull 算法的核心思路：动静分离\n\n那有没有一种办法能结合两者的优点呢？Signals 采用的 Push-Pull 算法给出了答案。它的核心思路其实很简单：把“通知更新”和“执行计算”拆开。当数据变化时，算法只做“推”的动作——也就是把依赖这个数据的 Effect 或 Computed 标记为“脏”，告诉它们“你过期了，需要更新”。但这时候并不急着执行具体的计算逻辑，而是等到真正需要用到这个值的时候，再进行“拉”的操作。\n\n### 关键设计：版本号与懒计算的配合\n\n这里有个巧妙的设计：Signals 内部维护了一个版本号。每次 Signal 值改变，版本号就加一，同时把依赖者的版本号设为旧值。当外部代码读取某个 Computed Signal 时，算法会先比对版本号。如果发现当前版本比依赖的版本新，说明数据变了，这时候才触发重新计算；如果没变，就直接返回缓存值。这样做的好处是，如果一个 Signal 变了但没人去读，那整个计算链路完全不会触发，不仅省了 CPU，还省了内存分配。\n\n### 解决级联更新的性能陷阱\n\n有意思的地方在于处理级联依赖时的逻辑。假设 A 依赖 B，B 依赖 C，当 C 变了怎么办？Push-Pull 算法不会立即重算 B，而是先把 B 标记为脏，同时把 A 也标记为脏。只有当你最后去读 A 的时候，系统才会发现 A 是脏的，于是去读 B；发现 B 也是脏的，再去读 C。这种“按需回溯”的机制，确保了无论依赖链多深，计算都只发生在真正读取的那一刻，而且每一层只算一次。\n\n### 这种机制带来的实际收益\n\n说白了就是用极小的空间换时间。通过维护一个全局版本号和每个节点的状态，Signals 避免了传统观察者模式中那种“一呼百应”的广播风暴。对于像 SolidJS 或 Preact 这样重度依赖细粒度更新的框架来说，这意味着你可以在一个复杂组件里修改某个局部 State，而不会导致整个组件树或者其他无关的 Computed 属性做无意义的重算。"
+}

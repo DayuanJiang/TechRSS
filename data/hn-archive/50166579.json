@@ -1,0 +1,109 @@
+{
+  "id": 50166579,
+  "by": "galadran",
+  "title": "EMudhra Intermediate CA Compromise",
+  "url": "https://emudhra.we-have-a-problem.com/",
+  "score": 979,
+  "createdAt": 1792507239,
+  "aiSummary": {
+    "chinese_title": "EMudhra 八个中间 CA 私钥竟为单字节，Web PKI 撤销与信任链受拷问",
+    "discussion_overview": [
+      {
+        "category": "私钥弱到可直接推导，事故近乎荒谬",
+        "summary": "八个受影响证书的 RSA 私钥据称都是单字节数值，包括 D=4、56、66、115、155、156、230 和 237，因此并非研究者窃取密钥，而是任何人都可从公钥轻易恢复私钥。评论者认为把这称作“compromise”都显得过于温和，因为这意味着密钥生成流程本身完全失效。此类数值也不可能由合规的 HSM（Hardware Security Module，硬件安全模块）生成，而该 CA 自己的 CPS（Certification Practice Statement，证书操作规范）要求使用 HSM。有人以 XKCD 的“fair dice roll”梗讽刺，认为 D=4 像是玩笑，却凸显了审计和控制措施可能整体不可信。",
+        "supportid": [
+          "50169291",
+          "50169109",
+          "50169181",
+          "50169954",
+          "50169625"
+        ]
+      },
+      {
+        "category": "影响取决于撤销能力，旧设备与独立信任库最危险",
+        "summary": "Firefox、Chrome、Apple 和 Microsoft 可通过浏览器或系统下发的撤销/封禁机制较快阻断受影响中间 CA，Mozilla 提到 OneCRL（Firefox 的集中 CA 撤销列表）能在数小时内保护多数用户。可是实际测试显示 Firefox 各设备和版本的拦截结果不一致，有的全部放行、有的只拦截一半，重装后才恢复正常；Chrome 的表现则更稳定。Go、Rustls、Python、Electron、Homebrew 和 PHP 等生态需要分别升级各自的根证书包或验证库，因为它们未必采用系统撤销状态。长期不更新的 IoT、Smart TV 与网络中间设备尤其棘手：已知私钥对应的中间证书可到约 2039 年才过期，设备若无法接收撤销信息，可能持续接受伪造链。",
+        "supportid": [
+          "50167244",
+          "50167787",
+          "50169427",
+          "50167154",
+          "50168390",
+          "50169574",
+          "50169917"
+        ]
+      },
+      {
+        "category": "攻击面是全网 TLS，而非仅印度政务网站",
+        "summary": "评论者澄清，EMudhra 虽是印度上市的数字签名与 CA 服务商，影响并不局限于其本国客户或政府网站。受影响者是被公有根计划信任的中间 CA；若攻击者能劫持网络连接，例如运营 Tor exit node、VPN、ISP 或处于其他 MITM 位置，就可能为几乎任意域名伪造看似正常的 HTTPS 证书。攻击者不能凭证书隔空接管所有系统，但 TLS 常是软件更新、远程命令和服务认证的唯一信任锚，网络拦截因此可升级为消费级或工业级系统接管。此前没有发现这些受影响中间 CA 签发的叶子证书进入 CT 日志，说明未有公开可见的既往滥用证据，但也暴露出未披露中间证书和定向攻击的可见性问题。",
+        "supportid": [
+          "50167650",
+          "50167796",
+          "50169689",
+          "50167643",
+          "50169956",
+          "50169972"
+        ]
+      },
+      {
+        "category": "根计划、交叉签名和无约束 sub-CA 的治理失灵",
+        "summary": "争论焦点之一是责任归属：这些证书链向 emSign 和 Comodo/Sectigo 等已有受信任根，而 emSign 本身是 EMudhra 的另一名称；同时 EMudhra 也是根 CA 运营者，根之间交叉签名本身并不必然错误。批评者认为，根 CA 向其他实体发放能够为任意域名签发证书的 sub-CA 是历史性漏洞，根运营者应对所有下级 CA 的操作和审计承担完整责任。Name Constraints（X.509 名称约束）本可限定 CA 可签发的名称范围，但公有 Web PKI 很少使用，原因包括规则复杂、实现支持不一致及现实域名策略难以映射。有人预计其事故报告将受到严格审查，结果可能是被多个 root store（根证书信任库）移除，类似过去 DigiNotar 事件后 CA 退出市场。",
+        "supportid": [
+          "50169733",
+          "50169871",
+          "50168471",
+          "50168931",
+          "50169435",
+          "50168974",
+          "50168962"
+        ]
+      },
+      {
+        "category": "Web PKI 的“任意 CA 签任意域名”架构遭质疑",
+        "summary": "大量评论把事故视为 Web PKI 的结构性问题：一个终端默认信任的任意 CA 都可能为任意域名背书，实际安全性因而接近最弱 CA 的水平。批评者主张用 DNSSEC（为 DNS 记录提供签名验证的机制）、DANE（将 TLS 认证信息绑定到 DNSSEC 域名记录的标准）、CAA（限制域名允许哪些 CA 签发的 DNS 记录）或证书 pinning 缩小授权范围。反方指出 DANE 仍会把高价值信任集中在 DNS/TLD 运营者，一旦其失守较难驱逐或强制透明审计；历史上旧浏览器兼容性也使 Let's Encrypt 等必须沿用 Web PKI。对于 web-of-trust（信任网络），也有人认为现实中签名权会重新集中到少数核心密钥，普通用户并不愿自行作出复杂信任决策，因此没有简单替代方案。",
+        "supportid": [
+          "50167151",
+          "50167194",
+          "50167339",
+          "50167498",
+          "50167758",
+          "50167935",
+          "50168757"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "中间 CA（Intermediate CA / sub-CA）",
+        "explanation": "由受信任根 CA 签发、可继续为网站签发 TLS 证书的下级证书机构；若权限未受约束，失陷可波及大量域名。"
+      },
+      {
+        "term": "Web PKI",
+        "explanation": "浏览器和操作系统依赖根证书库、CA 签发链来验证 HTTPS 身份的公共密钥基础设施。"
+      },
+      {
+        "term": "Certificate Transparency（CT）",
+        "explanation": "要求公开记录 TLS 证书签发的透明日志体系，用于发现秘密或异常签发的证书。"
+      },
+      {
+        "term": "CRL / OneCRL / CRLite",
+        "explanation": "CRL 是证书撤销列表；OneCRL 是 Firefox 集中下发的 CA 撤销机制，CRLite 是 Mozilla 面向叶子证书的压缩撤销检查方案。"
+      },
+      {
+        "term": "HSM",
+        "explanation": "Hardware Security Module，专门生成、保存并使用高价值私钥的硬件设备，避免密钥以不安全方式产生或导出。"
+      },
+      {
+        "term": "Name Constraints",
+        "explanation": "X.509 扩展，可限制 CA 只能为特定域名或名称空间签发证书，但在公有 Web PKI 中部署有限。"
+      },
+      {
+        "term": "DANE / DNSSEC",
+        "explanation": "DANE 利用 DNSSEC 已签名的 DNS 记录发布 TLS 认证信息，试图把域名控制权与证书认证直接绑定。"
+      }
+    ],
+    "context": "EMudhra（印度的数字签名与证书服务商）相关的八个中间 CA 被发现使用极其微弱的 RSA 私钥参数，私钥可由公开信息轻易推导，而非仅是密钥文件泄露。这些中间 CA 链接到 emSign（EMudhra 使用的另一品牌名称）及 Sectigo（原 Comodo）等受浏览器信任的根体系，因此攻击者若能实施 MITM（中间人攻击），可伪造许多 HTTPS 服务的身份。浏览器可借助 OneCRL、集中封禁列表和 Certificate Transparency（公开证书签发日志）快速缓解，但嵌入式设备、旧系统以及携带自有 CA bundle 的语言运行时和应用未必会及时获得撤销信息。事件重新激起对 Web PKI“众多 CA 均可为几乎任意域名签发”的信任模型、下级 CA 审计责任，以及 DNSSEC/DANE 等替代或补充机制的长期争论。",
+    "emoji": "🚨",
+    "sarcastic_question": "私钥填个4，也能通过CA审计？"
+  },
+  "articleSummary": "## 一句话总结\neMudhra 八个中间 CA 私钥泄露，攻击者通过签名验证了漏洞，各大浏览器厂商已紧急吊销，但非浏览器客户端仍需手动更新信任库。\n\n## 正文\n\n### 私钥泄露实锤：攻击者用签名说话\n这事儿没藏着掖着，直接就是实锤。10 月 17 日，一位名叫 Wayne 的安全研究员向各大 Root Program 团队报告：eMudhra 的八个 Intermediate CA 私钥泄露了。为了证明自己没开玩笑，他干了一件很硬核的事：用这八个泄露的私钥分别对一条消息 \"We have a problem here - Wayne\" 进行了签名。这就是所谓的 \"Talk is cheap, show me the signature\"。你可以下载 proof.zip，用 OpenSSL 验证一下签名和公钥是否匹配，技术细节铁证如山。\n\n### 影响范围：从根信任链到具体证书\n这八个出事的 Intermediate CA 并不是什么无名之辈，它们链上的 Root CA 包括 emSign Root TLS CA - G3 和 AAA Certificate Services。这两家 Root CA 都在 Mozilla、Microsoft、Apple 和 Chrome 的根信任程序里。这意味着，如果你的系统信任这些根，理论上攻击者就能用泄露的私钥签发任意网站的证书，从而进行中间人攻击。受影响的证书类型涵盖了 DV、OV 和 EV 三种层级，横跨 G3B 和 G3C 两个序列，甚至还包括了 Sectigo 的交叉签名。\n\n### 浏览器厂商的极速响应\n好在反应够快。Firefox 和 Chrome 在 10 月 17 日当天就通过 OneCRL 和 CRLSets 机制拉黑了这些中间证书，Apple 也在 19 日跟进。这些机制能绕过传统的 CRL 更新延迟，直接在浏览器层面阻断信任。但问题在于，这只是针对浏览器环境的\"止血\"。CA 虽然也吊销了证书，但对于那些不检查吊销状态的客户端来说，这张\"毒证书\"依然是有效的。\n\n### 开发者面临的隐形大坑\n这才是让开发者头疼的地方：你的代码可能还在信任这些证书。文章列出了长长的修复清单，从 Ubuntu、Debian 的 `ca-certificates` 包，到 Go、Node.js、Python 的 `certifi` 库，甚至包括 Rust 的 `rustls-webpki`，都需要更新。比如 Python 的 certifi 需要升级到 2026.10.19，Go 需要升级到 1.27.3 或 1.26.10。如果你在用 curl 或者某些嵌入式设备，它们往往依赖系统的信任库，却不像浏览器那样有实时更新的吊销列表，这就成了安全盲区。\n\n### 手动修复：各发行版的\"黑名单\"操作\n如果发行版还没推送更新，或者你等不及，就得手动\"动刀\"了。文章给出了针对不同系统的 Workaround，核心思路就是把涉事的 Root CA 加入黑名单。比如在 Debian/Ubuntu 上，你需要修改 `/etc/ca-certificates.conf`，在相关条目前加 `!` 来禁用；在 Fedora/RHEL 系列上，则需要用 `trust extract` 命令将证书提取到 blocklist 目录。这操作有点硬核，稍有不慎可能影响系统其他组件，建议普通用户还是等官方补丁。\n\n### macOS 的特殊处理\nmacOS 用户有个特殊的坑。虽然系统层面已经拦截了，但自带的 `/usr/bin/curl` 是个例外。它验证证书时只读 `/etc/ssl/cert.pem`，不检查吊销状态，而这个文件还没更新。解决办法是用 `awk` 命令把 \"AAA Certificate Services\" 和 \"emSign ECC Root CA - G3\" 这两个根证书从文件里剔除。这招挺巧妙，但也挺危险，操作前记得备份。\n\n### 总结与建议\n说白了，这就是一次典型的\"信任链断裂\"事件。浏览器厂商通过中心化的吊销机制快速止损，但长尾效应依然存在。对于开发者来说，现在的当务之急是检查你的依赖库和运行环境。如果你在用 Ubuntu 22.04 或 24.04，赶紧检查 `ca-certificates` 包版本是否到了 20260816ubuntu0.22.04.1 以上。别让你的应用成为那个还在信任\"毒证书\"的漏网之鱼。"
+}

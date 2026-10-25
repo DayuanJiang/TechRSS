@@ -1,0 +1,115 @@
+{
+  "id": 49551096,
+  "by": "halcdev",
+  "title": "Ask HN: Why are OpenAI, Claude, and Grok simultaneously down? Coincidence?",
+  "url": "",
+  "score": 382,
+  "createdAt": 1788450610,
+  "aiSummary": {
+    "chinese_title": "OpenAI、Claude、Grok疑似同步故障：Cloudflare级联宕机还是流量挤兑？",
+    "discussion_overview": [
+      {
+        "category": "共享上游：Cloudflare/云厂商嫌疑",
+        "summary": "最初的一波判断把 Cloudflare 当成共同上游，因为 Downdetector 上 Cloudflare、Azure、AWS、Google Cloud 的报错曲线几乎同时抬头。有人补充 Cloudflare 的事故页里确实出现过与 HTTP/3 和 R2 custom domains 相关的更新，但也有人贴出 Cloudflare CTO 的回应，称整体服务并没有真正大面积中断。讨论因此扩展到 CDN、云厂商前置层，甚至更底层的 fiber backbone 和 BGP 路由，核心猜测是某个“承重”组件出了问题。",
+        "supportid": [
+          "49552440",
+          "49552765",
+          "49553899",
+          "49553262",
+          "49552064",
+          "49551896",
+          "49551646",
+          "49551931",
+          "49552330",
+          "49553908",
+          "49553619",
+          "49551517"
+        ]
+      },
+      {
+        "category": "自动迁移把一次故障放大成连锁超载",
+        "summary": "另一派认为，问题未必是单点基础设施故障本身，而是用户和自动化系统在故障时把流量不断推向别家模型。很多 AI coding 工具和聚合路由服务都内置了 fallback / failover，像 Cursor、OpenRouter 这类系统会在主模型失败后自动切到次选项。再加上 GPU 和 compute 本来就吃紧，服务经常贴着满载跑，只要有一波迁移流量，其他提供商也会被连带压垮。有人把这概括为级联超载：单个应用层面的“聪明设计”，放到全行业就可能变成集体放大器。",
+        "supportid": [
+          "49551656",
+          "49552915",
+          "49553095",
+          "49552144",
+          "49552930",
+          "49553240",
+          "49552129",
+          "49553279",
+          "49551250",
+          "49553145",
+          "49554338",
+          "49552371",
+          "49551841",
+          "49553205"
+        ]
+      },
+      {
+        "category": "并非全局宕机：地域和入口差异明显",
+        "summary": "也有人提醒不要把“同时 down”夸张成全局故障，因为一些服务在不同地区或不同入口仍然可用。有人报告 Codex、chatgpt.com、claide.ai 还能打开，也有人说法国能访问，Gemini API 只是返回 503，而不是完全不可用。评论区还围绕样本量争论：一个人能用不代表大多数人没事，反过来单个故障截图也不能证明整个系统全挂。更稳妥的结论是，影响范围高度不均，具体要看地区、入口和产品线路由。",
+        "supportid": [
+          "49552596",
+          "49552896",
+          "49553237",
+          "49553498",
+          "49553754",
+          "49551913",
+          "49552074",
+          "49552219",
+          "49551716",
+          "49552118",
+          "49551980",
+          "49553102"
+        ]
+      },
+      {
+        "category": "Claude 的“load-bearing”语言梗",
+        "summary": "线程里还有一条纯语言梗：Claude 爱把“load-bearing”和“seams”说得满天飞。有人说这次正好用在“load-bearing seam”上，算是难得贴切，但更多人吐槽它已经变成 LLM 套话，和“honest”“ratchet”一样会被过度重复。有人甚至给模型加规则禁用这个词，结果它改说“load handling”，把玩笑继续推高。整段讨论最后从故障本身滑向对 AI 文风和提示词习惯的集体吐槽。",
+        "supportid": [
+          "49552832",
+          "49553798",
+          "49553835",
+          "49553853",
+          "49554064",
+          "49553982",
+          "49554068",
+          "49554093",
+          "49554314",
+          "49553183",
+          "49553860",
+          "49553281",
+          "49553693",
+          "49554259",
+          "49554334"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "cascading failure（级联故障）",
+        "explanation": "一个服务先出问题，依赖它的其他服务接连受到影响。"
+      },
+      {
+        "term": "thundering herd（惊群效应）",
+        "explanation": "大量客户端同时重试或切换到同一后端，瞬间把它压垮的现象。"
+      },
+      {
+        "term": "failover / fallback（故障切换/回退）",
+        "explanation": "主服务失效时自动切到备用模型或提供商的机制。"
+      },
+      {
+        "term": "BGP routing（边界网关协议路由）",
+        "explanation": "互联网核心路由机制；异常时可能让大范围流量改道或抖动。"
+      },
+      {
+        "term": "load-bearing（承重式表述）",
+        "explanation": "在 LLM 语境里常指被反复使用、似乎“承担关键作用”的措辞，也常被拿来调侃 Claude 的高频套话。"
+      }
+    ],
+    "context": "OpenAI/ChatGPT、Anthropic Claude 和 xAI Grok 被同时报告故障后，评论区先从 Downdetector 和各家 status page 寻找共同点。很多人把矛头指向 Cloudflare（全球 CDN、边缘网络和安全服务商），因为有人看到它的 HTTP/3 与 R2 custom domains 事故更新，也有人提到 OpenAI 的网络层依赖 Cloudflare，Azure、AWS、Google Cloud 也在同一时间段出现错误尖峰。另一条主线是 AI 服务之间存在大量自动 failover：像 Cursor（AI 编程工具）和 OpenRouter（多模型路由服务）会把流量自动切到第二选择，于是一个服务掉线后会把压力放大到其他家。后来 Gemini 也被提到出现 503，说明这更像是共享基础设施、自动重试和容量余量不足叠加出的连锁故障，而不是单一产品“独立宕机”。",
+    "emoji": "🤔",
+    "sarcastic_question": "难道这些AI真共用一根网线，还没做failover？"
+  }
+}

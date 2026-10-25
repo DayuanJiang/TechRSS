@@ -1,0 +1,107 @@
+{
+  "id": 48321076,
+  "by": "NicoConstant",
+  "title": "Real-time LLM Inference on Standard GPUs: 3k tokens/s per request",
+  "url": "https://blog.kog.ai/real-time-llm-inference-on-standard-gpus-3-000-tokens-s-per-request/",
+  "score": 126,
+  "createdAt": 1780050611,
+  "aiSummary": {
+    "chinese_title": "8×H200跑2B模型到3k tok/s，“标准GPU”标题引争议",
+    "discussion_overview": [
+      {
+        "category": "标题与硬件口径争议",
+        "summary": "评论区首先争论的是“Standard GPUs”这个说法是否成立。很多人以为指的是消费级显卡，比如 4090、3090 或至少能接显示器的“普通 GPU”，但文章实际用的是 8× NVIDIA H200 这类数据中心加速卡。作者随后澄清并把文章标题改成了“standard datacenter GPUs”，但不少人仍认为原标题带有误导性，甚至接近 clickbait。",
+        "supportid": [
+          "48321414",
+          "48321520",
+          "48321581",
+          "48323311",
+          "48322420",
+          "48321635",
+          "48324115",
+          "48323326",
+          "48324268",
+          "48321630",
+          "48323318",
+          "48321846",
+          "48321831",
+          "48323395"
+        ]
+      },
+      {
+        "category": "2B 预览不足以证明大模型可扩展",
+        "summary": "不少评论认为，拿 2B dense model 做 3k tok/s 展示，无法说明这套方案对真正有用的大模型也成立。有人直接把这种外推类比成“1 到 4 核线性提升就假设 256 核也一样”，或者“缓存内优化就假设多机问题也能同样优化”，并要求看到 27B、30B 甚至更大的实测。作者回应说，文章最后给了 scaling math：按 active params 和显存占用估算，GPT-OSS-120B、DeepSeek V4 Pro/Flash 这类 MoE 模型理论上可以继续扩展，但真正难点在于保持速度、处理更复杂的 routing 和 attention 逻辑。",
+        "supportid": [
+          "48321384",
+          "48321392",
+          "48322032",
+          "48321383",
+          "48321544",
+          "48322964",
+          "48322115",
+          "48323374",
+          "48324079",
+          "48321487",
+          "48321519",
+          "48322166",
+          "48321485"
+        ]
+      },
+      {
+        "category": "高 tok/s 的应用价值",
+        "summary": "支持者强调，token/s 并不只是“跑分”，而是直接影响 agentic workflow 的体验。比如软件工程、vibe coding、代码重构、测试循环都需要大量连续推理，如果每秒只能几十个 token，整个交互会被模型速度拖垮。也有人提到实时 video、shader generation、worldbuilding，甚至并行生成多个方案、做 Monte Carlo search 这类场景，认为 400–500 tok/s 可能只是起步，真正高吞吐才会打开新的工作流。",
+        "supportid": [
+          "48323081",
+          "48324135",
+          "48321457",
+          "48321778",
+          "48323413",
+          "48323573",
+          "48325027",
+          "48325062",
+          "48323553"
+        ]
+      },
+      {
+        "category": "工程实现：Monokernel、TP 与带宽瓶颈",
+        "summary": "技术讨论集中在这套推理引擎到底怎么做到这么快。作者说明他们会为不同 GPU 类型手写 CUDA/HIP 和 assembly，把模型逻辑重写到非常底层，以压缩 launch、sync、CPU sampling 等微秒级开销。评论和回复还解释了 Monokernel（单内核优化）和 TP（tensor parallelism，张量并行）的关系：当前 1k–5k tok/s 主要靠把 all-reduce 压到 3µs 以下，而 DTP（Delayed Tensor Parallelism，延迟张量并行）是面向 10k+ tok/s 的更激进路线。即便如此，consumer GPU 仍会受限于带宽和 PCIe 等互连性能，开源与否则被认为还要权衡 startup 的 IP 价值。",
+        "supportid": [
+          "48321626",
+          "48322002",
+          "48322460",
+          "48323756",
+          "48324024",
+          "48323741",
+          "48324742",
+          "48324953"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Monokernel",
+        "explanation": "把推理流程尽量压缩到少量 GPU kernel 的优化思路，用来减少 launch 和同步开销。"
+      },
+      {
+        "term": "DTP（Delayed Tensor Parallelism）",
+        "explanation": "一种把张量并行中的通信尽量延后或隐藏的设计，目标是进一步提高 tokens/s。"
+      },
+      {
+        "term": "TP（Tensor Parallelism）",
+        "explanation": "把模型张量切分到多块 GPU 上并行计算的常见方法。"
+      },
+      {
+        "term": "all-reduce",
+        "explanation": "多 GPU 间同步归并数据的通信操作，常常是性能瓶颈。"
+      },
+      {
+        "term": "MoE（Mixture of Experts）",
+        "explanation": "混合专家模型，只激活部分专家参数，以较少 active params 支撑更大的总参数量。"
+      }
+    ],
+    "context": "这篇讨论围绕 Kog 发布的 LLM inference engine 技术预览展开，声称在 8× NVIDIA H200（数据中心 GPU）上把单请求吞吐做到约 3k tokens/s。标题里的“Standard GPUs”引发大量误解，很多人以为是消费级显卡，随后作者澄清并更新为“standard datacenter GPUs”。评论里反复提到 Monokernel（单内核优化）和 Delayed Tensor Parallelism（DTP，延迟张量并行）这两条路线：前者通过手写 CUDA/HIP/assembly 压榨推理路径，后者则面向更激进的 10k+ tok/s 目标。争论焦点不只是速度本身，而是这套方法能否从 2B 的预览模型外推到 GPT-OSS-120B、DeepSeek V4 Pro/Flash 这类更有用的 MoE（Mixture of Experts，混合专家）模型，以及在 consumer GPU、PCIe 和多节点环境下会遇到什么带宽上限。",
+    "emoji": "🤨",
+    "sarcastic_question": "原来“标准GPU”就是8张H200豪华套装吗？"
+  },
+  "articleSummary": "## 一句话总结\n通过架构、引擎和内核的协同设计，Kog Inference Engine 将单请求解码速度推向了 3,000 tokens/s，证明了标准数据中心 GPU 完全可以达到专用推理硬件的速度上限。\n\n### AI Agent 的核心痛点：单请求延迟比吞吐量更重要\n传统的推理基准通常关注聚合吞吐量或首字延迟，但在 AI Agent 的场景下，这些指标具有欺骗性。Agent 的工作流本质上是串行的——检查、规划、编辑、测试、修订，每一步都依赖上一步的输出。如果 Agent 需要生成 50,000 个 token，100 tokens/s 的速度意味着用户要等 8 分钟，而 3,000 tokens/s 只需要不到 20 秒。这种数量级的差异直接决定了产品的可用性。因此，Kog 选择优先优化 Batch Size 为 1 的单请求延迟，这抓住了当前 Agent 体验的瓶颈。\n\n### 算力不是瓶颈，内存带宽才是\n在低 Batch 场景下，模型推理的瓶颈通常不在计算能力（FLOPS），而在内存带宽。生成一个 token 需要把所有激活权重从 HBM 搬运到计算单元，计算量相对很小（FP16 约为 1 FLOP/byte），而现代 GPU 的 FLOPS 远高于带宽供给能力。以 8× NVIDIA H200 为例，其有效聚合带宽约为 30.7 TB/s。对于一个 4 GB 大小的 FP16 2B 模型，理论上的速度上限约为 7,700 tokens/s。这意味着只要能榨干内存带宽，标准 GPU 完全具备极高速推理的物理基础。\n\n### 现有软件栈在微秒级预算中\"漏洞百出\"\n既然硬件带宽足够，为什么现在的引擎跑不快？问题出在软件栈的\"微秒级浪费\"上。在 3,000 tokens/s 的目标下，生成一个 token 的预算只有 333 微秒。传统的推理框架（如 vLLM, TensorRT-LLM）通常由 CPU 调度、多个 GPU Kernel 串行组成。如果每层启动 10 个 Kernel，仅 Kernel 启动和清理的开销就能吃掉 1,125 微秒，直接把速度封顶在 890 tokens/s。加上 CPU 采样、GPU 同步、跨卡通信等开销，现有的分层抽象设计根本无法适应这种严苛的时序要求。\n\n### Kog 的解法：把整个模型变成一个 Kernel\n为了堵住这些漏洞，Kog 采用了激进的协同设计策略，核心是 **Monokernel（单内核）**。他们不再把模型拆成一个个小 Kernel 交给 CPU 调度，而是把整个解码路径写成一个常驻 GPU 的单一程序。这消除了所有 Kernel 边界和 CPU 调度开销，甚至连采样逻辑都在 GPU 上完成。同时，他们自研了 KCCL 通信库，针对微秒级延迟进行了汇编级优化，将 AllReduce 延迟控制在 3 微秒以内，远超通用库的表现。\n\n### 连模型架构也要为硬件让路\n这种协同设计甚至延伸到了模型架构本身。Kog 提出了 **Laneformer** 架构，引入了\"延迟张量并行\"（DTP）。传统的张量并行要求每层都进行跨卡同步，阻塞计算；而 DTP 改变了依赖结构，允许跨卡通信与计算重叠。此外，针对 AMD MI300X 这种复杂的 Chiplet 拓扑结构，他们还做了 IOD 感知的内存访问优化。说白了，他们不是在适配模型，而是在设计模型时就已经把硬件的物理拓扑和通信开销算进去了。\n\n### 效果与未来：打破专用芯片的神话\n最终结果显示，在 8× AMD MI300X 上达到了 3,000 tokens/s，在 8× NVIDIA H200 上达到了 2,100 tokens/s（FP16，无投机解码）。这证明了只要解决软件栈的效率问题，企业现有的标准数据中心 GPU 就能跑出专用推理卡的速度。随着下一代 GPU（如 Rubin 和 MI450）在 2026 年带来 4 倍的带宽提升，这种架构甚至有望在更大的 MoE 模型上维持数千 tokens/s 的速度，彻底摆脱对专用硬件的依赖。"
+}

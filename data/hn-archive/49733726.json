@@ -1,0 +1,98 @@
+{
+  "id": 49733726,
+  "by": "matt_d",
+  "title": "HarnessTax: How Much Does the Harness Matter for Coding Agents?",
+  "url": "https://harnesstax.github.io/",
+  "score": 132,
+  "createdAt": 1789608660,
+  "aiSummary": {
+    "chinese_title": "编码 agent 的 harness 税：上下文、工具与安全成本",
+    "discussion_overview": [
+      {
+        "category": "benchmark 设计与任务覆盖",
+        "summary": "很多人认为 harness 的 benchmark 很难做，因为 harness 本来就是为了优化交互结果，评价标准必须贴合目标任务。一个靠谱的基准不该只测单点代码补丁，而要覆盖小范围一次性任务、长链路重构、整项目修改，以及语义含糊的一句话需求。也有人提醒，只拿单一 harness 做总分比较会失真，因为并发执行、delegation 到子代理、以及领域专用设计都会改变结果。更合理的做法是按任务类型拆分，而不是追求一个看似统一的分数。",
+        "supportid": [
+          "49737533",
+          "49736859",
+          "49735038",
+          "49736287"
+        ]
+      },
+      {
+        "category": "上下文与可靠性才是 harness 的核心成本",
+        "summary": "另一派把 harness 看成上下文和状态管理层，而不是模型“智力”的来源。有人指出，不同 harness 在同样的 model calls 下，消耗的 context 可能差很多，因此速度和费用会明显分化。也有评论强调，真正有价值的是那些把失败的 tool call、重复浏览器动作、hostname 记录这类事情从模型手里接管的 hook。对小模型来说，这层壳子尤其重要，因为它得替模型承担更多记忆、循环和上下文整理。",
+        "supportid": [
+          "49736569",
+          "49736880",
+          "49737603",
+          "49735677"
+        ]
+      },
+      {
+        "category": "工具格式与模型训练分布匹配",
+        "summary": "一个反复出现的观点是，工具接口是否贴近目标模型的训练分布，往往比 harness 名字更重要。Claude 风格模型更擅长 Edit(file_path, old_string, new_string, replace_all)，而 GPT 风格流程可能更适合 apply_patch_call 这种自定义 patch 语法。有人举例说，模型会把 Claude traces 里的参数名直接套到自定义工具上，说明 tool-call 模板已经被学进模型行为里。还有人指出，provider middleware 或针对 agentic sessions 的训练，会让同一个底座模型在不同 harness 里表现完全不同。",
+        "supportid": [
+          "49736748",
+          "49737137",
+          "49737443",
+          "49735621",
+          "49736830",
+          "49737611"
+        ]
+      },
+      {
+        "category": "轻量 wrapper 对抗 bloated 产品",
+        "summary": "不少人更喜欢 thin wrapper，觉得 Claude Code、Codex 之类的一体化产品把 system prompt、工具说明和安全文本堆得太重。Pi、OpenCode、jcode 以及基于 Pydantic-AI 的自制壳子，被视为更快、更容易适配个人 workflow 的选择，尤其适合本地或 headless 场景。对这些人来说，surface area 越小越好，因为更容易理解、调整和隔离。也有人承认，某些额外功能在风险任务里确实有价值，但不该把它们包装成默认的巨大负担。",
+        "supportid": [
+          "49735592",
+          "49735638",
+          "49736632",
+          "49735589",
+          "49735307",
+          "49737088",
+          "49738558",
+          "49737613"
+        ]
+      },
+      {
+        "category": "安全、沙箱与信任边界",
+        "summary": "关于安全的争论集中在：到底该靠 prompt 约束，还是靠真正的隔离和外部控制。很多人认为，prompt 里写 sandbox 不可靠，真正有用的是 tool hooks、容器、CLI 包装器和明确的 allow/deny 逻辑。Claude Code 的 auto mode、soft_deny/hard_deny 和 classifier 检查被一些人视为好用，但另一些人更信任人类审批、单独沙箱和测试套件。还有评论强调，agent 做完活不等于做对了，必须靠测试、手工验证和 intent 日志来确认它没有“测过了但偏题了”。",
+        "supportid": [
+          "49734986",
+          "49735594",
+          "49735648",
+          "49737342",
+          "49737595",
+          "49738224",
+          "49736642"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "harness",
+        "explanation": "模型外层的执行框架，负责工具、循环、上下文、权限和反馈。"
+      },
+      {
+        "term": "system prompt",
+        "explanation": "发送给模型的高优先级指令，通常包含角色设定、约束和工具说明。"
+      },
+      {
+        "term": "tool call",
+        "explanation": "让模型以结构化格式调用外部函数、命令或编辑操作的机制。"
+      },
+      {
+        "term": "sandboxing",
+        "explanation": "把模型的文件、命令或网络操作限制在隔离环境里的做法。"
+      },
+      {
+        "term": "subagents",
+        "explanation": "主代理之外的辅助代理，用于分工、并行处理或委派任务。"
+      }
+    ],
+    "context": "这篇帖子围绕 coding agent 的 harness（模型外层的执行框架）讨论：同一个 LLM，换一层执行循环、工具接口、上下文管理和权限控制，成本和表现可能差很多。标题里的 HarnessTax 指的就是这层壳子的额外 token、复杂度和维护成本，常被拿来和 Claude Code（Anthropic 的编码代理）、GPT Codex（OpenAI 的编码代理）、Pi（轻量级编码代理）做对比。评论里还提到 OpenCode（开源 coding agent harness）、OpenRouter（模型路由代理）、Pydantic-AI（Python 的 agent 框架）和 Hermes（用于 headless 运行的代理层）等，说明很多人会自己拼装更薄或更可控的方案。讨论背后真正的问题是：编码代理的差异，到底来自模型更聪明了，还是来自工具调用格式、沙箱隔离和任务分工更好了。",
+    "emoji": "⚖️",
+    "sarcastic_question": "到底是模型更聪明，还是 harness 更会演戏？"
+  },
+  "articleSummary": "无法获取正文内容，无法生成摘要。"
+}

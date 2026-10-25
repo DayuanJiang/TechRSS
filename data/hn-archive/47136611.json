@@ -1,0 +1,96 @@
+{
+  "id": 47136611,
+  "by": "todsacerdoti",
+  "title": "Goodbye InnerHTML, Hello SetHTML: Stronger XSS Protection in Firefox 148",
+  "url": "https://hacks.mozilla.org/2026/02/goodbye-innerhtml-hello-sethtml-stronger-xss-protection-in-firefox-148/",
+  "score": 304,
+  "createdAt": 1771939822,
+  "aiSummary": {
+    "chinese_title": "Firefox 148 推出 setHTML（配合 Sanitizer API）以增强 XSS 防护，但命名、默认白名单与兼容性引发质疑",
+    "discussion_overview": [
+      {
+        "category": "命名混淆与对“消毒”可靠性的怀疑",
+        "summary": "许多评论表达对 API 命名和“安全”语义的担忧：innerHTML、setHTML 与 setHTMLUnsafe 的名称并不能直观告知开发者哪些方法对未信任输入是安全的，容易产生假安全感。历史上 HTML sanitizer 库多次被绕过，评论里指出库级消毒器常在解析→重序列化的环节出现漏洞，因此“sanitize”与“safe”本身含义就很模糊并易被误用。有人强调根本的做法仍是分离数据与代码（例如用 textContent/createTextNode），并警告仅靠浏览器标注“XSS-safe”不足以替代对具体白名单和用例的审视。",
+        "supportid": [
+          "47136906",
+          "47139636",
+          "47142569",
+          "47139695",
+          "47137561"
+        ]
+      },
+      {
+        "category": "原生 Sanitizer API 的优势与限制",
+        "summary": "支持者认为把 Sanitizer API 集成到浏览器并使用相同的 HTML 解析器可避免第三方库（如 DOMPurify）因独立解析与重序列化而产生的绕过点，从而更可靠地阻断 mutation XSS。评论指出原生实现将维护解析器与消毒逻辑的一致性责任转给浏览器厂商，降低开发者层面的出错概率，但这也不是“免费午餐”：浏览器仍需保持解析器/消毒器同步，且解析模式差异（例如内联 SVG 的 XML-ish 规则切换）仍然复杂易出问题。另有讨论提到 setHTMLUnsafe 已在部分浏览器出现作为不安全回退，但 Sanitizer API 在像 Safari 这样的平台支持并不一致，需注意兼容性。",
+        "supportid": [
+          "47137295",
+          "47142740",
+          "47137886",
+          "47137880",
+          "47139183",
+          "47137974"
+        ]
+      },
+      {
+        "category": "默认配置过于宽松与剩余攻击面",
+        "summary": "不少人批评 setHTML 的默认配置较为宽松：默认会保留非 script 标签（例如 <h1>、<br>、<style> 等），这允许任意标记注入，从而可用于 UI 欺骗、样式篡改或通过 CSS 侧信道泄露数据。评论中举例说明 CSS selectors 与样式规则可被滥用来窃取信息或伪造界面（并引用历史上用户名注入导致按钮消失的案例），说明仅阻止脚本执行并不能完全消除所有风险。因此多数观点认为默认应更保守，或至少鼓励开发者为每类字段显式定义允许的元素/属性，将 setHTML 视为对已有消毒链的额外硬化而非万能替代。",
+        "supportid": [
+          "47137505",
+          "47137763",
+          "47138382",
+          "47138810",
+          "47137593",
+          "47137974"
+        ]
+      },
+      {
+        "category": "兼容性、迁移與治理（lint、TrustedTypes、CSP）",
+        "summary": "评论讨论了现实中的迁移策略：innerHTML 无法被简单移除，只能通过新增 API、lint 规则和分阶段替换来推进。多条评论建议采用 TrustedTypes（浏览器安全 API）并配合 Content-Security-Policy 的 require-trusted-types-for 'script'，以强制不向危险 DOM sink 传入普通字符串；在项目层面用 linter 禁止 innerHTML 也被广泛建议。也有人提醒不要过度依赖 polyfill，因为消毒安全性依赖底层解析器能力，而且浏览器间支持尚不均衡（参考 caniuse），短期内通常需要浏览器策略、后端验证与开发者工具共同配合。",
+        "supportid": [
+          "47137267",
+          "47137465",
+          "47138646",
+          "47139514",
+          "47136921",
+          "47137075"
+        ]
+      },
+      {
+        "category": "彻底禁止 HTML 的实用观点（textContent 等替代）",
+        "summary": "一部分评论者主张在大多数场景彻底禁止用户提供的 HTML，改以 textContent、createTextNode 或 document.createElement + textContent 的方式将文本与标记严格分离，从根本上避免 XSS。讨论承认这种策略在需要渲染富文本（如 Markdown、可视化编辑器输出）时并不适用，但对于用户名、评论等常见字段，强制纯文本既简单又更安全。结论倾向于：除非明确需要受控富文本，否则禁用 HTML 是最佳实践；在必须允许富文本的地方，再用受限白名单的 Sanitizer 与浏览器级保护做多层防护。",
+        "supportid": [
+          "47137561",
+          "47138627",
+          "47137253",
+          "47137325",
+          "47138490"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Sanitizer API（WICG 提案）",
+        "explanation": "浏览器内建的 HTML 消毒 API，使用浏览器自己的 HTML 解析器并允许配置允许的元素/属性白名单，目标是在渲染层防止导致脚本执行的内容而不是做通用字符串清洗。"
+      },
+      {
+        "term": "TrustedTypes（浏览器安全 API）",
+        "explanation": "一种浏览器特性，强制危险 DOM sink（如 innerHTML）只接受受信任的类型（例如 TrustedHTML），可与 CSP 的 require-trusted-types-for 'script' 一起用来阻断把普通字符串当作 HTML/脚本插入的路径。"
+      },
+      {
+        "term": "Content-Security-Policy（CSP）",
+        "explanation": "浏览器支持的安全头部策略集合，其中的指令如 require-trusted-types-for 'script' 能配合 TrustedTypes 限制向脚本/DOM 接口传入未经验证的字符串。"
+      },
+      {
+        "term": "DOMPurify（客户端 JavaScript sanitizer）",
+        "explanation": "一个流行的第三方 HTML 消毒库，工作方式是单独解析并重序列化 HTML；历史上很多绕过发生在这种解析→重序列化的边界上。"
+      },
+      {
+        "term": "innerHTML / setHTML / setHTMLUnsafe（DOM API）",
+        "explanation": "innerHTML 是历史上直接把字符串解析并插入 DOM 的属性；setHTML 是新的方法，默认会调用 Sanitizer 来阻止可导致脚本执行的内容；setHTMLUnsafe 则保留旧的、不经消毒的行为作为兼容或显式不安全的回退。"
+      }
+    ],
+    "context": "Firefox 148 开始引入 Element.setHTML（并存在 setHTMLUnsafe 作为不安全回退），其实现基于 WICG 提案的 Sanitizer API，把消毒逻辑移到浏览器端并使用浏览器自身的 HTML parser 来减少库级解析/重序列化带来的绕过。讨论围绕三个实际痛点展开：一是 API 命名是否会让开发者产生假安全感，二是默认白名单是否过于宽松（例如允许 <style> 或内联 SVG），三是跨浏览器支持与迁移策略（包括 TrustedTypes、CSP、lint 或 polyfill 的可行性）。评论中反复提到 DOMPurify（客户端 sanitizer）被绕过的历史、内联 SVG 的解析差异以及 CSS 级别的攻击向量，表明这是在兼顾向后兼容与提高平台级安全之间的权衡。",
+    "emoji": "🔒",
+    "sarcastic_question": "改个名字就能阻止人写不安全代码吗？"
+  }
+}

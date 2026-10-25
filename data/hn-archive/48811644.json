@@ -1,0 +1,97 @@
+{
+  "id": 48811644,
+  "by": "soycaporal",
+  "title": "Ternlight – 7 MB embedding model that runs in browser (WASM)",
+  "url": "https://ternlight-demo.vercel.app/",
+  "score": 241,
+  "createdAt": 1783380660,
+  "aiSummary": {
+    "chinese_title": "Ternlight：7MB 浏览器端 WASM 嵌入模型，QAT 蒸馏自 MiniLM",
+    "discussion_overview": [
+      {
+        "category": "蒸馏与量化方法",
+        "summary": "讨论集中在它如何把 MiniLM 压到 7MB 仍保留语义能力。作者说明整个流程从一开始就是 quantization-aware training（QAT），ternary 权重是训练出来的，不是训练后再做三值化；只有 embedding layer 做了 int4 的 post-training quantization。有人注意到它对 teacher 的 Spearman fidelity 达到 0.84，觉得这个结果很亮眼，但也追问到底是 QAT 贡献大，还是单纯换成三值 encoder 也能达到类似水平。另一些人想知道它和 gte-small、all-MiniLM-L6 这类小型 embedding model 的正面比较，以及 STS-B/MTEB 等 benchmark 的完整表现。",
+        "supportid": [
+          "48811645",
+          "48813191",
+          "48813348",
+          "48812035",
+          "48812082",
+          "48813533",
+          "48813672"
+        ]
+      },
+      {
+        "category": "浏览器/WASM 性能与兼容性",
+        "summary": "不少评论承认模型本身很酷，但实际使用里最先撞上的却是浏览器兼容性。有人在打开页面时被 CPU/风扇声音吓到，建议把 demo 做成点击按钮后再加载，另有人觉得这种做法把“CPU cycle maxxing”带回了前端。性能数据也被质疑：在 Firefox 的老款 i5 上只能跑到 35 emb/sec，远低于页面宣称的 400/sec，因此有人怀疑是否落到了非 SIMD 路径。Safari 和 iPhone 端则出现卡在加载模型或服务异常的情况，开发者把它归因于 WASM runtime 或 Service Worker 问题，并提到 Brave/Chrome 在 M 系列 Mac 上测试更稳定。",
+        "supportid": [
+          "48812070",
+          "48812335",
+          "48812397",
+          "48813032",
+          "48813424",
+          "48812837",
+          "48812916",
+          "48812945",
+          "48812960"
+        ]
+      },
+      {
+        "category": "落地场景：本地语义搜索/离线索引/隐私",
+        "summary": "支持者最看重的是它能把 embedding 计算留在设备端，不必每次都调用 API。有人把它想象成产品知识库里的廉价快速搜索，依赖 CPU 就足够，而且还能减少对后端的依赖；也有人已经把离线搜索引擎接到自己的应用里，第一次下载模型后，后续查询都从缓存读取。还有人建议先在服务器端做一次 indexing，再把 embeddings 发到前端，这样既保留了本地检索的体验，也降低了前端首次开销。更进一步，评论里还提到希望能直接喂给它一个 markdown 文件、网站或自己的 corpus 来做抓取和索引，说明它被看作一个可复用的 local semantic search 组件。",
+        "supportid": [
+          "48813285",
+          "48813667",
+          "48812176",
+          "48812044",
+          "48812053",
+          "48812340",
+          "48812931",
+          "48813151"
+        ]
+      },
+      {
+        "category": "网页自动下载模型的争议",
+        "summary": "另一条线是对网页自动下载模型的担忧。有人担心这会让网站把大模型塞进浏览器、偷偷消耗 CPU 和内存，甚至被拿来做隐蔽挖矿或恶意分发。反对者则指出，这和普通 JavaScript 网站按需下载脚本没有本质区别，浏览器早就会执行很大的 JS、PDF 和视频组件；真正该讨论的是用户是否知情，以及资源占用是否可控。还有人半开玩笑地说，WASM 只是把“禁用 JavaScript”式的恐惧换了个对象。",
+        "supportid": [
+          "48812345",
+          "48812857",
+          "48812752",
+          "48812240",
+          "48813688",
+          "48812349"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "WASM（WebAssembly）",
+        "explanation": "可在浏览器中运行的二进制字节码格式，常用于把 Rust 等编译后的代码带到前端。"
+      },
+      {
+        "term": "SIMD",
+        "explanation": "Single Instruction, Multiple Data 的并行指令集，能显著加速向量和推理计算。"
+      },
+      {
+        "term": "QAT（quantization-aware training）",
+        "explanation": "训练时就模拟低比特量化，让模型在压缩后尽量少损失精度。"
+      },
+      {
+        "term": "ternary quantization / ternary weights",
+        "explanation": "把权重压成三值表示（如 -1、0、1），以极小体积换取可接受性能。"
+      },
+      {
+        "term": "MiniLM",
+        "explanation": "一个轻量级 sentence encoder，常被用作小型 embedding model 的 teacher。"
+      },
+      {
+        "term": "Service Worker",
+        "explanation": "浏览器里的后台脚本机制，常用于缓存和离线能力，也可能引发兼容性问题。"
+      }
+    ],
+    "context": "这是一个名为 Ternlight 的 hobby project，目标是把一个“有用的模型”直接送进浏览器。作者先用 MiniLM（一个轻量级 sentence encoder）做 teacher，再通过 quantization-aware training（QAT）蒸馏出 7MB/5MB 的 embedding model，并把推理引擎用 Rust 编写后编译成 WASM SIMD（WebAssembly 的向量化执行路径）。它输出 384 维向量，用 cosine similarity 做 semantic search、FAQ/intent matching 和 clustering，而不是生成式 LLM；作者还提供了一个在 2k React docs 上完全本地运行的 demo。评论区进一步围绕 MTEB、gte-small、Safari/Firefox 兼容性、离线/本地检索场景，以及网页自动下载模型的安全和资源争议展开。",
+    "emoji": "🧪",
+    "sarcastic_question": "以后每个网页都先吞一整个模型再说吗？"
+  },
+  "articleSummary": "## 一句话总结\nTernlight 是一个仅 7 MB 的 Embedding 模型，它通过 WASM 在浏览器端直接运行，无需 GPU 也不依赖 API，能在 5 毫秒内完成文本向量化，让语义搜索真正实现零延迟和本地化。\n\n### 模型虽小，五脏俱全\n现在的 Embedding 模型动辄几百 MB 甚至上 GB，部署起来很重。Ternlight 反其道而行之，把模型压缩到了 7 MB，Mini 版本甚至只有 5 MB。这不仅仅是体积小，关键是它把引擎和权重打包在了一起。这意味着你不需要单独下载模型文件，也不需要配置服务器环境，一个 npm 包就搞定了所有事情。\n\n### 彻底摆脱 API 依赖\n通常做语义搜索，你得把文本发给 OpenAI 或其他云服务商的 API。这不仅慢，还有隐私风险，而且一旦断网就彻底瘫痪。Ternlight 的思路很直接：既然只是算个向量，为什么不能在本地算？它完全运行在浏览器里，利用 WASM 技术，让你的 CPU 直接跑模型。这样一来，你的数据根本不需要离开用户的设备。\n\n### 性能快到惊人\n你可能会担心，浏览器跑模型会不会慢得像蜗牛？实际上，Ternlight 的表现相当硬核。在普通的 CPU 上，生成一个 Embedding 只需要大约 5 毫秒。这个速度基本上是“即时”的，用户在输入框打字的瞬间，搜索结果就已经排好序了。这种零网络延迟的体验，是任何远程 API 都无法比拟的。\n\n### 开发体验极其丝滑\n对于开发者来说，接入它的成本几乎为零。不需要折腾 Python 环境，也不需要拉取 Docker 镜像。只要一行 `npm install @ternlight/base`，然后像调用普通函数一样使用 `embed` 或 `similar`。文章里举了个 React 文档搜索的例子，用 5 MB 的 Mini 版本就能在浏览器里直接搜文档，代码逻辑简单得令人发指。\n\n### 真正的边缘端搜索\nTernlight 的出现，其实解决了一个很具体的痛点：轻量级应用的本地化智能需求。以前你想在静态网页里加个语义搜索，要么得自己搭后端，要么得忍受 API 的费用和延迟。现在有了这个 7 MB 的小东西，你可以直接把语义搜索能力“嵌入”到前端代码里。这不仅仅是技术上的优化，更是应用架构的一种简化。"
+}

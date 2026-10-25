@@ -1,0 +1,143 @@
+{
+  "id": 49391553,
+  "by": "hn_acker",
+  "title": "OTel isn't going well (and I made a spreadsheet about it)",
+  "url": "https://matduggan.com/otel-isnt-going-well-and-i-made-a-spreadsheet-about-it/",
+  "score": 162,
+  "createdAt": 1787371248,
+  "aiSummary": {
+    "chinese_title": "OTel 进展不妙：SDK 过重与三支柱争议",
+    "discussion_overview": [
+      {
+        "category": "SDK 性能与自动埋点",
+        "summary": "很多人认为问题不在于 OTel 迭代慢，而在于 SDK 本身太重。Python 和 Ruby 里强制抽象带来的 CPU 开销被反复提到，自动埋点和状态化 API 也被嫌弃成 Java/Kubernetes 风格的过度工程。还有人指出，在 durable execution、Cloudflare Workflows 这类跨很长时间、可重试的流程里，传统 span 模型很难自然表达，最后只能自己逆向 SDK 和 UI。整体上，这一派觉得为了观测付出的性能、复杂度和心智成本都太高。",
+        "supportid": [
+          "49397084",
+          "49400018",
+          "49398868",
+          "49398313",
+          "49399798",
+          "49398507",
+          "49398242",
+          "49396628",
+          "49396056"
+        ]
+      },
+      {
+        "category": "框架集成被注入打爆",
+        "summary": "另一个集中吐槽点是 OTel 在具体框架里的注入方式过于粗暴，Django 最典型。评论者提到 instrumentor 会在错误时机强行加载 settings，和大型 monolith 那种多阶段启动、动态生成 MIDDLEWARE、从多个来源读取配置的流程直接冲突。大家更想要的是更小的 primitives 和公开接口，可以在应用真正准备好时手动调用，而不是被一个巨大的 inject 函数绑死。这里的核心不是能不能自动化，而是默认假设太强，导致集成反而更难。",
+        "supportid": [
+          "49397444",
+          "49398376",
+          "49400032",
+          "49398242",
+          "49396150"
+        ]
+      },
+      {
+        "category": "一次埋点、动态出图",
+        "summary": "有一派希望只写一次埋点，然后在运行时动态决定它最终是 log、metric 还是 trace。比如在 dashboard 里看到异常后，一键要求下次同类事件自动保留 trace，或者像 Micrometer 的 observation 一样先产出统一事件，再由 handler 转成不同输出。还有人主张先默认记录更高层的信号，后面再按需升级成更细的 traces，减少重复埋点。这个方向的共同诉求是让应用代码只表达事实，观测形态交给后端和策略层决定。",
+        "supportid": [
+          "49396130",
+          "49397448",
+          "49396148",
+          "49397651",
+          "49397991",
+          "49398083",
+          "49398574",
+          "49396174"
+        ]
+      },
+      {
+        "category": "三支柱本就不同",
+        "summary": "反对统一的人认为 metrics、logs、traces 的数据形态和成本模型根本不同。metrics 是聚合后的时间序列，logs 要保留大量上下文，traces 则是请求级的执行树，甚至像 GC 这种低层信号也不可能从另外两者里直接补出来。对他们来说，把三者塞进一个抽象里是错误抽象，现实里更可行的是 correlation、adaptive sampling 和按需过滤。有人还提醒，若一直全量 trace，监控系统本身的 CPU 和网络开销可能比业务还重。",
+        "supportid": [
+          "49398003",
+          "49397362",
+          "49397045",
+          "49398066",
+          "49399089",
+          "49399897",
+          "49398123",
+          "49399908",
+          "49399885"
+        ]
+      },
+      {
+        "category": "标准化与反锁定",
+        "summary": "也有人为 OTel 辩护，认为它至少解决了 vendor lock-in 和各家 SDK/后端互不兼容的问题。OTLP 和统一的 source/sink 让 Datadog、Honeycomb、Grafana、Sentry、Langfuse 之类系统更容易互联，哪怕 semantic conventions 还不够完美。实际部署上，常见做法是本机 collector、gateway collector，或者在 Lambda 里用 layer 在响应返回后异步发送 telemetry。对这些人来说，OTel 的价值不是完美，而是让混用多个 observability vendor 变得可行。",
+        "supportid": [
+          "49395167",
+          "49396804",
+          "49396372",
+          "49396791",
+          "49397620",
+          "49397731",
+          "49398932",
+          "49398496",
+          "49396190",
+          "49397740",
+          "49399087",
+          "49396889"
+        ]
+      },
+      {
+        "category": "Prometheus/Jaeger 替代",
+        "summary": "另一条很强的声音是直接放弃 OTel，回到 Prometheus、Victoriametrics、Jaeger 这类更窄但更简单的方案。评论者认为这些工具已经接近 de-facto standard，自己写少量 shim 就够了，而 OTel 反而把问题做成一个巨大、复杂、让人分析瘫痪的 framework。自托管观测栈也被吐槽体验差，Grafana 路线和 SigNoz 都不算顺手。有人甚至举例直接写 .prom 文件给 node_exporter 读取，或让 Blackbox Exporter 采集 TLS expiry 之类简单指标。总体态度是：标准不如简单，别为了兼容性把系统搞得越来越重。",
+        "supportid": [
+          "49397593",
+          "49397738",
+          "49395735",
+          "49396237",
+          "49395809",
+          "49396324",
+          "49399304"
+        ]
+      },
+      {
+        "category": "温和支持：还能用",
+        "summary": "也有少数更温和的声音认为 OTel 本身并没有坏到不能用，只是还缺一些实战里很想要的能力。有人自己补了 boring segments 之类的逻辑，把健康检查、空查询提前丢弃，或者把预期会失败的请求降级处理。还有人觉得很多关于项目出问题的判断并没有被数据证明，至少从开源活跃度看它还算健康。这个阵营更像是在说：OTel 需要更多实验和局部修补，而不是彻底否定。",
+        "supportid": [
+          "49396182",
+          "49396552",
+          "49397127",
+          "49393236"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "OpenTelemetry (OTel)",
+        "explanation": "开源 observability 标准，目标是统一 tracing、metrics 和 logs 的采集与导出。"
+      },
+      {
+        "term": "OTLP",
+        "explanation": "OpenTelemetry Protocol，用于把 telemetry 数据从应用或 collector 发送到后端。"
+      },
+      {
+        "term": "span",
+        "explanation": "trace 中的一段执行区间，记录一次操作的开始、结束、属性和事件。"
+      },
+      {
+        "term": "collector",
+        "explanation": "接收、转发、聚合 telemetry 的中间组件，既可本机部署也可做 gateway。"
+      },
+      {
+        "term": "auto-instrumentation",
+        "explanation": "通过 agent 或框架钩子自动注入埋点，减少手写 instrumentation。"
+      },
+      {
+        "term": "adaptive sampling",
+        "explanation": "根据条件动态决定保留哪些 traces 或 samples 的策略。"
+      },
+      {
+        "term": "semantic conventions",
+        "explanation": "规定 telemetry 属性字段命名和含义的共享约定。"
+      }
+    ],
+    "context": "这篇讨论围绕 OpenTelemetry（OTel，开源可观测性标准）在真实项目里的落地体验展开，原帖还附带了一张 spreadsheet 来整理各语言 SDK、后端和功能支持情况。OTel 试图用统一的 API 和 OTLP（OpenTelemetry Protocol）覆盖 tracing、metrics 和 logs，但评论里很多人抱怨 SDK 的自动埋点、性能开销和框架兼容性。背景里还涉及 Grafana 生态里的 Loki（日志存储）、Tempo（distributed tracing 后端）和 Mimir（metrics 后端），以及 Prometheus（指标系统）、Jaeger（分布式 tracing 系统）这些更窄但更成熟的工具。讨论还延伸到 AWS Lambda（无服务器函数运行时）、Cloudflare Workflows（Cloudflare 的长任务/工作流运行时）、Django（Python Web 框架）、Micrometer（Java 的指标与观测库）和 eBPF/Dtrace 这类运行时或内核级观测方案，争论核心是到底该统一三类数据，还是保留分层和按需采样。",
+    "emoji": "😩",
+    "sarcastic_question": "监控先把 CPU 和内存吃光也算性能优化吗？"
+  },
+  "articleSummary": "## 一句话总结\n\nOpenTelemetry 的迟缓并不主要是“语义规范争论太久”，而是“大规模跨语言覆盖 + 严格稳定性承诺 + 维护者严重不足”三者相撞后的系统性瓶颈。\n\n## 正文\n\n### 从“装上就能用”到“为什么还没做完”\n\n作者观察到，团队从 vendor-specific SDK 迁移到 OpenTelemetry 时，最常见的抱怨是：为什么 OTel 看起来这么多年还像“没做完”。这和厂商 SDK 的体验形成鲜明对比。后者往往安装完就有 dashboard、有默认集成，复杂性被供应商藏在了背后。OTel 则到处可见 experimental 标记，同一件事也经常有多种实现路径。  \n但作者并不认为这是 OTel 背离初衷的证据。恰恰相反，它一直坚持 vendor-neutral，且没有明显偏向任何一家可观测性厂商。考虑到其维护者大量来自这些竞争激烈的厂商，这种中立性并不容易。真正让作者不安的是，语义规范讨论持续拖延，不同语言 SDK 的成熟度也长期不均衡。  \n自动埋点确实很“魔法”，但从“自动埋点能跑”迈入“需要手动埋点”的落差很陡。对于缺少时间、预算和心理余量的小团队，推荐 OTel 前必须说明这个现实。于是作者决定不再只凭社区的模糊体感，而是试图用数据判断：到底是进展慢，还是大家误解了它的进展？\n\n### 真正的事故现场是三种约束同时碰撞\n\n作者一开始猜测，这只是典型的开源项目“摊子铺得太大，维护者不够”。数据表明，这个判断只对了一部分。更准确地说，OTel 面临的是一个三方碰撞：严格的 binary stability、很小的核心维护者队伍，以及覆盖海量语言和框架的项目范围。  \n稳定性要求让每个 API 和语义设计都变成长期承诺。一旦一个功能从 experimental 进入 stable，后续几乎不能随意修改。于是，维护者有充分理由反复讨论某个设计未来可能造成的问题。问题不在于他们喜欢争论，而在于错误一旦进入稳定接口，代价会被扩散到所有 SDK、instrumentation、Collector 和后端生态中。  \n说白了，OTel 的慢并非单点故障，而是它把“跨供应商标准化”与“长期兼容性”同时做到了极致。范围越大，稳定性门槛越高；维护者越少，穿过这道门的速度就越慢。\n\n### Core 和 Contrib 的分层缓解了复杂度，却没消除它\n\nOTel 用 Core 与 Contrib 分层来控制规模。Core 是项目直接维护的规范性表面，包括 API、SDK、OTLP exporter、context propagation 和 resource detection 等基础能力。Contrib 则容纳社区和厂商贡献的各类集成，例如 Flask、Django、Redis、Kafka、boto3 等 instrumentation。  \n这个设计的逻辑很清晰：容易变化、容易损坏的东西留在 Contrib；需要稳定且 vendor-neutral 的东西进入 Core。但有意思的是，用户并不会因为仓库边界而自动少承担复杂度。在语言侧，按需安装一个包通常还好，比如 `pip install opentelemetry-instrumentation-flask`。  \nCollector 侧的体验却更麻烦。团队常常要通过 OpenTelemetry Collector Builder 自建一个只含所需组件的 Collector，或者直接采用现成发行版并“祈祷它包含自己要的东西”。这不是说 Builder 不好，而是它把一个本该是基础设施使用者的问题，变成了使用者也要承担的构建和组合问题。\n\n### 一项能力要穿过整条供应链，才能真正到达用户\n\n作者梳理的功能落地流程是：先提出 OpenTelemetry Enhancement Proposal（OTEP），获接纳后进入 Specification，再进入 Semantic Conventions 的具体设计。之后，各语言 SDK 根据 specification 实现 API 表面，Contrib instrumentation 跟进最新 API/SDK，最后通过 Collector 与 OTLP 把数据真正送出去。  \n其中，Semantic Conventions 是最容易引发长期讨论的地方。因为属性名、事件模型、资源语义等一旦定下来，实际上就是在为全生态做永久设计承诺。OTLP 也有自己的稳定性生命周期，Collector 组件又各自声明稳定级别。  \n作者承认，自己仍无法完全厘清这些稳定性承诺之间如何联动。例如 OTEP 到 Specification 究竟有没有可预测的周期，Collector 与 OTLP 是否同步演进，以及落后的语言实现会不会事实性地“掉队”。但即使这些流程细节尚不完全透明，核心事实已经很明显：一个功能不是合并一条 PR 就结束了，它需要跨越多个规格、实现与发布层级。\n\n### 数据证明：许多语言 SDK 确实没有足够的维护者\n\n为了验证维护压力，作者用一个 Python 脚本统计了过去 24 个月的开源活跃度，并拿 Envoy、Prometheus 与 OTel 各语言 SDK 对比。Envoy 在此期间合并了 5,432 个 PR，有 28 位 distinct mergers，头号合并者占比为 35.8%。Prometheus 合并了 1,849 个 PR，有 31 位 merger，头号合并者占比仅 14.4%。这是一种相对健康的、可替补的维护者梯队。  \n对比之下，多个 OTel SDK 的合并权限高度集中。`opentelemetry-cpp` 的头号 merger 占 86.1%，Kotlin 为 79.7%，Ruby 为 78.7%，Browser 为 79.5%。Python 在 486 个合并 PR 中只有 4 位 merger，其中一人完成 61.4%；PHP 则在 181 个合并 PR 中只有 2 位 merger。  \n相对健康的是 Go 和 .NET：Go 的头号 merger 占比为 36.9%，.NET 为 31.5%，都有更分散的维护梯队。但这也意味着 OTel 的能力与体验会随语言而显著变化。对于 Ruby、PHP 这类维护集中度极高的 SDK，项目范围显然已经超过了少数人能长期覆盖的程度。\n\n### Semantic Conventions 很慢，但并不是主要堵点\n\n作者原先怀疑，vendor 和语义设计的争论才是所有延迟的根源。于是他查看了 `semantic-conventions` 仓库中耗时最长的 PR。确实存在很慢的案例：MCP semantic conventions 的 PR #2083 耗时 277.5 天，拿到 115 次 review；Gen-AI chat history attributes 的 PR #2179 耗时 117 天，获得 114 次 review。  \n但这些议题本身就复杂，且往往涉及 breaking change、云厂商资源模型、Kubernetes 指标、RPC/NFS 或 GenAI 语义。更关键的发现是：这种慢并没有显著传导到 SDK/API 层。换句话说，OTel 在一定程度上成功把复杂的语义争论隔离在 `semconv` 层，而没有让它全面拖死实现层。  \nPython 的数据尤其说明问题。其最慢的 PR 包括 OpAMP integration sketch，耗时 361.1 天；OTLP HTTP `max_export_batch_size`，耗时 314 天；以及 exporter error handling、runtime metric reader 管理、logs SDK refactor 等。它们大多不是 `semconv` 问题，而是卡在 `Approve Public API check` 等需要额外维护者审批的流程上。  \n这项检查本身并不荒谬，公开 API 的变更理应被谨慎对待。但它再次把结论拉回原点：当项目要求高标准稳定性时，每一道必要审查都会放大维护者数量不足的问题。\n\n### 不是维护者不开放，而是这份工作不可能靠热情长期维持\n\n作者特别指出，OTel 维护者并没有试图排斥外部参与者。各工作组的公开会议记录相当容易找到，讨论过程也相对透明。问题不是“门关着”，而是项目的稳定性预期实际上把参与门槛推得很高。  \n一个需要长期 API 兼容承诺、跨语言协调、反复设计审查和持续发布维护的项目，很难依赖业余时间稳定运转。普通贡献者未必能免费参加大量会议，也未必能承担这个规模项目所要求的决策责任。于是核心维护工作自然落在少数受雇于相关公司的人员身上。  \n但这又带来另一层约束：这些人承担的关键工作，终究要与其雇主的优先级、资源和目标相协调。作者的最终判断因此不是简单的“OTel 人手不够”，而是它的治理和交付模型，正在承受一个超大规模标准化项目必然产生的成本。  \n文章在结尾进入“Potential Solutions”时被截断，但前文已经把结论铺得足够清楚：新特性之所以很久才能触达最终用户，不是因为某一个仓库或某一场讨论出了问题，而是整条稳定性供应链的每一环都在等待稀缺的维护能力。"
+}

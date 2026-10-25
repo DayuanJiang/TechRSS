@@ -1,0 +1,94 @@
+{
+  "id": 49238050,
+  "by": "craigkerstiens",
+  "title": "How We Pushed CDC into Postgres",
+  "url": "https://www.snowflake.com/en/blog/engineering/postgres-to-snowflake-replication-mirroring/",
+  "score": 121,
+  "createdAt": 1786324841,
+  "aiSummary": {
+    "chinese_title": "Snowflake把CDC做进Postgres：pg_lake、Iceberg与零ETL争议",
+    "discussion_overview": [
+      {
+        "category": "大规模 CDC 的吞吐边界",
+        "summary": "有人认为 ClickHouse 通过收购 PeerDB 把这件事做得很成熟，在几十 TB 的数据库上几乎不用操心。真正需要注意的不是协议本身，而是一次性复制太多时会把 Postgres 或 ClickHouse 集群的 CPU、IO 打满。也就是说，CDC 能稳定运行，但前提是把并发和回放速度控制在硬件承受范围内。",
+        "supportid": [
+          "49238797"
+        ]
+      },
+      {
+        "category": "零ETL/桥接方案在生产中很脆",
+        "summary": "评论把 Vertica 的 WOS/ROS、Oracle GoldenGate、Debezium+Delta Lake 以及 Aurora zero etl 拉出来对比，结论都很接近：原理看着优雅，落到生产常被 schema 变更和 compaction 卡住。有人明确说 Aurora zero etl 在改表后经常要 VACUUM FULL 才能继续跑，还会无故停掉，只能和 AWS support 来回拉扯。还有人补充某些方案会随机丢数据，说明“零 ETL”并不等于“零事故”。",
+        "supportid": [
+          "49238727",
+          "49238811",
+          "49238955"
+        ]
+      },
+      {
+        "category": "Postgres→Iceberg 的理想与技术难题",
+        "summary": "讨论里最受欢迎的愿景，是让 Postgres 提供商直接把表镜像到 Iceberg，再由用户接自己的 stateless query engine。现实难点在于把主键更新和删除映射成列式表里的行位置，这要么维护昂贵的映射表，要么频繁扫描，Postgres 自己不适合背这个负担。Snowflake 的说法是：捕获变更可以在 Postgres 里做得很轻，但真正的 apply 工作放到 Snowflake 自己的引擎里做；其他人则提到 AWS DMS/Kinesis/Firehose、pglake+pgcron、Cloudflare R2 之类替代路径。",
+        "supportid": [
+          "49242146",
+          "49242898",
+          "49243003",
+          "49243416",
+          "49242336",
+          "49242556",
+          "49243048",
+          "49243705"
+        ]
+      },
+      {
+        "category": "SaaS-only 数据库 vs 自托管",
+        "summary": "不少人对 SaaS-only 数据库很抗拒，尤其是数据库体量大、团队却很小的时候，自托管往往更便宜也更可控。评论里提到云数据库按存储和流量计费，配合 ansible/terraform 或 AI 工具自动化运维时，反而可能让迁移后的复杂度更高。也有人对 Snowflake 发 Postgres 相关文章感到意外，但补充说这和它收购 Crunchy Data、补强 Postgres 团队有关。",
+        "supportid": [
+          "49238720",
+          "49240424",
+          "49242773",
+          "49241297",
+          "49242404"
+        ]
+      },
+      {
+        "category": "pg_lake 开源边界",
+        "summary": "有人提醒 pg_lake 虽然是开源 Postgres extension，但文中真正涉及 CDC 的部分并不在公开仓库里。顺着链接找，最后会落到一个闭源或内部仓库，导致“开源”与“可用的 CDC 功能”之间出现明显落差。随后解释补充了项目来源：它是 Crunchy Data 时代的工作，后来才被 Snowflake 接手并继续包装。",
+        "supportid": [
+          "49239219",
+          "49241524",
+          "49241811",
+          "49242325"
+        ]
+      },
+      {
+        "category": "竞争与调侃",
+        "summary": "也有人把这类能力直接理解成对 Fivetran 等数据集成服务的竞争，认为市场上多一个可选项总是好事。另一条评论则用老派计算机公司 Control Data 的梗来调侃，说明“控制数据”这回事在几十年后换了技术栈继续上演。整体语气并不激烈，但明显带着一点行业老兵的会心一笑。",
+        "supportid": [
+          "49242927",
+          "49243305"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "CDC",
+        "explanation": "Change Data Capture，捕获数据库变更并同步到下游系统的机制。"
+      },
+      {
+        "term": "Iceberg",
+        "explanation": "Apache Iceberg，一种开源表格式，适合数据湖和列式查询。"
+      },
+      {
+        "term": "pg_lake",
+        "explanation": "Snowflake-Labs 的 Postgres extension，用于把 Postgres 数据和湖仓体系连接起来。"
+      },
+      {
+        "term": "Zero ETL",
+        "explanation": "尽量减少或隐藏传统 ETL 步骤的托管同步方案，常见于云数据平台。"
+      }
+    ],
+    "context": "这篇文章讨论的是把 Postgres 的增量变更通过 CDC（Change Data Capture）稳定地送到分析系统、数据仓库或湖仓里。评论把 Snowflake（云数据仓库厂商）、ClickHouse（列式 OLAP 数据库）、Databricks（数据/AI 平台）、AWS Aurora zero etl（AWS 的托管同步功能）和 Vertica 等方案放在一起比较，焦点不是“能不能同步”，而是“同步后怎么处理更新、删除和 schema 变更”。另一个背景是 Snowflake 收购了 Crunchy Data（Postgres 生态公司），因此开始更深地介入 Postgres 相关工程，并推出 pg_lake（Postgres extension）这类项目。评论里反复出现 Iceberg（开源表格式）和“stateless query engine”的想法，说明很多人期待的是厂商替你做数据搬运，但查询层仍由自己掌控。",
+    "emoji": "🤨",
+    "sarcastic_question": "零ETL都要VACUUM FULL？"
+  },
+  "articleSummary": "## 一句话总结\n\nSnowflake 的 Data Mirroring 把 CDC 从外部 connector 的“拉取式拼装”改成 Postgres 扩展驱动的“事务性推送”，借助 Iceberg change log、Snowflake 端事务 apply 和 live views，把跨系统复制做成可长期稳定运行的时钟机制。\n\n## 正文\n\n### 传统 CDC 的难题，不是读 WAL，而是处理所有“例外”\n\nPostgres 已经有 logical decoding，可以把 WAL 解码为行级的 insert、update、delete 流。看起来，CDC 的问题似乎已经解决了：外部客户端消费这条流，再写入目标系统即可。  \n但真正做过生产级同步的人都知道，读到变更只是开始。初始 backfill 怎么和增量变更对齐，DDL 如何进入同步流，新增或删除表怎么处理，失败重启后怎样避免重复或遗漏，这些才是最难的部分。  \n更麻烦的是，外部 CDC consumer 并不了解 Postgres 的内部状态。它不知道当前是 schema 变了、快照正在生成，还是数据库暂时不可用，又或者只是网络断了。  \n于是，CDC pipeline 常常变成一堆 connector、checkpoint、重试策略和幂等逻辑拼起来的脆弱系统。Snowflake 在构建 Snowflake Postgres 时，把这个问题放在了最高优先级，并决定不再围绕现有 pull 模型打补丁。\n\n### 关键转向：不要从外部拉变化，而是让 Postgres 主动推送\n\nSnowflake 的答案很直接：既然外部 consumer 看不懂 Postgres 的状态，那就把 CDC 放回 Postgres 内部做。具体来说，Data Mirroring 使用一个名为 `snowflake_cdc` 的 Postgres extension。  \n这个扩展通过后台的 base workers 持续运行，把每个表的变更写入对应的 Iceberg change log，同时维护一份 meta log。数据格式是压缩后的 Parquet，落点则是对象存储。  \n这不是简单地把 WAL 复制到 S3，而是由了解数据库状态的 extension 协调 DML、DDL、快照和失败恢复。它知道 schema 何时变化，也知道某个 snapshot 应该对应哪一段变更流。  \n对象存储在这里扮演了解耦层：Postgres 只负责可靠地推送批次，Snowflake 则独立地消费和应用它们。说白了，生产端和消费端不再通过一个持续在线、容易积压的 connector 紧耦合，而是通过 Iceberg 表进行异步协作。\n\n### 复制的本质是管理时间线，而不是搬运几条记录\n\n文章里一个很重要的视角是：复制系统始终在处理“过去某个时刻”的数据库状态。一次 Postgres 写入会经过四个不同时间点的阶段：Write、Decode、Capture 和 Apply。  \nWrite 发生在“现在”，它修改表并写入 WAL；随后 Decode 从过去的 WAL 中还原行级变更；Capture 再把这些变更封装成批次；最后 Snowflake Apply 这些更早之前生成的批次。  \n难点在于，WAL 是二进制记录，而表结构可能已经在之后发生改变，甚至表已经被删除。为此，decoder 使用 Postgres 的 historic snapshot，在“当时的 catalog 状态”下理解旧 WAL，从而正确还原逻辑变更。  \ndecoder 会周期性地结束当前批次，并通知 capture process。capture 将临时文件追加到 Iceberg change log，写入 meta log，并记录已复制的 LSN；schema change 也走同样的 write → decode → capture 路径，必要时创建新的 change log。  \nSnowflake 端则把 meta log 当作有限状态机的指令流，按顺序执行它。如果发生极少见的 WAL 丢失，Postgres 还能自动推送新的 snapshot，并让 Snowflake 切换消费它；failover slots 进一步降低了这类恢复场景出现的概率。\n\n### 真正的基础设施是事务：两端都要有提交边界\n\nCDC 之所以让人痛苦，本质上是因为它常常脱离了事务语义。数据库里的事务很简单：失败了就当没发生，成功了就确保不会重复执行。  \n但传统 ETL 和 CDC 往往要求使用者自己设计幂等性、处理重复回放、维护 checkpoint，并逐一面对各种网络和进程失败模式。Snowflake 之前通过开源 `pg_lake` extension，以及其托管版 “Postgres for your data lake”，先解决了一部分问题。  \n`pg_lake` 让 Postgres 可以在一个事务里同时操作 Postgres 表和 Iceberg 表。比如，可以在同一个 SQL 事务中从 Postgres 删除数据、向 Iceberg 插入数据，然后 commit；提交后，数据即可在 Snowflake 中查询。  \n但这种 SQL 驱动的数据移动更适合开发者控制的 ETL，不适合持续复制高频更新。Data Mirroring 补上的正是这一层：它在 Postgres 端用一个事务把数据和 schema 变更写入多个 Iceberg change log，然后在 Snowflake 端再用一个事务合并多个批次。  \n结果是，所有 Snowflake 目标表会一起前进到某个准确的 Postgres 事务边界。这样不仅保住了事务一致性，也保住了 foreign key 和 join 的正确性。\n\n### 不再 upsert，才是高吞吐和低成本的关键\n\n很多复制系统把每一条变化都转换成 upsert，因为它们无法可靠地区分快照数据、增量数据和失败后的重复回放。但 upsert 看似稳妥，实际上会带来三个问题。  \n首先，目标端可能暴露不一致的中间状态，尤其是在新增表或加载初始 snapshot 时。其次，对列式存储而言，即使是 insert，也要先匹配目标表中的已有行，代价会随着表变大而变高。最后，最近的变更和基础表也很难高效合并。  \nData Mirroring 因为由 Postgres 控制复制事务，并且拥有准确的批次边界，所以可以生成“完美”的 delete 和 insert 流。这些变化恰好执行一次，不需要担心一条 insert 已经存在于 snapshot 或另一个 change batch 中。  \n于是，insert-heavy workload——通常也是最大的表——可以直接 append，而不是昂贵地 upsert。文章的核心性能判断就在这里：事务正确性不只是为了避免错误，它还释放了更便宜、更快的数据写入路径。  \n这也是为什么这种方案可以在高吞吐下运行，同时避开传统跨系统复制中常见的 race condition 和恢复复杂度。\n\n### Live views 把“低延迟”和“低频 apply”从对立变成兼得\n\n即使 CDC 已经写入 change log，Snowflake 仍需要把这些变更合并进目标表。传统做法会频繁 apply，以降低用户查询时看到的数据滞后。  \n但频繁 apply 本身也有成本，特别是在高频变更场景中。Snowflake 为此引入了 Data Mirroring 的另一个组件：live views。  \nlive views 会在查询时把尚未 apply 的 per-table change log，与已经落入目标表的基础数据结合起来。关键设计是，查询中的 filter 和 projection 能够下推到存储层，并分别作用于 change log 的 Parquet 文件和 base table 扫描。  \n因此，它不是先把全部未合并数据拉出来再计算，而是仍然利用列式存储和谓词下推的效率。即使 apply 不那么频繁，live view 的延迟仍可低于一分钟，并保持较高查询性能，只付出略高的查询开销。  \n到这里，文章的设计链条就完整了：push CDC 解决外部 connector 的脆弱性，事务批次解决一致性和恢复，live views 则避免为了低延迟而强迫系统高频合并。\n\n### 最终形态：一次配置，持续运行的复制时钟\n\nSnowflake 把这套机制概括为“clockwork”，这个比喻并不只是营销。Postgres extension 持续把批次推到对象存储，Snowflake 独立地、事务性地 apply；两端没有需要长期维持状态的外部 connector。  \nschema changes 被纳入同一条时间线，snapshot 不再和增量变更互相冲突，insert 也不再因为 upsert 而随着表规模增长变慢。最终，复制从一个由大量失败条件组成的运维项目，变成两套独立但可协作的事务流程。  \n产品层面，Data Mirroring 当前处于 Snowflake Postgres 的 public preview，提供 Postgres 到 Snowflake 的持续自动复制，并同步表及其 schema changes。  \n而已经 GA 的 “Postgres for your data lake” 则提供另一种更灵活的路径：开发者通过 SQL，基于 Iceberg 等开放格式，决定数据何时、如何在 Postgres 与 Snowflake 间移动。  \n前者面向“配好以后一直同步”的场景，后者面向“我想精确控制数据移动”的场景。两者共同指向同一个目标：不再靠脆弱的数据管道，把 operational workload 和 analytical workload 硬缝在一起。"
+}

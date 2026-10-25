@@ -1,0 +1,124 @@
+{
+  "id": 47624731,
+  "by": "greenstevester",
+  "title": "April 2026 TLDR Setup for Ollama and Gemma 4 26B on a Mac mini",
+  "url": "https://gist.github.com/greenstevester/fc49b4e60a4fef9effc79066c1033ae5",
+  "score": 242,
+  "createdAt": 1775211647,
+  "aiSummary": {
+    "chinese_title": "Mac mini 上跑 Gemma 4 26B：Ollama、llama.cpp 与工具调用争议",
+    "discussion_overview": [
+      {
+        "category": "早期版本和量化 bug",
+        "summary": "评论里反复提醒，这类刚发布的 open weight model 往往先有“能跑”的版本，再慢慢补齐正确实现。有人提到 tokenizer、quantization 甚至 imatrix 相关问题会让输出看起来正常、实际却不对，tool calling 失败也可能只是实现没跟上。还有人指出需要更新 Ollama 主程序和 runtime，或者直接重下量化包，否则会碰到 jinja template 报错这类离谱故障。",
+        "supportid": [
+          "47627246",
+          "47626715",
+          "47626958",
+          "47625514"
+        ]
+      },
+      {
+        "category": "Mac mini 上的实际跑分与可用性",
+        "summary": "在 Mac mini/M4/M5 这类 Apple Silicon 机器上，体验高度取决于模型大小和后端。10GB 左右的 e4b 版本被多次描述为很快，而 20GB/26B 级别的版本会明显拖慢，甚至把 LM Studio 卡死或在大上下文下失去响应。llama.cpp、Ollama、LM Studio 的速度差异也很大，有人测到同一模型在 Ollama 约 24.4 tok/s、在 llama.cpp 约 38 tok/s，但也有人遇到工具调用 100% 失败。",
+        "supportid": [
+          "47627202",
+          "47626243",
+          "47626657",
+          "47625743",
+          "47626362",
+          "47626558",
+          "47626654"
+        ]
+      },
+      {
+        "category": "Gemma 4 更适合工具型任务，不是 coding agent",
+        "summary": "对 Gemma 4 的定位，评论里基本形成共识：它更像是做 tool use、JSON extraction 之类结构化任务的模型，而不是专门为 coding agent 准备的。有人明确建议 coding 场景优先看 Qwen 3.5 系列，另有人用实际测试说 26B 的代码表现并不好，可能只有更大的 dense ~31B 才值得再看。也有人提醒，模型刚发布一天就拿 LLM 自己的建议当结论并不可靠。",
+        "supportid": [
+          "47626718",
+          "47627038",
+          "47627189",
+          "47627128"
+        ]
+      },
+      {
+        "category": "本地 harness/IDE 对接",
+        "summary": "另一条讨论集中在 harness 和 IDE 集成上。多数本地 agent 只要能连上 OpenAI-compatible API 就能用，所以 Pi、OpenCode、Claude Code 之类都能接本地模型。问题在于新版 Codex 之类工具开始用 responses API，而 llama.cpp 还没完全跟上，于是会出现接口不兼容、接得上但跑不通的情况。",
+        "supportid": [
+          "47625909",
+          "47626085"
+        ]
+      },
+      {
+        "category": "Ollama、llama.cpp、LM Studio 之争",
+        "summary": "关于 Ollama 的争论最激烈：支持者看重它的低门槛，`ollama pull` 就能拉模型，还自带 server，适合 Docker 和本地试跑。批评者则认为它是 llama.cpp 的衍生前端，性能未必最好，还带着命名、归因和实现层面的历史包袱。相反，llama.cpp 现在有 `-hf`、`llama-server` 等更直接的入口，LM Studio 和 Unsloth Studio 也被拿来比较；但在 Intel Mac + AMD GPU 这类少数场景里，借助 MoltenVK/Vulkan 的 Ollama 仍可能是最实用的选择。",
+        "supportid": [
+          "47625115",
+          "47625631",
+          "47627131",
+          "47627127",
+          "47625302",
+          "47625340",
+          "47626029",
+          "47624999",
+          "47625081",
+          "47626199",
+          "47626485",
+          "47625476",
+          "47625460",
+          "47625237",
+          "47625332",
+          "47625474",
+          "47625738",
+          "47626558",
+          "47626654",
+          "47626098"
+        ]
+      },
+      {
+        "category": "本地跑 vs 云订阅的成本和边界",
+        "summary": "更宏观的背景是本地推理和云订阅的取舍。有人觉得一台 Mac mini 很贵，不如直接买 Claude、OpenAI 或 Google 的订阅；也有人强调本地模型的核心价值是隐私、控制权、没有 token 限流，还能用 fine-tune 或删改后的版本。现实边界则是：在不到几千美元的硬件上，本地 open model 大多只能逼近 Sonnet 3.7 左右，真要跑到更高档的模型，通常得靠多 GPU、巨大 VRAM，甚至 HEDT 平台。",
+        "supportid": [
+          "47625542",
+          "47625995",
+          "47627144",
+          "47626362"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "llama.cpp",
+        "explanation": "一个轻量级本地推理引擎和服务端，常作为开源模型的底层后端。"
+      },
+      {
+        "term": "Ollama",
+        "explanation": "把模型下载、管理和服务化封装成一体的本地运行工具。"
+      },
+      {
+        "term": "GGUF",
+        "explanation": "llama.cpp 生态常用的模型文件格式，便于分发和量化加载。"
+      },
+      {
+        "term": "量化（quantization）",
+        "explanation": "用更低比特存储权重以减少内存和提升速度，但可能损失精度或暴露实现 bug。"
+      },
+      {
+        "term": "tool calling",
+        "explanation": "模型按约定调用外部工具或函数，完成检索、执行和结构化输出。"
+      },
+      {
+        "term": "OpenAI-compatible API",
+        "explanation": "接口设计与 OpenAI API 相近，方便 IDE 或 harness 直接接入本地模型。"
+      },
+      {
+        "term": "MoE（Mixture of Experts）",
+        "explanation": "只激活部分“专家”子网络参与推理，能降低推理成本。"
+      }
+    ],
+    "context": "这篇帖子讨论的是在 Mac mini（苹果桌面机）上用 Ollama（本地大模型运行器）部署 Google 的 Gemma 4 26B（开源权重模型）并完成 TLDR 和编码相关任务。评论里很多人把焦点放在底层推理后端是否真的支持最新版模型：llama.cpp（常见本地推理引擎）、LM Studio（图形化客户端）和 Ollama 的 runtime 更新常常决定能不能跑通 tool calling。由于 Gemma 4 刚发布不久，大家也在提醒 tokenizer、quantization（量化）和模板渲染可能还存在早期 bug，不能把一次失败简单归咎于模型本身。另一个背景是 Apple Silicon 的统一内存很有限，所以 10GB 左右的小模型和 26B 级别的大模型在速度、占用和可用性上差别很大。",
+    "emoji": "😅",
+    "sarcastic_question": "刚发布就要求工具调用零Bug，是认真的吗？"
+  },
+  "articleSummary": "# 一句话总结\n这篇文章教你如何在 Mac mini 上通过 Launch Agents 配置 Ollama，实现 Gemma 4 26B 模型的开机自动预加载和常驻内存，彻底解决本地大模型“首次响应慢”和“频繁卸载”的痛点。\n\n### 硬件门槛其实并不低，但值得\n想在本地流畅跑 Gemma 4 26B，硬件是第一道坎。文章明确指出，你至少需要一台配备 Apple Silicon（M1 到 M5 均可）的 Mac mini，且统一内存不能少于 24GB。这是因为模型加载后会占用约 20GB 内存，在 24GB 的设备上只剩下 4GB 给系统，空间相当紧张。安装过程倒是简单，直接用 Homebrew 安装 `ollama-app` 即可，它会自动搞定 CLI 工具和 MLX 后端，不需要你手动折腾环境变量。\n\n### 默认机制有个让人头疼的“冷启动”问题\n把模型拉下来并跑通测试只是第一步，真正的麻烦在于 Ollama 的默认行为。如果你只是简单启动 App，模型在闲置 5 分钟后会被自动卸载以释放内存。这意味着每次你想问问题，都得重新经历一次漫长的加载过程，体验极差。对于想要把本地模型当作日常工具的开发者来说，这种“用完即走”的机制显然是不够用的。\n\n### 用 Launch Agents 打造“时刻准备着”的服务\n为了绕过这个问题，作者设计了一个巧妙的方案：创建一个 Launch Agent。这个 Agent 的核心逻辑是在 Ollama 启动后，每隔 5 分钟自动向模型发送一个空请求。这相当于给模型发送心跳信号，强制它一直待在内存里。通过编写 `com.ollama.preload-gemma4.plist` 文件并加载，系统会在登录时自动执行这个任务，让模型始终保持“热”状态，随叫随到。\n\n### 彻底锁死内存，拒绝频繁换入换出\n光有定时心跳还不够彻底，因为 Ollama 底层依然有卸载模型的逻辑。作者给出的终极方案是设置环境变量 `OLLAMA_KEEP_ALIVE` 为 `-1`。这个参数告诉 Ollama 永远不要因为闲置而卸载模型。虽然这会永久占用那 20GB 内存，但换来的是零延迟的响应速度。对于 Mac mini 这种常驻桌面设备，这种“以空间换时间”的 trade-off 显然是划算的。\n\n### 新版 MLX 后端让 M 系列芯片如虎添翼\n除了配置技巧，文章还提到了 Ollama v0.19+ 版本的一个重要更新：对 Apple Silicon 的 MLX 框架原生支持。这意味着在 Mac 上跑推理时，不需要任何手动配置，就能自动调用 GPU 加速。特别是如果你用的是最新的 M5 系列芯片，甚至能利用 GPU Neural Accelerators 获得额外的性能提升。这种软硬结合的优化，让在本地跑 26B 参数的大模型变得不再那么吃力。\n\n### 最后的验收标准\n配置完这一切，怎么知道有没有生效？文章提供了几个关键的验证命令。运行 `ollama ps` 应该能看到模型状态显示为 \"Forever\"，且 CPU/GPU 的负载比例正常（例如 14%/86%）。同时，`launchctl list` 中应该能注册了你刚才创建的 Agent。一旦这些都对上了，你就有了一个在本地跑的、响应迅速的、且兼容 OpenAI API 格式的 Gemma 4 服务，随时可以接入你的代码流或 Agent 工具中。"
+}

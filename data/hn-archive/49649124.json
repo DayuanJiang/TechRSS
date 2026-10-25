@@ -1,0 +1,122 @@
+{
+  "id": 49649124,
+  "by": "auberonedu",
+  "title": "The Deathray: A simple way for an untrusted site to freeze a Mac",
+  "url": "https://auberon.xyz/blog/posts/deathray/",
+  "score": 227,
+  "createdAt": 1789081264,
+  "aiSummary": {
+    "chinese_title": "Deathray：不受信任网页用 WebGPU 冻结 Mac/WindowServer",
+    "discussion_overview": [
+      {
+        "category": "实测效果：从 tab 崩溃到整机冻结",
+        "summary": "评论里最直接的反馈是，触发结果差异很大：有些机器只是 Safari、Chrome 或 Firefox 的 tab 崩掉，有些则会让整台 Mac 失去响应。多位用户提到在 M1/M2/M4 Mac 上出现鼠标还能动、但无法强制退出、只能长按电源的情况；还有人看到 WindowServer 退出后自动重开窗口，导致触发页面被再次拉起。也有人在 Linux、Windows 11 和 Android 上只看到单个应用异常，说明这个问题高度依赖平台和浏览器实现。少数评论则强调并非所有系统都会中招，iOS 或某些设备基本无影响。",
+        "supportid": [
+          "49651655",
+          "49651934",
+          "49652553",
+          "49651747",
+          "49651815",
+          "49652253",
+          "49653076",
+          "49652023",
+          "49653479",
+          "49652115",
+          "49651434",
+          "49651322"
+        ]
+      },
+      {
+        "category": "反对把 WebGPU/WebGL 暴露给不受信任站点",
+        "summary": "不少人把这件事看成浏览器继续扩张硬件攻击面的例子，认为 WebGPU 和 WebGL 不该默认向不受信任的网站开放。有人已经手动关闭 Firefox 里的 dom.webgpu.enabled、pdfjs.enableWebGPU 和 WebGL，担心浏览器正在变成“operating system on the operating system”。还有人提到 Firefox 只对 easyeda.com 做了域名级 WebGPU blocklist，说明浏览器厂商已经开始为某些站点的 GPU 行为做特例处理。讨论里也有人直接主张只有 trusted sites 才该用 WebGPU/WebGL，甚至把它和 JS 一样看成需要严格限制的能力。",
+        "supportid": [
+          "49651836",
+          "49652777",
+          "49651932",
+          "49652146",
+          "49653795",
+          "49652775"
+        ]
+      },
+      {
+        "category": "隐私指纹与安全边界的取舍",
+        "summary": "另一条争论线是：关闭 WebGPU 虽然会增加一点 fingerprinting entropy，但这点代价是否值得。支持关闭的人认为，只要某项能力能让攻击者做低层 timing 测试、探测硬件，甚至把系统拖死，那么多一丁点指纹随机性根本不重要。反对者则指出，anti-fingerprinting 本来就默认系统至少稳定且安全，否则攻击面太大时再纠结唯一性没有意义。也有人提到 adblock 扩展会随机化部分指纹数据，但这并不能抵消 WebGPU 这种底层能力本身带来的风险。",
+        "supportid": [
+          "49651989",
+          "49652070",
+          "49652414",
+          "49652226",
+          "49652309"
+        ]
+      },
+      {
+        "category": "GPU/Shader 为什么会拖死 WindowServer",
+        "summary": "技术讨论集中在：为什么不是普通的 while(true)，而是要通过 shader、compute pass 或等待中的 render pipeline 才能把系统卡住。有人解释，GPU 的调度和 CPU 不一样，寄存器、本地内存和巨大内部状态让抢占当前任务非常昂贵，很多时候并不能像线程那样轻松切走。还有人补充，shader 循环常有迭代限制，而 Windows 的 TDR（Timeout Detection and Recovery）就是为了避免 GPU 无响应把系统拖进蓝屏。关于 macOS，也有人提到 Metal 相关实现和某些奇怪的 shader 写法会直接把编译器或图形栈搞崩，但不一定达到 kernel panic。",
+        "supportid": [
+          "49653251",
+          "49653562",
+          "49653520",
+          "49651871",
+          "49651928",
+          "49651919",
+          "49653189",
+          "49651758"
+        ]
+      },
+      {
+        "category": "老式浏览器恶作剧与 shock site 记忆",
+        "summary": "不少评论把 Deathray 视为 90 年代浏览器恶作剧的现代版。有人回忆曾做过“Don't Click Me”链接，层层确认后跳到专门触发历史浏览器 bug 的测试页，最后还会嘲讽“Congrats on not using Internet Explorer!”。也有人提到老式 shock site 会用恶心图片、循环音频和各种浏览器漏洞把整台机器锁死，甚至让人赶紧去按电源键。像 alert 死循环、Unicode 字符串把 iOS 7 搞崩、把恶意字符串塞进 Wi‑Fi SSID 之类的旧梗，也被拿来和这次演示对照。",
+        "supportid": [
+          "49652972",
+          "49653398",
+          "49653694",
+          "49653738",
+          "49653048",
+          "49651562",
+          "49651743"
+        ]
+      },
+      {
+        "category": "把崩溃当作安全/交互控制手段",
+        "summary": "有评论认为，“能把机器冻住”本身就足以成为一种 coercion 工具。比如网站可以威胁用户：不点按钮就崩溃、别关广告拦截器、必须看完广告、必须点 follow，否则就让电脑卡死。反对者则强调，普通 JavaScript 无限循环导致一个 tab 挂掉和让整机冻结不是一个量级，前者是浏览器预期内的“Oops”，后者已经跨过了安全边界。也有人顺带吐槽，真正的 Denial of Service 早就被大公司常态化地使用，所以大家对它的严重性反而麻木了。",
+        "supportid": [
+          "49651626",
+          "49652007",
+          "49653228",
+          "49651793",
+          "49651804"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "WebGPU",
+        "explanation": "让网页直接提交图形/计算任务到 GPU 的新 API，能力很强，也更容易扩大攻击面。"
+      },
+      {
+        "term": "WebGL",
+        "explanation": "较早的网页 3D 图形 API，常用于渲染和 GPU 压力测试。"
+      },
+      {
+        "term": "WindowServer",
+        "explanation": "macOS 的图形窗口合成进程，负责桌面显示；它卡住时整机常像死机。"
+      },
+      {
+        "term": "shader / compute shader",
+        "explanation": "运行在 GPU 上的程序，可用于渲染或通用计算；写成死循环会持续占用 GPU。"
+      },
+      {
+        "term": "TDR",
+        "explanation": "Timeout Detection and Recovery，Windows 在 GPU 无响应时尝试重置显卡的机制。"
+      },
+      {
+        "term": "Metal",
+        "explanation": "Apple 的图形与并行计算 API，Mac 上很多 GPU 相关问题都绕不开它。"
+      }
+    ],
+    "context": "Deathray 是一个网页演示，利用 WebGPU/WebGL（让网页直接调用 GPU 的 API）把浏览器和 macOS 的图形栈拖进死循环，目标不是偷数据，而是让不受信任的网站获得“冻结整机”的能力。评论里有人在 Safari、Chrome、Firefox、Linux、Windows 11 和 Android 上实测，表现从单个 tab 挂掉到 WindowServer（macOS 的图形窗口合成进程）失去响应、整机只能强制重启不等。Firefox 近期还为 easyeda.com 做过域名级 WebGPU blocklist，说明浏览器厂商已经在为某些站点的 GPU 行为做特例处理。讨论因此延伸到：浏览器究竟应该暴露多少硬件能力、DoS 是否已足够算安全问题，以及今天的网页是否早已不只是“文档浏览器”。",
+    "emoji": "😬",
+    "sarcastic_question": "网页都能冻死整机了，还叫安全升级吗？"
+  },
+  "articleSummary": "## 一句话总结\n\n作者意外发现了一个 WebGPU 漏洞，仅需一段简单的死循环 Shader 就能冻住整个 Mac 图形界面，而 Apple 方面认为这不算安全问题，暂不修复。\n\n## 正文\n\n### 一个点击链接就能冻死 Mac 的“死光”\n\n故事的起因很简单：作者在学习 WebGPU 时，不小心写出了一个死循环。按常理，浏览器崩溃或 Tab 卡死也就到头了。但让人大跌眼镜的是，这段代码直接把整台 Mac 冻住了，桌面 UI 毫无反应，直到系统看门狗超时触发重启。更有意思的是，这个问题在 macOS 的 Chrome、Firefox 和 Safari 上全能复现，但在其他操作系统上却安然无恙。\n\n### 核心机制：GPU 上的死锁\n\n这个被命名为 \"Deathray\" 的攻击，核心代码极其精简。它利用了 WebGPU 的 Compute Shader 写入一个死循环，不断读写同一个 Buffer。与此同时，Render Pipeline 里的 Vertex Shader 又依赖这个 Buffer 的数据进行渲染。说白了，这就是一个典型的 GPU 死锁：Compute Shader 抢着写，Vertex Shader 等着读，结果谁也别想动。\n\n### 为什么只有 Mac 中招？\n\n问题来了，为什么其他操作系统没事，偏偏 Mac 躺枪？关键在于 macOS 的 WindowServer 也依赖 GPU。当 GPU 被 Shader 死循环卡死时，负责绘制桌面的 WindowServer 也跟着挂掉。此时你会发现鼠标能动，但界面全卡，甚至屏幕出现洋红色的乱码。更有趣的是，此时系统内核其实还活着，你甚至可以 SSH 进去，但只能眼睁睁看着 Watchdog 倒计时重启。\n\n### 历史重演：Apple 的“输入验证”防线失守\n\n这其实不是什么新花样。早在 2023 年，就有人用 WebGL 的类似手法搞出了 \"ShadyShader\"，当时 Apple 还发了 CVE-2023-40441 修复。当时的补丁思路是加强“输入验证”，试图拦截恶意循环。但这次 Deathray 用的是 WebGPU，那个简单的 `for` 死循环竟然轻松绕过了防线。这让人不得不怀疑，Apple 的防御策略是不是有点“头痛医头，脚痛医脚”。\n\n### 硬件架构的锅？M 系列芯片的隐忧\n\n作者提出了一个很硬核的猜想：这可能与 M 系列芯片的架构有关。在传统架构上，OS 内核可以直接抢占 GPU 任务。但在 M 系列芯片上，GPU 由一个叫 ASC 的协处理器管理，抢占逻辑全在固件里，内核插不上手。如果 ASC 固件里的抢占机制不够健壮，那面对这种恶意死循环，操作系统就只能干瞪眼。\n\n### 厂商与白帽子的认知分歧\n\n最耐人寻味的是 Apple 的态度。作者按规定上报了漏洞，Apple 起初说会修，后来却突然变卦，发邮件说“没看到安全影响”，不打算改产品。理由是这只会导致崩溃或挂起，不涉及数据泄露或 RCE。虽然从技术定义上 Apple 没说错，但这显然违背了用户“点个链接不会搞坏电脑”的朴素信任。在普通人眼里，这就是安全问题。\n\n### 结语：一个“恶意版”的 Rickroll\n\n虽然这漏洞没有沙箱逃逸那么严重，但门槛极低——只要骗人点个链接就行。作者希望 Apple 能尽快修复，而不是简单粗暴地默认禁用 WebGPU。在此之前，这东西就像个“恶意版 Rickroll”，甚至有人提议拿它做游戏——输了就冻住你的 Mac，主打一个“真实沉浸式体验”。不过玩笑归玩笑，作为开发者，我们还是得提醒身边的 Mac 用户：陌生链接，慎点。"
+}

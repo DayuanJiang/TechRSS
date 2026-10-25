@@ -1,0 +1,134 @@
+{
+  "id": 48905028,
+  "by": "embedding-shape",
+  "title": "Codex starts encrypting prompts, uses ciphertext for inference instead",
+  "url": "https://github.com/openai/codex/issues/28058",
+  "score": 363,
+  "createdAt": 1784028605,
+  "aiSummary": {
+    "chinese_title": "Codex 子代理提示词加密，用户失去审计视野",
+    "discussion_overview": [
+      {
+        "category": "标题澄清与技术边界",
+        "summary": "很多评论先澄清：这里并不是在说真正的“ciphertext inference”或 homomorphic encryption。实际变化是主 agent 发给子代理的提示词被 OpenAI 后端加密，局部日志里不再显示明文；但推理仍然是在服务端解密后用明文完成，子代理输出也仍然是明文。讨论还补充说，这主要出现在 Sol/Terra、Ultra 以及 experimental 的 multi_agent_v2 这类多代理编排路径里，范围并不等同于整个会话都加密。争议核心是用户在本地看不到“主 agent 到子代理”的原始指令，而不是网络传输层的 TLS。",
+        "supportid": [
+          "48905333",
+          "48905325",
+          "48905268",
+          "48905429",
+          "48905487",
+          "48905550",
+          "48905880",
+          "48905329",
+          "48905392"
+        ]
+      },
+      {
+        "category": "调试、审计与安全性下降",
+        "summary": "不少人最在意的是：没了子代理提示词，session trace、回放和事后取证都变得不好用了。有人说自己会看 session traces 来判断提示词哪里写得不够明确，或者看模型为何会做出某个决定；现在这层信息被隐藏后，问题定位几乎只能靠猜。还有人提到，agent 可能会删目录、循环烧 token，或者在几十个 stochastic agents 乱跑时失去可见性，这让“我得全程监督”这类工作流几乎无法维持。对这些用户来说，Codex 不只是少了一个日志字段，而是少了可验证性和可回滚性。",
+        "supportid": [
+          "48906890",
+          "48906631",
+          "48906902",
+          "48907003",
+          "48905857",
+          "48906078",
+          "48905665",
+          "48905082",
+          "48905418"
+        ]
+      },
+      {
+        "category": "保护 moat / 反代理与反 distillation",
+        "summary": "另一条主线认为，这更像是 OpenAI 在保护自己的产品 moat，而不是为了用户隐私。评论里反复提到 prompt 编排、多代理调度、路由逻辑本身就是核心 IP，如果让客户或代理商拿到完整轨迹，就很容易被 distill 或逆向成竞品。还有人把它和黑/灰产 reseller、跨区域代理、批量转售 subscription 联系起来，认为加密能减少被“搬运”训练数据和工作流的风险。反对者则觉得这会把 Codex 变成更像 DRM 或黑盒 appliance 的东西，用户只剩下付费和盲用。",
+        "supportid": [
+          "48905767",
+          "48905173",
+          "48905458",
+          "48905829",
+          "48905672",
+          "48905584",
+          "48905661",
+          "48905762",
+          "48906141",
+          "48905370",
+          "48906068",
+          "48905745"
+        ]
+      },
+      {
+        "category": "走向机器内部语言",
+        "summary": "一些评论把这视为更大趋势的早期信号：AI 系统会逐渐放弃人类可读的中间表示，转向更紧凑、更高效的内部语言。有人提到 latent space representation、compaction blob、student/teacher 信息传递，以及子代理 dispatch 经过 RL 训练后会越来越不像人类写的 prompt。也有人举出 zero-graph 之类的例子，认为编程语言、接口甚至 API 设计未来都可能朝“对模型友好”而不是“对人类友好”的方向演化。反方则强调，越往这个方向走，审计性和可解释性就越差，最终只会让系统更适合地下用途。",
+        "supportid": [
+          "48906311",
+          "48906837",
+          "48907033",
+          "48906951",
+          "48906618",
+          "48907153",
+          "48906940",
+          "48907213"
+        ]
+      },
+      {
+        "category": "API 选择、锁定与替代方案",
+        "summary": "不少开发者把这件事看成 API 和 harness 选择问题：如果想保留控制权，就继续用 chat completions，或者自己写 agent harness，而不是完全依赖 Responses API 和官方 TUI。有人说 Codex 的 app-server 其实很适合自定义集成，所以真正的焦虑在于未来是否会进一步限制自定义 harness、甚至限制 GPT 订阅在第三方环境里使用。面对这种风险，评论里出现了很多替代方案：Claude、GLM、Pi、local models，甚至直接用 CLI script 或 MCP/Skill 自己模拟 subagent。整体情绪是：只要还能换，就不会无条件接受更强的锁定。",
+        "supportid": [
+          "48905923",
+          "48905984",
+          "48906010",
+          "48905055",
+          "48905127",
+          "48905263",
+          "48906581",
+          "48906134",
+          "48906716",
+          "48905929",
+          "48907380",
+          "48906160"
+        ]
+      },
+      {
+        "category": "与 Claude、Apple 的对照",
+        "summary": "也有人把这看成行业普遍走向 opacity 的又一例子，而不是 OpenAI 独有的问题。Claude Code 也被指出会把 thinking 以加密/不可读的形式落在本地文件里，因此“能不能看见 reasoning”正在变成新分水岭。有人批评 Anthropic 同样在隐藏内部思路，只是把它包装成安全或 AGI 治理；也有人拿 Apple Private Cloud Compute（苹果的可验证云端执行架构）作对照，认为那才是少数真正做到可验证隐私的方案。这个比较让讨论从“某个产品改了什么”扩展成“AI 服务到底还要不要让用户看见中间过程”。",
+        "supportid": [
+          "48905817",
+          "48905860",
+          "48905910",
+          "48905300",
+          "48906353"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "homomorphic encryption（同态加密）",
+        "explanation": "一种允许在不解密的情况下对密文直接计算的加密技术；评论里用它来对比，说明这次 Codex 的变化并不是这种能力。"
+      },
+      {
+        "term": "sub-agent / multi-agent orchestration（子代理 / 多代理编排）",
+        "explanation": "主 agent 把任务拆分并委派给多个子代理执行的工作方式；这次争议的核心正是主 agent 发给子代理的指令被隐藏了。"
+      },
+      {
+        "term": "Responses API",
+        "explanation": "OpenAI 较新的 API 形态，把推理、工具调用和会话管理打包得更完整；一些用户觉得它比 chat completions 更黑箱，也更容易形成 lock-in。"
+      },
+      {
+        "term": "Chat Completions",
+        "explanation": "较早的 OpenAI 对话接口，用户对 prompt、输出和中间流程的控制感更强；评论里常把它当作更可控的对照方案。"
+      },
+      {
+        "term": "compaction endpoint / compaction blob",
+        "explanation": "用于压缩长会话状态的接口或返回体，可能是一个看起来像加密 blob 的 opaque 数据；有人猜它甚至可能不是普通文本。"
+      },
+      {
+        "term": "latent space representation",
+        "explanation": "把信息表示成模型内部的高维向量或潜变量，而不是人类可读文本；评论把它视为未来 agent 之间更高效但更不可读的沟通方式。"
+      }
+    ],
+    "context": "这条讨论围绕 OpenAI 的 Codex（一个面向 coding 的 agent/CLI 与 app-server）更新：当主 agent 把任务委派给子代理时，发送给子代理的提示词不再以明文落到本地日志里，而是在 OpenAI 后端被加密后再转发。评论里提到的 Sol/Terra（Codex 中用于多代理编排的模式/模型代号）、Ultra，以及 experimental 的 multi_agent_v2，都是这类多代理编排的入口；争议点不在传输 TLS，而在本地用户是否还能看到子代理收到的原始指令。因为很多人用 session trace、rewind、git 等方式调试 agent，所以隐藏这层信息会直接影响排错、审计和安全复盘。讨论也顺带扯到 Responses API（OpenAI 新接口）、Claude Code（Anthropic 的编程代理）、以及 Apple Private Cloud Compute（苹果的可验证云端执行架构），用来比较谁在向更黑箱的 agent 产品形态靠拢。",
+    "emoji": "😒",
+    "sarcastic_question": "连子代理提示词都锁死了，还叫可调试吗？"
+  },
+  "articleSummary": "## 一句话总结\nCodex 为了隐私加密了 MultiAgentV2 的消息，结果把本地调试和审计所需的明文也弄丢了，解决方案是引入“双轨制”——给模型看密文，给开发者留明文。\n\n### 加密带来的副作用：看不见的“黑盒”\nOpenAI 在 PR #26210 中给 Codex 的 MultiAgentV2 加了一把大锁，把 `spawn_agent`、`send_message` 这些工具的 `message` 参数全变成了密文。这本来是为了隐私加固，让模型之间通过 `encrypted_content` 通信，但问题也随之而来：本地的 rollout history、trace reduction 和审计日志里，原本清晰的任务描述现在全变成了乱码。开发者想回溯“这个子线程当初是干嘛的”或者“父代理到底给了子代理什么指令”，现在只能对着一段 ciphertext 发呆，调试体验直接归零。\n\n### 核心矛盾：隐私与可观测性的零和博弈？\n这事儿乍一看是个死局：要隐私就得加密，要加密就得丢明文。源码里 `InterAgentCommunication::new_encrypted()` 方法非常决绝，初始化时直接把 `content` 设为空字符串，只保留 `encrypted_content`。更麻烦的是，后续的 `to_model_input_item()` 逻辑在生成历史记录时，只要发现有密文，就只输出密文。这意味着，单纯在运行时把 `content` 填回去没用，因为持久化层压根没给你留明文的坑位。\n\n### 破局思路：把“审计”和“投递”分开\n既然不能让模型看到明文，那能不能让“日志”看到？核心思路其实很简单：把消息拆成两份。一份是给接收模型的，继续用 `encrypted_content`，保持高安全性；另一份是给本地开发者的，新增一个非加密的 audit 字段（比如 `task_message`）。这样既不破坏加密传输的链路，又能保证我们在本地能看到人话。这就像是寄信，信封里的内容是加密的，但信封背面必须用明文写清楚寄的是啥，方便邮局（我们）分拣和记录。\n\n### 具体的修复方案：双字段并存\n具体的实现方案已经在 `spawn_agent` 的原型代码里跑通了。第一步，修改 schema，强制要求传入一个明文的 `task_message` 字段；第二步，在构造 `InterAgentCommunication` 时，把加密后的 payload 放进 `encrypted_content`，把明文 audit copy 放进 `content`。关键在于 `to_model_input_item()` 保持不变，只输出密文给模型，但在 `record_inter_agent_communication` 和 trace reduction 阶段，直接读取并持久化那个明文 `content`。\n\n### 细节里的魔鬼：如何避免明文“污染”模型\n这里有个巧妙的设计：明文字段纯粹是元数据，绝对不能混入模型的输入上下文。在 rollout-trace 的 reducer 逻辑里，需要用密文或 ID 来匹配父子调用关系，但在展示交互边沿时，必须替换成明文。同时，为了防止这个新字段变成内存黑洞，必须给它加上和加密 payload 一样的硬性大小限制。目前的修复已经覆盖了 `spawn_agent`，剩下的工作就是把这套“双内容契约”推广到 `send_message` 和 `followup_task` 上。"
+}

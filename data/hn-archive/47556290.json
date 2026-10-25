@@ -1,0 +1,86 @@
+{
+  "id": 47556290,
+  "by": "emersonmacro",
+  "title": "Pretext: TypeScript library for multiline text measurement and layout",
+  "url": "https://github.com/chenglou/pretext",
+  "score": 355,
+  "createdAt": 1774807231,
+  "aiSummary": {
+    "chinese_title": "Pretext：避开 DOM 渲染的 TypeScript 多行文本测量与布局库",
+    "discussion_overview": [
+      {
+        "category": "文本测量/换行实现很硬核",
+        "summary": "评论者普遍认为这个库解决的是一个被低估但极其难做的问题：在不把文本真正渲染到页面上的情况下，准确算出换行后的高度和布局。实现方式是先按词或片段预计算宽度并缓存，再用自定义逻辑模拟浏览器的 line-wrapping。大家特别提到它要同时处理 hyphenation、emoji、中文、RTL 等复杂情况，还得兼容 Safari 这类浏览器的细微差异。有人还指出它用真实浏览器语料做精度测试，说明工程细节做得非常深。",
+        "supportid": [
+          "47566216",
+          "47566413",
+          "47566122",
+          "47565540",
+          "47566957",
+          "47566419"
+        ]
+      },
+      {
+        "category": "应尽量进入浏览器/CSS 标准",
+        "summary": "有评论认为这类能力本该由浏览器原生提供，而不是长期靠 JS 库补洞。比如 accordion 这类展开动画被提到可以用 CSS 的 `interpolate-size` 解决，气泡式文本排版也能用 `text-wrap: balance` 或 `pretty` 改善。还有人直接问如何向 W3C（万维网联盟）提 feature request，反映出大家希望这些原语最终进入标准。整体语气是：现在的库很有价值，但根本问题还是平台缺失。",
+        "supportid": [
+          "47566097",
+          "47566781",
+          "47566608",
+          "47566419",
+          "47566586"
+        ]
+      },
+      {
+        "category": "对 GUI/编辑器/业务界面的实际价值",
+        "summary": "不少人把它直接联想到具体产品需求，例如 datagrid 单元格里动态文本框、remotion（一个基于 React 的视频生成库）里的动态字幕、以及更顺滑的 caret 过渡。有人认为这会明显帮助 web GUI framework 和未来的 rich text editor，因为它们都依赖精确的行数和高度计算。也有人延伸到 long list / grid virtualization，提出浏览器原生 search 在虚拟列表里会被破坏的问题，说明真实应用里还有一整套相关能力链条。",
+        "supportid": [
+          "47566043",
+          "47566261",
+          "47566151",
+          "47565921"
+        ]
+      },
+      {
+        "category": "与 Skia/Canvas 生态方案对比",
+        "summary": "讨论里有人把它和 Skia-wasm / Canvaskit（基于 Skia 的 WebAssembly 绘图与文本方案）放在一起比较，疑问是既然 Skia 已经能做复杂的 multiline text layout，Pretext 的差异到底在哪里。回复强调它不是 wasm，而是更偏向纯 JavaScript 的 Web 集成方案。另有评论提到 Sciter（一个独立的嵌入式 UI 引擎）的 Graphics.Text，类似一个可在 canvas 上渲染、但行为接近 `<p>` 的文本对象，说明这个方向在别的生态里也有相近实现。",
+        "supportid": [
+          "47566122",
+          "47566196",
+          "47566608"
+        ]
+      },
+      {
+        "category": "AI 加速开发，但维护复杂度仍受关注",
+        "summary": "有人把这个项目视为 AI 工具（如 Cursor）特别适合的案例，认为如果没有 agent 辅助，这类需要大量试错和兼容性验证的工作很难在现实中完成。与此同时，也有人担心这会变成维护噩梦，因为浏览器差异、emoji 测量、换行规则等细节都很脆弱。整体评价是它确实像一次“把浏览器文本能力补齐”的重要工程，但长期稳定性和后续维护成本仍是悬念。",
+        "supportid": [
+          "47566586",
+          "47566419",
+          "47565484"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "canvas.measureText",
+        "explanation": "Canvas 上的文本测量接口，可在不把文本插入 DOM 的情况下估算字符或片段宽度，是这类布局库的基础。"
+      },
+      {
+        "term": "reflow（重排）",
+        "explanation": "浏览器重新计算布局的过程；频繁触发会很慢，所以库会尽量避免在测量文本时依赖 DOM。"
+      },
+      {
+        "term": "Intl.Segmenter",
+        "explanation": "JavaScript 的国际化分词/切分 API，可按词或字素拆分文本，帮助处理换行和多语言文本。"
+      },
+      {
+        "term": "hyphenation（自动断字）",
+        "explanation": "单词在换行时按规则拆分并可能插入连字符的排版机制，属于文本布局中的难点之一。"
+      }
+    ],
+    "context": "Pretext 是一个 TypeScript 文本布局库，目标是在不先把文本插入 DOM 的情况下，提前算出多行文本的宽度、换行和高度。它主要利用 canvas.measureText API（Canvas 上的文本测量接口）和 Intl.Segmenter（JavaScript 的国际化分词 API）先切分并缓存文本片段，再用纯算法模拟浏览器的 line-breaking、hyphenation 以及 emoji/RTL 处理。这样可以避免 getBoundingClientRect、offsetHeight 这类会触发同步 reflow（浏览器重新布局）的昂贵操作，尤其适合大量文本块一起测量的场景。评论里还把它和 CSS（层叠样式表）的 interpolate-size、text-wrap: balance/pretty，以及 Skia-wasm / Canvaskit（基于 Skia 的 WebAssembly 绘图与文本方案）、Sciter（一个独立的嵌入式 UI 引擎）的 Graphics.Text 做了对比，说明它填的是 Web 平台长期缺失的文本布局原语。",
+    "emoji": "🤯",
+    "sarcastic_question": "浏览器三十年了，文本测量还得靠库打补丁？"
+  },
+  "articleSummary": "## 一句话总结\nPretext 是一个 TypeScript 库，它通过复用浏览器底层字体引擎并自行实现排版逻辑，在不触发 DOM Reflow 的前提下，实现了极速、精准的多行文本测量与布局。\n\n### 测量文本的昂贵代价是 Reflow\n在 Web 开发中，获取文本高度通常意味着要操作 DOM，比如调用 `getBoundingClientRect` 或 `offsetHeight`。这会强制浏览器进行布局重排，也就是 Reflow，这是前端性能开销最大的操作之一。如果你在做虚拟列表或者复杂的文本排版，频繁的 Reflow 会直接把页面帧率拉垮。Pretext 的核心思路就是绕过 DOM，完全在 JS 层面把文本高度算出来。\n\n### 核心思路：复用引擎，接管计算\n那怎么绕过 DOM 呢？Pretext 并没有重新造一个字体渲染引擎，而是做了一个很聪明的“借力”。它利用浏览器的 Canvas API（`measureText`）来获取单个字符或片段的精确宽度，以此作为“标准答案”。有了这些基础宽度数据，剩下的断行、计算高度、处理换行符等逻辑，Pretext 自己用纯数学运算搞定。这样既保证了测量结果和浏览器渲染一致，又避免了触碰 DOM 带来的性能损耗。\n\n### API 设计：一次准备，多次计算\n为了最大化性能，Pretext 把计算过程拆成了两步：`prepare` 和 `layout`。`prepare` 是一次性的重活，负责文本标准化、分词、测量宽度，返回一个预处理后的句柄。`layout` 则是极其轻量的热路径，它基于 `prepare` 的缓存数据进行纯算术运算。这意味着在窗口 resize 这种高频场景下，你只需要反复调用 `layout`，Benchmark 显示处理 500 段文本仅需 `0.09ms`，速度非常惊人。\n\n### 不仅仅是算高度，还能手动接管排版\n除了算高度，Pretext 还暴露了更底层的 API 让你完全控制排版细节。比如 `layoutWithLines` 可以直接把每一行的文本切分给你，方便你在 Canvas 或 SVG 上渲染。更有意思的是 `layoutNextLine`，它允许你逐行排版，并且每一行都可以指定不同的宽度。这让你能轻松实现“文字绕图”这种 CSS 很难处理的复杂布局，甚至是在服务端进行排版。\n\n### 解决了 Web UI 的几个老大难问题\n这种纯计算的测量方式，解锁了很多以前很难做的 Web UI 交互。比如真正的虚拟化，不再需要靠猜或者缓存高度；比如 Masonry 瀑布流布局，可以精确计算每个元素的高度；比如开发时的自动化测试，可以在无头环境下验证按钮文字是否溢出；甚至是防止动态内容加载时的布局抖动，因为你可以在内容渲染前就精确知道它的高度。\n\n### 支持复杂语言与边界情况\n虽然逻辑是纯 JS 算的，但 Pretext 对复杂文本的支持非常完善。它支持 Emoji、混合双向文本以及各种生僻语言，因为它本质上是在模拟浏览器的排版规则。目前它主要针对常见的 CSS 设置（如 `word-break: normal`），作者也坦诚目前不支持 `system-ui` 字体（在 macOS 上精度有问题），建议使用具体的字体名称。如果你受够了 DOM 测量的性能瓶颈，这个库绝对值得一试。"
+}

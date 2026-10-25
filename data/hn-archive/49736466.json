@@ -1,0 +1,83 @@
+{
+  "id": 49736466,
+  "by": "donk8r",
+  "title": "Cloudflare/Security-Audit-Skill",
+  "url": "https://github.com/cloudflare/security-audit-skill",
+  "score": 138,
+  "createdAt": 1789631460,
+  "aiSummary": {
+    "chinese_title": "Cloudflare 安全审计 skill：skills 过多、token 爆炸与模型拒绝",
+    "discussion_overview": [
+      {
+        "category": "skills 过多与目录治理",
+        "summary": "有人吐槽 Cloudflare 的 skills 太多，建议把零散入口合并成一个统一 skill，再由它路由不同任务，否则会污染 context window。也有人认为 14 个、而且描述很短的 skills 并不算夸张，真正更像问题的是缺少一个“app store”式的技能库，能做审核、扫描和按需安装。随后还有回应表示已经把反馈转给相关负责人，说明这个争议并不是纯粹的抱怨，而是已经进入产品调整讨论。",
+        "supportid": [
+          "49737750",
+          "49739941",
+          "49739008",
+          "49738138",
+          "49741194"
+        ]
+      },
+      {
+        "category": "安全审计任务触发模型拒绝",
+        "summary": "有安全从业者指出，把任务直接包装成 security research 或漏洞利用时，OpenAI 和 Anthropic 的主流大模型会更容易触发拒绝，因为它们会优先防止滥用。更可行的办法是把不同 bug class 拆成多个不带安全措辞的 skills，再加一个汇总结果的 skill，把风险词从任务描述里拿掉。还有人补充说，先走验证流程后，很多“我不能帮你做 exploit”的拦截会少一些，但偶尔仍会遇到模型降级。",
+        "supportid": [
+          "49739883",
+          "49740515"
+        ]
+      },
+      {
+        "category": "token 消耗与上下文失控",
+        "summary": "评论区最直接的抱怨是这类 audit skill 和 agentic coding 非常烧 token，哪怕是所谓的中等规模代码库，也可能一次消耗 100 万 tokens。有人在一个相对小的 FastAPI（Python Web 框架）项目上也用了 15 万 tokens，而且还撞上 session limit，只能过几小时再继续。另一些人把 15 万 tokens 称为进入“dumb zone”的起点，意思是模型开始出现注意力分散、指令执行不稳定的问题。",
+        "supportid": [
+          "49737301",
+          "49737435",
+          "49738496",
+          "49737397",
+          "49739723",
+          "49738121",
+          "49738468"
+        ]
+      },
+      {
+        "category": "OS sandbox 与权限隔离",
+        "summary": "requirements 里出现 an OS-enforced sandbox，引发了对它必要性的疑问。评论给出的解释是，agent 一旦出现意外行为，操作系统级沙箱能限制破坏范围，避免把系统搞乱。也有人怀疑，普通订阅版 OpenAI 模型未必能在这种强约束环境下直接工作。",
+        "supportid": [
+          "49738270",
+          "49738749"
+        ]
+      },
+      {
+        "category": "自建 audit skill 的复现分享",
+        "summary": "有人顺手分享了自己团队搭建内部 audit skill 的 recipe，强调这样更容易复制，也更方便按不同环境调参。这个分享得到正面反馈，说明不少人不仅想看成品，更想要能直接复用的方法。它也呼应了前面关于 skills 碎片化、token 成本和上下文压力的讨论：真正有价值的是可落地且可定制的流程。",
+        "supportid": [
+          "49738359",
+          "49738885"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "skills",
+        "explanation": "给 LLM/agent 提供特定任务能力的模块，通常包含提示词、工具或执行流程。"
+      },
+      {
+        "term": "context window",
+        "explanation": "模型在单次对话中能同时参考的文本范围；越长越容易出现注意力分散和指令失真。"
+      },
+      {
+        "term": "token",
+        "explanation": "LLM 处理文本的基本计量单位，常用于限制上下文长度和计算成本。"
+      },
+      {
+        "term": "OS-enforced sandbox",
+        "explanation": "由操作系统强制隔离的运行环境，用来限制 agent 或程序的权限和破坏范围。"
+      }
+    ],
+    "context": "这条帖子讨论的是 Cloudflare（网络安全与边缘计算公司）GitHub 上的 Security-Audit-Skill，一个给 LLM/agent 用来自动化代码安全审计的 skills 模块。评论区一方面在争论 Cloudflare 的 skills 是否太碎、是否会浪费 context window；另一方面也在讨论安全审计任务为什么常常触发 OpenAI 和 Anthropic 的主流大模型拒绝。有人还提到，类似 FastAPI（Python Web 框架）这种项目也可能很快烧掉大量 tokens，说明这类工作对上下文和成本都很敏感。整体上，这个话题把“如何让模型做安全审计”与“如何控制权限、token 和误报拒绝”绑在了一起。",
+    "emoji": "😬",
+    "sarcastic_question": "先堆一堆skills，再嫌上下文不够用吗？"
+  },
+  "articleSummary": "## 一句话总结\nCloudflare 开源了一套安全审计 Skill，它把大模型变成了一支纪律严明的审计团队，通过六阶段流水线和对抗式验证，把\"可能有问题\"变成\"确认漏洞\"。\n\n## 正文\n\n### 从单兵作战到集团军作战\nCloudflare 这次开源的 `security-audit-skill`，本质上是一个编排框架。它不是让一个大模型漫无目的地去扫代码，而是把审计过程拆解成了六个严密的阶段：侦察、追踪、验证、输出、复核、报告。这套流程是他们内部漏洞发现系统的起点，后来演变成了大规模的分布式系统，现在他们把单仓库版本开源了出来。这就像是把一个只会蛮力的程序员，变成了一支分工明确的特种部队。\n\n### 先画地图，再打枪\n第一阶段叫 Reconnaissance（侦察）。Agent 不会急着去翻代码找漏洞，而是先建立全局认知。它会生成 `architecture.md` 来梳理架构、信任边界和输入面，同时生成 `coverage-ledger.json` 来记录覆盖范围。这步的核心在于\"确定性覆盖\"——先搞清楚系统长什么样，哪里是重点，而不是像无头苍蝇一样乱撞。每更新一次账本，系统都会跑一遍 `validate-coverage-ledger.cjs` 校验，保证地图没画错。\n\n### 穷举攻击向量，不留死角\n有了地图，第二阶段就开始分片 hunting。系统会根据账本单元分配隔离的 Hunter Agent，每个 Agent 拿着不同的攻击剧本去查。有意思的是，Cloudflare 准备了极其详尽的攻击类目文档：从 Web 协议、内存安全，到 AI/LLM 的 Prompt Injection，甚至还有供应链和云原生部署的专项检查。这里有个巧妙的设计：系统会用 \"coverage critics\" 来找盲区，如果发现哪里没查到，就派新的 Agent 补上，确保没有漏网之鱼。\n\n### 自己人查自己人，必须要证伪\n找到疑似漏洞后，进入 Candidate validation 阶段。这里有个关键原则：**验证漏洞的 Agent 绝不能是发现漏洞的那个 Agent**。这就是所谓的\"对抗式验证\"。发现者容易带有先入为主的偏见，所以必须换个全新的 Agent 来复核。这个新 Agent 的任务是尽力\"证伪\"——尝试证明这个漏洞不存在或无法利用。只有经得起这种拷打的问题，才能进入下一轮。\n\n### 严谨的状态定义：Confirmed 才是硬道理\n第四阶段是结构化输出，结果被严格分为三类：`confirmed`（已确认）、`needs_validation`（待验证）、`rejected`（已排除）。这里的标准很硬：`confirmed` 必须有完整的源码追踪和有界的观测结果；`needs_validation` 只是记录了一个未解决的事实，不给严重等级；`rejected` 则记录了被证伪的尝试。所有结果写入 `findings.json`，并用 `report-schema.json` 校验。说白了，就是要把\"我觉得有问题\"变成\"证据链闭环\"。\n\n### 多轮迭代，拒绝一次性买卖\n这套流程最实用的一点在于：它是可累积的。如果你对同一个仓库跑多次审计，系统会利用之前的账本和发现来查漏补缺，重新验证变动的代码，继承有效的证据。文章里提到了一个数据：单次运行大约只能发现总漏洞的一半，多次运行能显著提升覆盖率。这打破了传统审计\"跑一次就完事\"的局限，把审计变成了一个持续迭代的过程。\n\n### 想跑通？先搭好沙箱\n当然，这套系统对环境有硬性要求。你需要一个 OS 级别的沙箱，禁用外网、限制资源、只允许写入特定路径。如果做不到这些安全隔离，系统就会降级运行，把所有线索标记为 `needs_validation` 而不去实际执行代码。这很好理解，让 AI 自由跑代码太危险。另外，它还强调了一个原则：如果 Layer A 已经挡住了攻击，Layer B 的缺失只能算加固建议，不算漏洞。这种严谨性，正是区分\"安全研究员\"和\"脚本小子\"的关键。"
+}

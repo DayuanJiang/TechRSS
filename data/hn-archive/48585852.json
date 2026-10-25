@@ -1,0 +1,96 @@
+{
+  "id": 48585852,
+  "by": "givinguflac",
+  "title": "Usbliter8: an A12/A13 SecureROM Exploit",
+  "url": "https://ps.tc/pages/blog-usbliter8.html",
+  "score": 136,
+  "createdAt": 1782258617,
+  "aiSummary": {
+    "chinese_title": "A12/A13 SecureROM USB 漏洞：硬件级但非完整越狱",
+    "discussion_overview": [
+      {
+        "category": "硬件级漏洞很重要，但不等于完整越狱",
+        "summary": "很多评论把它视为重大的安全研究进展，但同时强调它还不是一键越狱。它影响 A12/A13 这一代设备，包括 iPhone XR、XS、11、SE 2 代和部分 iPad，说明这些相对较新的机型在启动链早期暴露出长期可利用的入口。也有人指出，真正的可用性还要看是否能绕过 BPR（Boot Process Register）和 SEP 相关限制，否则对有密码的设备仍然不够。整体上，这更像是给后续 jailbreak、取证和其他研究铺路的“第一步”。",
+        "supportid": [
+          "48609980",
+          "48654951",
+          "48646540",
+          "48597796"
+        ]
+      },
+      {
+        "category": "漏洞原理：USB DMA 先于可修补软件生效",
+        "summary": "技术讨论集中在漏洞是怎么从 USB 控制器的 DMA 逻辑里冒出来的：控制器保存 Setup packets 的方式会在特定条件下把 DMA 指针往回推，形成 buffer underflow。评论进一步解释说，Boot ROM 没有给 USB 子系统配置 USB DART / IOMMU，所以底层硬件 bug 可以在任何可打补丁的软件之前触发。由于 exploit 发生在 ROM 阶段，攻击者甚至可以先获得 arbitrary code execution，再把痕迹修掉后跳到后续启动流程。有人还用直观类比说明 DOEPDMA 像“队列掉队”一样不断后移，最终把写入点带到 task stack 上。",
+        "supportid": [
+          "48603773",
+          "48655886",
+          "48604396",
+          "48653467",
+          "48654460",
+          "48654127"
+        ]
+      },
+      {
+        "category": "Jailbreak 时代的怀旧与实用性",
+        "summary": "另一条线是对 jailbreak 黄金年代的怀旧。有人回忆当年靠 jailbreak 能开 webserver、加快动画、补上系统级 Copy and Paste 这类原生缺失功能。评论里透露出一种情绪：很多今天看起来理所当然的小能力，曾经都要靠越狱才能实现。也因此，这类漏洞即使不直接带来完整解锁，依然会让老玩家兴奋。",
+        "supportid": [
+          "48597134",
+          "48653506",
+          "48655941"
+        ]
+      },
+      {
+        "category": "标题双关引发的 SecuROM / DRM 玩笑",
+        "summary": "标题里的 SecureROM 让不少人先想到 SecuROM，于是线程迅速滑向 DRM 梗。有人联想到老牌游戏破解站 gamecopyworld.com，也有人调侃 SecuROM 还在，只是换了 Denuvo 这个名字继续活着。相关评论顺带吐槽过这类 DRM 常常安装限制多、稳定性差，和这次讨论的 Apple 早期启动代码形成了有趣的双关。",
+        "supportid": [
+          "48653407",
+          "48654355",
+          "48653920",
+          "48655253",
+          "48653722"
+        ]
+      },
+      {
+        "category": "执法取证场景下的绕过与重启",
+        "summary": "还有人立刻想到它对 Cellebrite（手机取证工具厂商）之类产品的价值。围绕 seized phone 的讨论主要是：如果攻击依赖 bootloader/bootROM 路径，那么重启可能会清掉临时状态，重新削弱已获得的访问。评论里甚至担心执法方会伪造重启菜单，于是有人建议用漏洞本身去验证流程是否真实。这个分支把技术漏洞和现实中的取证攻防直接连到了一起。",
+        "supportid": [
+          "48654833",
+          "48654947",
+          "48655024",
+          "48655098",
+          "48656535"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "SecureROM / bootROM",
+        "explanation": "Apple SoC 最早期、不可更新的只读启动代码，漏洞一旦存在就很难靠软件补丁修复。"
+      },
+      {
+        "term": "DFU mode",
+        "explanation": "Device Firmware Update mode，设备进入一种可被低层工具控制的恢复/刷机启动状态。"
+      },
+      {
+        "term": "BPR（Boot Process Register）",
+        "explanation": "iOS 14 引入的启动保护机制，用来限制从 bootROM/DFU 途径直接获取数据。"
+      },
+      {
+        "term": "SEP（Secure Enclave Processor）",
+        "explanation": "负责密钥、生物识别等安全功能的独立安全处理器。"
+      },
+      {
+        "term": "USB DART / IOMMU",
+        "explanation": "给 USB 控制器做 DMA 地址隔离和重映射的硬件层，防止外设直接乱写内存。"
+      },
+      {
+        "term": "checkm8",
+        "explanation": "著名的 A7-A11 bootROM exploit，因处于只读启动阶段而长期可用。"
+      }
+    ],
+    "context": "Usbliter8 是一个针对 Apple A12/A13 SoC 的 SecureROM（只读早期启动代码）漏洞，利用点在 USB DFU（Device Firmware Update）路径中，因此发生在系统可更新软件运行之前。讨论里把它和 checkm8（A7-A11 上著名的 bootROM exploit）相比，认为它同样属于硬件/固件级、很难通过系统更新修补的漏洞。评论也提醒，这类漏洞通常只提供启动链早期的控制权，并不自动等于完整 jailbreak：A12/A13 还受 BPR（Boot Process Register，启动保护寄存器）和 SEP（Secure Enclave Processor，安全隔区处理器）相关限制影响。因为涉及取证与越狱生态，大家还联想到 Cellebrite（手机取证工具厂商）以及旧时代 jailbreak 带来的系统定制用途。",
+    "emoji": "🔓",
+    "sarcastic_question": "不能越狱的漏洞，也算“重大进展”吗？"
+  },
+  "articleSummary": "### 一句话总结\n利用 Apple A12/A13 芯片 DWC2 USB 控制器的 DMA 缓冲区下溢漏洞，绕过 PAC 保护，成功在 SecureROM 阶段实现代码执行。\n\n### USB 控制器的 DMA 算术题\n这次漏洞的核心在于 Apple 使用的 Synopsys DWC2 USB 控制器。按照 USB 协议，主机发起控制传输时必须先发一个 8 字节的 Setup 包。DWC2 控制器内部有个机制，会把接收到的 Setup 包存到内存里，最多存 3 个。当收到第 4 个包时，它会把 DMA 地址指针回退，就像环形缓冲区一样。**问题就出在这个回退逻辑上**：控制器每次写完数据都会增加 `DOEPDMA` 寄存器的值，但在重置时，它硬编码减去 24 字节（3 个包的大小）。如果攻击者发送小于标准长度的数据包，指针增加的幅度就赶不上回退的幅度，最终导致 DMA 写地址发生下溢。\n\n### 硬件漏洞遇上软件配置\n光有硬件 bug 还不够，还得看软件怎么配合。在 A12 和 A13 上，SecureROM 里的 USB 驱动有个致命的配置问题：USB DART（类似 IOMMU）被配置成了 Bypass 模式。这意味着 USB 控制器的 DMA 可以直接绕过内存保护，随意读写物理内存。相比之下，A11 的驱动会在每次收包后手动重置 DMA 地址，A14 及以后的芯片则正确开启了 DART 保护，所以这个漏洞目前只在 A12 和 A13 上生效。**说白了就是**：硬件给了你一把尺子，软件忘了给你画线，结果你就能用这把尺子去丈量整个内存空间。\n\n### A12 上的“降维打击”\n在 A12 上利用这个漏洞相对简单，因为还没有引入 PAC（指针认证）。USB 控制器的 DMA 缓冲区是分配在堆上的，而且紧挨着 USB 任务的栈。攻击者只需要利用 DMA 下溢，反向覆盖栈上保存的 LR（链接寄存器）。当 USB 任务被调度器唤醒并进行上下文切换时，程序会从被篡改的 LR 地址继续执行，攻击者也就直接拿到了 PC（程序计数器）的控制权。这就像是在没有门禁的大楼里，直接换掉了门牌号，谁都能进。\n\n### A13 上的 PAC 迷宫\n到了 A13，Apple 加入了 PAC 保护，栈上的 LR 都被签名加密了，直接覆盖行不通。攻击者只能另辟蹊径，设计了一套精妙的多步走策略。首先，他们利用 DMA 下溢去覆盖堆上的 DART 相关数据结构，通过清理例程把全局 DART 指针清零，防止释放内存时触发校验 panic。接着，他们利用 `0xf` 写原语覆盖全局 panic 计数器，让系统在崩溃时进入死循环而不是重启，从而保持 USB 控制器活跃，方便后续操作。\n\n### 精准打击任务结构\n搞定内存保护机制后，下一步是拿到执行权。攻击者把目标对准了 USB 任务的任务结构体。他们精心控制 DMA 写入的时机，在任务运行时覆盖其“临界区深度”字段。这样做是为了让系统在下次进入临界区时触发 panic，但因为之前已经把 panic 改成了死循环，系统会卡住但中断依然开启。此时，USB 控制器还能继续工作，攻击者就可以继续利用 DMA 下溢，一路向后覆盖直到修改 BSS 段里的 USB IRQ handler 函数指针。一旦中断触发，CPU 就会跳转到攻击者控制的地址执行代码。\n\n### 从 EL0 到 EL1 的越狱\n拿到 PC 控制权只是第一步，因为 A12 的 SecureROM 大部分时间运行在 EL0（用户态），无法直接操作 MMU 等特权寄存器。**这里有个巧妙的设计**：SecureROM 中有一处通过 `SVC 0` 指令切换到 EL1（内核态）的代码，位于负责跳转到下一阶段 iBoot 的函数中。攻击者构造了一个极短的 ROP 链：先通过 USB MMIO 修改 DMA 目标地址，把 shellcode 写到固定的 Boot Trampoline 内存区域，延时 400ms 等待写入完成，然后跳转到 `SVC 0` 指令处。虽然那段内存本应是只读的，但 DMA 不受此限制。这样，攻击者就成功在 EL1 模式下执行了自己的代码。"
+}

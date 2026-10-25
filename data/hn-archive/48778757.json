@@ -1,0 +1,107 @@
+{
+  "id": 48778757,
+  "by": "theanonymousone",
+  "title": "FreeBSD Ate My RAM",
+  "url": "https://crocidb.com/post/freebsd-ate-my-ram/",
+  "score": 127,
+  "createdAt": 1783110642,
+  "aiSummary": {
+    "chinese_title": "FreeBSD ZFS ARC 误报吃 RAM，内存统计与 swap 规则引争议",
+    "discussion_overview": [
+      {
+        "category": "ZFS ARC 导致监控误报",
+        "summary": "大家主要在确认问题不是 FreeBSD 真把内存“吃掉”了，而是 ZFS ARC 这类缓存没有被某些监控工具正确识别。有人提到 btop 的相关修复已经进了上游或 FreeBSD 的 ports，也有人推荐 zfs-stats 来看 ZFS 内部指标，比如 hit-rate 和 L2ARC。还有评论指出，不同工具显示的 free memory 差很多，说明更多是统计口径问题而不是内核泄漏。也有人直接说这篇文章只是把一个常见的 ZFS cache 现象讲得有点怪。",
+        "supportid": [
+          "48783037",
+          "48783446",
+          "48780481",
+          "48779836",
+          "48780874",
+          "48780071",
+          "48780823"
+        ]
+      },
+      {
+        "category": "内存到底该怎么计数",
+        "summary": "围绕“used memory”到底怎么定义，评论区展开了很技术化的争论。有人坚持直接看 total minus available，但更多人指出，disk-backed pages、memory-mapped files、可回收缓存、executable pages 以及 tmpfs/ramfs 都会让“free/used”很难用单一数字表达。还有人提到 FreeBSD 在某些实现里并没有把 disk-backed 页单独分队列，因此很难精确拆出 active/inactive 里究竟有多少是真正占用、多少是可回收。最后的共识更偏向：内存统计本来就是 trade-off，既要给出可用性判断，又很难同时做到完全精确。",
+        "supportid": [
+          "48780970",
+          "48781162",
+          "48781367",
+          "48781077",
+          "48781295",
+          "48783338",
+          "48781616",
+          "48781754",
+          "48781863",
+          "48782233",
+          "48782610",
+          "48781131",
+          "48781798"
+        ]
+      },
+      {
+        "category": "FreeBSD 旧式 swap 预留与 overcommit 历史",
+        "summary": "有人顺着话题回忆起 FreeBSD 早年严格的 swap reservation 机制：匿名内存页要有对应的 swap backing，否则 fork 大进程时就可能直接报 out of swap。于是“swap 至少 2x RAM”这条老经验被解释成有真实历史背景，而不是纯粹的民间迷信。随后又有人补充，FreeBSD 大约在 2000 年左右实现了 memory overcommit，行为才逐渐接近现代系统。这个分支把当前的内存争论，和老一代 Unix-like 系统的设计路线连了起来。",
+        "supportid": [
+          "48779612",
+          "48780709",
+          "48780836",
+          "48780868"
+        ]
+      },
+      {
+        "category": "BSD 与 Linux 的系统选择之争",
+        "summary": "这串评论也迅速滑向 BSD 和 Linux 的老争论。有人调侃“OS Crusades are over”，也有人拿 NetBSD 以前吹嘘能跑在更多 toasters 上、后来被 Linux 反超的故事，顺带提到 worse-is-better 和“momentum beats academic perfection”。在更实际的层面，一些人觉得 FreeBSD 在个人电脑上并不算“自我阉割”，因为 ZFS 工具链和开箱即用的 ZFS 支持很统一；但也有人会因为游戏、生态和便利性而更偏向 Linux，甚至用 FreeBSD 加 Linux VM 来兼顾两边。",
+        "supportid": [
+          "48780185",
+          "48780261",
+          "48781259",
+          "48783434",
+          "48781750",
+          "48782240",
+          "48780805",
+          "48780214",
+          "48780395",
+          "48780419"
+        ]
+      },
+      {
+        "category": "教材与电子书的旁支讨论",
+        "summary": "还有一条很轻的旁支在讨论文章末尾那张 OS 书的照片。有人好奇现在学生是否还会保留纸质教材，另一些人说明如今在线教材和订阅制 e-textbook 已经很常见，但自由许可教材和更适合复习的纸质参考书仍有价值。也有人分享自己买过的少数教材最后都堆在父母家的地下室书架上，顺手还提到 Anna's Archive 这类影子图书馆。这个分支和主话题关系不大，但补出了文章末尾图像引发的现实教育场景。",
+        "supportid": [
+          "48779878",
+          "48780184",
+          "48780706",
+          "48780243"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "ARC（Adaptive Replacement Cache）",
+        "explanation": "ZFS 的内存缓存机制，用来保存热数据和元数据，常被误认为“吃 RAM”。"
+      },
+      {
+        "term": "ZFS",
+        "explanation": "集文件系统、卷管理和校验于一体的存储系统，和 ARC/L2ARC 紧密相关。"
+      },
+      {
+        "term": "overcommit",
+        "explanation": "允许虚拟内存分配超过物理内存或 swap 余量的策略。"
+      },
+      {
+        "term": "strict swap reservation",
+        "explanation": "为匿名内存预先保留对应 swap 的做法，早期 FreeBSD 常采用。"
+      },
+      {
+        "term": "tmpfs/ramfs",
+        "explanation": "基于内存的临时文件系统，会影响缓存和“cached memory”的统计口径。"
+      }
+    ],
+    "context": "这篇文章围绕 FreeBSD（一个类 Unix 操作系统）上 ZFS（集成文件系统与卷管理的存储系统）的 ARC（Adaptive Replacement Cache，内存缓存）展开：监控工具看到大量内存被缓存占用，就像系统“吃掉”了 RAM。评论里有人在问 btop（终端资源监视器）的修复是否已经进入 FreeBSD 的 ports（官方软件集合）或上游，也有人推荐 zfs-stats（查看 ZFS 内部统计的工具）来观察 hit-rate、L2ARC 等指标。讨论进一步变成“free/used/available memory 应该怎么算”的内核口径争议，涉及 Linux 的 /proc/meminfo、tmpfs/ramfs（基于内存的临时文件系统）以及 overcommit（超额提交）和 swap 预留。这不是单纯的“内存泄漏”故事，而是不同 OS 和工具对可回收内存、磁盘回写页和缓存的统计方式不同。",
+    "emoji": "🤔",
+    "sarcastic_question": "连缓存和已用都分不清，还怪 FreeBSD 吃 RAM？"
+  },
+  "articleSummary": "## 一句话总结\nFreeBSD 内存监控工具显示的数值差异，本质上源于不同工具对“可用内存”的定义不同，加上 `btop` 在 FreeBSD 上使用了 32 位整数导致溢出，以及读取了一个早已废弃的内核参数。\n\n### 内存统计的复杂性：不是所有“占用”都真的在用\n现代操作系统遵循“Unused RAM is wasted RAM”的原则，会尽可能把磁盘数据缓存在内存里。FreeBSD 的内核通过虚拟内存（VM）系统管理物理内存页，将其分为 `ACTIVE`（活跃）、`INACTIVE`（非活跃）、`LAUNDRY`（待换出）、`WIRED`（锁定）和 `FREE`（空闲）等队列。这就导致了一个尴尬的局面：`FREE` 队列确实完全空闲，但 `INACTIVE` 队列里的页面也是可回收的，甚至 `WIRED` 内存里也包含了 ZFS 的磁盘缓存。所以，单纯看“剩余多少内存”其实没有意义，关键在于有多少内存是可以被应用程序瞬间抢回来的。\n\n### ZFS 的 ARC 缓存：游离于标准统计之外的“大户”\nFreeBSD 默认的文件系统 ZFS 有一套自己的缓存机制叫 ARC（Adaptive Replacement Cache）。这个机制非常高效，但它绕过了内核标准的 VM 页面队列管理，直接占用内存。虽然你可以通过 `sysctl kstat.zfs.misc.arcstats.size` 查到它占用了多少内存，但很多监控工具如果不专门去处理 ZFS 的数据，就很难准确地把这部分内存归类为“缓存”还是“占用”。这就解释了为什么有时候明明内存显示“用光了”，系统却依然流畅，因为大部分其实都是 ZFS 的 ARC 缓存。\n\n### 工具的“ heuristic ”差异：谁才是对的？\n不同的监控工具采用了不同的启发式算法来计算内存使用率，这就是数值打架的根本原因。`fastfetch` 的逻辑比较激进，它认为 `free + inactive + cache` 都是可用的，所以显示的“已用”内存很高（82%）；而 `btop` 则认为只有 `active + wired` 才是真正占用的，显示的占用率极低（7%）。更有意思的是 `htop`，它把 `laundry` 也算进了占用里。这三种算法本身没有绝对的对错，只是对“可用”的定义边界不一样，但在 FreeBSD 上，`btop` 的算法显然出了问题。\n\n### `btop` 的致命 Bug：32 位整数的溢出惨案\n作者在排查 `btop` 代码时发现了一个低级但致命的错误。在 `src/freebsd/btop_collect.cpp` 中，`btop` 使用 `u_int`（32 位无符号整数）来存储内存页面的字节数。32 位整数的上限是 4,294,967,295 字节，刚好不到 4GiB。一旦内存超过这个数值，计数器就会发生“回绕”，导致显示的内存数值暴跌。作者机器上实际使用了 4.42 GiB，但因为溢出，`btop` 只显示了 422 MiB。这是一个典型的从 32 位时代遗留下来的 Bug，在如今大内存普及的环境下暴露无遗。\n\n### 读取废弃参数：`v_cache_count` 的空欢喜\n除了整数溢出，`btop` 还在读取一个名为 `vm.stats.vm.v_cache_count` 的内核参数来统计缓存。作者查阅源码发现，这个参数早在 FreeBSD 12.0 就被标记为“Dummy for compatibility”（兼容性占位符），永远返回 0。实际上，FreeBSD 从 6.3.0 版本开始就已经移除了真正的 cache 队列。`btop` 却一直试图读取这个假参数，导致其“Cached”一栏始终为空，无法正确反映系统的缓存状态。\n\n### 修复方案：拥抱 64 位与正确的 ZFS 统计\n找到问题后，修复思路就很清晰了。首先，把存储内存数值的变量全部升级到 64 位，彻底解决溢出问题。其次，参考 `htop` 的处理逻辑，正确识别 ZFS 的 ARC 缓存。核心思路是：ARC 虽然被算在 `wired` 内存里，但它是可回收的，所以应该从 `wired` 中减去 ARC 的大小，并将其加到 `cache/buffers` 分类中。作者不仅给 `btop` 提交了修复，还顺手给 `htop` 提了个 PR，统一了缓存和缓冲区的分类逻辑，让监控数据更符合 ZFS 用户的直觉。"
+}

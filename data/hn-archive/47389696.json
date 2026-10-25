@@ -1,0 +1,80 @@
+{
+  "id": 47389696,
+  "by": "wwarren",
+  "title": "Write up of my homebrew CPU build",
+  "url": "https://willwarren.com/2026/03/12/building-my-own-cpu-part-3-from-simulation-to-hardware/",
+  "score": 124,
+  "createdAt": 1773820266,
+  "aiSummary": {
+    "chinese_title": "自制 8 位 CPU 面包板实录：调试、微代码与早期编程",
+    "discussion_overview": [
+      {
+        "category": "硬件接线与总线驱动优化",
+        "summary": "有评论给出非常具体的芯片级优化建议：如果既想保留 register 的 blinkenlights（闪灯显示），又要让总线保持 tri-state（高阻态）驱动，最好用两片 '574 并联，而不是用 '377 配 '245。做法是把时钟和输入线并在一起，再把显示那片的 output enable 拉低，这样真正参与 CPU 逻辑的那颗芯片就不用额外负载。重点不是“更炫”，而是减少 propagation delay（传播延迟）和总线负担，让电路更稳。",
+        "supportid": [
+          "47423770"
+        ]
+      },
+      {
+        "category": "同好围观与作品鼓励",
+        "summary": "很多评论就是纯粹的 maker 共鸣：有人说自己也做过 256-byte ROM/RAM CPU，还让 Arduino 当过 I/O 输入，说明这类 8-bit breadboard build 在圈内很有共同语言。也有人夸文章开头直接放最终成品的“money shot”，顺手聊起 Rigol 数字示波器、SMD 在试错阶段的麻烦，以及《The Soul of a New Machine》这类书带来的工程感。整体语气非常正向，核心就是“看到有人真把这种东西做出来很过瘾，继续更新”。",
+        "supportid": [
+          "47425275",
+          "47423801",
+          "47424195"
+        ]
+      },
+      {
+        "category": "实物硬件 vs 仿真/FPGA 的取舍",
+        "summary": "一派观点认为，把设计从 Logisim 或 Verilog 拉到 DIP chips、breadboard、wirewrap 之后，乐趣会被 timing、glitch、坏芯片和接线故障这些“看不见的麻烦”迅速吞掉。另一些人则反驳说，这些麻烦恰恰是乐趣所在，属于 Type 2 fun：难归难，但做成之后更爽。评论还提到，有人喜欢直接做 FPGA（比如 Lattice 芯片），有人想做 tiny tapeout（小型流片），也有人把硬件项目当成 art statement（艺术表达）来看待。",
+        "supportid": [
+          "47423041",
+          "47423197",
+          "47423134",
+          "47424094"
+        ]
+      },
+      {
+        "category": "早期计算机如何被“灌程序”",
+        "summary": "讨论很快转向“第一批 CPU 到底怎么编程”的鸡生蛋问题。有人回忆 1970s/1980s 用 UV erasable EPROM（紫外可擦除只读存储器）和自制 programmer，在 Apple ][ 上跑 6502 assembler，烧写 8KB ROM 要花很久，所以每次改动都要非常谨慎。还有人补充更早的办法：手动拨开关和灯阵、punch cards（穿孔卡）、mask-programmed ROM/PLA，甚至 ENIAC 那种直接重新接线、以及 PDP-8 上把机器码一位位拨进去。",
+        "supportid": [
+          "47423475",
+          "47425729",
+          "47423545",
+          "47425554",
+          "47423494",
+          "47423676",
+          "47423542"
+        ]
+      },
+      {
+        "category": "microcode 与控制逻辑的历史争论",
+        "summary": "在“早期 CPU 怎么工作”这个话题下，评论又进一步区分了 user program 和 microcode。有人指出这里谈的很多其实是 microcode ROM，而不是普通机器码；也有人列举 System/360、68K、Sperry 1100，甚至更早的 ACE 都有 microcode。另一边则强调 6502、6800/09 更像是用硬连线 decoder 或 state machine 实现控制，不完全等同于可加载 microcode；microcode 的本质就是用一个存储器把内部控制信号按状态查表输出。",
+        "supportid": [
+          "47424645",
+          "47425739",
+          "47425023",
+          "47425082"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "microcode",
+        "explanation": "CPU 内部的控制层逻辑，常以 ROM/控制存储器形式存在，用来驱动寄存器、ALU 和总线等部件。"
+      },
+      {
+        "term": "Verilog / FPGA",
+        "explanation": "Verilog 是硬件描述语言；FPGA（Field-Programmable Gate Array）是可重构逻辑芯片，常用来先验证 CPU 设计。"
+      },
+      {
+        "term": "EPROM / ZIF socket",
+        "explanation": "EPROM 是可用紫外线擦除的只读存储器；ZIF socket（零插拔力插座）方便反复插拔和烧录芯片。"
+      }
+    ],
+    "context": "这篇文章是在分享一个 homebrew CPU（自制 CPU）的搭建过程，重点是把 CPU 做成能在 breadboard（面包板）上运行的实体电路，并通过 EEPROM 和串口从笔记本上传 binary files。评论里有人把它放进 8-bit breadboard build 的传统里，也有人拿自己做过的 256-byte ROM/RAM CPU、Arduino I/O、mini OLED 之类的项目来对照。讨论很快延伸到硬件调试、Rigol 数字示波器、SMD 试验阶段的难点，以及从 Logisim/Verilog 仿真走到真实芯片、FPGA 甚至 tapeout 的取舍。另一个重要背景是计算史：早期系统并没有现代意义上的“先有软件再有硬件”流程，而是靠 EPROM programmer、手动开关/灯阵、punch cards、plugboards 和 microcode 逐步把机器启动起来。",
+    "emoji": "🛠️",
+    "sarcastic_question": "不把时序、接线、坏芯片都踩一遍，算真造CPU吗？"
+  },
+  "articleSummary": "## 一句话总结\n从仿真到硬件的落地过程中，作者通过自定义 PCB 和面包板混搭的方式验证了 8 位 CPU 设计，虽然遭遇了 SMT 封装踩坑、时序竞争和信号毛刺等现实世界的“毒打”，但最终通过增加缓冲寄存器和施密特触发器等手段让机器跑了起来。\n\n### 仿真很完美，现实却全是“反人类”设计\n作者在 Logisim 里完成仿真后信心满满，觉得只要照着原理图搭硬件就能一蹴而就。结果一上来就栽在了选型上：为了追求最终成品的 SMT（表面贴装）工艺，他直接买了一堆 SMT 芯片。但原型阶段为了灵活调试，不得不大量使用面包板，导致 SMT 芯片根本插不进去，只能一个个焊在转接板上，反而比直插的 DIP 封装更占空间。这其实是个典型的过度设计陷阱，原型验证阶段就该老老实实用 DIP，别为了还没发生的“最终形态”牺牲当下的调试效率。\n\n### 自制 PCB：成功与灾难并存\n为了验证核心模块，作者找 PCBWay 打了三块板子。最成功的是通用寄存器板，用 74HC377 锁存数据配合 74HC245 挂总线，还带了一排 LED 做状态显示，一次点亮且工作极其稳定。但控制模块板简直是灾难现场：原理图里把 CE 引脚极性画反了、忘了加去耦电容、OE 和 WE 引脚甚至悬空浮空，导致数据一直出错。最惨的是，他一口气把 36 个 LED 全装反了，只能用热风枪一个个吹下来重焊，这种低级错误在硬件调试中既耗时又打击心态。\n\n### 硬件里的幽灵：时钟信号与时序竞争\n仿真里理想的方波在现实里变得面目全非。作者自制的时钟模块输出的信号边缘不仅“拖泥带水”，还因为电源分配问题导致严重的振铃，甚至让下游器件误触发。解决办法是串联一个施密特触发器，利用其滞回特性把信号“洗”干净。更棘手的是时序竞争：指令寄存器、标志位寄存器和 T 状态计数器如果同时直接连到 EEPROM，会导致控制信号在时钟周期中间乱跳。作者巧妙地加了一级由反相时钟（~CLK）触发的 74HC377 作为缓冲，强制所有状态变化同步发生，彻底解决了这个问题。\n\n### EEPROM 的“脾气”：地址切换时的疯狂毛刺\n这是仿真软件绝对不会告诉你的事：当 EEPROM 的地址引脚电平发生变化时，输出引脚会在接下来的 150ns 内处于完全不可控的状态，可能会乱跳高低电平。虽然同步系统理论上会忽略这段不稳定期，但作者发现他的板子上情况更糟，控制信号在整个时钟低电平期间都在疯狂震荡。这通常源于电源噪声或布线干扰，说明在处理高速信号时，仅仅逻辑正确是不够的，电源完整性和信号完整性才是决定系统能否稳定运行的关键。"
+}

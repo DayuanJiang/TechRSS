@@ -1,0 +1,112 @@
+{
+  "id": 49883844,
+  "by": "firelex",
+  "title": "Jeff – Jev-compatible 0.8B decision models, trained at home, ~30 ms",
+  "url": "https://github.com/firelex/jeff",
+  "score": 344,
+  "createdAt": 1790629282,
+  "aiSummary": {
+    "chinese_title": "Jeff：本地 0.8B Jev 兼容决策模型宣称 30ms，准确率与创新性受质疑",
+    "discussion_overview": [
+      {
+        "category": "Jev 本质是快速通用分类器，还是已有 LLM 技巧的包装",
+        "summary": "支持者认为 Jev/Jeff 的关键不是“能否回答”，而是对一组候选项在一次 forward pass 中直接给出概率，不生成长文本，因而特别适合低延迟、低成本的判断任务。反对者指出，Structured Outputs、constrained decoding、JSON schema 和读取 logprobs 早已能让普通 LLM 做类似分类；要求模型输出一个 Y/N token 并比较 logit，也可实现多选判断。争议集中在专用模型是否真有架构级突破：一方强调其速度和类型安全的概率接口，另一方认为它只是小模型加单 token 推理与营销包装。评论也提醒，普通 next-token 概率会受空格、标点和 prompt 微调影响，因此若未针对这类输出 fine-tune，所谓置信度可能并不稳定。",
+        "supportid": [
+          "49886699",
+          "49886921",
+          "49886762",
+          "49886838",
+          "49886726",
+          "49886348",
+          "49886415",
+          "49887387"
+        ]
+      },
+      {
+        "category": "基准成绩与真实业务准确率存在落差",
+        "summary": "项目方报告 2B 模型在五项面板上取得 83.1%，接近 Jev 公布的 83.0%，0.8B 在 M4 Max 上约 28–30ms；但也承认 BBH、JevBench hard 等多步推理任务明显落后于 Jev。实际用户在职位广告分类中测得 Jeff 约 70%，而 Jev 达到 94%，并称 0.8B 对职位类型识别几乎不可用，显示 aggregate benchmark 未必能预测具体领域表现。项目方自己的案例则显示，语音导航经过约半小时单 GPU fine-tune 后，留出命令准确率可从 32% 升至 96%，这也意味着其核心价值会从 zero-shot 转向可定制的小模型。还有评论称 embedding 加 logistic classifier 在 AG News、Banking77 等基础分类集上可匹敌或超过 Jev/Jeff、延迟低于 1ms，但在需要 reasoning 的任务上表现较差。",
+        "supportid": [
+          "49883845",
+          "49884862",
+          "49885809",
+          "49885242",
+          "49885193",
+          "49885588",
+          "49887738"
+        ]
+      },
+      {
+        "category": "zero-shot 的便利性与自训分类器的取舍",
+        "summary": "Jev 的拥护者认为，传统 BERT 或 ModernBERT 通常需要为具体任务准备数据、训练、部署和维护；Jev 可在约 30 秒内通过 prompt 试验多个内部系统，适合需求尚不确定或快速验证的场景。批评者则认为，一旦业务分类长期稳定，做一个小型专用模型的固定成本并不高，甚至可以用 LLM 生成训练数据，而本地服务会更便宜可控。双方同意“是否需要 fine-tune”会改变产品类别：Jev 的卖点是跨领域的 zero-shot 泛化，Jeff 则更明确地提供开源权重和进一步 fine-tune 的路径。对于异构请求，评论提出可用确定性特征或路由模型先匹配已有分类器，未知任务才交给轻量 LLM 并持续收集训练数据。",
+        "supportid": [
+          "49885107",
+          "49885588",
+          "49886297",
+          "49886443",
+          "49886825",
+          "49886106",
+          "49886319"
+        ]
+      },
+      {
+        "category": "架构不透明，社区只能从行为反推实现",
+        "summary": "多位评论者质疑 Jev 缺少清晰公开的实现细节，因此“在家复刻”的说法难以验证；也有人认为其思路显而易见，复制并不困难。根据项目描述，Jeff 输入情境与选项后一次性输出 255 个 float，将前几个值映射为选项的排序或概率，而不是逐 token 生成回复。技术推测包括：保留 Transformer attention、取消 autoregressive decode；以 encoder-only 模型配合 RLDC 训练；或将多个候选输出并行生成，从而减少反复从内存加载模型权重的开销。没有人提供 Jev 官方架构的确定证据，因此关于 O(n²) attention、固定输出空间和内部 decoder 改造的说法仍主要是推断。",
+        "supportid": [
+          "49887887",
+          "49887990",
+          "49885623",
+          "49885224",
+          "49885288",
+          "49886433",
+          "49886679"
+        ]
+      },
+      {
+        "category": "部署经济学：本地实时路由有价值，但未必替代大模型",
+        "summary": "看好者认为这类模型可放进请求 hot path，用于实时路由、决定是否调用昂贵模型、生成必要 context；在百万级请求下，极低单次成本和 latency 的累积意义很大。本地 open-weight 部署还避免了额外供应商依赖，尤其适合 self-hosting、边缘设备和隐私敏感场景，不过是否能在手机 NPU 上达到可交付的性能仍是未回答的问题。怀疑者指出，DeepSeek Flash 等低价模型已能以不足 1 美元处理 1 万张工单，sub-second 延迟对许多业务已足够；Jev 的 API 价格也仅约每百万输入 token 0.42 美元。评论普遍预期 OpenAI、Anthropic 等 frontier labs 能够原生加入类似分类接口，但也认为大量商业 AI 支出目前更多流向 coding，而非分类工作负载。",
+        "supportid": [
+          "49885582",
+          "49885698",
+          "49885861",
+          "49886001",
+          "49887738",
+          "49886699",
+          "49885215",
+          "49885443",
+          "49886828",
+          "49886996"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "zero-shot classification（零样本分类）",
+        "explanation": "不给或几乎不给目标任务标注样例，仅用任务描述和候选类别完成分类；其价值在于免训练试用，但领域外准确率可能不稳定。"
+      },
+      {
+        "term": "constrained decoding（受约束解码）",
+        "explanation": "在生成时用 JSON Schema、grammar 或 regex 限制可输出的 token，确保 LLM 产生合法的结构化结果。"
+      },
+      {
+        "term": "logprobs / logits",
+        "explanation": "logits 是模型对候选 token 的原始打分，logprobs 是归一化后的对数概率；可用于比较 Y/N 或各标签的相对倾向，但不必然等于可靠置信度。"
+      },
+      {
+        "term": "prefill 与 KV cache",
+        "explanation": "prefill 是模型先处理完整输入 prompt 的阶段；KV cache 会缓存 attention 的中间键值以避免重复计算。单 token 分类通常几乎只有 prefill 成本。"
+      },
+      {
+        "term": "fine-tuning（微调）",
+        "explanation": "在已有模型上用特定任务数据继续训练，以提高某一领域的准确率；代价是数据准备、训练和后续维护。"
+      },
+      {
+        "term": "encoder-only model（仅编码器模型）",
+        "explanation": "类似 BERT 的模型架构，擅长读取整段输入并输出向量、标签或分数，不以 autoregressive 方式逐 token 生成文本。"
+      }
+    ],
+    "context": "Jev 是 TypeSafe 推出的低延迟“decision model”服务：输入自然语言情境和候选选项，返回各选项的概率或排序，主打比通用 LLM 更快、更便宜的实时判断。Jeff 是一个 Apache 2.0 许可的开源复刻项目，基于 Qwen3.5 和 Gemma 4 小模型微调，提供 Jev-compatible API；作者称 0.8B 版本可在 Apple M4 Max 上约 30ms 决策，并使用本地 RTX PRO 6000 与 DGX Spark 设备训练和合成数据。讨论所说的 System 1 指快速直觉式判断，而非多步推理规划；因此项目在 Financial PhraseBank、RAGTruth 等分类任务上较好，却在 BBH（Big-Bench Hard，多步推理基准）上落后。争论的背景是：许多现有 LLM 服务已支持 Structured Outputs 和 token logprobs，社区正在判断专用决策模型究竟带来新的能力，还是把已有分类技术以更低延迟、更方便的接口重新产品化。",
+    "emoji": "🤔",
+    "sarcastic_question": "把单 token 分类改名后，就算新架构吗？"
+  },
+  "articleSummary": "## 一句话总结\nJeff 是一系列兼容 Jev 格式的 0.8B-2B 参数小模型，通过单次前向传播实现极速 Zero-shot 分类，让你在本地以 22ms 的延迟获得媲美大模型的决策能力。\n\n## 正文\n\n### 小模型的生存之道：不做生成，只做决策\n我们习惯了 LLM 的\"生成式\"思维，但很多场景其实只需要一个决策。Jeff 就是在这个思路下诞生的产物。它不生成文本，不需要解析，你只需要描述场景和选项，它直接吐出每个选项的校准概率。核心逻辑很简单：把分类任务从生成模型沉重的 Token 预测中剥离出来，用单次 Forward Pass 解决战斗。这使得它在 RTX PRO 6000 上仅需 22ms，在 Apple M4 Max 上也只需 28ms。\n\n### 硬核的本地化训练全流程\n有意思的是，作者完全抛弃了云端 GPU 和闭源模型。Jeff 的训练数据由开源模型 Qwen3.8-Flash-Next 在两台 DGX Sparks 上合成，训练则是在单张 RTX PRO 6000 上完成的——0.8B 模型耗时约 2 小时，2B 模型约 3.5 小时。整个流程非常\"极客\"：全量微调、单轮 Epoch、Cross-Entropy 损失函数，最后通过拟合温度值进行校准。这是一个标准的\"大模型教小模型\"的蒸馏案例，且完全可复现。\n\n### Benchmark 里的惊喜与局限\n数据不会说谎。在 4599 个测试问题中，Jeff-Qwen3.5-2B 的总体准确率达到了 83.1%，几乎追平了 Jev 公布的 83.0%。特别是在 Financial PhraseBank 和 RAGTruth 这类任务上，它甚至实现了反超。但作者也很诚实：在 BBH 和 JudgeBench 这种重推理的任务上，小模型的瓶颈暴露无遗，得分远低于大模型。说白了，它学会了\"判断\"，但还没学会复杂的\"推理\"。\n\n### 真正的试金石：打游戏\n为了测试 Zero-shot 的真实能力，作者让 Jeff 玩了 Doom、Frogger 和 Pac-Man。这比跑 Benchmark 更能说明问题，因为模型需要根据文字描述的局面（如\"会被车撞\"）实时选择动作。结果很有戏剧性：基准模型 Qwen3.5-0.8B 在 Pac-Man 里只能吃 25.8 个豆子，而 Jeff-0.8B 吃到了 57.0 个。更反直觉的是，参数更大的 Jeff-2B 在打游戏时反而不如 0.8B 版本，作者推测是因为 2B 模型天生更\"保守\"，导致游戏表现下滑。\n\n### 为什么 0.8B 才是甜点区？\n这就引出了一个关键的工程建议：别迷信大参数。虽然 2B 模型在 Benchmark 上分数更高，但在需要快速反应和风险决策的场景（比如游戏或实时路由）里，0.8B 反而是更好的选择。它不仅更快，而且在特定的决策任务上表现得更果断。作者甚至提到，如果你觉得 Zero-shot 不够用，只需在特定数据上微调半小时，准确率就能从 31.7% 飙升到 95.8%。\n\n### 必须正视的工程约束\n当然，Jeff 并不完美。目前最大的限制是单次提问最多只能有 26 个选项（A-Z），因为模型没学过双字母编码，超过 26 个选项基本就是瞎猜。此外，Prompt 的措辞对结果影响巨大——在 Frogger 游戏中，仅仅调整了目标选项的描述词，单局得分就从 15 分涨到了 23 分。这提醒我们：Jeff 本质上是一个对 Prompt 敏感的分类器，而不是一个能理解复杂语境的规划者。\n\n### 谁适合用它？\n如果你需要极低延迟的路由分发、内容审核或意图识别，且不想依赖外部 API，Jeff 是个绝佳的切入点。它甚至提供了 MLX 后端，让 Mac 用户也能跑出 28ms 的好成绩。但如果你需要复杂的逻辑推理，或者选项列表超过 26 个，那还是老老实实调大模型吧。作者已经把模型和代码全部开源，基于 MIT 和 Apache 2.0 协议，这为本地化部署提供了一个极具性价比的基座。"
+}

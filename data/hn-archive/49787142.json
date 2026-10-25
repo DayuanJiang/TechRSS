@@ -1,0 +1,76 @@
+{
+  "id": 49787142,
+  "by": "torutofu",
+  "title": "Python Workers are now generally available",
+  "url": "https://blog.cloudflare.com/python-workers-ga/",
+  "score": 250,
+  "createdAt": 1790008241,
+  "aiSummary": {
+    "chinese_title": "Cloudflare Python Workers GA：冷启动、Pyodide依赖维护与网络兼容性受审视",
+    "discussion_overview": [
+      {
+        "category": "冷启动性能与架构限制",
+        "summary": "讨论焦点集中于 Python 经 Pyodide/WASM 运行在以 V8 和 JavaScript 为中心的 workerd 架构中，是否会造成较高冷启动开销。有基准称 Wasmer Edge 上最小 Python 应用约 60ms 启动，而 Cloudflare Workers 约为 900ms；评论要求公布当前 p50/p95，以及 FastAPI 等原生依赖对数据的影响。Cloudflare 方面回应称，内存 snapshot 已显著改善启动时间，sharding 也降低了冷启动发生频率，但承认继续降低延迟仍是后续重点。另有评论指出引用页面的数据链接可能不正确，且 AWS Lambda 在不同基准中的速度和一致性结论相互矛盾，说明横向比较需要谨慎。",
+        "supportid": [
+          "49792380",
+          "49793315",
+          "49789663",
+          "49790201",
+          "49791420",
+          "49793109"
+        ]
+      },
+      {
+        "category": "上游依赖的维护与安全责任",
+        "summary": "urllib3 维护者澄清，Pyodide/Emscripten 和后来的 JSPI 支持确实已被贡献并合入上游，令 Requests 能在 WebAssembly 环境通过 JavaScript fetch 发请求。但这类工作主要资助了外部实现者，而不是长期负责 review、维护和安全响应的 urllib3 维护者。Emscripten backend 目前仍属 experimental，且明确不在 urllib3 security policy 的保障范围；CVE-2025-50182 已暴露出 fetch 路径下 redirect 控制与标准 urllib3 行为不一致。评论认为，把代码贡献给上游不等于承担了上游长期支持成本，浏览器 fetch 与传统 HTTP 客户端语义的差异还可能带来更多边缘问题。",
+        "supportid": [
+          "49792257"
+        ]
+      },
+      {
+        "category": "Python版本、Pyodide与生态资助",
+        "summary": "有人担心 Workers 只能绑定 workerd 内嵌的一种 Python/Pyodide 版本，限制应用升级和能力选择。Cloudflare 作者回应，用户可通过 compatibility flags 选择 Python 3.12、3.13 或 3.14；但较旧 Python 对应较旧 Pyodide，也缺少 JSPI 等新功能。评论普遍认可 Pyodide 对 Python 生态的重要性，并呼吁 Cloudflare 持续资助该项目。已有信息显示，Cloudflare 聘用了 Pyodide 贡献者，公告作者中也有 Pyodide core developer，表明该产品高度依赖上游社区的专业投入。",
+        "supportid": [
+          "49792380",
+          "49793315",
+          "49791438",
+          "49792103",
+          "49792878",
+          "49793188"
+        ]
+      },
+      {
+        "category": "语言扩展期待与发布体验",
+        "summary": "部分用户将 Python 支持视为积极进展，同时期待 Cloudflare Workers 未来也能以同样低门槛支持 Go。也有人提出 Mojo、Elixir 等语言，不过同时承认 Elixir 的集群模型未必适合 Workers 的执行方式。发布材料的可用性也受到质疑，有评论称所有示例页面均返回 404，这会削弱新用户验证产品能力的体验。另有轻松调侃将标题误读为 Python 程序员被 AI 替代后“可供租用”，折射出当前开发者就业与 AI 焦虑的语境。",
+        "supportid": [
+          "49790810",
+          "49791948",
+          "49791237",
+          "49791314",
+          "49791444",
+          "49789543",
+          "49791660",
+          "49789676"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Pyodide",
+        "explanation": "将 CPython 及大量 Python 包编译到 WebAssembly 的运行时，使 Python 可在浏览器或 Workers 等 WASM 环境执行。"
+      },
+      {
+        "term": "冷启动（cold start）",
+        "explanation": "Serverless 平台首次或闲置后创建运行实例时产生的延迟，常以 p50、p95 衡量典型和高分位表现。"
+      },
+      {
+        "term": "JSPI",
+        "explanation": "JavaScript Promise Integration，一项让 WebAssembly 与 JavaScript 异步 Promise 更顺畅互操作的机制。"
+      }
+    ],
+    "context": "Cloudflare Workers 是 Cloudflare 提供的边缘 Serverless 运行平台，传统上以 JavaScript/TypeScript 为主要运行语言；此次宣布 Python Workers 结束测试阶段、进入 GA（General Availability，正式可用）。其 Python 实现依赖 Pyodide（将 CPython 编译为 WebAssembly 的运行时）并嵌入 workerd（Cloudflare Workers 的运行时），因此可利用 JavaScript fetch 进行网络请求，但也继承了 WASM、V8 与浏览器式网络语义的限制。讨论建立在 Serverless 冷启动、边缘部署延迟和多语言运行时竞争之上，并将其与 Wasmer Edge（基于 WebAssembly 的边缘平台）、AWS Lambda（亚马逊 Serverless 服务）及 Firecracker MicroVM（轻量虚拟机技术）比较。urllib3（Python 常用 HTTP 客户端底层库）对 Emscripten/WebAssembly 后端的支持，则引出了开源贡献资助与长期安全维护责任是否匹配的问题。",
+    "emoji": "🤔",
+    "sarcastic_question": "GA了，冷启动数据为何还要靠旧博文猜？"
+  },
+  "articleSummary": "## 一句话总结\nCloudflare Python Workers 正式 GA，通过原生绑定支持、标准 Web 框架适配、底层 Socket API 实现以及 PyEmscripten 生态建设，让 Python 代码真正实现了“零改动”上云。\n\n## 正文\n\n### 从“能用”到“好用”，这一步走了两年\n两年前 Cloudflare 就引入了 Python Workers，依托的是 2018 年就开始支持的 WebAssembly 技术。思路很直接：用 Pyodide 把 Python 解释器编译成 Wasm，跑在 Workers 运行时里。但这只能算“能用”，开发者还得写各种胶水代码来适配 JavaScript 环境。现在的 GA（General Availability）意味着 Python 成了平台的一等公民。你可以直接把 FastAPI、Django、Flask 搬上来，甚至可以在一个 Worker 里动态创建另一个 Python Worker，和 R2、D1、Workers AI 等服务无缝集成。\n\n### 告别 JS 胶水代码，绑定终于 Pythonic 了\n以前在 Python Workers 里调用 Cloudflare 的服务是很痛苦的。因为 RPC 边界的存在，你得手动把 Python 对象转成 JavaScript 对象。比如往 Queue 里发个字典，还得调用 `to_js` 和 `js.Object.fromEntries` 这种 JS 侧的方法。这不仅写起来别扭，还是 AI 生成代码的高频错误点。这次更新的核心改进之一，就是把类型转换封装到了运行时和 SDK 内部。现在你只需要写 `self.env.QUEUE.send({\"key\": \"value\"})`，完全不用关心底层是 JavaScript 还是别的什么，代码终于符合 Python 的直觉了。\n\n### 不用改代码，FastAPI 和 Django 直接起飞\n很多开发者习惯了用 FastAPI 或 Django 写 API，通常得用 Uvicorn 或 Gunicorn 跑个服务器。Cloudflare 的做法很聪明：平台本身已经搞定了负载均衡和无限扩缩容，没必要在 Worker 里再跑一个 Web Server。他们提供了 `workers.asgi` 和 `workers.wsgi` 这两个轻量级连接器。它们就像个适配器，把进来的 JS 请求转成 Python 标准的 ASGI/WSGI 结构，再把响应吐回去。这意味着你可以直接把现有的 App 代码丢进去，既享受了框架带来的开发效率，又利用了 Cloudflare 的全球网络加速能力。\n\n### 突破 Wasm 的网络封锁，数据库驱动终于能用了\nPython Workers 之前有个致命短板：不支持 TCP Socket。因为 Wasm 沙箱里把 POSIX 网络系统调用都屏蔽了，导致 `asyncpg`、`aiomysql` 这种依赖标准库 `socket` 模块的数据库驱动完全没法跑。Cloudflare 的解决方案很硬核：他们用 Workers 的 `connect` API 实现了一套自定义的 Socket 系统调用。当驱动尝试建立连接时，这套实现会把 Python 的 Socket 操作翻译成 JS 调用。这一底层突破打通了 Hyperdrive 的集成，现在连接 PostgreSQL 或 MySQL 就像连接原生数据库一样简单。\n\n### 搞定 HTTP 客户端，AI 应用链路彻底打通\nPython 在 AI 领域的统治地位毋庸置疑，但像 `openai`、`langchain` 这些库都依赖 `requests` 或 `httpx` 发请求。之前因为缺底层网络支持，这些 HTTP 客户端在 Worker 里也是罢工的。Cloudflare 通过向上游贡献代码，让这些客户端在 Wasm 环境下能直接路由到 JavaScript 的 `fetch` API。配合前面提到的 Socket 支持，整个网络栈就通了。现在你可以直接在 Worker 里跑 Langchain，调用 Workers AI 做推理，或者通过 AI Gateway 代理请求，构建复杂的 AI Agent 流程。\n\n### 推动 PEP 783，解决 Wasm 包生态的“最后一公里”\n跑 Python 离不开庞大的第三方库，但带 C/C++/Rust 扩展的包必须交叉编译成 Wasm 才能用。以前没标准，Cloudflare 团队得手动编译托管，能支持的包寥寥无几。为了彻底解决这个问题，他们发起了 PEP 783 提案，定义了 PyEmscripten 平台标准。这个提案经过一年多讨论终于通过，让包维护者能按标准构建发布 Wasm 版本的包。这不仅造福了 Cloudflare 用户，也让整个 Python-on-WebAssembly 社区受益。虽然生态还在过渡期，但未来的目标是让每个 Python 包都能开箱即用。"
+}

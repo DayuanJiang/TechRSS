@@ -1,0 +1,96 @@
+{
+  "id": 47638810,
+  "by": "MindGods",
+  "title": "Components of a Coding Agent",
+  "url": "https://magazine.sebastianraschka.com/p/components-of-a-coding-agent",
+  "score": 231,
+  "createdAt": 1775316629,
+  "aiSummary": {
+    "chinese_title": "编码 Agent：Spec、Context 与 Harness",
+    "discussion_overview": [
+      {
+        "category": "Spec 先行与意图固化",
+        "summary": "不少评论把问题归结为缺少 central source of truth：聊天会不断丢失为什么这么做、哪些接口已存在、哪些约束已经成立。有人因此主张把流程改成 chat -> spec -> code，先让 agent 只维护 spec，再让另一个 agent 按 spec 生成代码，并把每次 prompt/response 都落盘。Ossature 的做法被当成范例：先 `validate` 结构，再 `audit` 语义缺口和矛盾，用 INFO/WARNING/ERROR 级别提示，最后生成可编辑的 TOML build plan。也有人提醒 spec 仍然可能写错、互相冲突或过度要求工具链，所以更现实的目标是围绕 spec 持续迭代，而不是假设一次写完。",
+        "supportid": [
+          "47640801",
+          "47644182",
+          "47641629",
+          "47642690",
+          "47641163",
+          "47641543",
+          "47642791",
+          "47644067",
+          "47643265",
+          "47641326",
+          "47641884"
+        ]
+      },
+      {
+        "category": "轻量 harness 与上下文管理",
+        "summary": "另一条线强调 coding agent 的核心其实是 context management：把 stateless LLM 包进一个小型 state machine，再给它 bash 或少量工具，就能完成很多任务。有人分享用 SQLite 组装上下文、用 message ID 重新还原被截断的 tool call，以此压住 context bloat。也有人批评现在许多 agent CLI 变成了 JavaScript TUI 和一堆冗余子系统，但反方认为为了解决跨会话状态、确定性和平台兼容，harness 终究会变得复杂。争论的关键不是工具越多越好，而是状态到底该留在模型、文件，还是框架里。",
+        "supportid": [
+          "47644241",
+          "47640021",
+          "47640610",
+          "47642416",
+          "47643461",
+          "47642768",
+          "47640465",
+          "47641046",
+          "47643824",
+          "47641384",
+          "47641914",
+          "47642886",
+          "47641821",
+          "47644030",
+          "47640787",
+          "47642823",
+          "47642893",
+          "47643842"
+        ]
+      },
+      {
+        "category": "模型能力与工具栈适配",
+        "summary": "关于模型本身，评论里争论的是把开源模型塞进同样的 harness 后，能否接近 Anthropic 的模型。有人说 GLM、Qwen 等已经能接到 Claude Code 或 Codex CLI 上用，但在真实项目里仍常见 Sonnet/Opus 明显更强，而且不同仓库的差距会非常大。另一派则认为 harness 和训练方式同样重要：Anthropic 很可能在背后用 RL、verifier 和 trace dataset 专门优化工具使用，而 OpenCode 加少量自定义命令、AGENTS.md 和质量检查脚本就已足够好用。整体结论偏务实：很多场景下不必追求最贵模型，够用的模型加合适工作流就能覆盖大部分需求。",
+        "supportid": [
+          "47643558",
+          "47643804",
+          "47640521",
+          "47642912",
+          "47640563",
+          "47640748",
+          "47640633",
+          "47640761",
+          "47641344",
+          "47643103"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "harness",
+        "explanation": "包在 LLM 外面的调度和约束框架，负责调工具、控制循环、做验证。"
+      },
+      {
+        "term": "context management",
+        "explanation": "管理对话历史、任务状态和工具输出，避免上下文膨胀和漂移。"
+      },
+      {
+        "term": "source of truth",
+        "explanation": "唯一可信的需求或状态来源，用来避免聊天记录和记忆分叉。"
+      },
+      {
+        "term": "spec-driven generation",
+        "explanation": "先写 spec 再生成代码的工作流，强调可审计和可追踪。"
+      },
+      {
+        "term": "context bloat",
+        "explanation": "上下文被无关历史和工具输出塞满，既贵又会让模型更容易出错。"
+      }
+    ],
+    "context": "这篇文章讨论 coding agent 的组成：一个 LLM 通过 bash、文件编辑和其他工具来读写代码仓库时，外层 harness（调度/约束框架）如何决定它能否稳定工作。评论把焦点放在 context management（上下文管理）、spec（规格说明）、验证命令和记忆机制上，因为纯聊天式交互很容易把意图、错误和决策理由冲散。文中和评论频繁出现 Claude Code（Anthropic 的编码 CLI）、Codex CLI（OpenAI 的命令行编码工具）、OpenCode（开源的 coding agent 客户端）以及 Ossature（一个 spec 驱动生成工具）等例子，说明社区正在尝试把生成代码从对话中拆出来。讨论也延伸到 open-weight 模型如 GLM、Qwen 能否靠同样框架接近闭源模型，以及是否需要用 RL 和 trace 数据专门训练模型学会用工具。",
+    "emoji": "🛠️",
+    "sarcastic_question": "没有 source of truth，聊天就能不跑偏吗？"
+  },
+  "articleSummary": "## 一句话总结\nCoding Agent 的核心不在于模型本身有多强，而在于外层的 \"Harness\"（控制套件）如何通过上下文管理、工具调用和缓存机制，把模型变成一个能真正干活、甚至能自我修正的工程师。\n\n### 别只盯着模型，Harness 才是决胜局\n大家都在聊 Claude Code 或 Codex，觉得它们比裸模型聪明太多。但这其实是个误区：**模型只是引擎，Harness 才是变速箱和方向盘**。现在的 LLM 基础能力差距其实没想象中那么大，真正拉开体验差距的是外层系统。作者打了个很形象的比方：LLM 是引擎，Reasoning Model 是加强版引擎，而 Agent Harness 是帮你驾驭这辆车的控制系统。如果把一个开源的强力模型（比如 GLM-5）扔进一个优秀的 Harness 里，它完全有可能干翻 GPT-5.4 的裸聊版。\n\n### 编程不只是“生成文本”，得先看懂“工地”在哪\n为什么模型在聊天框里写代码经常翻车？因为它不知道“上下文”在哪。一个合格的 Coding Agent，第一步不是急着写代码，而是构建 **Live Repo Context**。它得先搞清楚：这是不是个 Git 仓库？当前在哪个分支？根目录下有没有 README 或 AGENTS.md 这种“施工图纸”？这些信息被称为“稳定事实”。Agent 会在干活前把这些信息打包好，避免模型像个无头苍蝇一样乱撞，毕竟“修复测试”这种指令，离开了项目上下文根本没法执行。\n\n### 省钱又提速的秘诀：把 Prompt 分层\n既然上下文很重要，那是不是每次都要把几万字的代码库重新喂给模型？那太费钱也太慢了。这里有个巧妙的设计：**Prompt Shape And Cache Reuse**。聪明的 Harness 会把 Prompt 拆成“稳定前缀”和“动态状态”。系统指令、工具描述、项目概览这些不常变的东西，会被做成一个稳定的 Prefix，利用 KV Cache 机制复用。每次交互只需要把新的用户请求、短期记忆和最近的对话记录拼上去。这就像搭积木，底座不动，只换上面的几块，既省钱又保证了响应速度。\n\n### 别让模型瞎猜，给它一套结构化工具\n光有脑子不行，还得有手。**Structured Tools** 就是 Agent 的手。普通的聊天模型只能建议你“运行 npm install”，而 Agent 能直接调用工具去执行。但这中间有个关键环节：**Validation（验证）**。模型不能随意执行任意命令，而是输出结构化的动作指令，Harness 先验证这个指令合不合法、有没有权限，甚至可以弹窗问用户同不同意，然后再去执行。执行完的结果再截取关键部分反馈给模型，形成闭环。这样既给了模型能力，又给它套上了笼子，防止它把系统搞崩。\n\n### 记忆不是无限长的，得学会“断舍离”\n随着对话越来越长，Context Window 迟早会爆。所以 **Context Reduction** 是个必须面对的硬骨头。Agent 需要一套策略来管理历史记录：哪些是必须保留的核心信息？哪些是可以丢弃的废话？这涉及到对 Transcript（对话记录）和 Memory（记忆）的剪辑。作者提到，这不仅仅是简单的截断，而是要智能地保留那些对后续任务有价值的“状态”，确保 Agent 在长会话中还能记得自己之前在干嘛，而不是聊着聊着就失忆了。\n\n### 一个人干不完，学会“分包”给 Sub-agents\n最后，当任务太复杂时，单打独斗是不行的。这就需要 **Delegation And Bounded Subagents**。主 Agent 可以把某个子任务（比如“写个单元测试”）分包给一个专门的 Sub-agent。这个 Sub-agent 有自己的边界和工具，干完活把结果交回来。这种“层层递进”的架构，让系统能像人类工程师团队一样协作，而不是让一个大脑处理所有细节。这也是为什么现在的 Agent 系统能处理越来越复杂的软件工程任务的原因。"
+}

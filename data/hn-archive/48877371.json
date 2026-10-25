@@ -1,0 +1,121 @@
+{
+  "id": 48877371,
+  "by": "jhoho",
+  "title": "What xAI's Grok Build CLI Actually Sends to xAI",
+  "url": "https://gist.github.com/cereblab/dc9a40bc26120f4540e4e09b75ffb547",
+  "score": 374,
+  "createdAt": 1783824636,
+  "aiSummary": {
+    "chinese_title": "Grok Build CLI把整仓库上传xAI，关掉模型改进也没用",
+    "discussion_overview": [
+      {
+        "category": "整仓库与秘密文件直传",
+        "summary": "很多评论把核心问题概括为：Grok Build 不只是把当前 prompt 需要的片段发给服务端，而是把整仓库、所有 tracked files、git history，甚至 `.env` 里的秘密直接上传。更糟的是，有人指出“模型改进”开关并不会改变这一点，数据还会被持久化到一个命名的 GCS bucket，而不是只在推理时短暂处理。评论者因此把它视为明显的隐私越界，尤其是当用户付费使用时，这种默认行为显得更激进。",
+        "supportid": [
+          "48877828",
+          "48878624",
+          "48877975",
+          "48878509",
+          "48877986",
+          "48878119",
+          "48877816",
+          "48878264",
+          "48878152"
+        ]
+      },
+      {
+        "category": "云端 agent 的预期行为",
+        "summary": "另一派认为，云端 coding agent 本来就需要读当前工作区，甚至会在第一次提示时扫描很多文件；如果真把第三方 agent 放进代码库，就不能假设它只看你“允许”的那一点点。有人觉得把整库交给服务器做上下文整合，反而比反复从本地拉取 tool calls 更高效，因为可减少 RTT 和重复调用。也有人直接把风险归结为：一旦让非本地 agent 进入代码库，trade secret 迟早可能出问题，所以关键在于提前隔离敏感目录。",
+        "supportid": [
+          "48878603",
+          "48878137",
+          "48878243",
+          "48877882",
+          "48877887",
+          "48877910",
+          "48878044"
+        ]
+      },
+      {
+        "category": "sandbox / bubblewrap 隔离",
+        "summary": "很多人给出的实际应对是把这些 CLI 放进 bubblewrap 或类似 sandbox 里，只给工作目录最小权限，并把 `.ssh`、`/etc` 等敏感路径隐藏或挂成空目录。网络也被收紧到只允许访问特定 LLM provider 的 hostname，甚至通过 Unix socket 上的 HTTP proxy 出网，避免工具自己联系更新域名或上传多余数据。更激进的做法是先在独立 rootfs 里装 agent，再用 gVisor 或 VM 进一步包一层，这样即使工具误读文件，也难以越过环境边界。",
+        "supportid": [
+          "48878016",
+          "48878024",
+          "48878183",
+          "48878127",
+          "48878350"
+        ]
+      },
+      {
+        "category": "与其他 coding agent 对比",
+        "summary": "讨论很快扩展到 Claude Code、Codex、opencode、Cursor 以及 Qwen、DeepSeek 之类的替代方案。有人认为所有云端 coding agent 都能通过 server-side tool calls 重建代码，只是 Grok 更直白地把整库上传出来；也有人强调 open-source harness 或 open-weight local model 至少让人更容易检查行为。Cursor 被提到会把整个源码做搜索索引，而 Codex 即使客户端开源，服务器侧是否透明仍然是争议点。对一些人来说，能用 API、能换 harness、价格低，才是他们愿意继续用某些模型的原因。",
+        "supportid": [
+          "48877929",
+          "48877963",
+          "48877967",
+          "48878612",
+          "48878245",
+          "48878409",
+          "48878469",
+          "48878485",
+          "48877955",
+          "48877997",
+          "48878353"
+        ]
+      },
+      {
+        "category": "信任、伦理与合规质疑",
+        "summary": "不少评论对 xAI 和 Musk 的信任度极低，直接把这种行为类比成 malware、surveillance campaign 或“偷了再卖”。他们担心的不只是代码泄露，而是 trade secrets、内部流程、业务逻辑被整包复制进对方的“everything app”或“macrohard”式产品里。还有人把问题上升到合规层面，质疑这在 GDPR 下是否站得住，以及企业版、AUP、ZDR 等条款能不能真正限制数据滥用。有评论甚至联想到 Apple trade secrets 相关争议，认为这类公司不该被默认信任。",
+        "supportid": [
+          "48877868",
+          "48877906",
+          "48877916",
+          "48877843",
+          "48877875",
+          "48877865",
+          "48878118",
+          "48878428",
+          "48878136",
+          "48878545",
+          "48877881",
+          "48877943",
+          "48877984",
+          "48878009",
+          "48878116",
+          "48878615"
+        ]
+      },
+      {
+        "category": "上传开关真伪争议",
+        "summary": "另一个小而尖锐的分支是：到底有没有办法关掉上传。有人贴出 `disable_codebase_upload=true`、`trace_upload=false`、`telemetry=false` 之类的配置，声称可以关闭代码库上传或遥测。也有人质疑这个开关是否真的存在、是否被文档支持，要求先静态验证或从 binary strings 里找证据。这个分歧反映出大家并不相信默认设置，哪怕是一个看似简单的 config flag 也需要额外证实。",
+        "supportid": [
+          "48877913",
+          "48878113",
+          "48878348",
+          "48877987",
+          "48878032",
+          "48878351"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "codebase upload",
+        "explanation": "把整个代码仓库或工作区上传到服务端，而不是只发送必要片段。"
+      },
+      {
+        "term": "bubblewrap",
+        "explanation": "Linux 沙箱工具，用来限制进程可见的文件、目录和网络访问。"
+      },
+      {
+        "term": "ZDR（Zero Data Retention）",
+        "explanation": "零数据保留，表示服务商不长期保存用户请求或输出数据。"
+      }
+    ],
+    "context": "这篇帖子讨论的是对 xAI 的 Grok Build CLI 做流量和二进制分析后的发现：它会把当前仓库的 tracked files、git history，甚至 `.env` 里的内容发回 xAI，并且似乎还会落到一个命名的 GCS bucket（Google Cloud Storage 存储桶）里。Grok Build 是 xAI 的命令行 coding agent，和 Claude Code（Anthropic 的命令行编程助手）、Codex（OpenAI 的 coding agent/CLI）以及 Cursor（带 AI 功能的代码编辑器）处在同一类工具里。争议点不只是“云端 agent 要不要看代码”，而是它是否超出用户预期、是否无视“模型改进”之类的开关，以及 secrets、API keys 和 `.env` 文件会不会被明文带走。很多评论因此转向本地沙箱方案，比如 bubblewrap（Linux 沙箱工具）、网络白名单和只读目录，来限制这些工具的权限。",
+    "emoji": "🚨",
+    "sarcastic_question": "连整仓库和 .env 都上传，这叫隐私保护吗？"
+  },
+  "articleSummary": "## 一句话总结\nGrok 的 CLI 不仅会把它读取到的代码（包括 `.env` 密钥）明文发给 xAI，还会在后台静默上传整个代码仓库的 Git Bundle，且关闭“改进模型”选项也无法阻止这一行为。\n\n### 为了看透黑盒，直接抓包看流量\n作者没有去猜 Grok 的 CLI 做了什么，而是直接上了 `mitmproxy` 抓包。他在 macOS 上安装了 `grok 0.2.93`，把流量导到代理里，并配置 CA 证书让解密生效。为了验证数据流向，他特意准备了一个“金丝雀”仓库，里面塞了带唯一标记的假密钥（`CANARY7F3A9-SECRET`）和一些故意不读取的文件。这种“抓包+标记文件”的组合拳，能让他一眼识别出哪些数据泄露了，以及是通过哪个通道泄露的。\n\n### 读过的文件（含密钥）会通过两个通道明文传输\n首先确认的是，当 Grok 读取文件时，内容确实会发出去。测试发现，`.env` 文件里的假密钥不仅出现在发给模型的请求体（`POST /v1/responses`）里，还被打包进了一个 `session_state` 归档。这个归档通过 `POST /v1/storage` 上传，并且服务器返回了 HTTP 200，说明 xAI 照单全收了。虽然作者没让 Grok 读那个没被触碰的 `untouched_secret.txt`，确实也没在流量里看到它，但这反而证明了一个尴尬的事实：只要是 Grok 觉得“相关”而读了的文件，哪怕是敏感配置，也是原样上传，没有任何脱敏处理。\n\n### 更狠的是，它还会把整个仓库打包上传\n但这还不是最夸张的。作者发现，除了读取的文件，Grok 还会通过另一个通道上传整个代码库。为了验证这一点，他做了一个极端测试：在一个 12 GB 的随机文件仓库里运行 Grok，并明确指示它“不要读任何文件”。结果，虽然模型交互通道只传输了 192 KB 数据，但存储通道（`POST /v1/storage`）却疯狂上传了 5.10 GB 数据，两者比例高达 27,800 倍。这多出来的流量显然不是模型读出来的，而是整个仓库的快照。\n\n### 所谓“没读”的文件，其实都在 Git Bundle 里\n为了彻底坐实这个猜测，作者在一个真实项目里埋了一个标记为 `CANARY-XR47P2-NEVERREAD-UNIQUE` 的文件，并再次命令 Grok “不要读任何文件”。抓包结果显示，Grok 上传了一个 `git bundle` 文件。作者把这个 bundle 下载下来用 `git clone` 恢复，结果那个明确要求“不要读”的文件完好无损地躺在里面，连内容都一字不差。这证明 Grok 上传的是完整的 Git 仓库，包括所有被跟踪的文件和提交历史，完全不管你当时是否真的用到了这些文件。\n\n### 数据最终流向了 Google Cloud Storage\n这些数据最终去了哪里？二进制文件里的字符串泄露了天机：`grok-code-session-traces`。这是一个 Google Cloud Storage (GCS) 的 bucket，而不是 AWS S3。上传的元数据里直接写着 `gs://grok-code-session-traces/...`。最让人不安的是，作者尝试在设置里关闭“Improve the model”选项，但检查 `/v1/settings` 发现 `trace_upload_enabled` 依然是 `true`。也就是说，这个默认开启的全量上传机制，目前看来并没有一个显式的开关能让用户真正关掉它。"
+}

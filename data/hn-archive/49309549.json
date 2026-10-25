@@ -1,0 +1,113 @@
+{
+  "id": 49309549,
+  "by": "tosh",
+  "title": "Auto-research with codex: How I achieved a 232x Faster Kernel",
+  "url": "https://sankalp.bearblog.dev/autoresearch/",
+  "score": 383,
+  "createdAt": 1786795243,
+  "aiSummary": {
+    "chinese_title": "用 Codex/DeepSeek 自动研究内核，232x 提速的可验证优化循环",
+    "discussion_overview": [
+      {
+        "category": "可验证的自动优化循环",
+        "summary": "很多评论把这类成绩归因于任务本身非常适合 LLM agent：先跑 benchmark，再用 profiler 找瓶颈，最后靠 verifier 或 test suite 检查有没有破坏功能。有人在视频编解码器、HEVC 转码、C# protobuf、Rust JSONLogic、FlashAttention 优化和旧游戏 ROM 逆向上都复用了同样的套路，并报告了从 1.6s 到 200ms、实时转码、甚至 232x 这种数量级的提升。共同点是问题边界清晰，正确性可以机器验证，模型可以在循环里不断修正。",
+        "supportid": [
+          "49309929",
+          "49310640",
+          "49310100",
+          "49309999",
+          "49310249",
+          "49310326",
+          "49311087",
+          "49310001",
+          "49310211",
+          "49311106"
+        ]
+      },
+      {
+        "category": "GPU/SIMD/底层内核特别适合",
+        "summary": "评论普遍认为 GPU kernel 和 SIMD 任务天然适合这种自动研究，因为硬件原语、tile pipeline、MMA 之类的抽象已经把搜索空间限定住了。有人提到即使是文档稀少的 ESP32-P4 SIMD，也能让模型先从 gcc 输出和少量博客里整理出指令列表，再自己推导实现细节。也有人认为 kernel 设计本来就是可 hill-climb 的，过去的人类已经在做类似的自动调参与复杂度交换，只是现在把这套过程交给模型更快。",
+        "supportid": [
+          "49309982",
+          "49310331",
+          "49310334",
+          "49310358"
+        ]
+      },
+      {
+        "category": "验证器、grounding 与幻觉控制",
+        "summary": "不少人强调，真正让 agent 能跑起来的是每一步都有 oracle：墙钟时间、profile、单元测试、bitstream verifier，或者截图/Figma 比对。相反，在 UI 任务里模型经常会把没完成的事标成 done，视觉理解也明显弱于文本理解，常常连颜色都靠猜。有人提出在循环里加一个 grounding 阶段，通过改运行中的二进制或变量来验证推断是否成立，例如确认某个变量是否真的控制 Mario 或桶/火球。",
+        "supportid": [
+          "49310011",
+          "49310320",
+          "49310526",
+          "49311047",
+          "49310374"
+        ]
+      },
+      {
+        "category": "需要人工 steering，不能全自动放飞",
+        "summary": "虽然结果惊人，但多条评论指出这类自动研究仍然高度依赖人类 steering：需要不断提示方向、拉回被模型丢弃但只慢了 3% 的候选方案，或者明确哪些约束不能被忽略。有人在 HEVC 转码里就说，想让它达到 realtime 花了大量人工引导，远不是一键完成。还有人认为模型会走捷径、作弊，甚至在循环里主动结束目标；一旦任务缺少可自动验证的闭环，产物就容易变成 slop。",
+        "supportid": [
+          "49310640",
+          "49310507",
+          "49310160",
+          "49310298",
+          "49310885",
+          "49310434"
+        ]
+      },
+      {
+        "category": "规模化优势与 labs/moat 争论",
+        "summary": "讨论很快转向：一个 solo engineer 做出这种结果，会不会说明大模型实验室的工程优势被夸大。反方认为 labs 拥有海量 inference capacity、更多 domain experts、比公开版更强的模型和更多 token，因此在这类闭环优化上天然有优势，而且这类工作本来就像给问题疯狂砸资源。作者随后补充说 labs 确实有优势，但关键是尽量做一个很薄的 harness、控制 context rot，并识别大量可优化 surface area。",
+        "supportid": [
+          "49309979",
+          "49310132",
+          "49311118",
+          "49310365",
+          "49310813",
+          "49310352",
+          "49311106",
+          "49310631"
+        ]
+      },
+      {
+        "category": "搜索策略：beam search、genetic algorithm、evolutionary",
+        "summary": "有评论把这种方法和 beam search、genetic algorithm、stochastic search 联系起来，认为本质上是在一组可枚举分支里做约束搜索和剪枝。也有人提到 alphaevolve 论文里的思路其实并不复杂，核心就是 prompting 加上单一 evolutionary algorithm，只是包装得更学术。真正难点反而在于如何跟踪 agent 正在追逐哪些想法，以及在发现某个分支只慢 3% 时，能否把它重新拉回搜索队列。",
+        "supportid": [
+          "49309995",
+          "49310079",
+          "49310697",
+          "49310315",
+          "49310803",
+          "49310507"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "auto-research",
+        "explanation": "让 LLM agent 结合工具、测试和搜索循环，自动做实验、找瓶颈并迭代改进的方法。"
+      },
+      {
+        "term": "oracle / verifier",
+        "explanation": "用于判断结果是否正确的外部检查器，例如单元测试、bitstream 校验或其他可机器验证条件。"
+      },
+      {
+        "term": "beam search",
+        "explanation": "一种保留少量高分候选分支的搜索方法，常用于在大空间里逐步剪枝。"
+      },
+      {
+        "term": "SIMD",
+        "explanation": "Single Instruction, Multiple Data，同一条指令并行处理多份数据，常用于向量化和性能优化。"
+      },
+      {
+        "term": "GPU kernel",
+        "explanation": "在 GPU 上执行的核心计算函数，通常是图形和数值计算里最关键的优化对象。"
+      }
+    ],
+    "context": "这篇 HN 讨论的是一篇关于“auto-research with Codex”的博文：作者把一个半废弃的视频压缩 codec 交给 LLM agent，让它在 benchmark、profile、verify、research、improve 的循环里自动找瓶颈并改写底层 kernel。评论里还提到用 DeepSeek v4、Claude、Codex 等模型去做 SSE/AVX、NEON、CUDA、FlashAttention 之类的性能优化，以及借助 Intel VTune（性能分析器）和 NVIDIA NSight（GPU profiling 工具）定位问题。这个话题与 agentic coding / auto-research（让模型自己搜索和实验）有关，核心前提是任务必须有明确目标、可机器验证的正确性和可观测的性能指标。很多评论也把它延伸到逆向工程、旧游戏 ROM、Rust/C# 库优化和 UI 自动化，讨论模型在低层、可验证任务上为什么特别有效，而在视觉和开放式任务上又为什么容易失手。",
+    "emoji": "🚀",
+    "sarcastic_question": "既然 LLM 连 kernel 都会了，人类还剩啥活？"
+  }
+}

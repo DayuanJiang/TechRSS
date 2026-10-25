@@ -1,0 +1,127 @@
+{
+  "id": 48546890,
+  "by": "saisrirampur",
+  "title": "Ten years of ClickHouse in open source",
+  "url": "https://clickhouse.com/blog/open-source-10",
+  "score": 235,
+  "createdAt": 1781861463,
+  "aiSummary": {
+    "chinese_title": "ClickHouse 开源十年：日志分析强势，ES/Postgres 替代与 open core 争议",
+    "discussion_overview": [
+      {
+        "category": "替代 ES/Postgres 的边界",
+        "summary": "有人把 ClickHouse 当成替换 Elasticsearch 的候选，理由是短时间 PoC 就拿到了约 5 倍的存储和 QPS 提升。评论里也追问它到底能不能做真正的搜索，还是只适合 grep-like 查询；后续有人贴出 ClickHouse full-text search 的资料，说明它并非完全不能搜，但能力边界和 Elasticsearch 仍不同。另一部分讨论把它放到更大的图景里：当数据量已经压过 PostgreSQL 的舒适区时，ClickHouse 常被视为分析型后端，而不是对 PostgreSQL 的完全替代。也有人强调遗留负载会让迁移卡住，技术上可行并不等于组织上能落地。",
+        "supportid": [
+          "48597041",
+          "48598712",
+          "48598629",
+          "48598737",
+          "48597293",
+          "48598801",
+          "48597710",
+          "48598757",
+          "48598958"
+        ]
+      },
+      {
+        "category": "日志与可观测性",
+        "summary": "多位评论者把 ClickHouse 形容为替换 Loki（日志聚合系统）后的“终于对了”的工具，尤其是在日志量大、JSON 事件多、还要按 correlation_id 回查时，查询速度明显优于 Loki。有人直接用 Grafana 做可视化，也有人提到 SigNoz 作为前端，说明它常作为后端存储而不是单独的观察界面。表结构设计上，大家强调 ClickHouse 对非 JSON 日志也很宽容：可以保留 raw 原文、按日期分区、按时间和 event 排序，还能加 TTL 清理旧数据。评论还指出，即便不为所有字段建索引，只要把核心维度拆出来，性能已经足够让很多 unindexed 查询跑得比 Loki 的 indexed 查询还快。",
+        "supportid": [
+          "48596743",
+          "48597263",
+          "48598241",
+          "48598309",
+          "48598362",
+          "48598703",
+          "48598388",
+          "48597240"
+        ]
+      },
+      {
+        "category": "TimescaleDB/Postgres 迁移",
+        "summary": "有用户把 ClickHouse 和 TimescaleDB（PostgreSQL 的时序扩展）对比，认为前者在迁移、维护和部署上都更省心，而 TimescaleDB 在版本演进和结构变化上让人感觉不够稳定。应对方案不是“一口气全换”，而是先让 PostgreSQL/TimescaleDB 和 ClickHouse 并行，等历史数据归档完再退役旧系统。对于数据同步，评论里推荐优先用批量写双份，只有确实需要 CDC（Change Data Capture，变更捕获）时再引入 PeerDB 这类中间层。整体氛围是：PostgreSQL 仍然是可靠底座，但在分析和归档场景里，ClickHouse 更像是该补上的那一层。",
+        "supportid": [
+          "48596792",
+          "48597396",
+          "48597922",
+          "48597578",
+          "48598720",
+          "48596732"
+        ]
+      },
+      {
+        "category": "测试强度与质量",
+        "summary": "官方工程实践被反复夸赞，尤其是 PR 会以接近生产发布的标准去跑测试，甚至允许把新的 allocator、compression library、hash table、数据格式或 sorting algorithm 先作为实验性改动提交。开发者补充说，ClickHouse 的多层 fuzzers 和极端配置组合已经帮第三方库和 Linux kernel 挖出过不少 bug，包括 jemalloc 和 librdkafka。更夸张的是，单个 commit 的完整 CI 可能要跑到 400 小时量级，体现出一种“宁可慢，也要把边界情况打穿”的工程风格。",
+        "supportid": [
+          "48597153",
+          "48597406"
+        ]
+      },
+      {
+        "category": "开源商业模式",
+        "summary": "有人抱怨 ClickHouse 在 open source 版本里对 zero-copy replication 之类的能力设置门槛，感觉更像 open core 而不是纯粹的开源分发。围绕这一点，评论把它解释成商业化压力：云服务和融资带来的收入需求，会推动把高价值功能留在托管版或商业版里。也有人质疑，如果真有合理实现并带测试覆盖，是否真的会被拒绝，而不是项目本身在控制功能边界。这个分歧本质上不是“能不能做”，而是“开源版该开放到哪里”。",
+        "supportid": [
+          "48596924",
+          "48597937",
+          "48598795",
+          "48598105",
+          "48597769"
+        ]
+      },
+      {
+        "category": "地缘政治/供应链",
+        "summary": "最尖锐的一条线索来自有人因为它被视为“some database made by Russians”而拒绝采用，随后引出关于对俄罗斯、中国项目的偏见、国家与个人是否该分开、以及所谓 security concern 是否会滑向歧视的争论。支持安全谨慎的人强调 adversarial countries、供应链攻击和维护者关系风险，认为风险大于便利。反对者则指出，现实里很多人并不会真正区分国家、组织和个人，最终变成对特定国籍或族群的泛化排斥。评论最后把这个问题放到更大的网络分裂背景下：技术交流正在越来越受政治边界影响。",
+        "supportid": [
+          "48597041",
+          "48598532",
+          "48598621",
+          "48598980",
+          "48598753",
+          "48598719"
+        ]
+      },
+      {
+        "category": "JSON 导入坑",
+        "summary": "有人提醒 ClickHouse 的 JSON ingestion 并不总是直观：用 JSONEachRow 时，数值列可能以字符串形式返回，少了 Number() 转换就会把算术变成字符串拼接。另一个隐患是 input_format_skip_unknown_fields 打开后，字段名拼错可能直接被静默丢弃，不会立即报错。对此的建议是，在 CI 里加一条插入后再读回的断言，或者在应用层维护明确 schema，把类型注入 query builder。这个问题说明它性能很强，但数据接入链路仍然需要严格校验。",
+        "supportid": [
+          "48597694",
+          "48598064"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "MergeTree",
+        "explanation": "ClickHouse 的核心表引擎，支持分区、排序、TTL 等分析型存储能力。"
+      },
+      {
+        "term": "JSONEachRow",
+        "explanation": "ClickHouse 常用的按行 JSON 导入格式，一行对应一条记录。"
+      },
+      {
+        "term": "BM25",
+        "explanation": "全文检索里常见的相关性排序算法，常用于搜索引擎。"
+      },
+      {
+        "term": "CDC",
+        "explanation": "Change Data Capture，捕获数据库变更并同步到其他系统。"
+      },
+      {
+        "term": "zero-copy replication",
+        "explanation": "一种尽量复用底层对象存储数据、减少完整拷贝的复制/高可用方案。"
+      },
+      {
+        "term": "open core",
+        "explanation": "核心功能开源，高级能力放在商业版或云服务中的商业模式。"
+      },
+      {
+        "term": "PeerDB",
+        "explanation": "用于 PostgreSQL 与 ClickHouse 等系统同步数据的 ETL/CDC 工具。"
+      }
+    ],
+    "context": "ClickHouse（列式 OLAP 数据库）最早在 Yandex（俄罗斯互联网公司）的数据分析体系里成长，核心优势是高吞吐的聚合、排序和扫描查询。这个帖子在回顾它开源十年后，评论重点集中在它如何被用来替代或补充 Elasticsearch（搜索引擎）、Loki（日志系统）、TimescaleDB（PostgreSQL 的时序扩展）和 PostgreSQL（关系型数据库）。很多人把它当作日志、观测和大规模分析的后端，并讨论它对 full-text search、CDC、Cloud 托管和 open core 商业模式的边界。另一条隐线是供应链安全与地缘政治信任：技术选型有时并不只看性能，也会被“来自哪里”影响。",
+    "emoji": "🤔",
+    "sarcastic_question": "五倍性能都不如“俄罗斯造”吓人？"
+  },
+  "articleSummary": "## 一句话总结\nClickHouse 之所以能成为顶级的开源分析型数据库，是因为它从诞生第一天起，就坚持从零构建架构，并将代码库视为一个追求极致透明、可教学且鼓励实验的公共基础设施。\n\n### 开源不仅仅是把代码扔上网\n作者一上来就给开源分了级，从 Level 0（像 Doom 那样的博物馆式发布）到 Level 3（拥有透明的开发流程、Roadmap 和完善的 CI）。他明确表示，ClickHouse 的目标永远是 Level 3。这不仅仅是姿态，更是为了建立信任：代码要写得像教科书一样模块化，复杂概念必须在注释里讲清楚，甚至鼓励大家提交 PR 来测试新的压缩算法或排序算法。说白了，作者想把 ClickHouse 打造成 C++ 开发者和数据库爱好者的最佳实验田，哪怕你的 PR 只是为了验证一个奇怪的想法，这里也欢迎。\n\n### 痛点源于 MySQL 的“力不从心”\n回到 2009 年，ClickHouse 还没影儿，作者当时正被一个类似 Google Analytics 的 Web 分析系统折磨。当时的技术栈是 MySQL 加 C++ 处理，数据量一上来，系统就崩。核心问题很现实：如果五分钟的日志处理不完，延迟就会无限累积。为了活下去，作者尝试了各种偏方：TokuDB、LMDB、Judy Arrays，甚至把 HyperLogLog 存在 MySQL 的 BLOB 里。这些方案虽然解决了局部问题，但无法从根本上支撑每天 1000 亿条记录、500 列的写入压力。\n\n### 两个原型的殊途同归\n为了自救，作者写了两个原型。第一个叫 OLAPServer，走列式存储路线，把非聚合数据存下来，按天更新，虽然只能用整数，但查询快得惊人，连公司内部用 MapReduce 的分析师都跑来用。第二个叫 Metrage，为了解决 MySQL 聚合慢的问题，它用 C++ Struct 实现了 CRDT（无冲突复制数据类型），支持实时更新和后台合并。这两个原型一个快（列式），一个灵活（行式 + Merge Tree），作者就在想：能不能把这两者的优势结合起来？\n\n### 从零开始构建 Merge Tree\n这就是 ClickHouse 的起点：一个结合列式存储速度和 Merge Tree 实时更新能力的通用数据库。有意思的是，ClickHouse 是极少数完全从零开始写的数据库，没有基于 Postgres 或其他现有框架。最早的 commit 是关于内存列表示（IColumn 和 Field），那时候连 Apache Arrow 都还没出生。紧接着引入了聚合函数、表引擎（最早叫 \"primary key\"，几天后才改名）、以及 LZ4 压缩。每一步都是为了解决那个 Web 分析系统遇到的具体性能瓶颈。\n\n### 查询管道与 SQL 的艰难诞生\n有了存储，还得有查询。作者引入了 \"Block Streams\" 概念（现在叫 Processors），这是数据流处理管道的雏形，允许流式地读取、转换和格式化数据。第一个查询甚至只是打印数字。至于 SQL 解析器，作者一开始尝试用 boost::spirit，结果失败了，最后不得不手写了一个递归下降解析器。这段历史告诉我们，即使是今天强大的 ClickHouse，也是从打印 TSV 数字和手写解析器这种“脏活累活”一步步磨出来的。"
+}

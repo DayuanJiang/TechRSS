@@ -1,0 +1,140 @@
+{
+  "id": 48846995,
+  "by": "mrl5",
+  "title": "TLS certificates for internal services done right",
+  "url": "https://tuxnet.dev/posts/tls-for-internal-services/",
+  "score": 132,
+  "createdAt": 1783610413,
+  "aiSummary": {
+    "chinese_title": "内部服务 TLS：DNS-01、split-horizon DNS 与内部 CA 之争",
+    "discussion_overview": [
+      {
+        "category": "反对 split-horizon DNS，改用 DNS-01",
+        "summary": "很多人反对 split-horizon DNS，因为它把同一个域名在内外网返回不同结果，容易在缓存、VPN 切换和接口选择上出问题。评论里多次建议直接用 DNS-01 / DNS challenge 给内部服务申请 ACME 证书，这样不必开放 HTTP 端口，也不用维护两套 DNS。有人提到 acme-dns、acme.sh 以及即将到来的 dns-persist-01，认为这会进一步减少动态更新和 DNS 凭据管理的麻烦。也有人指出，客户端在连上 Tailscale 或 VPN 之前先缓存了公网解析，之后就会访问失败，这正是 split DNS 最烦人的地方。",
+        "supportid": [
+          "48847881",
+          "48852380",
+          "48850606",
+          "48850025",
+          "48850881",
+          "48847992",
+          "48852262",
+          "48851271",
+          "48851457"
+        ]
+      },
+      {
+        "category": "公共域名+内网 IP 的务实方案",
+        "summary": "另一派更务实：直接把内部主机名放进公共 DNS 区域，但让记录指向 RFC1918 地址或 WireGuard/Tailscale 地址，外部用户就算能解析也连不进去。这样可以继续用 public DNS、Route53、Cloudflare 之类的服务来做 DNS-01，配置简单，维护成本很低。为了减少泄漏，有人用泛域名证书和反向代理，或者只让 `_acme-challenge` 记录出现在公网。反对者则担心 wildcard 私钥会散落在很多机器上，带来新的风险。",
+        "supportid": [
+          "48848512",
+          "48849828",
+          "48852816",
+          "48847657",
+          "48848568",
+          "48847910",
+          "48851309",
+          "48849742"
+        ]
+      },
+      {
+        "category": "内部 CA 的 trust store 分发地狱",
+        "summary": "讨论里还有一条主线是：真正难的不是签证书，而是把自己的 CA 可信地分发到所有客户端。不同 OS、浏览器、语言运行时和工具对 trust store 的处理都不一样，Python 的 requests、Node、git、curl、Firefox、Docker 容器和 VM 都可能各走各路。结果就是，哪怕你有内部 CA，也常常要花很多时间修 CA 安装、更新、挂载和调试 TLS 错误。有人因此主张用 Name Constraints 限定 CA 只能签某个内部域，或用 YubiKey / HSM 保护根密钥，并把 TOFU 视为更简单的用户体验。",
+        "supportid": [
+          "48848139",
+          "48850276",
+          "48850938",
+          "48853919",
+          "48853518",
+          "48852618",
+          "48854111",
+          "48848756",
+          "48854102",
+          "48854438",
+          "48849026",
+          "48849074",
+          "48849122",
+          "48852597",
+          "48849845"
+        ]
+      },
+      {
+        "category": "CT logs 泄漏服务名与身份",
+        "summary": "另一批评论关注的是可发现性和身份问题：公共证书虽然能加密，但并不自动证明这就是你想要的内部服务。只要用 Let's Encrypt 之类的公开 CA，证书和子域名往往会进入 CT logs，给被动侦察留下线索，像 `authelia.example.com` 这种名字还会直接暴露你在跑什么软件。有人担心这会让攻击者更容易做定向研究，但也有人认为家用或小型环境里，这种威胁远没有想象中严重。为彻底避免泄漏，支持者更倾向 `.internal`、`.home.arpa` 或自建 CA。",
+        "supportid": [
+          "48851402",
+          "48849022",
+          "48849649",
+          "48848568",
+          "48849029",
+          "48853628",
+          "48849488",
+          "48848961",
+          "48849821"
+        ]
+      },
+      {
+        "category": "反向代理/零信任边界化",
+        "summary": "还有人把问题直接重构成边界设计：用一个中心反向代理 / load balancer 终止 TLS，再由它和后端用私有 CA 或本地连接通信。这样只需要少数地方持有私钥，也更容易在代理层做 mTLS、OIDC authN/authZ 或按 SNI 路由。这个思路和 BeyondCorp / zero-trust 很接近，也常和 Traefik、HAProxy、sni-router、Tailscale 这类工具一起出现。反对者认为这其实是在把复杂度集中到网关层，并没有真正解决“内部服务 TLS”的本体问题。",
+        "supportid": [
+          "48847412",
+          "48847491",
+          "48847987",
+          "48852059",
+          "48850931",
+          "48853775",
+          "48847719"
+        ]
+      },
+      {
+        "category": "没有唯一正确做法，按规模和目标取舍",
+        "summary": "不少人强调这类方案没有统一答案，关键取决于你控制多少终端、规模多大、以及是否愿意接受运维复杂度。对少量家用设备来说，DNS-01 加 wildcard、或者直接用公共域名映射到内网 IP，已经足够省事；但一旦设备、语言栈和客户端种类变多，split DNS 和证书分发的维护成本会迅速放大。也有人指出标题里的 internal services 其实可能只是单机或公网可路由的服务，因此 done right 这个说法本身就有争议。",
+        "supportid": [
+          "48849274",
+          "48852581",
+          "48849192",
+          "48848218",
+          "48853856"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "split-horizon DNS",
+        "explanation": "同一域名在内网和外网返回不同解析结果的 DNS 方案，常用于把内部服务藏在私网里，但容易带来缓存和一致性问题。"
+      },
+      {
+        "term": "DNS-01 challenge",
+        "explanation": "ACME 通过在 DNS 中添加 TXT 记录来验证域名所有权的方式，适合不想开放 HTTP 端口的内部服务。"
+      },
+      {
+        "term": "ACME",
+        "explanation": "Automated Certificate Management Environment，自动申请和续期 TLS 证书的协议。"
+      },
+      {
+        "term": "Certificate Transparency (CT logs)",
+        "explanation": "公开记录已签发证书的日志系统，便于审计，也会暴露子域名和服务命名线索。"
+      },
+      {
+        "term": "internal CA",
+        "explanation": "组织自己维护的证书颁发机构，用来给内部系统签发并信任证书。"
+      },
+      {
+        "term": "Name Constraints",
+        "explanation": "X.509 证书扩展，用来限制某个 CA 只能签特定域名，降低私钥泄露后的滥用范围。"
+      },
+      {
+        "term": "wildcard certificate",
+        "explanation": "通配符证书，可覆盖一个域名下的多个子域名，例如 `*.example.com`。"
+      },
+      {
+        "term": "TOFU",
+        "explanation": "Trust On First Use，首次连接时先信任并记住指纹/证书，之后若变化再报警的模式。"
+      }
+    ],
+    "context": "这篇帖子围绕给内网或家庭实验室服务配置 TLS 证书展开，作者主张通过 split-horizon DNS（内外网返回不同 DNS 结果）、WAF 和 ACME 协议来把“内部服务证书”处理得更顺手。评论区则集中讨论 Let's Encrypt（免费的公开 ACME 证书颁发机构）、DNS-01 challenge（通过 DNS TXT 记录验证域名所有权）以及自建内部 CA（组织内部签发证书的体系）之间的取舍。很多人进一步提到 acme.sh（ACME 客户端）、acme-dns（专门处理 DNS 验证的小服务）、step-ca（自建 CA / ACME 服务器）、Tailscale（基于 WireGuard 的组网服务）和 cert-manager（Kubernetes 证书管理器）等工具。争论的核心其实不是“能不能签证书”，而是如何同时避免服务名泄漏、减少 DNS 运维、并让不同 OS、浏览器、语言运行时和容器环境都能正确信任这些证书。",
+    "emoji": "😬",
+    "sarcastic_question": "把 split-horizon DNS 叫 done right，认真的吗？"
+  },
+  "articleSummary": "# 一句话总结\n利用“Split-horizon DNS”让公网 CA 签发内部服务证书，再配合 Nginx 监听 VPN 接口做 WAF，既免去了自签证书的信任难题，又把安全边界守得死死的。\n\n---\n\n### 别再用自签证书折磨你的同事了\n给内部服务配 HTTPS，通常只有两条路：要么用 `.internal` 这种私有域名配合自签证书，要么用自己拥有的公网域名。自签证书虽然教程多，但部署起来简直是噩梦——你得去每一台机器上配置信任该证书，或者干脆让用户无视浏览器报错。说白了，这种做法把“信任”的负担甩给了客户端，既不优雅也不安全。\n\n### 核心思路是“欺骗”公网 CA\n作者给出的方案是利用“Split-horizon DNS”（水平分割 DNS）。简单讲，就是让同一个域名 `grafana.tuxnet.dev` 在公网解析到一个公网 IP，而在连接了 VPN 的内网环境里解析到内网 IP（如 `10.0.1.10``）。这样做的好处显而易见：因为域名在公网是存在的，我们就可以直接用 Let's Encrypt 这种公网 CA 签发合法证书，彻底告别自签证书。\n\n### 只监听 VPN 接口就是最好的 WAF\n但这里有个隐患：既然域名指向公网，岂不是谁都能访问？别急，这里有个巧妙的设计。作者在 Nginx 配置里，让 `listen` 指令只绑定 VPN 的网络接口（例如 `our-server.netbird.cloud:443`）。这意味着，只有通过 VPN 进来的流量能被 Nginx 处理，直接从公网打过来的流量会被直接拒绝。这其实就是一层轻量级的 WAF（Web Application Firewall），物理隔绝了外部访问。\n\n### 签发证书时要把服务器“踢出”内网 DNS\n为了拿到证书，还得解决一个鸡生蛋的问题：Let's Encrypt 验证域名时需要访问服务器的 80 端口，但如果服务器连着 VPN，它解析到的域名可能是内网 IP，导致验证失败。作者利用 NetBird 的“Custom Zones”功能，把服务器自己排除在自定义 DNS 规则之外，强制它使用公网 DNS 解析。配合 `acme.sh` 的 `--standalone` 模式，临时占用 80 端口完成验证，全程不需要动 Nginx 的主配置。\n\n### 证书自动续期其实是个权限游戏\n证书搞定后，自动续期也不能含糊。作者写了个 Cron 脚本，每天调用 `acme.sh --cron` 检查更新。这里有个技术细节值得注意：`acme.sh` 在 standalone 模式下需要绑定 80 端口，通常需要 root 权限。为了安全，作者使用了 `setcap CAP_NET_BIND_SERVICE=+ep` 命令，赋予非 root 用户绑定特权端口的能力。一旦证书文件哈希值发生变化，脚本就自动复制新证书并 reload Nginx，全程无人值守。\n\n### 多个服务不用申请多张证书\n如果你有一堆内部服务，比如 Grafana、Analytics，难道要给每个都申请一张证书？完全没必要。利用 TLS 的 SAN（Subject Alternative Name）特性，我们可以在一张证书里塞进多个域名。配合 DNS 的 CNAME 记录，让 `grafana.tuxnet.dev` 和 `analytics.tuxnet.dev` 都指向同一个 IP，然后用 `acme.sh` 一次性申请包含所有域名的证书，Nginx 不同 server 块复用这一张证书即可。"
+}

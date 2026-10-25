@@ -1,0 +1,108 @@
+{
+  "id": 48017813,
+  "by": "averi",
+  "title": "CVE-2026-31431: Copy Fail vs. rootless containers",
+  "url": "https://www.dragonsreach.it/2026/05/04/cve-2026-31431-copy-fail-rootless-containers/",
+  "score": 128,
+  "createdAt": 1777953666,
+  "aiSummary": {
+    "chinese_title": "CVE-2026-31431：rootless 容器内提权，仍可污染共享 page cache",
+    "discussion_overview": [
+      {
+        "category": "rootless 只能挡宿主提权，挡不住共享状态污染",
+        "summary": "不少人强调，rootless Podman/Docker 只是把容器内的 root 映射成宿主上的普通用户，因此这类漏洞通常不会直接跳到宿主 root。问题在于，Copy Fail 的 page cache 写入原语并没有失效，仍可修改只读页缓存、共享镜像层或其他被 bind-mount 进来的只读文件。这样一来，同一 base image 的多个容器、CI 任务，甚至 /etc/ssl/certs 之类的共享内容都可能被污染，造成跨租户影响。评论里还提醒，若能拿到一个指向只读对象的 fd，很多“本不该可写”的目标都可能被间接写入。",
+        "supportid": [
+          "48017941",
+          "48019748",
+          "48018557",
+          "48019192",
+          "48021525",
+          "48021723",
+          "48021046",
+          "48017950"
+        ]
+      },
+      {
+        "category": "文章是否把问题包装成了 container escape",
+        "summary": "有人认为标题和正文把这个问题讲得像“container escape”，但评论指出，演示里多数时候只是容器内提权到 uid 0，并没有展示对宿主的逃逸链。也有人强调文章前提不严谨，把 rootless 容器描述成能缓解 kernel exploit，容易让读者误以为漏洞被“修掉”了。另一类回复则把重点拉回到真实风险：即使没有宿主 root，page cache 和共享层被破坏本身就足够危险。还有人提醒，这类文章要么该给出明确 tl;dr，要么别把“演示环境”包装成“普适结论”。",
+        "supportid": [
+          "48018137",
+          "48021283",
+          "48018703",
+          "48018020",
+          "48017896"
+        ]
+      },
+      {
+        "category": "AF_ALG 应不应该在容器里直接禁用",
+        "summary": "围绕 AF_ALG（Linux 内核加密接口）出现了明显的“该删就删”倾向。许多人说它很少被真正使用，默认 seccomp 里拦掉并不奇怪，而且很多场景本来就推荐用用户态 crypto；如果是硬件 offload 才可能有性能优势。反对者则觉得因为一次漏洞就把一个性能特性彻底关掉很别扭，但支持者反驳说这不是常用能力，历史上也有不少 AF_ALG 相关问题，阻断一个几乎没用过的 syscall 比到处打补丁更现实。还有人给出直接做法：禁用 algif_aead 模块、升级 kernel，或者通过 seccomp hook 把相关调用挡掉。",
+        "supportid": [
+          "48017950",
+          "48019415",
+          "48020965",
+          "48021429",
+          "48020103",
+          "48020197",
+          "48020435",
+          "48020216",
+          "48021341",
+          "48019079",
+          "48020280",
+          "48018708"
+        ]
+      },
+      {
+        "category": "容器、VM 和 microVM 的安全边界之争",
+        "summary": "讨论很快扩展到“容器到底算不算安全边界”。一边认为容器本来就更像便利边界，真正需要隔离危险工作负载时应考虑 microVM、VM 或 gVisor，因为它们的攻击面更小。另一边则反对把“不是安全边界”理解成绝对否定，强调安全性是连续谱，VM 也只是比容器更强而已，仍然可能遇到共享宿主或 hypervisor 的灾难性漏洞。还有评论从运维角度提醒，迁移到 VM 会让扫描、运行时监控、依赖管理和备份恢复更复杂，但这也正是很多团队愿意为更强隔离付出的代价。",
+        "supportid": [
+          "48018577",
+          "48021383",
+          "48018993",
+          "48019074",
+          "48019353",
+          "48020452",
+          "48020697",
+          "48019523",
+          "48021742",
+          "48021390",
+          "48019528",
+          "48019725"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "rootless container",
+        "explanation": "容器内的 root 通过 user namespace 映射为宿主普通用户，通常不能直接拿到宿主 root。"
+      },
+      {
+        "term": "user namespace",
+        "explanation": "Linux 的命名空间机制，用来给进程提供独立的用户和权限视图，是 rootless 容器的基础。"
+      },
+      {
+        "term": "seccomp",
+        "explanation": "Linux 的系统调用过滤机制，常用于容器里限制高风险 syscall。"
+      },
+      {
+        "term": "AF_ALG",
+        "explanation": "Linux 内核提供的加密算法接口，让用户态通过 socket 调用内核 crypto。"
+      },
+      {
+        "term": "page cache",
+        "explanation": "内核缓存文件页的机制；一旦被污染，读到同一文件的进程可能看到被篡改的数据。"
+      },
+      {
+        "term": "Copy-on-Write (CoW)",
+        "explanation": "先共享、写时复制的存储/内存策略；这里讨论它相关对象的源数据是否也会被间接影响。"
+      },
+      {
+        "term": "microVM",
+        "explanation": "攻击面更小的轻量虚拟机，用来比传统容器提供更强隔离。"
+      }
+    ],
+    "context": "这篇讨论围绕 CVE-2026-31431（Copy Fail）展开，核心是 Linux 内核里的 AF_ALG（内核加密接口）在特定条件下提供了 page cache 写入原语。作者演示在 rootless Podman/Docker（通过 user namespace 把容器内 root 映射成宿主普通用户）里，提权只能到容器内 root，通常不能直接变成宿主 root。争议点在于，这种原语仍可能污染共享的只读镜像层、page cache 或 /etc/ssl/certs 等文件，从而影响同一宿主上的其他容器、CI 任务甚至共享镜像。评论里还延伸到是否应该在容器 seccomp（系统调用过滤）里默认禁用 AF_ALG、以及是否该转向 microVM（轻量虚拟机）或 gVisor（用户态沙箱）这类更强隔离方案。",
+    "emoji": "⚠️",
+    "sarcastic_question": "容器都 rootless 了，宿主就真安全了？"
+  },
+  "articleSummary": "## 一句话总结\nCVE-2026-31431 漏洞利用内核漏洞篡改 page cache 提权成功，但在 rootless 容器环境中，这种“提权”被 User Namespace 映射机制死死锁在了容器内部，无法威胁宿主机。\n\n### 别急着跑 Exploit，先看看它到底想干啥\n很多人拿到 Exploit 就直接运行，这其实很危险，因为你根本不知道那段压缩的 shellcode 里有没有藏着后门。作者把 Exploit 里的 payload 解压出来，发现这根本不是裸的汇编指令，而是一个被极度精简过的 ELF 可执行文件。为了把体积压缩到极致，作者用了 ELF golfing 技术去掉了 Section Header，导致 `objdump` 这种常规工具直接罢工。强行反汇编后你会发现，这段代码逻辑非常清晰：先调用 `setuid(0)` 拿到 root 权限，然后执行 `/bin/sh`，如果失败就优雅退出。说白了，这就是个用来替换 `/usr/bin/su` 的微型恶意程序。\n\n### 漏洞的核心是绕过文件权限直接写内存\n这个漏洞利用的是 Linux 内核在处理 scatterlist 时的一个缺陷。Exploit 并没有去修改磁盘上的文件，而是利用 `AF_ALG` socket 和 `splice` 系统调用，直接把恶意代码“灌”进了 `/usr/bin/su` 的 page cache 里。具体操作是：先创建一个加密算法 socket，然后通过 `sendmsg` 发送 4 字节的恶意数据，再用 `splice` 把目标文件的页面拉进管道。在这个过程中，内核的一个 scratch write 操作把这 4 字节数据直接写进了 page cache。如此循环几十次，整个恶意 ELF 就被拼凑到了内存里。当你执行 `su` 时，内核加载的是被污染的内存页，而不是磁盘上的干净文件。\n\n### Rootless 容器里的“假”提权\n有意思的地方在于，当作者在 rootless Podman 容器里跑这个 Exploit 时，它居然“成功”了。`setuid(0)` 返回成功，shell 提示符也变成了 `root`。但这只是容器内部的幻觉。Rootless Podman 的核心是 User Namespace，它在容器和宿主机之间做了一层 UID 映射。容器里的 UID 0（root），在宿主机看来其实是那个非特权的 `podman` 用户（比如 UID 1000）。所以，虽然 Exploit 在容器里拿到了最高权限，但它翻越不出 Namespace 这堵墙，对宿主机没有任何威胁。\n\n### 用 eBPF 抓住内核拒绝的瞬间\n为了搞清楚提权被拦截的细节，作者遇到了一个技术难题：`strace` 会干扰 SUID 程序的执行。当调试器 attach 到一个进程时，内核会触发 `secureexec` 机制，为了安全会暂时剥夺权限，导致 `strace` 根本看不到真实的 `setuid` 调用结果。为了绕过这个限制，作者在宿主机上用了 `bpftrace`。通过挂载到内核的 tracepoint，eBPF 可以绕过 `ptrace` 的限制，直接监控系统调用。结果显示，如果没有调试器干扰，`setuid(0)` 确实返回了 0（成功），但这只是 Namespace 内部的成功，宿主机的安全边界并未被突破。\n\n### UID 映射表是最后一道防线\n铁证如山的数据来自 `/proc/self/uid_map`。在容器里查看这个文件，第一行 `0 1000 1` 清楚地写着：容器内的 UID 0 映射到宿主机的 UID 1000。这意味着，无论你在容器里怎么折腾，哪怕拿到了 root，在宿主机内核眼里，你依然是那个普通的 `podman` 用户。你在宿主机的进程列表里看到的进程属主也是 `podman`，而不是 root。这个实验完美证明了 rootless 容器架构的隔离能力：即便内核本身有漏洞允许内存篡改，User Namespace 的映射机制依然能有效限制攻击半径。"
+}

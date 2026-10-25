@@ -1,0 +1,84 @@
+{
+  "id": 48708644,
+  "by": "supermatou",
+  "title": "Dissecting Apple's Sparse Image Format (ASIF)",
+  "url": "https://schamper.dev/dissecting-apples-sparse-image-format-asif/",
+  "score": 124,
+  "createdAt": 1782711618,
+  "aiSummary": {
+    "chinese_title": "Apple ASIF：原生挂载的磁盘镜像与 C 结构解析争议",
+    "discussion_overview": [
+      {
+        "category": "ASIF 的定位与 qcow2 对比",
+        "summary": "有人先澄清 ASIF 里的 image 指的是文件系统或磁盘快照，不是媒体文件。讨论里最直接的对比对象是 qcow2（QEMU 的虚拟磁盘格式）：ASIF 的一个核心卖点是能在 macOS 上原生挂载，而不是依赖额外虚拟化层。关于把 app 从 DMG 拷进 /Applications 很慢，评论认为主要原因是压缩和 Gatekeeper（macOS 安全检查），不只是简单改指针。也有人强调，即使在理想的 Copy-on-Write（CoW）模型里，跨分区、跨文件系统或跨属性迁移时仍然会发生真实复制。",
+        "supportid": [
+          "48720371",
+          "48716430",
+          "48716541",
+          "48717005",
+          "48717521",
+          "48717988",
+          "48717628"
+        ]
+      },
+      {
+        "category": "压缩带来的搜索性代价",
+        "summary": "另一条线聚焦在压缩与索引的取舍。评论指出，镜像一旦在未挂载状态下内容就是 opaque，Spotlight（macOS 系统搜索）无法像普通文件夹那样提前建立索引。这样做换来的是更好的体积和分发效率，但代价是搜索性下降，尤其不利于需要直接浏览镜像内容的场景。有人还顺带提到 DMG 常见的压缩选项如 zlib、lzfse 和较慢的 bzip2，会进一步放大解包时间。",
+        "supportid": [
+          "48717084",
+          "48716541"
+        ]
+      },
+      {
+        "category": "Python 里用 C 结构解析二进制的争论",
+        "summary": "围绕 Python 里用 C syntax 描述二进制布局，讨论分歧很大。批评者觉得把 C 结构定义塞进字符串里解析既不 Pythonic，也未必比 Python 的 struct 模块更清晰，甚至有人直接用 Struct 加 namedtuple 重写来比较可读性。支持者则认为，若目标是为任意二进制格式快速写解析脚本，C 结构反而是更低学习成本的 DSL，因为很多格式本来就来自 C 代码或可从 IDA/Ghidra（常见逆向工具）里直接抄出定义。作者进一步解释，这类工具主要面向 cybersecurity 场景，很多用户更习惯能立刻开工的 throwaway 脚本，而不是再学一套新语法。",
+        "supportid": [
+          "48717147",
+          "48717329",
+          "48717452",
+          "48717679",
+          "48718519",
+          "48717861",
+          "48717294",
+          "48717453",
+          "48717818",
+          "48719741"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "ASIF",
+        "explanation": "Apple Sparse Image Format，苹果的稀疏磁盘镜像格式，用于把磁盘内容打包成可挂载镜像。"
+      },
+      {
+        "term": "sparseimage",
+        "explanation": "macOS 旧的稀疏镜像格式，ASIF 被拿来与之比较。"
+      },
+      {
+        "term": "DMG",
+        "explanation": "Apple Disk Image，macOS 常见的应用分发镜像文件。"
+      },
+      {
+        "term": "qcow2",
+        "explanation": "QEMU 的虚拟磁盘格式，支持 Copy-on-Write 等特性。"
+      },
+      {
+        "term": "Spotlight",
+        "explanation": "macOS 的系统搜索与索引服务。"
+      },
+      {
+        "term": "Gatekeeper",
+        "explanation": "macOS 的安全检查机制，会影响未验证应用的打开与安装。"
+      },
+      {
+        "term": "Copy-on-Write（CoW）",
+        "explanation": "写入时复制的存储策略，可减少不必要的数据重写。"
+      }
+    ],
+    "context": "Apple 的 Sparse Image Format（ASIF，苹果新推出的稀疏磁盘镜像格式）是在讨论老旧 sparseimage 的更新，它更像是磁盘或文件系统快照，而不是普通图片文件。评论把它和 qcow2（QEMU 的 Copy-on-Write 虚拟磁盘格式）对比，核心问题是它是否只是换皮，还是在 macOS 上提供了原生挂载等实际优势。另一个焦点是 DMG（Apple Disk Image，常见的 macOS 应用分发镜像）为何解包慢，大家把原因归结为压缩、Gatekeeper（macOS 安全检查）以及文件系统边界导致的复制成本。讨论还延伸到二进制格式解析工具，尤其是用 C-like 结构描述布局的 Python 工具 dissect.cstruct，以及它与 Python 内置 struct 模块、逆向工具 IDA/Ghidra（常见逆向分析工具）之间的取舍。",
+    "emoji": "🤔",
+    "sarcastic_question": "为了原生挂载，搜索和可读性都能不要了？"
+  },
+  "articleSummary": "## 一句话总结\n这篇文章通过逆向工程 `diskimagescontroller` 二进制文件，完整剖析了 Apple 在 macOS 26 中推出的 ASIF 稀疏镜像格式，揭示了其基于“原子目录更新”和“位图映射”的底层存储逻辑。\n\n---\n\n### 从一个 1GiB 的测试文件开始\n\n作者为了搞清楚 ASIF 的底层结构，并没有直接去啃枯燥的文档，而是先用 `diskutil` 创建了一个 1GiB 的测试镜像，并往里面写入了可预测的测试数据。说白了，这就是为了给逆向工程提供“已知条件”。通过 `xxd` 查看 hexdump，作者一眼就看到了文件头的 Magic Number `shdw`，以及一些明显的大端序整数。虽然能猜到 `0x200` 这种常见的扇区大小，但光靠肉眼看 hexdump 很难理清所有字段的含义，变量太多且缺乏上下文，这时候就需要找点“外援”了。\n\n### 逆向工程：找对二进制文件是关键\n\n既然静态分析卡住了，作者决定去动态找答案。他在系统框架中搜索包含 \"ASIF\" 字符串的二进制文件，最终锁定了 `diskimagescontroller`。这个文件里藏着大量关于 ASIF 的日志信息、函数签名和类型定义，简直就是一份泄露的源码。作者把这个文件扔进 IDA Pro，重点引用那些报错字符串（比如 \"Invalid value for asif header field\"），顺藤摸瓜找到了解析 Header 的函数。这一步非常关键，因为它直接把之前 hexdump 里那些模糊的数字，对应到了具体的结构体字段上。\n\n### 终于看清了 Header 的真面目\n\n结合 IDA 的反编译结果，作者修正了他最初瞎猜的结构体定义，还原了 ASIF Header 的完整面貌。这里面不仅有常见的签名、版本、扇区大小，还藏着两个关键的 `directory_offsets`。更有意思的是，作者发现 Header 里定义了一个 `chunk_size`（通常是 1 MiB）和一个 `sector_count`，这解释了 ASIF 如何管理巨大的虚拟磁盘。通过对比二进制逻辑和 hexdump 数据，作者确认了 `sector_count` 确实是虚拟磁盘的大小，而之前看到的 `meta` 字符串和 XML plist，其实是存储在特定的 metadata chunk 里的。\n\n### 核心设计：用双目录实现原子更新\n\n搞完 Header，作者深入分析了 ASIF 最核心的数据组织方式。原来，Header 里的 `directory_offsets` 指向了两个“分配目录”。这里有个巧妙的设计：每个目录都有一个版本号，系统总是使用版本号最高的那个目录。这有什么用呢？说白了就是为了实现原子更新。当需要修改元数据时，系统会更新另一个目录并增加其版本号，如果更新失败（比如崩溃），旧目录依然完好无损。这种设计在文件系统里很常见，但在虚拟磁盘格式里看到依然让人会心一笑。\n\n### 位图映射：如何高效管理稀疏数据\n\n在这个目录结构下，数据被组织成“表”，每个表里有一堆 `uint64` 类型的数据条目。这些条目指向实际的数据块，但为了节省空间，它们并不是简单的一一对应，而是按组排列，每组后面跟着一个“位图条目”。这个位图就是稀疏文件的关键：它标记了前面的哪些数据块是真实存在的，哪些是空的。作者算了一笔账，每个数据条目用 55 位存块号，9 位存标志位，配合默认的 1 MiB 块大小，ASIF 理论上能支持接近 4 PiB 的虚拟磁盘大小，这容量对于绝大多数场景都绰绰有余了。"
+}

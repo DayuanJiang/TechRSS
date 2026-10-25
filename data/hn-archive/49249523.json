@@ -1,0 +1,113 @@
+{
+  "id": 49249523,
+  "by": "softwaredoug",
+  "title": "Don't classify, hallucinate!",
+  "url": "https://softwaredoug.com/blog/2026/08/10/hypothetical-classifications",
+  "score": 147,
+  "createdAt": 1786710641,
+  "aiSummary": {
+    "chinese_title": "先让 LLM 胡编，再用 embedding 找真标签",
+    "discussion_overview": [
+      {
+        "category": "LLM 先扩写再检索",
+        "summary": "很多人把这招理解成一种 query expansion：先让 LLM 生成更接近答案语言的“假想分类”，再把它映射到 embedding 空间里找最接近的真实标签。评论里多次把它和 HyDE、query understanding、把输入翻译成 taxonomy 词汇联系起来，认为这样比直接拿原始 query 检索更容易命中。有人还举了“blue shoes”这类例子，先拆出颜色和物品类型，再在分类词表里重新表达，效果通常更稳。另一些人把它类比为把文档先摘要再做 embedding，用于高基数数据的召回。",
+        "supportid": [
+          "49299011",
+          "49299735",
+          "49299345",
+          "49299332",
+          "49298418",
+          "49298435",
+          "49300488"
+        ]
+      },
+      {
+        "category": "质疑中间层是否多余",
+        "summary": "也有不少人觉得这一步是多余的：既然最终还是要做 embedding similarity 或 search，就应该直接对 query 和类别标签做向量比对，或者先用 BM25/embedding 取 top-N 再让小模型 rerank。评论里反复质疑，为什么要先让模型“胡编”一个中间结果，而不是把原始 query 直接送去检索。还有人提到新版 embedding model 本来就更擅长处理 query，因此最好的基线可能是彻底去掉 LLM。整体上，这一派更关心的是简化 pipeline，而不是增加一层生成。",
+        "supportid": [
+          "49299232",
+          "49299352",
+          "49299331",
+          "49299200",
+          "49299975",
+          "49300613",
+          "49298114",
+          "49298329",
+          "49299243",
+          "49298600"
+        ]
+      },
+      {
+        "category": "准确率、成本与上线风险",
+        "summary": "另一派关注的是可靠性和成本。有人要求 A/B test、真实测试集和回归评估，因为 hallucination 叠上 embedding search 可能把错误放大，而且分类结果未必稳定一致。也有人提到把整套 taxonomy 塞进 prompt 曾经非常昂贵且仍会 hallucinate，structured outputs 只能约束格式，不能解决准确率本身。生产环境里还要考虑延迟和费用，很多人都在寻找更便宜、更快、且不那么依赖 LLM 调用的替代方案。",
+        "supportid": [
+          "49297899",
+          "49297917",
+          "49297975",
+          "49298844",
+          "49299013",
+          "49298009",
+          "49298197",
+          "49298343",
+          "49299337",
+          "49299243"
+        ]
+      },
+      {
+        "category": "老问题的新包装",
+        "summary": "不少评论把这看成老问题的新包装：search、spam classification、向量检索、监督学习，这些年其实都在解决“从大集合里找对标签”这个问题。有人回忆 CANSPAM 早期会先按 From、relay chain 之类粗桶分组，再逐步收敛到 spammer signature；也有人说如果有几十万标签，直接手工标一小批样本然后训练 supervised model，几十年前就能做。还有人把 gradient descent、估计方法和搜索引擎拿来类比，认为这本来就是“先做近似，再逐步修正”的套路。",
+        "supportid": [
+          "49299336",
+          "49300354",
+          "49300270",
+          "49300633",
+          "49299511",
+          "49300909",
+          "49299617",
+          "49298489"
+        ]
+      },
+      {
+        "category": "讽刺与类人决策比喻",
+        "summary": "评论里也有明显的幽默和讽刺：有人觉得让 LLM 先胡编再分类，就像把原本该由人做的判断外包给一个更会说话的 slop generator。支持者则拿 Babbage 的老梗和人类决策作比喻，认为人本来就是先粗略匹配，再慢慢修正，而 LLM 只是把这个过程显式化了。也有人半开玩笑地说，关键不是“分类”，而是别让结果跑题到南美红蚁的文章里去。整场讨论因此带着很强的 HN 式自嘲：一边谈工程，一边吐槽 AI 时代的语言包装。",
+        "supportid": [
+          "49299233",
+          "49300532",
+          "49300687",
+          "49299511",
+          "49298748",
+          "49298467",
+          "49299172",
+          "49299080",
+          "49299337"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "embedding/embeddings",
+        "explanation": "把文本映射到向量空间，方便用相似度做检索、聚类或排序。"
+      },
+      {
+        "term": "HyDE",
+        "explanation": "Hypothetical Document Embeddings，先让模型生成假想答案或文档，再用其 embedding 去做检索。"
+      },
+      {
+        "term": "BM25",
+        "explanation": "经典关键词检索排序算法，常用于先粗召回候选。"
+      },
+      {
+        "term": "reranker",
+        "explanation": "对初筛后的候选结果重新排序的模型，通常比第一阶段检索更精确。"
+      },
+      {
+        "term": "structured outputs",
+        "explanation": "约束模型按固定 JSON 或字段格式输出，减少跑题和格式错误。"
+      }
+    ],
+    "context": "这篇帖子讨论的是一种分类检索技巧：先让 LLM 生成一个“假想的分类结果”或更接近答案语言的改写，再把这个结果做 embedding，与真实标签做近邻匹配。原始示例来自一个关于 Wayfair（家居电商公司）分类的 notebook，里面用 MiniLM（轻量文本向量模型）把假想分类和真实 taxonomy（分类树）对齐。评论把它和 HyDE（Hypothetical Document Embeddings）、BM25（关键词检索排序）和 reranker（重排序模型）放在一起比较，争论它究竟是在提升召回，还是只是多加了一层 LLM 幻觉。讨论还延伸到高基数标签、产品搜索、垃圾邮件分类，以及面向购物 agent 的 structured query 协议等更现实的检索和分类场景。",
+    "emoji": "🤨",
+    "sarcastic_question": "先让模型胡编一遍，再说这是精准分类系统？"
+  },
+  "articleSummary": "## 一句话总结\n\n与其让 LLM 在数百个合法分类里“选一个”，不如让便宜模型先随意生成一个语义相近的“假分类”，再用 embedding 把它映射回真实 taxonomy。\n\n### 把几百个合法标签塞进 schema，能用但不划算\n\n商品和搜索词分类早已是 LLM 的常规用法，但真正麻烦的不是模型能不能理解“wood coffee table”。麻烦在于，它必须输出系统认可的那个精确分类路径。以 Wayfair WANDS 数据集为例，一个“coffee table”相关查询，要在数百条层级分类中找到正确项。传统方案是 Structured Outputs：用 Pydantic 的 `Literal` 列出全部合法值，再要求模型严格遵守。这样确实能得到 `Furniture / Living Room Furniture / Coffee Tables & End Tables / Coffee Tables` 这样的标准答案。可问题是，500 条甚至更多 taxonomy 不仅让 schema 变得笨重，也意味着每次请求都得把这份词表传给模型。更现实的是，Structured Outputs 本身还有可发送内容的上限。\n\n### 不让模型分类，反而让它“胡编”分类\n\n作者的转折很直接：既然约束模型输出合法标签这么贵，那就别约束了。Prompt 不再附带真实分类词表，而是让一个小模型为查询创造“看起来合理、但从未见过”的家具、家居或五金分类。面对 `brown coffee table`，模型可能生成 `Furniture / Living Room / Tables / Coffee`。这显然不在 Wayfair 的真实 taxonomy 里，按传统分类任务的标准看，它完全是错的。可这里恰恰是关键：这个“错答案”保留了足够强的语义信息。它表达的仍然是“客厅里的咖啡桌”，只是没有使用系统规定的精确措辞和层级。\n\n### 真正的分类器，是后面的向量检索\n\n接下来，作者把问题从“受约束生成”改写成了“语义匹配”。先离线计算所有真实 Wayfair 分类的 embedding，并把它们放入内存中。对于 LLM 生成的假分类，也计算一个 embedding。然后将这个假分类向量与所有真实分类向量做 dot product，找出相似度最高的真实标签。于是，`Furniture / Living Room / Tables / Coffee` 会被解析为真实系统中的 `Furniture / Living Room Furniture / Coffee Tables & End Tables / Coffee Tables`。说白了，LLM 不再负责从封闭词表中做精确选择，它只负责把用户意图翻译成一个足够接近 taxonomy 语义空间的描述。\n\n### 这套模式把昂贵的约束，换成了便宜的召回\n\n这个设计巧妙的地方，在于它把两种任务拆开了。生成阶段不需要知道完整 schema，因此可以交给更小、更便宜的模型处理。匹配阶段则是本地 embedding 检索，不需要每次都把数百个合法分类通过 API 发给模型。作者在 notebook 和配套 utility 中，用 MiniLM 为全部 Wayfair 分类生成向量，再用假分类的向量检索最近邻。最终得到的仍是系统可接受的真实 vocabulary，但模型调用成本和上下文负担都明显更低。文章的标题“Don't classify, hallucinate!”并不是鼓励模型随便输出，而是在说：先让模型自由地产生语义线索，再由向量检索把线索收敛为规范标签。"
+}

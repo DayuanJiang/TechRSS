@@ -1,0 +1,109 @@
+{
+  "id": 48785485,
+  "by": "chatmasta",
+  "title": "Potential session/cache leakage between workspace instances or consumer accounts",
+  "url": "https://github.com/anthropics/claude-code/issues/74066",
+  "score": 300,
+  "createdAt": 1783175459,
+  "aiSummary": {
+    "chinese_title": "Claude/Gemini疑似工作区串会话：缓存泄漏还是hallucination？",
+    "discussion_overview": [
+      {
+        "category": "更像 hallucination，且被 minecraft.py 之类上下文诱导",
+        "summary": "不少人认为这更像是 LLM 的 hallucination，而不是跨会话泄漏。理由是原始上下文里出现了 minecraft.py 这样的词，模型很容易把它和 Minecraft 联系起来，尤其在工具调用结果、长上下文或噪声较多时。评论里还提到，LLM 偶尔会输出完全不相干、甚至像随机生成的内容，因此单凭一次离谱回复不足以证明数据串线。也有人指出发帖者把模型的错误解释得过于自信，缺少直接证据。",
+        "supportid": [
+          "48785665",
+          "48786192",
+          "48786819",
+          "48786422",
+          "48786889",
+          "48786308"
+        ]
+      },
+      {
+        "category": "HTTP desync / request smuggling 可能把响应发错人",
+        "summary": "另一派则怀疑是中间层把响应发错了，尤其像 HTTP desync / request smuggling 这类问题。有人举出真实 postmortem：API gateway 误处理 HTTP 100 status codes，出现 off-by-one，导致前一个请求的响应被发给后一个调用者。评论还列举了多 Content-Length、Content-Length 与 chunked encoding 混用、HTTP/2 头长度不一致等触发方式，认为只要把多个客户端请求复用到同一条上游连接，就存在串线风险。有人甚至把这类问题和 DEF CON 上关于 HTTP/1.1 终结的研究联系起来。",
+        "supportid": [
+          "48786654",
+          "48786898",
+          "48787067",
+          "48787126"
+        ]
+      },
+      {
+        "category": "缓存键、prefix cache 与多租户隔离风险",
+        "summary": "也有很多人把问题放在 cache 和多租户隔离上。共享 prefix cache 或 KV cache 的确能大幅省算力，但一旦 cache key 计算、缓存回收、缓冲区清零、hash 冲突或 race condition 出错，就可能把旧会话的内容错送到新会话。评论里有人强调，LLM 基础设施运行在昂贵且高度超卖的 GPU 上，隔离更多依赖软件层，而这比传统 SaaS 更难做稳。还有人举例说，企业级场景里把与用户有关的变量移出 system prompt，正是为了提高缓存命中率，但这也让实现更复杂。",
+        "supportid": [
+          "48785765",
+          "48785835",
+          "48785900",
+          "48786475",
+          "48786134",
+          "48785855",
+          "48785982",
+          "48786041",
+          "48786082",
+          "48786642",
+          "48787174",
+          "48785953",
+          "48786060"
+        ]
+      },
+      {
+        "category": "Gemini / Claude 也出现类似怪异输出",
+        "summary": "不少人声称自己在 Gemini 或 Claude 的 web/mobile 界面也见过类似怪象。Gemini 有时会给出像是别人的答案、换语言、甚至直接报 1099 error；Claude 则会莫名其妙坚持用户曾加过某些不存在的指令，或者把隐藏的安全提示塞进对话里。有人据此猜测是 classifier、auto mode、隐藏 warning 或会话路由出了问题，而不只是模型本身胡说。因为相似现象跨产品出现，大家对只是 hallucination 的信心也被削弱了。",
+        "supportid": [
+          "48786876",
+          "48786969",
+          "48787127",
+          "48786534",
+          "48786986",
+          "48787315",
+          "48786269"
+        ]
+      },
+      {
+        "category": "对 Anthropic / AI safety 叙事与客服透明度的争议",
+        "summary": "还有一条很长的分支在争论 Anthropic 这类公司的安全叙事到底是真心还是营销。批评者认为领导层把 AI safety 当成卖点，嘴上讲风险，实际上还是为了融资、IPO 和产品推进；支持者则反驳说安全团队确实在做评估和延迟发布，Anthropic 还因为 PBC/LTBT 结构更重视 safety。另一些人则把焦点放在更实际的痛点上：客服几乎全由 chatbot 处理，邮件也像机器人回复，出了问题根本无法拿到明确的 root cause。整个争论的底色是对大公司先说安全、后讲清楚的不信任。",
+        "supportid": [
+          "48787333",
+          "48785692",
+          "48786733",
+          "48786786",
+          "48786828",
+          "48786947",
+          "48787019",
+          "48787115",
+          "48787147",
+          "48787326"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "HTTP desync / request smuggling",
+        "explanation": "利用 HTTP 解析差异或复用连接导致请求与响应错配的漏洞或故障类型。"
+      },
+      {
+        "term": "KV cache",
+        "explanation": "模型推理时缓存 attention 的 key/value 中间结果，用来减少重复计算。"
+      },
+      {
+        "term": "prefix cache",
+        "explanation": "复用相同 prompt 前缀的缓存以提升吞吐，但会增加跨会话共享风险。"
+      },
+      {
+        "term": "multi-tenant",
+        "explanation": "多个客户共享同一底层服务或硬件的架构。"
+      },
+      {
+        "term": "ZDR",
+        "explanation": "zero data retention，尽量不长期保留用户输入和输出的数据策略。"
+      }
+    ],
+    "context": "这条帖子的起点是有人怀疑 Claude（Anthropic 的 AI 模型与产品）在企业工作区或消费账号之间出现了会话或缓存串线：用户明明在处理自己的任务，却收到像是别人的上下文，甚至与 Minecraft 有关的回答。评论里很快分成两派，一派认为只是模型被工具输出里的 minecraft.py 之类 token 误导而产生 hallucination，另一派则怀疑是后端网关、缓存层或多租户隔离出了问题。大家反复提到 cache miss、prefix cache、KV cache（key-value cache，模型推理时复用的键值缓存）和 HTTP desync/request smuggling 这类基础设施漏洞，因为如果请求和响应在中间层被错配，确实可能把别人的输出送到当前会话。讨论还延伸到 Gemini（Google 的 AI 产品）、HIPAA/PHI 合规，以及厂商缺乏透明 postmortem 的问题。",
+    "emoji": "😬",
+    "sarcastic_question": "不是号称隔离吗，怎么还会串到别人会话？"
+  },
+  "articleSummary": "## 一句话总结\n一个 Enterprise ZDR 工作区的会话中突然出现了无关的 Minecraft 上下文，这暴露了 Agent 在多租户隔离或缓存机制上可能存在严重的数据泄露风险。\n\n### Agent 突然开始聊起了 Minecraft\n事情发生在一个 Enterprise ZDR 的工作区里，用户正在使用 Agent 处理任务。突然间，Agent 毫无征兆地询问用户想要什么类型的砖块来建造 Minecraft 神庙。更离谱的是，Agent 在随后的 Recap 中非常自信地总结说，它正在建造一个 Minecraft 神庙。这显然不是用户发出的指令，因为用户当前的任务与 Minecraft 毫无关系。这种突如其来的上下文切换，让人第一反应是 Agent \" hallucination \"（产生幻觉）了，但细想之下，情况可能没那么简单。\n\n### 缓存隔离机制可能失效了\n按照常理推断，不同工作区甚至不同账户之间的 Session 和 Cache 应该是完全隔离的。用户首先怀疑是不是有同事也在同一个工作区里玩 Minecraft，导致上下文串线了。毕竟如果是同事消耗 token 去盖神庙，那只是个内部笑话。但紧接着，一个更可怕的念头冒了出来：如果这串数据不是来自同事，而是泄露自 Consumer（个人版）计划呢？这意味着企业级的数据隔离防线可能形同虚设，敏感的聊天记录可能正在流向未知的角落。\n\n### 复杂的目录操作可能引发了 Bug\n为了排查原因，用户回顾了自己的操作路径，发现确实做了一些\"非常规\"操作。他在一个与任务无关的目录启动了 Session，仅仅是因为那里有一个包含所需上下文的 `.claude` 目录。实际的工作却是在另一个目录里进行的。这种跨目录的操作确实曾导致 Agent \"遗忘\"指令，错误地在启动目录下操作项目。但这只能解释 Agent 为什么会搞混工作目录，完全解释不了为什么会凭空冒出 Minecraft 的上下文。\n\n### 数据泄露的源头成谜\n现在的问题核心在于，Agent 之前因为上下文压缩而产生的\"污染\"，是用户自己操作不当导致的，这点用户认了。但这次出现的 Minecraft 内容，绝对不是简单的目录混淆能解释的。这更像是底层的缓存或 Session 管理机制出现了跨实例、甚至跨账户的泄露。对于企业用户来说，这不仅仅是 Agent 聊天聊串台的问题，而是触及了数据安全底线的严重事故。"
+}

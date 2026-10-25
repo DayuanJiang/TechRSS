@@ -1,0 +1,63 @@
+{
+  "id": 47669923,
+  "by": "roxolotl",
+  "title": "Clojure on Fennel Part One: Persistent Data Structures",
+  "url": "https://andreyor.st/posts/2026-04-07-clojure-on-fennel-part-one-persistent-data-structures/",
+  "score": 130,
+  "createdAt": 1775839242,
+  "aiSummary": {
+    "chinese_title": "Fennel 上的 Clojure：持久化数据结构、HAMT 与类型争论",
+    "discussion_overview": [
+      {
+        "category": "不可变 HAMT 的生态优势",
+        "summary": "Clojure 的 immutable HAMT（Hashed Array Mapped Trie）被看作是延续近 20 年的核心优势，很多语言都只是把它复制成库。真正的差别在于它被内建到语言里，所以整个生态都默认围绕 maps/vectors 组织，库之间才能像拼图一样直接组合。有人把这种体验概括成“the value of values”，并认为刚开始看似只是小差异，长期会减少大量设计和维护上的摩擦。还有人强调 immutability by default 不是审美问题，而是会实实在在改变工程节奏。",
+        "supportid": [
+          "47720833",
+          "47721816",
+          "47721908",
+          "47723219"
+        ]
+      },
+      {
+        "category": "类型系统与 s-expressions 的兼容性",
+        "summary": "有人希望有一种像 Clojure 但带 TypeScript（带结构化类型系统的 JavaScript 超集）或 Go（静态类型语言）式 nominal typing 的语言，不过也承认自己在 Clojure 里对类型的依赖感比别的语言低得多。另一派认为类型标注和 s-expressions（Lisp 的括号式符号表达式）天生不太搭，甚至建议如果要认真回答“如何把 lambda calculus 做成语言”这个问题，不如直接看 ML（强类型函数式语言家族）。也有人反驳说 Clojure 的类型注解其实还能接受，只是略显啰嗦。最后的折中观点是：真正重要的可能是强静态保证，而不是一定要显式标注，尽管这对 nominal types 未必同样适用。",
+        "supportid": [
+          "47722206",
+          "47723757",
+          "47724550"
+        ]
+      },
+      {
+        "category": "Lisp 梗与优化器的成本意识",
+        "summary": "评论里还穿插了典型的 Lisp 自嘲梗：Lisp 程序员知道一切的价值，却不知道一切的成本。有人拿 Andy Gavin 和 Game Oriented Assembly Lisp 反过来玩梗，说也有人既懂价值又懂成本。另一个回应把焦点放在 sbcl（一个 Common Lisp 实现）的 optimizer 上，暗示优化器试图精确估算成本本身就是一场赌博。这个小分支让讨论在认真技术分析之外，多了一层 Lisp 圈子的黑色幽默。",
+        "supportid": [
+          "47722781",
+          "47723106",
+          "47724159"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "HAMT",
+        "explanation": "Hashed Array Mapped Trie，一种用于不可变 map/set 的高效持久化树结构，靠 structural sharing 降低更新成本。"
+      },
+      {
+        "term": "persistent data structures",
+        "explanation": "持久化数据结构，更新时保留旧版本并共享大部分节点，适合不可变编程。"
+      },
+      {
+        "term": "s-expressions",
+        "explanation": "Lisp 的括号式表达式语法，代码本身就是嵌套列表。"
+      },
+      {
+        "term": "nominal typing",
+        "explanation": "名义类型系统，类型是否相同取决于显式命名，而不是字段结构相同。"
+      }
+    ],
+    "context": "这篇文章是系列《Clojure on Fennel》的第一部分，Fennel（一个编译到 Lua 的 Lisp 方言）在尝试借鉴 Clojure（以不可变数据闻名的 Lisp 方言）的设计思路。评论几乎都围绕 persistent data structures 展开，尤其是 Clojure 内建的 HAMT（Hashed Array Mapped Trie，一种高效的持久化哈希树）为什么会改变库的写法和生态协作方式。讨论还延伸到类型系统：有人希望有一种像 Clojure 但带 TypeScript（带结构化类型系统的 JavaScript 超集）或 Go（静态类型语言）式 nominal typing 的语言，但也有人认为 s-expressions（Lisp 的括号式表达式）和显式类型标注本来就不算自然搭配。整体语气是对 Clojure 式 immutability 很认可，同时夹杂对 Lisp 传统的幽默调侃。",
+    "emoji": "🧠",
+    "sarcastic_question": "没有内建 HAMT，谁还敢说像 Clojure？"
+  },
+  "articleSummary": "## 一句话总结\n作者为了在 Lua 上实现高性能的 Clojure 风格不可变数据结构，放弃了简单的 Copy-on-Write 方案，转而基于 HAMT 和 Bit-partitioned Trie 重新实现了 Persistent HashMap 和 Vector，虽然比原生 Lua Table 慢了几十倍，但换来了真正的结构共享和不可变性保证。\n\n---\n\n### 从玩具到生产环境：性能瓶颈倒逼架构重构\n作者之前的项目 `fennel-cljlib` 主要是为了好玩，虽然实现了 Clojure 的部分特性，但底层数据结构用的是 `itable`——一个基于 Copy-on-Write（写时复制）和 Metatable 的简单 Hack。对于嵌套不深的 Map，这种方案勉强能用，因为修改时只需复制受影响的层级。但一旦遇到数组或者频繁修改的场景，每次操作都触发全量复制，性能就崩了。为了支持新的 Clojure-to-Fennel 编译器项目 `ClojureFnl`，作者必须替换掉这个性能短板，引入真正的持久化数据结构。\n\n### 为什么选 HAMT：在 Lua 的性能现实里做妥协\nClojure 原生使用分支因子为 32 的 HAMT（Hash Array Mapped Trie）来实现 HashMap，但作者在 Lua 里选择了 16。原因很务实：Lua 不是 JVM，位运算和内存分配的开销模型完全不同。分支因子 32 虽然能让树更浅，但意味着每次修改要复制更大的稀疏数组，且 `popcount` 计算更贵。在 Lua 环境下，50K 个条目的 Map 用因子 16 只有 4 层深，和 3 层差别不大，但整体操作更轻量。这本质上是在树的高度和单次复制的成本之间做权衡。\n\n### 真实 Benchmark：比原生 Table 慢 100 倍，但比全量复制强\n数据不会撒谎。在 PUC Lua 5.5 上，插入 5 万个随机键，原生 Table 耗时 2.05ms，而 Persistent HashMap 耗时 164.80ms，慢了约 80 倍。即便使用了 Transient（临时可变）优化，也依然慢了 43 倍。在 LuaJIT 上，绝对耗时虽然下降（插入 49.05ms），但因为原生 Table 实在太快（0.86ms），倍率差距依然明显。作者承认这无法和 C 实现的原生 Table 竞争，但对于需要不可变语义的场景，这个性能是可以接受的。\n\n### 避坑指南：当可变对象撞上不可变 Hash\n实现过程中遇到一个很有意思的 Bug。因为作者选用了 `djb2` 算法计算 Hash，且 Lua 的 Table 和自定义的 Persistent Map 如果内容相同，算出来的 Hash 值也一样。这导致当你把一个普通 Lua Table 和一个内容相同的 Persistent Map 当作 Key 存入 HashMap 时，它们会进入同一个桶，且因为“值相等”被误判为同一个 Key。为了解决这个问题，作者在计算持久化集合的 Hash 时，混入了对象的内存地址作为 Salt，强制区分不同类型的对象，哪怕它们的值一样。\n\n### Persistent Vector：用位运算换取 O(1) 的追加\nVector 的实现思路和 Map 类似，也是基于 Trie，但不用 Hash，而是直接用索引做路径导航。这里作者把分支因子调回了 32，因为 Vector 的节点比 Map 的 Hash 节点更紧凑，高分支因子能减少树的高度。结果是 `get`、`assoc` 和 `pop` 操作的时间复杂度都是 O(log32 N)，而 `conj`（追加）则是均摊 O(1)。Benchmark 显示，在 PUC Lua 上随机更新 5 万个元素比原生 Table 慢了 200 多倍，但在 LuaJIT 上，读操作的性能损耗能缩小到 12 倍左右。\n\n### 放弃 Array Map：Clojure 的优化在 Lua 里水土不服\n在 Clojure 里，为了优化小 Map 的性能，当 Key 少于 8 个时会自动切换成 `PersistentArrayMap`（线性数组存储）。作者测试发现，这个优化在 Lua 里并不成立。虽然避免了 Hash 计算，但 Lua 自带的函数调用开销和自定义的深度比较逻辑太重，导致线性查找反而比 HAMT 还要慢。唯一的保留价值是它保留了插入顺序，这在需要顺序的场景下有用，但作为性能优化手段是失败的。"
+}

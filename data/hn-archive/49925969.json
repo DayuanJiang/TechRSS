@@ -1,0 +1,85 @@
+{
+  "id": 49925969,
+  "by": "paulsmith",
+  "title": "Pi Durable",
+  "url": "https://earendil.com/posts/pi-durable/",
+  "score": 398,
+  "createdAt": 1790887283,
+  "aiSummary": {
+    "chinese_title": "Pi Durable：持久化 Agent 框架受看好，安全与一致性仍待补课",
+    "discussion_overview": [
+      {
+        "category": "持久化 Agent harness 的价值与采用",
+        "summary": "评论者认为，Pi Durable 把 Agent harness 与模型 compute 分离，可让长任务在无人值守时持续运行，并改善崩溃恢复、监控、扩缩容和多人协作。该方向并非只有 Pi 在做，LangChain Deep Agents、Vercel Eve、OpenAI Agents API 与 Anthropic Managed Agents 都在布局类似能力。一些开发者已将小工具迁入，或计划替换现有 Pi 工具的内部实现；在 Kubernetes 上运行 Slack on-call Agent 的人尤其期待借此减少 JSONL 会话持久化和 pod 中断恢复的额外组件。Pi 的 vendor-agnostic 定位也受到肯定，被视为比偏向自家模型或网关的 SDK 更灵活。",
+        "supportid": [
+          "49927001",
+          "49927145",
+          "49929534",
+          "49927795",
+          "49929216"
+        ]
+      },
+      {
+        "category": "状态模型、会话分叉与外部同步",
+        "summary": "Pi Durable 以 fork 加祖先指针取代完整的会话分支树：fork 不复制 session，而是引用旧 session；代价是 `/resume` 会显示每次回退，`/tree` 需要由实现者自行补上。其状态 API 虽看似直接读写 store，实际更接近 Immer drafts；开发者认为 JSON Patch 难以在实际负载中同时满足数据类型、内存和性能约束。团队曾尝试 reducer/Redux 式抽象与部分 Automerge proxy 机制，但认为复杂度过高，因而暂时保留较低层接口并计划以后加语法糖。对外部数据库同步，现有 task 可通过按 ID 的幂等 Postgres upsert 实现，但仍缺少与状态提交原子绑定、保证有序投递的 outbox hook；另有人指出仅凭 requestId 并不能自动实现 exactly-once 语义。",
+        "supportid": [
+          "49928702",
+          "49929774",
+          "49927113",
+          "49927329",
+          "49927163",
+          "49927339",
+          "49927546",
+          "49929597"
+        ]
+      },
+      {
+        "category": "Sandboxing 与分层信任不足",
+        "summary": "多位评论者认为，当前 Agent harness 尚未把 sandboxing、策略声明和不可信上下文 taint tracking 当作一等能力，因此难以放心运行长时间、并行且可调用工具的任务。有人推荐 Gondolin（Earendil 的工具执行隔离方案）：它将每次 tool call 放入最小化、临时 VM，而不是把整个 harness 放进 sandbox，从而缩小 blast radius，但插件兼容性和 Bun 支持仍不完善。另一种观点主张把安全层与可高度插件化、自我修改的 harness 解耦，使用 OS-level sandbox 或 VM；同时也希望默认提供安全配置且允许关闭。企业场景尤其需要多级授权：读取可能含 prompt injection 的邮件的低信任子 Agent，不能直接拥有改数据库权限，必须把净化后的结果交给高信任 Agent 执行。",
+        "supportid": [
+          "49929069",
+          "49929996",
+          "49929161",
+          "49929583",
+          "49929349",
+          "49929460",
+          "49927614"
+        ]
+      },
+      {
+        "category": "长运行任务的实际用途与复杂度",
+        "summary": "所谓“无限运行”并不一定是永不停止的自主 Agent，更实际的需求是下班时未完成的工作、笔记本崩溃后的续跑，以及没有权限 SSH 到服务器时保留执行状态。其他例子包括按事件自动开 PR、每日分诊告警、定时生成按优先级排序的新闻 briefing，以及用 cron 监控项目后在 Telegram 中延续同一段对话来处理故障。与此同时，协调多个普通 Pi 实例本身就被形容为“噩梦”，说明 durable 多 Agent 编排带来的工程复杂度未必总能抵消收益。发布方将该能力标为 experimental，被视为对这一现实限制的恰当承认。",
+        "supportid": [
+          "49927822",
+          "49929504",
+          "49928464",
+          "49928634",
+          "49928279",
+          "49928462"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Agent harness",
+        "explanation": "承载 Agent 运行的编排层，负责会话、任务、工具调用、状态持久化、恢复与权限等，而非模型推理本身。"
+      },
+      {
+        "term": "Durable state / durable agent",
+        "explanation": "将 Agent 的状态和任务可靠持久化，使进程、机器或 pod 中断后能恢复执行的设计。"
+      },
+      {
+        "term": "Sandboxing",
+        "explanation": "将程序或工具调用限制在 OS、容器或 VM 隔离环境中，以限制不可信输入和错误操作的影响范围。"
+      },
+      {
+        "term": "Conversation fork",
+        "explanation": "从既有会话某一点创建新会话并保留祖先引用的机制，避免复制完整 session，但需要额外实现树状浏览体验。"
+      }
+    ],
+    "context": "Pi Durable 是 Pi（一个可扩展、vendor-agnostic 的 AI Agent 开发与运行框架）新增的持久化运行层，目标是让对话和后台任务可在崩溃、中断后恢复，并支持长时间与多人协作的 Agent 工作流。它采用可持久化的 JSON 文档、task 和结构化并发来保存执行进度；发布讨论还涉及在 Kubernetes（容器编排平台）中避免 pod 中断丢失会话的需求。争议焦点在于，Agent 一旦读取邮件、网页等不可信内容并获得数据库或外部工具权限，就会面对 prompt injection，因此仅有持久化不足以解决隔离、策略和分层授权。讨论也延伸到 outbox pattern（将状态变更与外部消息投递可靠协调的模式）及 exactly-once（避免重试造成重复副作用的语义），这些都是分布式任务系统的经典难题。",
+    "emoji": "🧪",
+    "sarcastic_question": "一个 requestId，真能把分布式系统变成 exactly-once？"
+  },
+  "articleSummary": "## 一句话总结\nPi Durable 是一个专为 AI Agent 设计的“持久化运行框架”，核心解决的是 Agent 在长时间运行中如何跨平台、抗崩溃、多会话并发且状态一致的问题。\n\n### 从单机辅助到通用框架的野心\nPi 1.0 发布了，标志着它作为一个在终端里辅助编程的 Agent 已经成熟。但 Pi 团队的野心不止于此，他们想把这项技术推广到更通用的场景。原来的 Pi 有个“硬伤”：它是单机、单用户、短生命周期的。如果进程挂了，得人肉介入重启。想要让 Agent 跑在云端、服务多用户、甚至无限长地跑下去，就需要一个新的底座。这就是 Pi Durable 的由来——它不是替代 Pi，而是给 Agent 穿上了一层能“打不死、跑得远”的铠甲。\n\n### 所谓 Harness，其实是 Agent 的“操作系统”\nPi Durable 把自己定义为一个 Harness（框架/挽具）。说白了，它负责管理 Agent 运行所需的一切：存储、对话、工具调用以及执行环境。在这个体系里，一次交互就是一段 Transcript（记录），而 Harness 负责调度模型、执行工具。有意思的是，Pi Durable 极其轻量，核心代码只有 1.5 万行。这不到 15 万 Token 的代码量，意味着 Agent 自己就能读懂框架源码，这为 Agent 自我调试和进化提供了可能。\n\n### 只要有个 JS 运行时，就能跑起来\n为了实现“Anywhere”，Pi Durable 没有选择重型依赖，而是基于 JavaScript 运行时。它支持内存、SQLite 和 JSONL 三种存储后端。其中 SQLite 的设计很巧妙：它只在内存里放“工作集”，也就是活跃的对话和任务，剩下的全扔磁盘里。配合模型上下文窗口的自动压缩，哪怕对话有几万条历史，内存占用依然稳如老狗。这让它不仅能跑在服务器上，甚至能塞进 Cloudflare Durable Object 这种边缘环境里。\n\n### 进程挂了？从断点接着跑\n这是 Pi Durable 最硬核的设计：全链路持久化。它把每一步操作都封装成 Task，执行前先存 Checkpoint。如果进程崩了（不管是笔记本合盖还是容器重启），新进程打开存储，找到未完成的 Task，直接从上一个 Checkpoint 恢复。这里有个细节：如果 Tool 被中断了，只有标记为 `safe` 的才会重跑，否则就告诉模型“被打断了”，让模型决定下一步怎么办。这保证了即使崩溃，状态也是确定的，不会出现“重试导致重复下单”的灾难。\n\n### 像 Git 分支一样管理对话\nPi Durable 支持多会话并发，而且互不阻塞。最精彩的设计是“Fork”。想象一个 Slack 场景：主频道是一个 Conversation，有人在回复里 @Agent，这就 Fork 出了一个子 Conversation。子对话能看到父对话的历史，但两者完全独立运行。这不仅仅是并发，更是一种上下文隔离和复用的机制。每个对话甚至可以配置不同的 Agent（比如主 Agent 用 GPT-4，子任务用更便宜的模型），灵活度极高。\n\n### 扩展即插件，状态全托管\nExtension 在这里不仅仅是挂载工具，它连 System Prompt 都能动态管理。每次请求前，框架会重新组装 Prompt 片段，并记录变更点。这意味着即使对话中途改了 Prompt，Agent 也能无缝切换，且 Prompt Cache 依然有效。Tool 的设计也很有讲究：每个 Tool 调用本身就是一个 Task。这让构建 Subagent（子代理）变得异常简单——一个 Tool 可以创建一个新的 Conversation，等它跑完返回结果。因为 Subagent 也是对话，所以它也能抗崩溃、被 UI 追踪，完全不需要额外的复杂机制。\n\n### 写在最后\nPi Durable 展示了一种构建长期运行 Agent 的新思路：与其造一个无所不能的大模型，不如造一个能让模型“死而复生、分身有术”的框架。它把容错、并发、状态管理这些脏活累活都包圆了，让开发者可以专注于 Agent 的业务逻辑。如果你在尝试构建生产级的 Agentic 应用，这套源码值得细读。"
+}

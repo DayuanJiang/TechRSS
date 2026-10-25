@@ -1,0 +1,98 @@
+{
+  "id": 48425723,
+  "by": "losfair",
+  "title": "Zeroserve: A zero-config web server you can script with eBPF",
+  "url": "https://su3.io/posts/introducing-zeroserve",
+  "score": 244,
+  "createdAt": 1780764013,
+  "aiSummary": {
+    "chinese_title": "Zeroserve：eBPF 零配置 Web Server，围绕 AI、nginx 与静态归档部署争论",
+    "discussion_overview": [
+      {
+        "category": "AI/LLM 参与引发信任危机",
+        "summary": "不少人一看到漂亮的 README、命令行参数和博客措辞，就怀疑这是 AI slop，担心真正的 benchmark、hardening 和功能实现并没有被认真验证。作者回应说，像 async-ebpf 这样的关键部分早在 coding agents 出现前就已存在，而且现在虽然大量使用 AI 辅助，但会人工复核并承担结果责任。也有人认为 LLM 的价值在于快速探索和逆向现有配置，而不是自动证明项目质量；但另一派仍坚持，没有长期维护和文档支撑的新项目很难建立信任。",
+        "supportid": [
+          "48426821",
+          "48427074",
+          "48427723",
+          "48427875",
+          "48427893",
+          "48428427",
+          "48428555",
+          "48429022"
+        ]
+      },
+      {
+        "category": "配置优先还是代码优先",
+        "summary": "核心争论是：是否真的需要把 nginx/Caddy 这类 declarative config 的世界，换成可脚本化的 eBPF 路径。反对者认为 location blocks、rewrite rules、map、try_files 这些内建能力已经覆盖大多数需求，只有少数场景才会碰到 Lua 或插件层。支持者则认为系统管理员本来就在用 Ingress manifests、宏或更高层抽象描述目标状态，配置文件只是 API 的一种序列化；如果工具能把自然语言或更高层声明转成机器行为，配置与代码的边界会继续模糊。",
+        "supportid": [
+          "48427131",
+          "48427384",
+          "48427635",
+          "48427928"
+        ]
+      },
+      {
+        "category": "性能亮眼但成熟度不足",
+        "summary": "评论里有人直接引用帖子里的 benchmark：174B 的小静态文件场景下，zeroserve 在单核上比 nginx 略快，尾延迟也更低；到了 100KB 文件，吞吐和 nginx 很接近，但优势并不大。也有人提醒，Techempower 那类 web server benchmark 影响力已经下降，http-arena 之类新榜单才更贴近现实，但跑分终究替代不了长期稳定性和安全审计。多数质疑都落在同一点上：nginx/Caddy 是多年打磨、广泛部署的项目，面对一个新工具，即使数字好看，也很难立刻接受风险。",
+        "supportid": [
+          "48427943",
+          "48426856",
+          "48428883",
+          "48428891"
+        ]
+      },
+      {
+        "category": "内核与架构改进建议",
+        "summary": "不少人对方向本身感兴趣，但更希望它把 Linux 能力用得更完整。有人建议把 eBPF 目录里的 .c 换成 .rs，因为整个项目本来就是 Rust；也有人原本以为这会是一个真正的 kernel-accelerated web server。更具体的建议包括用 SO_REUSEPORT 做多进程接入队列、结合 io_uring 降低异步 I/O 成本、再配合 kTLS 把 TLS 后半段留在内核里；还有人想把 XDP 和 socket map program 接进来，把部分 L7 功能下沉到网络栈。",
+        "supportid": [
+          "48427082",
+          "48427293",
+          "48428058"
+        ]
+      },
+      {
+        "category": "静态站点与归档式部署场景",
+        "summary": "虽然有人觉得“静态文件服务器”已经不再主流，但也有人举例自己最近把 Ghost 转成静态站点，或者希望单文件二进制能比传统部署更快、更省心。讨论随后扩展到更广的场景：科研数据集常用 Parquet、Zarr 这类格式通过对象存储分发，静态托管在这些场景里依然有价值。还有人把“一整个 tarball 作为站点”与 redbean/greenbean、cosmopolitan、Kiwix 这些单文件或归档式分发项目联系起来，强调按 byte-range 直接读归档可以让离线百科、历史数据和大规模文件集都被当成一个可部署对象，甚至可以做到单次原子替换部署。",
+        "supportid": [
+          "48427509",
+          "48427725",
+          "48427995",
+          "48428143",
+          "48427897",
+          "48428193",
+          "48428445",
+          "48427876",
+          "48428988",
+          "48429033"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "eBPF",
+        "explanation": "Linux 内核中的可扩展程序机制，可把自定义逻辑挂到网络、监控和安全路径上。"
+      },
+      {
+        "term": "LLM",
+        "explanation": "Large Language Model，大语言模型；这里主要指用于生成代码、文案或辅助探索项目的模型。"
+      },
+      {
+        "term": "byte-range",
+        "explanation": "按文件偏移读取一段数据的方式，常用于 HTTP Range 请求或直接从归档文件中按需取内容。"
+      },
+      {
+        "term": "tarball",
+        "explanation": "把多个文件打包成一个 tar 文件的归档形式，适合做单文件部署或按需读取。"
+      },
+      {
+        "term": "SO_REUSEPORT",
+        "explanation": "Linux socket 选项，允许多个进程或线程共享同一端口，由内核分发连接。"
+      }
+    ],
+    "context": "Zeroserve 是一个用 Rust 写的 web server，主打 zero-config，并尝试用 eBPF（Linux 内核可扩展程序）把部分逻辑脚本化，目标是替代 nginx 和 Caddy 这类常见的反向代理/静态服务器。帖子里的一个关键设计是把整个站点打包成单个 tarball（tar 文件），启动时建立路径到 byte-range 的映射，再直接从归档里读数据，避免解包到磁盘。评论把它放到 Techempower 这类 web server benchmark 和更偏现实的新榜单 http-arena 上比较，同时质疑新项目在安全、硬化和长期维护上是否能接近 nginx 这种成熟软件。也有人把它和 redbean（单文件 Web 服务器）、cosmopolitan（跨平台 C 运行时）以及 Kiwix（离线百科浏览器）这类“归档即应用”的思路联系起来，认为它不只适合 HTML，也适合 Parquet、Zarr 之类的大型数据集。",
+    "emoji": "🤨",
+    "sarcastic_question": "连 README 都像 AI 生成的，还敢谈 hardening？"
+  },
+  "articleSummary": "## 一句话总结\nzeroserve 抛弃了传统的配置文件，直接用 eBPF 脚本作为配置，利用 `io_uring` 和 JIT 编译，在单核性能上全面超越 nginx，实现了“代码即配置”的零配置 Web 服务器。\n\n### 配置的终极形态：代码即配置\n传统的 Web 服务器像 nginx 或 Caddy，本质上都是给你一套声明式的配置语言，比如 `location` 块或 `rewrite` 规则。一旦逻辑复杂起来，你就得在配置文件里写控制流，或者再外挂一个 Lua 脚本，导致心智负担在两层之间反复横跳。作者觉得这太累了，于是做了一个激进的设计：**彻底干掉配置文件**。在 zeroserve 里，eBPF 程序本身就是配置。它是一个单一的、沙箱化的程序，能看到每一个请求，然后全权决定路由、鉴权、限流还是反向代理。说白了，就是把整个请求生命周期的控制权，全部交给你手里的一段 C 代码。\n\n### 一个 tar 包走天下：部署与热重载\n为了简化部署，zeroserve 把整个网站打包成一个单独的 `tar` 文件。它不会把文件解压到磁盘，而是在加载时建立 `path -> byte-range` 的索引，直接对 tar 包发起 `byte-range reads`。这样做的好处显而易见：没有所谓的 document root，也就不会因为配置错误泄露文件；部署就是原子性地替换一个文件。更妙的是热重载机制，你只需要发一个 `SIGHUP` 信号，它就能在不掉线的情况下，原子性地替换网站内容、脚本和 TLS 证书。这种“单文件交付”的思路，把运维复杂度降到了最低。\n\n### 用户态 eBPF：既安全又极速的脚本引擎\n最有意思的设计在于它的脚本引擎。虽然用的是 eBPF，但它完全跑在用户态，不需要内核的 `CAP_BPF` 权限，也不经过内核验证器。它通过 `async-ebpf` 运行时，利用 `uBPF` 将字节码 JIT 编译成原生的 x86-64 指令执行。为了防止脚本乱读内存，作者设计了一个“指针笼”，把所有内存访问都限制在脚本自己的 Arena 里。而且，这个运行时是全抢占式的：通过一个定时器，它能在脚本执行中途打断它，把控制权交还给事件循环。这意味着，就算你写了个死循环脚本，也只会卡死那一个请求，服务器整体依然能响应。\n\n### 性能怪兽：io_uring 的全面胜利\n在性能方面，zeroserve 的核心赌注是 `io_uring`。所有的网络和磁盘 I/O 都通过这个异步接口提交，配合单线程事件循环模型。在基准测试中（Ryzen 7 3700X，单核），面对小静态文件（174 B），zeroserve 达到了 **36,681 req/s**，比 nginx 快了约 17%，p99 延迟也更低。在大文件（100 KB）传输上，由于 TLS 加密必须在用户态做，大家都在拼 encrypt-and-write 的效率，zeroserve 凭借 `io_uring` 依然以 **782 MB/s** 的吞吐量微弱领先。这证明了在 HTTPS 场景下，精心设计的用户态异步 I/O 完全可以抗衡甚至超越传统的服务器模型。\n\n### eBPF vs LuaJIT：脚本性能的正面硬刚\n既然主打脚本能力，自然要和行业标杆 nginx + LuaJIT 对比。这里有个关键的调优参数：抢占式定时器的间隔。默认 2 ms 的间隔虽然安全，但频繁的中断会影响性能。一旦把间隔放宽到 10 ms，zeroserve 的 eBPF 脚本就展现出了统治力。在注入 Header 的中间件场景下，它跑出了 **43,709 req/s**，比 nginx Lua 快了约 50%；在完全动态的 JSON 响应场景下，也以 **46,945 req/s** 胜出。这说明，经过 JIT 编译的 eBPF 在处理逻辑时，其效率并不输给老牌的 LuaJIT，甚至在某些高并发场景下更胜一筹。\n\n### 反向代理的喜与忧\n作为反向代理时，zeroserve 的表现呈现了两极分化。对于小响应（174 B）的 API 转发，它凭借连接池和 `io_uring` 的优势，达到了 **26,486 req/s**，领先 nginx 约 22%，更是 Caddy 的 3.4 倍。这非常适合处理大量的微服务调用。但在处理大文件（100 KB）代理时，nginx 凭借成熟的缓冲机制，吞吐量达到了 **585 MB/s**，而 zeroserve 只有 **359 MB/s**。这很符合逻辑：zeroserve 针对高并发、小包的场景做了极致优化，而 nginx 在处理大流量数据传输上依然是老大哥。\n\n### 功能完备的现代化工具箱\n虽然主打零配置，但 zeroserve 在功能上并没有偷工减料。它内置了基于 BoringSSL 的 TLS 1.3，支持 HTTP/2、ECH（Encrypted Client Hello）、SNI 证书选择，甚至把 JA4 指纹暴露给了脚本。脚本提供的 Helper API 也非常丰富，涵盖了 JSON 解析、各种加解密（HMAC-SHA256, AWS SigV4）、OIDC 登录流以及基于 Token Bucket 的限流。你可以用它做网关，做鉴权，甚至直接在脚本里响应 JSON。它不仅仅是个静态文件服务器，更是一个功能完备的、可编程的边缘计算节点。"
+}

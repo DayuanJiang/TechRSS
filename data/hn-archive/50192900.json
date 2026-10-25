@@ -1,0 +1,116 @@
+{
+  "id": 50192900,
+  "by": "keks24",
+  "title": "CVE-2026-111943: Compromised Intermediate Certificate Authority",
+  "url": "https://nvd.nist.gov/vuln/detail/cve-2026-111943",
+  "score": 310,
+  "createdAt": 1792660243,
+  "aiSummary": {
+    "chinese_title": "eMudhra 中间 CA 私钥可恢复，Go 与各生态紧急撤销信任",
+    "discussion_overview": [
+      {
+        "category": "影响范围与补丁滞后",
+        "summary": "eMudhra 的八个中间 CA 签名密钥生成不当，攻击者可从公开证书恢复私钥，并为任意域名伪造看似有效的 HTTPS 证书。操作系统更新 CA bundle 后，多数依赖系统信任库的桌面和服务器软件会拒绝它们，但 Red Hat 当时仍主要提供禁用相关 Comodo 根证书的临时措施，完整更新处于进行中。Gentoo 和 Slackware 已更新 ca-certificates；AWS Corretto JDK、部分 Ubuntu 安装及其他自带信任库的软件则仍可能保留风险。",
+        "supportid": [
+          "50194429",
+          "50194504",
+          "50195395",
+          "50195143",
+          "50194934",
+          "50193953"
+        ]
+      },
+      {
+        "category": "Go 的拒绝名单机制与部署陷阱",
+        "summary": "此 CVE 主要记录 Go 的补救：crypto/x509 在使用系统 trust store 的同时增加针对受损证书的 deny list，使操作系统补丁缓慢或无法更新时仍可阻断它们。它不是“Go 自带完整 trust store”，而是系统撤销或 Go 拒绝名单任一生效即可拒绝相关证书。关键限制是 deny list 会静态编入编译出的 Go binary，因此仅升级 toolchain 或标准库不够，已部署应用必须重新编译并发布。多位评论指出这只是先前 eMudhra 事件的 Go 后续条目，标题容易让人误以为漏洞仅影响 Go。",
+        "supportid": [
+          "50193105",
+          "50193503",
+          "50193601",
+          "50195167",
+          "50193329",
+          "50193379",
+          "50193510"
+        ]
+      },
+      {
+        "category": "容器、语言环境与供应链更新负担",
+        "summary": "Python、uv、certifi、bun 等工具可能将 CA 证书打包进自身环境或二进制，不能仅依赖 OS 更新，必须分别升级相应运行时或依赖包。评论者认为 pip、venv、Flatpak、容器镜像等多层包管理让人难以盘点每台机器、每个脚本和每个容器实际使用的证书与依赖版本。有人把这视为容器化把“管理若干软件”变成“管理若干容器”，而支持者认为重新构建并统一部署镜像仍比逐台更新 VM 容易；实践中的 golden base image 自动重建机制却并不普遍。用 LLM 自动修补也引发分歧：它能发现 aws-cli、LibreOffice 等遗漏位置，但若操作者不理解并验证变更，只是把风险外包。",
+        "supportid": [
+          "50194041",
+          "50194883",
+          "50195089",
+          "50195146",
+          "50195005",
+          "50194302",
+          "50194609",
+          "50194990"
+        ]
+      },
+      {
+        "category": "验证客户端与长尾设备风险",
+        "summary": "可用专门测试站点及 curl 请求检查本机是否仍接受由受损中间证书签发的连接；正常结果应是 OpenSSL 无法建立到本地 issuer 的验证链。浏览器显示安全并不代表所有命令行工具安全，有实例显示 Firefox 已拒绝而 curl 仍能连接，最终须手动更新 Ubuntu 的包。macOS 上不同工具可见的信任设置也不一致，Homebrew 的 CA bundle 可通过 CURL_CA_BUNDLE 显式指定。最难处置的是长期不更新的 IoT、嵌入式设备，以及与宿主 OS 信任库隔离的 serverless 或 container-as-a-service 环境。",
+        "supportid": [
+          "50193082",
+          "50195159",
+          "50195646",
+          "50195211",
+          "50193626",
+          "50193164"
+        ]
+      },
+      {
+        "category": "密钥生成失职与自动化攻击焦虑",
+        "summary": "评论将根因归为极端低劣的椭圆曲线私钥生成：据称 CA 竟从数字 4 导出了私钥；与 RSA 的小素数不同，椭圆曲线中这类弱私钥未必直观可见。研究者是在对证书运行 Google paranoid_crypto 工具时迅速发现问题，而非由 LLM 直接造成；有人质疑为何大型证书语料此前未被该工具全面检测。事件使部分人担忧 AI agent 能更低成本扫描、利用未修补服务，另一些人认为把这次 CA 事故归咎于 AI 只是无关的恐慌。围绕“cock-up or conspiracy”的讨论最终更倾向将其视为灾难性的工程失误，而非已有证据支持的阴谋。",
+        "supportid": [
+          "50193341",
+          "50194146",
+          "50194454",
+          "50193583",
+          "50193894",
+          "50193138",
+          "50193265",
+          "50193788"
+        ]
+      },
+      {
+        "category": "MITM 名称的岔题争论",
+        "summary": "Python 相关警报把传统的 man-in-the-middle 写作“monster-in-the-middle”，引发大量对术语、性别中立表达及旧有 master/slave 命名争议的调侃。有人认为 monster 更能表达攻击者的恶意，也有人认为既有 MITM 已足够准确清晰。尽管讨论偏离修复步骤，它反映出实际安全公告中的措辞会显著影响读者注意力。",
+        "supportid": [
+          "50194639",
+          "50194745",
+          "50194813",
+          "50195066",
+          "50195102",
+          "50195603"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "中间 CA（Intermediate Certificate Authority）",
+        "explanation": "位于根 CA 与网站证书之间、可签发终端证书的证书颁发机构；其私钥泄露可用于伪造大量网站证书。"
+      },
+      {
+        "term": "trust store / CA bundle",
+        "explanation": "操作系统、浏览器或运行时保存的受信任根证书和撤销策略集合，用来验证 TLS 证书链。"
+      },
+      {
+        "term": "deny list",
+        "explanation": "客户端额外维护的明确拒绝列表；即使系统信任库尚未更新，也可阻止指定证书或 CA。"
+      },
+      {
+        "term": "MITM（man-in-the-middle）",
+        "explanation": "攻击者插入通信双方之间，冒充一方以窃听或篡改 TLS 流量的攻击方式。"
+      },
+      {
+        "term": "certifi",
+        "explanation": "Python 生态常用的 Mozilla CA 证书集合包；应用若捆绑其版本，可能不随 OS 的证书更新而更新。"
+      }
+    ],
+    "context": "CVE-2026-111943 是围绕 eMudhra（签发 TLS 证书的 CA）中间证书被攻破的 Go 生态补救条目，而更大的事件是该 CA 的多个中间签名私钥因弱密钥生成而可被恢复。持有这些私钥的人可签发任意域名的伪造证书，从而对仍信任相应证书链的客户端实施 MITM（中间人攻击）。Go（编译型编程语言）的 crypto/x509（TLS 证书验证库）加入了内置 deny list（显式拒绝名单），但应用需重新编译才会携带它；Python 的 certifi（CA 证书包）、uv（Python 包与环境管理工具）及部分 JDK、容器镜像也可能各自携带独立证书库。系统 CA bundle（受信任证书集合）更新能保护许多应用，但嵌入式设备、旧容器和隔离运行环境往往不会自动继承该修复。",
+    "emoji": "🚨",
+    "sarcastic_question": "CA把私钥设成4，谁还需要黑客？"
+  },
+  "articleSummary": "无法获取正文内容，无法生成摘要。"
+}

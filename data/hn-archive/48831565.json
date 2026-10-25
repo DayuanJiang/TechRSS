@@ -1,0 +1,99 @@
+{
+  "id": 48831565,
+  "by": "bobnamob",
+  "title": "Cloudflare Meerkat - Globally distributed consensus",
+  "url": "https://blog.cloudflare.com/meerkat-introduction/",
+  "score": 153,
+  "createdAt": 1783521015,
+  "aiSummary": {
+    "chinese_title": "Cloudflare Meerkat：QuePaxa 异步共识引发 Raft/Paxos 争议",
+    "discussion_overview": [
+      {
+        "category": "文章没把新意讲清楚",
+        "summary": "很多评论认为这篇文章把重点放偏了：真正的新东西是 QuePaxa，但正文却花了太多篇幅在分布式一致性通识上，导致读者很晚才看到“新意”到底是什么。因为 Cloudflare 的需求本来就偏 leaderless，大家更期待它去对比 Paxos-class 或其他 leaderless / multi-leader 协议，而不是拿 Raft 这种强 leader 方案来做主要参照。还有人觉得标题和内容不匹配，像是在讲“Paxos vs Raft”的概览，而不是一个清晰的 Meerkat/QuePaxa 介绍。甚至有评论指出文案带着明显的 marketing polish，个别措辞很像 AI 生成后的润色结果。",
+        "supportid": [
+          "48832555",
+          "48832615",
+          "48832721",
+          "48832625",
+          "48835548",
+          "48833719",
+          "48834593",
+          "48833758",
+          "48834909"
+        ]
+      },
+      {
+        "category": "QuePaxa 的核心创新",
+        "summary": "支持者认为真正值得注意的是 QuePaxa 作为 asynchronous consensus 的特点：它不靠 timeout 推进，而是允许所有 replicas 随时参与写入，并且在消息延迟大幅波动时仍能继续前进。与 Paxos、Raft 这类 partial synchrony 协议相比，这种设计试图摆脱“消息必须在某个时间窗口内到达”的前提。有人把它看成是一个更接近 gossip 思路的 consensus 方向，认为这是少见的、确实有新意的协议改进。也有人提出经典理论疑问：如果延迟一个消息就能让共识失败，那最终还是得靠无限等待或某种 timeout 来处理活性问题。",
+        "supportid": [
+          "48834949",
+          "48835051",
+          "48833711",
+          "48835720"
+        ]
+      },
+      {
+        "category": "适合全球网络和不稳定链路",
+        "summary": "不少评论把它看成是应对 messy network 的潜在利器，尤其是 leader 经常 flapping、elections storming、延迟抖动很大的环境。有人直接联想到在糟糕网络上的 Raft 集群，认为如果共识能不再被 leader 选举拖垮，实际体验可能会明显更稳。还有人把它和 etcd、Kubernetes control plane 联系起来，认为 split-brain 和单区域限制正是现有方案的痛点。也有人希望这套东西尽快 open source，好让它变成全球分布式服务的基础组件。",
+        "supportid": [
+          "48832537",
+          "48834499",
+          "48834695",
+          "48835172"
+        ]
+      },
+      {
+        "category": "落地成熟度与性能疑虑",
+        "summary": "另一派更关心工程现实：这套方案还没进 production，只做了最多 50 个 replicas 的 proof-of-concept，因此真实成本和稳定性都还没被证明。评论里多次提到，异步共识可能带来更多 message round trips，在正常网络下未必比 Raft 这类方案划算。还有人强调，很多团队其实只需要一个 writer 加锁、或者直接用 Postgres 的 advisory locks、`SELECT ... FOR UPDATE`、`SKIP LOCKED` 就够了，不一定真的需要分布式一致性。即便是必须多区域写入的场景，评论者也担心 formal verification、stale local reads 的 clock 依赖，以及它是否适合数据库这类强要求系统。",
+        "supportid": [
+          "48832588",
+          "48832858",
+          "48835516",
+          "48833573",
+          "48834755"
+        ]
+      },
+      {
+        "category": "自研基础设施是否值得",
+        "summary": "有评论替 Cloudflare 这种公司辩护，认为真正适合自己做 distributed consensus 的，往往就是这类规模和能力都足够大的基础设施公司。观点是，历史上很多 operating systems、databases、compilers、cryptography、consensus algorithms 本来就是靠手写实现逐渐成熟的，所谓 off-the-shelf 方案也是从这些自研系统里演化出来的。也有人认为，随着 AI coding agents 变强，读论文、照着实现基础设施会越来越便宜，未来可能又会回到“按具体场景自组装”的路线。这个角度里，Cloudflare 不是在炫技，而是在延续大厂把前沿论文落地成通用组件的传统。",
+        "supportid": [
+          "48833188",
+          "48833602",
+          "48835496",
+          "48832628"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "QuePaxa",
+        "explanation": "EPFL 在 2023 年提出的 consensus protocol，主打异步推进、尽量不依赖 timeout。"
+      },
+      {
+        "term": "Raft",
+        "explanation": "一种 leader-based consensus algorithm，依赖 leader 选举与日志复制，工程上很常见。"
+      },
+      {
+        "term": "Paxos",
+        "explanation": "经典的 consensus family，常被用来讨论分布式系统如何在故障和延迟下达成一致。"
+      },
+      {
+        "term": "partial synchrony",
+        "explanation": "一种系统假设：消息延迟不是严格有界，但在某些条件下最终可控，很多协议靠 timeout 运行。"
+      },
+      {
+        "term": "linearizability",
+        "explanation": "线性一致性，一种强一致性语义，要求读写像按单一时间线发生。"
+      },
+      {
+        "term": "leaderless consensus",
+        "explanation": "不依赖单一 leader 的共识方式，多个副本可直接参与提议或写入。"
+      }
+    ],
+    "context": "Cloudflare 发布了一篇关于 Meerkat（一个全球分布式共识服务）的博客，声称它由 QuePaxa 驱动；QuePaxa 是 EPFL（瑞士洛桑联邦理工学院）研究者在 2023 年 SOSP（Symposium on Operating Systems Principles，系统领域顶会）论文中提出的协议。文章提到 Meerkat 目前还没有进入 production，只是在全球分布的最多 50 个 replicas 上做了 proof-of-concept。讨论焦点集中在：这种 leaderless、尽量不依赖 timeout 的 asynchronous consensus，是否真的比 Raft（leader-based consensus）和 Paxos family 更适合 Cloudflare 的全球网络与 control plane 场景。评论里也反复质疑文章没有把 QuePaxa 的新意放在前面，导致读者很难看出它到底解决了什么问题。",
+    "emoji": "🧐",
+    "sarcastic_question": "不先讲 QuePaxa，凭什么就叫全球新共识方案？"
+  },
+  "articleSummary": "## 一句话总结\nCloudflare 为了解决全球网络下 Raft 算法因 Leader 故障导致的不可用问题，基于 EPFL 的 QuePaxa 算法构建了无 Leader、无超时机制的 Meerkat 共识服务，实现了在 330+ 数据中心环境下的强一致性与高可用。\n\n### Raft 的 Leader 机制在广域网里是个软肋\nCloudflare 的内部服务需要在遍布全球的 330 多个数据中心里读写同一份控制面数据，而且要求强一致性。但互联网环境太不可预测了，光缆切断、网络抖动是家常便饭。传统的共识算法如 Raft，虽然能保证一致性，但在这种广域网环境下却很脆弱。Raft 依赖唯一的 Leader 来处理写入，一旦 Leader 宕机或者网络变慢，整个系统就得停下来选举新 Leader。这个选举过程依赖超时机制，而在延迟不可控的全球网络里，根本没法配置一个完美的超时值。Cloudflare 没少因为这个吃事故的亏，所以他们决定换个思路。\n\n### 核心思路：不要 Leader，大家都能写\n为了彻底解决 Leader 带来的单点故障问题，Cloudflare 研究团队把目光投向了 EPFL 在 2023 年发表的 QuePaxa 算法。这个算法最妙的地方在于它没有 Leader，所有副本在任何时候都可以处理写入请求。既然没有 Leader，自然也就不需要因为 Leader 挂了而触发选举，更不会因为超时配置错误导致系统停摆。Cloudflare 基于这个算法打造了 Meerkat，据他们所知，这是 QuePaxa 算法首次在全球规模的工业环境中落地。\n\n### 用“日志槽”来保证强一致性\nMeerkat 的架构核心是一个全局一致的日志，所有副本都维护着这份日志。日志被切分成一个个“槽”，每个槽要么是空的，要么已经“决定”存了某个事件。系统有个硬性规定：一旦某个槽被决定存了值，所有副本对这个槽的值必须达成一致，谁也不能改。当客户端发起写入请求时，接收请求的副本会发起共识流程，争取在当前最新的空槽里填入自己的操作。只要大多数副本同意，这个值就被定下来了。这种设计保证了所有副本最终看到的数据顺序是一模一样的。\n\n### 读操作也要进日志，这是线性一致性的关键\n有意思的地方在于，为了保证线性一致性，Meerkat 甚至把读操作也当成了写操作来处理。当副本收到一个 `get` 请求时，它不会直接读本地内存，而是也会尝试把这个读请求作为一个事件写入日志。如果这个槽已经被之前的写操作占用了，共识算法就会强制该副本先“追上”那个写操作，然后把读请求放到下一个槽里。这就确保了“读”一定发生在“写”之后，哪怕读写是发往相隔万里的不同副本。说白了，就是用日志的全局顺序性，强行把分布式系统变成了单机系统的逻辑。\n\n### 只要大多数节点活着，系统就永远在线\nMeerkat 的容错目标非常明确：只要系统中大多数机器活着且能互通，系统就必须能处理读写。客户端只要能连上任何一个连接到大多数的副本，就能完成操作。这比 Raft 强多了，Raft 里只要 Leader 出问题，哪怕大多数节点活着，写入也会卡住。Meerkat 放弃了 Leader 带来的简单性，换取了在恶劣网络条件下的极致可用性。目前 Meerkat 还在实验阶段，主要用于管理像数据库主节点选举这种小规模的控制面状态，暂时只对内开放。"
+}

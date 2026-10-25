@@ -1,0 +1,156 @@
+{
+  "id": 48385114,
+  "by": "SGran",
+  "title": "A Post-Quantum Future for Let's Encrypt",
+  "url": "https://letsencrypt.org/2026/06/03/pq-certs",
+  "score": 249,
+  "createdAt": 1780500636,
+  "aiSummary": {
+    "chinese_title": "Let's Encrypt 后量子证书：MTC、Hybrid KEM 与签名争议",
+    "discussion_overview": [
+      {
+        "category": "量子威胁并非遥远幻想",
+        "summary": "不少评论把 cryptographically relevant quantum computer 当成必须提前规划的现实风险，而不是科幻设定。讨论里反复强调，现代密码学本来就建立在对未知数学突破的谨慎假设上，所以即便今天还没有实用量子机，也不能因此忽视迁移。还有人指出，签名类场景比加密更棘手，因为根证书、code-signing、secure boot、身份系统这些长期密钥一旦失守，往往很难事后归因。相比之下，HNDL（Harvest-Now-Decrypt-Later，先收集后解密）确实更直接，但这不意味着签名可以无限拖延。",
+        "supportid": [
+          "48385569",
+          "48385635",
+          "48385718",
+          "48385736",
+          "48385769",
+          "48386391",
+          "48386518",
+          "48387097"
+        ]
+      },
+      {
+        "category": "Hybrid KEM 不是“加密两次”",
+        "summary": "大量回复在纠正一个常见误解：后量子迁移并不是把同一份数据用两把钥匙再加密一遍。更准确的做法是把 classical KEM 和 post-quantum KEM 得到的 shared secret 通过 KDF 或 combiner 合并，再用这个单一密钥去做对称加密。评论还特别指出，量子计算机并不会直接击穿 AES-GCM、ChaCha20-Poly1305 这类现代 authenticated cipher，所以真正需要重点替换的是 RSA、elliptic curve 这些 key exchange / signature 组件。也有人提醒，术语如果混用，容易把 KEM、encryption、cipher cascade 这些完全不同的构造搅在一起。",
+        "supportid": [
+          "48386172",
+          "48386293",
+          "48386432",
+          "48386619",
+          "48387064",
+          "48387907",
+          "48388074",
+          "48388082",
+          "48388340"
+        ]
+      },
+      {
+        "category": "MTC 的优势与落地代价",
+        "summary": "支持者认为 Merkle Tree Certificates（MTC）最大的卖点是把 Certificate Transparency 直接内建进证书体系，而不是像今天一样事后再把证书送去日志系统。它们在常见路径里只需要较小的认证材料，甚至可以比今天的 Web PKI 握手更小。质疑点则集中在工程现实：浏览器必须持续同步 fresh landmarks，设备离线、机场或酒店 captive portal、网络抖动时都可能触发回退。回退一旦发生，握手又会被大号 ML-DSA 签名拉到十几 KB 甚至更大，等于把证书大小问题转化成了浏览器后台状态同步问题。",
+        "supportid": [
+          "48385874",
+          "48385882",
+          "48386001",
+          "48386016"
+        ]
+      },
+      {
+        "category": "签名迁移比加密更难",
+        "summary": "有人认为社区长期只盯着 HNDL，而低估了 post-quantum authentication 的紧迫性。评论里举了很多例子：root CA、code-signing、firmware update keys、secure boot certificates 和身份系统都属于迁移周期很长、出问题也很难观察的对象。还有人强调，量子伪造和普通 key exfiltration、library bug 或 classical break 在外观上几乎没区别，所以你未必能在现实中等到一个清晰的迁移触发点。围绕这个主题，还有人主张不要把 encryption 和 signing 分开排期太久，否则行业会像 IPv6 一样拖延。",
+        "supportid": [
+          "48386391",
+          "48386518",
+          "48386784",
+          "48387990",
+          "48388273",
+          "48388368",
+          "48388468"
+        ]
+      },
+      {
+        "category": "标准化、Lattice 与 OpenSSH 迁移",
+        "summary": "几条技术回复补了标准化背景：NIST 选择 ML-KEM 和 ML-DSA 时同时考虑了 classical attacks 与 quantum attacks，并用类似 AES/SHA 的安全等级来分层。评论还说明，LWE 这类 lattice assumption 最初并不是为 PQC 诞生的，但后来成为主流后量子构造的核心之一；相反，SIKE 则被当作一个曾经看似 quantum-safe、后来却失败的反面教材。实际迁移上，OpenSSH 里的 ed25519 已经被指出不是 quantum resistant，于是有人提到 IETF 的 mldsa-44 draft 作为未来替代方案。也有人特别区分 ML-KEM 和 ML-DSA 的用途：前者更像 key agreement，后者才是签名。",
+        "supportid": [
+          "48386220",
+          "48386367",
+          "48387157",
+          "48387319",
+          "48388385",
+          "48388426",
+          "48388635"
+        ]
+      },
+      {
+        "category": "对 PQC 标准和动机的怀疑",
+        "summary": "有一小部分评论直接把这次迁移解读成 NSA 和 EU 推动不成熟、甚至被 backdoor 的方案替换成熟算法。反驳者则要求给出证据，并指出这些标准并不是由被怀疑的机构单独设计出来的，而是经过多国、跨团队的长期 standardization effort。还有人批评把 SIKE 的失败外推到 lattice cryptography，或者把某个具体 scheme 的事故当成整个领域的证据。这个分歧本质上不是技术细节，而是对机构、专家和标准化流程到底信不信任。",
+        "supportid": [
+          "48386367",
+          "48386651",
+          "48388338",
+          "48388451",
+          "48388511",
+          "48388553",
+          "48388563"
+        ]
+      },
+      {
+        "category": "量子计算的能力边界",
+        "summary": "另一条支线在降温量子计算的神话，认为它更像一块昂贵的加速卡，而不是能普遍颠覆计算的机器。评论指出，真正让它在密码学里显得可怕的，是它对 factoring 和 discrete log 这类问题特别有效，而不是它能随便破解所有加密。也有人补充说，后量子安全性的核心其实是选择一个目前没有已知高效 classical 或 quantum 算法的 hard problem，而这和量子硬件工程本身不是一回事。换句话说，量子算法研究走在前面，真正把机器造出来反而是另一层难题。",
+        "supportid": [
+          "48386398",
+          "48386617",
+          "48386628",
+          "48385718",
+          "48386184"
+        ]
+      },
+      {
+        "category": "OTP / Secret Sharing 类比纠正",
+        "summary": "评论里还出现了对 Vernor Vinge 科幻设定的回忆，有人提到把 pad 分成几份运输，试图降低泄露风险。随后有人纠正说，那更接近 Shamir Secret Sharing 或阈值分发，而不是把同一把钥匙 XOR 成 two-time pad。讨论进一步指出，OTP、SSS 和实际的 KEM/密钥分发在工程上并不等价，甚至很多安全属性完全不同。也有人提醒，OTP 只能提供保密性，不能证明作者身份或检测篡改，所以真实系统不能只靠它。",
+        "supportid": [
+          "48386547",
+          "48386735",
+          "48387370",
+          "48387416",
+          "48388503",
+          "48388864"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "MTC（Merkle Tree Certificates）",
+        "explanation": "把证书组织进 Merkle tree 的新型证书格式，目标是把透明度和可审计性内建到证书发行流程里。"
+      },
+      {
+        "term": "Certificate Transparency（CT）",
+        "explanation": "公开可审计的证书日志系统，用来发现 CA 误签、滥发或被隐藏的证书。"
+      },
+      {
+        "term": "Hybrid KEM",
+        "explanation": "把 classical KEM 与 post-quantum KEM 的 shared secret 组合起来的密钥交换方式，不是简单把数据加密两次。"
+      },
+      {
+        "term": "ML-KEM",
+        "explanation": "NIST 标准化的 lattice-based KEM，原名 Kyber，主要用于后量子密钥交换。"
+      },
+      {
+        "term": "ML-DSA",
+        "explanation": "NIST 标准化的 lattice-based signature scheme，原名 Dilithium，主要用于后量子签名。"
+      },
+      {
+        "term": "LWE（Learning With Errors）",
+        "explanation": "一种基于带噪线性方程困难性的 lattice assumption，是许多后量子密码构造的基础。"
+      },
+      {
+        "term": "BQP",
+        "explanation": "量子计算中可在多项式时间内求解的问题类，用来描述哪些问题适合量子算法。"
+      },
+      {
+        "term": "HNDL（Harvest-Now-Decrypt-Later）",
+        "explanation": "先把今天的加密流量存起来，等未来算力或算法进步后再解密的攻击策略。"
+      },
+      {
+        "term": "Shamir Secret Sharing",
+        "explanation": "把秘密拆成多个份额，达到阈值才可恢复的一种秘密分享方案。"
+      }
+    ],
+    "context": "Let's Encrypt（免费 TLS 证书颁发机构）正在讨论面向后量子时代的证书体系，文章核心涉及 Merkle Tree Certificates（MTC，一种把证书直接放进 Merkle tree 的设计），以及如何把 Certificate Transparency（证书透明度日志）内建进 Web PKI（Web Public Key Infrastructure，网页公钥基础设施）。这条路线之所以重要，是因为今天广泛使用的 RSA 和椭圆曲线证书会受到未来 cryptographically relevant quantum computer（具备实际密码破解能力的量子计算机）的威胁，而攻击者还能先记录加密流量，等待未来再解密。评论把话题扩展到了 NIST 标准化的 ML-KEM 和 ML-DSA、OpenSSH 的 ed25519 迁移，以及 hybrid KEM、LWE、HNDL 等概念。争论焦点不只是算法本身，还包括签名与密钥交换谁更紧急、浏览器和 CA 的工程迁移成本、以及对 PQC 标准化流程是否信任。",
+    "emoji": "⚠️",
+    "sarcastic_question": "量子机还没影，就先认定全是后门吗？"
+  },
+  "articleSummary": "## 一句话总结\nLet's Encrypt 决定采用 Merkle Tree Certificates (MTCs) 方案，通过批量签名和分离验证逻辑，在不牺牲 TLS 握手性能的前提下，为 Web PKI 引入抗量子认证能力。\n\n### 量子威胁的紧迫性已不再遥远\n过去几年，大家谈抗量子（PQ）主要盯着加密，觉得认证没那么急，因为伪造签名需要实时算力。但这个安全泡沫正在破裂。美国 NSA 的 CNSA 2.0 指令和欧盟路线图都把 2030 到 2035 年设为死线，要求淘汰 RSA 和 P-256。今年 Google 和 Cloudflare 甚至把时间表提前到了 2029 年，Go 1.27 也把 ML-DSA 纳入了标准库。这说明抗量子认证已经不是未来的事，而是现在的工程，特别是对于 Root CA 这种长生命周期的密钥，现在不动就真来不及了。\n\n### Web PKI 的阿喀琉斯之踵是“体积”\nWeb PKI 想要抗量子，最大的拦路虎其实是“大”。拿 ML-DSA-44 这种相对较小的 NIST 标准算法来说，签名 2,420 字节，公钥 1,312 字节，比现在的 RSA 和 ECDSA 大了一个数量级。一次 TLS 握手通常涉及 5 个签名和 2 个公钥，如果全换成 ML-DSA，握手数据量轻松突破 10KB。Cloudflare 的研究很直接：这么大体积的数据包，在现实网络里会导致连接失败率飙升，没失败的也会变慢。为了一个还没发生的威胁牺牲全网的性能，这代价太大了。\n\n### MTCs 的核心思路是“化整为零”\n那怎么办？Let's Encrypt 看好 Merkle Tree Certificates (MTCs)。这个设计巧妙的地方在于，它不再给每张证书单独签名，而是把证书打包成批次，用一个大签名覆盖整棵 Merkle Tree。浏览器通过单独的通道获取这些“里程碑”签名，而不是在 TLS 握手里塞。这样在常规情况下，MTC 握手只需要一个签名、一个公钥和一个包含证明，比现在的 Web PKI 还要小。只有在客户端的“里程碑”过期时，才会回退到稍大的“独立”模式。\n\n### 顺便把 Certificate Transparency 做成了内置功能\nMTCs 不光是为了省流量，它还顺带解决了证书透明度（Certificate Transparency）的问题。现在的 CT 是事后“打补丁”，CA 签发证书后再去日志里记录，握手时还得带上额外的签名证明。但在 MTCs 架构里，证书天然就是 Merkle Tree 的一部分，不存在树外的证书。这意味着透明度变成了签发过程的内置属性，而不是外挂。Let's Encrypt 从 2019 年就开始运营 CT 日志，用的也是 Merkle Tree，这技术栈对他们来说是熟门熟路。\n\n### 2026 年见分晓的工程路线图\n这不是纸上谈兵，Cloudflare 和 Chrome 已经在用真实流量跑可行性实验了，IETF 的 PLANTS 工作组也在推进标准化。Let's Encrypt 的计划很明确：2026 年搭建 staging 环境发 MTC 证书，2027 年生产环境就绪。但这工程量巨大，从签发基础设施、ACME 协议，到吊销工具和透明度日志，全栈都要改。他们现在正紧盯着 RFC 9881 和相关的 TLS 草案，确保浏览器、库和 ACME 客户端能同步跟上。\n\n### 开发者现在该做什么？\n如果你只是用 Let's Encrypt，今天什么都不用做，证书照常免费自动续期。但如果你维护 ACME 客户端或者跑证书流水线，现在就得关注 PLANTS 工作组和 mtcs@chromium.org 邮件列表了。这次迁移涉及客户端的配合，生态准备好了，迁移才能顺滑。另外，对于更广泛的互联网社区，Let's Encrypt 提醒：抗量子加密其实更急，如果你管服务器，赶紧开启混合抗量子密钥交换（X25519MLKEM768），这是今年性价比最高的安全操作。"
+}

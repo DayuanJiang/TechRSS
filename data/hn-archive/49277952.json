@@ -1,0 +1,125 @@
+{
+  "id": 49277952,
+  "by": "abelanger",
+  "title": "Does anyone run Postgres without PgBouncer?",
+  "url": "https://brandur.org/fragments/postgres-without-pgbouncer",
+  "score": 126,
+  "createdAt": 1786887613,
+  "aiSummary": {
+    "chinese_title": "Postgres 不用 PgBouncer 也能跑？并发与 transaction pooling 争议",
+    "discussion_overview": [
+      {
+        "category": "小规模/单应用直连即可",
+        "summary": "不少人表示，在传统单体应用、少量应用服务器或自建 Postgres 的场景里，PgBouncer 往往只是额外复杂度。应用框架或 ORM 自带的 connection pool 已经能把连接控制在可接受范围内，像 Go 的 pgx、Elixir 的 Ecto、Node 的 driver pool 都被提到。有人自己长期运行只有十几到两百个连接的实例，也没有遇到必须上外部池化的压力。还有人认为，如果业务本身流量很低，甚至 SQLite 都可能更合适，PgBouncer 更像是过度设计。",
+        "supportid": [
+          "49320310",
+          "49320235",
+          "49320532",
+          "49320709",
+          "49320454",
+          "49322127",
+          "49321726"
+        ]
+      },
+      {
+        "category": "多实例/Serverless/Pod 抖动时外部池更有价值",
+        "summary": "另一派强调，外部 pooler 的价值主要体现在大量 worker、Kubernetes pod 或 serverless 后端之间共享连接。单个应用进程里的 pool 只能复用本进程的连接，不能把空闲连接借给别的实例，因此实例一多，Postgres 后端进程和内存占用会迅速膨胀。评论里举了几十个 pod、上百到上千 worker、以及 mobile-heavy 间歇连接的例子，认为这时 PgBouncer、RDS Proxy、Neon 的 serverless pooling 或 Cloudflare Hyperdrive 才真正有意义。也有人把经验总结成：只要 max_workers * pool_size 接近或超过 max_connections，就该考虑外部池。",
+        "supportid": [
+          "49321473",
+          "49322657",
+          "49321193",
+          "49320860",
+          "49320291",
+          "49320226",
+          "49320310",
+          "49321726"
+        ]
+      },
+      {
+        "category": "PgBouncer 的核心是跨实例复用后端连接",
+        "summary": "有评论专门区分了应用内 pool 和 PgBouncer 的概念差异。应用内 pool 往往更偏 FIFO，目标是让本进程尽快拿到一个“热”连接；而 PgBouncer 更像在全局层面做 LIFO 复用，优先回收最近使用过的连接，让更久没用的连接冷却并关闭。这样做的收益不是让单个请求更快，而是让真正抵达 Postgres 的连接数大幅下降，减少 fork、内存分配和 backend 进程数量。有人用“把连接数砍掉 90%”来形容它对吞吐和资源占用的改善。",
+        "supportid": [
+          "49321051",
+          "49320636",
+          "49320862",
+          "49321361",
+          "49321729"
+        ]
+      },
+      {
+        "category": "transaction pooling 的兼容性代价",
+        "summary": "另一组讨论集中在 PgBouncer 最有名也最麻烦的模式：transaction pooling。由于连接会在事务之间重新分配，session 级状态会丢失，像 `SET search_path`、prepared statements 以及依赖稳定 session 的逻辑都可能出问题。评论里把这称为典型 footgun，尤其是 SQLAlchemy 和 psycopg3 用户会反复踩到。也有人提到，正因为这个限制，一些驱动层方案（例如 DataDirect）选择保留真实 PostgreSQL session，再在连接层做复用和 failover，而不是做 transaction 级后端切换。",
+        "supportid": [
+          "49320979",
+          "49320460",
+          "49320295",
+          "49322111",
+          "49321389"
+        ]
+      },
+      {
+        "category": "争议焦点其实是 Postgres 为何不内建 pooling",
+        "summary": "不少评论认为，这个问题本身有点问偏了：真正值得追问的是为什么 connection pooling 不是 PostgreSQL 的内建能力。Postgres 的 process-per-connection 架构被反复批评为过时，导致连接风暴时性能和内存都会迅速恶化，而 MySQL 或 SQL Server 的许多场景并不需要单独外挂 pooler。也有人反过来说，既然几乎所有严肃部署最后都会走到 pooling，那它就应该是数据库核心功能，而不是外围补丁。与此同时，评论也提醒不要把这个问题简化成“博客站点要不要 PgBouncer”，因为生产、CI/CD 以及 managed service 的约束完全不同。",
+        "supportid": [
+          "49320672",
+          "49320411",
+          "49320975",
+          "49320956",
+          "49320295",
+          "49319991",
+          "49321120"
+        ]
+      },
+      {
+        "category": "语言/框架与部署模型决定池化需求",
+        "summary": "评论里还围绕 Python、Java、Go、PHP 等运行时讨论了为什么有些栈更依赖外部池。Python 常见的多进程部署、FastAPI 的事务注入方式，以及 WSGI/ASGI 习惯，会让连接更容易分散到多个进程里；而 Java 的长驻进程和线程共享连接池则更容易在应用层解决。也有人指出，这其实更像横向扩展还是纵向扩展的问题，而不是“某种语言天生更需要 PgBouncer”。换句话说，真正决定因素是实例数、事务长度，以及是否能在一个进程里稳定共享连接。",
+        "supportid": [
+          "49320397",
+          "49320818",
+          "49320909",
+          "49323889",
+          "49321891",
+          "49323828",
+          "49322408",
+          "49321057"
+        ]
+      },
+      {
+        "category": "商业 RDBMS 的内建能力与锁定成本",
+        "summary": "有一段长讨论把话题扩到 Oracle DB、SQL Server、IBM Cloud 和 DataDirect 这类商业数据库/驱动。支持者认为这些系统早就内建了 server-side pooling、client-side load balancing、failover 和更强的并发能力，很多 Postgres 上的“绕路方案”在它们那里本来就是默认能力。反对者则强调许可证审计、价格波动和厂商作风会把团队挡在门外，尤其是 startup 更怕被锁进昂贵且难维护的生态。于是争论变成：技术能力更强的 enterprise RDBMS 是否值得换来更高的商业风险。",
+        "supportid": [
+          "49321389",
+          "49322415",
+          "49323428",
+          "49321716",
+          "49322228",
+          "49322241",
+          "49319988",
+          "49320460"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "PgBouncer",
+        "explanation": "Postgres 的外部 connection pooler / proxy，用少量后端连接承接大量客户端连接，降低连接开销。"
+      },
+      {
+        "term": "transaction pooling",
+        "explanation": "PgBouncer 的一种模式，连接在每个事务结束后即可归还池中，下一事务可能换到别的 backend session。"
+      },
+      {
+        "term": "prepared statements",
+        "explanation": "预编译并缓存 SQL 执行计划的机制；在 transaction pooling 下可能因 session 切换而出现兼容问题。"
+      },
+      {
+        "term": "process-per-connection",
+        "explanation": "Postgres 的架构特点：每个连接通常对应一个独立后端进程，连接多时会带来明显的内存和 fork 开销。"
+      }
+    ],
+    "context": "这场讨论围绕 PostgreSQL（一个流行的关系数据库）是否必须通过 PgBouncer（Postgres 连接池/代理）来使用展开。PgBouncer 会把大量客户端连接复用到更少的后端连接上，缓解 PostgreSQL 进程按连接创建的开销，尤其在 serverless、Kubernetes 多实例、连接抖动明显的环境里常见。很多评论把“是否需要 PgBouncer”拆成了更具体的问题：应用是否已经有自己的 connection pool、并发是否足够高、事务是否短、是否依赖 session 级特性如 SET 或 prepared statements。讨论还延伸到 RDS Proxy、Cloudflare Hyperdrive、Neon（一个 serverless Postgres 平台）以及 Oracle DB、SQL Server 等带内建池化或更强会话管理的商业数据库。",
+    "emoji": "🤔",
+    "sarcastic_question": "既然人人都要池化，Postgres 为啥还不自带连接池？"
+  },
+  "articleSummary": "## 一句话总结\n\nPgBouncer 几乎已成为托管 Postgres 的标配，这反过来说明连接池不该再被当作 Postgres 的“外围组件”，而应成为核心能力。\n\n## 正文\n\n### 十年前的问题，今天依然没有过期\n\n作者因为一篇十年前写的 Postgres 连接管理文章被重新关注，于是回头读了一遍。意外的是，文章里的建议几乎没有过时：Postgres 仍然不擅长直接承载大量客户端连接。生产环境里，应用通常仍要使用本地连接池、短时间连接 checkout，以及一个外部 pooler。最常见的 pooler，当然就是 PgBouncer。说白了，Postgres 的连接管理问题并没有随着时间自动消失，只是整个生态已经学会了如何绕开它。\n\n于是作者提出了一个很直接的问题：到底有多少人会在没有 PgBouncer 的情况下运行 Postgres？为了回答它，他盘点了所有知名托管 Postgres 提供商。结果不是“很多人提供了这个可选功能”，而是几乎所有人都把它当成必要能力。换句话说，连接池已经不是某类高并发用户的优化项，而是托管 Postgres 服务的基础设施组成部分。\n\n### 托管 Postgres 几乎人人都带了“挡风玻璃”\n\n这份清单的结论非常明确：Aiven、Azure PG、Crunchy Bridge、DigitalOcean、EDB Postgres AI、Fly.io MPG、Neon、PlanetScale、Render、Tiger Cloud 等，都提供 PgBouncer。Supabase 同时提供 PgBouncer 和面向 serverless 场景的 proprietary pooler，Supavisor。Google Cloud SQL 也支持 PgBouncer 或 managed pooling，但要求 Enterprise Plus。Heroku 的 PgBouncer 只在部分套餐可用，Railway 则把它作为独立服务提供。AWS RDS 和 Aurora 没有直接交付 PgBouncer，但提供了定位相近的 RDS Proxy。\n\n例外主要是 IBM Cloud 和 OCI，它们没有提供 managed pooler，只能让用户自行部署。作者对此带着一点调侃：如果不把这两个偏企业销售周期的服务算进去，那么“可信的”托管 Postgres 提供商几乎 100% 都捆绑了 pooler。这里真正值得注意的不是 PgBouncer 的普及率，而是这种普及背后的默认共识。每一家服务商都知道，直接把 Postgres 暴露给大量应用连接，往往不是一个足够稳妥的生产方案。于是大家都在数据库前面再放一层“缓冲器”。\n\n### 问题不在于有没有工具，而在于工具本不该人人重复造\n\n从表面看，现状似乎没有什么问题。需要连接池的用户能拿到 PgBouncer，服务商也能通过托管配置保证生产稳定。可是，这套模式把大量复杂度分摊给了生态中的每一个参与者。每个云厂商都得设计自己的部署方式、配置流程，以及区分 Postgres 地址和 PgBouncer 地址的连接约定。每个用户也得再读一遍指南，理解 pool mode 的取舍和行为差异。\n\n而 PgBouncer 并不是完全透明的代理。用户必须知道某些功能会受到限制，例如 `LISTEN/NOTIFY` 可能不适合经由 PgBouncer 使用。用户还得理解 transaction pooling、session pooling 等模式的不同语义，并据此调整应用连接行为。也就是说，大家并非只是在“打开一个开关”，而是在反复承担一套 Postgres 核心能力缺位带来的运维和语义成本。\n\n作者用了一个很形象的比喻：这就像买了一辆没有挡风玻璃的车。你当然可以自己加装，而且既然路上所有车都有挡风玻璃，你也确实会去装。可问题是，厂商为什么要把一辆不能直接安全上路的车卖给你？当几乎所有用户和服务商都要补上同一个部件时，这个部件是否还应该被视为“非核心功能”，答案已经很明显了。\n\n### 真正理想的体验，是只有一个 URL 和一个端口\n\n作者设想的终点并不复杂：用户从托管 Postgres 提供商那里拿到一个 database URL、一个端口，然后直接使用。用户不需要额外区分数据库端点和 pooler 端点，也不需要为了连接数稳定性再拼装一层基础设施。对于服务商来说，也不必把 PgBouncer 当作一个需要额外安装和暴露的“售后配件”。连接池应该像车的挡风玻璃一样，默认随车交付。\n\n这不是完全无法想象的模式，因为 MySQL 和 MongoDB 的世界已经更接近这种体验。Postgres 之所以还没有走到这一步，背后牵涉到老生常谈的 processes versus threads 之争，也不是一个容易推动的架构变化。毕竟，这类改变需要足够有影响力的贡献者投入长期工作，并穿透社区和实现层面的惯性。但考虑到整个行业已经花了多少 developer-years 来部署、配置、解释和规避外部连接池，作者认为，把连接池重新整合为 Postgres 的核心能力，很可能是最具影响力的运维改进之一。"
+}

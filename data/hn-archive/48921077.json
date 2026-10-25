@@ -1,0 +1,108 @@
+{
+  "id": 48921077,
+  "by": "evakhoury",
+  "title": "Towards a Harness That Can Do Anything",
+  "url": "https://eardatasci.github.io/c/ambiance/index.html",
+  "score": 142,
+  "createdAt": 1784125866,
+  "aiSummary": {
+    "chinese_title": "Agent harness：确定性代码优先，LLM 只管边角",
+    "discussion_overview": [
+      {
+        "category": "确定性编排优先",
+        "summary": "评论区最强的一股共识是，LLM 应该被包在一层尽可能确定的程序里，而不是让 prompt 直接承担流程控制。很多人把 agent 想成一串脚本：先跑测试、lint、hooks，再去读 git log、JIRA、PRD，只有在“这次失败是不是功能变化”之类的边界问题上才调用模型。有人明确提到简单硬编码脚本比过度通用的脚本更实用，甚至说第三次复用之前都不该急着参数化。还有人把这个外层视为真正的 harness：它不是 prompt，而是把各个可执行工具缝起来的控制面。",
+        "supportid": [
+          "48922165",
+          "48922369",
+          "48922580",
+          "48926135",
+          "48926683",
+          "48927094",
+          "48925103",
+          "48922516",
+          "48922666",
+          "48923476"
+        ]
+      },
+      {
+        "category": "测试与状态文档做反馈闭环",
+        "summary": "另一组评论把测试看成 agent 的“疼痛传感器”。他们强调代码测试而不是 LLM 式 vibes，甚至把代码和测试的 LOC 维持到接近 1:1。BDD 和 Gherkin 被反复点名，因为先用行为描述场景，再逐步把可接受的场景固化成自动测试，可以让 AI 先手工验证、后自动执行。有人还用 task.md、chat_log.md 和一个短小的 state-of-the-world 文档来保存上下文，让 agent 在恢复时既快又不丢意图。",
+        "supportid": [
+          "48922649",
+          "48922689",
+          "48923574",
+          "48925102",
+          "48922877",
+          "48921556"
+        ]
+      },
+      {
+        "category": "通用 harness 的可行性遭质疑",
+        "summary": "也有不少人对“能做任何事”的说法很怀疑。评论里直接说这种表述更像是软概念，帖子里的 demo 只是把小 Node 程序换成了更大权限的 sandbox，并没有证明一个具体目标。有人认为不同 workload、不同 model、不同 token 预算都需要不同的 harness 组合，还要求跨任务测量，而不是靠口号。另一些人补充说，模型的输出本来就是随机和多样的，所以工具层更应该做自动归一化，而不是强行要求一个完美统一的 schema。",
+        "supportid": [
+          "48924669",
+          "48922862",
+          "48922468",
+          "48923063",
+          "48924721",
+          "48922037",
+          "48923059",
+          "48923986"
+        ]
+      },
+      {
+        "category": "Unix 隐喻与命名争议",
+        "summary": "很多评论借 Unix 语言来定义这个层：harness、scaffold、skeleton、exoskeleton、bridle、framework、loop engineering 轮番出现。有人觉得 LLM 天生适合通过 bash、文件系统和文本流来工作，另一些人则质疑“everything is a file”对机器是否真是好抽象，主张用 typed JSON、key-value store，甚至 Nix 或 Plan 9 这样的新 OS 思路。还有人提议把 agent 当成 Linux user，用权限、group 和 mail 做异步通信。这个分组的核心不是功能，而是系统边界应该长什么样。",
+        "supportid": [
+          "48922233",
+          "48924902",
+          "48922634",
+          "48922786",
+          "48922922",
+          "48923805",
+          "48923684",
+          "48923606",
+          "48923727",
+          "48925289",
+          "48926328",
+          "48921779"
+        ]
+      },
+      {
+        "category": "现成工具与 client 编排",
+        "summary": "还有一派更关注怎么把现成工具串起来，而不是重新发明一个全能 runtime。有人直接问为什么不就用 Claude Code 或 Codex，在本机外层再包一层确定性检查；也有人提到 LangGraph、dynamic workflows、ACP 之类已经在做编排或会话驱动。实操上常见做法是：先让 agent 干活，再在外层跑 tests 或 security analyzer，失败就重发 prompt，甚至开新 session。这个视角把重点放在 API、会话和检查回路的组合上，而不是新造一个“大一统” agent。",
+        "supportid": [
+          "48921799",
+          "48921980",
+          "48922999",
+          "48922773",
+          "48927113",
+          "48926084",
+          "48922411"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "harness",
+        "explanation": "LLM 外层的执行/编排层，负责接工具、解析输出、跑检查并回灌结果。"
+      },
+      {
+        "term": "deterministic workflow / deterministic gates",
+        "explanation": "把执行步骤、检查点和失败处理写成固定流程，尽量减少随机性并保持可复现。"
+      },
+      {
+        "term": "BDD/Gherkin",
+        "explanation": "用行为场景定义需求，再把场景转成可执行测试的做法和语法。"
+      },
+      {
+        "term": "Unix philosophy",
+        "explanation": "用小而专的程序、管道和组合来协作，强调可组合、可审计、可替换。"
+      }
+    ],
+    "context": "原帖和评论围绕一个名为 Ambiance 的开源实现（面向 coding agent 的 harness）展开，目标是把 Claude Code（Anthropic 的编码 agent 工具）、Codex-cli（OpenAI 的命令行编码 agent）放进更大的自动化工作流里，让测试、lint、git commit、文件监控和外部数据源由确定性程序处理。评论区默认前提是：LLM 擅长补足边缘判断，但真正可靠的执行应该交给脚本、hooks、文件系统事件和可审计的状态文件。有人把这种系统类比成 Unix 的管道和小程序组合，也有人提到 LangGraph（一个用于编排 LLM 工作流的框架）、MCP（Model Context Protocol，一种把模型接到外部工具上的协议）和 ACP（Agent Client Protocol，一种用客户端驱动 agent 会话的协议）等现成编排层。争论焦点是：通用 harness 是否存在，还是不同任务本来就该用不同的 harness 和反馈闭环。",
+    "emoji": "🤔",
+    "sarcastic_question": "再造一个 harness 就能包打天下？"
+  },
+  "articleSummary": "## 一句话总结\n与其教 LLM 适应复杂的新工具，不如直接把 Linux 环境包装成一个 Harness，利用模型对文件系统和命令行的先验知识，大幅降低 Token 消耗并提升系统的可控性。\n\n### 别跟概率对赌，要跟模型的“本能”合作\n现在的 LLM 训练数据里，代码和系统管理的占比高得离谱。这意味着模型天生就熟悉 Linux 环境，如果你非要给它造一套全新的 API 或者复杂的 JSON 接口，那纯属是在浪费 Token。一个好的 Harness 应该是“前台极简，后台极重”的：前台让 LLM 觉得轻量顺手，后台默默搞定日志记录、安全检查、数据清洗等脏活累活。说白了，就是别让模型把宝贵的 Context 浪费在“怎么发现文件”或者“怎么解析数据”这种琐事上，让它直接上手干正事。\n\n### 把 Unix 哲学搬进 Agent 的设计里\n作者回溯了 Ritchie 和 Thompson 的 Unix 哲学，发现这简直就是解决现代 Agent 问题的良药：写程序只做一件事并做好，程序之间通过文本流协作。现在的 Harness 往往太复杂，试图把所有功能塞进 System Prompt 里，导致指令随着对话轮次增加而衰减。作者提出的方案是：工具要模块化且透明，通过文本流连接，并且所有交互都应该是扁平的文本文件。因为文本流是通用接口，而对语言模型来说，处理文本就是它的“主场优势”。\n\n### 一切皆文件：用虚拟文件系统统管数据\n既然模型喜欢文本，那就把所有外部数据源都伪装成文件。作者设计了一个符合 FHS（Filesystem Hierarchy Standard）的虚拟文件系统：配置放 `/etc`，日志放 `/var`，Agent 的工作空间放 `/home`。这样做的好处显而易见：模型可以用 `grep`、`find` 这些它烂熟于心的命令来检索信息，人类开发者也能用同样的方式审计系统。核心思路就是把外面乱七八糟的世界，清洗整理后映射进这个虚拟文件系统，让模型感觉像是在操作一个熟悉的 Linux 机器。\n\n### 用事件驱动的“内核”替代轮询心跳\n传统的常驻 Agent（如 OpenClaw）通常用“心跳”机制——每隔半小时醒来看看有没有活儿干。这有个两难问题：间隔短了浪费 Token（空转也是钱），间隔长了反应慢。作者为此设计了一个叫“Kernel”的事件总线，它监听文件系统的变化（Cursor 机制），一旦有变动就触发 LLM。这不仅保证了实时性，还能通过事件聚合策略处理高吞吐场景。这个“Kernel”就像真正的操作系统内核一样，夹在 LLM 和外部世界中间，负责把脏东西挡在外面。\n\n### 三个“用户”分工协作，实现自我修复\n在这个系统里，作者定义了三个默认的“用户”（即三个不同职责的 LLM 实例）：`root` 负责系统级编程和修复驱动；`pai` 是面向人类、处理外部任务的干活的 Agent；`librarian` 负责记录日志，分析 `pai` 的优缺点和系统每日行为。它们通过事件总线和 `send-message` 二进制文件互相通信。这种设计把“自我修复”变成了可能：当 `pai` 出错时，`root` 可以根据日志介入修复，而这一切都基于标准的文件读写，对模型来说非常直观。"
+}

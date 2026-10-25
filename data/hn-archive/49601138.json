@@ -1,0 +1,120 @@
+{
+  "id": 49601138,
+  "by": "adastral",
+  "title": "I've operated petabyte-scale ClickHouse clusters for 5 years",
+  "url": "https://www.tinybird.co/blog/what-i-learned-operating-clickhouse",
+  "score": 233,
+  "createdAt": 1789141836,
+  "aiSummary": {
+    "chinese_title": "PB级 ClickHouse 运维5年：DBA门禁、摄取瓶颈与云存储争论",
+    "discussion_overview": [
+      {
+        "category": "DBA 角色：门禁还是顾问",
+        "summary": "评论把传统 DBA 描述成一种“人肉 rate limiter”，不仅管数据库，还控制 schema 和 query 改动节奏，避免坏查询直接冲垮系统。有人认为在高可靠性、高 QPS、大数据量场景下，这种 gatekeeper 很有价值；也有人更赞成让 DBA 成为专家顾问，而不是卡住所有变更的唯一瓶颈。另一条更强的观点是，现代开发者至少要懂 Linux、Kubernetes、查询计划、索引和容器日志，否则线上出问题时只会制造更多摩擦。反对者则提醒，这种“全栈/DevOps 化”常常没有配套的薪酬、时间和岗位边界，最后只是把责任继续下压。",
+        "supportid": [
+          "49660795",
+          "49661031",
+          "49661179",
+          "49662919",
+          "49661303",
+          "49662743",
+          "49661390",
+          "49663323",
+          "49663160",
+          "49663186",
+          "49661186",
+          "49661344",
+          "49662756"
+        ]
+      },
+      {
+        "category": "并发隔离：坏查询、噪声邻居与分区",
+        "summary": "有人强调，单纯扩容并不能解决数据库问题，真正麻烦的是坏查询会制造 noisy-neighbor 效应，把别的请求拖到超时甚至 OOM。于是方案不只是堆更多 compute，而是把 compute 和 storage 分区，甚至按部门、用户或读写路径隔离，让一个糟糕查询只影响自己的资源池。讨论里把 DuckDB + S3、Iceberg、Delta Lake 作为可扩展读路径的例子，也提到对象存储前缀热点和分区随机化能缓解 S3 限流。整体共识是：如果系统允许“谁都能加任意 access pattern”，就必须配套隔离机制，而不是指望所有人都写出好查询。",
+        "supportid": [
+          "49660912",
+          "49661056",
+          "49662315",
+          "49661727",
+          "49664806"
+        ]
+      },
+      {
+        "category": "ClickHouse 的 ingestion、merge 和磁盘压力",
+        "summary": "多位评论者把 ClickHouse 的主要痛点指向写入链路：ingestion 常常是“每家都在痛”的问题，尤其在 parts 太多、merge 追不上时，系统会需要更多 disk 才能维持吞吐。有人回忆在真实业务里做过 ClickHouse ingestion 迁移，感受到消息流里不断出现“需要更多磁盘”的提醒，因为 merge debt 会很快累积。也有人说 ClickHouse 对 disk space 既“很吃”，又相对高效，特别适合 application logs 这类高压缩比数据。还有人追问在回放客户查询时如何处理 now()、approximate aggregates 这类会让结果偏移的语句，说明分析型系统的测试和回归验证并不简单。",
+        "supportid": [
+          "49661319",
+          "49663306",
+          "49661637",
+          "49662619",
+          "49660839",
+          "49662958"
+        ]
+      },
+      {
+        "category": "托管、AWS 成本与 RDS 化愿望",
+        "summary": "不少人最想要的不是“再学一套 ClickHouse 玩法”，而是像 RDS 一样开箱即用的托管版本，省掉很多审批、运维和供应商流程。评论里提到 ClickHouse Cloud、AWS Marketplace、BYOC（Bring Your Own Cloud）管理，以及 compute 成本高、storage 利润低的云厂商定价逻辑；有人还补充，BYOC 方案能显著降本，因为真正贵的是被云服务商加价的 compute。也有人指出，ClickHouse 在不同团队手里运维方式差异很大，尤其在 ingestion、查询和故障处理上并没有统一套路，所以“像 RDS 一样”本身就是一种对复杂性的回避。",
+        "supportid": [
+          "49660398",
+          "49660686",
+          "49661155",
+          "49664628",
+          "49661081",
+          "49661147",
+          "49661825"
+        ]
+      },
+      {
+        "category": "ClickHouse 的工具定位",
+        "summary": "评论者把 ClickHouse 放在 ElasticSearch、Pinot、Trino 和 Spark 的对比坐标里，普遍认为它更像面向 analytics 和 data warehouse 的 OLAP 引擎，而不是 Spark 那类通用批处理平台。有人指出，对于 web analytics 和 log management，ClickHouse 经常能替代 ElasticSearch；而 Pinot 被认为在架构上更接近一些，Trino 只是在部分场景相似。也有人提醒，ClickHouse 并不是所有场景都最优，读写模式、延迟目标和存储布局会决定你应该选谁。",
+        "supportid": [
+          "49661245",
+          "49661755",
+          "49661375"
+        ]
+      },
+      {
+        "category": "商标、来源与供应链信任",
+        "summary": "讨论里有人注意到文章中反复使用 ClickHouse®，猜测这与品牌保护或法律风险有关，也有人认为这是对商标使用的防御性表达。围绕“ClickHouse 是不是俄罗斯产品”的争论也很激烈：一边有人因其起源于 Yandex 而明确表示回避生产环境，另一边则强调公司已在美国注册、团队分布在阿姆斯特丹，且战后公开支持乌克兰。这个分歧反映出开源基础设施不仅是技术选型，也会牵涉供应链、地缘政治和品牌责任感。",
+        "supportid": [
+          "49659829",
+          "49660781",
+          "49663610",
+          "49660739",
+          "49663362",
+          "49664268",
+          "49664379"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "ClickHouse",
+        "explanation": "开源列式 OLAP 数据库，擅长大规模分析查询和日志/指标分析。"
+      },
+      {
+        "term": "DBA",
+        "explanation": "数据库管理员，负责 schema、查询、性能和运维把关。"
+      },
+      {
+        "term": "DuckDB",
+        "explanation": "嵌入式分析型数据库，常被拿来和 S3、对象存储配合做轻量 OLAP。"
+      },
+      {
+        "term": "Apache Iceberg",
+        "explanation": "面向数据湖的表格式，便于在对象存储上做分区、演进和多引擎读取。"
+      },
+      {
+        "term": "Delta Lake",
+        "explanation": "另一种数据湖表格式，强调在对象存储上的表管理与并发读取。"
+      },
+      {
+        "term": "Kafka",
+        "explanation": "分布式消息队列/日志系统，常用作 ClickHouse 写入前的缓冲和 backpressure。"
+      }
+    ],
+    "context": "这篇文章来自对“运营 petabyte-scale ClickHouse 集群 5 年”的复盘，ClickHouse 是面向分析查询的列式 OLAP 数据库，常用于日志、监控和产品分析。文章核心不只是性能，还包括 ingestion、merge、查询回放、HTTP 与 TCP native protocol 的取舍，以及云存储能否替代本地 NVMe 这类架构问题。评论区把讨论进一步扩展到 DBA 文化、开发者是否应具备 Linux/Kubernetes/云环境知识，以及 ClickHouse 与 DuckDB、Iceberg、Delta Lake、Kafka、Snowflake 等系统的边界。还有人从托管服务、AWS 采购流程、商标和地缘政治来源等非技术因素切入，说明这类基础设施选型往往同时受技术、组织和供应链约束。",
+    "emoji": "🤔",
+    "sarcastic_question": "把DBA省掉还想系统真稳定又高效吗？"
+  },
+  "articleSummary": "## 一句话总结\n运维 PB 级 ClickHouse 集群的真正挑战不在于搭建架构，而在于如何在官方存算分离方案不成熟、升级风险高、成本难控制的现实约束下，通过深度定制和严格的工程化流程维持系统稳定。\n\n## 正文\n\n### 存算分离的理想很丰满，但开源方案的现实很骨感\n现代 OLAP 数据库都在推存算分离，ClickHouse 也不例外。理论上，数据放 S3，计算节点无状态，既省钱又弹性。但作者泼了一盆冷水：ClickHouse 开源版虽然支持 S3 存储和 zero-copy replication，但这套方案其实问题缠身。Zero-copy 功能是社区贡献的，官方并不待见，存在丢数据、S3 留垃圾文件等 Bug，甚至一度被官方计划移除。虽然 ClickHouse Cloud 有成熟的方案，但那是闭源的。如果你想在开源版上搞存算分离，要么有丢数据的心理准备，要么像 Tinybird 一样自己维护一个深度定制的私有 Fork。\n\n### 想省钱？得在架构设计上动刀子\n如果完全依赖本地 SSD，成本会高得离谱。作者算了一笔账：假设一张表 300TB，要抗 1000 QPS，单机能抗 100 QPS，你就需要 10 个副本，也就是 3000TB 的 SSD 存储——这谁顶得住？为了降本，Tinybird 采用了混合策略：用本地 SSD 做热数据缓存，S3 存冷数据，既保住了低延迟，又控制了成本。此外，压缩算法的选择也很关键。作者建议首选 ZSTD(1)，在压缩率和速度之间平衡，比默认的 LZ4 更划算。\n\n### 升级这件事，他们花了四年才学会\n搭建集群只需一天，但无感升级是另一回事。作者回忆，第一次升级准备了两周，操作了三小时，还差点翻车。现在他们能在 CI/CD 流水线里自动完成升级，这花了整整四年才练就。核心逻辑其实很简单：利用向后兼容的复制协议，先加一个新版本的副本，引流观察，没问题再逐步替换旧节点。但这只是流程，真正的保命符是他们自建的 CI 系统：每天拿客户真实的 Query 在新版本上跑一遍，一旦发现性能回归或行为变更，立刻拦截。\n\n### 读源码，是运维 ClickHouse 的必修课\n大多数数据库运维不需要看源码，但 ClickHouse 不一样。作者直言，想玩转它，你必须读源码。因为很多关键配置的行为变更、默认参数的调整，文档里可能写得不清不楚，甚至不写。比如某些 Settings 的默认值在不同版本间会变，不看代码 diff，你就不知道为什么升级后集群炸了。作者甚至建议，把测试环境搭成多节点集群，必须带上 ZooKeeper，因为单机行为和集群行为完全不同——很多表创建失败、复制延迟的问题，只有在集群环境下才能复现。\n\n### 架构设计的潜规则：读写分离与负载隔离\n别让繁重的查询拖死写入，也别让突发的流量搞挂集群。Tinybird 的架构设计有个核心原则：读写分离。他们专门预留一个副本处理写入，这就是所谓的 compute-compute separation。如果某些查询对 P99 延迟极其敏感，就把它隔离到负载控制在 40% 以下的专用副本上。所有这些流量调度，全靠前面的 HTTP Load Balancer 挡着。作者特意提到，他们没用 TCP 协议，而是坚持用 HTTP，因为 HTTP 生态里的负载均衡工具链更成熟、更经得起考验。\n\n### ZooKeeper 是命门，千万别把它和数据库混在一起\n在成本计算里，很多人容易忽略 ZooKeeper。ClickHouse 依赖 ZK 做元数据协调，一旦 ZK 挂了，表可能变成只读，甚至整个集群瘫痪。作者反复强调：ZK 必须部署在独立的机器或 Pod 上，和数据库节点物理隔离。如果你把 ZK 和 ClickHouse 挤在一起，一旦机器负载过高，ZK 响应变慢，会导致数据库集群误判节点下线，引发连锁反应。ZK 出问题，就是\"Game Over\"，这部分预算绝对不能省。"
+}

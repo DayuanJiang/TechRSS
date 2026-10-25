@@ -1,0 +1,74 @@
+{
+  "id": 48918140,
+  "by": "rbanffy",
+  "title": "Python 3.15's Ultra-Low Overhead Interpreter Profiling Mode – Ken Jin's Blog",
+  "url": "https://fidget-spinner.github.io/posts/ultra-fast-tracing.html",
+  "score": 141,
+  "createdAt": 1784638212,
+  "aiSummary": {
+    "chinese_title": "Python 3.15 超低开销解释器 profiling：CPython 核心循环、分发表与 PGO",
+    "discussion_overview": [
+      {
+        "category": "与 Tachyon 的定位差异",
+        "summary": "有人先贴出了使用说明视频和 3.15 beta 的 `profiling.sampling` 文档，帮助补足这个新模式的实际用法。随后有人纠正说，这并不是在做全解释器 profiling，而是聚焦 CPython 核心 interpreter loop 的 type profiling 和路径记录。这个澄清很重要，因为它决定了采样粒度、开销来源和能看到的热点范围都和 Tachyon（一个更偏全局的 CPython profiling 方案）不同。也有人提到相关演讲在 PyConES 上已经展示过，视觉效果和思路都很不错。",
+        "supportid": [
+          "48994409",
+          "48996589",
+          "48995375",
+          "48996737"
+        ]
+      },
+      {
+        "category": "替换分发表的优化想法与疑虑",
+        "summary": "有人建议把 `RECORD_INST` 复制到每个 `INSTRUCTION_N` 前面，这样可以直接把 `dispatch_var` 切到记录版表，少一次运行时跳转。讨论里很快出现了对解释器内层循环的典型担忧：`computed goto` 依赖 branch predictor 的稳定历史，任何额外分支或代码布局变化都可能拖慢执行。还有人指出，即使 `profile` 布尔分支预测得很准，它也会把记录逻辑塞进每个 opcode handler，扩大代码体积并挤压 `L1 cache`。整体上，这一组评论在权衡“省一步跳转”与“破坏热路径局部性”之间的代价。",
+        "supportid": [
+          "48992980",
+          "48995087",
+          "48993061"
+        ]
+      },
+      {
+        "category": "为何采用集中式记录表",
+        "summary": "有人解释说，当前方案把每个 opcode 先汇入一个统一的记录指令，再回到真正的 dispatch table，是为了避免把第二套逻辑膨胀成另一份完整解释器。这样既能保持二进制体积可控，也能避免 `switch-case` 或 `computed goto` 在开启 profiling 时被 `PGO` 误判为热点，从而把记录路径优化进去并造成反效果。还有评论提到 ring buffer、批量处理、线程本地表和自适应采样等可能的延伸思路，但也认为在当前已经很低的 overhead 下，这些优化未必值得继续复杂化。",
+        "supportid": [
+          "48992624",
+          "48996699",
+          "48995756"
+        ]
+      },
+      {
+        "category": "`ip++` 的控制流疑问",
+        "summary": "有评论专门追问 `RECORD_INST` 里为什么还要做一次 `ip++`，因为正常 handler 结束时看起来已经把指令指针推进到下一条。这个问题本质上是在确认记录路径只负责记录，不执行实际 opcode，所以回到正常分发前是否会出现重复前进或跳错位置。它也反映出这种设计把“记录”和“执行”拆开之后，控制流必须非常精确，稍有不慎就会出现 off-by-one 的问题。",
+        "supportid": [
+          "48997452"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "computed goto",
+        "explanation": "C 解释器里常用的直接跳转分发技巧，用标签地址替代普通 `switch`，能减少分派开销，但对代码布局很敏感。"
+      },
+      {
+        "term": "dispatch table",
+        "explanation": "把 opcode 映射到处理入口的一张表；这里通过切换表来在正常执行和记录模式之间切换。"
+      },
+      {
+        "term": "branch predictor",
+        "explanation": "CPU 的分支预测器，用来猜测跳转方向；解释器热循环里它是否稳定，直接影响性能。"
+      },
+      {
+        "term": "PGO（Profile-Guided Optimization）",
+        "explanation": "基于运行剖面做编译优化的机制；如果 profiling 模式本身被误判为热点，可能把优化方向带偏。"
+      },
+      {
+        "term": "instruction cache",
+        "explanation": "CPU 用来缓存指令的缓存层；记录逻辑一旦膨胀，容易挤掉解释器热路径代码。"
+      }
+    ],
+    "context": "这是关于 CPython 在 Python 3.15 beta 中新增的 ultra-low-overhead interpreter profiling mode。它不是像 Tachyon（一个更偏全解释器 profiling 的方案）那样分析整个解释器，而是针对 CPython（Python 的 C 实现）的核心 interpreter loop 做 type profiling 和路径记录，尽量把额外开销压到最低。评论里提到的 `profiling.sampling` 文档和演讲，说明这个功能已经有了可用接口和实现背景。之所以讨论集中在分发表、`computed goto`、`branch predictor` 和 `PGO`，是因为解释器的性能极度依赖热循环的代码布局与缓存行为，任何额外分支或二进制膨胀都可能让“低开销”变成“反向优化”。",
+    "emoji": "⚙️",
+    "sarcastic_question": "为了省一层分支，先把解释器搞成迷宫？"
+  },
+  "articleSummary": "## 一句话总结\nCPython 3.15 通过“双分发表”机制，在不引入分支判断和代码膨胀的前提下，实现了极低开销的解释器 Profiling，为 JIT 编译铺平了道路。\n\n### JIT 编译的前提是记录执行流，但这事儿不简单\nPython 3.15 引入的 JIT 带来了适度的性能提升，其核心在于 Trace Recording（轨迹记录）。说白了，就是让解释器在执行代码时，顺便把指令流记下来，攒够了再去编译。这自然需要一个“插桩”的解释器，但怎么给解释器插桩，是个技术活。如果开销太大，JIT 带来的收益就被 Profiling 吃掉了，得不偿失。\n\n### 两个解释器互切？代码膨胀拖垮了性能\n最直观的方案是搞两套解释器：一套负责跑业务，一套负责记录。两者互相调用，看起来很完美。但这在 CPython 的 Computed Goto 解释器上栽了跟头。因为 C 函数作用域的限制，这会导致 C 二进制文件体积翻倍。实测下来，pyperformance 跑分慢了 6%。对于追求极致性能的底层来说，这种代码膨胀引发的缓存失效等副作用是致命的。\n\n### 加个 if 判断？分支预测也救不了你\n既然两套不行，那就在一套解释器里加个“Profiling Mode”，用个 `bool profile` 变量控制逻辑。虽然代码量没变，但作者认为这会破坏解释器的核心逻辑，而且即便 CPU 分支预测再准，额外的 `if` 判断终究是开销。在解释器这种每秒执行亿万次指令的热点路径上，任何多余的判断都会被放大。\n\n### 双分发表：用查表代替分支判断\n为了兼顾性能和代码量，作者搞了个“双分发表”的方案。解释器通常通过 Opcode 查表找到对应的执行函数。这里的巧妙设计在于维护两张表：一张是正常的执行表，一张是 Profiling 表。运行时只需要把当前的分发表指针 `DISPATCH_TABLE_VAR` 切换一下，就完成了模式切换。不需要 `if`，也不需要两套解释器代码，干净利落。\n\n### Fan-in Fan-out：把所有指令汇聚到一个入口\n如果只是简单地把 Profiling 表里的指令也写成一个个对应的函数，那本质上还是两套解释器的逻辑，依然会慢。真正的杀手锏在于：Profiling 表里的所有 Opcode，都映射到**同一个**记录指令。这个指令负责记录信息，然后再用正常的执行表去分发执行。这就形成了一个“Fan-in（汇聚记录）- Fan-out（分发执行）”的模型，既完成了记录，又复用了执行逻辑。\n\n### 只有 4.5 倍开销，比 PyPy 快了几个数量级\n数据不会骗人。在关闭动态频率缩放后，实测结果显示：普通解释器执行耗时 1.72 微秒，而开启 Profiling + JIT 编译后仅耗时 7.47 微秒。这意味着 Profiling 的开销只有 4.5 倍左右。相比之下，PyPy 这种 Meta-tracing 系统的 Trace 开销通常在 900 到 1000 倍。虽然对比场景不完全公平，但这足以证明 CPython 3.15 这种方案在“轻量级”上的巨大优势。\n\n### 优雅但复杂，这是值得付出的代价吗？\n作者对这个设计感到自豪，因为它不仅限于 JIT，还能用于低开销的 Profiling 或类型记录。但他也在反思：为了这个极致的性能，引入这么复杂的系统值得吗？虽然逻辑很优雅，但理解起来确实费劲。不过，对于 CPython 这种基础设施来说，为了那一点点性能提升，往往就是要在复杂度上做妥协。"
+}

@@ -1,0 +1,88 @@
+{
+  "id": 48413655,
+  "by": "jjgreen",
+  "title": "Looking Forward to Postgres 19: Query Hints",
+  "url": "https://www.pgedge.com/blog/looking-forward-to-postgres-19-query-hints",
+  "score": 129,
+  "createdAt": 1780963811,
+  "aiSummary": {
+    "chinese_title": "Postgres 19 的 Query Hints：更像 plan stability",
+    "discussion_overview": [
+      {
+        "category": "设计定位：从 hint 走向 plan stability",
+        "summary": "不少评论强调，这次不是简单把 Oracle 式 hints 搬进 PostgreSQL，而是先搭一个 plan stability 的框架。`EXPLAIN (PLAN_ADVICE)` 被认为是关键入口：先观察执行计划，再把建议回写进去。有人还提到初版未必能直接调 row/join estimate，但扩展性已经预留，甚至可以通过额外 extension 和 advisor hook 去解析 comment-style hints。",
+        "supportid": [
+          "48454289",
+          "48454692"
+        ]
+      },
+      {
+        "category": "真实痛点：复杂查询与升级后的 planner 不稳定",
+        "summary": "支持者举了很多现实例子，比如为了强制 index scan 会把 `enable_seqscan` 关掉，或者用 `enable_nestloop = off`、`OFFSET 0` 这类土办法。对复杂 view 和大规模 join 来说，planner 一旦选错路径，查询就可能突然失控。还有人指出，升级后执行计划变化本来就是常见问题，所以手工 advice 反而能提供一种可预期的稳定性。",
+        "supportid": [
+          "48453832",
+          "48455326",
+          "48456095",
+          "48456463"
+        ]
+      },
+      {
+        "category": "反对声音：Oracle 旧伤与维护风险",
+        "summary": "反对者大多是被 Oracle hints 伤过的人，记忆里是升级后 hints 让查询更慢、维护更乱，最后还得回头删掉。也有人担心开发者并不真正理解 planner 的 rewrite 过程，却会把 hint 当成快捷键，结果把 SQL 问题变成执行计划管理问题。这个阵营更倾向于修正查询本身，或者只在少数情况下调 `work_mem`，而不是依赖人工指令。",
+        "supportid": [
+          "48455496",
+          "48457651",
+          "48455842",
+          "48456069",
+          "48455995"
+        ]
+      },
+      {
+        "category": "有限乐观：语法可读，且是可选逃生口",
+        "summary": "另一派认为这次设计比老式 hints 体面得多，语法看起来可读、可组合，而且不会取代默认的自动规划。有人明确说，95% 的场景继续交给自动 planner 即可，坏 advice 直接删掉就能回退。对他们来说，PostgreSQL 一直高度可定制，唯独在控制执行计划这件事上保守太久了。",
+        "supportid": [
+          "48456274",
+          "48453847",
+          "48456511"
+        ]
+      },
+      {
+        "category": "现有替代方案：pg_hint_plan 证明边缘需求确实存在",
+        "summary": "已经有人因为某个让 planner 迷糊的查询，提前安装过 `pg_hint_plan` 这个现有 extension。评论里普遍把这类需求视为边缘场景，但一旦撞上就非常刚需。新方案如果能在核心里提供更统一、可维护的接口，可能比零散 extension 更实用。",
+        "supportid": [
+          "48455791"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "planner / query planner",
+        "explanation": "数据库优化器，负责为 SQL 选择执行计划。"
+      },
+      {
+        "term": "query hints / optimizer hints",
+        "explanation": "写在 SQL 附近的人为指令，用来影响或强制优化器选择某种执行计划。"
+      },
+      {
+        "term": "pg_plan_advice",
+        "explanation": "Robert Haas 提出的 PostgreSQL 扩展/框架，用于记录和应用执行计划建议，更偏向 plan stability。"
+      },
+      {
+        "term": "EXPLAIN (PLAN_ADVICE)",
+        "explanation": "用于查看并生成可复用计划建议的 EXPLAIN 形式或接口。"
+      },
+      {
+        "term": "pg_hint_plan",
+        "explanation": "现有的 PostgreSQL hints 扩展，可手工影响查询执行计划。"
+      },
+      {
+        "term": "plan stability",
+        "explanation": "让查询在版本升级或统计变化后尽量保持稳定执行计划的思路。"
+      }
+    ],
+    "context": "PostgreSQL（开源关系型数据库）长期依赖自动 planner（查询规划器）来决定执行计划，社区也一直对传统 query hints（优化器提示）持怀疑态度，因为它们容易把数据库带回“人工调计划”的时代。此次讨论围绕 Postgres 19 相关提案 pg_plan_advice（一个用于计划建议与稳定性的扩展框架）展开，核心接口之一是 EXPLAIN (PLAN_ADVICE)。提案没有直接采用 comment-style hint，因为 PostgreSQL core 里对 comments 的解析能力并不完善，而且 comments 在 function 等场景也不总是可靠。支持者把它看作复杂查询、版本升级或统计失准时的逃生口，反对者则担心这会掩盖 planner bug，并重演 Oracle（商业关系数据库）式的 hint 维护负担。",
+    "emoji": "🤔",
+    "sarcastic_question": "优化器都要你来指挥了，还叫什么优化器？"
+  },
+  "articleSummary": "# 一句话总结\nPostgres 19 终于引入了 Query Hints，但为了绕过社区多年的反对，它被设计成一种外挂式的“建议”机制，既能优雅降级，又能彻底解决“改不了代码”的生产环境痛点。\n\n---\n\n### 二十年的“反 Hints”教条终于松动了\nPostgres 社区对 Query Hints 的抵制是出了名的，官方 Wiki 曾明确列出了六大罪状：维护噩梦、升级兼容性差、阻碍根因分析、扩展性差、优化器通常比你聪明，以及最致命的——用户用了 Hints 就不报 Bug 了。这种强硬态度导致开发者们只能用“旁门左道”来 Hack，比如把 `enable_seqscan` 关掉，或者在子查询里加 `OFFSET 0` 来防止优化器扁平化。说白了，大家都在用 Hints，只是不敢叫它 Hints。但核心开发者 Robert Haas 早在 2010 年就指出，应该给 DBA 留个“逃生舱”，毕竟没人该因为那 0.1% 无法优化的查询而被开除。\n\n### 既然不能叫 Hints，那就叫“建议”\n为了不触碰社区的红线，Haas 设计了两个新模块：`pg_plan_advice` 和 `pg_stash_advice`。这套系统的核心思路非常巧妙：它不是像 Oracle 那样把指令写在 SQL 注释里，而是完全独立于 SQL 文本之外。你可以通过 GUC 参数或者一个专门的“存储池”来加载建议。更重要的是，它不是强制替换优化器的决定，而是“约束”搜索空间。文档写得很清楚：建议只能引导优化器选择它原本就认为可行的方案。如果建议不合理，优化器会优雅降级，直接忽略它，而不是报错或生成垃圾执行计划。\n\n### 让优化器自己教你写“建议”\n最让人拍案叫绝的设计是，你不需要死记硬背语法，直接问优化器要就行了。在 `EXPLAIN` 后加上 `PLAN_ADVICE` 选项，优化器不仅展示计划，还会把生成这个计划所需的“建议字符串”直接打印出来。你只需要把这段输出复制下来，按需微调（比如把 `SEQ_SCAN` 改成 `INDEX_SCAN`），就能反向控制优化器。这种“所见即所得”的方式极大地降低了使用门槛，毕竟这可是优化器亲口告诉你的“我是怎么想的”。\n\n### 语法精细到连括号都有讲究\n这套建议语言的表达力相当强，而且区分得很细致。比如控制 Join 顺序时，圆括号 `()` 代表严格顺序，花括号 `{}` 则代表灵活分组。这意味着你可以锁定关键路径，同时把剩下的优化空间留给优化器。控制 Join 方法时也有细节，`HASH_JOIN(d)` 不仅仅是说用 Hash Join，还隐含了要把 `d` 放在内侧建表。甚至你可以用 `DO_NOT_SCAN` 彻底把某个表踢出计划。所有这些指令都可以写在一个长字符串里，如果其中某条指令冲突或无法执行，系统会自动标记为失败，不会影响其他指令的生效。\n\n### 生产环境救急：不用改代码也能调优\n对于生产环境 DBA 来说，`pg_stash_advice` 才是真正的杀手锏。它的逻辑很简单：建立一个“存储池”，把 Query ID 和对应的建议字符串存进去，然后告诉会话去读这个池子。最妙的是，你可以通过 `ALTER DATABASE` 或 `ALTER ROLE` 把这个存储池设为默认。这意味着，当某个核心查询出问题时，你不需要动应用里的一行代码，只需要在数据库端加一条建议，问题就解决了。等统计信息更新或版本升级后，再把建议删掉，应用完全无感知。这才是真正意义上的“热补丁”。\n\n### 每一条建议都有清晰的反馈\n既然是给优化器提建议，那怎么知道它听没听进去？这套机制提供了非常详尽的反馈机制。在 `EXPLAIN` 的输出里，每一条建议都会标注状态：`matched`（生效了）、`not matched`（没找到目标对象）、`inapplicable`（比如引用了不存在的索引）、`conflicting`（和其他建议打架了）。你甚至可以开启 `feedback_warnings`，让这些建议状态直接以 `WARNING` 的形式出现在日志里。这种透明度消除了“黑盒”操作的恐惧，让你清楚地知道每一条指令到底起了什么作用，或者为什么被忽略了。\n\n### 这是一把手术刀，不是大锤\n虽然 Postgres 终于有了 Hints，但它的设计初衷非常明确：这是最后的手段。文档里也警告说，应用建议本身会有轻微的性能开销，因为它会打断优化器的循环。目前它还无法控制聚合策略（Hash 还是 Sort）或 `UNION` 的执行方式。这套系统是为了解决那 0.1% 的极端边缘案例，而不是让你去接管优化器的工作。Robert Haas 花了十五年时间，把一个曾经被视为“洪水猛兽”的功能，打磨成了一个既尊重优化器权威，又给 DBA 留足面子的精巧工具。"
+}

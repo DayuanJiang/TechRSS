@@ -1,0 +1,100 @@
+{
+  "id": 47777715,
+  "by": "NordStreamYacht",
+  "title": "Nanopass Framework: Clean Compiler Creation Language",
+  "url": "https://nanopass.org/",
+  "score": 122,
+  "createdAt": 1776607241,
+  "aiSummary": {
+    "chinese_title": "Nanopass 编译器框架：多 Pass 的模块化与复杂度争议",
+    "discussion_overview": [
+      {
+        "category": "反对过度切分",
+        "summary": "不少编译器作者对“多 pass”持怀疑态度，认为把功能拆得太细会把技术债藏到 pass 边界里。语言特性一旦变化，比如 extension methods 让标识符解析依赖类型信息，原本分开的解析、类型检查和报错阶段就会互相缠绕，最后变成一个更难维护的大杂烩。多个 pass 还意味着多次遍历和多次 IR 转换，性能损耗并不小。",
+        "supportid": [
+          "47825090",
+          "47826277",
+          "47825573",
+          "47826758",
+          "47827526"
+        ]
+      },
+      {
+        "category": "Nanopass 小步变换",
+        "summary": "使用过 Nanopass 的人则觉得，它把每个 pass 的职责压得很窄：要么做一项分析，要么把一个高层语法糖降到更原始的形式。DSL 会明确写出每个阶段删掉什么、增加什么，因此可以很容易重排 pass，观察哪一步优化提前后效果更好。这样的显式顺序也让人清楚知道某个分析结果在什么阶段仍然有效。",
+        "supportid": [
+          "47827290"
+        ]
+      },
+      {
+        "category": "语言设计先行",
+        "summary": "有评论强调，pass 的边界其实应该反过来服务于语言设计。若要求作用域分析可以独立完成，就要把 import、class 等语法设计成不会让标识符依赖类型或其他库，这样才能并行、缓存和增量编译。代价是某些有用特性可能无法落地，所以架构和功能取舍会互相牵制。",
+        "supportid": [
+          "47826809",
+          "47829027",
+          "47825439",
+          "47825482"
+        ]
+      },
+      {
+        "category": "表示与重算成本",
+        "summary": "另一组讨论聚焦在表示方式和重复计算上。有人提醒，真正高性能的编译器未必会用指针式树结构，数组化的树表示往往更快；如果每个 nanopass 都重新算控制流图之类的派生数据，开销会很明显。也有人补充，Nanopass 的内部实现仍然是结构化数据，DSL 只是让变换写起来更顺手，所以讨论重点其实是中间表示和缓存策略，而不只是语法糖。",
+        "supportid": [
+          "47825803",
+          "47825972",
+          "47826941"
+        ]
+      },
+      {
+        "category": "调试困难",
+        "summary": "也有反对者从可调试性下手，认为很多小 pass 让问题更难追踪，因为 AST 会在多个阶段被重复定义，pass 之间如何互相影响并不直观。Racket DSL 的 metaprogramming 能减少样板代码，但也会放大“看不见实际展开结果”的困扰。有人甚至认为，如果没有 projectional editor 这类工具，很难同时做到低冗余和好理解。",
+        "supportid": [
+          "47826743"
+        ]
+      },
+      {
+        "category": "egraphs 不是同类替代",
+        "summary": "当有人问“为什么不用 egraphs”时，回应指出两者解决的问题并不一样。egraphs（equality saturation）更像是在同一个 IR 上做优化重写，避免不同规则互相抵消；Nanopass 则是把整个编译器拆成一串固定顺序的一次性 pass，每一步都可以换一个 IR。egraphs 还要求 IR 形状比较受限，因此不适合取代宏展开、lowering、Closure Conversion 这类阶段。",
+        "supportid": [
+          "47826197",
+          "47827190",
+          "47826335",
+          "47827022"
+        ]
+      },
+      {
+        "category": "Scheme 天然多阶段",
+        "summary": "还有人认为，像 Scheme 这类语言本来就天然适合多阶段编译。宏展开、Alpha Renaming、CPS transform、Beta/Eta reduction、Closure Conversion 这些步骤各自处理不同语义层次，把它们拆开并不显得多余。于是问题不再是“要不要很多 pass”，而是“语言本身是否就是这么分层的”。",
+        "supportid": [
+          "47825364"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Nanopass DSL",
+        "explanation": "Racket 中用于声明多个小型编译 pass 和各阶段 IR 形状的领域特定语言。"
+      },
+      {
+        "term": "IR（Intermediate Representation）",
+        "explanation": "编译器在各 pass 之间使用的中间表示，用来承接分析和 lowering。"
+      },
+      {
+        "term": "egraphs / equality saturation",
+        "explanation": "把等价表达式放进同一图中做统一重写的优化技术，常用于消解局部重写冲突。"
+      },
+      {
+        "term": "CPS transform",
+        "explanation": "Continuation-Passing Style 转换，把控制流显式化，Scheme 编译器里很常见。"
+      },
+      {
+        "term": "Closure Conversion",
+        "explanation": "把闭包及其自由变量显式化的 lowering 步骤，便于后续代码生成。"
+      }
+    ],
+    "context": "Nanopass Framework 是一个来自 Scheme/Racket 生态的编译器构造工具，用 DSL 把编译流程拆成许多小 pass，并为每一步定义不同的 IR（中间表示）。这场讨论围绕“多 pass 是否真的更清晰”展开：支持者认为它能把 lowering、分析和优化边界说清楚，反对者则担心 pass 之间会互相缠绕，最后变成更难维护的系统。对 Scheme 这类语言来说，宏展开、Alpha Renaming、CPS transform（Continuation-Passing Style 转换）和 Closure Conversion（闭包转换）本来就很自然，所以 pass 数量常常由语言语义决定。评论里还把它延伸到 egraphs（等式饱和优化图）和增量/并行编译设计，说明编译器架构、语言特性和可维护性往往是一起权衡的。",
+    "emoji": "🤔",
+    "sarcastic_question": "再切十几个 pass，bug 就自动消失了？"
+  },
+  "articleSummary": "### 一句话总结\nNanopass Framework 通过把编译器拆解成极小的 Pass 和大量的中间表示（IR），用一种嵌入式 DSL 消除了样板代码，让编译器的编写和维护变得像搭积木一样清晰。\n\n---\n\n### 编译器维护的噩梦：大而全的中间表示\n写编译器最痛苦的不是算法难，而是代码太乱。传统的做法往往只维护一个或几个庞大的中间表示（IR），每个 Pass 都要处理极其复杂的语言特性。这导致代码里充斥着各种边界检查和状态判断，改一处动全身。Nanopass Framework 的核心思路其实很简单：既然大而全的 IR 难以维护，那就把它拆碎。它主张使用大量的 IR，每个 IR 只保留当前 Pass 需要关注的最小子集。\n\n### 极简 Pass：让每次改动都如手术刀般精准\n在这个框架下，编译器不再是由几个庞然大物组成的，而是由几十个微小的 Pass 构成。每个 Pass 只做一件事，而且只针对特定的 IR 进行操作。这带来的好处显而易见：当你想优化某个特性时，只需要关注处理该特性的那几个 Pass，而不需要通读整个编译器。说白了就是，把复杂的全局问题，拆解成了无数个简单的局部问题。\n\n### 嵌入式 DSL：消灭样板代码的神器\n但问题来了，如果 IR 很多，Pass 也很小，那么定义这些 IR 和编写转换逻辑的样板代码岂不是要爆炸？这正是 Nanopass Framework 设计最巧妙的地方。它提供了一套嵌入式 DSL（Domain-Specific Language），专门用来声明 IR 和 Pass 之间的转换关系。你只需要描述“源 IR 是什么，目标 IR 是什么，转换规则是什么”，剩下的繁琐代码都由框架自动生成。\n\n### 从“能跑”到“好懂”：架构选择背后的权衡\n这种架构选择本质上是在“运行效率”和“开发效率”之间做了一次坚定的取舍。虽然 Pass 变多可能会引入一些额外的运行开销，但对于编译器这种需要长期迭代维护的基础设施来说，代码的可读性和可维护性远比那一点点性能损耗重要。Nanopass Framework 证明了，通过合理的抽象，我们可以把复杂的编译器构造过程，变成一种清晰、可控的工程实践。"
+}

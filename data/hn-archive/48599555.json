@@ -1,0 +1,109 @@
+{
+  "id": 48599555,
+  "by": "zdw",
+  "title": "Running MicroVMs in Proxmox VE, the Easy Way",
+  "url": "https://taoofmac.com/space/blog/2026/06/18/1845",
+  "score": 162,
+  "createdAt": 1782035464,
+  "aiSummary": {
+    "chinese_title": "Proxmox VE 跑 microVM：coding agents、Firecracker 与 libkrun",
+    "discussion_overview": [
+      {
+        "category": "原生支持期待与维护风险",
+        "summary": "不少人把这项工作看成 Proxmox VE 作为 VMware 替代品的一次重要补强，尤其希望它最终变成 mainline 的第一类功能，而不是依赖临时 patch。也有人提醒，microVM 早在 2020 年就评估过，当时维护成本不划算；如今随着动态负载均衡和 affinity rules 等能力出现，值得重新评估。反对者的核心担忧是 pve-daemon 这类改动太脆弱，升级时可能随时失效，因此更适合先在实验室验证再谈生产。顺带还有人夸 Proxmox 传统的 mailing list、public inbox、b4 和 lei 流程比很多 forge 更顺手，提交补丁时几乎就是 git send-email 的体验。",
+        "supportid": [
+          "48617598",
+          "48620178",
+          "48615252",
+          "48617723",
+          "48617972"
+        ]
+      },
+      {
+        "category": "coding agents / sandbox 编排",
+        "summary": "一些评论把 microVM 当成隔离 coding agent 的执行沙箱，而不是传统通用 VM。真正的难点不是快速启动，而是把 guest 里的 userspace、systemd 服务和无关组件尽量裁掉，并且让大量短命 VM 可以被命令式管理。还有人强调，对 agent 工作负载来说，更关键的指标是 API 创建实例、应用网络策略、让 guest-agent 可用并支持 exec/shell/cp/forward 的整条链路。也有人已经用 MCP 风格工具直接从 Cursor、Codex 或 Claude 启 VM，说明这类场景正在从概念走向实际工具链。",
+        "supportid": [
+          "48617992",
+          "48617972",
+          "48620334"
+        ]
+      },
+      {
+        "category": "性能指标、boot 时间与内存回收",
+        "summary": "评论里反复强调，microVM 的价值不能只看开机快不快，而要看 time-to-interactive 或 time-to-useful。有人指出自家 homelab 里 VM 一旦起来就接近 native performance，真正的浪费常在 QEMU 进入 grub、探测 legacy devices 这些阶段。另一个讨论点是 ballooning：它确实可能让多台 guest 在不同时占用内存时实现超售，但依赖 guest 内 daemon，实际操作并不总是稳定。还有人说自己有性能很强的 home lab，却还是在 LXC 和 VM 之间反复权衡是否真的需要 8GB、6GB 甚至更少，说明这个问题更多是资源精细化管理而不只是绝对速度。",
+        "supportid": [
+          "48620417",
+          "48619712",
+          "48619767",
+          "48618303"
+        ]
+      },
+      {
+        "category": "替代 runtime 与嵌套方案",
+        "summary": "很多人没有把这条路线局限在 Proxmox，而是拿 Firecracker、libkrun、krun、KubeVirt、Kata Containers 互相对比。有人更喜欢 libkrun 生态里的 smolvm，甚至提到基于 libkrun 的本地替代方案；也有人选择把一个强 VM 作为底座，在里面再跑 nested virtualization，然后在内层启动 Firecracker。另一条思路是把 microVM 直接作为容器后端或编排层的一部分，用来服务 Kubernetes、OpenFaaS 或更偏代码驱动的工作流。也有人直接问能否只用 QEMU 复现同样效果，说明这里还没有单一标准答案。",
+        "supportid": [
+          "48619853",
+          "48619304",
+          "48619503",
+          "48620547",
+          "48620570",
+          "48619506",
+          "48617513",
+          "48619474",
+          "48617627",
+          "48620544"
+        ]
+      },
+      {
+        "category": "GPU/CUDA 与设备直通短板",
+        "summary": "最强烈的功能诉求之一是 GPU 能力，尤其是想在保留宿主可用性的前提下让 guest 使用 CUDA。评论指出 vfio passthrough 虽然可行，但配置和限制都很麻烦，往往意味着整块 GPU 都要交给 guest。现有的 virtio-gpu、Vulkan 和 Venus 在图形上已经能覆盖一部分需求，但 CUDA 和视频编码加速仍是明显缺口。",
+        "supportid": [
+          "48619853",
+          "48619304"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "microVM",
+        "explanation": "比传统 VM 更轻量、启动更快的虚拟机形态，常用于高隔离短任务。"
+      },
+      {
+        "term": "Proxmox VE",
+        "explanation": "基于 KVM/QEMU 和 LXC 的开源虚拟化管理平台。"
+      },
+      {
+        "term": "Firecracker",
+        "explanation": "AWS 开源的 microVM VMM，偏向快启动和强隔离。"
+      },
+      {
+        "term": "libkrun / krun",
+        "explanation": "以 libkrun 为核心的 microVM runtime/工具链，常被用作容器或本地沙箱后端。"
+      },
+      {
+        "term": "vfio",
+        "explanation": "Linux 设备直通框架，用于把 PCI/GPU 等硬件直接分配给 guest。"
+      },
+      {
+        "term": "virtio-gpu",
+        "explanation": "虚拟 GPU 设备接口，提供图形加速但不等于完整直通。"
+      },
+      {
+        "term": "ballooning",
+        "explanation": "虚拟机内存动态回收/压缩机制，用于内存超售与调度。"
+      },
+      {
+        "term": "KubeVirt",
+        "explanation": "在 Kubernetes 里运行和管理虚拟机的项目。"
+      },
+      {
+        "term": "guest agent",
+        "explanation": "运行在 guest 内的辅助服务，用于 exec、文件拷贝、状态汇报等控制面操作。"
+      }
+    ],
+    "context": "这篇文章讲的是在 Proxmox VE（一个基于 KVM/QEMU 和 LXC 的开源虚拟化管理平台）里，把 microVM（比传统虚拟机更轻、更快启动的虚拟机形态）尽量做成开箱即用的方案。评论区之所以热烈，是因为很多人正把 microVM 用在 coding agent、自动化 sandbox 和短任务编排上，而不只是传统服务器虚拟化。讨论里不断拿 Firecracker（AWS 开源的 microVM VMM）、libkrun / krun（面向容器和沙箱的 microVM runtime）以及 KubeVirt（在 Kubernetes 中管理虚拟机的项目）做对比，试图判断哪条路线更适合自己的工作负载。与此同时，pve-daemon 之类的补丁稳定性、guest-agent、ballooning、GPU/CUDA passthrough 这些工程细节，也被视为能否真正落地的关键问题。",
+    "emoji": "🤔",
+    "sarcastic_question": "这叫容易，还是先改 Proxmox 再祈祷不炸？"
+  },
+  "articleSummary": "抱歉，我无法直接分析这篇文章。\n\n你提供的文本内容实际上是 Cloudflare 的反爬虫验证页面（DDoS 保护页面的 HTML 和 JavaScript 代码），而不是关于 \"Running MicroVMs in Proxmox VE\" 的技术原文。\n\n为了帮你完成这篇博客解读，我需要文章的**实际正文内容**。你可以：\n\n1.  **复制粘贴原文**：直接把网页上的文字内容发给我。\n2.  **提供链接**：如果链接可以公开访问，发给我，我尝试去获取（不过如果它一直被 Cloudflare 拦截，我可能也进不去）。\n\n一旦拿到原文，我会立刻按照你的要求，用讲故事的方式为你拆解这篇技术文章。"
+}

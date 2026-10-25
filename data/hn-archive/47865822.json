@@ -1,0 +1,113 @@
+{
+  "id": 47865822,
+  "by": "dangtony98",
+  "title": "Show HN: Agent Vault – Open-source credential proxy and vault for agents",
+  "url": "https://github.com/Infisical/agent-vault",
+  "score": 131,
+  "createdAt": 1776982838,
+  "aiSummary": {
+    "chinese_title": "Agent Vault：面向 AI agents 的开源 credential proxy/vault",
+    "discussion_overview": [
+      {
+        "category": "整体评价：补上了 agents 的通用凭据层",
+        "summary": "不少评论认为这是给 capable cloud agents 补上的一层通用基础设施。有人指出，给非技术用户配置 connectors 很麻烦，而且很多系统不支持 per-user connectivity，所以需要一个 API shim 或代理层来统一接入。也有人觉得 Agent Vault 比纯 managed service 更可扩展，但像 ephemeral sandboxes、uvx/npx 基础的 MCP 执行环境这类能力，自建会很痛，托管服务反而更省事。整体态度偏正面，认为这是一个很有前景的第一版。",
+        "supportid": [
+          "47891421",
+          "47890495",
+          "47887524",
+          "47882758",
+          "47882886",
+          "47884229"
+        ]
+      },
+      {
+        "category": "安全争议：只是把 trust 问题搬家",
+        "summary": "另一大焦点是安全边界并没有消失，只是被搬到了 proxy 上。有人提醒，OAuth2 token 可能会在 refresh endpoint 里直接回传新 token，某些 endpoint 甚至根本不该带 credential，但代理可能会误投。评论还把这类设计看成 MITM：你不仅要处理请求转发，还要负责 certificate validation、代理本身的访问控制，以及 websocket frame 里藏着的认证信息。也有人强调，若 agent 能拿到 proxy auth key 或 vault 本身，仍然可能通过代理把数据带出去，所以 data exfiltration 只是换了一种形态。",
+        "supportid": [
+          "47886162",
+          "47889602",
+          "47889017",
+          "47884712",
+          "47866105",
+          "47885026",
+          "47885114",
+          "47883416"
+        ]
+      },
+      {
+        "category": "运行时监督：比静态藏密钥更重要",
+        "summary": "有一条很清晰的思路是：重点不该只是“把 secret 藏起来”，而是“监督 secret 何时被用”。评论把 OS keyring + placeholder substitution 视为静态防护，优点是 LLM 不会看到 raw secret，但一旦 agent 进程被 prompt injection 或变得 hostile，仍然可以重新请求 secret。相比之下，proxy 路线能提供每次调用的 immutable audit trail，方便 incident response，也更自然地承载 runtime approval、session-scoped token 和按任务临时授权。",
+        "supportid": [
+          "47886582",
+          "47887114",
+          "47884229",
+          "47884480",
+          "47884574"
+        ]
+      },
+      {
+        "category": "身份与授权：agent 还没被真正标准化",
+        "summary": "还有一组讨论在追问 agent identity 和 delegation 的标准化问题。有人直接提到 OAuth token exchange RFC 8693，认为 on-behalf-of / impersonation 语义已经有现成标准，可以把 user 和 actor 分开记录。项目方则表示，Agent Vault 目前只解决 credential exfiltration，不解决 identity；后者可能要结合 workload identity、X.509 certificates 和更大的生态变化，比如 A2A。也有人认为 agent-to-agent 不是主要方向，很多场景仍然更适合 deterministic API，而不是把稳定接口替换成 LLM。",
+        "supportid": [
+          "47883826",
+          "47890570",
+          "47883149",
+          "47883917",
+          "47883390",
+          "47883549",
+          "47883833"
+        ]
+      },
+      {
+        "category": "与现有工具和集成路线的比较",
+        "summary": "评论还大量在和现有工具做横向比较，比如 OneCLI、executor.sh、NVIDIA OpenShell、authproxy、authsome 等。项目方强调 Agent Vault 是 network-layer 的 egress proxy，通过 HTTPS_PROXY 把 API、CLI、SDK、MCP 等不同入口都纳入同一条路径，因此更 interface-agnostic。另一些人关心是否能和 Infisical cloud vault、Bitwarden、gVisor sandbox 或 LLM secrets 结合，回应是 Infisical 深度集成在 roadmap 上，而更上层的执行/集成工具则可能走不同路线。",
+        "supportid": [
+          "47883597",
+          "47884189",
+          "47884783",
+          "47884170",
+          "47884502",
+          "47873327",
+          "47877127",
+          "47887053",
+          "47884735",
+          "47883994",
+          "47884389",
+          "47888906",
+          "47887242",
+          "47887297"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "credential brokering",
+        "explanation": "把凭据交给中介层按需注入或签发，而不是直接发给 agent。"
+      },
+      {
+        "term": "egress proxy",
+        "explanation": "统一代理出站请求的出口代理，可用于注入凭据、审计和过滤。"
+      },
+      {
+        "term": "MITM",
+        "explanation": "man-in-the-middle；这里指代理拦截并转发流量，带来证书与信任边界复杂度。"
+      },
+      {
+        "term": "token exchange（RFC 8693）",
+        "explanation": "OAuth 2.0 的标准交换机制，用于 on-behalf-of、delegation 和 impersonation。"
+      },
+      {
+        "term": "workload identity",
+        "explanation": "为服务或进程而非人类分配可验证身份，常用于签发短期 token。"
+      },
+      {
+        "term": "MCP",
+        "explanation": "Model Context Protocol，一种让 AI 工具或服务统一接入外部能力的协议。"
+      }
+    ],
+    "context": "这是 Infisical（一个开源 secrets 管理平台）发布的 Agent Vault 研究预览版，项目方也明确说当前 API 还不稳定。它把 agent 的出站请求通过 egress proxy / HTTPS_PROXY 统一转发，在代理层按规则附着、过滤或替换凭据，尽量避免 raw secret 直接进入 LLM 上下文或日志。讨论背后其实是 agent 安全的核心难题：prompt injection、credential exfiltration、运行时审批、审计，以及如何把“谁在调用、谁被代表、权限到哪一层”标准化。评论里还把它放到更大的生态里比较，包括 MCP（Model Context Protocol，一种工具接入协议）、OAuth token exchange、sandbox 运行环境和不同的 agent 工具链。",
+    "emoji": "🤔",
+    "sarcastic_question": "把密钥交给代理层，就算解决泄露了？"
+  },
+  "articleSummary": "## 一句话总结\nAgent Vault 通过在网络层动态注入凭证，彻底杜绝了 AI Agent 因 Prompt Injection 导致的密钥泄露风险，实现了“Agent 永远不接触真实密钥”的安全代理。\n\n### 传统密钥管理在 AI 面前为何失效\n传统的 Secrets Management 方案核心逻辑是“按需返回”，你请求我就给你密钥。这在人类世界里没问题，但在 AI Agent 这里就行不通了。Agent 是非确定性系统，极易受到 Prompt Injection（提示词注入）攻击。黑客只要精心构造一段输入，就能把 Agent 手里的密钥“骗”出来。一旦 Agent 拿到了明文密钥，你就无法控制它去向哪里，这就是传统方案在 AI 场景下的致命伤。\n\n### 核心思路：把“取密钥”变成“走代理”\nAgent Vault 的解法很巧妙，它根本不让 Agent 看到密钥。它不返回凭证，而是给 Agent 一个本地的 HTTPS Proxy 地址和一个 Scoped Session。Agent 像往常一样发起 HTTP 请求，流量会被这个透明代理拦截。Agent Vault 在网络层把对应的认证信息注入进去，再转发给目标 API。对 Agent 来说，它只是调了个接口，完全不知道中间发生了凭证替换。\n\n### 兼容性是关键：不改造 Agent 代码\n这个方案最赞的地方在于它对 Agent 是“无感”的。不管你是用 Python 写的自定义 Agent，还是 Claude Code、Cursor 这种现成的工具，只要它支持 HTTP 请求就能用。你只需要在启动 Agent 时，用 `agent-vault run` 包裹一下命令，或者在环境变量里设置 `HTTPS_PROXY`。Agent 不需要集成 SDK，也不用修改代码，就能无缝获得安全的外发能力。\n\n### 针对沙箱环境的 SDK 方案\n对于运行在 Docker、E2B 或 Daytona 等沙箱里的 Agent，Agent Vault 提供了 TypeScript SDK。你可以用 SDK 创建一个 Session，生成一套包含代理地址和 CA 证书的环境变量。把这些变量注入到沙箱容器里，Agent 内部的代码依然只需调用 `fetch()` 或 `requests`，流量会自动经过代理。这种设计把复杂的证书信任和代理配置都封装好了，开发者只需关注业务逻辑。\n\n### 严防死守的加密与审计机制\n在存储安全上，Agent Vault 使用 AES-256-GCM 加密，配合 Argon2id 做密码派生，甚至支持无密码模式以适配 PaaS 部署。为了防止代理本身成为盲点，它还记录了所有请求的日志。日志里包含 Method、Host、Path、Status 等元数据，但绝不记录 Body、Headers 和 Query Strings，既保留了审计线索，又避免了敏感数据落地。"
+}

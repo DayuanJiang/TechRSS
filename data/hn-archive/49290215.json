@@ -1,0 +1,134 @@
+{
+  "id": 49290215,
+  "by": "ValdikSS",
+  "title": "Single log line is 49KB+ (ext4) / 110KB+ (btrfs) of systemd-journald disk writes",
+  "url": "https://github.com/systemd/systemd/issues/40262",
+  "score": 144,
+  "createdAt": 1786650042,
+  "aiSummary": {
+    "chinese_title": "systemd-journald 单条日志触发 49KB+/110KB+ 写盘，引发写放大与过滤争议",
+    "discussion_overview": [
+      {
+        "category": "写放大与 mmap 设计",
+        "summary": "有评论引用 journald 的设计文档，指出它原本想把日志做成 append-only，并把重复字段单独对象化、压缩后再引用，理论上应当减少磁盘占用。另一批评论从实现层面解释，实际写入会把少量字段散落到文件各处，更新哈希表和元数据，还通过 mmap 让 page-level dirty write 叠加到 block-level write，最终形成 write amplification。有人补充说这类问题在 block boundary 或 page boundary 上会更严重，因此 ext4 和 btrfs 上看到的写入量会远高于一条日志本身。也有人回忆自己主要修过 journald 的读路径而不是写路径，暗示根源长期没有被系统性重做。",
+        "supportid": [
+          "49292109",
+          "49291376",
+          "49291536",
+          "49291299",
+          "49291573",
+          "49291104",
+          "49292552"
+        ]
+      },
+      {
+        "category": "过滤能力不足与日志泛洪",
+        "summary": "不少评论抱怨 journald 几乎不能按单个 identifier 或服务精细过滤，只能按 severity 粗分，导致有 bug 的 driver、KDE 组件或 docker 网络逻辑都可能把 journal 刷爆。有人提到 systemd>=253 的 LogFilterPatterns 可以在 .service 里做模式黑名单，但它对 user services、kernel source 和 identifier 级别都不够通用，实际操作也很笨重。还有人说为了止血，只能临时关掉持久化 kernel logging，或者把某些服务的垃圾日志一条条加黑名单。整体上，这一组评论认为 journald 缺少对“吵闹子系统”的治理能力。",
+        "supportid": [
+          "49292268",
+          "49293323",
+          "49293082",
+          "49293154",
+          "49291167",
+          "49292304"
+        ]
+      },
+      {
+        "category": "现成存储方案与格式之争",
+        "summary": "另一条主线是：既然 journald 本质上就是可查询日志存储，为什么不用现成的 storage engine。评论里反复提到 SQLite、DuckDB、Parquet、LevelDB、LMDB，理由包括它们要么更成熟，要么天然支持 column store、压缩和 WAL。反对意见则指出 SQLite 更像可重写数据库，不是专门的 log store，Parquet 需要大批量 row group，单条追加会很别扭；还有人认为真正适合的是 append-only 或 LSM 风格，先保证顺序写，再做索引和轮转。也有人坚持 plain text + grep/ripgrep 在现实里已经足够快，至少比 journald 的查询体验直观。",
+        "supportid": [
+          "49292725",
+          "49292894",
+          "49293377",
+          "49291910",
+          "49292143",
+          "49292045",
+          "49292188",
+          "49292922",
+          "49292020",
+          "49293026",
+          "49292972",
+          "49292606",
+          "49292472"
+        ]
+      },
+      {
+        "category": "绕开 journald 的实用做法",
+        "summary": "有些人不打算跟 journald 死磕，而是直接改成 volatile storage，或者把它当转发器，把持久化和过滤交给 rsyslog、syslog-ng 这类传统 syslog daemon。也有人提到可以把 StandardOutput/StandardError 重定向出去，减少依赖 journald 的程度。讨论里还出现了迁移到 Devuan、Void Linux、FreeBSD 或换掉桌面环境的做法，核心诉求就是别再让 systemd 相关组件继续写盘和制造噪音。这个分支反映的是“与其修，不如绕开”的实用主义。",
+        "supportid": [
+          "49292821",
+          "49293559",
+          "49291995",
+          "49292090",
+          "49291300",
+          "49293405",
+          "49290868",
+          "49292864",
+          "49292170",
+          "49291690",
+          "49292223",
+          "49292950",
+          "49291701",
+          "49291113"
+        ]
+      },
+      {
+        "category": "对 systemd 项目文化的质疑",
+        "summary": "除了技术争论，评论区对 systemd 项目本身的评价也很差。有人觉得它缺少像 Linus Torvalds 那样能压住质量底线的人，导致功能不断膨胀但质量控制不佳；也有人批评它习惯自研格式和内部工具，宁愿把复杂度关在项目内部。围绕 issue report 还有争议：一派认为提 bug 就该附带 fix，另一派则认为对有 paid maintainers 的基础设施项目，reporter 只需提供复现和诊断，不该被反向要求当开发者。",
+        "supportid": [
+          "49292552",
+          "49292820",
+          "49293146",
+          "49291686",
+          "49291746",
+          "49292125",
+          "49291886",
+          "49291835",
+          "49292614",
+          "49293270",
+          "49292944",
+          "49291571",
+          "49291104"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "write amplification",
+        "explanation": "一次小逻辑写入引发多次物理写入的现象，常见于数据库和 COW 文件系统。"
+      },
+      {
+        "term": "mmap",
+        "explanation": "memory-mapped I/O，把文件映射到内存，读写像访问内存，但会带来页级脏写和缓存污染。"
+      },
+      {
+        "term": "btrfs/COW",
+        "explanation": "copy-on-write 文件系统；修改数据时常要写新块并更新元数据，对频繁小写入特别敏感。"
+      },
+      {
+        "term": "LogFilterPatterns",
+        "explanation": "systemd>=253 提供的按模式过滤日志功能，可在 service 级别黑名单某些输出。"
+      },
+      {
+        "term": "WAL",
+        "explanation": "write-ahead logging；SQLite 的日志模式，先写日志再合并，能降低随机改写成本。"
+      },
+      {
+        "term": "SQLite",
+        "explanation": "嵌入式关系数据库，这里被讨论为 journald 的现成存储后端候选。"
+      },
+      {
+        "term": "DuckDB",
+        "explanation": "列式分析数据库，因压缩和列存特性被拿来类比日志存储。"
+      },
+      {
+        "term": "Parquet",
+        "explanation": "列式文件格式，擅长压缩和批量追加，但对单条实时写入不友好。"
+      }
+    ],
+    "context": "这场讨论来自一个针对 systemd-journald（systemd 的二进制日志守护进程）的 issue：一条日志行在 ext4（常见 Linux 文件系统）上会触发 49KB+ 写入，在 btrfs（copy-on-write 文件系统）上甚至超过 110KB。systemd 原本的设计文档强调 append-only、字段去重和压缩，希望让 journalctl（systemd 的日志查询工具）既能检索又能省空间，但评论认为实现已经偏离初衷。有人从 mmap（memory-mapped I/O）和块/页粒度解释为什么少量字段更新会放大成大量磁盘写入，尤其在 btrfs 这类 COW 文件系统上更明显。随后讨论扩展到能否用 syslog、SQLite（嵌入式关系数据库）、DuckDB（列式数据库）或 Parquet（列式文件格式）替代 journald，以及如何用 LogFilterPatterns 之类的功能缓解日志泛洪。",
+    "emoji": "😡",
+    "sarcastic_question": "一条日志写出几十KB，还敢叫高效设计吗？"
+  },
+  "articleSummary": "## 一句话总结\n\n这是一则针对 `systemd-journald` 的性能问题报告：在 Debian 13 的 VM 中，即使每秒只写两条 HAProxy 日志，journald 仍会触发约 50 IOPS；报告者认为其磁盘日志格式造成了远超 syslog 的写放大，且并非内核缓存或 iotop 统计误差所致。\n\n## 正文\n\n### 两条日志每秒，VM 却像在忙着刷盘\n\n问题出现在 `systemd 257.9`、Debian 13 和 Linux `6.12.57+deb13-amd64` 的组合上。报告者的预期很直接：journald 的日志写入成本至少应当与传统 syslog 在同一个数量级。毕竟，输入负载并不高，只是持续写入 HAProxy access log。示例里每两秒一条请求日志，也就是平均每秒两条。每条内容大约只是普通的一行 HTTP 访问记录，没有异常大的 payload。可观察到的结果却是 VM 持续产生约 `50 IOPS` 的磁盘活动。\n\n这就构成了文章的核心质疑：如此少的日志，为什么会换来这么多磁盘写入？如果是一次性 burst，还可能归因于 checkpoint、日志轮转或元数据更新。但这里是稳定、持续的日志流。也就是说，journald 的写入路径似乎在每条小日志上都付出了明显偏高的 I/O 代价。\n\n### 这不是 iotop 误报，也不是内核在“自作主张”\n\n这份报告刻意把测试放在 VM 中，并直接观察 VM 的实际 I/O traffic。原因是相同问题在旧 issue `#15292` 中已经被提出过，但当时讨论将问题部分归因于 `iotop` 的不准确性。报告者承认这一点有可能成立：iotop 观测的位置可能早于内核的 write coalescing，因此它不必然代表最终落盘行为。换句话说，应用层看见很多写操作，不等于块设备真的执行了同样多的 I/O。\n\n但这次的证据目标不同。报告者强调，VM 的 I/O 流量反映的是内核缓存、合并等机制都介入之后的结果。即使经过这些写入合并，低频日志流仍对应持续且显著的磁盘 I/O。于是，“只是 kernel 把少量写入放大成大量 IOPS”这个解释就站不住脚了。报告者的结论很明确：最终磁盘路径确实慢，journald 造成的写放大真实存在。\n\n### 问题的矛头指向 journal 文件格式\n\n标题给出了报告者测得的放大规模：单条日志可对应 `49KB+` 的 ext4 写入，或 `110KB+` 的 btrfs 写入。注意，这里的数值不是日志文本本身的大小。HAProxy 示例日志显然只有数百字节以内。也不是单纯 journal 文件占用空间稍大，而是一次小日志事件最终引发了几十 KB 到上百 KB 的系统磁盘写入。\n\n说白了，报告者认为 journald 的持久化格式本身“extremely inefficient”。journal 并不是简单 append 一行文本，它需要维护结构化字段、对象、索引和文件元数据。这些设计带来了查询能力和结构化语义，但报告中看到的结果是：写入一条很小的日志时，实际数据路径发生了成倍扩张。不同文件系统的表现差异也值得注意：在 btrfs 上，单条日志的写入量甚至达到 `110KB+`，明显高于 ext4 的 `49KB+`。\n\n### 文件变大不只是缓存现象，而是额外成本的信号\n\n报告者还指出，journald 生成的日志文件大小会是“实际写入内容”的数倍。这一观察与 IOPS 问题相互印证。若只是 page cache 延迟回写，最终文件本身不应持续显著偏离逻辑日志量。文件尺寸大于真实日志内容，说明 journald 持久化的并非仅仅是原始消息。它为日志的组织、检索和一致性维护写入了额外结构。\n\n这本身未必天然是 bug。结构化日志系统不可能像纯文本 syslog 那样只做最小化的 append。问题在于，报告者认为代价已经超过合理范围。对于一个每秒两行日志的服务，约 50 IOPS 的稳定消耗尤其不适合资源敏感的 VM。日志量一旦升高，这种放大就会从“略显浪费”变成可观的存储与性能负担。\n\n### 更尴尬的是，写得更多却不一定更可靠\n\n报告最后补上了对可靠性的质疑。journald 的高写入成本，按理说应能换来更强的 crash consistency 或恢复能力。可报告者称，自己已经多次遇到非正常重启后 journal 损坏的情况。因此，在他的判断中，journald 的格式既没有足够高效，也没有展现出与额外写放大相匹配的韧性。\n\n这也是这份 issue 的真正不满所在。它不只是说“journald 比 syslog 多写了一点盘”，而是在追问一个更尖锐的问题：如果每条小日志都要带来几十 KB 甚至上百 KB 的物理写入，那么这种成本究竟换来了什么？旧 issue `#15292` 被关闭后，报告者认为问题并没有消失，只是此前的观测方式被质疑了。如今通过 VM 侧的实际 I/O 流量复现，他试图重新证明：这不是观测工具的幻觉，而是 journald 持久化路径效率不足的真实表现。"
+}

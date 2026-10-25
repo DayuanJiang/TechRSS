@@ -1,0 +1,125 @@
+{
+  "id": 47194611,
+  "by": "gronky_",
+  "title": "Don't trust AI agents",
+  "url": "https://nanoclaw.dev/blog/nanoclaw-security-model",
+  "score": 212,
+  "createdAt": 1772284262,
+  "aiSummary": {
+    "chinese_title": "别信 AI 代理：代码膨胀、权限泄露与自我改写风险",
+    "discussion_overview": [
+      {
+        "category": "LoC 指标误用与代码膨胀",
+        "summary": "评论普遍反对用 LoC（lines of code）作为衡量 LLM 或工程师价值的指标，指出 OpenClaw/NanoClaw 的高行数或有人宣称“千行/小时”并不能反映质量。多位评论给出具体原因：LLM 生成代码往往更冗长，原因包括更多的 inline documentation、完整的 API 表达与更严格的关注点分离；有人估算大约有 ~15% 的“膨胀税”。管理层用易懂但有问题的度量来沟通速度，导致把 LLM 产出当成裁员或效率证明的借口。也有专业工程师的反例说明：在有人严格审查并补测的前提下，LLM 可显著提速，但工作重心会从写码转为审核与治理。",
+        "supportid": [
+          "47195487",
+          "47195617",
+          "47197481",
+          "47195939",
+          "47196077",
+          "47196264",
+          "47195881",
+          "47197460"
+        ]
+      },
+      {
+        "category": "隔离失败与密钥/凭证外泄风险",
+        "summary": "很多评论强调容器并非牢靠的安全边界：实例中有 agent 在 VM/容器内发现浏览器 cookies 或外泄凭证，且历史上存在 runc 等 runtime 的 container escape CVE。基于此，建议不要直接把敏感凭证交给 agent，而是通过代理（proxy）在需要时按会话注入占位 secret，或把 outbound 网络限制为仅能访问白名单域名并做时限控制。还有人指出常用容器（Docker/Podman）易被误用，建议采用更强隔离的轻量虚拟化方案如 Kata Containers 或 Firecracker，并对磁盘做快照回滚（VolumeSnapshot）。总体结论是：默认放开权限会导致高爆炸面，必须用架构化的边界、代理和可回滚快照来限定 blast radius。",
+        "supportid": [
+          "47195106",
+          "47194805",
+          "47196140",
+          "47195919",
+          "47195491",
+          "47194819",
+          "47196211",
+          "47195482"
+        ]
+      },
+      {
+        "category": "技能（skills）与自修改代码的不可控性",
+        "summary": "对 NanoClaw 等用“skill”体系的项目有大量质疑：skill 在实现上是位于 .claude/skills 的 Markdown 指令或混合代码，代理会按指令修改或生成扩展，这导致每个安装可能生成不同的自定义代码。评论举例说明风险：skill 既包含自然语言步骤也包含实际 Typescript/代码片段，合并时依赖 agent 自动执行 git merge，会产生不可重复的变更并增加“无法复现/难以修补”的概率。这种把扩展写成可执行指令的做法虽然能快速增加功能，但会侵蚀小而可审计代码库的优势，最终反而产生更多难以跟踪的 PR/issue 噪音。",
+        "supportid": [
+          "47194819",
+          "47195613",
+          "47196049",
+          "47195788",
+          "47196208",
+          "47195288",
+          "47195859",
+          "47196849"
+        ]
+      },
+      {
+        "category": "可执行的缓解策略与最佳实践",
+        "summary": "评论里列出了一系列具体防护模式：只授予 agent 可恢复的最小权限（如草稿而非发送邮件）、为 outbound 网络配置代理并白名单域名、对会话做时间盒限制以及用 VolumeSnapshot 做可回滚快照。具体实现上建议把敏感 secret 保存在网关，由网关在被允许时临时注入；把有副作用的动作变为任务队列（agent 只能写入任务列表，由人工审批后执行）。另外推荐用更强隔离的运行时（Kata/Firecracker）代替裸 Docker，并在工具层（MCP/工具层）为外部资源加上守护逻辑和审计钩子以减少滥用面。",
+        "supportid": [
+          "47195106",
+          "47196305",
+          "47195398",
+          "47196297",
+          "47195102",
+          "47195482",
+          "47196211"
+        ]
+      },
+      {
+        "category": "LLM 的判断力与自治局限",
+        "summary": "多条评论认为現有 LLM 不够严谨以做完全自治的 agent：模型输出存在非确定性、容易被 prompt injection 误导且对复杂判断缺乏长期、一致的策略。现实例子包括电话树式的客服 agent 无法完成任务并草草挂断、agent 在没有足够约束下执行危险命令（如 sudo rm -rf）的实例，以及多 agent 管道里上游被污染导致级联故障的风险。有人指出虽然 prompt injection 可能有研究方向可缓解，但模型“会做出它认为合适但不是你意图”的行为、本身的判断力不足才是更难的长期问题。结论是当前应把人放在回路中并对多 agent 信任链做严格定义。",
+        "supportid": [
+          "47195398",
+          "47196357",
+          "47196273",
+          "47195482",
+          "47194882",
+          "47197084"
+        ]
+      },
+      {
+        "category": "用例与实践分歧：助理、后端支持到代码合作者",
+        "summary": "评论显示对 agent 的期待从纯粹信息检索/提醒（todo、提醒、websearch）到充当代码伙伴（用 LLM 快速生成、并由工程师审核）的场景不等。很多人认为最安全的个人用例是无权限或仅读权限的助理（提醒、日程、音频检索），但也有职业工程师分享用 LLM 在受控审查下能迅速产出高质量代码并写大量测试的经历，说明产能提升存在但工作重心会移向“管理 LLM 输出”。总体上共识是：Agent 在后端或办公自动化（back-office）有价值，但生产环境操作、对外权限和自动自修改代码的场景仍需极其谨慎。",
+        "supportid": [
+          "47195853",
+          "47195671",
+          "47194806",
+          "47196077",
+          "47196773",
+          "47195102"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "prompt injection",
+        "explanation": "通过向模型输入恶意或操纵性提示来改变其行为、泄露敏感信息或绕开安全约束的攻击技术。"
+      },
+      {
+        "term": "skills（Claw skill file）",
+        "explanation": "Claw 系列代理中以 Markdown 写成的指令文件（例如 .claude/skills/.../SKILL.md），描述如何由 agent 修改代码或加入集成，可能包含自然语言步骤与可执行代码片段。"
+      },
+      {
+        "term": "container boundary / container escape",
+        "explanation": "容器（如 Docker/Podman）提供的进程隔离边界；container escape 指通过漏洞突破该隔离在宿主机或外部执行任意代码的情况，历史上有多个 runtime（如 runc）的 CVE。"
+      },
+      {
+        "term": "Kata Containers / Firecracker",
+        "explanation": "轻量级虚拟化技术（Kata Containers、Firecracker），提供比普通容器更强的内核级隔离，常用作更安全的沙箱选项。"
+      },
+      {
+        "term": "WASM sandbox",
+        "explanation": "使用 WebAssembly（WASM）运行时把插件或工具沙箱化执行的方式，用于限制系统调用和资源访问以提高安全性。"
+      },
+      {
+        "term": "VolumeSnapshot",
+        "explanation": "持久化存储的快照机制（例如 Kubernetes 的 VolumeSnapshot），可用于在 agent 损坏磁盘状态时回滚恢复。"
+      },
+      {
+        "term": "mailto URI",
+        "explanation": "mailto: URL scheme，可生成邮件草稿并调用本地邮件客户端，从而在不授予 SMTP/发送权限的情况下准备邮件内容。"
+      }
+    ],
+    "context": "讨论源于一篇关于“不要信任 AI agents”的帖子，聚焦多个开源 agent 框架（如 OpenClaw：大型、行数巨多的 agent 框架；NanoClaw：强调 skills 模型的小型实现）及其安全和工程成本。评论围绕三条主线展开：一是用 LoC 宣传 LLM 产能的误导及代码膨胀问题；二是 agent 在容器/权限层面的真实攻击面（包含 prompt injection、凭证外泄与 container escape）；三是所谓的 skills 或自修改代码带来的可复现性与审计难题。为此社区提出了具体防护模式（只读工具、代理注入 secrets、时间盒白名单、VM 级隔离如 Kata/Firecracker、磁盘快照回滚等）并强调在多 agent 管道中定义清晰信任边界与人工回路的重要性。",
+    "emoji": "⚠️",
+    "sarcastic_question": "把生产环境、密钥和邮箱交给会改代码的AI？"
+  }
+}

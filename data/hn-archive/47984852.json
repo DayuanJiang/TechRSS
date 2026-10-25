@@ -1,0 +1,122 @@
+{
+  "id": 47984852,
+  "by": "moosia",
+  "title": "How fast is a macOS VM, and how small could it be?",
+  "url": "https://eclecticlight.co/2026/05/02/how-fast-is-a-macos-vm-and-how-small-could-it-be/",
+  "score": 243,
+  "createdAt": 1777717262,
+  "aiSummary": {
+    "chinese_title": "macOS VM能压多小：内存自适应、极简系统与GPU/容器限制",
+    "discussion_overview": [
+      {
+        "category": "VM 内存占用会随配置自动收缩",
+        "summary": "起点是把 macOS VM 从 4 vCPU/8GB 一路降到 2 vCPU/4GB 后，观察到常驻内存从约 5GB 降到 3.1GB。评论里普遍认为这不是“每个核心占多少内存”的硬开销，而是 macOS 会根据可用 RAM 动态调整缓存、压缩和回收策略。有人指出 xnu 里的 per-CPU 结构并不大，不足以在 GB 级别上解释差异。也有人建议用 `vm_stat` 去看 page cache、compressor、pageins/pageouts，才能更接近真实底线。",
+        "supportid": [
+          "47985331",
+          "47986271",
+          "47986301",
+          "47987231",
+          "47986345",
+          "47985300",
+          "47985515"
+        ]
+      },
+      {
+        "category": "算力越多，应用与编译越吃内存",
+        "summary": "另一条线把“可用内存”与“线程数”直接关联起来。评论者认为，多线程程序和大规模编译往往会为每个 worker 预留工作集，常见经验甚至接近每线程 2GB。像 Chrome/Chromium 这类项目在内存不够时只能降低 `make -j` 并发，把部分核心闲置，否则就会撞上 OOM。意思是，VM 再小也能跑轻任务，但一旦进入编译或重并发场景，RAM 还是要跟着核数走。",
+        "supportid": [
+          "47986440",
+          "47987240"
+        ]
+      },
+      {
+        "category": "macOS 上做 GPU/容器隔离仍然别扭",
+        "summary": "在 Apple Silicon 上想同时得到 `pytorch`、GPU 加速和 VM/container 隔离，很多人都觉得体验仍然别扭。有人解释 `virtio-gpu` 更像是图形显示通道，不是真正把 compute GPU 透给客体；`Docker Model Runner` 和 `vllm-metal` 也更像对外提供接口，而不是完整的本地 GPU 访问。`podman libkrun` 虽然能碰到 Vulkan，但 `torch` 在 macOS 上更期待 MPS，强行走 Vulkan 既慢又不太成熟。唯一被点名相对可行的例子是 `Tart` 里的 `torch` 运行。",
+        "supportid": [
+          "47985724",
+          "47985964",
+          "47986253",
+          "47986261",
+          "47985824"
+        ]
+      },
+      {
+        "category": "想要极简 macOS / Darwin，但真正可用的底线很高",
+        "summary": "不少人其实想要的是“尽可能干净”的 macOS：只保留启动、登录和一个最小文本编辑器，甚至直接丢掉 GUI。有人指出 `Single User Mode（单用户模式）` 仍能把 macOS 直接拉到 root 终端，说明系统并不是不能裁剪，只是平时很少这样用。随后讨论上升到 Darwin、XNU、BSD、Mach 这层结构，以及 `PureDarwin` 这类试图跑纯 Darwin 的项目。早期 iPhone 只有 128 MiB RAM 且没有应用多任务，也被拿来证明苹果确实做过大幅瘦身，只是代价是功能被大幅砍掉。",
+        "supportid": [
+          "47985418",
+          "47987168",
+          "47985948",
+          "47986552",
+          "47986009",
+          "47986375",
+          "47986479",
+          "47986493",
+          "47986620",
+          "47986809"
+        ]
+      },
+      {
+        "category": "macOS 内存管理被拿来和 Linux/Windows 对比",
+        "summary": "关于 macOS 的内存效率，评论区明显分成“体验很好”和“问题不少”两派。前者举例说 8GB 的 Intel MacBook Pro 也能同时跑 Blender、Illustrator、Unity、VS Code 和 Firefox，而且保持响应；后者则强调页面大小、缓存策略、以及核心组件或第三方扩展的内存泄漏会让系统在某些场景下 OOM。还有人把它和 Debian、Linux 以及较老的 Windows 内存管理做对比，认为 macOS 在桌面多任务下更会“让你感觉内存够用”，但这不等于服务器式负载也没问题。最后争论回到一个更现实的点：如果很多报错都来自同一类库或应用泄漏，那问题可能不是“系统整体优秀”，而是某些组件一直没修好。",
+        "supportid": [
+          "47985365",
+          "47986739",
+          "47985794",
+          "47986211",
+          "47986249",
+          "47986625",
+          "47986658",
+          "47987023",
+          "47987203",
+          "47987010"
+        ]
+      },
+      {
+        "category": "macOS CI/容器工具链与签名公证的现实成本",
+        "summary": "真正落地到 CI 或打包时，macOS VM/容器的麻烦更多来自工具链而不是 CPU。有人觉得 `colima+docker` 虽然能用但很痛苦，于是转去试 Apple 的 `container` CLI 或 `OrbStack`。另一些人选择干脆在宿主机上构建，因为无人值守的签名和 `notarization` 太容易踩坑：要解锁 `keychain`、找对签名 identity、同时给二进制和 `.dmg` 做公证，还得绕开 GUI 密码提示。对 `Forgejo Runner` 这类不同安全上下文的自动化环境来说，这些步骤会迅速膨胀成大量 Bash。",
+        "supportid": [
+          "47985504",
+          "47986400",
+          "47985588",
+          "47985632",
+          "47986584",
+          "47987043",
+          "47985721",
+          "47986856"
+        ]
+      },
+      {
+        "category": "Apple Silicon 与模拟器/性能预期",
+        "summary": "还有一条小分支在讨论 Apple Silicon 的实际体感：`Xcode` 模拟器脱离 IDE 后会不会更顺，以及 Intel MacBook Air 为什么连 iOS 里的 Safari 都跑不顺。回复里用 `Geekbench` 对比强调 M1/M5 级别已经远超那台 Intel Air，暗示新芯片对模拟器和本地开发体验的改善非常明显。这个分支虽然不是主线，但也说明大家在评估 macOS VM 时，默认前提已经变成 Apple Silicon。",
+        "supportid": [
+          "47985101",
+          "47986655",
+          "47986800"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "XNU",
+        "explanation": "macOS 的混合内核，结合了 Mach 和 BSD 等组件。"
+      },
+      {
+        "term": "Darwin",
+        "explanation": "Apple 开源的类 Unix 底层系统，是 macOS 的基础层之一。"
+      },
+      {
+        "term": "notarization",
+        "explanation": "Apple 对应用、二进制和安装包的公证流程，常用于自动化分发与安全检查。"
+      },
+      {
+        "term": "keychain",
+        "explanation": "macOS 的证书与密码管理系统，自动化签名时经常要和它打交道。"
+      }
+    ],
+    "context": "这场讨论围绕在 Apple Silicon 上跑 macOS VM 时，系统到底能压到多小、还能多快，底层依赖的是 Apple 的 Virtualization framework（虚拟化框架）。一部分评论在拆解内存占用、缓存、压缩和页面回收，另一部分则想把 macOS 瘦身到只剩启动和一个 shell，甚至提到 `Single User Mode（单用户模式）` 这类启动路径。讨论同时延伸到容器与自动化工具，例如 `colima`、`OrbStack`、`Tart`、`libkrun` 和 Apple `container` CLI（苹果官方容器命令行），以及它们在 GPU 计算、隔离和 CI 上的现实限制。更底层的话题则落到 Darwin（Apple 开源的类 Unix 基础系统）和 XNU（macOS 的混合内核）上，显示很多人其实是在找一个既能裁剪又能自动化的 macOS 运行形态。",
+    "emoji": "🤔",
+    "sarcastic_question": "既然能跑VM，顺便把macOS复杂度也虚拟掉？"
+  },
+  "articleSummary": "## 一句话总结\n在 Apple Silicon 上运行 macOS 虚拟机不仅性能损耗极低（单核达主机 98%），而且资源需求远低于预期，仅需 2 核 CPU 和 4GB 内存即可流畅运行日常任务。\n\n---\n\n### 性能实测：VM 到底比宿主机慢多少？\n作者这次选用了 Mac mini M4 Pro 作为宿主机，配置相当豪华：14 个核心（10 个性能核 + 4 个能效核），48GB 内存，运行的是 macOS 26.4.1。他在这个环境下跑了一个分配了 5 个虚拟核心和 16GB 虚拟内存的 macOS VM，用 Geekbench 6.7.1 做了详细的对比测试。结果挺有意思，单核 CPU 得分 VM 是 3,855，宿主机是 3,948。这意味着虚拟机的单核性能几乎没有任何损耗，达到了宿主机的 98%。这打破了很多人对虚拟机“慢吞吞”的刻板印象。\n\n### 多核与 GPU：资源分配带来的性能差异\n多核性能的对比稍微复杂一点，因为宿主机的核心数是 VM 的两倍多。VM 的多核得分是 13,222，而宿主机高达 23,342。考虑到宿主机光性能核数量就是 VM 的两倍，VM 在这个测试里的表现其实相当不错，并没有因为虚拟化层而出现明显的性能坍塌。GPU 方面，VM 的 Metal 得分是 106,896，宿主机是 111,970。在宿主机不抢占 GPU 资源的前提下，VM 能发挥出 95% 的图形性能。对于图形密集型任务来说，这个损耗完全可以接受。\n\n### 神经网络引擎：虚拟化中的唯一短板\n不过，测试中也有一个明显的“拖油瓶”，那就是虚拟神经引擎。CoreML 的测试数据显示，在半精度和量化测试中，VM 的得分（5,291 / 8,577 / 6,877）远低于宿主机（5,973 / 41,251 / 56,616）。这种性能断崖式下跌确实让人头疼。作者的建议很务实：在 VM 里处理 AI 任务时，系统最好能智能地绕过神经引擎，转而使用 CPU 和 GPU。毕竟前两者的虚拟化性能都很强，凑在一起应该能弥补神经引擎的短板。\n\n### MacBook Neo 能跑得动吗？极限压测开始\n这就引出了一个很现实的问题：配置较低的 MacBook Neo 能不能跑得动 macOS VM？为了找到底线，作者用他的虚拟化软件 Viable 逐步“虐待”这个 VM。他把分辨率固定在 1600 x 1000，主要跑 Safari 和一些轻量级系统任务。一开始分配 4 核 CPU 和 8GB 内存时，系统占用约 5GB，运行非常轻快。接着他降到 3 核 CPU 和 6GB 内存，内存占用跌到了 3.9GB，体验依然良好。这说明 macOS 在 VM 里对资源的弹性适应能力很强。\n\n### 惊人的底线：2 核 4GB 依然可用\n最后的极限测试结果可能会让你意外。当配置砍到只剩 2 个虚拟核心和 4GB 内存时，VM 的内存占用仅 3.1GB，但依然能正常完成浏览网页、查看存储分析等日常操作。这证明了 macOS VM 的最低门槛其实非常低。虽然这种配置肯定跑不动本地大模型（LLM），但对于轻办公和日常使用来说，完全是“可用”的状态。这对打算入手 MacBook Neo 的开发者来说，绝对是个好消息。\n\n### 别忘了磁盘空间：APFS 的巧妙设计\n除了 CPU 和内存，还有一个容易被忽视的坑：磁盘空间。作者提醒，如果你的 macOS VM 小于 50GB，系统更新就会报错。为了安全起见，最好预留至少 60GB。好在 APFS 文件系统帮了大忙。VM 在磁盘上是以稀疏文件存储的，这意味着你创建一个 100GB 的虚拟磁盘，实际占用可能只有 54GB 左右。对于配备了 512GB SSD 的 MacBook Neo 来说，这种空间占用方式非常友好，让你既能体验 VM，又不至于把硬盘塞满。"
+}

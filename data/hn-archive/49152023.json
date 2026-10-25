@@ -1,0 +1,128 @@
+{
+  "id": 49152023,
+  "by": "paavohtl",
+  "title": "Rust project goals: Immobile types and guaranteed destructors",
+  "url": "https://github.com/rust-lang/rust-project-goals/blob/main/src/2026/move-trait.md",
+  "score": 227,
+  "createdAt": 1785740418,
+  "aiSummary": {
+    "chinese_title": "Rust 计划引入 `!Move`/`!Destruct`，补齐 immovable 类型与析构保证",
+    "discussion_overview": [
+      {
+        "category": "项目目标仍在实验，兼容性风险很大",
+        "summary": "有评论先提醒，这仍然只是 Rust project goal，不是已经接受的 language change。意思是社区会投入实验，但设计随时可能大改，甚至被放弃。也有人立刻担心 backwards incompatible：Rust 现有代码普遍默认值可以在任意位置被移动或丢弃，改这个前提会牵动整个生态。讨论里还提到 editions 可能提供过渡，但对默认语义和跨版本迁移的影响仍然很大。",
+        "supportid": [
+          "49153716",
+          "49155387",
+          "49153124",
+          "49153569",
+          "49154436",
+          "49154844",
+          "49154466",
+          "49154818"
+        ]
+      },
+      {
+        "category": "用 `!Move` 把 immovability 做成类型属性",
+        "summary": "很多人把这条路线理解为要把 immovability 从 `Pin` 的引用层面，提升成类型本身的属性。评论里反复比较 `Pin` 和 `!Move`：前者约束的是 pointer，后者约束的是 pointee，因此后者更适合表达 self-references 之类的场景。有人举例说 `Pin<Box<Vec<u8>>>` 还能继续投影成 `Pin<&mut [u8]>`，说明新方案若要替代 `Pin`，还得保住 pin projection 这类能力。也有人提到 pinned places、OxCaml，以及这到底是在更像 C++ 还是在进一步收紧 flexibility 上的争论。",
+        "supportid": [
+          "49152509",
+          "49153432",
+          "49153936",
+          "49154550",
+          "49154760",
+          "49154940",
+          "49155049",
+          "49152650",
+          "49152921",
+          "49154263",
+          "49154882",
+          "49155177",
+          "49155159",
+          "49155349",
+          "49152865"
+        ]
+      },
+      {
+        "category": "线性类型与保证析构：transaction、`Vec<T>`、`?Move`",
+        "summary": "另一条主线是 `!Destruct` / `!Move` 这种 linear types：值不能被静默丢掉，必须被显式消费。评论最常举的例子是 transaction，创建后必须精确地 commit 或 rollback，否则编译器直接报错，而不是靠 `Drop` 里偷偷 rollback 或 panic。有人进一步问这会怎样影响 `Vec<T>` 之类的标准库容器，因为它们经常搬移元素，可能需要 `where T: ?Move` 这类显式边界。也有人把 destructors with arguments 之类的开放问题提出来，说明这不是单一特性，而是一整套资源语义。",
+        "supportid": [
+          "49152537",
+          "49152854",
+          "49154038",
+          "49154325",
+          "49154297",
+          "49153124",
+          "49153569",
+          "49154436",
+          "49154844",
+          "49154466",
+          "49154818"
+        ]
+      },
+      {
+        "category": "`mem::forget`、引用环与 `Forget` 约束",
+        "summary": "围绕 `mem::forget` 和引用环，讨论焦点是怎样保证“保证析构”不会被绕过。有人指出，单靠禁止 `mem::forget` 不够，因为用引用循环同样可以把值泄漏掉；因此可能要让某些引用计数智能指针要求 `T: Forget`，像 `Arc<T>` 依赖 `T: Sync` 一样。还有人提醒，把值交给一个永远不结束的 thread 也能达到类似效果，所以规则也许还得和 `!Send` 或 scoped thread 机制联动。",
+        "supportid": [
+          "49152382",
+          "49152545",
+          "49152463",
+          "49155308",
+          "49155381"
+        ]
+      },
+      {
+        "category": "async / structured concurrency 的补课",
+        "summary": "在 async 方向，这些特性被看作 structured concurrency 的补课。现在 sync Rust 已经有 scoped threads，可以把栈上的借用安全地传给子线程；但 async task/future 没有同级别保证，导致 `tokio::spawn` 常常需要 clone、`Pin` 或 unsafe 处理。评论认为，若能让 future 也拥有必须活到作用域结束的语义，就能更自然地支持借用外部数据、递归 async，以及更清晰的 cancellation。也有人补充，像 `FuturesUnordered` 这样的局部调度器能绕开部分问题，但并不能完全取代真正的结构化并发。",
+        "supportid": [
+          "49152238",
+          "49152333",
+          "49154282",
+          "49154974",
+          "49152309",
+          "49155008"
+        ]
+      },
+      {
+        "category": "把这些 trait 看成 algebraic effects 风格的能力跟踪",
+        "summary": "还有一派把这些 trait 解释成 Rust 在补 algebraic effects 风格的能力跟踪。按这种说法，`drop<T>`、`move<T>`、`forget<T>` 像是函数隐式承担的 effect，而 trait 实现更像 effect handler。支持者认为如果签名能直接显示这些能力，甚至能把文件关闭、内存释放这类副作用也显式化；反对者则觉得这更接近 linear types，不是真正完整的 algebraic effects 系统。",
+        "supportid": [
+          "49152270",
+          "49154454",
+          "49155245",
+          "49155503"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Pin",
+        "explanation": "Rust 的固定（pinning）包装类型，用来保证值在被固定后不会再被移动。"
+      },
+      {
+        "term": "Unpin",
+        "explanation": "表示某个类型在 Pin 场景下仍可安全移动的标记 trait。"
+      },
+      {
+        "term": "`!Move`",
+        "explanation": "提案中的“不允许移动”类型属性，表示对象本身不可被破坏性移动。"
+      },
+      {
+        "term": "`!Destruct` / linear types",
+        "explanation": "必须被显式消费、不能靠隐式 Drop 处理的一类类型约束。"
+      },
+      {
+        "term": "`Forget` / `mem::forget`",
+        "explanation": "表示可以跳过析构把值“忘掉”的能力；讨论中用来约束泄漏。"
+      },
+      {
+        "term": "structured concurrency",
+        "explanation": "保证子任务在作用域结束前完成的并发模型，常用于 scoped tasks。"
+      }
+    ],
+    "context": "这场讨论对应 Rust Project Goals（Rust 社区用来列出阶段性工程目标的清单）里的一项提案，核心是把 `Pin`（Rust 的固定/pinning 包装类型）背后的“不可移动”语义做成语言级能力。它想同时解决两类长期痛点：一类是 `Pin` 对 self-referential data、async cancellation 和 structured concurrency 的限制，另一类是资源类型在离开作用域时必须有可验证的销毁路径。评论里还提到 `!Move`、`!Destruct`、`Forget`、`Unpin` 这些相关概念，以及 `tokio::spawn`（Tokio 运行时的任务启动接口）和 `Vec<T>` 等现有 API 会受到的影响。这个方向也被拿来和 pinned places、OxCaml 以及 C++ 的 move/copy 语义比较。",
+    "emoji": "🤔",
+    "sarcastic_question": "既要 immovable，又要零破坏兼容，还想不炸旧生态？"
+  },
+  "articleSummary": "# 一句话总结\nRust 计划引入 `Move` 和 `Forget` 等新 trait，将“可移动”和“可遗忘”从语言默认假设变为类型系统的显式能力，旨在彻底解决 `Pin` 的复杂性痛点，并实现安全的 scoped spawn 和 async drop。\n\n---\n\n### 隐式假设带来的两难困境\nRust 长期以来有两个根深蒂固的假设：所有类型都可以在内存中移动，所有类型都可以被“遗忘”（即不运行析构函数）。这虽然让语言设计变得简单，但也带来了严重的副作用。对于自引用类型，移动内存会导致指针失效，目前的解决方案是 `Pin`，但它把“不可移动”绑定到了指针（place）而不是类型上，导致 API 设计极其复杂，在 Linux 内核这种场景下更是难用。另一方面，对于事务或作用域任务这类必须执行清理逻辑的类型，`mem::forget` 是安全的，意味着编译器无法保证析构函数一定运行，直接堵死了“安全的作用域并发”这条路。\n\n### 把能力变成显式的 trait\n核心思路其实很简单：像当年引入 `Sized` 层级一样，通过引入新的 trait 层级来“放宽”语言的默认假设。与其默认所有类型都能动、都能忘，不如把这些变成一种显式的“能力”。文章提出了三个关键的 auto trait：`Move`（类型可重定位）、`Destruct`（类型可隐式析构）和 `Forget`（类型可被安全遗忘）。这样一来，类型就可以选择不实现这些 trait，从而在类型层面表达“我绝对不能动”或者“我必须被清理”。\n\n### 用 `Move` trait 彻底取代 Pin\n最有意思的设计是 `Move` trait。它是一个 unsafe auto trait，如果一个类型实现了 `!Move`，就意味着它在整个生命周期内必须保持内存地址稳定。这比 `Pin` 高明的地方在于，它把“不可移动”变成了类型本身的属性，而不是指针的属性。这不仅简化了概念模型，还解决了 `Pin` 带来的“重复定义 trait”的问题（即不需要同时定义 `Trait` 和 `PinnedTrait`）。作者的目标很明确：这不仅仅是修补，而是为了在未来彻底废弃 `Pin`。\n\n### `!Forget` 是安全并发的关键\n对于并发编程，`!Forget` trait 才是真正的杀手锏。想象一下 scoped spawn 的场景：我们在父作用域生成任务，任务借用了父作用域的变量。如果返回的 Handle 可以被 `mem::forget`，任务就可能活过父作用域，导致悬垂指针。但如果 Handle 是 `!Forget` 的，用户就无法遗忘它，编译器会强制在作用域结束前调用 Handle 的析构函数（也就是 join 任务）。这就从类型系统层面保证了借用安全，不需要任何 unsafe 代码。\n\n### 现实世界的验证与取舍\n这个计划不是纸上谈兵，时间表定在了 2026-2027 年，而且会在 Linux 内核中进行实战测试。Linux 内核使用了大量自引用数据结构，是检验 `Move` trait 设计的绝佳试金石。不过，为了控制范围，今年的工作排除了修改 `Future` trait。虽然 `Future` 依赖 `Pin` 且问题不少，但改动它涉及复杂的迁移策略，团队决定把它作为一个独立项目来处理，先集中精力把基础 trait 打牢。\n\n### 这是一场对默认行为的重构\n说白了，这就是 Rust 类型系统的一次“去默认化”重构。以前我们认为“所有类型都有大小”是真理，后来为了支持动态数组引入了 `?Sized`；现在我们要把“所有类型都能移动和泄漏”也变成可选的。这不仅能解决自引用结构和作用域并发的老难题，更重要的是，它建立了一个通用的模式：以后遇到类似的普适假设阻碍了发展，都可以通过引入 trait 层级来优雅地解决。"
+}

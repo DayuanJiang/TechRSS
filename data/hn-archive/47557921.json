@@ -1,0 +1,94 @@
+{
+  "id": 47557921,
+  "by": "hauntsaninja",
+  "title": "Show HN: Git bayesect – Bayesian Git bisection for non-deterministic bugs",
+  "url": "https://github.com/hauntsaninja/git_bayesect",
+  "score": 273,
+  "createdAt": 1775071838,
+  "aiSummary": {
+    "chinese_title": "Bayesian git bisect：定位 flaky bug，支持图先验",
+    "discussion_overview": [
+      {
+        "category": "用途：从确定性回归扩展到 flaky / non-deterministic bug",
+        "summary": "大家普遍把它看作是把 git bisect（Git 自带的二分定位工具）从“确定性回归”扩展到 flaky / non-deterministic bug 的实用方法。它适合测试结果会抖动的场景，比如线程调度、CPU / disk / network timing 影响的故障，或者 perf regression 里噪声很大的 benchmark。有人还提到它也能用于 LLM interactions 这类更难稳定复现的测试。核心价值被概括为：减少为了确认哪一个 commit 更坏而反复重跑整套测试的次数。",
+        "supportid": [
+          "47558065",
+          "47606543",
+          "47606718",
+          "47607316",
+          "47605757",
+          "47607132"
+        ]
+      },
+      {
+        "category": "准确率、固定预算与图先验",
+        "summary": "评论里最热的一个点是：bayesect 并不是追求无限跑到 100% 正确，而是在固定测试预算下最大化定位概率。作者补充说，自己做 benchmark 时用了 300 次 test runs，所以 90/10 flakiness 下普通 bisect 只有约 44% accuracy，而 bayesect 约 96%；70/30 时则是 9% 对 67%。另一条更进一步指出，给 commit 加上代码结构先验（例如 call graph 里高连接度函数更可疑）能在不额外跑测试的情况下再提高 10–15% 左右。这个先验还被写成信息论公式，强调先验信息可以直接减少需要的测试数量。",
+        "supportid": [
+          "47607352",
+          "47607432",
+          "47607761"
+        ]
+      },
+      {
+        "category": "接口扩展：多次试验、原始分数与 posterior",
+        "summary": "不少人关心接口层面的扩展：能不能给单个 commit 记录多次试验、能不能输入原始 benchmark score、能不能直接看到 posterior probability。作者回应说，现阶段可以通过反复记录同一 commit 的观测来等价表达概率和试验次数，但还没有批量写入 (probability, num_trials) 的 CLI。另一个讨论点是，如果 recompile 很慢，单纯按“每次测试”计数就不够了，最好把 expected information gain 和 test time 一起考虑。整体上，这部分是在把工具从二值 pass/fail，往更通用的概率观测和成本敏感搜索推进。",
+        "supportid": [
+          "47558862",
+          "47559080",
+          "47605255",
+          "47606895",
+          "47607529",
+          "47607801"
+        ]
+      },
+      {
+        "category": "相关工作：BBChop、HMM 与 DAG",
+        "summary": "也有人把它和更早的思路对照：BBChop 这类工具同样做 Bayesian search，但实现上用的是 Rényi entropy，而这里强调的是 Shannon entropy 和线性时间求解。还有人问能否直接把问题看成 Hidden Markov Model（HMM），把故障概率当作 latent state 来跟踪。另一个相关方向是把历史从线性 commit chain 扩展到 DAG（Directed Acyclic Graph，定向无环图）上的搜索，不过那会让 cumulative sum 之类的计算复杂很多。整体看，这部分是在追问“这个算法和现有 Bayesian / entropy 方法到底是什么关系”。",
+        "supportid": [
+          "47606721",
+          "47605366"
+        ]
+      },
+      {
+        "category": "成本敏感搜索与动态一致性",
+        "summary": "讨论还深入到搜索策略本身：当 rebuild / test 成本很高时，应该按什么目标函数选下一个 commit，尤其是是否要按 bits/sec 来最大化信息增益。有人指出，这种问题涉及 dynamical consistency，也就是如果之后又追加预算，最优策略是否在事前和事后保持一致；而在预算快用完时，最优解往往会偏向多拿几次骰子而不是押更大的 bet。也有人建议，对这类离散且代价敏感的问题，simulation 往往比闭式公式更稳妥。实际工程上，缓存编译产物往往比反复重新编译更有效。",
+        "supportid": [
+          "47606346",
+          "47606792",
+          "47607195",
+          "47607472"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Beta-Bernoulli conjugacy",
+        "explanation": "Beta 先验与 Bernoulli 观测的共轭关系，可让后验和边际似然闭式计算。"
+      },
+      {
+        "term": "Shannon entropy",
+        "explanation": "用信息熵衡量不确定性，并据此选择下一次最有信息增益的 commit。"
+      },
+      {
+        "term": "Rényi entropy",
+        "explanation": "另一种熵定义，有些算法用它更容易推导出线性时间更新。"
+      },
+      {
+        "term": "HMM（Hidden Markov Model）",
+        "explanation": "用隐状态描述“故障概率”随历史变化的概率模型。"
+      },
+      {
+        "term": "DAG（Directed Acyclic Graph）",
+        "explanation": "定向无环图；这里指把搜索对象从线性 commit 历史扩展到依赖图。"
+      },
+      {
+        "term": "dynamical consistency",
+        "explanation": "当未来预算是否已知发生变化时，最优决策仍保持一致的性质。"
+      }
+    ],
+    "context": "这是一个 Show HN 项目，把 git bisect（Git 自带的二分定位工具）扩展到 flaky / non-deterministic bugs。它把每次测试结果当作 Bernoulli observation，用 Beta-Bernoulli 共轭来更新后验，再用 Shannon entropy 选择下一次该测哪个 commit，从而在有限测试预算内尽量少跑测试。评论里还提到，如果代码结构能提供 call graph 或 entity dependency graph 这类先验信号，就可以在不增加测试次数的前提下提高定位概率。讨论也延伸到 perf regression、HMM（Hidden Markov Model）建模、DAG 历史搜索，以及 recompile 成本很高时如何做成本敏感的信息增益优化。",
+    "emoji": "🧠",
+    "sarcastic_question": "既然能多跑就更准，何必还把二分当神话？"
+  },
+  "articleSummary": "## 一句话总结\n这是一个基于贝叶斯推断的 Git 二分查找工具，专门用来定位那些非确定性 bug（比如时好时坏的 flaky test），通过贪婪最小化熵来精准找到导致失败率变化的 commit。\n\n### 传统二分法在非确定性 Bug 面前失效了\n平时我们用 `git bisect` 找 bug，前提是 bug 必须是确定的：旧版本一定崩，新版本一定过。但现实很骨感，很多测试是 flaky 的，有时候崩有时候过，这种非确定性让传统的二分查找直接傻眼。因为单次测试结果不可信，你没法简单地说这个 commit 是 \"good\" 还是 \"bad\"。`git bayesect` 就是为了解决这个问题诞生的，它不追求绝对的黑白，而是去捕捉概率的变化。\n\n### 核心思路：把二分查找变成贝叶斯推断\n说白了就是不再把测试结果看作定论，而是看作观测数据。工具利用 Bayesian inference（贝叶斯推断）来计算每个 commit 引入变化的概率。这里有个巧妙的设计：它使用了 Beta-Bernoulli 共轭先验的数学技巧。这样做的好处是，即使你完全不知道测试的失败率是多少，算法也能在计算后验概率时把未知的失败率参数给积分掉，让计算变得可处理且高效。\n\n### 选下一个测试点：贪婪地减少不确定性\n那算法怎么决定下一个该测哪个 commit 呢？它用的是贪婪最小化期望熵的策略。简单讲，就是每次都选那个能让结果最\"确定\"的 commit。如果测了这个 commit，不管结果是过还是挂，都能最大程度地缩小搜索范围。这比瞎猜或者简单的二分要聪明得多，特别是在测试结果充满噪音的时候。\n\n### 你不需要懂概率论，但可以给它\"提示\"\n虽然工具背后全是复杂的数学，但用起来你不需要知道具体的似然函数。它默认假设概率发生了变化，但你也可以通过 `prior` 命令介入。比如，你可以根据文件名或者 commit message 给某些 commit 设定更高的权重。如果某个 commit 修改了包含 \"suspicious\" 的文件，或者提到了 \"timeout\"，你可以告诉算法：\"这个家伙嫌疑比较大，优先查它\"。\n\n### 工作流和 Git Bisect 类似，但更智能\n使用上它尽量保持了 Git 原生的手感。先用 `git bayesect start` 划定范围，然后用 `git bayesect run` 自动运行你的测试脚本。每跑一次，它就记录一次观测，更新概率分布，然后自动 checkout 下一个最值得测的 commit。整个过程就是不断\"观测-更新-再观测\"，直到锁定那个导致失败率突变的罪魁祸首。"
+}

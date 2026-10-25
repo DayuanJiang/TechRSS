@@ -1,0 +1,116 @@
+{
+  "id": 48788599,
+  "by": "leemoore",
+  "title": "Better Models: Worse Tools",
+  "url": "https://lucumr.pocoo.org/2026/7/4/better-models-worse-tools/",
+  "score": 128,
+  "createdAt": 1783200060,
+  "aiSummary": {
+    "chinese_title": "模型更强，工具更差：Claude/Pi 的 harness、hooks 与 schema 之争",
+    "discussion_overview": [
+      {
+        "category": "错误消息与重试",
+        "summary": "有人认为工具调用失败不一定是大问题，关键是错误消息要足够具体，让模型知道该怎么改。评论里举例说，Claude 常把 tool call 的 syntax 写错，但只要错误输出里带上正确的调用指引，下一个回合通常就能修好，额外耗时只有一两秒。支持者更看重结果正确性，宁可多一次 round trip，也不愿把坏结果带进后续步骤。还有人把这套思路延伸到 `jj vcs`、LSP 和 linters，认为工具对模型和人都该提供同样清晰的反馈。",
+        "supportid": [
+          "48790214",
+          "48790903",
+          "48790959",
+          "48791056",
+          "48790489"
+        ]
+      },
+      {
+        "category": "hooks 比 skills 更适合纠偏",
+        "summary": "这组评论的核心是：skills 更像一次性说明文档，而 hooks 才能持续约束行为。有人指出 skills 只注入一次，没法用来修正长期的行为问题；hooks 则可以在每次事件触发时再次注入提示或校验，所以更适合纠错。讨论中提到 `pi-brains`、Claude Code hooks、`CLAUDE.md` 和 `tdd_log.py` 等做法，说明持续注入往往比一次性提示更稳。也有人直接追问 skills 和 hooks 的分工，反映出两者在 token 成本、可维护性和灵活性上的取舍。",
+        "supportid": [
+          "48790525",
+          "48790655",
+          "48790589",
+          "48791298"
+        ]
+      },
+      {
+        "category": "用 curl + markdown 做更可靠的工具说明",
+        "summary": "有人在 serverless backend 的 agent integration 里放弃了 MCP，转而把 curl 命令写进 skills markdown。理由是 curl 太常见，模型对它的调用模式更熟，而 bash 语法和 JSON payload 分开后，agent 更不容易混淆。这样做还有额外收益：skills 文件本身就能当成给人看的文档。支持者把这视为一种简单、可靠、可维护的接口设计。",
+        "supportid": [
+          "48789596",
+          "48789949"
+        ]
+      },
+      {
+        "category": "模型对特定 harness 过拟合",
+        "summary": "最强烈的担忧是，模型学到的不是抽象的“会用工具”，而是某个具体 harness 里的工具习惯。评论里提到，Anthropic 自家客户端会悄悄修补坏掉的调用，于是 RL 可能奖励了“差不多对”的输出，模型就把这种宽容环境当成默认前提。结果是同一个模型换到别的 runtime 或别的 schema 时会掉坑，甚至把 `edit` 调用里的 invented fields 也一起带出来。有人把这比作早年浏览器对 HTML/CSS 的兼容混乱，也有人担心这种 model+harness 的绑定会形成封闭壁垒和商业 moat。",
+        "supportid": [
+          "48789196",
+          "48790165",
+          "48789277",
+          "48789391",
+          "48789370",
+          "48790733",
+          "48789858",
+          "48791076",
+          "48789473",
+          "48789534",
+          "48790528",
+          "48789217",
+          "48790350",
+          "48789301",
+          "48791038"
+        ]
+      },
+      {
+        "category": "结构化输出与约束解码",
+        "summary": "不少人对模型还要把 tool call 当文本吐出来感到意外，因为 inference engine 其实已经能在解码层做约束。有人提到 `json_schema: true` 和 Grammar-Constrained Decoding（GCD）可以把输出锁进合法格式里，但这通常是 provider-specific 的能力。反对者则认为约束越强，模型往往越“笨”，所以并不是所有场景都值得这样做。那句“想要合法 JSON 还得跪着求”也把自由文本输出的脆弱感说得很直白。",
+        "supportid": [
+          "48789964",
+          "48790668",
+          "48790771",
+          "48790586",
+          "48789397"
+        ]
+      },
+      {
+        "category": "patch / diff 编辑格式",
+        "summary": "做 patch 和 edit 工具的人普遍抱怨，模型在 unified diff 上非常差，尤其容易写错行号和 hunk。有人把 `apply_patch` 改成接受 `patch -p1` 风格的补丁后，仍然需要靠日志分析失败；也有人改用 Rob Pike 的 Sam editor syntax，觉得只要几百 token 的 system prompt 就能稳定很多。另一些实现则把 `tool_edit` 设计成 coordinate-based schema，再配合 review/save/cancel 的对话框和 guardrails，先让 agent 检查再落盘。整体看，编辑接口越精细，就越依赖对模型输出形状的约束和对失败的兜底。",
+        "supportid": [
+          "48789211",
+          "48789483",
+          "48790050",
+          "48790116",
+          "48790048",
+          "48790181"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "harness",
+        "explanation": "包裹模型并负责工具调用、错误修复、重试和状态管理的运行时外壳。"
+      },
+      {
+        "term": "MCP",
+        "explanation": "Model Context Protocol，一种把模型接到外部工具、文件和服务上的标准协议。"
+      },
+      {
+        "term": "hooks",
+        "explanation": "在代理运行时触发的脚本或回调，可用于注入提示、检查结果或修正行为。"
+      },
+      {
+        "term": "skills",
+        "explanation": "以 markdown 等形式提供的可复用任务说明，通常是一次性注入给 agent。"
+      },
+      {
+        "term": "Grammar-Constrained Decoding (GCD)",
+        "explanation": "在解码阶段用语法或 schema 约束输出格式的方法。"
+      },
+      {
+        "term": "unified diff",
+        "explanation": "patch 常用的文本补丁格式，要求行号和 hunk 精确，模型很容易写错。"
+      }
+    ],
+    "context": "这篇讨论围绕一个核心现象：像 Claude 这样的模型在自家工具环境里表现不错，但换到 Pi（一个 agent runtime/框架）之类的外部 harness（包裹模型、负责工具调用和错误处理的运行时）时，会把 edit tool 用坏，甚至多出不存在的字段。评论者把原因指向 post-training 和 RL fine-tuning（基于奖励的后训练），认为如果运行时会悄悄修补坏掉的调用，模型就会学会依赖这种宽容。话题也延伸到 MCP（Model Context Protocol，一种标准化模型与外部工具连接的协议）、skills、hooks 和 GCD 这些方案，讨论怎样在不牺牲太多可用性的前提下提升工具调用稳定性。与此同时，大家也在争论这种模型与私有 harness 的深度绑定，是会成为可靠性的来源，还是会变成封闭生态和商业壁垒。",
+    "emoji": "🤔",
+    "sarcastic_question": "模型都学会调用工具了，还要工具先哄它吗？"
+  },
+  "articleSummary": "## 一句话总结\nAnthropic 最新的 Opus 4.8 和 Sonnet 5 模型在处理非官方风格的工具调用时反而不如旧模型，因为它们在 RL 阶段被自家“宽容”的 Claude Code 环境过度拟合了。\n\n---\n\n### SOTA 模型反而“瞎编”参数\n事情起因很诡异：作者发现 Pi 项目在调用新版 Anthropic 模型（Opus 4.8 和 Sonnet 5）时，经常被拒绝。原因不是模型不懂代码，而是它太“有创造力”了——在调用编辑工具时，模型会凭空捏造出 Schema 里没有的字段。比如在 `edits` 数组里塞进 `requireUnique`、`oldText2` 甚至 `event.0.additionalProperties` 这种乱七八糟的键。最离谱的是，真正需要修改的代码内容其实是对的，模型只是在最后非要画蛇添足。而且这还是个“倒退”现象，旧模型没这毛病，反而是号称 SOTA 的新模型在这个特定任务上表现更差。\n\n### 工具调用本质上是“写文本”\n要理解这个问题，得先明白 LLM 是怎么调用工具的。说白了，工具调用不是什么魔法接口，而是模型在生成文本。服务端把 System Prompt 和工具定义塞给模型，模型吐出一段特定格式的标记（比如类似 XML 的 `<antml:invoke>`）。对于简单的参数，模型直接输出；对于复杂的嵌套结构（比如 Pi 的 `edits` 数组），模型其实是在“写 JSON”。这里有两种流派：一种是让模型自由发挥，写完再校验；另一种是 Grammar-aware Constrained Decoding（约束解码），在采样阶段就屏蔽掉不符合语法的 token。Anthropic 的模型似乎在训练中学会了某种特定的格式，但新模型显然学偏了。\n\n### 失败总是发生在“高熵”时刻\n作者复现这个 Bug 时发现了一个有趣的规律：简单的单轮对话没问题，但在复杂的 Agent 场景下（比如读文件、诊断问题、多行编辑），失败率高达 20%。而且，这些错误总是发生在同一个位置：当模型刚刚写完几百个 token 的转义字符串，准备结束这个 JSON 对象时。在这个“高熵”时刻，模型面临着是闭合对象 `}` 还是继续加字段 `, \"...\"` 的选择。新模型似乎在这里产生了幻觉，硬是塞进去一些它觉得“应该存在”但在当前 Schema 里并不允许的字段。\n\n### 根源在于 Claude Code 的“溺爱”\n为什么新模型会这样？作者推测这是训练带来的副作用。旧模型训练时，工具调用还是个通用任务。但新模型的后训练阶段，大概率是在 Claude Code 这个特定的 Harness 环境里进行的。问题在于，Claude Code 的工具定义和 Pi 不一样，它是扁平结构（`file_path`, `old_string`, `new_string`），而且它的客户端极其“宽容”：它会自动修复 Unicode 错误、处理参数别名、甚至静默过滤掉未知字段。这意味着，在 RL 阶段，模型即使输出格式有点“ sloppy”，任务也能成功并获得奖励。这种“溺爱”让模型养成了坏习惯，认为加点额外字段也没关系。\n\n### 你的 Schema 可能是“异端”\n这就导致了一个尴尬的局面：Anthropic 的模型被自家未公开的 Claude Code 生态“过度拟合”了。如果你的工具 Schema 和 Claude Code 差不多，那皆大欢喜；但如果你像 Pi 一样用了嵌套数组结构，那在模型眼里你就是“异端”。模型不仅不熟悉你的格式，甚至可能因为 RL 机制，潜意识里觉得你的格式是“错的”。这解释了为什么 Opus 4.5 当时适应能力很强，而现在的 Opus 4.8 反而退步了——它的 Prior（先验知识）太强了，强到在对抗你的 Schema。\n\n### Strict 模式是唯一的解药\n那怎么办？作者发现开启 Anthropic 的 `strict` 模式能完美解决这个问题。这验证了之前的猜想：`strict` 模式会在服务端强制进行 Grammar-constrained sampling，直接屏蔽掉那些不在 Schema 定义里的 token，从物理上杜绝了模型“瞎编”的可能性。虽然约束解码可能会牺牲一点生成质量，但在面对这种被 RL “带偏”的模型时，这可能是保证工具调用稳定性的唯一手段。这也给开发者提了个醒：别指望模型能像通用推理机一样完美遵守任意 Schema，在当前的模型训练机制下，Schema 的形状和模型的训练数据分布息息相关。"
+}

@@ -1,0 +1,87 @@
+{
+  "id": 48062745,
+  "by": "ggpsv",
+  "title": "Podman rootless containers and the Copy Fail exploit",
+  "url": "https://garrido.io/notes/podman-rootless-containers-copy-fail/",
+  "score": 121,
+  "createdAt": 1778252418,
+  "aiSummary": {
+    "chinese_title": "Copy Fail 漏洞：rootless Podman 也难守只读隔离",
+    "discussion_overview": [
+      {
+        "category": "漏洞的真实危害是改写只读文件",
+        "summary": "不少评论认为，文章把重点放在用 `su` 获得 root 的示例上，反而掩盖了漏洞在容器场景里的真实风险。核心问题不是立刻拿到容器外权限，而是把本应只读的文件改写掉，这会破坏配置、二进制和共享数据的信任假设。有人还指出，相关 PoC 更像是在利用容器镜像的共享层来覆盖文件，这比单纯的 `su` 演示更接近实际影响。即便没有直接逃逸，内存破坏类漏洞通常也仍然可能把系统带进更危险的状态。",
+        "supportid": [
+          "48063484",
+          "48064867",
+          "48064817"
+        ]
+      },
+      {
+        "category": "rootless Podman 仍可能受影响，但取决于环境",
+        "summary": "讨论里有人反馈，最初在 rootless Podman 里跑 Copy Fail PoC 没成功，但后来又做出了一个能覆盖只读挂载文件的基本 PoC。多个回复强调，是否可利用很看内核版本、发行版补丁和已加载的 kernel modules，精简环境里甚至可能缺少相关模块。对 Kubernetes（容器编排系统）来说，外部攻击者通常还要满足同节点共享层、目标是特权 Pod，或者能任意运行未授权镜像等前提。也就是说，漏洞不一定能被轻易远程打穿，但在合适的部署里仍然可能造成实质破坏。",
+        "supportid": [
+          "48064089",
+          "48064180",
+          "48069267"
+        ]
+      },
+      {
+        "category": "容器隔离信任崩塌，Micro VMs 更受青睐",
+        "summary": "有评论直接表示，已经不再信任 Linux kernel 能把进程隔离得足够安全，哪怕用了 user namespaces、seccomp 之类机制，也总会有 bug。于是有人把 Micro VMs 视为更强的安全边界，至少比容器更能把不同可信度的工作负载隔开。反方则提醒，VM 也不是银弹：一旦要做有用的事，就得开放网络、文件或服务通道，边界也会随之变复杂。最终争点不是 VM 是否完美，而是容器和 VM 的风险模型与权衡本来就不同。",
+        "supportid": [
+          "48066141",
+          "48066167",
+          "48066223",
+          "48066460",
+          "48067632"
+        ]
+      },
+      {
+        "category": "nginx、特权端口与 Unix 权限历史类比",
+        "summary": "一条长回复用 nginx（常见 Web 服务器）来说明“有写权限就可能被放大成提权”的老问题。nginx 通常先以 root 启动再降权，若能改 `nginx.conf`，甚至可以把 worker 设成 root。讨论还回顾了过去 Linux 上 1024 以下端口必须由 root 监听的历史，以及后来用 `CAP_NET_BIND_SERVICE` 和 `net.ipv4.ip_unprivileged_port_start` 这类机制替代的做法。这个类比的重点是：只要能写到看似共享但实际关键的配置文件，权限边界就可能瞬间失守。",
+        "supportid": [
+          "48065675",
+          "48065722",
+          "48066069",
+          "48066112",
+          "48066127",
+          "48069486",
+          "48067776",
+          "48067939",
+          "48069580"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "rootless container",
+        "explanation": "不以宿主机 root 身份运行的容器模式，通常借助 user namespace 降低权限。"
+      },
+      {
+        "term": "user namespace",
+        "explanation": "Linux 的命名空间机制之一，可把容器内外的 UID/GID 映射隔离开。"
+      },
+      {
+        "term": "shared layers",
+        "explanation": "多个容器镜像复用的只读层；一旦被改写，可能影响同节点上的多个容器或 Pod。"
+      },
+      {
+        "term": "Micro VM",
+        "explanation": "轻量虚拟机，隔离边界通常比容器更强，但成本也更高。"
+      },
+      {
+        "term": "CAP_NET_BIND_SERVICE",
+        "explanation": "允许非 root 进程绑定 1024 以下特权端口的 Linux capability。"
+      },
+      {
+        "term": "no_new_privs",
+        "explanation": "Linux 标志位，设置后进程不能通过 exec 获得新的更高权限。"
+      }
+    ],
+    "context": "这篇讨论围绕 Copy Fail（一个会让本应只读的文件被覆盖的漏洞）与 rootless Podman（不以宿主 root 运行的容器模式）展开。评论里有人指出，文章拿 `su` 被覆盖来说明提权并不贴近容器场景，更真实的风险是共享层（shared layers）或只读挂载被改写，进而影响同节点上的其他镜像或 Pod。另一些人提到 Kubernetes（容器编排系统）里的可利用条件往往很苛刻，需要同一节点上共享层、特权 Pod 等前提，远程攻击未必容易。讨论还顺带回顾了 Linux 的传统权限模型：nginx（常见 Web 服务器）可由 root 启动后降权，历史上绑定 1024 以下端口也需要 root，后来才有 `CAP_NET_BIND_SERVICE`（允许非 root 绑定特权端口的 capability）和 `net.ipv4.ip_unprivileged_port_start` 这类替代方案。",
+    "emoji": "⚠️",
+    "sarcastic_question": "连只读文件都守不住，还吹什么 rootless 隔离？"
+  },
+  "articleSummary": "### 一句话总结\nCVE-2026-31431（Copy Fail）确实能让你拿到 Podman rootless 容器内的 root 权限，但得益于 User Namespace 的 UID 映射机制，攻击者实际上只能获得宿主机上普通用户的权限，且通过丢弃 capabilities 和以非 root 用户运行容器，可以进一步收紧这个安全边界。\n\n---\n\n### Rootless 容器的核心是把宿主机 UID 映射进容器\nPodman 和 Docker 最大的区别在于架构。Docker 是典型的 C/S 模式，你用普通用户跑客户端，背后还得有个 root 守护进程来真正启动容器，所以容器进程在宿主机上通常也是 root。Podman 不一样，它是 fork/exec 模型，容器进程直接就是 `podman run` 命令的子进程。这意味着你在宿主机上是 UID 1001 的 `bar` 用户，容器进程在宿主机上归属也是 `bar`。但容器内部总得有个 root 吧？这就要靠 User Namespaces 了。它把容器内的 UID 0（root）映射到宿主机的 UID 1001，把容器内的其他用户映射到 `/etc/subuid` 定义的子 UID 范围（比如 165536 起的 65536 个 ID）。这样，容器内看着是 root，出了容器就是普通用户。\n\n### 容器内的特权操作靠 Linux Capabilities 细粒度控制\n你可能会问，既然容器内的 root 在宿主机上只是个普通用户，那它怎么能在容器里执行 `apt install` 这种特权操作呢？这其实不是靠 UID，而是靠 Linux Capabilities。Podman 在构建镜像或运行容器时，会给进程分配一系列 capabilities（如 `CAP_CHOWN`, `CAP_SETUID` 等）。这些 capabilities 让容器内的 root 有能力在命名空间内修改文件权限或切换用户。如果我们在构建时加上 `--cap-drop=all`，`apt` 就会报错，因为它连 `setuid` 的能力都没了。所以，rootless 容器的“特权”其实是被严格限制在命名空间内的能力集合。\n\n### Copy Fail 漏洞能提权到容器 root，但无法突破 Namespace\nCopy Fail（CVE-2026-31431）这个漏洞很有意思，它允许普通用户在容器内通过一个 Python 脚本直接拿到 root shell。作者实测发现，在默认的 rootless 容器配置下，这个 exploit 是有效的。你运行脚本，确实能从容器内的普通用户变成容器内的 root。但这里有个关键点：因为 User Namespace 的存在，你拿到的是“容器内的 root”。在宿主机视角看，这个进程依然受限于宿主机用户 `bar` 的权限。这意味着攻击者无法直接获得宿主机的 root 权限，攻击半径被限制在了启动容器的那个普通用户的范围内。\n\n### 默认配置下的 capabilities 太多，必须手动做减法\n虽然逃不出宿主机的用户边界，但拿到容器 root 还是挺危险的，因为默认情况下 Podman 会给容器 root 一大堆它根本不需要的 capabilities。比如那个 Python HTTP 服务，默认居然带着 `CHOWN`, `DAC_OVERRIDE`, `KILL` 等 10 多个特权。如果攻击者拿到了这个 shell，配合这些 capabilities，在容器内或者对挂载卷搞破坏就方便多了。解决办法很简单：在 `podman run` 时加上 `--cap-drop=all`。作者测试发现，加上这个参数后，HTTP 服务依然能正常运行，但进程的有效 capabilities 变成了 `none`。这就大大缩小了攻击面。\n\n### 最稳妥的方案是直接在容器内跑非 root 用户\n光丢 capabilities 还不够彻底。因为只要进程还是容器内的 root，即便没有 capabilities，它依然能修改所有它拥有的文件。对于 Web 服务这种应用，完全没必要用 root。最好的做法是在镜像里建一个专用用户（比如 UID 1002 的 `foo`），或者用镜像自带的 `www-data`，然后在启动时指定 `--user` 参数。这样，即便 Copy Fail 漏洞被触发，攻击者拿到的是一个普通用户的 shell，而且这个用户在宿主机上映射到的也是一个非特权子 UID。这种“Rootless + Non-root”的双重隔离，才是运行无状态服务最安全的姿势。"
+}

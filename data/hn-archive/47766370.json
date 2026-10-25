@@ -1,0 +1,94 @@
+{
+  "id": 47766370,
+  "by": "zc2610",
+  "title": "Show HN: LangAlpha – what if Claude Code was built for Wall Street?",
+  "url": "https://github.com/ginlix-ai/langalpha",
+  "score": 124,
+  "createdAt": 1776184816,
+  "aiSummary": {
+    "chinese_title": "LangAlpha：面向华尔街投资研究的 Claude Code 式 agent",
+    "discussion_overview": [
+      {
+        "category": "金融数据与MCP扩展方式",
+        "summary": "评论最集中的技术点是：金融数据太大，不能像普通 MCP demo 那样把原始结果直接塞进 context window。有人举了 Databento 和 OPRA feed 的例子，说明 options market data 可能达到 25+ Gb/s，schema 和历史数据一展开就会炸掉 token。为了解决这个问题，讨论里提到把数据下载到本地 filesystem，存成 Parquet，再用 DuckDB 或类似 proxy 只返回查询结果、摘要和可执行的 SQL。也有人直接说，MCP 不该“dump data”，而该暴露 query endpoint 或让 agent 在本地处理。",
+        "supportid": [
+          "47768969",
+          "47773198",
+          "47767067",
+          "47768010",
+          "47768881",
+          "47771381"
+        ]
+      },
+      {
+        "category": "跨会话持续研究",
+        "summary": "另一条主线是投资研究必须跨 session 持续演化，而不是一次性生成一个 PDF 或 spreadsheet 就结束。评论把它类比成维护一个会不断更新的 Excel sheet：新财报、新估值、新竞争对手信息都要叠加到旧分析上。LangAlpha 的回应是用 workspace-centric 设计，把每个研究目标映射成持久化 sandbox，并在每次调用前重新读 memory file 和 file index。有人也指出，这种需求在非 coding AI 工具里常被做成“记忆功能”或单次导出，但真正需要的是文件优先、可继续编辑的工作流。",
+        "supportid": [
+          "47770027",
+          "47770175",
+          "47767067",
+          "47770133",
+          "47771017",
+          "47772735"
+        ]
+      },
+      {
+        "category": "合规、审计与可追溯",
+        "summary": "在 Wall Street 场景里，最现实的门槛不是模型会不会回答，而是能不能审计。评论提到 MiFID II 和 FINRA 这类监管要求意味着每条推荐都要留 decision record，至少要能回答当时用了哪份数据快照、哪个 model version、什么 prompt state。作者回应说已经保存了 sandbox 里 agent 执行的每一行代码，并记录了 agent trajectory，但 signed execution logs 还只是 roadmap。这个话题把项目从“研究工具”直接推到了“可否被机构部署”的层面。",
+        "supportid": [
+          "47773097",
+          "47773441"
+        ]
+      },
+      {
+        "category": "演示效果 vs 真实验证",
+        "summary": "不少评论对“cool visuals”但缺少验证细节表示警惕。有人要求看到更具体的 case、测试方法，以及这些 orchestration 输出是否真的和现实一致，而不是只靠一张看起来很炫的图。作者承认 demo 主要挑了视觉效果好的例子来吸引注意，同时说内部已有 eval，后续会补更多公开案例。还有人觉得整段文案像低努力的 Claude 生成内容，甚至怀疑是在做 karma farming，这让“展示质量”问题上升成了“帖子可信度”问题。",
+        "supportid": [
+          "47768276",
+          "47770004",
+          "47770353",
+          "47772884",
+          "47768363",
+          "47768509"
+        ]
+      },
+      {
+        "category": "投资 AI 的实际价值与怀疑",
+        "summary": "讨论的底层分歧是：这类工具到底是在帮人更系统地做研究，还是在更高效地制造亏损。有人担心如果它不能明显优于 index investing，最后只会把“vibe investing”自动化；也有人反而期待它能把冲动交易变成有纪律的 research process。另一派认为 finance 里的 AI 价值更像 man-machine synthesis，LLM 负责搜集、补缝和找 bug，真正关键的是 deterministic recall 和结构化约束。还有人分享自己的 agent 主要是在“抓 bug 和抓谎言”，暗示在金融场景里大部分精力都花在校验而不是预测。",
+        "supportid": [
+          "47766722",
+          "47768388",
+          "47770288",
+          "47771470",
+          "47771791",
+          "47770997",
+          "47772575",
+          "47772955",
+          "47773099"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "MCP（Model Context Protocol）",
+        "explanation": "让 LLM/agent 调用外部工具和数据源的协议；这里的争议是金融数据和工具 schema 太大，容易把上下文窗口塞满。"
+      },
+      {
+        "term": "DuckDB",
+        "explanation": "可嵌入的分析型数据库，常用于在本地对缓存的行情数据做快速 SQL 查询。"
+      },
+      {
+        "term": "sandboxed workspace（持久化沙箱工作区）",
+        "explanation": "把研究目标绑定到同一个隔离环境里，便于跨会话保留文件、索引和记忆。"
+      },
+      {
+        "term": "MiFID II / FINRA",
+        "explanation": "欧洲和美国的金融监管框架，要求投资建议与执行过程可审计、可追溯。"
+      }
+    ],
+    "context": "这是一个 Show HN 自荐帖，作者把 LangAlpha 定位成“面向投资研究的 Claude Code（Anthropic 的代码代理工具）”，是一个开源的 agent harness。项目主打 persistent sandboxed workspaces、代码执行、TradingView（图表平台）和 live market data，并声称可接任何 LLM provider。评论区很快把焦点放到金融数据规模上：像 OPRA 这样的 options feed 带宽极高，直接把原始数据塞进 LLM context window 会非常低效。另一个核心背景是投资研究需要跨会话持续迭代，还要满足 MiFID II / FINRA 这类合规审计要求，所以“能不能留下可追溯的 decision record”成了重要问题。",
+    "emoji": "🤨",
+    "sarcastic_question": "现在连亏钱都要交给AI自动化，再顺便叫它找alpha？"
+  },
+  "articleSummary": "## 一句话总结\nLangAlpha 把 Claude Code 的“持久化代码库”模式搬到了金融领域，通过持久化 Workspace 和 Programmatic Tool Calling（PTC），让 Agent 能够像程序员维护项目一样，跨会话地积累投资研究并处理复杂的金融数据。\n\n---\n\n### 投资研究不是问答，是贝叶斯迭代\n现在的 AI 金融工具大多把投资当成一次性问答：问个问题，拿个答案，然后就结束了。但作者指出，真实的投资其实是贝叶斯过程——你先有个投资论点，然后随着新数据的到来，不断修正你的信心度。这是一个长达数周甚至数月的迭代过程：修正论点、重新审视仓位、在旧分析上叠加新逻辑。单一的 Prompt 根本无法捕捉这种连续性。LangAlpha 的核心思路就是借鉴软件工程中的“代码库持久化”概念，给 Agent 一个能持久化的工作空间，让研究成果像代码提交一样自然复利增长。\n\n### 给 Agent 一个像 IDE 一样的持久化 Workspace\n在 LangAlpha 里，每个研究目标（比如“Q2 调仓”或“数据中心需求深度分析”）都对应一个独立的 Workspace。这个 Workspace 不只是一个聊天窗口，它映射到一个云端沙盒，里面有结构化的目录结构：`work/<task>/` 存放临时的数据和图表，`results/` 存最终报告，`data/` 存共享数据集。最关键的是根目录下的 `agent.md`，这是一个持久化记忆文件，记录了 Workspace 的目标、关键发现、线程索引和重要文件索引。中间件层会在每次模型调用时自动注入 `agent.md`，这样 Agent 无需重读文件就能拥有之前工作的完整上下文，真正实现了跨会话的知识积累。\n\n### 拒绝 Token 浪费，用 Programmatic Tool Calling 写代码处理数据\n大多数 Agent 处理数据的方式很粗暴：通过 JSON 工具调用把原始数据一股脑塞进 LLM 的上下文窗口。LangAlpha 搞了个 Programmatic Tool Calling (PTC)，反其道而行之：它让 Agent 在 Daytona 云沙盒里写 Python 代码来处理数据。Agent 不直接看原始数据，而是写代码去调用 MCP Servers 里的工具，处理完只把最终结果拿回来。这不仅大幅减少了 Token 消耗，更重要的是让 Agent 能做那些原本会因为上下文超限而无法完成的复杂多步分析。比如分析 AI 供应链，Agent 可以写代码抓取数据、清洗、甚至生成交互式 Dashboard，最后只给用户看结论。\n\n### 快查与深算分层：Native Tools 与 MCP Servers 的混合架构\n虽然 PTC 很强，但查个股价就启动代码执行显然太重了。LangAlpha 设计了一个分层的数据生态系统来解决这个问题。对于快速参考，它提供 Native Tools（原生工具），直接通过工具调用获取公司概览、 SEC 文件、市场指数等，结果直接渲染成前端组件。而对于需要批量处理的任务，比如多年的财务报表建模、宏观经济趋势分析、期权链清洗，则通过 MCP Servers 在沙盒里跑。Agent 会根据任务类型自动选择：轻量查证用 Native Tools，重型计算用 PTC + MCP。这种设计既保证了响应速度，又保留了深度分析的能力。\n\n### 双模 Agent 架构：PTC 模式推理，Flash 模式调度\n为了适应不同场景，LangAlpha 在模型层设计了两种模式。PTC 模式用于深度投资研究，利用强推理模型规划路径、思考金融数据并写代码分析，长上下文让它能一次性交叉比对 SEC 文件和研究报告。Flash 模式则用于快速对话和 Workspace 编排，比如快速查行情、画图聊天，或者充当“秘书”管理 Workspace、在后台调度 PTC 分析任务。这种架构很有意思，它把“思考者”和“管家”分开了，让合适的模型干合适的事，而且支持多 Provider 自动容错，挂了还能自动切备用模型。\n\n### 生产级基础设施：从实时 Steering 到加密存储\n除了核心的 Agent 能力，LangAlpha 在工程上也下了血本。它支持 Live Steering，你可以在 Agent 跑到一半时发消息纠正方向，不用等它干完废话。后台任务通过 asyncio.shield 解耦，即使 HTTP 连接断了任务也能接着跑，SSE 事件通过 Redis 缓存，重连后还能回放进度。安全方面也没落下，数据落盘加密（pgcrypto），自动检测并屏蔽凭证泄露，沙盒隔离执行，每个 Workspace 独立存密。甚至连数据源都做了三级降级：从实时的 ginlix-data 到 FMP，最后兜底到免费的 Yahoo Finance，确保系统在任何配置下都能跑起来。"
+}

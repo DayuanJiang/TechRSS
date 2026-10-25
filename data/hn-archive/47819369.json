@@ -1,0 +1,160 @@
+{
+  "id": 47819369,
+  "by": "weaksauce",
+  "title": "Optimizing Ruby Path Methods",
+  "url": "https://byroot.github.io/ruby/performance/2026/04/18/faster-paths.html",
+  "score": 124,
+  "createdAt": 1776548436,
+  "aiSummary": {
+    "chinese_title": "Ruby Path 方法优化：4.1.0 合入、CI 加速与生态争论",
+    "discussion_overview": [
+      {
+        "category": "Ruby/Rails 的开发体验优势",
+        "summary": "很多人把 Ruby/Rails 视为“写得开心”的技术栈，相比 node/TypeScript 的 callback/promise 链、复杂 type、schema、npm 和一堆 JSON 配置，Rails 的 Active Record、MVC、YAML 配置和 Bundler 显得更省心。评论里还提到 Ruby 的语法、stdlib、调试体验和 CLI 文档都很顺手，适合快速脚手架、脚本和原型开发。另有人说即使不写 Rails，Ruby 也常被用作日常语言；在服务端渲染和 Hotwire 方案下，前端 JavaScript 的参与度也能被压到很低。",
+        "supportid": [
+          "47822479",
+          "47819893",
+          "47821028",
+          "47820082",
+          "47820339",
+          "47820993",
+          "47822067"
+        ]
+      },
+      {
+        "category": "静态类型、LSP 与工具链分歧",
+        "summary": "另一条线集中在静态类型和工具链。有人认为没有 static types 的 Ruby 代码库更难读，复杂 Rails 项目不如 TypeScript 好靠工具定位问题，而且 Ruby 工具链常常要依赖 RubyMine 才像样。反对者则认为 LSP 的提醒本来就是逼你在 bug 进 production 之前修掉它们，真正的大多数 bug 是逻辑 bug，不是类型 bug；也有人直接把类型系统视为会逼出大量 escape hatch 的 anti-pattern。还有人质疑所谓“JS 都是 callback 和 promise 的怪异链式解析”并不总是实际体验。",
+        "supportid": [
+          "47822622",
+          "47823067",
+          "47823209",
+          "47822082",
+          "47825252"
+        ]
+      },
+      {
+        "category": "Ruby 还在被大量使用",
+        "summary": "不少评论是在反驳“Ruby 还在不在”的印象。有人说 Ruby 仍然在创业公司和成熟业务里大量使用，Shopify 之类的大厂也在重度投入生态，GitHub、GitLab 这类平台同样依赖 Ruby/Rails。也有人说自己每天都在用 Ruby，甚至大多数使用场景都已经脱离 Rails；另一种更悲观的说法是 Ruby/Rails 只是被 JS、PHP 或更高效的部署模型抢走了关注度。还有人半开玩笑地把 Ruby 用到 terminal、font renderer、window manager 甚至自制 compiler，强调它并没有“消失”，只是存在感没那么喧闹。",
+        "supportid": [
+          "47819875",
+          "47820249",
+          "47819917",
+          "47820339",
+          "47820993",
+          "47823322",
+          "47824779",
+          "47825189",
+          "47824344",
+          "47819996",
+          "47820915",
+          "47820951",
+          "47826474",
+          "47822550"
+        ]
+      },
+      {
+        "category": "性能、JIT 与替代运行时",
+        "summary": "关于性能，讨论并不只是“Ruby 慢不慢”，而是“慢到什么程度、能靠什么补”。有人认为 YJIT 之后已经不算太慢，但和 Go、甚至某些 C# AOT 场景相比仍有明显差距；也有人更看好 JRuby 和 TruffleRuby，觉得它们才是真正能把 worker 代码拉上去的方案。Sidekiq、后台任务和可迁移到更快 runtime 的工作负载被反复提到，说明不少人接受 Ruby 在 Web 层的表达力，同时期待在执行层面继续提速。悲观派则认为 Rails 曾因资源占用过高而失分，若有同样开发体验但更快的编译型语言，开发者会迅速改投。",
+        "supportid": [
+          "47821028",
+          "47822396",
+          "47822462",
+          "47822455",
+          "47824344",
+          "47822529"
+        ]
+      },
+      {
+        "category": "CI 并行化与缓存失效优化",
+        "summary": "CI 线程展示了这类微优化在大规模流水线里的放大效应。Intercom 的 monolith CI 据称默认跑 1350 个并行 worker，靠的是 Buildkite agents 部署在 EC2 节点上，而真正限制吞吐的不是“再堆多少机器”，而是 setup time 和 test time 的比例。另一个分支讨论用 git tree hash 来替代 mtime 做缓存失效判断：有人担心额外查询会比重建还慢，有人则指出 lookup 本身很少操作，真正贵的是 shelling out。那句“Rails 必须启动几千个 OS process 才能扛流量”也被纠正为把 serving traffic 和 CI 并行度混为一谈。",
+        "supportid": [
+          "47821894",
+          "47822218",
+          "47824546",
+          "47825452",
+          "47819965",
+          "47820015",
+          "47820180"
+        ]
+      },
+      {
+        "category": "Ruby API 的边界行为与 duck typing",
+        "summary": "还有一条很细但很 Ruby 的讨论是 API 边界行为。`Array#slice` 的例子里，切到刚好等于长度时会得到 `[]`，但越过边界时却可能是 `nil`，这让调用者必须同时处理空数组和 nil 两种结果。有人觉得这不直观，尤其是当切片逻辑嵌进更大的 CSV 或数据处理流程时；也有人认为这正体现了 duck typing 和“原则上别惊讶”的设计，方法应尽量返回可继续链式处理的数组而不是直接抛错。评论里还顺手拿数组尾部的 nil 元素说明 Ruby 对访问行为本来就很宽松。",
+        "supportid": [
+          "47819893",
+          "47821119",
+          "47821407",
+          "47821678",
+          "47824152",
+          "47826057",
+          "47821729"
+        ]
+      },
+      {
+        "category": "核心贡献与版本落地",
+        "summary": "一些评论直接在夸这篇优化本身。有人把 byroot 当作 Ruby 核心优化经验的示范，认为他长期分享的性能改进很有价值，连 `Dir.join` 这种看似不起眼的方法都能做出 7x 提升。也有人关心这类改动能否主线合入，随后得知新特性会进入 Ruby 4.1.0，并顺手追问 4.1 里还会不会有 ZJIT 之类的新东西。整体上，这部分评论把文章视为 Ruby core 仍在持续打磨性能的证据。",
+        "supportid": [
+          "47820696",
+          "47819877",
+          "47819976",
+          "47820211",
+          "47826550"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Rails",
+        "explanation": "Ruby 的 Web 框架，强调 convention over configuration 和快速开发。"
+      },
+      {
+        "term": "Active Record",
+        "explanation": "Rails 的 ORM/模型层，用对象直接映射数据库记录。"
+      },
+      {
+        "term": "Bundler",
+        "explanation": "Ruby 的依赖管理工具，用来锁定和安装 gem。"
+      },
+      {
+        "term": "Hotwire",
+        "explanation": "Rails 的前端交互方案，尽量少写 JavaScript。"
+      },
+      {
+        "term": "YJIT",
+        "explanation": "Ruby 的 JIT 编译器，用来提升运行时性能。"
+      },
+      {
+        "term": "JRuby",
+        "explanation": "运行在 JVM 上的 Ruby 实现，常被用作替代 runtime。"
+      },
+      {
+        "term": "TruffleRuby",
+        "explanation": "基于 Truffle/Graal 的高性能 Ruby 实现。"
+      },
+      {
+        "term": "Buildkite",
+        "explanation": "用于 CI/CD 的流水线平台，常用来跑并行构建和测试。"
+      },
+      {
+        "term": "EC2",
+        "explanation": "AWS 的云服务器实例，常被用来部署 CI worker。"
+      },
+      {
+        "term": "mtime",
+        "explanation": "文件修改时间，常用于判断缓存是否需要失效。"
+      },
+      {
+        "term": "git tree hash",
+        "explanation": "git 里目录树对象的哈希，用于判断内容是否变化。"
+      },
+      {
+        "term": "Sidekiq",
+        "explanation": "Ruby 常用的后台任务队列/worker 框架。"
+      }
+    ],
+    "context": "这篇文章讨论的是 Ruby 核心里路径处理方法的性能优化，重点是 `Dir.join` 之类频繁调用的函数，相关改动据说会进入 Ruby 4.1.0。路径方法在 Rails 和大量脚本里都很常见，所以一次小优化可能在文件遍历、缓存、构建和测试启动上带来明显收益。评论区把话题扩展到 Ruby/Rails 的开发体验、静态类型争论，以及 YJIT、JRuby、TruffleRuby 这些不同运行时能否缩小性能差距。也有人结合 Buildkite（CI 平台）、EC2（AWS 云主机）和 git tree hash 讨论缓存失效与大规模并行测试的工程实现。",
+    "emoji": "🧡",
+    "sarcastic_question": "Ruby 都这么香了，怎么还总被说成过气？"
+  },
+  "articleSummary": "## 一句话总结\n通过在 Bootsnap 中利用 `d_type` 避免递归扫描文件时的 N+1 系统调用，将 Intercom 单体仓库的启动扫描耗时从 500ms 降至 230ms，并推动了 Ruby 4.1 新增 `Dir.scan` 方法。\n\n### 并行测试的瓶颈不在测试本身，而在启动开销\nIntercom 的单体库 CI 默认跑在 1350 个并行 Worker 上，这种规模下，优化启动时间的收益是巨大的。作者算了一笔账：在 Worker 启动时间上优化 1 秒，相当于在整个测试执行时间上优化了 1350 秒，每次构建能节省 20 多分钟的算力。因此，作者的核心目标非常明确：不惜一切代价缩短应用启动时间。对于 Ruby 项目来说，Bootsnap 是绕不开的工具，但作者发现它在处理大规模代码库时仍有性能瓶颈。\n\n### Bootsnap 的核心是把 O(N) 的文件查找变成 O(1)\n很多开发者虽然用了 Bootsnap，但不一定清楚它到底做了什么。简单说，Ruby 的 `require` 机制非常原始，它会在 `$LOAD_PATH` 里做线性搜索，每加载一个文件都要反复查询文件系统。随着 Gem 数量增加，启动成本是指数级上升的。Bootsnap 的做法是预扫描所有路径，构建一个巨大的 Hash Map，把相对路径直接映射成绝对路径。这样就把昂贵的文件系统搜索变成了廉价的内存查找，代价就是每次启动时必须先扫描一遍目录。\n\n### 缓存失效导致每次 CI 都要重新扫描\n既然有缓存，为什么每次启动还要扫描？因为缓存失效很难处理。Bootsnap 通过记录目录的 `mtime` 来判断缓存是否过期，但这里有个坑：父目录的 `mtime` 不会因为子目录文件的变化而更新。这意味着 Bootsnap 必须递归检查所有子目录的时间戳，涉及数千次 `stat(2)` 系统调用。更糟糕的是，CI 环境通常用 `git checkout` 代码，而 `git` 根本不保证 `mtime` 的正确性，导致缓存基本无法复用，扫描性能成了关键瓶颈。\n\n### 隐藏的性能杀手：N+1 系统调用问题\n在 Intercom 的代码库中，Bootsnap 扫描路径耗时接近 1 秒，这对作者来说是不可接受的。通过分析代码，作者发现了一个典型的 N+1 问题：为了判断一个路径是目录还是文件，代码对每个目录条目都调用了 `File.directory?`，这会触发一次 `stat(2)` 系统调用。系统调用虽然比数据库查询快，但在这种高频场景下，上下文切换的开销依然巨大。其实 Linux 和 BSD 的 `readdir(3)` API 已经提供了 `d_type` 字段，可以直接获取文件类型，根本不需要额外的 `stat` 调用，但 Ruby 没有暴露这个接口。\n\n### 绕过 Ruby 标准库，直接在 C 扩展里动手\n作者早在 2020 年就提议给 Ruby 增加 `Dir.scan` 方法来利用 `d_type`，但一直没被采纳。不想再等一年的作者决定在 Bootsnap 的 C 扩展里自己实现这个功能。通过直接调用底层 API，Bootsnap 在扫描时不再需要频繁调用 `stat`。实测结果显示，在 Intercom 的单体库上，扫描 3.2 万个文件的时间从 500ms 锐减到 230ms，性能提升了 2.16 倍。这个改动不仅立竿见影，还促使 Ruby 核心团队重新审视这个需求，最终决定在 Ruby 4.1 中引入官方的 `Dir.scan` 方法。"
+}

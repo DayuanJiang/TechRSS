@@ -1,0 +1,121 @@
+{
+  "id": 47336989,
+  "by": "robpalmer",
+  "title": "Temporal: The 9-Year Journey to Fix Time in JavaScript",
+  "url": "https://bloomberg.github.io/js-blog/post/temporal/",
+  "score": 659,
+  "createdAt": 1773244264,
+  "aiSummary": {
+    "chinese_title": "Temporal 被接纳：用不可变 Plain/Zoned 类型修补 JavaScript 的时间痛点",
+    "discussion_overview": [
+      {
+        "category": "序列化与数据/逻辑分离的矛盾",
+        "summary": "许多评论指出 Temporal 对象带有方法使得在客户端/服务器之间用 JSON 传输时出现问题：JSON.stringify/parse 会丢失原型，导致像 PlainYearMonth 这类实例在另一端无法直接调用 .subtract 等方法。解决方案包括在解析端使用 JSON.parse 的 reviver 或者显式调用 Temporal.from，或者在 RPC 框架（如 tRPC）层加一层 transform 把字符串重建为 Temporal 实例，但这会增加边界处的样板代码和需要完整 schema 的担忧。支持者认为这是有意为之：把操作绑定到对象可以保证时区/历法等上下文不会被漏掉，避免把 PlainDate 错当 ZonedDateTime 的类型混用。有人预测社区会产生功能性包装器（functional wrapper）或在传输层做最小开销的 (de)serialization 方案来折衷易用性与类型安全。",
+        "supportid": [
+          "47338085",
+          "47339607",
+          "47338339",
+          "47338110",
+          "47338204",
+          "47338433",
+          "47339126",
+          "47339448"
+        ]
+      },
+      {
+        "category": "类型设计与语义正确性（Plain vs Zoned）",
+        "summary": "很多人认为 Temporal 最重要的改进是把“墙钟时间（wall clock）”与 UTC instant 明确分离：PlainDate/PlainTime/PlainYearMonth 等 Plain 类型表示无时区/无瞬时意义的日期或时间，ZonedDateTime 表示带时区的瞬时点，这能避免用单一的 Date 去做多种语义导致的隐蔽错误。评论里举例说，单纯把时间以 UTC 存储会丢失原始偏移/时区信息，导致调试和排班（例如轮班、按本地时间的重复提醒）出错；Temporal 的显式转化流程（PlainDate + PlainTime + TimeZone -> ZonedDateTime）使语义清晰。尽管对只记录瞬时事件的人来说 UTC 足够，但在日程、跨时区展示和本地化逻辑上内建的带时区类型被认为是很大的实用改进。",
+        "supportid": [
+          "47339799",
+          "47339791",
+          "47340189",
+          "47338705",
+          "47338129",
+          "47339640"
+        ]
+      },
+      {
+        "category": "开发者体验：冗长 API 与格式化策略的争议",
+        "summary": "不少人抱怨 Temporal 的调用比 new Date() 冗长（例如 Temporal.Now.zonedDateTimeISO()），认为日常使用应有更简洁的惯用构造函数如 DateTime()；反对者则解释这是刻意设计：强制开发者选定具体语义以防隐性错误，并期望未来通过语法糖或顶层便捷函数改善易用性。关于字符串输出，Temporal 把 toString() 作为可回传的 ISO 表示，而把展示交给 toLocaleString() + Intl.DateTimeFormat，这避免了以往 Date 的 locale-dependent toString 导致的 round-trip 问题，但同时也缺少像 strftime 那样的自定义模板格式，社区提到可用 date-fns/luxon 或在 V2 中补完此类需求。",
+        "supportid": [
+          "47338312",
+          "47340830",
+          "47338940",
+          "47339783",
+          "47338422",
+          "47338411"
+        ]
+      },
+      {
+        "category": "运行时与浏览器支持、polyfill 与时区数据更新",
+        "summary": "采纳与普及受到运行时和浏览器支持状况影响：Deno 早已在标志下提供 Temporal，近期已移除特殊标志，而 Node 的下一个主版本（Node 26）也将加入原生支持；在不支持环境中，js-temporal polyfill 被用于提前体验该 API。浏览器端支持参差不齐——caniuse 显示 Safari/Opera 等实现滞后，导致必须继续依赖 polyfill 以兼容用户端。另一个实务层面的讨论是时区规则的更新：IANA time zone database 是时区/DST 规则的来源，浏览器/OS 需及时更新这些数据以反映政府对 DST 的更改，Temporal 本身依赖运行环境来维护这些更新。",
+        "supportid": [
+          "47338994",
+          "47337263",
+          "47338222",
+          "47339578",
+          "47340288",
+          "47338054",
+          "47339238",
+          "47338111",
+          "47337494"
+        ]
+      },
+      {
+        "category": "历史源流与外部借鉴（Java、Joda-Time、std::chrono）",
+        "summary": "评论多次把 Temporal 的理念与 Java 生态的演进联系起来：Joda-Time 及后来 Java 的 JSR‑310（java.time）是重要先例，很多人认为这些实现经验对 Temporal 的设计有启发，但 TC39 并不是简单复制，而是在综合多种先例后为 JavaScript 量身定制解决方案。也有用户揶揄历史上 JS 的 Date 本身就是从 java.util.Date 或 C 的 time.h 漂移过来的技术债产物，Moment.js、std::chrono 等不同实现都曾影响这一领域的思路和权衡。",
+        "supportid": [
+          "47337508",
+          "47337598",
+          "47338639",
+          "47338606",
+          "47337963",
+          "47339193",
+          "47338589"
+        ]
+      },
+      {
+        "category": "不可变性与对可变/共享状态的更广泛讨论",
+        "summary": "许多评论把不可变性视为 Temporal 的关键优点之一，认为不可变对象可显著降低因共享可变状态导致的难以复现的 bug。讨论还延伸到语言层面的所有权/线性/affine 类型（例如 Rust 的所有权模型）与运行时约定（例如 Ruby 的 ! 约定），作为避免无意破坏性操作的不同思路；实际 API 演进中也出现像 Array.toSorted() 这样的非破坏性替代方法，体现社区在面向不可变/可变权衡上的实际取向与工程折衷。",
+        "supportid": [
+          "47337774",
+          "47339137",
+          "47338399",
+          "47337966",
+          "47337866",
+          "47339974"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Temporal",
+        "explanation": "TC39 的日期/时间提案与新 API，旨在取代原生 Date，提供不可变、语义更明确的类型集合（如 Plain 系列与带时区类型）以减少时区与墙钟时间错误。"
+      },
+      {
+        "term": "Plain / Zoned 类型（PlainDate, PlainTime, PlainYearMonth, ZonedDateTime）",
+        "explanation": "Plain 系列表示无时区或无瞬时意义的纯日期/时间；ZonedDateTime 则包含时区信息表示具体瞬时点。这组区分用于明确语义，避免把无时区的墙钟时间误当作 UTC instant 处理。"
+      },
+      {
+        "term": "reviver（JSON.parse 的 reviver 参数）",
+        "explanation": "JSON.parse 的可选回调参数，可在解析过程把字符串或普通对象转换为特定实例（例如使用 Temporal.from 将 ISO 字符串重建为 Temporal 对象）。"
+      },
+      {
+        "term": "IANA time zone database",
+        "explanation": "维护全球时区与夏令时（DST）规则的权威数据库，操作系统和浏览器通常依赖它来保持时区数据最新，当政府更改时区规则时需通过该数据源更新实现。"
+      },
+      {
+        "term": "js-temporal polyfill",
+        "explanation": "在不支持原生 Temporal 的运行时或浏览器中提供兼容实现的库，让开发者可在旧环境中使用 Temporal API 的特性。"
+      },
+      {
+        "term": "tRPC",
+        "explanation": "一个 TypeScript RPC 框架，评论中被举例为在传输边界对 Temporal 数据做 toString()/Temporal.from() 转换的常见场景。"
+      }
+    ],
+    "context": "这次讨论围绕 TC39 用了多年打磨并最终接纳的 Temporal 提案展开，目标是修正 JavaScript 自 1995 年以来沿用的缺陷 Date API。评论里既有对新 API 的庆贺，也有围绕序列化/JSON 传输、API 冗长、字符串格式化、时区数据更新与运行时支持（如 Deno、Node、浏览器）的现实担忧。大家常把 Temporal 的设计理念与 Java 的 Joda‑Time / JSR‑310、Moment.js、std::chrono 等历史先例比较，并讨论了不可变性、所有权模型（如 Rust）和边界处的 (de)serialization 实践。对工程师而言，关键问题是如何在保证语义正确性的同时把握可用性与跨端兼容的实现成本。",
+    "emoji": "🕰️",
+    "sarcastic_question": "所以我们要在客户端和服务器都手动重建Temporal对象吗？"
+  },
+  "articleSummary": "## 一句话总结\n为了彻底解决 `Date` API 设计缺陷和时区处理的噩梦，JavaScript 社区历时 9 年，通过 TC39 标准化流程引入了全新的、不可变的 `Temporal` API，提供了一套现代化的日期时间处理方案。\n\n### 修复 Date，是一场不得不打的硬仗\nJavaScript 里的 `Date` API 一直是开发者的噩梦，但这其实不能全怪 Brendan Eich。1995 年他在 10 天内创造 Mocha（即 JavaScript 原型）时，为了赶进度直接照搬了 Java 的 `java.util.Date` 实现。当时的哲学是 **MILLJ**（Make It Look Like Java），这在当时是合理的妥协，但 Java 后来废弃了那个设计，而 JavaScript 却不得不背着这个历史包袱走了 25 年。随着 Web 应用越来越复杂，处理时区、日历和日期计算的痛点愈发明显，社区迫切需要一个现代化的解决方案。\n\n### TC39：没有独裁者的漫长马拉松\n那怎么办？直接改代码可不行。JavaScript 的特殊性在于它运行在所有浏览器里，没有单一的所有者，任何改动都必须达成共识。这就引出了 TC39（ECMAScript 技术委员会）的标准化流程。一个提案从想法到落地，必须经历 Stage 0 到 Stage 4 的严苛考验：从最初的想法，到问题空间被认可，再到草案设计、实现反馈，最后才能成为标准。这不是几个人关起门来写代码，而是一场需要所有浏览器厂商和利益相关者都点头同意的漫长博弈。\n\n### Temporal 的核心思路：用类型和不可变性解决混乱\n2018 年，作者刚加入 Bloomberg 时，Temporal 提案刚进入 Stage 1，大家已经公认问题存在，但方案还在打磨。Temporal 的核心思路其实很简单：**彻底替换 `Date`，并且用不同的类型来区分不同的时间概念**。它不再是“一个 API 打天下”，而是提供了 `PlainDateTime`、`ZonedDateTime` 等精确类型。更重要的是，所有对象都是 **Immutable（不可变）** 的。这意味着你再也不用担心修改一个日期对象意外影响到其他代码，这种设计大大减少了并发和状态管理中的 Bug。\n\n### 第一方支持：不再依赖第三方库\n有意思的地方在于，Temporal 终于把时区和日历支持变成了“一等公民”。以前在 JS 里处理时区简直是灾难，开发者不得不依赖 moment.js 或 date-fns 这样的第三方库。Temporal 内置了完整的 IANA 时区数据库和日历系统支持（比如 Hebrew、Chinese 等非公历）。这不仅让 API 变得更加统一，也意味着你不再为了一个简单的时区转换就去引入几百 KB 的库，这对性能和包体积优化都是巨大的利好。\n\n### Bloomberg 的角色：大厂如何推动标准演进\n作为一家重度依赖 JavaScript 的金融巨头，Bloomberg 在这个过程中扮演了关键角色。你可能想不到 Bloomberg 会这么深入地参与 JS 标准制定，但他们不仅派工程师参加 TC39 会议，还和 Igalia 合作，推动了包括 Arrow Functions、Async Await、BigInt、Promise.allSettled 以及 Source Maps 标准化在内的众多提案。Temporal 之所以能推进，正是因为有像 Bloomberg 这样的大厂在实际业务中遇到了痛点，并愿意投入资源去推动整个生态的进步。\n\n### 从 Stage 1 到 Stage 4：九年磨一剑\n从 2018 年作者接手时的 Stage 1，到 2026 年文章发布时的成熟状态，Temporal 的进化之路走了整整 9 年。这期间经历了无数次的设计辩论、实现测试和兼容性调整。对于开发者来说，这不仅仅是一个新 API 的诞生，更是 JavaScript 语言走向成熟的重要标志。它告诉我们，虽然 JS 的演进很慢，但只要方向正确，社区最终能解决那些最棘手的历史遗留问题。"
+}

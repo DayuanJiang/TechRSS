@@ -1,0 +1,119 @@
+{
+  "id": 47829178,
+  "by": "twapi",
+  "title": "Claude Token Counter, now with model comparisons",
+  "url": "https://simonwillison.net/2026/Apr/20/claude-token-counts/",
+  "score": 129,
+  "createdAt": 1776659455,
+  "aiSummary": {
+    "chinese_title": "Claude 4.7 token 暴涨：tokenizer 改动引争议",
+    "discussion_overview": [
+      {
+        "category": "更语义化分词是否值得",
+        "summary": "有人猜测 Anthropic 可能把 Claude Opus 4.7 的 tokenizer 做得更接近语义或 morphology-aware，比如把大小写、空格、词缀拆开，让模型更容易组合理解。也有人进一步猜它甚至可能弱化传统 tokenizer，而改用一个小模型去模拟 token 统计。反对者则认为 morphological tokenizer 对整体模型性能的证据很弱，BPE（Byte Pair Encoding）已经足够好，硬塞 English/German 语法规则反而会伤到其他语言。",
+        "supportid": [
+          "47830475",
+          "47830894",
+          "47831094",
+          "47831867",
+          "47831213",
+          "47831309",
+          "47831398",
+          "47831644",
+          "47830701",
+          "47831791",
+          "47830680"
+        ]
+      },
+      {
+        "category": "token 更密不一定更贵",
+        "summary": "另一派认为，4.7 虽然对同样文本会消耗更多 token，但如果它更快给出正确答案、减少重试和返工，总成本未必更高。有人直接表示自己的 benchmark 和使用体验都显示 4.7 的回答质量更好，因此在同样预算下可能更划算。还有人补充，token inflation 只有在用户限额固定时才会立刻变成体感上的“更贵”，而 speculative decoding 之类机制也会让部分 token 变化不一定等价于更多 compute。",
+        "supportid": [
+          "47830659",
+          "47831406",
+          "47831793",
+          "47831753",
+          "47831022",
+          "47832277",
+          "47830766"
+        ]
+      },
+      {
+        "category": "用户把它看成订阅降级",
+        "summary": "不少用户把这次变化理解成一种变相收紧额度的做法，因为同样任务会更快烧完 token，100 USD tier 也开始显得吃紧。有人明确说会把简单问题转回 local LLM，比如 Qwen 3.6，只把 Claude 留给最难的问题。也有人建议先把默认模型切回 4.6，按需再用 4.7，说明 token inflation 已经影响到实际使用策略，而不只是 benchmark 争论。",
+        "supportid": [
+          "47830716",
+          "47831016",
+          "47831359",
+          "47831229",
+          "47830767",
+          "47832956",
+          "47831098",
+          "47833000",
+          "47832109"
+        ]
+      },
+      {
+        "category": "为什么不公开 tokenizer",
+        "summary": "评论里很强的一条抱怨是，Anthropic 没有解释为什么改了 tokenizer，也没有像其他厂商那样把 tokenizer 作为本地库公开。有人指出他们几乎是唯一一个不提供离线 tokenizer library 的 provider，这让外部很难重建行为，只能靠免费 token count API 反推。还有人把这种体验类比成 Apple 式 closed ecosystem：对普通用户未必致命，但对 agentic application 开发者来说，拿不到真实 reasoning tokens 和完整切分细节会很难排查失败模式。",
+        "supportid": [
+          "47831636",
+          "47831827",
+          "47830248",
+          "47830504",
+          "47830341",
+          "47832186",
+          "47830825"
+        ]
+      },
+      {
+        "category": "工程成本藏在 agent 与图片里",
+        "summary": "有人提醒，token counting 的重点不只在 prompt 本身，还在长 action chain、失败重试和 tool call 回传。一个超时的 payment 调用可能因为重发整个上下文，实际消耗变成成功调用的好几倍，所以只看输入 token 数并不够。讨论里还提到图片输入也会受影响，较大的图片可能显著抬高 4.7 成本，因此需要按上传尺寸做 downsample；最后还有人追问 output tokens，说明大家在意的是完整计费口径。",
+        "supportid": [
+          "47832485",
+          "47830083",
+          "47830146",
+          "47832397"
+        ]
+      },
+      {
+        "category": "多语言与字符系统的成本不对称",
+        "summary": "一些评论把争议放到多语言公平性上，认为 token 计费会让不同语言用户处在不同成本结构里。有人举例说英语提示词可能比西语少约 17% 的 token，而中文因为单字更接近 1:1 token，可能更划算。也有人指出，对屈折变化很强的语言，现有 tokenizer 仍会在词形、空格和词缀上产生奇怪切分；但反方则认为现代模型对不同 token 变体其实已经很鲁棒，真正的问题更像 mode collapse，而不是 tokenization 本身。",
+        "supportid": [
+          "47832613",
+          "47832674",
+          "47830857",
+          "47831783",
+          "47831976",
+          "47830680"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "BPE (Byte Pair Encoding)",
+        "explanation": "一种常见的子词分词方法，通过反复合并高频字符或子串来构建词表，兼顾词表大小和序列长度。"
+      },
+      {
+        "term": "pre-tokenizer",
+        "explanation": "正式 tokenizer 之前的预处理切分步骤，通常先按空格、标点、数字等做粗分割，再交给后续分词算法。"
+      },
+      {
+        "term": "morphological tokenization",
+        "explanation": "按词根、词缀、词形变化等语言学边界切分文本的方式，目标是让 token 更贴近自然语言结构。"
+      },
+      {
+        "term": "inductive bias",
+        "explanation": "训练或设计中预先加入的结构性假设，会引导模型或 tokenizer 朝某种切分/表示方式学习。"
+      },
+      {
+        "term": "bitter lesson",
+        "explanation": "机器学习中的经验结论：与其手工设计规则，不如依赖更多数据和算力让模型自己学习，长期通常更有效。"
+      }
+    ],
+    "context": "这是围绕 Claude Token Counter 的讨论，这个工具用来比较 Claude 不同模型版本的 token 消耗，标题里提到它新增了 model comparisons。争议的起点是，很多人观察到 Claude Opus 4.7 相比 4.6 在相同文本上会用掉更多 token，但 Anthropic（Claude 的开发公司）没有公开 tokenizer，也没有解释具体改动。评论因此分成两派：一派怀疑是 tokenizer 变得更语义化或更保守，另一派认为 token 变多未必代表更贵，因为更好的模型可能减少重试、返工和整体调用成本。讨论还延伸到 BPE（Byte Pair Encoding，一种常见子词分词方法）、多语言公平性、agent 的隐藏成本，以及 Anthropic 这种更封闭的 API/生态策略带来的信任问题。",
+    "emoji": "🤨",
+    "sarcastic_question": "分词更智能，怎么先聪明到用户账单上了？"
+  },
+  "articleSummary": "## 一句话总结\nClaude Opus 4.7 虽然价格没变，但因为换了新 tokenizer，处理文本和图片的 token 量会显著增加，导致实际成本最高可能上涨 40%。\n\n### 升级工具是为了验证“隐形涨价”\nSimon Willison 升级了他的 Claude Token Counter 工具，这次新增了一个很实用的功能：跨模型对比。简单说，就是同一段文本，你可以一键扔给不同的 Claude 模型看它们各算多少 token。为什么要这么做？因为 Opus 4.7 是第一个更换 tokenizer 的模型，这意味着同样的文字，在新旧模型里计费方式可能完全不同。虽然官方 API 支持所有主流模型 ID（Opus 4.7/4.6, Sonnet 4.6, Haiku 4.5），但实际上只有 4.7 和 4.6 的对比才有意义，因为其他模型用的还是同一套分词逻辑。\n\n### 官方说的“1.35 倍”可能太保守了\nAnthropic 在发布 Opus 4.7 时其实打过预防针，说新 tokenizer 能提升文本处理质量，代价是 token 数量会增加，大概在 1.0 到 1.35 倍之间。但 Simon 拿 Opus 4.7 的 System Prompt 做实测时，发现情况比预想的要严重。实测结果显示，同样的 System Prompt，Opus 4.7 算出来的 token 数是 Opus 4.6 的 1.46 倍。这比官方给出的上限还要高，说明对于某些特定类型的文本，膨胀效应非常明显。\n\n### 价格没变，但成本实打实涨了 40%\n这里有个很关键的细节：Opus 4.7 的官方定价和 4.6 完全一样，输入依然是 $5/1M tokens，输出 $25/1M tokens。既然单价没变，token 数量多了 1.46 倍，结果就很直接了——处理同样的内容，你要多掏大约 40% 的钱。对于预算敏感的项目来说，这虽然不是明面上的涨价，但确实是实打实的成本增加。你在做迁移评估时，不能只看模型性能的提升，还得把这笔账算进去。\n\n### 图片处理的高分辨率陷阱\nOpus 4.7 还升级了视觉能力，支持长边最高 2,576 像素（约 3.75MP）的高清图，这比之前的模型高了三倍多。Simon 试着传了一张 3456x2234 像素的 PNG 进去，结果吓了一跳：Opus 4.7 算出的 token 数是 4.6 的 3.01 倍。乍一看这简直是“价格刺客”，但 Simon 很快就发现了问题所在。这并不是因为新模型对图片“杀熟”，纯粹是因为它能“看”到更多以前被裁切掉的高清细节。你喂给它的像素多了，按像素计费的 token 自然就水涨船高。\n\n### 只要分辨率一致，图片成本其实没变\n为了验证这个猜想，Simon 又换了一张小图（682x318 像素）重测了一遍。这次结果就很正常了：Opus 4.7 消耗了 314 tokens，而 4.6 是 310 tokens，几乎可以忽略不计。这说明图片 token 的暴涨完全是因为分辨率上限提升带来的“副作用”。如果你处理的图片本身就在旧模型的分辨率范围内，迁移到 4.7 并不会带来额外的图片成本压力。\n\n### PDF 文本的膨胀效应反而很温和\n最后 Simon 还测了一个极端案例：一个 15MB、30 页的纯文本 PDF。结果挺有意思，Opus 4.7 算出来是 60,934 tokens，4.6 是 56,482 tokens，倍率只有 1.08 倍。这比之前 System Prompt 的 1.46 倍要温和得多。看来新 tokenizer 对不同内容的敏感度不一样，对于结构化的文档内容，膨胀效应并没有那么夸张。这也提醒我们，评估成本影响时，最好拿自己真实业务的数据去跑一遍，而不是只看官方的估算倍率。"
+}

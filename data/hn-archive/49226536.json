@@ -1,0 +1,93 @@
+{
+  "id": 49226536,
+  "by": "adletbalzhanov",
+  "title": "Shopify replaced Redis with MySQL for inventory reservations–and it scaled",
+  "url": "https://shopify.engineering/scaling-inventory-reservations",
+  "score": 227,
+  "createdAt": 1786238451,
+  "aiSummary": {
+    "chinese_title": "Shopify 用 MySQL 取代 Redis 做库存预留，1000 行池设计引争议",
+    "discussion_overview": [
+      {
+        "category": "统一到 MySQL 的复杂度收益",
+        "summary": "不少评论认为，把 reservation 和库存都放进 MySQL 本身是合理的，因为 inventory 已经在 SQL 里时，再用 Redis 做第二套状态只会增加同步和运维复杂度。对物理商品来说，库存天然有上限，用更多磁盘行数换掉跨系统一致性问题，是很常见的 denormalization 取舍。有人还指出，这种做法能把主库上的读和事务压力显著降下来，减少对 Redis 的依赖。支持者的核心观点是：能在一个 DB 内完成的状态机，就别再拆成两套系统。",
+        "supportid": [
+          "49227847",
+          "49227673",
+          "49227723",
+          "49227871",
+          "49228083",
+          "49227646"
+        ]
+      },
+      {
+        "category": "1000 行池子与锁竞争的设计争议",
+        "summary": "最集中的质疑是“每个 shop*SKU 1000 行”的 bounded pool 太像补丁，评论里有人主张直接用“每个 cart/order*SKU 一行”作为中间态。围绕并发控制，讨论者反复追问：如果最终还是要判断剩余库存并防止最后一件被两个请求同时拿走，那锁争用并没有消失，只是换了个位置。支持 Shopify 方案的人则强调，分散到多行后可以靠 SKIP LOCKED 让并发请求互不阻塞，再用 replenishment 维持池子。反对者觉得这仍然是把复杂度从“库存计数”搬到了“搬行、回收、补货”上。",
+        "supportid": [
+          "49228296",
+          "49228456",
+          "49228393",
+          "49228579",
+          "49228121",
+          "49228273",
+          "49228322",
+          "49227747",
+          "49228305"
+        ]
+      },
+      {
+        "category": "reservation 时机与业务语义",
+        "summary": "另一条主线是在争论 reservation 应该发生在 checkout 还是 payment。有人认为在支付开始时才锁库存太晚，最好在用户点 Checkout 时就先做校验，甚至把临时占用写成单独的 in-progress 记录。反方指出，提前 reservation 会把大量 cart abandonment 变成“库存被人长期占着”，损害卖家和其他买家的体验，所以 Shopify 选择在付款阶段处理是有意的 UX 取舍。也有人提到，如果本来就有 background process，超时释放、失败回收和外部支付状态对账都能处理，但这只是把问题换成另一套流程复杂度。",
+        "supportid": [
+          "49227779",
+          "49228289",
+          "49227822",
+          "49228051",
+          "49228522",
+          "49228775",
+          "49228666",
+          "49228380"
+        ]
+      },
+      {
+        "category": "文章文风与 AI 痕迹",
+        "summary": "不少人把焦点从架构转到了文章本身，认为整篇 blog 像是 Claude 写出来的，充满冗长但信息密度低的过渡句。被吐槽最多的是一些看似“深刻”的句子，其实既空泛又打断阅读节奏，让人怀疑是 AI 文风或拼接修改后的残稿。AI 生成的配图、以及 Shopify 公开奖励 AI 使用的文化，也强化了这种“vibeslop”观感。结果就是：即使有人承认技术点有价值，仍然对这篇文章的可信度和可读性打折。",
+        "supportid": [
+          "49227594",
+          "49227818",
+          "49228153",
+          "49228264",
+          "49228487",
+          "49227998",
+          "49228049",
+          "49228177",
+          "49228512",
+          "49228548",
+          "49227588"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "SKIP LOCKED",
+        "explanation": "SQL/MySQL 的并发控制方式，遇到已被锁定的行就跳过而不是等待。"
+      },
+      {
+        "term": "inventory ledger",
+        "explanation": "库存变更的权威账本，reservation 只是临时状态，最终扣减以它为准。"
+      },
+      {
+        "term": "oversell protection",
+        "explanation": "防止并发下卖出超过库存的机制，核心是协调多个 checkout 请求。"
+      },
+      {
+        "term": "WAL",
+        "explanation": "write-ahead log，数据库先写入的持久化日志，用于保证崩溃恢复和事务一致性。"
+      }
+    ],
+    "context": "这篇帖子来自 Shopify 的工程博客，讲的是他们把针对实体商品库存的 reservation 从 Redis 迁回 MySQL/InnoDB，用来做 oversell protection。文章里的核心设计是把每个可售单位拆成一行，再为每个 item/location 维护一个上限为 1000 的可用行池；reservation 消耗池中的行，replenishment process 再从 inventory ledger 补回。这个方案试图用 MySQL 的事务、row lock 和 SKIP LOCKED，替代 Redis + DB 之间的状态同步。评论区因此集中讨论数据模型粒度、锁竞争、WAL 持久化，以及 reservation 到底应该在 checkout 还是 payment 阶段发生。",
+    "emoji": "🤔",
+    "sarcastic_question": "1000行池子加回收，真比Redis简单吗？"
+  },
+  "articleSummary": "## 一句话总结\n\nShopify 用 MySQL 8 的 `SKIP LOCKED` 和“每件库存一行”的有界库存池替换 Redis 预留系统，最终发现真正限制吞吐的并非锁或 CPU，而是整个 checkout 链路中被长期占用的数据库连接。\n\n## 正文\n\n### Redis 的问题不在并发，而在它和账本是两套世界\n\n库存预留看起来是个很小的动作：用户点下 “Complete purchase”，系统先把商品短暂锁住，等支付成功后再正式扣减库存。可一旦做错，后果只有两个方向。要么两个用户买到了最后一件商品，商家得取消订单；要么明明还有货，系统却拒绝了用户，商家白白丢掉一笔销售。Shopify 在 Black Friday 2025 的峰值销售额达到每分钟 510 万美元，每一笔交易都可能触发库存操作，这让预留系统成了 checkout 路径上的关键基础设施。旧系统用 Redis 保存每个商品的可售数量，预留时 `DECR`，释放时 `INCR`，单看并发控制其实没问题。问题是，真正的库存账本在 MySQL，支付成功后的 claim 操作必须同时更新 MySQL 和清理 Redis，而跨两个系统无法做到一个 ACID 事务。于是，无论先写哪边，都会留下“已经卖出但账本没扣”或“账本扣了却仍然被预留”的失败窗口。\n\n### 过去 MySQL 扛不住，是因为大家在抢同一行\n\n把预留迁回 MySQL 的动机很直接：预留记录和库存账本在同一个数据库里，reserve 与 claim 就能放进 ACID transaction，跨系统不一致的问题自然消失。可 Shopify 以前试过这种路线，当时的建模是“一个商品一行，里面有一个 quantity 字段”，结果高并发下所有请求都在争抢同一行锁，吞吐根本上不去。MySQL 8 的 `SELECT ... FOR UPDATE SKIP LOCKED` 改变了这个前提。它允许事务跳过已经被别的事务锁住的行，直接拿下一批可用行，而不是原地等待。于是 Shopify 换了一种粒度：不再用一行表示商品数量，而是用一行表示一个可售单位。商品有 10 件库存，就对应 10 行；要预留 3 件，就在一个事务里锁定并移动 3 行。说白了，原先是在竞争一个数量计数器，现在则是在并行领取互不相同的库存单元。\n\n### “一件一行”也不能无限膨胀，所以库存池必须有上限\n\n不过，把所有真实库存都物化成单元行也走不通。一个商品如果有 50,000 件库存，分布在 10 个 location，单是预留表就可能出现 500,000 行，`SKIP LOCKED` 的扫描成本会迅速失控。Shopify 的解法很巧妙：它不保存全部库存单元，而是为每个 `item/location` 组合维护一个最多 1,000 行的可用库存池。预留会从这个池子中消费行，后台 replenishment process 则根据 inventory ledger 持续补充。1,000 这个值不是拍脑袋定的，而是根据 flash sale 时单个商品、单个 location 的峰值预留速率选出来的：既要能吸收突发流量，也要让表和扫描范围保持足够小。如果极端爆款把池子耗空，reserve 路径会同步触发补货；一个锁确保只有一个事务负责补货，其余同商品请求等待，避免一群事务同时插入形成 thundering herd。这样某一次预留可能变慢，但只要真实库存仍然存在，用户不会被误判为缺货。\n\n### 真正决定吞吐的，是锁数量、隔离级别和锁顺序\n\n方案能跑起来，不代表它已经能扛住 Shopify 的峰值。第一个细节出在 primary key：原型使用 auto-increment ID 时，`WHERE` 条件走 secondary index，但 InnoDB 仍要锁 clustered index，结果每预留一个库存单元会拿到两把行锁。后来他们把 `(shop_id, inventory_item_id, inventory_group_id, id)` 改成 composite primary key，让查询过滤字段直接落在主键上，锁数降为每行一把。第二个坑是 MySQL 默认的 `REPEATABLE READ`，当 `SKIP LOCKED` 在空池里找不到行时，可能产生 gap lock，甚至锁住 supremum pseudo-record，反过来阻塞 replenishment 插入新行。将这类事务改为 `READ COMMITTED` 后，InnoDB 不再以相同方式施加 gap lock，补货和预留才不会互相卡死。最后还有 reserve 和 claim 的死锁问题：reserve 曾经先向 `reserved_quantities` 插入，再从 `reservation_units` 删除，而 claim 会删除 `reserved_quantities`，不同路径以不同顺序拿锁就可能形成环。统一为 reserve 先 `DELETE reservation_units`、再 `INSERT reserved_quantities` 后，锁顺序一致，循环等待也就消失了；多商品购物车则用 `UNION ALL` 批量查询，减少数据库 round trip。\n\n### 查询和锁都优化完了，吞吐上限却藏在连接池里\n\n更有意思的部分发生在上线压测之后。此时 reservation 的 P90 延迟是可接受的，SQL 已经优化过，MySQL CPU 也没有打满，但系统吞吐仍然远低于目标。团队先尝试把多个 checkout 的预留合并进一次 `SKIP LOCKED` 查询，也尝试把部分读流量迁到 replica，效果却不足以解释问题。继续观察后，他们看见的是 MySQL 线程排队、排队任务开始执行时 CPU 突增，以及 ProxySQL 后端连接耗尽。问题在于，“连接耗尽”只是现象，团队并不知道究竟是哪些业务调用者长时间占着连接。于是他们给每条 SQL 加上类似 `/* conn_tag:checkout_completion */` 的业务标签，再在 ProxySQL 层解析标签、统计每个调用方持有连接的总时长。这个观测方式让问题一下变得具体：不是哪条 SQL 特别慢，而是 checkout 中其他代码路径长期持有连接，reservation 只是压垮原本已接近耗尽的连接池的最后一根稻草。\n\n### 把预留做成“好邻居”，才是这次迁移真正的标准\n\n找到根因后，Shopify 清理了 checkout 路径中的冗余工作，primary database 的 reads 减少了 50%，transactions 减少了 33%。他们还重新审视了多年未调整的 InnoDB thread concurrency 配置，并在硬件余量允许的地方提高并发度。最终，高流量 flash sale 时 writer CPU 保持在 50% 以下，reader CPU 低于 16%，系统终于越过原本的吞吐天花板。切换过程也没有一刀切：他们先让 Redis 和 MySQL 进入 shadow mode，所有预留双写，但 Redis 仍是 source of truth，用真实生产流量比对两边的业务结果和性能。确认无误后，再逐个 pod 灰度把 source of truth 切到 MySQL；双写仍然保留，因此随时可以通过 kill switch 回退到 Redis，而且无需迁移 in-flight reservations。整篇文章最重要的提醒是，MySQL 现在确实可以承载过去人们会交给 Redis、Kafka 或自定义协调层的高吞吐互斥工作，但前提不是只把单条查询跑快。真正的目标是让库存预留和 cart 更新、支付、订单创建这些共享数据库的邻居和平共处；当你看到 CPU 不高却大量排队时，答案往往不在数据库引擎里，而在连接、事务和整条调用链的“管道”中。"
+}

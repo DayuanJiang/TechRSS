@@ -1,0 +1,100 @@
+{
+  "id": 49354613,
+  "by": "zX41ZdbW",
+  "title": "Solo – a .so loader for static Linux binaries",
+  "url": "https://github.com/pg83/solo",
+  "score": 126,
+  "createdAt": 1787098843,
+  "aiSummary": {
+    "chinese_title": "Solo：为 static Linux 二进制嵌入 ELF loader 兼容 glibc .so",
+    "discussion_overview": [
+      {
+        "category": "glibc/ld-linux 耦合",
+        "summary": "不少人把问题归结为 Linux 下 glibc 与 ld-linux.so（动态链接器/加载器）的强耦合。评论里反复提到，C/C++ 运行时、TLS、pthread、libstdc++ 初始化、NSS 插件和 dlopen 都会受这个耦合影响，导致静态 musl 程序很难直接加载 glibc 构建的 GPU driver 或其他共享库。即使 C ABI 本身较稳定，symbol versioning 和一些未文档化行为也会让跨发行版二进制出现兼容性问题。对支持者来说，这正是需要一个 glibc ABI bridge 的原因。",
+        "supportid": [
+          "49355118",
+          "49356088",
+          "49355262",
+          "49355340",
+          "49355424",
+          "49355646"
+        ]
+      },
+      {
+        "category": "Solo 方案被质疑为变相动态加载器",
+        "summary": "反对者认为，Solo 只是把问题改名成“自制 dynamic loader”。既然最终还要按需加载 host 的 .so，那它本质上已经不是纯 static binary，而是在 hostile environment 里做受控的动态链接。有人担心这种做法会把旧 executable 锁死在旧版 glibc 语义上，未来 GPU driver 一旦依赖新符号就会失效。也有人提醒，ELF loader 本身会映射并执行文件内容，安全边界必须非常谨慎，不能只把它当作一个工具链小补丁。",
+        "supportid": [
+          "49357550",
+          "49357866",
+          "49356578",
+          "49356801",
+          "49355009",
+          "49355241",
+          "49355127"
+        ]
+      },
+      {
+        "category": "现实可用性与替代方案",
+        "summary": "另一派更关心这东西是否真的解决了现实痛点。项目宣称可在 glibc 发行版、Alpine（基于 musl 的发行版）以及未来的 Android/bionic 上运行，这对只发布 glibc 版本的 proprietary software 尤其有吸引力。有人指出更常见的办法是用较老版本的 glibc 构建、用 Zig（支持跨编译的工具链）指定目标版本，或按 AppImage（Linux 自包含打包格式）/容器思路分发。反对者则认为这些办法都很绕，尤其在需要 GPU/HIP 之类硬件支持时，Flatpak/Docker 反而可能把功能弄丢。",
+        "supportid": [
+          "49355215",
+          "49358023",
+          "49355387",
+          "49355879",
+          "49355770",
+          "49356623",
+          "49355428",
+          "49355205"
+        ]
+      },
+      {
+        "category": "README/LLM 可信度争议",
+        "summary": "讨论后半段几乎变成了 README 和 LLM 代写风格之争。有人认为机器写出来的文档会让人立刻联想到未审查的 Claude 输出，从而降低对整个项目的信任，尤其这还是一个本来就很容易在 dlopen 和 ABI 边界上出问题的工程。作者则解释自己英语不是母语，文档是先写中文再让 Claude 翻译/润色，而且开源项目不喜欢可以直接提 PR。还有人把焦点放到维护计划上，问未来是否会合并进 musl build 或其他项目，以及长期维护是否跟得上。",
+        "supportid": [
+          "49355057",
+          "49356080",
+          "49355179",
+          "49355240",
+          "49355488",
+          "49355629",
+          "49356656",
+          "49357354"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "ELF",
+        "explanation": "Linux 常用的可执行文件和共享库格式，Solo 需要自己解析和装载它。"
+      },
+      {
+        "term": "glibc",
+        "explanation": "GNU C Library，Linux 上最主流的 libc，很多二进制和驱动都隐式依赖它。"
+      },
+      {
+        "term": "musl",
+        "explanation": "一个更轻量、偏静态链接友好的 libc 实现，常见于 Alpine Linux。"
+      },
+      {
+        "term": "dlopen",
+        "explanation": "运行时打开共享库的接口，插件和 GPU driver 常靠它加载。"
+      },
+      {
+        "term": "ld-linux.so",
+        "explanation": "glibc 的动态链接器/加载器，负责把程序和共享库装入内存并做重定位。"
+      },
+      {
+        "term": "symbol versioning",
+        "explanation": "glibc 用来区分同名符号不同版本的机制，常导致前后兼容问题。"
+      },
+      {
+        "term": "ABI",
+        "explanation": "应用二进制接口，决定编译后的程序能否在不同系统/库版本间继续工作。"
+      }
+    ],
+    "context": "Solo 是一个面向 Linux 的 .so loader，目标是让静态链接的程序也能按需加载系统里的共享库，尤其是 OpenGL/Vulkan GPU driver 这类通常只提供 glibc 版本的二进制。它自带 ELF loader（x86-64 和 aarch64）以及一层 glibc ABI bridge，希望让静态 musl 程序也能在不同发行版上运行。这个话题之所以敏感，是因为 Linux 生态里 glibc、ld-linux.so、dlopen、symbol versioning 和各类插件/驱动长期纠缠，跨发行版分发二进制一直很痛。评论里同时出现了对“Linux 用户态 ABI 是否真的破碎”的争论、对静态链接替代方案的讨论，以及对 LLM 生成 README 的信任争议。",
+    "emoji": "🤨",
+    "sarcastic_question": "都自带 loader 了，还叫 static binary 吗？"
+  },
+  "articleSummary": "## 一句话总结\n\nSoLo 让一个完全静态链接的 musl Linux 可执行文件，能在运行时直接加载宿主机上原封不动的 glibc GPU 驱动 `.so`，同时避免把第二套 libc 和 TLS 世界塞进进程。\n\n## 正文\n\n### 静态发布很省心，但 GPU 驱动把问题重新变复杂了\n\n静态二进制在 Linux 上的魅力很朴素：交付一个文件，不依赖目标机器的用户态库。SoLo 的作者用 IX 构建 fully static 的 musl executable，原本这套模式几乎没有部署烦恼。可一旦程序需要 Vulkan 或 OpenGL，事情就变了。GPU 驱动通常由宿主系统提供，而且是链接 glibc 的 shared object。一个完全静态的 musl 程序，按常规并不能直接 `dlopen()` 这些库。  \n\n常见解法往往是带上容器、AppImage，或者干脆引入宿主的 `ld-linux` 和 glibc。可这样一来，“一个静态二进制”的承诺就被打破了。进程里会同时出现两套 libc、两套 TLS 状态，回调、异常和线程局部变量都可能踩到边界问题。SoLo 想解决的正是这个缺口：宿主保留真正属于它的硬件驱动，应用自己携带其余全部内容。\n\n### SoLo 的关键不是调用宿主 loader，而是自己成为 loader\n\nSoLo 对外提供的是 `dlfcn` 风格 API，应用照常调用 `dlopen()` 和 `dlsym()`。但底下并不是转交给系统动态加载器，而是 SoLo 自己实现了一套 ELF loader。目前它支持 x86-64 和 aarch64，负责映射 ELF segment、递归加载 `DT_NEEDED`、处理 versioned symbol 和 relocation。它还覆盖 ELF TLS、TLSDESC、IFUNC、RELRO、initializer 等真实 DSO 所需的机制。  \n\n说白了，SoLo 把“动态加载 shared object”这件事嵌入了静态程序本身。它加载的不只是一个驱动入口库，而是驱动所需的整条 DSO dependency closure。加载本体和依赖时，`LD_LIBRARY_PATH`、`DL_ELF_LIBRARY_PATH` 以及 `/etc/ld.so.cache` 的语义也被纳入支持范围。与此同时，应用还能注册 static provider。比如系统 DSO 依赖 `libwayland` 时，SoLo 可以直接让它解析到主程序静态链接进来的新版 Wayland 符号。\n\n### 最难的边界不是 ELF，而是 glibc ABI 如何落到 musl 上\n\n真正棘手的地方在于，宿主 GPU 驱动会导入诸如 `malloc@GLIBC_2.2.5` 这样的 glibc versioned symbol。SoLo 的选择很明确：不加载 glibc，而是让 `glibc_shim.cpp` 将这些导入映射到现有 musl runtime 上的 ABI-correct adapter。这避免了第二套 libc 进入进程，也避免了两套 runtime 分别维护 TLS、allocator 和线程状态。  \n\n对于尚未实现的 glibc 函数，SoLo 不会默默给出危险的近似实现。它为每个符号和版本生成独立 stub，一旦真的被调用，就带着精确的 symbol/version 信息响亮失败。这个设计意味着“能加载”不被伪装成“完全可用”，但也不会因为一个从未调用的缺失符号阻止整个 DSO 被加载。作者还专门处理了 glibc ABI 的状态性角落，包括 pre-2.34 pthread ABI、GNU obstacks、`_chk` fortified 函数族，以及 inline stdio ABI。甚至 `_IO_2_1_stdout_` 也会解析到 musl 的 stream，musl 的 `FILE` 布局被刻意维持为可兼容 glibc 内联 `putc_unlocked` 的形式。\n\n### 单一 TLS 世界，才是它区别于“双 libc”方案的核心\n\n很多类似方案会 bootstrap 宿主 `ld.so` 和 glibc，然后在 musl 与 glibc 边界切换 thread pointer。SoLo 刻意不走这条路，因为那会产生两个彼此独立的 TLS 世界。每次跨边界调用都需要 trampoline，更麻烦的是，glibc 代码回调 musl callback 时，TLS 可能仍处于 glibc 那一侧。  \n\nSoLo 让 foreign DSO 运行在同一个 musl TLS 世界中，并支持四种 ELF TLS model。General-dynamic 和 local-dynamic 通过 `__tls_get_addr` 工作，TLSDESC 使用自定义 ABI resolver。initial-exec 是最麻烦的一种，因为它的 GOT slot 是不可拦截的 thread-pointer-relative offset。SoLo 为此在主程序的 static TLS 中预留了 16 KiB surplus arena，让所有线程都能使用同一个进程级 offset，而不需要 patch musl。代价是一个明确限制：在 `dlopen` 之前已经创建的线程，对后来加载模块的 TLS 只能看到零初始化内容。\n\n### 它不止能跑 Vulkan demo，还在测试真实世界的共享库\n\n项目提供了一个端到端 Vulkan proof。一个 fully static executable 内嵌 Khronos Vulkan loader，通过 SoLo 加载宿主 Vulkan ICD 与其依赖，创建 device、storage buffer、descriptor set 和 compute pipeline，执行 checked-in SPIR-V shader，最后用静态链接的 libpng 写出 PNG。运行后会生成一张 512×512 RGBA 图像，用户可以让 loader 自动发现 ICD，也可以通过 `--driver` 强制指定 Radeon 或 Lavapipe manifest。  \n\n这个 demo 已在 AMD radv、radeonsi、Intel、NVIDIA GPU，以及 Asahi Linux 的 Apple M1 上测试。更关键的是，作者没有只拿 demo 证明可行性。CI 会在每次提交时，通过 SoLo 加载 Debian 安装量前 1000 个软件包中的 shared library。这里涉及 885 个带 glibc-linked DSO 的软件包，约 2100 个 host object，并且在 x86-64 和 aarch64 上都执行。CI 的 native build/test 覆盖 Alpine/musl + GCC、Fedora + GCC、Ubuntu + Clang，Vulkan 测试使用各发行版自身的 Lavapipe，而不是套一个 Arch sysroot。\n\n### SoLo 的野心是“借驱动”，不是“随身带一个发行版”\n\nSoLo 与 gcompat 的定位不同。gcompat 是面向发行版的 glibc API shim，通常通过 musl dynamic linker 和预加载共享库来运行现成 glibc 程序；它并不能让 fully static musl process 获得完整动态加载能力。Detour、Cosmopolitan 的 `cosmo_dlopen()` 以及一些 musl `dlopen` 实验，则更接近“引入宿主 loader 与 glibc，再管理双 runtime”的路线。SoLo 的路线恰好相反：它自己 map DSO，并将 glibc imports 翻译到 musl。  \n\n这也解释了它为什么强调异常、TLS、符号绑定和调试可见性。C++ exception 可以双向穿过静态代码和 glibc-compiled frame，因为 guest 的 `_Unwind_*` 会绑定到可执行文件中唯一的 unwinder。它实现 `RTLD_DEEPBIND`、`DT_SYMBOLIC`、lazy PLT、GNU/SysV hash、symbol versioning 和 IFUNC hwcaps 传递，目标是复刻 `ld.so` binding semantics，而不是做一个薄薄的 `dlsym` 转发层。`backtrace()`、`dladdr`、`dl_iterate_phdr`、`link_map` facade 也能同时看到静态与动态加载的 image，文件映射保留真实路径，方便 profiler 和 debugger 工作。  \n\n最终，SoLo 的边界也很清楚：它只支持 Linux 的 x86-64 和 aarch64；运行时是 load-once，`dlclose` 虽然成功但不会卸载 image；当前重点是 Mesa/Vulkan ICD dependency closure 和 Debian 高安装量库的加载兼容性。它并不宣称已经实现全部 glibc ABI，未覆盖调用会明确 abort，剩余需求按安装量记录在 `dev/abi-demand.txt`。但它已经证明了一件此前很难做到的事：静态 musl 应用不必为了使用宿主 GPU 驱动而携带整个 Linux 用户态，也不必容忍第二个 libc 进入进程。"
+}

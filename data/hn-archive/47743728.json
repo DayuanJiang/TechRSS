@@ -1,0 +1,75 @@
+{
+  "id": 47743728,
+  "by": "luu",
+  "title": "Tracking down a 25% Regression on LLVM RISC-V",
+  "url": "https://blog.kaving.me/blog/tracking-down-a-25-regression-on-llvm-risc-v/",
+  "score": 120,
+  "createdAt": 1776100829,
+  "aiSummary": {
+    "chinese_title": "LLVM RISC-V 25%回退：编译器优化、开源劳动与业余/职业之争",
+    "discussion_overview": [
+      {
+        "category": "RISC-V 生态与编译器进展",
+        "summary": "不少评论把这篇追查 LLVM RISC-V 25% regression 的文章当成 RISC-V 生态成熟的信号。有人认为，RISC-V 芯片正在从“还不能用”走向“够用”，而编译器优化和后端修补正在提前把软件栈补齐。也有人纯粹表达对 compilers 的敬佩，觉得编译器是非常精巧、值得反复学习的软件。整体上，这组评论的情绪偏正面，强调硬件和软件终于开始同步推进。",
+        "supportid": [
+          "47757230",
+          "47758236"
+        ]
+      },
+      {
+        "category": "开源无偿劳动之争",
+        "summary": "围绕这类修复到底算不算 free work，评论区出现了明显分歧。批评者觉得，贡献者在替庞大的商业软件栈做无偿维护，而企业会从这些 LLVM/RISC-V 优化里直接获利。反驳者则指出，LLVM 和 RISC-V ISA 本身都是开放可用的，很多人参与是出于回馈社区或兴趣，而不是被迫劳动。还有人补充说，复杂系统通常会流向有预算的组织，开源和付费并不是非此即彼。",
+        "supportid": [
+          "47755022",
+          "47755822",
+          "47757853",
+          "47762142",
+          "47755581",
+          "47755895",
+          "47756090",
+          "47756811",
+          "47758235"
+        ]
+      },
+      {
+        "category": "业余爱好者 vs 职业工程师",
+        "summary": "另一条长线争论是在比较业余爱好者和职业工程师的能力。支持者认为编程和飞行不同，几乎只需要时间和一台电脑，业余开发者可以靠兴趣去做更难、更有挑战的问题。反对者则说这是幸存者偏差：会写博客的人更显眼，但职业环境带来的全职投入、流程约束和组织知识，往往能让专业人士在平均水平和稳定性上更强。围绕 pilot、glider、ag pilot 等例子，双方进一步把“不是所有 hours 都一样”这个点争辩得很细。",
+        "supportid": [
+          "47755396",
+          "47755574",
+          "47756625",
+          "47755977",
+          "47756267",
+          "47757390",
+          "47757706",
+          "47761067",
+          "47764578",
+          "47760791",
+          "47758066"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "LLVM",
+        "explanation": "一个通用编译器基础设施项目，提供前端、中端、后端优化与代码生成能力。"
+      },
+      {
+        "term": "RISC-V",
+        "explanation": "一种开放的指令集架构（ISA），便于不同厂商实现兼容处理器。"
+      },
+      {
+        "term": "ISA",
+        "explanation": "Instruction Set Architecture，定义 CPU 可执行的机器指令与软件接口。"
+      },
+      {
+        "term": "regression",
+        "explanation": "改动后出现的性能下降或功能退化，这里指编译器优化导致的回退。"
+      }
+    ],
+    "context": "这篇文章讲的是作者如何在 LLVM（通用编译器基础设施）里追查 RISC-V 后端出现的 25% 性能 regression（回退），属于编译器性能排错的典型案例。RISC-V 是一种开放的 ISA（Instruction Set Architecture，指令集架构），近几年硬件逐渐从实验品走向可用，软件工具链也开始追赶。评论区先是称赞这种细致的优化工作和 compilers 的魅力，随后很快转向开源劳动是否应该被无偿消耗。讨论还延伸到程序员的业余兴趣与职业训练，反映出现代软件基础设施常常同时依赖公司投入和社区贡献。",
+    "emoji": "🛠️",
+    "sarcastic_question": "既然开源都靠热爱，企业白嫖算合法的吗？"
+  },
+  "articleSummary": "## 一句话总结\nLLVM 优化 `isKnownExactCastIntToFP` 导致 `fpext` 被提前折叠，破坏了后续依赖该指令的 `visitFPTrunc` 窄化逻辑，使得 RISC-V 上昂贵的 `fdiv.d`（33 周期）取代了高效的 `fdiv.s`（19 周期），最终通过扩展 `getMinimumFPType` 的范围分析修复了这一性能回退。\n\n---\n\n### 性能回退的蛛丝马迹：GCC 竟然反超了 8%\n\n故事始于 Igalia 的性能对比网站，作者发现 LLVM 在 SiFive P550 这款 RISC-V CPU 上的某个 benchmark 表现异常，比 GCC 慢了约 8%。对比汇编代码后，发现 LLVM 生成了 `fdiv.d`（双精度浮点除法），而 GCC 生成的是 `fdiv.s`（单精度浮点除法）。这很关键，因为在 RISC-V 架构中，`fdiv.d` 的延迟高达 33 个周期，而 `fdiv.s` 只要 19 个周期。更有意思的是，作者用 `llvm-mca` 分析旧版本的 LLVM 时发现，它其实也能生成 `fdiv.s`。这说明不是能力问题，而是一次性能回退。\n\n### 锁定嫌疑人：一次看似完美的优化\n\n既然是回退，肯定是有代码变动。作者排查了 RISC-V 后端的提交记录，没发现异常，于是把目光转向了通用的中间端优化。通过对比优化前后的 LLVM IR，他发现罪魁祸首是一个名为 `isKnownExactCastIntToFP` 的函数改进。这个改动原本是为了更精确地判断整数转浮点是否无损，它利用 `ComputeNumSignBits` 证明了某些转换是精确的。这本身是一个正向优化，但它产生了一个副作用：让 `visitFPExt` 误判，把 `fpext(sitofp x to float) to double` 直接优化成了 `uitofp x to double`。\n\n### 逻辑链条断裂：为什么“聪明反被聪明误”\n\n这里有个微妙的逻辑依赖关系。原本的代码中，源码里的 `(float)ixran / 74383.0` 会生成 `int -> float -> double -> float` 的 IR 序列。旧版 LLVM 会保留中间的 `fpext`（float 转 double），这看起来是冗余操作，但它给后续的 `visitFPTrunc` 留了“抓手”。`visitFPTrunc` 看到这个 `fpext`，就能反向推导出整个计算其实用 float 精度就够了，从而把 double 窄化回 float。但新版 LLVM 的 `visitFPExt` 太“聪明”了，直接把 `fpext` 折叠进了前面的整数转换，导致 `visitFPTrunc` 失去了线索，只能保留昂贵的 double 精度运算。\n\n### 根本原因与修复：用范围分析找回丢失的信息\n\n问题的本质是，优化 Pass 之间缺乏全局视野。`visitFPExt` 只看到了局部可以折叠，却没意识到这个 `fpext` 是后续窄化优化的关键。作者的修复思路很巧妙：既然 `visitFPTrunc` 之前依赖 `fpext` 指令本身来识别窄化机会，现在指令没了，那就让它具备“透视眼”。他扩展了 `getMinimumFPType` 函数，引入范围分析。这样，即使面对 `fptrunc(uitofp x double) to float` 这样的结构，编译器也能通过分析数值范围，判断出 `uitofp` 的结果其实可以安全地用 float 表示，从而重新激活窄化优化，消除了性能差距。"
+}

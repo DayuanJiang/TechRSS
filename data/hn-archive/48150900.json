@@ -1,0 +1,136 @@
+{
+  "id": 48150900,
+  "by": "ndiddy",
+  "title": "Bun Rust rewrite: \"codebase fails basic miri checks, allows for UB in safe rust\"",
+  "url": "https://github.com/oven-sh/bun/issues/30719",
+  "score": 308,
+  "createdAt": 1778869821,
+  "aiSummary": {
+    "chinese_title": "Miri 抓出 Bun AI 转 Rust 的 safe API UB",
+    "discussion_overview": [
+      {
+        "category": "先机械迁移，再逐步收紧安全性",
+        "summary": "不少评论认为这次迁移本来就不是一次完成式重构，而是先把 Zig 代码机械搬到 Rust，再慢慢修掉 `unsafe`、生命周期和不变量问题。按这个思路，早期代码里出现 UB、`unsafe` 标注不完整，甚至 API 先被标成 safe，都不算意外。有人强调项目还在进行中，稳定版仍留在 Zig 路线，真正该看的是后续是否持续收敛，而不是把中间态当终局。也有人指出，若要先保留语义一致性，就必须接受代码暂时又长又丑，不能一开始就要求 idiomatic Rust。",
+        "supportid": [
+          "48152419",
+          "48152167",
+          "48152023",
+          "48152233",
+          "48152783",
+          "48153019"
+        ]
+      },
+      {
+        "category": "AI 直译不如确定性转换工具",
+        "summary": "一部分人认为，如果目标只是语言迁移，最合理的方式应该是基于语法树的确定性转换器，而不是让 LLM 直接吐出代码。评论里提到过 `zig translate-c`、`c2rust` 和更一般的 verified transformation，认为这种方式可重复、可审计，也更接近工程化迁移。反对者则提醒，`c2rust` 这类工具输出通常非常啰嗦，仍旧充满 `unsafe`，只能当 baseline，离人类可维护代码很远。支持 AI 的人则认为 Zig 和 Rust 并不存在漂亮的 1:1 映射，LLM 恰恰擅长处理这种模糊转换。",
+        "supportid": [
+          "48152347",
+          "48152398",
+          "48152624",
+          "48152467",
+          "48152797",
+          "48152842",
+          "48152499"
+        ]
+      },
+      {
+        "category": "Rust 的 unsafe、UB 与 Miri 语义争议",
+        "summary": "讨论里花了很多篇幅解释 Rust 的安全边界：`unsafe` 不是病毒，但它要求作者自己维护额外不变量；如果封装写错，UB 可以从内部 `unsafe` 泄漏到外部 safe API。很多人纠正了标题的直觉误解，强调这不是 Rust compiler bug，而是库的 soundness 问题：一个看似 safe 的接口，实际上可能让安全调用者踩到 UB。Miri 在这里被反复提到，它能抓到一部分不变量和 pointer provenance 违规，但前提是测试真的覆盖到坏路径。也有人提醒，正确做法要么把接口标成 `unsafe`，要么把检查做实，而不是把责任悄悄甩给调用者。",
+        "supportid": [
+          "48152051",
+          "48152146",
+          "48152261",
+          "48152323",
+          "48152264",
+          "48152320",
+          "48153222",
+          "48152868",
+          "48153306",
+          "48153098",
+          "48152483",
+          "48152117",
+          "48152143"
+        ]
+      },
+      {
+        "category": "营销、信任与 Anthropic 叙事",
+        "summary": "另一条主线是对宣传方式和信任的怀疑：有人觉得“几周内把百万行代码搬到 Rust”这种故事本身就会制造远大于事后修正的声量。评论把它解读成 Anthropic 和 Claude Code 的广告，甚至是对 Bun 用户的 rug pull，因为项目体量大、改动快、却缺少足够人工审查。也有人直接说自己因为这次迁移开始迁出 Bun，说明受伤的不只是舆论，还有实际用户信任。相反，少数人认为团队并没有宣称已经完成 memory-safe 版本，真正被放大的更多是外界的标题党和对 Anthropic 的负面情绪。",
+        "supportid": [
+          "48151995",
+          "48152058",
+          "48152135",
+          "48152429",
+          "48153036",
+          "48153230",
+          "48152528",
+          "48153539",
+          "48152632",
+          "48152847",
+          "48152976"
+        ]
+      },
+      {
+        "category": "争议氛围：tribalism、shill 指控与 HN 反弹",
+        "summary": "很多评论本身也在抱怨讨论环境：一边是把项目当成 AI 失败案例狠狠干翻，另一边是把所有批评都打成 shill 或 flamebait。有人认为向 GitHub issue 狂轰滥炸没有帮助，只会让维护者更不愿意公开工作；也有人说既然代码已经进了 `main`，甚至发了 canary，那就理应接受公开批评。还有人提醒 HN 规则本来就反对无根据的 astroturfing 指控，而纠错信息通常传播得远不如原始爆点。整体气氛更像立场互撕，而不是针对 bug 的冷静审查。",
+        "supportid": [
+          "48152070",
+          "48152269",
+          "48152358",
+          "48152235",
+          "48152539",
+          "48152765",
+          "48152927",
+          "48153118",
+          "48152333",
+          "48152871"
+        ]
+      },
+      {
+        "category": "Zig 的 AI 立场与 Bun 迁移动机",
+        "summary": "不少评论把这次迁移放回 Zig 的 AI 政策背景里看：Zig compiler 项目明确拒绝 AI-authored contributions，理由是维护者无法和不会学习的“贡献者”建立工作关系。支持者把这解释为保护 contributor pipeline 和业务模式，而不是单纯的政治姿态；反对者则认为这迫使依赖 AI 的项目转向别的语言。还有人提到 Bun 之前的 Zig fork 本身就被批评过会带来非确定性和质量问题，所以改投 Rust 并不完全是意识形态，更像是找一个更适合继续用 AI 的生态。",
+        "supportid": [
+          "48152289",
+          "48152486",
+          "48152542",
+          "48152546",
+          "48153123",
+          "48153381",
+          "48152995",
+          "48153447",
+          "48152384",
+          "48153474"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Miri",
+        "explanation": "Rust 的动态检查工具，可用于发现部分未定义行为和不正确的 `unsafe` 用法。"
+      },
+      {
+        "term": "UB",
+        "explanation": "undefined behavior，程序违反语言语义后行为不再有确定含义。"
+      },
+      {
+        "term": "unsafe Rust",
+        "explanation": "允许绕过部分 Rust 静态检查的代码区域，但作者必须自己保证额外不变量。"
+      },
+      {
+        "term": "c2rust",
+        "explanation": "把 C 代码自动转换成 Rust 的工具，通常会生成大量 verbose 的直译式 `unsafe` 代码。"
+      },
+      {
+        "term": "lifetime annotations",
+        "explanation": "生命周期标注，用来描述引用有效期并帮助 Rust 检查借用关系。"
+      },
+      {
+        "term": "pointer provenance",
+        "explanation": "指针来源与合法性的规则；错误使用时，Rust 可能把它视为 UB。"
+      }
+    ],
+    "context": "Bun 是一个以 Zig 写成的高性能 JavaScript runtime，后来在 Anthropic 相关背景下开始把核心代码迁到 Rust，并大量借助 Claude Code 之类的 AI 工具生成首轮代码。这个 GitHub issue 指向的是迁移后的某些 Rust API：内部用了 `unsafe`，但对外却以 safe 方式暴露，结果被 Miri（Rust 的动态检查器）抓出可能触发 UB（undefined behavior，未定义行为）的路径。评论里反复强调，迁移通常会先做 1:1 的机械翻译，再逐步补生命周期、收紧不变量、减少 `unsafe`，所以很多争论其实是在讨论“中间态能不能接受”。之所以这事会被放大，是因为改动规模极大、还进了 `main`/canary 流程，外界自然会把它当成一次 AI 生成代码质量和开源维护方式的公开测试。",
+    "emoji": "😬",
+    "sarcastic_question": "百万行喂给AI，UB也算顺手修好了？"
+  },
+  "articleSummary": "## 一句话总结\nBun 的 Rust 重写代码连基本的 Miri 检查都没过，在 Safe Rust 里留下了悬垂指针这种 Undefined Behavior，这再次证明了用 AI \"凭感觉\"写 Rust 是行不通的。\n\n### 代码跑通了，但内存已经炸了\n文章开头直接甩出了一个 Miri 报错，这可不是普通的编译警告，而是实打实的 Undefined Behavior（UB）。错误信息很明确：在构造 `&[u8]` 切片时遇到了悬垂引用。这段代码的逻辑看似简单：把一个 `Box` 包装的字节数组传给 `PathString::init`，然后立刻把 `Box` 给 `drop` 掉。最后再调用 `init.slice()` 试图读取数据。问题在于，`test` 被释放后，`init` 内部还保留着指向那块内存的指针，这就是典型的 Use-After-Free。\n\n### Safe Rust 的伪装掩盖了 Unsafe 的真相\n有意思的地方在于，触发 UB 的那行代码 `core::slice::from_raw_parts` 被包裹在一个 `unsafe` 块里，但调用它的上下文却是 Safe Rust。说白了就是，开发者把极其危险的内存操作封装在了一个看起来很安全的 API 下面。Miri 检测到的 `0x20933[noalloc] has no provenance` 说明这个指针根本没有合法的内存来源。这种做法直接破坏了 Rust 的核心安全保证，让 Safe Rust 变成了不折不扣的陷阱。\n\n### AI 写不出严谨的 Rust 代码\n作者在文末的吐槽非常犀利：\"Please consider not vibe coding rust\"。这话说得挺重，但确实点到了痛处。现在的 AI 模型（包括 LLM）在生成代码时，往往是基于概率预测下一个 token，而不是基于严格的内存生命周期模型。Rust 这种对所有权和借用检查极其敏感的语言，容不得半点\"感觉差不多\"的模糊逻辑。AI 可能会生成一段能跑通 `println!` 的代码，但完全意识不到底层的内存生命周期已经错乱了。\n\n### 别让 AI 替代真正的 Rust 开发者\n这篇文章其实是一个警示：Bun 这种高性能项目在重写核心代码时，如果依赖 AI 或者缺乏经验的开发者来写 Rust，后果会很严重。Miri 这种工具的存在就是为了在运行前抓出这些隐蔽的 Bug，但前提是开发者得知道去用它，并且能看懂这些报错。Rust 的学习曲线虽然陡峭，但那是通往内存安全的必经之路，试图用 AI 跳过这个过程，最终只能收获一堆定时炸弹。"
+}

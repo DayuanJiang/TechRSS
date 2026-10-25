@@ -1,0 +1,108 @@
+{
+  "id": 48492822,
+  "by": "hollylawly",
+  "title": "The only scalable delete in Postgres is DROP TABLE",
+  "url": "https://planetscale.com/blog/the-only-scalable-delete",
+  "score": 132,
+  "createdAt": 1781450467,
+  "aiSummary": {
+    "chinese_title": "Postgres 大批量删除更适合 DROP TABLE/分区，DELETE 受锁和 vacuum 影响",
+    "discussion_overview": [
+      {
+        "category": "大批量删除应改用复制-切换-删表",
+        "summary": "这派观点认为，大批量 DELETE 本质上是在做大量写放大工作：要写 WAL、改索引、处理复制，还会留下需要后续清理的版本。真正常见的做法不是让数据库逐行删，而是把要保留的行复制到新表，然后 DROP 旧表再 rename，这样元数据级别的切换几乎是瞬时的。有人补充说，单行插入和单行删除在常规小事务里可以同样可扩展，问题出在一次性处理百万或亿级行的 bulk job。也有人指出，小表高 churn 场景里，DELETE 的代价还会受“自上次 VACUUM 以来累计的历史版本”影响。",
+        "supportid": [
+          "48528466",
+          "48532552",
+          "48529166",
+          "48528490",
+          "48528950"
+        ]
+      },
+      {
+        "category": "DELETE/UPDATE 在宽表和强约束下会非常慢",
+        "summary": "另一组评论强调，DELETE/UPDATE 的成本在某些场景里远高于 INSERT，尤其是宽表、可变长度 text、很多索引或强约束事务。有人给出实际经历：把约 2TB text 数据做更新，速度比插入 12TB 还慢很多，因为可变长字段通常不能原地改写，更新更像一次 delete 加一次 insert。还有人提到 Postgres 的 TOAST、非 HOT 更新以及 index maintenance 会让宽表删除和更新的负担迅速放大；在 FoundationDB 这类带事务大小限制的系统里，级联删除甚至会成为主要痛点。另有评论把存储层面的 erase/block 成本也拿来类比，说明“删”并不天然比“写”便宜。",
+        "supportid": [
+          "48528666",
+          "48529030",
+          "48529577",
+          "48529910",
+          "48528296",
+          "48529618"
+        ]
+      },
+      {
+        "category": "数据库不会自动偷偷改写成 DROP",
+        "summary": "不少人反对把 DROP TABLE 当成数据库内部可以自动偷偷执行的优化，因为数据库无法知道业务层是否还有并发写入。只要复制过程中还有新行进入，切换表时就可能丢数据，因此这种 copy-swap-drop 必须由应用明确保证静止窗口或停写条件。Postgres 里 DROP TABLE 还会拿 ACCESS EXCLUSIVE LOCK，队列中的其他语句会被连带阻塞，而且依赖对象也会被一起删除。评论还提到不同 RDBMS 的实现差异和潜在 stall，例如 MySQL 某些版本清理被删页面时会扫描整个 buffer pool。",
+        "supportid": [
+          "48528502",
+          "48529102",
+          "48529851",
+          "48528758",
+          "48528904",
+          "48530595",
+          "48528598"
+        ]
+      },
+      {
+        "category": "分区和 retention 才是时序数据的正解",
+        "summary": "很多评论把这个问题限定在 time-series、append-only 或 retention 场景，而不是通用 CRUD。对这类数据，更合理的做法是提前按时间或分桶分区，写入时就把数据放到可独立丢弃的子表里，到了保留期限直接 detach/drop 分区。有人举例用 materialized tables、partition TTL、pg_partman、TimescaleDB，或者把长期存储转到 Iceberg on S3，只让 Postgres 保留可更新的 OLTP 热数据。也有人提到迁移大表时可以先复制可保留部分，再做最后一次 catch-up copy 和切表，甚至用 pg_repack 之类工具减少在线重写的影响。",
+        "supportid": [
+          "48535311",
+          "48528451",
+          "48528576",
+          "48530719",
+          "48528965",
+          "48528499",
+          "48528845",
+          "48534791"
+        ]
+      },
+      {
+        "category": "标题过于绝对，实际还要看 autovacuum 和场景",
+        "summary": "也有评论认为标题过于绝对：如果 autovacuum 调得好，Postgres 的 DELETE 在 TB 级别上也可能跑得很稳。批量 DELETE 后再手工 VACUUM ANALYZE 回收空间，是不少团队的常规做法；而对测试库或少量行的清理，DELETE 甚至可能比 TRUNCATE 更合适。另一种观点是，频繁需要清空整表往往意味着数据模型本身有问题，但现实里 GDPR 这类保留期限要求又会迫使团队做批量删除。总体上，这一派更强调看场景和参数，而不是把 DROP TABLE 说成唯一答案。",
+        "supportid": [
+          "48528619",
+          "48530769",
+          "48530916",
+          "48529393",
+          "48528861"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "MVCC",
+        "explanation": "Multi-Version Concurrency Control，多版本并发控制；Postgres 用它让读写并发，但会留下旧版本行。"
+      },
+      {
+        "term": "autovacuum",
+        "explanation": "Postgres 的自动清理后台机制，用来回收 dead tuples 并维持表性能。"
+      },
+      {
+        "term": "VACUUM ANALYZE",
+        "explanation": "手动清理死元组并刷新统计信息的命令，批量 DML 后常用。"
+      },
+      {
+        "term": "dead tuples",
+        "explanation": "已删除或已更新但尚未被 vacuum 清理的旧行版本，会占空间并拖慢查询。"
+      },
+      {
+        "term": "partitioning",
+        "explanation": "分区表设计，把数据按时间或范围拆成多个子表，便于直接 drop 旧分区。"
+      },
+      {
+        "term": "ACCESS EXCLUSIVE LOCK",
+        "explanation": "Postgres 最强表锁，持有时几乎会阻塞所有其他读写和 DDL。"
+      },
+      {
+        "term": "TOAST",
+        "explanation": "Postgres 存放大字段的溢出机制，影响宽行更新和删除的成本。"
+      }
+    ],
+    "context": "这篇讨论围绕一篇关于 Postgres 大规模删除性能的文章展开，核心观点是：当需要删掉大部分行时，逐行 DELETE 会产生大量 dead tuples、索引维护和 vacuum 负担，因此用复制保留数据后 DROP 旧表通常更快。评论把这个结论放到 MVCC、autovacuum、锁队列和外键依赖的背景下讨论，也顺带比较了 MySQL/MariaDB、Oracle、FoundationDB 等系统在大规模删除上的差异。很多人把它归结为 retention 和 partitioning 设计问题：对时间序列或 append-only 数据，提前分区、按期限丢分区，或把冷数据转到 Iceberg（数据湖表格式）和 S3 更现实。争议点在于，这种技巧只适用于明确知道没有并发写入、且业务允许丢弃整块对象的场景，并不能推广到一般 OLTP CRUD。",
+    "emoji": "🤔",
+    "sarcastic_question": "既然最可扩展的是DROP TABLE，DELETE还配叫主流吗？"
+  },
+  "articleSummary": "## 一句话总结\n在 Postgres 中处理大规模数据删除时，核心思路不是逐行清理，而是通过 `DROP TABLE` 或 `TRUNCATE` 来彻底规避 MVCC 机制带来的性能损耗与存储膨胀。\n\n### DELETE 的本质其实是“增加工作量”\n在 Postgres 中，`DELETE` 并不像我们直觉认为的那样是在“擦除”数据。为了实现 MVCC（多版本并发控制），Postgres 在删除行时，实际上只是把该行标记为“死元组”，原始数据依然保留在磁盘上。这意味着删除操作不仅不会立即释放物理空间，反而会产生大量的写操作和复制延迟。更糟糕的是，索引在删除时并不会被实时清理，读查询依然需要扫描这些死数据来判断其可见性。说白了，大规模 `DELETE` 不是在减轻数据库负担，而是在给读操作和后续的清理进程（autovacuum）增加额外的工作量。\n\n### 物理空间释放的“假象”与代价\n很多开发者发现执行完 `DELETE` 后磁盘空间没变，这并非 bug，而是 Postgres 的设计选择。普通的 `DELETE` 或 autovacuum 仅仅是将空间标记为“可重用”，以便后续 `INSERT` 时覆盖，而不是把空间还给操作系统。这种设计是为了避免频繁向操作系统申请和归还内存页的开销。如果你想真正回收磁盘空间，必须使用 `VACUUM FULL`，但这会长时间锁表，代价极高。因此，在混合读写负载下，依赖 `DELETE` 来清理数据会导致表文件不断膨胀，也就是所谓的“Bloat”。\n\n### DROP TABLE 才是真正的“秒删”\n相比之下，`DROP TABLE` 和 `TRUNCATE` 虽然需要获取重量级的 `AccessExclusiveLock`，但其执行效率与数据量几乎无关。在物理层，它们直接删除操作系统中的文件，并清理共享缓冲区中的相关页。这里有个巧妙的设计：清理缓冲区时，Postgres 只需要扫描每个 8KB 页面对应的 64 字节头部，而不是页面本身的数据。这意味着即使你有 128GB 的共享缓冲区，清理工作也只需要扫描约 1GB 的元数据，在现代硬件上这非常快。这种方式不会产生任何死元组，没有 vacuum 债务，且能立即将空间归还给操作系统。\n\n### 一次性清理数据的“外科手术”方案\n如果你的表因为 Bug 写入了大量垃圾数据，且允许短暂停机，可以利用 Postgres 的事务性 DDL 做一次“手术”。具体做法是：先开启事务并加排他锁，创建一个临时表存入需要保留的有效数据，然后 `TRUNCATE` 原表，最后将临时表的数据插回去。这个过程中，只有重新插入的数据会写入 WAL（预写式日志），比直接执行海量 `DELETE` 高效得多。如果无法承受长时间锁表，则可以使用基于触发器的镜像方案，或者像 `pg_squeeze` 扩展那样在后台重建表，但这属于补救措施，而非长久之计。\n\n### 用分区化将“删除”变为“丢弃”\n对于需要持续清理历史数据的场景，最优雅的方案是使用 Postgres 10 引入的原生分区功能。通过按日期或类型进行分区，你可以将原本需要执行 `DELETE WHERE created_at < ...` 的操作，转化为直接 `DROP TABLE` 删除旧分区。这种策略将昂贵的行级数据清理变成了极低成本的元数据操作。你甚至可以结合 `LIST` 和 `RANGE` 进行递归分区，实现更灵活的数据生命周期管理，从而从架构层面根除大规模 `DELETE` 带来的性能隐患。"
+}

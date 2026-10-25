@@ -1,0 +1,84 @@
+{
+  "id": 49824864,
+  "by": "WanjohiRyan",
+  "title": "Virtio-nvgpu: Near-native Nvidia GPU access inside a KVM guest",
+  "url": "https://github.com/nestrilabs/virtio-nvgpu",
+  "score": 126,
+  "createdAt": 1790216432,
+  "aiSummary": {
+    "chinese_title": "virtio-nvgpu：KVM 多 VM 近原生共享 Nvidia GPU，但隔离几乎为零",
+    "discussion_overview": [
+      {
+        "category": "性能优势与实现机制",
+        "summary": "该项目让 guest 使用标准 NVIDIA 用户态驱动，并通过伪造的 /dev/nvidia* 内核模块把 ioctl 和句柄经 virtio 队列转交给 host 的 NVIDIA 内核驱动执行。由于没有像 Venus 那样序列化并重放高层图形 API，作者称性能损失约为 2%，README 则称可让最多 4 个 guest 同时共享 GPU。其核心效果类似 host 上多个进程共用同一驱动内核，而不是为每个 VM 分配真正独立的 GPU。该设计借鉴了 gVisor 的 nvproxy，但扩展目标是图形工作负载，并计划可接入 microVM、Cloud Hypervisor 或 Firecracker。",
+        "supportid": [
+          "49826982",
+          "49827178",
+          "49825583",
+          "49826571"
+        ]
+      },
+      {
+        "category": "安全隔离被认为是根本短板",
+        "summary": "评论者指出，guest 的 ioctl 默认会被转发给 host，VMM 还持有读写文件描述符，当前没有 seccomp、capabilities 或 ioctl allowlist 等限制。因而恶意 guest 理论上可能攻击 host 的 GPU 驱动路径，DMA 与 VM escape 风险也没有得到充分说明。有人认为这并不比在 host 直接运行不可信软件更糟，因此个人桌面场景或许可接受；但数据中心 hypervisor 场景基本不可用。消费者级 NVIDIA GPU 缺少可用的硬件级隔离能力，令软件层面彻底解决此问题非常困难。",
+        "supportid": [
+          "49827567",
+          "49826881",
+          "49827114",
+          "49827484",
+          "49830070"
+        ]
+      },
+      {
+        "category": "与 VFIO、virtio-gpu、vGPU 的取舍",
+        "summary": "VFIO passthrough 将整张 PCI GPU 独占交给一个 VM，隔离最强，但 host 通常失去该 GPU 的显示能力，往往需要集显或第二张卡。传统 virtio-gpu 通过 virgl 或 Venus 将 guest 图形调用交给 host 驱动重放，可多 VM 共享但开销较大，低层能力如 NVENC 也会受 CPU readback 限制。AMD、Intel 和 Qualcomm 已有 DRM native context 一类方案；NVIDIA 因闭源驱动且没有对应的 Mesa 驱动，长期缺少等效路径。NVIDIA vGPU 与 MIG 可提供更正规的切分，但 vGPU 常受授权限制，MIG 也不面向 GeForce 等消费者卡。",
+        "supportid": [
+          "49827567",
+          "49828243",
+          "49827367",
+          "49830475",
+          "49827593"
+        ]
+      },
+      {
+        "category": "应用前景、兼容性与产品表达",
+        "summary": "潜在用途包括在同一台机器上运行多个远程游戏会话、保留 host 对单张 GPU 的使用权，以及避免笔记本上反复 detach/attach NVIDIA GPU 的 passthrough 流程。项目目前不能驱动物理显示器，且尚不支持 Windows guest，Windows 仍在 roadmap 上；Proxmox、OpenStack 和实时迁移等集成问题也主要停留在提问阶段。Nestri 和 Nesbox 被提及为相关项目，前者试图把多用户游戏会话和远程串流封装为完整工具链。README 同时遭批评为 LLM 风格、ASCII 图表粗糙且性能百分比缺乏与 virtio 的公平对照，作者承认英语非母语并表示会把“多 guest、近原生速度”的价值更早写清。",
+        "supportid": [
+          "49827426",
+          "49825513",
+          "49825587",
+          "49829522",
+          "49825378",
+          "49825460",
+          "49828396"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "VFIO passthrough",
+        "explanation": "Linux 的设备直通机制：把完整 PCI 设备直接交给一个 VM，性能和隔离性高，但通常无法由 host 与多个 VM 同时共享。"
+      },
+      {
+        "term": "virtio-gpu",
+        "explanation": "KVM/QEMU 的半虚拟化 GPU 接口；guest 使用虚拟 GPU，图形命令由 host 侧驱动处理，便于共享但可能有明显转换开销。"
+      },
+      {
+        "term": "DRM native context",
+        "explanation": "让 guest 持有更接近原生的 GPU 上下文与命令缓冲区、由 host 映射和调度的虚拟化思路，主要见于 AMD、Intel 等开源图形驱动生态。"
+      },
+      {
+        "term": "vGPU / MIG",
+        "explanation": "NVIDIA 的 GPU 虚拟化与硬件分区能力；vGPU 可把一张卡分配成多个虚拟 GPU，MIG 则提供更强的硬件级实例隔离，但消费级 GeForce 通常不支持或受授权限制。"
+      },
+      {
+        "term": "nvproxy",
+        "explanation": "gVisor（Google 的应用容器沙箱）中的 NVIDIA GPU 代理层，转发和验证 CUDA/NVIDIA 驱动交互；本项目借鉴其架构。"
+      }
+    ],
+    "context": "KVM 是 Linux 上常用的虚拟机技术，而 NVIDIA GPU 的高性能虚拟化长期在“整卡直通”与“安全多租户共享”之间难以兼得。virtio-nvgpu 试图让多个 Linux guest 借由 host 的 NVIDIA 内核驱动共享同一张 GPU，避免 VFIO passthrough 独占设备及传统 virtio-gpu 的图形 API 转译开销。它所依赖的 NVIDIA 闭源驱动接口并非为无信任 VM 多租户而设计，尤其消费者 GPU 缺少 MIG（一种硬件级 GPU 分区与隔离机制），因此性能成果伴随显著攻击面。讨论也关联 gVisor 的 nvproxy（GPU 驱动代理机制）、Nestri（多用户远程游戏串流工具）以及 Linux 容器或虚拟机中共享 CUDA、图形加速的需求。",
+    "emoji": "⚠️",
+    "sarcastic_question": "把GPU ioctl全转给宿主机，也敢叫虚拟机隔离？"
+  },
+  "articleSummary": "## 一句话总结\n`virtio-nvgpu` 通过在驱动 ABI 层面透传 ioctl，让 KVM 虚拟机以近乎原生（<2%损耗）的性能运行 NVIDIA GPU 任务，解决了 API 级翻译方案的高延迟和 VFIO 直通的独占问题。\n\n## 正文\n\n### 为什么现有的虚拟化 GPU 方案都不够完美\n如果你想在云端做游戏流媒体或 AI 推理，现有的方案总差点意思。Venus 这种 API 级翻译方案，需要把 Guest 的每个 Vulkan 调用序列化、传输、反序列化再重放。游戏一帧可能发出 5000 个 Draw Call，这串操作能把 CPU 吃满，还没算上 Guest 端无法直接访问显存导致 NVENC 编码无法工作的硬伤。VFIO 直通虽然性能无损，但一张卡只能给一个 VM 用，这在多租户场景下简直是暴殄天物。至于 Intel/AMD 的 DRM Native Context，确实思路对路，但可惜 NVIDIA 并不支持。\n\n### 换个思路：不翻译 API，只转发 ioctl\n`virtio-nvgpu` 的核心思路很巧妙：它不碰图形 API，而是拦截 NVIDIA 内核驱动的 ioctl。Guest 里跑的是 NVIDIA 原生的用户态驱动（就是平时用的那些库），它们在 Guest 内存里直接构建好 GPU 指令流。驱动层只需要把这些指令提交请求（ioctl）通过 virtio 队列转发给 Host 即可。这意味着繁重的 Draw Call 编译和构建都在 Guest 本地完成，不需要 VM Exit，也不需要序列化，彻底绕过了 API 翻译的 CPU 瓶颈。\n\n### 性能数据：几乎就是裸机跑分\n作者在 RTX 3060 上跑了实测，数据相当惊人。在 GPU 密集型负载（每帧耗时 >2ms）下，Guest 的性能达到了裸机的 98%-100%。具体来看，Host 渲染一帧要 39ms，Guest 只要 38.85ms，甚至比裸机还快一点点（属于噪音范围）。CPU 开销方面，Guest 甚至比 Host 还省了一点点（0.37s vs 0.40s）。说白了，渲染循环里几乎没有转发开销，因为 NVIDIA 驱动直接映射了 Host 的内存，只有在设备初始化等极少情况下才需要跨 VM 通信。\n\n### 一张卡跑四个 VM，资源分配极其均衡\n多租户隔离能力如何？作者在一张 RTX 3060 上起了四个 Guest，跑同样的负载。结果四个 VM 的帧率分别是 25.84、26.49、25.57、25.79 fps，总吞吐量甚至略高于单 VM。更关键的是，四个 VM 同时进行 NVENC 硬编码，互不干扰，也没触发 NVENC 的 Session 限制。这证明了该方案在并发场景下的调度是公平且有效的。\n\n### 架构设计：Guest 内核模块配合 Rust 设备端\n代码结构设计得很清晰。Guest 端是一个 GPL 协议的内核模块，负责注册 `/dev/nvidia*` 设备，把 ioctl 请求扔到 virtio 队列里，它不解析 ABI，只管搬运。Host 端是一个 Apache 2.0 协议的 Rust Crate，与 VMM 解耦，VMM 只需实现几个 Trait（内存映射、事件队列等）就能接入。这种设计既满足了 Linux 内核模块的 GPL 要求，又保证了 Host 端代码的商业友好性。\n\n### 安全边界：这是攻击面缩减，不是硬件隔离\n这里必须划重点：安全人员可能会问，Guest 能访问 Host 内存吗？答案是：没有 IOMMU 边界。这张卡在 Host 的 IOMMU 组里，Guest 拿到的是驱动接口而非设备本身。虽然 GPU 有自己的 MMU 做隔离，但 Host 的 NVIDIA 驱动依然在信任域（TCB）内。作者通过 ABI 白名单机制拒绝未定义的 ioctl 来缩减攻击面，但这依然比不上 VFIO + IOMMU 的硬件级隔离。对于互不信任的租户，还是得用 vGPU 或 VFIO。\n\n### 目标场景明确：无头渲染流\n这个项目非常克制，目标场景就是 Headless Streaming。Guest 里的 Wayland 合成器渲染、合成、编码，最后吐出 H.264 码流。它不支持显示器输出，也不支持 Unified Memory。整个渲染-编码管线都在 Guest 的 GPU 上完成，只有压缩后的视频流流出 VM，这正是云游戏和远程桌面最需要的路径。\n\n### 还有什么没做完\n目前这还是个早期项目。虽然 CUDA 枚举能跑，但还没深度测试；那个计划中用于安全隔离的 `isolate` 进程模型还没写代码，目前设备描述符还握在 VMM 进程手里。作者只测了四个 Guest，更多负载和更复杂的 CUDA 任务还有待验证。但对于想解决 NVIDIA GPU 虚拟化性能损耗的开发者来说，这无疑是一条值得关注的全新技术路线。"
+}

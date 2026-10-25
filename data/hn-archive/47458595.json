@@ -1,0 +1,88 @@
+{
+  "id": 47458595,
+  "by": "GaggiX",
+  "title": "Attention Residuals",
+  "url": "https://github.com/MoonshotAI/Attention-Residuals",
+  "score": 233,
+  "createdAt": 1774033260,
+  "aiSummary": {
+    "chinese_title": "Attention Residuals：训练省算力还是被误读成推理提速",
+    "discussion_overview": [
+      {
+        "category": "论文机制与实现细节",
+        "summary": "评论里先有人把摘要拆开，指出 AttnRes 不是把所有 residual 机械相加，而是对前序层表示做 softmax attention。有人进一步强调，Full AttnRes 在大规模训练时会有 O(Ld) 级别的内存和通信压力，所以作者才提出 Block AttnRes，把层切成若干 block 后先在块内累积，再在块级表示上做注意力。讨论中还提到，取大约 8 个 block 就能保住大部分收益，因此它更像是面向规模化训练的工程化改造，而不是纯概念展示。有人因此把它理解成一种可近似替换原结构的 drop-in replacement。",
+        "supportid": [
+          "47460036",
+          "47459736"
+        ]
+      },
+      {
+        "category": "性能宣传被纠正为训练损失/算力，而非推理提速",
+        "summary": "不少评论一开始把论文读成训练能省约 20% 算力、推理也能明显降带宽，甚至能在消费级硬件上跑得更好。随后有人纠正说，这个 20% 指的是非 AttnRes 模型要多花多少 compute 才能达到相同 loss，而不是直接宣称训练时间减少或推理加速。所谓 1/6 memory bandwidth 的说法也被指出并非论文的普遍结论，而更像围绕 DeepSeek 的 mHC（multi-lane highway connections，一种改善深层信息流的连接方式）以及部分中文二次解读才出现的部署场景。争论的核心是：benchmark 上的少量提升、loss 曲线和实际 inference 性能不是一回事，不能把“更省 compute”自动翻译成“推理飞升”。",
+        "supportid": [
+          "47459484",
+          "47459635",
+          "47460677",
+          "47460810",
+          "47459676",
+          "47460185",
+          "47460761",
+          "47460910"
+        ]
+      },
+      {
+        "category": "作者身份与项目热度",
+        "summary": "有人惊讶地发现第一作者还是高中生，这让讨论自然转向“少年天才”叙事。另一个评论顺带提到该项目在很短时间内拿到了两千多个 GitHub stars，因此一开始会让人觉得它像是突然爆红的热门项目。这个观察本身并不评价论文真假，但说明作者背景和社交热度确实显著影响了大家对论文的第一印象。",
+        "supportid": [
+          "47460324",
+          "47461215"
+        ]
+      },
+      {
+        "category": "中国人口/教育统计争论",
+        "summary": "从“第一作者是高中生”这条线又延伸出一段关于中国教育和人口结构的争论，有人把它上升成“受过中国培养的年轻天才会越来越多”。反对者则拿人口金字塔和 2024 年中国初中毕业去向数据来说明，高中学龄人口未必还在增长，且并非所有人都会继续上普通高中。随后讨论转到官方统计是否可靠：一派认为中国数据常有夸大增长的激励，甚至怀疑那 300 万“消失”的学生可能根本不存在；另一派则反击说，长期宣称“中国所有数据都不可信”同样缺乏证据，而且各国官方统计都会有误差和宣传动机。这个分支基本是在讨论“该对中国官方数据保留多少怀疑”，而不是论文本身。",
+        "supportid": [
+          "47461020",
+          "47461345",
+          "47461969",
+          "47462094",
+          "47462807",
+          "47463340"
+        ]
+      },
+      {
+        "category": "结构类比到 LSTM",
+        "summary": "有人把 AttnRes 类比成 LSTM（长短期记忆网络）里的 input gates，意思是它不再把过去状态一视同仁地硬相加，而是学会挑选保留哪些历史表示。这个类比强调的是“门控”而不是“残差”，帮助把论文直观地理解成一种更柔性的历史信息筛选机制。虽然只是简短一句，但它说明读者在试图用更熟悉的序列模型概念来解释这种新型 residual aggregation。",
+        "supportid": [
+          "47459229"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "PreNorm",
+        "explanation": "Transformer 中先做 LayerNorm 再进入 residual/attention 模块的结构。"
+      },
+      {
+        "term": "residual connections",
+        "explanation": "把前层输出直接加到后层输入上的结构，用来缓解深层网络训练困难。"
+      },
+      {
+        "term": "softmax attention",
+        "explanation": "用 softmax 归一化权重，在多个历史表示中选择性聚合信息的机制。"
+      },
+      {
+        "term": "Block AttnRes",
+        "explanation": "把层按 block 分组后再做 Attention Residuals 的近似版本，目的是降低内存和通信开销。"
+      },
+      {
+        "term": "memory bandwidth",
+        "explanation": "内存读写吞吐上限，部署或推理时常常成为性能瓶颈。"
+      }
+    ],
+    "context": "这篇 arXiv（学术预印本网站）预印本《Attention Residuals》提出把 Transformer（主流大模型架构）里的 residual connections（残差连接）从固定逐层相加改成对历史层表示做 attention，让模型按输入内容选择性地聚合过去的信息。作者声称这种改法能缓解 PreNorm（先做 LayerNorm 再进入残差块）的隐藏状态随深度膨胀问题，并在训练 loss 上带来更好的 compute tradeoff。为了避免 Full AttnRes 在大模型上出现 O(Ld) 级别的内存和通信开销，论文又给出 Block AttnRes（分块版），把层分成若干 block 后再做近似聚合。评论区主要围绕两件事展开：它到底改善的是训练还是推理，以及第一作者还是高中生、因此项目在 GitHub 上迅速走红。",
+    "emoji": "🤔",
+    "sarcastic_question": "论文只说训练更省，怎么被说成推理也1/6了呢？"
+  },
+  "articleSummary": "## 一句话总结\n把 Transformer 里死板的“残差求和”换成了基于深度的“注意力机制”，让每一层都能根据输入动态选择回顾之前的层，从而在不增加计算量的前提下显著提升模型性能。\n\n### PreNorm 的老毛病：加法太均匀，信号被稀释\n标准的 Transformer（特别是 PreNorm 架构）里，残差连接的逻辑非常简单粗暴：每一层都把上一层的输出原封不动地加过来。这种“均匀累加”在模型变深时会有个大问题：每一层的新贡献会被不断稀释，而且因为总是 +1，导致隐藏状态的数值会随着深度无限增长。这就像做汤，每次都加等量的水，越往后味道越淡，锅还越来越沉。\n\n### 既然能关注 Token，为什么不能关注“层”？\nMoonshot AI 的思路很巧妙：既然我们在 Attention 机制里可以让 Token 关注其他 Token，为什么不能让“当前层”也去关注“之前的层”呢？于是他们提出了 Attention Residuals（AttnRes）。核心改动是把固定的单位权重换成了 Softmax 注意力权重。每一层都有一个可学习的 pseudo-query $\\mathbf{w}_l$，用来计算它应该对前面所有层的输出赋予多大的权重。说白了，就是让模型自己决定：“这一步，我该多听听第 5 层的，还是第 10 层的？”\n\n### 全量连接太贵？那就按“块”来算\n理想很丰满，但现实很骨感。Full AttnRes 让每一层都去关注之前所有层，这会导致显存占用变成 $O(Ld)$，深模型根本吃不消。为了解决这个问题，他们设计了 Block AttnRes。做法是把层分成若干个 Block（比如 8 个），Block 内部还是用标准的残差连接，只在 Block 之间应用这种注意力机制。这样既保留了动态选择历史信息的能力，又把显存开销降到了和普通 Transformer 差不多的水平。\n\n### 代码里的玄机：在 Attention 和 MLP 之前各插了一手\n具体到实现上，Block AttnRes 的逻辑非常紧凑。在进入 Self-Attention 和 MLP 之前，模型都会先做一次 `block_attn_res`。它会拿当前 Block 的“部分和”以及之前所有 Block 的“完整表示”算一次注意力。算完这个“跨层回顾”的向量后，再作为输入喂给 Attention 或 MLP。一旦层数达到 Block 边界，就把当前的“部分和”存入列表，作为下一个 Block 的历史记录。\n\n### 性能提升：白捡了 1.25 倍的算力\n这种改动带来的收益是实打实的。从 Scaling Law 的曲线来看，AttnRes 在所有计算预算下都优于 Baseline，Block AttnRes 的效果更是相当于 Baseline 用了 1.25 倍算力训练出来的结果。在 Kimi 48B 模型（1.4T tokens）的实测中，各项指标全面上涨。特别是在需要多步推理的 GPQA-Diamond 上提升了 7.5 分，代码生成 HumanEval 提升了 3.1 分，这可不是简单的随机波动。\n\n### 训练更稳：梯度分布均匀了\n除了最终分数，训练动态的变化也很有意思。因为引入了基于内容的动态权重，AttnRes 有效缓解了 PreNorm 的信号稀释问题。数据显示，模型输出在深度方向上的幅度变得有界了，不会无限膨胀；更重要的是，梯度的范数在各个层之间分布得更均匀。这意味着模型不再是“头重脚轻”或者“中间层摸鱼”，每一层都在实实在在地学东西。"
+}

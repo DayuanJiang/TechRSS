@@ -1,0 +1,105 @@
+{
+  "id": 48896600,
+  "by": "cakehonolulu",
+  "title": "Linux on the Sega 32X. Who needs hardware synchronization primitives anyway?",
+  "url": "https://cakehonolulu.github.io/linux-on-32x/",
+  "score": 125,
+  "createdAt": 1783969214,
+  "aiSummary": {
+    "chinese_title": "Sega 32X 上的 Linux：无硬件同步也能做 SMP",
+    "discussion_overview": [
+      {
+        "category": "32X 上的 Linux / SMP 进展",
+        "summary": "发帖者说明自己先在 Atari Jaguar 上试过 Linux 移植，随后把同样思路搬到 Sega 32X（Sega Genesis/MD 的外接增强模块）上。最关键的卖点是：即使没有硬件同步原语，也能把系统做成面向 SMP 的 Linux。评论里还有人顺手追问双 SH-2 的协作细节，把它看成一个相当罕见的复古硬件实验。",
+        "supportid": [
+          "48896601"
+        ]
+      },
+      {
+        "category": "BogoMIPS 和定时器连线",
+        "summary": "有人注意到两颗 CPU 的 BogoMIPS 分别是 10 和 20，怀疑这反映了底层定时器或连线方式不一致。回复解释说，Linux 会用所选 timer 做校准，而 secondary SH-2 的 FRT（Free-running Timer）接线可能有误，所以数值不一致不一定是性能差异，而更像是硬件映射或驱动配置的问题。这个细节也侧面说明，这类移植不仅是“能启动”，还要把时钟源和中断线接对。",
+        "supportid": [
+          "48899648",
+          "48899766"
+        ]
+      },
+      {
+        "category": "卡带写入、MiSTer 与内存布局",
+        "summary": "围绕 32X 的 cartridge area 是否能被 SH-2 直接写入，讨论重点转向了总线仲裁 ASIC、N/C 引脚以及 PSRAM/SDRAM 的真实连接方式。回复指出，这次测试是在软件/仿真语境中完成的，32X 实际上更像是在访问自身的 SDRAM，而不是直接把卡带当 RAM；如果要做 XIP（Execute In Place），或许能进一步压缩空间。另有人把话题延伸到 MiSTer FPGA（一个开源 FPGA 复刻游戏平台）上的扩展 mapper 和 SH3 core，认为更大内存的 SH3 平台也许更适合跑完整 Linux。总体上，这组讨论强调了“能不能写卡带”比“能不能编译通过”更决定这类移植的边界。",
+        "supportid": [
+          "48899759",
+          "48899977",
+          "48898411",
+          "48899103",
+          "48900360"
+        ]
+      },
+      {
+        "category": "串口控制台、Sega CD/Saturn 的可玩性",
+        "summary": "有人想知道能否用 serial port 当终端或键盘输入，发帖者则说明自己是把 SH-2 的 UART 数据通过 68000 转发出去，因为 32X 上 SH-2 对 Genesis I/O 的直接访问很弱，而且 TTL UART 最高只有 4800 bps。于是 console 输出可以做，但交互能力和带宽都非常紧张；如果再加键盘驱动，只会把 68000 dispatcher 和中断转发逻辑搞得更复杂。讨论还比较了 Sega CD 和 Saturn：Sega CD 的副 68000 不共享内存，几乎没法做 SMP；而 Saturn 的 SH-2 更快、32-bit bus 和 4MB RAM 扩展更实际。有人顺带指出，真正的 Linux 还离不开 MMU，这也是很多方案最终会卡住的地方。",
+        "supportid": [
+          "48897430",
+          "48897622",
+          "48899823",
+          "48900670",
+          "48902457",
+          "48903451"
+        ]
+      },
+      {
+        "category": "把视频信号当数据通道的脑洞",
+        "summary": "有人提出既然 UART 带宽和同步开销都很紧张，能否把视频输出改造成一种“看不太见”的数据流，以换取更多可用资源。回复指出这类思路并不新，像 Lumacode（用 composite video 的亮度层编码数据）就是现成范例。另一些人补充说，若只是为了削减体积，视频驱动也许能做得更激进，但到那一步通常还是 UART 更简单可靠。这个分支更像是在讨论“极限省资源”时，console hack 还能玩到什么离谱程度。",
+        "supportid": [
+          "48899091",
+          "48903584",
+          "48899161",
+          "48899237"
+        ]
+      },
+      {
+        "category": "SuperH 架构背景与软件互斥",
+        "summary": "有人借机介绍 SuperH（Hitachi 的嵌入式 RISC 架构）和 THUMB（ARM 的 16-bit 压缩指令集）很像，都是为了缩短指令编码而做取舍，只是还保留了 branch delay slot 这类 90 年代常见的“RISC jank”。另一些评论补充说，两操作数指令本身并不稀奇，但在主机和嵌入式 CPU 上会显得很有时代感。与此同时，大家还提到没有硬件同步原语时可以联想到 Petersen’s algorithm 和 Lamport 的 fast mutex。这个角度把标题里的“谁还需要 hardware synchronization primitives”从玩笑拉回到经典并发算法。",
+        "supportid": [
+          "48899881",
+          "48900412",
+          "48900011",
+          "48900946"
+        ]
+      },
+      {
+        "category": "“在任何像电脑的东西上跑 Linux”的复古心态",
+        "summary": "有人把这类新帖和 2000 年代早期“见到任何像电脑的东西就试着启动 Linux”的时代联系起来。另一个人直接拿它类比为“Running DOOM on x”，意思是核心价值不一定在实用性，而在展示硬件被反常规利用的极限。这个角度把整帖读成一种持续存在的硬件折腾文化，而不是单纯的操作系统工程。",
+        "supportid": [
+          "48898856",
+          "48899062"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "SMP",
+        "explanation": "对称多处理，多个 CPU 共享同一操作系统实例并协作运行任务。"
+      },
+      {
+        "term": "SuperH / SH-2",
+        "explanation": "Hitachi 的 RISC CPU 架构，32X 用的是双 SH-2；评论里多次拿它和 THUMB、MIPS 对比。"
+      },
+      {
+        "term": "BogoMIPS",
+        "explanation": "Linux 用时钟校准算出的“伪 MIPS”值，主要反映 timer/初始化是否正常，不是实际性能。"
+      },
+      {
+        "term": "UART",
+        "explanation": "通用异步收发传输器，串口通信接口；这里用来做控制台输出/输入。"
+      },
+      {
+        "term": "MMU",
+        "explanation": "内存管理单元，提供虚拟内存和地址映射；标准 Linux 通常依赖它。"
+      }
+    ],
+    "context": "这篇帖子展示的是把 Linux 移植到 Sega 32X（Sega Genesis/MD 的外接增强模块）上的实验，标题里的“hardware synchronization primitives”指的是在双 CPU 之间不用硬件锁也要做协调。32X 依赖两颗 Hitachi SH-2（SuperH）CPU 和一颗 68000，评论因此集中在 SMP（对称多处理）、定时器、UART 以及内存/总线映射这些限制上。讨论还把 32X 和 Sega CD、Saturn 以及 MiSTer FPGA（一个开源 FPGA 复刻游戏平台）拿来比较，看看哪些平台更适合跑真正的 Linux 而不是 uCLinux（针对无 MMU 处理器的 Linux 变体）。这种“把 Linux 塞进古董硬件”的味道，也很像早年“在任何像电脑的东西上启动 Linux”或“在 x 上跑 DOOM”的黑客文化。",
+    "emoji": "🤯",
+    "sarcastic_question": "没硬件同步原语，真靠玄学跑 Linux？"
+  },
+  "articleSummary": "## 一句话总结\n在缺乏硬件同步原语的 Sega 32X 双核 SH2 架构上，作者利用 Peterson 算法实现纯软件锁，并让 68000 充当中断仲裁器，成功让 Linux 跑起了 SMP。\n\n### 硬件架构的奇葩组合：双核 SH2 加上古董 68000\nSega 32X 是个典型的过渡期怪胎，它插在 Genesis（Mega Drive）的卡槽上，本身却有两颗 23 MHz 的 Hitachi SH2 处理器，而底座 Genesis 还有一颗 7.6 MHz 的 Motorola 68000。这种架构带来了一个有趣的挑战：要让 Linux 跑起来，必须同时初始化这三颗 CPU。作者参考了开源的 32X SDK，先让 68000 负责“打杂”（比如初始化 SH2 缓存、搬运代码），然后让主 SH2 跳转到 Linux 入口，从 SH2 则暂时挂起。但这只是第一步，真正的麻烦在于内存极其紧张。\n\n### 内存不够？Flash Cart 的 Mapper 来凑\n移植 Linux 最大的拦路虎通常是内存，32X 只有 256KB SDRAM，这点空间连塞进内核都费劲。好在现在的 FPGA Flash Cart（比如 Krikkz 的 EverDrive）支持“Extended SSFv2 Mapper”。这东西原本是用来通过 Bank Switching 让老游戏机支持更大 ROM 的，作者发现它可以配置成“ROM as RAM”模式。通过这种骚操作，硬是“变”出了 4MB 的可用内存。作者精心规划了内存布局，留出约 540KB 给 Linux 内核和 initramfs 的二进制文件，剩下的空间全部当作 RAM 使用，终于解决了“无处安放”的问题。\n\n### 编译器与内核的连环坑：ICE 和寄存器损坏\n搞定内存后，编译过程也不顺利。GCC 在编译 `kernel/nstree.c` 时直接报了内部错误（ICE），作者只能绕过这个问题。更严重的是，内核启动后莫名其妙挂起，经过调试发现是 `ashlsi3` 等汇编函数破坏了不该动的寄存器，导致栈被踩烂。修复这个问题后，又遇到了非法指令错误——原来 SH2 根本不支持 `shrd` 指令，作者不得不修改 `arch/sh/lib/checksum.S` 屏蔽掉它。在解决了这一系列底层汇编问题并写了一个简单的 FRT 定时器驱动后，Linux 终于能顺利启动到 init 进程了。\n\n### 既然没有硬件锁，那就用纯软件算法硬扛\n单核跑通后，作者决定挑战 SMP（对称多处理）。但 32X 的两颗 SH2 设计非常简陋，既没有硬件原子操作指令（如 TAS.B 在总线上不可靠），也没有缓存一致性。这怎么搞？作者在 Linux 的 `sparc32` 架构代码里找到了灵感：Peterson 算法。这是一种纯软件的互斥锁算法，虽然性能很差，但不需要硬件支持。作者依葫芦画瓢，用 C 语言实现了 `cmpxchg` 等同步原语，为了保证数据新鲜，干脆把存放锁标志变量的内存设为非缓存映射。\n\n### 让 68000 变身“总线仲裁器”来传递中断\n有了软件锁还不够，多核之间还得互相发消息（IPI）。因为 SH2 之间没有直连的中断通路，作者再次征用了那颗 68000。他在 68000 上扩展了命令处理逻辑，让它充当“中断路由器”：SH2 发送命令给 68000，68000 解析后决定去拉高哪颗 SH2 的中断线。至于 CPU ID 的识别，作者发现 SH2 的硬件除法寄存器（DVSR）在软浮点配置下是闲置的，于是直接把它映射为 `CPUID_REG`，在 Bootloader 阶段写上不同的 ID，内核就能区分主从 CPU 了。\n\n### 性能虽烂，但原理跑通了\n最终效果如何？作者自己都承认“性能极其糟糕，总线争用严重”，毕竟两颗 CPU 为了抢锁要在总线上疯狂读写。但这不重要，重要的是它真的 work 了。终端里输出了 `smp: Brought up 1 node, 2 CPUs`，证明在没有硬件同步原语的古董双核上，通过软件算法和巧妙的架构设计，依然能跑起现代操作系统。这不仅是一次炫技，更是一次对底层同步原理的绝佳实践。"
+}

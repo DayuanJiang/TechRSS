@@ -1,0 +1,105 @@
+{
+  "id": 49133889,
+  "by": "throwaway2037",
+  "title": "RipGrep musl binaries occasionally segfault during very-large searches",
+  "url": "https://github.com/BurntSushi/ripgrep/issues/3494",
+  "score": 229,
+  "createdAt": 1785588626,
+  "aiSummary": {
+    "chinese_title": "Ripgrep musl 超大搜索偶发 segfault，评论争论内核竞态与 AI 分析",
+    "discussion_overview": [
+      {
+        "category": "根因更像 Linux 内核竞态/硬件问题",
+        "summary": "不少评论把锅指向 Linux 内核内存管理，而不是 ripgrep、Rust 或 musl libc 本身。讨论围绕 page fault、zero page、TLB shootdown、munmap/zap path 这些交互展开，有人怀疑是 per-VMA-lock 相关的竞态，或者是 paging-structure-cache 没有正确失效。还有人指出它只在单一硬件配置上间歇复现，且复现条件依赖大量负载和时序，因而更像硬件依赖或极难触发的内核 bug。",
+        "supportid": [
+          "49134111",
+          "49134356",
+          "49134550",
+          "49134623",
+          "49134629",
+          "49134761",
+          "49134808"
+        ]
+      },
+      {
+        "category": "musl allocator 与 Rust 只覆盖局部",
+        "summary": "另一条主线在讨论 musl 的默认 allocator mallocng，以及 ripgrep 为什么即使在 64 位 musl 构建里也没能完全绕开它。有人指出 ripgrep 虽然给 Rust 代码设置了 jemalloc 作为 global allocator，但 musl libc 自己在 opendir 这类 POSIX 接口里仍会分配内存，所以 Rust 侧的覆盖并不是 process-wide。也有人强调 allocator 本来就是 trade-off：mallocng 更省 RAM，mimalloc 和 jemalloc 在多线程争用下更快，而 ripgrep 这种追求速度的开发工具不太适合为了节省少量内存接受明显的性能损失。",
+        "supportid": [
+          "49134609",
+          "49134811",
+          "49135015",
+          "49135196",
+          "49135215",
+          "49135314",
+          "49135319",
+          "49135325",
+          "49135395"
+        ]
+      },
+      {
+        "category": "AI 生成 bug 报告被吐槽为 slop",
+        "summary": "很多评论直接把链接里的分析称为 AI slop，觉得它像把术语和长句堆在一起的表演性写作。争议点不只是文风难读，而是报告里用 backing、freshly faulted 之类 VM 术语包装后，仍然缺少清晰的因果链和可靠的结论。还有人认为这类 LLM 输出容易在既定假设里越走越窄，表面上很自信，实际上可能是在把猜测写成定论。",
+        "supportid": [
+          "49133976",
+          "49134554",
+          "49134699",
+          "49134747",
+          "49134893",
+          "49135084",
+          "49135115",
+          "49135146",
+          "49134194",
+          "49134357",
+          "49134117",
+          "49134908",
+          "49135096"
+        ]
+      },
+      {
+        "category": "只要有 PoC/复现，分析风格可以次要",
+        "summary": "也有不少人认为，技术报告首先看 PoC、复现脚本和原始观察，而不是文采。只要它真的把人带到了正确的交互点，哪怕上层解释很糟，也仍然有排查价值；有人甚至觉得可以直接把这些观察丢给另一个模型继续追问。反过来，另一派则认为如果核心叙述本身就是乱码，读者没必要替作者承担重建思路的成本，尤其当输出里还夹着大量自我确认式的长篇废话。",
+        "supportid": [
+          "49134001",
+          "49134033",
+          "49134169",
+          "49134214",
+          "49134792",
+          "49134990",
+          "49135108",
+          "49135548",
+          "49134053"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "mallocng",
+        "explanation": "musl 默认的内存分配器，偏省内存但在高并发下可能较慢。"
+      },
+      {
+        "term": "jemalloc",
+        "explanation": "常见的高性能内存分配器，擅长减少锁竞争。"
+      },
+      {
+        "term": "mimalloc",
+        "explanation": "另一种高性能 allocator，常被拿来和 glibc、musl 对比。"
+      },
+      {
+        "term": "opendir",
+        "explanation": "POSIX 的目录打开接口，ripgrep 遍历目录时会走到它。"
+      },
+      {
+        "term": "TLB shootdown",
+        "explanation": "多核 CPU 上同步失效地址翻译缓存的机制。"
+      },
+      {
+        "term": "zero page",
+        "explanation": "内核提供的共享全零物理页，匿名内存首次按需分配时常见。"
+      }
+    ],
+    "context": "这起讨论来自 ripgrep（一个由 Rust 实现、以速度著称的命令行文本搜索工具）在 64 位 musl libc（一个轻量级 C 标准库）构建下，执行超大搜索时偶发 segfault。原始 bug report 后来被指是 AI 生成的长篇分析，评论里还提到 OpenAI Codex（OpenAI 的代码代理/产品）捆绑的 ripgrep 二进制也受影响。讨论很快转向 Linux 内核内存管理子系统，围绕 page fault、munmap、TLB shootdown、zero page 和 paging-structure-cache 是否存在竞态展开。另一条线则是 musl 的 mallocng（默认内存分配器）与 jemalloc、mimalloc 之间的性能/内存取舍，以及 Rust 的 global allocator 只能覆盖 Rust 代码、无法替换 libc 内部行为的限制。",
+    "emoji": "🤦",
+    "sarcastic_question": "AI 写一大篇 slop，就能替内核背锅了？"
+  },
+  "articleSummary": "## 一句话总结\nRipgrep 在使用 musl libc 进行高并发大规模搜索时，因触发了 musl mallocng 的堆元数据断言错误而崩溃，问题根源指向了并发环境下的内存分配器竞争。\n\n### 崩溃现场：看似正常的搜索突然 SIGSEGV\n这事儿发生在一个非常具体的场景下：使用 `x86_64-unknown-linux-musl` 编译的 ripgrep 15.2.0 版本。用户在 24 核机器上对一个包含 180 万个文件、约 20GB 数据的超大目录树进行高并发搜索。为了复现，用户写了个脚本疯狂循环搜索一个不存在的字符串。结果跑着跑着，程序就崩了，抛出了 SIGSEGV 信号。这可不是简单的业务逻辑错误，而是直接触发了底层的内存访问违规。\n\n### 关键线索：崩溃点不在 ripgrep，而在 musl\n有意思的地方在于堆栈跟踪。虽然崩溃发生在 ripgrep 的搜索过程中，但直接致死的代码并不在 ripgrep 自己的逻辑里，而是在 MUSL 的 `mallocng` 实现中。具体来说，崩溃发生在 `get_meta` 函数里，这是 MUSL 用于获取堆元数据的内部函数。调用链显示，当时 ripgrep 正在通过 `opendir` 读取目录，进而调用了 `calloc`，结果在分配内存时，MUSL 的堆完整性断言失败了。这说明问题很可能出在内存分配器本身，或者是上层代码触发了分配器的某种边界情况。\n\n### 复现条件：高并发与大文件树的致命组合\n这 bug 并不是随便跑跑就能出来的。它有两个硬性前提：一是“非常大”的搜索树，二是“高并发”。用户提供的复现脚本生成了 1.8M 个随机文件来模拟真实仓库，并且利用 24 核机器的并发能力疯狂压测。通常在一分钟内，SIGSEGV 就会出现。这说明这大概率是一个并发竞争问题。只有在极高的并发压力下，配合大量的内存分配释放操作，才有可能踩中那个导致堆元数据损坏的“坑”。\n\n### 核心矛盾：Rust 的安全性与 C 库的脆弱性\n这里有个很微妙的设计冲突。Rust 语言本身以内存安全著称，理论上不应该出现这种内存破坏问题。但 ripgrep 底层毕竟要调用操作系统的 libc，这里用的是 musl。堆栈显示，Rust 的 `std::sys::fs::unix::readdir` 调用了系统的 `opendir`，然后进入了 C 语言的领域。如果 MUSL 的 `mallocng` 在高并发场景下存在线程安全问题，或者 ripgrep 的某种并发模式意外触发了 MUSL 的未定义行为，Rust 也无力回天。毕竟，Rust 只能保证自己的代码安全，管不了底层的 C 库。\n\n### 技术细节：mallocng 的元数据断言\n让我们深入看一眼那个崩溃点：`../src_musl/src/malloc/mallocng/meta.h:141`。这是 MUSL `mallocng` 分配器的核心元数据管理代码。`mallocng` 是 MUSL 的一种现代内存分配器实现，它通过在内存区域中嵌入元数据来管理堆。崩溃发生在 `get_meta` 函数中，通常意味着程序试图访问一个已经被破坏或者无效的元数据指针。这往往是典型的“堆破坏”症状，比如多线程无序写入了同一块内存，或者释放了已经被释放的内存。\n\n### 当前状态：确认为 musl 环境下的偶发 Bug\n目前这个问题已经被确认独立于 OpenAI Codex 环境，纯粹是 ripgrep 在 musl 环境下的表现。用户提供了 core dump 和带调试符号的二进制文件，方便开发者深入分析。虽然 glibc 版本的 ripgrep 目前没有报告类似问题，但这并不意味着 ripgrep 没问题，只能说它可能无意中踩中了 musl 的雷区。对于开发者来说，如果要在生产环境使用 musl 版本的 ripgrep 进行大规模高并发搜索，目前需要警惕这个潜在的崩溃风险。"
+}

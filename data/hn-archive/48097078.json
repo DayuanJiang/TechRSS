@@ -1,0 +1,105 @@
+{
+  "id": 48097078,
+  "by": "yoeven",
+  "title": "Interfaze: A new model architecture built for high accuracy at scale",
+  "url": "https://interfaze.ai/blog/interfaze-a-new-model-architecture-built-for-high-accuracy-at-scale",
+  "score": 125,
+  "createdAt": 1778520628,
+  "aiSummary": {
+    "chinese_title": "Interfaze：高精度规模化 OCR/结构化输出混合架构",
+    "discussion_overview": [
+      {
+        "category": "OCR 实测效果与成本权衡",
+        "summary": "有用户拿一页扫描自打字机的德文旧书页面测试 OCR，认为它在透视变形、页边距狭窄、手工更正痕迹很多的情况下，比之前试过的多个 LLM 都更准确。代价也很直接：单页要消耗大量 input/output tokens，算下来约 25 美分，整本 200 页会变成不小的费用。后来改用“只跑某个任务部分”的 run task mode 后，成本降到约三分之一，但识别质量明显下降，甚至漏掉整行文本。这个讨论把“更准”和“更便宜”之间的取舍讲得很具体。",
+        "supportid": [
+          "48100502",
+          "48102095",
+          "48102219"
+        ]
+      },
+      {
+        "category": "专用模型 vs 通用 LLM 的定位之争",
+        "summary": "有人质疑把一个为 OCR 等任务设计的模型去和通用 LLM 的基准比较，认为这有点“作弊”，因为两者目标不同。回应则强调，Interfaze 不是纯通用语言模型，而是面向 OCR、object detection、STT 等确定性任务的通用多模态模型，底层仍有 transformer backbone，同时加入专用视觉/DNN 组件。评论里还提到它的重点是“one right answer”这类任务，而不是 code generation 这种天然非确定性的场景。争论核心其实不是谁更强，而是评测目标是否可比。",
+        "supportid": [
+          "48102663",
+          "48103076",
+          "48099854",
+          "48099687"
+        ]
+      },
+      {
+        "category": "架构到底怎么做：CNN、transformer 与共享表示",
+        "summary": "不少人关心这套系统究竟是“LLM 加了 convolutional layers”，还是一个更复杂的 pipeline。回复里解释说，任务专用 DNN/CNN 会先做第一轮处理，例如 OCR 先由 CNN 识别，再转换成共享 token 供 transformer 修正和补全，最后由 decoder 统一输出。另一条评论还把它描述成把专用 DNN 与 omni-transformer 对齐到同一 vector space，以便融合视觉、audio 等输入。大家真正想弄明白的是：它如何把专用感知模块和语言模块拼在一起，而不是简单堆模型。",
+        "supportid": [
+          "48099741",
+          "48101159",
+          "48102186"
+        ]
+      },
+      {
+        "category": "结构化输出、边界框与文档处理场景",
+        "summary": "评论里反复讨论这类模型在 structured output 上的价值，尤其是要输出稳定的 JSON、bbox 和可预测结果时，比纯通用模型更有吸引力。有人明确想要精确、紧凑的 bounding boxes，因为这对老文档修复、重印、排版保留很重要；也有人补充说，很多 OCR 模型之所以边界框差，是因为训练目标根本没优先考虑这一点。还提到过 PP-DocLayoutV3、Apple LiveText 的 token 模型以及 PaddleOCR 这类方案，说明现有生态里已经有不少专门做版面和字符框的工具。Interfaze 被描述成试图把这些能力合并成一个更统一的模型。",
+        "supportid": [
+          "48097986",
+          "48099659",
+          "48099014",
+          "48000047",
+          "48100333",
+          "48102259"
+        ]
+      },
+      {
+        "category": "应用边界：STT、代码、工具调用与本地部署",
+        "summary": "除了 OCR，用户还追问它能否用于 source code extraction、code manipulation、STT bot，甚至像 UNIX 命令一样串起来做多步流程。回复普遍认为，提取代码片段或许可行，但真正的代码生成/修改仍更适合像 Claude Opus 这样的通用大模型，因为那是非确定性任务。对 STT 来说，有人拿它和 Whisper 对比，官方建议用 run task mode 重新测试，并指出速度会更快。另一些人关心是否能本地运行、fine tune 或 on-prem 部署，得到的答案是目前以 service API 为主，但企业在特定地区可以做本地/专有部署。",
+        "supportid": [
+          "48098936",
+          "48103809",
+          "48099980",
+          "48102219",
+          "48097954",
+          "48099773",
+          "48101712",
+          "48102147"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "OCR",
+        "explanation": "Optical Character Recognition，光学字符识别，用于把图片中的文字转成可编辑文本。"
+      },
+      {
+        "term": "structured output",
+        "explanation": "要求模型输出符合固定格式的数据，常见是 JSON、表格或带字段约束的结果。"
+      },
+      {
+        "term": "bounding boxes",
+        "explanation": "目标或文字在图像中的矩形位置框，常用于文档版面分析和字符定位。"
+      },
+      {
+        "term": "CNN",
+        "explanation": "Convolutional Neural Network，卷积神经网络，常用于图像识别和视觉特征提取。"
+      },
+      {
+        "term": "transformer backbone",
+        "explanation": "以 transformer 为主干的模型结构，负责统一处理序列信息并进行上下文建模。"
+      },
+      {
+        "term": "STT",
+        "explanation": "Speech-to-Text，把语音转换成文本的任务。"
+      },
+      {
+        "term": "MMLU",
+        "explanation": "一类常用的多任务语言模型评测基准，用来衡量通用知识和推理能力。"
+      },
+      {
+        "term": "run task mode",
+        "explanation": "只启用模型中与某个特定任务相关的部分，以降低推理成本，但可能牺牲准确率。"
+      }
+    ],
+    "context": "Interfaze 是一家把多模态能力做成统一 API 的新模型架构，主打高精度、可规模化的任务型场景。讨论中它被描述为混合架构：一部分用专用 DNN/CNN 处理视觉或音频输入，另一部分用 transformer 做上下文理解和纠错，再输出文本、框选或结构化结果。评论者之所以反复拿 OCR、版面分析、STT、bounding boxes 来举例，是因为这类任务往往要求“只有一个正确答案”，比开放式聊天更看重稳定性和可预测性。与此同时，大家也在比较它和 Google Cloud Vision AI、PaddleOCR、Whisper、Claude Opus 等现有工具的差异，并追问是否支持本地部署、fine tune 和企业级 on-prem。",
+    "emoji": "🤔",
+    "sarcastic_question": "拿单任务模型去卷MMLU，算不算偷换赛道？"
+  },
+  "articleSummary": "## 一句话总结\nInterfaze 通过将 DNN/CNN 的任务特异性与 Transformer 的语义理解能力融合，打造了一套混合架构，在 OCR、STT 和结构化输出等确定性任务上，以接近 Flash 模型的价格实现了超越专业模型的精度与速度。\n\n### 用对模型比选好模型更重要\n现在的开发者有个坏习惯：拿着屠龙刀（Transformer/LLM）去切菜。OCR、翻译、GUI 检测这些任务，本质上是计算机级别的确定性工作，不需要模型有太多“创意”。传统的 CNN/DNN 架构（如 LeNet、ResNet）虽然死板，但在特定任务上比 Transformer 准确率高 100 倍，还能提供 bounding boxes 和 confidence scores 这些对工程至关重要的元数据。但问题是，DNN 太不灵活了，换个护照样式可能就得重训，而且它没法像人一样做逻辑判断（比如算年龄）。所以，大家宁愿忍受 LLM 的幻觉和慢速，也不愿回到 DNN 的老路。\n\n### 混合架构：既要专业，又要通识\nInterfaze 的核心思路是“小孩子才做选择，我全都要”。它把 DNN/CNN 的专业编码器与 Transformer 的解码器拼在了一起，中间通过 Task-specific adapters 连接。这意味着，当处理图像时，它能用 CNN 提取高精度的视觉特征；处理逻辑时，又能调用 Transformer 的推理能力。这种设计让它拥有了 1M tokens 的上下文窗口，支持文本、图像、音频和文件输入，还能像传统模型一样吐出结构化的元数据。说白了，就是给 LLM 装上了一双“专业”的眼睛和耳朵，让它不再是个只会瞎猜的书呆子。\n\n### 真刀真枪的 Benchmark 对比\n数据不会撒谎。文章直接把 Interfaze 扔进了角斗场，对手是 Gemini-3-Flash、Claude-Sonnet-4.6、GPT-5.4-Mini 这些当红炸子鸡。结果很有意思：在 OCRBench V2 上，Interfaze 拿到了 70.7%，而对手们都在 55% 左右徘徊；在 RefCOCO（物体检测）上更是碾压，达到了 82.1%。哪怕是语音识别（VoxPopuli），它的词错误率（WER）也只有 2.4%，远低于 Gemini 的 4.0%。这证明了在特定领域，这种混合架构确实比纯通用模型更能打，而且它还保留了 GPQA Diamond 这种推理测试的高分（89.9%），说明没丢掉 LLM 的看家本领。\n\n### 结构化输出：解决 JSON 准确性痛点\n很多 LLM 都能给你一个完美的 JSON Schema，但里面的值全是幻觉。为了解决这个问题，作者专门搞了个 SOB (Structured Output Benchmark) 测试。测试逻辑很直接：把正确答案给模型，看它能不能准确填进 JSON 里。Interfaze 在这里拿到了 79.5% 的准确率，再次击败了一众 Flash/Mini 模型。这得益于它底层的 DNN 特性，能直接输出带有置信度的原始数据，再由 Transformer 进行语义组装。对于开发者来说，这意味着你可以真正信赖模型返回的数据，而不是写一堆正则去清洗它的胡言乱语。\n\n### 性能与成本的甜蜜点\n除了准，快和便宜也是硬指标。Interfaze 的定价策略非常激进，直接对标 Gemini-3-Flash：输入 $1.50 / 1M tokens，输出 $3.50 / 1M tokens。在语音转文字的推理速度上，它每秒能处理 209 秒的音频，比 Deepgram Nova-3 还快 1.5 倍，比 Gemini 快了 11 倍。更巧妙的是，它支持“部分模型激活”。如果你只需要做 OCR，可以在 System Prompt 里加个 `<task>ocr</task>` 标签，模型就只跑 CNN 部分。这样既省算力，又能获得极度确定性的输出，非常适合对成本敏感的高并发场景。\n\n### 开发者体验：无缝接入\n最后，Interfaze 没有搞什么花里胡哨的新协议，它直接兼容 OpenAI 的 Chat Completions API 标准。你只需要把 `baseURL` 换成 `https://api.interfaze.ai/v1`，原来的 OpenAI SDK、LangChain 甚至 Vercel AI SDK 都能直接用。在代码示例中，它展示了如何在一个请求里同时完成 OCR 和物体检测，返回的 JSON 里既包含语义化的描述，也包含像素级的坐标框。这种“既要又要”的设计，对于需要处理复杂文档、多模态数据的团队来说，确实是个很有吸引力的新选项。"
+}

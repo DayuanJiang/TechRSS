@@ -1,0 +1,120 @@
+{
+  "id": 48613872,
+  "by": "Sibexico",
+  "title": "Epoll vs. Io_uring in Linux",
+  "url": "https://sibexi.co/posts/epoll-vs-io_uring/",
+  "score": 226,
+  "createdAt": 1781998261,
+  "aiSummary": {
+    "chinese_title": "Linux epoll vs io_uring：性能、亲和性与安全争议",
+    "discussion_overview": [
+      {
+        "category": "CPU 亲和性与缓存局部性",
+        "summary": "有人认为，要让 reverse proxy 真正跑快，先别急着换 I/O API，而要先做 CPU 亲和性和缓存局部性优化。做法包括把线程 pin 到固定 CPU、把 listen socket 绑定到 CPU（例如 SO_INCOMING_CPU），再通过 NIC 的 flow steering 和源端口选择让入站/出站包尽量落到同一核，减少跨 CPU 通信。还有人补充 Windows 里对应的是 RSS/SSS，若多个核心写同一 cache line，还会引发 false sharing。评论里也提到代码库经历了多版几乎重写，说明架构选择本身就比单点微优化更关键。",
+        "supportid": [
+          "48614757",
+          "48614973",
+          "48615840",
+          "48615966",
+          "48616262"
+        ]
+      },
+      {
+        "category": "io_uring 的强项与不足",
+        "summary": "io_uring 被看作在某些工作负载下很有潜力，它通过用户态与内核共享的 submission/completion ring 来提交和回收 I/O，并能把多个操作链成一次提交。有人指出它最强的地方是 zero-copy、较少 syscall 和更好的流水线，尤其适合直接从 mmap 区域发送数据、配合 kTLS，或者处理大块缓冲区。也有人提到 sendfile 还没法直接用在自己那套 io_uring web server 里，这说明生态和 API 支持仍不完整。更激进的观点认为，很多 async framework 仍按 poll model 设计，因此根本吃不到 io_uring 的 completion-driven 优势；在极端 PPS 场景下，甚至会先撞到内核上限，只能走 GSO/GRO 或直接绕过网络栈。",
+        "supportid": [
+          "48616237",
+          "48614328",
+          "48615285",
+          "48615696",
+          "48616087",
+          "48615847",
+          "48614766"
+        ]
+      },
+      {
+        "category": "别只盯 CPU：看吞吐和延迟",
+        "summary": "不少评论反对只看 CPU meter。io_uring 让 CPU 利用率升高，可能只是原来在等 I/O 的时间变成了真正干活的时间，不能直接解读成更差。更靠谱的比较方式是同时看 throughput 和 latency，尤其是在同样负载、接近饱和、以及极限吞吐时的表现。还有人强调 thread-per-core 仍然有价值，因为锁/原子操作、锁竞争、cache 失配和 OS 迁核都会带来明显成本，这些开销与 I/O 模型本身无关。",
+        "supportid": [
+          "48614413",
+          "48614607",
+          "48615001",
+          "48615454",
+          "48614656",
+          "48614793"
+        ]
+      },
+      {
+        "category": "安全性、seccomp 与发行版支持",
+        "summary": "io_uring 的争议很大一部分来自安全与部署。评论里反复提到它的 shared memory 设计、seccomp 绕过争议，以及历史上的 exploits，这也是它没能成为很多项目默认路径的原因。另一边则有人说，新内核已经加入 cBPF 支持，可以限制允许的操作，而 RHEL 9/10 之类的企业发行版也开始默认支持。还有人认为像 Go 这样的 runtime 可以在启动时做一次 feature detection，只在可控环境里启用 io_uring，而不必因为全局风险一刀切放弃。",
+        "supportid": [
+          "48614302",
+          "48615893",
+          "48614774",
+          "48615060",
+          "48615894",
+          "48614711",
+          "48614480"
+        ]
+      },
+      {
+        "category": "工具链、allocator 与更底层优化",
+        "summary": "讨论还扩展到周边生态：有人推荐 Boost.Asio、standalone Asio、concurrencykit、mimalloc 和 libxdp 这类组件来补齐高性能 reverse proxy 的其他层面。也有人抱怨 Boost 安装和发现很麻烦，尤其在 macOS 和 CMake 环境里不够顺手，不过随后被提醒 Asio 也有 header-only 版本，Boost 还能静态链接。原作者则表示会先做更底层的优化，再研究 allocator，并在 Zig 里学习自定义 allocator。这个分歧说明，I/O API 只是性能栈的一部分，内存分配和网络加速库同样关键。",
+        "supportid": [
+          "48614117",
+          "48615196",
+          "48616352",
+          "48616374",
+          "48614466",
+          "48614987"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "io_uring",
+        "explanation": "Linux 新一代异步 I/O 接口，使用 submission/completion ring 减少 syscall 和拷贝。"
+      },
+      {
+        "term": "epoll",
+        "explanation": "Linux 的事件通知 API，常用于监听大量 socket 的就绪状态。"
+      },
+      {
+        "term": "CPU pinning",
+        "explanation": "将线程或 socket 绑定到固定 CPU，减少迁移和跨核通信。"
+      },
+      {
+        "term": "false sharing",
+        "explanation": "多线程改写同一 cache line 的不同字段，引发缓存失效抖动。"
+      },
+      {
+        "term": "RSS/SSS",
+        "explanation": "Receive Side Scaling / Send Side Scaling，把网络流量哈希分发到多个 CPU。"
+      },
+      {
+        "term": "seccomp",
+        "explanation": "Linux 的 syscall 过滤/沙箱机制，用来限制进程可调用的内核接口。"
+      },
+      {
+        "term": "cBPF",
+        "explanation": "classic BPF，一种较老的过滤机制，这里用来约束 io_uring 允许的操作。"
+      },
+      {
+        "term": "kTLS",
+        "explanation": "kernel TLS，把 TLS 处理下沉到内核以减少用户态开销。"
+      },
+      {
+        "term": "GSO/GRO",
+        "explanation": "网络 offload 技术，分别用于发送和接收侧的报文聚合。"
+      },
+      {
+        "term": "zero-copy",
+        "explanation": "尽量避免用户态和内核态之间的数据复制，减少内存带宽和延迟。"
+      }
+    ],
+    "context": "这篇帖子围绕 Linux 里的 epoll（事件通知 API）和 io_uring（基于 submission/completion ring 的新式异步 I/O 接口）做对比，讨论对象像是 reverse proxy / web server 这类高并发网络程序。评论里默认了一个前提：很多 async framework（例如 Boost.Asio（C++ 异步网络库））仍以 poll model 为中心，因此即使切到 io_uring，也未必自动吃到 chained operations、zero-copy 和更少 syscall 的收益。另一个背景是，真正的瓶颈常常不在 I/O API 本身，而在 CPU pinning、cache locality、NIC steering、allocator 和网络栈上限这些更底层的环节。与此同时，io_uring 过去因为 shared memory 设计、seccomp/audit 兼容性和 exploit 风险而被保守部署，但新内核引入了 cBPF 限制能力，一些企业发行版也开始默认启用。",
+    "emoji": "🧐",
+    "sarcastic_question": "epoll 到 io_uring，还要再加几层马甲吗？"
+  },
+  "articleSummary": "## 一句话总结\nLinux 的异步 I/O 正在经历从 epoll 的“就绪通知”模型向 io_uring 的“完成通知”模型演进，后者通过共享内存和批量处理大幅减少了系统调用开销，是现代高性能服务器的首选。\n\n### 从 TinyGate 的性能瓶颈说起\n故事始于作者和学生开发的反向代理 TinyGate。初版虽然跑通了，但性能完全无法与 nginx、haproxy 这些巨头抗衡。为了解决性能焦虑，团队开始深挖底层 I/O 机制。他们先是基于 epoll 重写了第二版，性能虽有显著提升，但依然碰到了天花板。这迫使他们继续寻找更优解，最终目光锁定在了 2019 年横空出世的 io_uring 上。这不仅仅是一次技术选型，更是一次从底层架构推倒重来的彻底重构。\n\n### epoll 的老毛病：系统调用太频繁\nepoll 的工作模式是“通知你何时可以读写”。这听起来没问题，但实际操作中，epoll_wait 告诉你“有数据来了”之后，你还得自己调用 read() 把数据读出来。这意味着每一次 I/O 事件，都需要经历“等待通知”和“实际读写”这两次系统调用。再加上上下文切换的开销，当连接数成千上万时，这种频繁的内核态与用户态切换就成了巨大的性能负担。说白了，epoll 解决了“谁来通知”的问题，但没解决“怎么减少跑腿次数”的问题。\n\n### io_uring 的核心思路：共享内存与批量处理\nio_uring 的出现就是为了解决这个痛点。它不再告诉你“何时能做”，而是直接告诉你“做完了”。核心设计在于它在用户态和内核态之间共享了一块内存，也就是两个 Ring Buffer（Submission Queue 和 Completion Queue）。你把请求扔进提交队列，内核处理完后把结果扔进完成队列。这样，原本针对每个 I/O 的多次系统调用，现在变成了针对一批 I/O 的一次 `io_uring_enter()` 调用。如果开启了 `IORING_SETUP_SQPOLL`，甚至可以做到接近零系统调用，代价是牺牲一点 CPU 让内核线程轮询。\n\n### 代码层面的直观差异\n作者用 C 语言展示了二者的区别。在 epoll 的例子里，逻辑是线性的：创建实例 -> `epoll_ctl` 注册 -> `epoll_wait` 等待 -> `read` 读取。而在 io_uring 的例子里，流程变成了：获取 SQE（Submission Queue Entry）-> 填充读写请求 -> 提交。你会发现，代码里没有显式的 readiness 检查，也没有单独的 read 调用。虽然底层 `io_uring_submit` 和 `io_uring_wait_cqe` 可能还藏着一次系统调用，但从代码逻辑上看，它把繁重的协调工作交给了内核，应用层代码反而更清爽了。\n\n### 高级特性：零拷贝与异步错误处理\n除了减少系统调用，io_uring 还提供了 epoll 难以企及的高级特性。比如零拷贝（Zero-copy），通过 `io_uring_register_buffers` 预注册内存，或者使用 `IORING_OP_SEND_ZC`，可以直接跳过内核缓冲区复制，这对网络吞吐量至关重要。但也要注意，开启 `SQPOLL` 模式会让内核线程持续占用 CPU，即便在空闲时也是如此（虽然有 idle timeout）。此外，错误处理也变了，不再是函数返回值，而是异步地通过 Completion Queue Entry 的 `res` 字段返回，这对编程习惯是个不小的挑战。\n\n### 结论：新项目的默认选择\n作者的态度很明确：在现代 Linux 系统（Kernel 5.1+）上，新项目没有理由再坚持用 epoll。从“就绪模型”到“完成模型”的转变，不仅仅是性能的提升，更是把大量工作从应用层卸载到了内核层。就像 TinyGate 的最终重写一样，如果你能接受放弃对老旧内核的支持，io_uring 绝对是构建高性能 I/O 应用的正确道路。"
+}

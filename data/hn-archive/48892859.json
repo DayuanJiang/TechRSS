@@ -1,0 +1,139 @@
+{
+  "id": 48892859,
+  "by": "celrenheit",
+  "title": "Show HN: Clawk – Give coding agents a disposable Linux VM, not your laptop",
+  "url": "https://github.com/clawkwork/clawk",
+  "score": 125,
+  "createdAt": 1783953017,
+  "aiSummary": {
+    "chinese_title": "Clawk：给 coding agent 的一次性 Linux VM，争论安全边界与轮子重复",
+    "discussion_overview": [
+      {
+        "category": "VM 作为更强安全边界",
+        "summary": "很多人把 VM 看成给 coding agent 的更强隔离边界：container 和单独用户都在共享 kernel，而 VM 能把攻击面压得更小。评论里反复提到 prompt injection、恶意 npm/pip/cargo 包、0-day LPE、本地服务和 world-readable home 目录等风险，认为 agent 不只是会误删文件，还可能主动提权或泄露密钥。也有人强调，哪怕宿主机有 sudo 和登录保护，只要 agent 能碰到同一台机器上的其他进程和网络，就仍然可能横向移动。整体上，这组意见的核心是：宁可多付一点虚拟化开销，也不要把宿主机直接交给模型。",
+        "supportid": [
+          "48893599",
+          "48893831",
+          "48893725",
+          "48893977",
+          "48894002",
+          "48894495",
+          "48893839",
+          "48894090",
+          "48893640",
+          "48893707"
+        ]
+      },
+      {
+        "category": "现成替代方案很多，大家各自拼装",
+        "summary": "评论区很快变成了工具清单：从 flar、yoloai、virtdev、agentcage、byre、take-ai-control，到 Incus（LinuxContainers 的 VM 管理工具）、Vagrant（老牌 VM 管理工具）、mkosi（systemd 的镜像构建工具）、quickemu（快速拉起 QEMU 虚拟机的工具）、Podman（容器管理工具）和 devcontainers（VS Code 的开发容器方案），几乎每个人都在拿自己的方案对照。有人偏爱自己写一层薄封装，因为这样更容易理解、迁移和丢弃；也有人说他们需要多仓库 worktree、不同栈的不同配置，或者一个完全可控的网络受限 VM，所以现成工具总差一点。另一些人则把它和 GitHub Codespaces（GitHub 的云端开发环境）、Fly.io Sprites（Fly.io 的在线编码环境）等云端方案并列比较，觉得思路并不新。这个主题的核心不是谁最先进，而是谁最贴近自己的工作流。",
+        "supportid": [
+          "48896047",
+          "48895820",
+          "48894314",
+          "48894389",
+          "48894440",
+          "48895601",
+          "48896017",
+          "48893406",
+          "48893772",
+          "48893363",
+          "48894578",
+          "48893602",
+          "48893694",
+          "48893393",
+          "48895804",
+          "48893901",
+          "48893635",
+          "48894043",
+          "48894423",
+          "48893238",
+          "48894062"
+        ]
+      },
+      {
+        "category": "实现细节：rootless 网络过滤与凭据边界",
+        "summary": "实现细节里最受关注的是网络隔离怎么做成 rootless。作者解释在 macOS 上，VM 通过 Virtualization.framework（苹果的虚拟化框架）的 fd NIC 接到 gvproxy（用户态网络转发代理），然后在重新拨号前做 allow-list，所以并没有依赖 iptables 或 nftables。Linux 路径如果用 Firecracker（AWS 的轻量级 microVM），仍然需要 TAP 设备，因此某些地方还是得借助 sudo，但过滤逻辑仍然放在用户态。评论还追问 ssh-agent forwarding、credential masking 和 credential injection，说明大家担心的不只是出网，而是密钥会不会跟着被带走。",
+        "supportid": [
+          "48893339",
+          "48893608",
+          "48894684",
+          "48894921",
+          "48893991",
+          "48893866",
+          "48894785"
+        ]
+      },
+      {
+        "category": "远程常驻、快照与真 Linux 工作流",
+        "summary": "另一条很现实的线索是：agent 不能只在本机跑，否则一合上笔记本就停工。很多人更喜欢远程 Linux VM、云沙箱或专门的 Mac mini，让 agent 24/7 常驻，自己可以在平板或手机上继续看状态。也有人强调在 VM 里跑 Docker、k8s（Kubernetes 容器编排系统）和测试集群，比在 container 里做 Docker-in-Docker 更像“真正的 Linux 机器”，而且性能和兼容性也更好。对于重度自动化场景，快照、克隆、销毁以及多实例并行，比单纯把 shell 关进一个容器里更实用。",
+        "supportid": [
+          "48893748",
+          "48894410",
+          "48893990",
+          "48895493",
+          "48893968",
+          "48894986",
+          "48894156",
+          "48893780",
+          "48894495"
+        ]
+      },
+      {
+        "category": "沙箱只是起点，真正难的是策略和凭据",
+        "summary": "也有不少人认为，沙箱只是起点，不是终点。真正麻烦的是 configuration management、rollbacks、policy engine、动态凭据管理，以及所谓 lethal trifecta 这类把权限、数据和网络串起来的风险。有人指出某些沙箱虽然号称隔离，但仍可能暴露 SSH keys，或者只是像 bwrap/Bubblewrap（基于 namespaces 的用户态沙箱工具）一样对误操作有效、对恶意行为无能为力。还有人直接问：如果只是当前目录加一个容器或 `docker run` 就够了，那为什么要再造一整套平台？",
+        "supportid": [
+          "48893811",
+          "48893695",
+          "48894189",
+          "48893879",
+          "48893964",
+          "48894911",
+          "48894043",
+          "48894423",
+          "48893858",
+          "48893565",
+          "48893969"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "prompt injection",
+        "explanation": "让模型被外部内容诱导，执行越权命令或泄露数据的攻击方式。"
+      },
+      {
+        "term": "supply chain attack",
+        "explanation": "通过被投毒的依赖包、镜像或构建链入侵系统的攻击。"
+      },
+      {
+        "term": "LPE（Local Privilege Escalation）",
+        "explanation": "利用漏洞把普通权限提升到 root 的本地提权。"
+      },
+      {
+        "term": "QEMU/KVM",
+        "explanation": "Linux 上常见的虚拟化组合，QEMU 负责管理虚拟机，KVM 提供硬件加速。"
+      },
+      {
+        "term": "Firecracker",
+        "explanation": "AWS 的轻量级 microVM 运行时，强调高隔离和低开销。"
+      },
+      {
+        "term": "bwrap/Bubblewrap",
+        "explanation": "基于 namespaces 和绑定挂载的用户态沙箱工具。"
+      },
+      {
+        "term": "Landlock",
+        "explanation": "Linux 内核的安全机制，用来限制进程可访问的文件和路径。"
+      },
+      {
+        "term": "Git worktree",
+        "explanation": "Git 功能，可让同一仓库同时拥有多个独立工作目录。"
+      }
+    ],
+    "context": "Clawk 是一个把 Claude Code、Codex 这类能执行 shell 的 coding agent 放进一次性 Linux VM 的工具，目标是不让它们直接碰宿主机笔记本。作者默认面向 macOS 14+ Apple silicon，Linux 路径则走 Firecracker（AWS 的轻量级 microVM）之类的实现；评论里补充它在 macOS 上借助 Virtualization.framework（苹果的虚拟化框架）和 gvproxy（用户态网络转发代理）做网络 allow-list。整场讨论默认的威胁模型很强：prompt injection、恶意依赖包、Local Privilege Escalation（LPE，本地提权）都可能让 agent 越界。于是大家不断拿它和 yoloai、virtdev、agentcage、byre、Incus、Vagrant、mkosi、quickemu、GitHub Codespaces（GitHub 的云端开发环境）、Fly.io Sprites（Fly.io 的在线编码环境）等方案比较，讨论隔离、密钥、网络和工作流怎么一起管。",
+    "emoji": "🛡",
+    "sarcastic_question": "又一个沙箱，真能防住 prompt injection 吗？"
+  },
+  "articleSummary": "## 一句话总结\nClawk 给 AI 编程代理分配了一个独立的、可销毁的 Linux 虚拟机，让它在拥有 root 权限的同时，彻底与你的宿主机文件和密钥隔离。\n\n### 别让 AI 在你的本机上裸奔\n现在的 AI 编程代理越来越强，能写代码、跑测试、甚至装系统包。但这就带来了一个两难：要么你每条命令都点一次 Approve，把自己变成\"人肉审批机\"；要么你开 `--dangerously-skip-permissions`，祈祷它不会手滑敲个 `rm -rf` 把你的家目录清空。Clawk 提供了第三种选择：给 AI 它自己的机器。这样它想怎么折腾怎么折腾，反正那是台一次性虚拟机，你的宿主机和 SSH 密钥压根不在它的攻击面上。\n\n### 真正的隔离靠的是 Hypervisor，而不是 Prompt\nClawk 的核心思路不是靠\"提示词工程\"去骗 AI 守规矩，而是靠硬性的虚拟化边界。它利用 macOS 的 Virtualization.framework（或 Linux 的 Firecracker）启动一个独立的 Linux 内核。这意味着你的宿主机文件系统甚至都没有被挂载进虚拟机里，AI 拥有 guest OS 的 root 权限，可以改 `/etc`、装系统包、甚至起 Docker 容器，但这一切都被关在 hypervisor 的笼子里。这种隔离强度比单纯的进程沙箱要高得多，也符合 Linux 工具链对\"真机\"的预期。\n\n### 默认全自动驾驶，网络是唯一的缰绳\n在这个虚拟机里，Clawk 默认以\"全自动驾驶\"模式运行 Claude Code 或 Codex（即自动加上那些 `--dangerously-skip` 参数）。既然环境已经隔离了，就没必要再打断 AI 的思路。那怎么防止它偷数据？Clawk 抓住了网络这个咽喉。出站流量默认全阻断，除非你显式加到白名单里。比如 `curl` 一个恶意域名会被直接拒绝，但 `git push` 可以通过宿主机转发的 ssh-agent 正常工作。这种设计既给了 AI 自由，又把它的触角限制在你允许的范围内。\n\n### 用完即弃，但代码和记忆都在\n既然是\"一次性\"虚拟机，那 AI 装的包、跑的缓存，关机就没了。但这正是我们想要的：环境脏了直接 `clawk destroy && clawk`，几秒钟就能起个全新的。不过，你的代码仓库是通过 virtio-fs 实时挂载进去的，AI 的对话历史（Agent state）也是持久化在宿主机上的。这意味着你可以随时销毁虚拟机来重置环境，但不会丢失代码进度和 AI 的上下文记忆，甚至可以用 `clawk snapshot` 把当前运行状态（包括内存里的后台服务）存盘，下次直接恢复。\n\n### 一个命令搞定，不需要写 Dockerfile\nClawk 的使用体验极其轻量。只要 `cd` 到你的项目目录，敲一下 `clawk`，它就会自动拉取你指定的 OCI 镜像（比如 `golang:1.25`）作为 rootfs 启动虚拟机。不需要写 Dockerfile，不需要配 devcontainer，也不需要宿主机装 Docker。它甚至支持多仓库工作流，通过 `clawk work` 能在一个虚拟机里挂载多个 git worktree，让 AI 跨仓库改代码并自动提 PR。对于想玩转本地 AI 代理的开发者来说，这可能是目前最顺手的安全沙箱方案。"
+}

@@ -1,0 +1,112 @@
+{
+  "id": 48267126,
+  "by": "xngbuilds",
+  "title": "C extensions, portability, and alternative compilers",
+  "url": "https://lemon.rip/w/6-c-extensions-compilers/",
+  "score": 122,
+  "createdAt": 1779719456,
+  "aiSummary": {
+    "chinese_title": "glibc 头文件与 GNU 扩展：替代编译器移植难题",
+    "discussion_overview": [
+      {
+        "category": "GNU 假设让跨平台代码到处踩坑",
+        "summary": "很多人认为问题根子在于 C 生态长期默认 GCC/Clang 行为，结果代码在 Linux 上“能跑”并不代表在 FreeBSD、Windows 或其他编译器上可用。评论里举了 `__attribute__` 之类宏判断过窄的例子，也提到不少项目在构建阶段直接依赖 systemd（Linux 常见的系统管理/初始化套件）、shell 脚本生成头文件，或者默认接受 GNU C 扩展。也有人强调开源作者只会支持自己关心的平台，但这会让“可移植”变成事后补救，而不是默认设计。",
+        "supportid": [
+          "48267440",
+          "48268503",
+          "48269825",
+          "48268475",
+          "48270017",
+          "48268512",
+          "48267997",
+          "48268232"
+        ]
+      },
+      {
+        "category": "替代编译器的现实妥协",
+        "summary": "做替代编译器的人则更强调：要让 slimcc、rcc、ImportC 这类工具编过真实项目，往往必须模拟 GCC 的预定义宏和扩展，或者在 libc 头文件周围做大量兼容层。有人分享自己给 glibc（GNU C Library，GNU 的标准 C 库）头文件打补丁、补 GCC predefines 的经历，甚至表示这类工作主要是在和各种 `.h` 里的怪规则搏斗。也有人建议不要直接判断 `__GNUC__`，而是为 glibc 单独引入更细粒度的能力宏或属性检测，因为不同编译器对这些语义并不总是等价。",
+        "supportid": [
+          "48268369",
+          "48268905",
+          "48268589",
+          "48268732",
+          "48269586",
+          "48270140",
+          "48272439"
+        ]
+      },
+      {
+        "category": "Linux、BSD、Windows 的生态冲突",
+        "summary": "评论区有很强的 OS 立场冲突：一边认为 Linux 可以充分使用自己的特性，POSIX（Unix 系统接口标准）并不是必须，BSD 也有 kqueue、unveil 这类自己的 API。另一边则抱怨 Linux 软件常绑 systemd 或其他 Linux-only 行为，移植到 FreeBSD（一个类 Unix 操作系统）时要改掉一堆并不复杂的假设。还有人指出，在某些地区 Windows（微软桌面操作系统）才是事实标准，所以“平台视角”本来就会决定谁觉得谁在添麻烦。",
+        "supportid": [
+          "48270142",
+          "48272478",
+          "48268232",
+          "48267481",
+          "48269180",
+          "48271554",
+          "48272448",
+          "48271760"
+        ]
+      },
+      {
+        "category": "如何覆盖编译器/平台矩阵",
+        "summary": "另一条主线是怎样系统地测试不同编译器和操作系统组合。有人建议用 Make 变量切换编译器，比如 `make FC=ifx check`，再配合 `make clean`/`make check` 的批处理脚本；也有人提到要结合 build servers、docker、qemu 和 VM 才能尽量发现行为差异。共识是测试矩阵不可能全覆盖，实际支持的只是一个有限集合，但支持的平台越多，代码在陌生平台上偶然成功的概率也会更高。",
+        "supportid": [
+          "48268346",
+          "48269071",
+          "48268699",
+          "48269234",
+          "48268962"
+        ]
+      },
+      {
+        "category": "用能力检测代替版本/厂商判断",
+        "summary": "不少评论主张把“能不能用”写成 feature detection，而不是用 `#ifdef FOOZOID_V5` 或 `__GNUC__` 这种厂商判断。与其猜版本，不如测试某个表达式或声明能否编译，通过类似 `COMPILES(foo(int))` 的思路来判断能力是否存在。这个方向也被拿来类比 Boost.Config（Boost 的配置探测库）和 C++ 的 feature test macros，因为它们把“有没有这个特性”与“是不是某个编译器”分开了。",
+        "supportid": [
+          "48268899",
+          "48269712",
+          "48271791"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "GNU C extensions",
+        "explanation": "GCC/Clang 提供的非标准 C 扩展，如 `__attribute__`、`__builtin_*`、`gnu11`，很多项目会默认依赖。"
+      },
+      {
+        "term": "__attribute__",
+        "explanation": "GNU 风格的属性语法，用来标记 `cleanup`、`visibility`、`always_inline` 等编译器行为。"
+      },
+      {
+        "term": "glibc headers",
+        "explanation": "GNU C Library 的头文件集合，常因假设 GCC/Clang 行为而让其他编译器难以通过。"
+      },
+      {
+        "term": "POSIX",
+        "explanation": "Unix 系统接口标准，讨论中被用来衡量 Linux、BSD 与其他平台是否保持通用性。"
+      },
+      {
+        "term": "systemd",
+        "explanation": "Linux 的系统管理与初始化套件，在评论里常被当作 Linux-specific 依赖的代表。"
+      },
+      {
+        "term": "feature tests / feature test macros",
+        "explanation": "通过能力检测而不是按版本或编译器名分支，来判断某个 API 或语法是否可用。"
+      },
+      {
+        "term": "MSVC",
+        "explanation": "Microsoft Visual C++ 编译器，评论中被拿来对比其 C 语言标准与扩展支持不足。"
+      },
+      {
+        "term": "tcc",
+        "explanation": "Tiny C Compiler，小型 C 编译器，常用于 bootstrap 或快速构建，但扩展与优化能力有限。"
+      }
+    ],
+    "context": "这篇讨论围绕 C 代码对 GCC/Clang 行为的依赖，以及替代编译器如何处理真实项目中的 GNU C 扩展和头文件兼容性。评论里提到 slimcc（一个小型 C 编译器）、rcc（一个轻量 C 编译器）、ImportC（D 语言编译器内置的 C 解析/编译能力）和 tcc（Tiny C Compiler，小型 C 编译器）在编译 glibc（GNU C Library，GNU 的标准 C 库）或大型开源项目时遇到的大量兼容问题。争论还扩展到 systemd（Linux 常见的系统管理/初始化套件）依赖、POSIX（Unix 系统接口标准）与 Linux-only API、以及 FreeBSD（一个类 Unix 操作系统）和 Windows（微软桌面操作系统）上的移植成本。另一条线索是如何做更可靠的能力探测：用 feature tests、配置检测和编译期检查来替代简单的 `__GNUC__` 判断。",
+    "emoji": "😤",
+    "sarcastic_question": "连编译器都要特供，哪来的可移植呢？"
+  },
+  "articleSummary": "# 一句话总结\nC 语言的所谓“可移植性”在现实世界中是个伪命题，因为主流代码库（尤其是 glibc）深度依赖 GCC/Clang 的非标准扩展，导致新编译器要么假装自己是 GCC，要么寸步难行。\n\n---\n\n### 完全符合 ISO 标准的 C 代码，现实中根本不存在\n任何写过 C 的人都知道，死磕 ISO 标准在现实工程里根本行不通。大多数代码库都在用各种非标准行为和语言扩展，这倒不是为了炫技，纯粹是为了绕过不同编译器和库的 Bug。大家通常会用一堆预处理器检查来兼容各种环境，但这种方式往往脆弱不堪，甚至直接就是坏的。作者在开发自己的 C 编译器 `antcc` 时，就深刻体会到了这种“为了兼容而引入更多不兼容”的荒谬现状。\n\n### glibc 的头文件是第一道鬼门关\n对于想上手的 C 编译器来说，系统 C 库的头文件就是第一只拦路虎。如果你连 `<stdio.h>` 都预处理不了，那就别想跑通 Hello World。在 Linux 上，这意味着你必须搞定 glibc。平心而论，glibc 确实试图在非 GCC 编译器上保持兼容，它在那个巨无霸文件 `sys/cdefs.h` 里用尽了各种预处理器宏来判断编译器支持什么扩展。但问题是，这种判断逻辑有时候就是坏的。\n\n### 想支持 epoll？你得先学会撒谎\n比如 Linux 里的 `struct epoll_event` 用了 GNU 扩展 `__attribute__((packed))`。这会改变结构体在 64 位系统上的内存布局，忽略它就会破坏 ABI，所以你必须支持这个扩展。但这还不够，因为 `sys/cdefs.h` 里有一段逻辑：如果你不是 GCC、Clang 或者 TCC，它就会把 `__attribute__` 直接定义成空。这意味着，哪怕你完美实现了这个功能，只要你的编译器名字不对，代码照样跑不通。\n\n### 连 `<limits.h>` 这种基础文件都离不开 GCC 特性\n更离谱的是一些本该由编译器提供的头文件（如 `stddef.h`, `stdint.h`）。POSIX 要求 `<limits.h>` 除了标准 C 常量外还得定义 POSIX 特有的常量，所以 glibc 的 `<limits.h>` 依赖 GCC 特有的 `#include_next` 扩展来包含编译器内置的头文件。这种设计导致连 Clang 都得专门写代码来绕过这个坑，更别提其他小编译器了。\n\n### SDL 的字节交换逻辑充满了“想当然”\n`SDL_endian.h` 在做字节交换功能的检测时，逻辑非常迷。它的优先级是：先看是不是 GCC/Clang 且支持 builtin；再看是不是 MSVC；然后看是不是定义了特定 ISA 的宏（如 `__x86_64__`），如果是就用内联汇编；最后才回退到通用的位操作。这导致一个尴尬的局面：如果你不是 GCC/Clang 但定义了 `__x86_64__`，它就会强行让你用 GCC 风格的内联汇编，哪怕你其实支持对应的 builtin 函数。\n\n### OpenBSD 的 `inline` 语义简直是历史包袱的集大成者\nOpenBSD 的头文件里用 `__only_inline` 定义了一些内联函数，试图利用 C99 标准和 GCC 旧版行为之间的差异。这涉及到 `extern inline` 在 C99 和 GCC gnu89 模式下完全不同的语义，极其混乱。OpenBSD 试图用 `__attribute__` 来强制指定旧版语义，但在非 GNU 编译器上，它会被定义为 `static`，导致链接冲突。唯一的解决办法是定义 `_ANSI_LIBRARY` 宏来禁用这些“优化”，虽然能跑但性能就别想了。\n\n### Android 的 bionic 直接倒向了 Clang\nAndroid 的 libc 叫 bionic，它的头文件完全假设你在用 Clang，到处都是 `_Nonnull` 这种 Clang 特有的空性检查扩展。作者之所以遇到这个问题，是因为他在用 Termux 把 Android 手机当 aarch64 开发环境用。不过这倒好解决，用命令行 flag 把这些宏定义掉就行，毕竟只是语法糖，不涉及核心 ABI。\n\n### 小编译器的生存之道：只能假装自己是 GCC\n面对这些乱象，作者总结了四条路：打补丁 upstream（基本不可能）、混到足够出名让别人适配你（太难）、自己维护下游补丁（最简单）、或者干脆假装自己是 GCC（最现实）。Clang 就是这么干的，它定义 `__GNUC__=4` 来伪装成 GCC 4.2.1。但这也有坑，因为很多代码库只要看到 `__GNUC__` 就肆无忌惮用新扩展，导致你永远在追新特性。理想情况下，大家应该多用 `__has_builtin` 这种特性测试宏，而不是死守编译器宏。但在 GCC/Clang 双寡头的现状下，小编译器们只能苦中作乐了。"
+}

@@ -1,0 +1,152 @@
+{
+  "id": 47962032,
+  "by": "pmig",
+  "title": "Should I Run Plain Docker Compose in Production in 2026?",
+  "url": "https://distr.sh/blog/running-docker-in-production/",
+  "score": 353,
+  "createdAt": 1777975288,
+  "aiSummary": {
+    "chinese_title": "纯 Docker Compose 2026 仍可上生产，但要补运维缺口",
+    "discussion_overview": [
+      {
+        "category": "小规模生产依然稳",
+        "summary": "很多评论认为，Docker Compose 只要面对的是单机或少量服务、负载可预期的生产环境，就依然非常稳。有人用它跑了 5 年以上，staging 和 production 直接复用同一个 image，认为这比引入更重的编排系统更简单也更少出错。还有人提到很多工作负载根本不需要 Kubernetes 那套复杂度，B2B SaaS、侧项目、自托管服务都能很好地吃到 Compose 的便利。对这类场景来说，Compose 的价值就是把配置集中在一个文件里，部署和回滚都足够直观。",
+        "supportid": [
+          "48021307",
+          "48022159",
+          "48022131",
+          "48021460",
+          "48020741",
+          "48020797",
+          "48021219",
+          "48021654",
+          "48020628",
+          "48021486",
+          "48021679"
+        ]
+      },
+      {
+        "category": "主要风险是运维细节",
+        "summary": "反对者不一定否定 Compose 本身，而是强调它把很多运维责任留给了你。评论里反复提到 cleanup、healing、image pinning、socket security 和 updates 这些缺口；如果不主动管理，旧 image、无界日志和容器残留很容易把磁盘打满。还有人指出 Docker 会自动改写防火墙和端口转发规则，nftables 一旦重载就可能把这些规则冲掉，导致服务短暂甚至彻底失联。早期 Docker Compose 也被吐槽过脆弱、报错难读，不过后来用 Golang 重写后情况好很多。",
+        "supportid": [
+          "48021768",
+          "48021239",
+          "48020741",
+          "48021106",
+          "48020653",
+          "48021644",
+          "48021691"
+        ]
+      },
+      {
+        "category": "防火墙、日志与远程管理的补救方案",
+        "summary": "不少人给出了绕开这些坑的具体做法。最常见的是用 Caddy（一个反向代理服务器）只暴露 80/443，把容器端口绑定到 127.0.0.1 或内网地址，再让外层防火墙默认拒绝一切。也有人把 Docker host 和真正的防火墙分离、放进独立 VM、配合 WireGuard、UFW 或 journald/log driver 来控制日志和访问。远程管理方面，docker context、Portainer 这类工具被当成比直接 SSH 操作更省心的方案。",
+        "supportid": [
+          "48022535",
+          "48021719",
+          "48022110",
+          "48022068",
+          "48022083",
+          "48021943",
+          "48021060",
+          "48020890",
+          "48022070"
+        ]
+      },
+      {
+        "category": "Podman/systemd/Quadlet 的替代路线",
+        "summary": "另一个强烈主题是 Podman + systemd/Quadlet 被视为更适合某些 Linux 环境。支持者认为，对于 appliance 型系统或少量服务，systemd 能很好地管服务、日志和启动顺序，而 Quadlet 让 Podman 以更接近原生服务的方式运行。问题在于迁移路径并不统一：podman-compose、`podman compose`、Docker API compatibility socket、`DOCKER_HOST` 这几套说法让人很容易困惑，发行版自带版本还常常过旧。于是很多团队会觉得，想摆脱 Docker，结果先被迁移复杂度劝退。",
+        "supportid": [
+          "48020312",
+          "48020619",
+          "48020850",
+          "48020939",
+          "48021036",
+          "48021944",
+          "48021266",
+          "48022150",
+          "48020346",
+          "48020787",
+          "48020486",
+          "48020641",
+          "48020906",
+          "48020860",
+          "48020349"
+        ]
+      },
+      {
+        "category": "更复杂场景最终转向 Kubernetes/k3s",
+        "summary": "一旦需求变成多主机、滚动发布、零停机、自动扩缩或更复杂网络，很多人就会觉得 Compose 的边界到了。有人想要“Compose 风格的 Kubernetes”，但试过 Helm、Tilt、Skaffold 等后还是觉得直接上 Kubernetes（一个容器编排平台）或 k3s（轻量级 Kubernetes 发行版）更实际，因为抽象层越多越容易泄漏。也有人明确说 Swarm 还在但已不被看好，真正需要分布式编排时还是 Kubernetes 最终胜出。对于只跑几个 Go binary 的场景，systemd 也常被拿来与这些重型方案对比。",
+        "supportid": [
+          "48021196",
+          "48021325",
+          "48021863",
+          "48022187",
+          "48020716",
+          "48021542",
+          "48020737",
+          "48022262",
+          "48021460",
+          "48022424"
+        ]
+      },
+      {
+        "category": "对标题和比喻的吐槽",
+        "summary": "还有一大块评论是在吐槽文章标题和比喻太空。有人觉得把技术问题类比成 turkey sandwich 是在回避真正的 trade-off 讨论，也有人反过来说这正是在强调没有绝对正确的 stack，只有是否适合你的约束。另一类吐槽则集中在 AI 腔、破折号过多和措辞别扭，认为标题和文风本身就像在刷存在感。整体上，这组评论在争论的其实不是 Compose，而是“该不该把工程决策简化成一句随便试试”。",
+        "supportid": [
+          "48020461",
+          "48020720",
+          "48021345",
+          "48022038",
+          "48022493",
+          "48021115",
+          "48022443",
+          "48020576",
+          "48021199",
+          "48022022",
+          "48007311",
+          "48020316",
+          "48020888",
+          "48021572",
+          "48022295",
+          "48020383",
+          "48020489",
+          "48020593",
+          "48020643",
+          "48020522",
+          "48020622"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Docker Compose",
+        "explanation": "用一个 compose.yaml 文件定义并启动多个容器的工具，适合单机或少量服务编排。"
+      },
+      {
+        "term": "Podman Quadlet",
+        "explanation": "把容器描述成 systemd 单元来管理的方式，让 Podman 更像原生系统服务。"
+      },
+      {
+        "term": "nftables",
+        "explanation": "Linux 的防火墙框架；Docker 自动创建的转发规则可能和它冲突。"
+      },
+      {
+        "term": "journald",
+        "explanation": "systemd 的日志系统，可用于收集和限制容器日志增长。"
+      },
+      {
+        "term": "Kubernetes / k3s",
+        "explanation": "Kubernetes 是主流容器编排平台，k3s 是更轻量的发行版，常用于小型集群。"
+      },
+      {
+        "term": "Docker Swarm",
+        "explanation": "Docker 自带的集群编排模式；评论里被视为已边缘化的替代方案。"
+      }
+    ],
+    "context": "这篇讨论围绕一篇文章展开，核心问题是：2026 年是否还能把 plain Docker Compose 用在生产环境。文章本身的结论偏向“可以”，但前提是补齐 cleanup、healing、image pinning、socket security 和更新策略这些运维缺口。评论把话题扩展到 Docker daemon（负责镜像、网络、端口映射和日志的后台进程）如何改写防火墙、日志如何失控，以及单机 Compose 与 Kubernetes（容器编排平台）、k3s（轻量级 Kubernetes 发行版）、Podman Quadlet（通过 systemd 单元管理容器的方式）之间的边界。很多人还提到 Caddy（一个自动处理 HTTPS 的反向代理服务器）、journald（systemd 的日志系统）和 nftables（Linux 防火墙框架）等配套工具，说明争论重点不是 Compose 能不能跑，而是你愿意承担多少操作复杂度。",
+    "emoji": "🤔",
+    "sarcastic_question": "Compose 上生产，难道全靠运气和祈祷？"
+  },
+  "articleSummary": "## 一句话总结\n2026 年依然可以用 Docker Compose 上生产，前提是你必须自己动手填补它留下的运维坑，否则这些“特性”迟早会搞挂你的服务。\n\n### Compose 的定位是单节点部署，但它的“简单”是把运维包袱甩给了你\n说白了，Docker Compose 就是个声明式的配置文件，它把多容器应用、网络、卷和环境变量一股脑写进 YAML，然后执行 `docker compose up` 来 reconcile 主机状态。这种架构非常适合单节点部署，比如给客户推送私有化应用、跑边缘计算盒子，或者维护那些不值得上 K8s 的长尾服务。但问题在于，Compose 本身没有控制平面，没有调度器，也没有持续 reconcile 的 loop，它跑一次就退出了。这种极简设计的代价是，它默认你会——或者必须——手动填补所有生产环境必需的运维逻辑，如果你把 Compose 文件发给客户却指望他们懂这些，那基本是在埋雷。\n\n### 删不掉的“孤儿容器”会悄悄吃光你的内存\n很多人遇到过这种情况：你从 `docker-compose.yaml` 里删了一个服务，跑完 `docker compose up -d`，结果那个旧容器还在后台跑着，占用着端口和内存。这是因为 Compose 只管理当前文件里定义的东西，对曾经属于该项目但现在被删除的容器视而不见。解决办法其实很简单，加上 `--remove-orphans` 参数，告诉 Compose 把那些不在文件里的旧容器和网络统统清理掉。唯一的例外是数据卷，为了保护数据 Compose 默认不会删卷，想回收空间只能手动 `docker volume prune` 或者用 `docker compose down -v` 慎重处理。\n\n### 磁盘跑满通常是因为日志没限制和旧镜像没清理\n生产环境最常见的故障原因就是磁盘写满，这通常有两个元凶：一是默认的 `json-file` 日志驱动会无限写日志，直到把磁盘塞死；二是每次 `docker compose pull` 都会保留旧镜像，日积月累占用大量空间。治标的办法是配置 `/etc/docker/daemon.json`，给日志加上 `max-size` 和 `max-file` 限制，比如每个容器日志最多 30MB。治本则需要定期执行清理命令，用 `docker system df` 审计空间占用，然后用 `docker image prune` 删除旧镜像。更聪明的做法是在部署成功后自动清理上一版本的镜像，这样既能回滚又不会让垃圾堆积。\n\n### Health Check 只是状态灯，不会自动重启坏掉的容器\n这一点最容易坑人：你在 Dockerfile 里写了 `HEALTHCHECK`，或者在 Compose 里配置了健康检查，看着容器状态从 `healthy` 变成 `unhealthy`，结果什么都没发生。Docker Engine 只是汇报状态，它不会因为容器不健康就重启它，`restart: unless-stopped` 也只在容器退出时触发。要实现真正的自愈，你有三个选择：一是跑一个 `willfarrell/docker-autoheal` 这样的 sidecar 容器，挂载 Docker Socket 监控并重启不健康的容器；二是上 Docker Swarm，它原生支持重启不健康的任务；三是用类似 Distr 的 Agent 自动处理。记住，没有动作配合的 Health Check 只是个看得见的告警灯，不是自动修复系统。\n\n### 用 `:latest` 标签就是在生产环境玩俄罗斯轮盘赌\nDocker 的标签是可变的引用，今天 `myapp:1.4` 指向这个镜像，明天重新 push 一次可能就指向另一层代码了。`:latest` 更是重灾区，它往往被误认为是“稳定版”，实际上只是“最近 push 的那个”。如果你在 Compose 文件里不写 tag，默认就是 `:latest`，这会导致两台主机在五分钟内拉取“同一个”标签却跑着不同的代码。正确的做法是通过 Digest（摘要）来固定镜像，比如 `myapp@sha256:9b7c...`，这样只要内容不对，拉取就会直接报错，把“静默漂移”变成“响亮失败”。\n\n### 随便挂载 `/var/run/docker.sock` 等于给容器 root 权限\n很多工具为了方便，会让你在 Compose 文件里把宿主机的 `/var/run/docker.sock` 挂进容器，但这其实是个巨大的安全风险。只要能访问这个 Socket，容器就能调用 Docker API，进而启动一个挂载宿主机根目录的特权容器，这基本上等同于拿到了宿主机的 root 权限。如果你必须这么做，务必做好清单管理，搞清楚哪些容器真的需要 Socket。更好的安全实践是使用 Rootless Docker 缩小爆炸半径，或者用 `docker-socket-proxy` 这种代理只暴露必要的 API 子集，千万别为了省事把整个宿主机都裸奔出去。\n\n### 手动 SSH 部署没法扩展，你需要一个能 reconcile 的 Agent\n当你只有几台机器时，`docker compose pull && docker compose up -d` 配合 SSH 挺好用的，但一旦面对几十个客户的内网环境，这种手动模式就崩了。Docker 没有内置的推送机制，Hub 的 webhook 也穿不通客户的防火墙。常见的土办法像 Watchtower 虽然能自动拉取更新，但没法做灰度发布和回滚，你也看不见客户到底升级到了哪个版本。靠谱的方案是部署一个 pull-based 的 Agent，让它定期轮询控制端的配置并在本地 reconcile 状态。这样你既能看到所有主机的部署版本，也能在出问题时一键回滚，这才是生产级该有的运维闭环。"
+}

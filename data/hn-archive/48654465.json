@@ -1,0 +1,119 @@
+{
+  "id": 48654465,
+  "by": "retroplasma",
+  "title": "\"Fix\" MacBook Neo Cursor Lag: Record 1 Pixel of the Screen Every 10 Seconds",
+  "url": "https://gist.github.com/retroplasma/ec21767d0a8380c7ea9c2fbee1c7d6bf",
+  "score": 134,
+  "createdAt": 1782280818,
+  "aiSummary": {
+    "chinese_title": "MacBook Neo 光标卡顿：每10秒记录1像素的临时修复",
+    "discussion_overview": [
+      {
+        "category": "GPU/WindowServer 切换与同步阻塞",
+        "summary": "不少评论把故障点放在硬件光标切到 software cursor 的瞬间，怀疑 WindowServer 在切换时要等 GPU command queue flush，或者被 fence / vblank 之类的同步点卡住。有人解释 hardware cursor 只是显示硬件直接叠加的 cursor plane，而 software cursor 需要由图形栈重绘并恢复底图，所以如果前面的 GPU 工作还没完，系统就可能为了避免覆盖而停住。也有人强调 display controller 和 render device 本来就是不同逻辑设备，真正的问题更像是 macOS 驱动或合成器在等待不相关的任务，而不是光标绘制本身太重。结论基本都是：不看代码或反向工程，很难确定真实根因。",
+        "supportid": [
+          "48656034",
+          "48657276",
+          "48656079",
+          "48656203",
+          "48656406",
+          "48656672",
+          "48657710",
+          "48655984"
+        ]
+      },
+      {
+        "category": "hacky 但有效的临时修复",
+        "summary": "有人直接把这个 workaround 评价为很糟，因为它本质上是在强迫系统走更重的合成路径，而不是优雅地修 bug。即便如此，也有不少人认为 cursor lag 是那种会持续折磨人的小故障，所以一个最小侵入、立刻见效的补丁仍然值得。评论里还拿别的例子类比：为了消掉风扇啸叫或低功耗带来的副作用，定时做点无意义计算也能算解决问题。与此同时，也有人担心这种脚本一旦装上启动项，几年后 bug 早修好了，它还在后台默默跑。",
+        "supportid": [
+          "48655734",
+          "48656422",
+          "48658530",
+          "48655844",
+          "48657501",
+          "48655701",
+          "48655733",
+          "48656059"
+        ]
+      },
+      {
+        "category": "cursor 手感与 macOS 传统期待",
+        "summary": "这条线的反应更多是情绪性的：cursor 被看作用户最直接的身体延伸，一旦它迟钝，整台电脑的手感就会立刻崩掉。有人引用早期 Macintosh 关于 smooth、flicker-free cursor 的历史记忆，强调当年最重要的卖点之一就是指针响应要像手臂一样自然。也有人把这和 Apple 一贯的产品标准、甚至 Steve Jobs 时代的审美联系起来，觉得这种问题特别刺眼。还有人用反讽口吻说，所谓 macOS 的 Just works 现在竟然需要靠怪脚本维持最基础的交互。",
+        "supportid": [
+          "48658302",
+          "48655562",
+          "48655979",
+          "48656430",
+          "48656664",
+          "48656073",
+          "48656860",
+          "48656714"
+        ]
+      },
+      {
+        "category": "旧式显卡、overlay plane 与现代 compositing",
+        "summary": "讨论很快扩展到老式图形硬件和显示架构。有人提到 SGI 和 Sun 时代就有 overlay planes 或 cursor plane，目的就是避免为了移动光标而重绘整个 framebuffer，因为读回和擦除背景在那种硬件上特别昂贵。其他人补充说，在现代 composited desktop 里，光标通常还是独立 plane，但在拖拽、透明窗口或资源紧张时，compositor 可能会临时降级、重绘，甚至禁用 hardware cursor。这个分支把问题从一个奇怪 bug 提升成了显示控制器资源管理和 plane 分配策略的老问题。",
+        "supportid": [
+          "48657425",
+          "48657814",
+          "48658223",
+          "48656451",
+          "48658275",
+          "48656406"
+        ]
+      },
+      {
+        "category": "类似问题也存在于 Linux / 嵌入式平台",
+        "summary": "另一些人说 cursor lag 并不只会出现在 macOS，Linux 在 CPU 或 I/O 压力大时也可能出现同样的卡顿，Wayland 迁移期也曾有人抱怨过。Raspberry Pi 之类的平台还会通过 usbhid.mousepoll=0 这种参数去限制鼠标轮询率，说明指针延迟会受事件频率、调度和驱动细节影响。有人进一步指出，现代 GPU 往往有多个 command queue，不同工作未必共享同一路径，芯片设计如果更偏移动端，桌面场景下的行为就可能变得很别扭。整体上，这组评论把问题解释成输入链路、功耗策略和图形栈协同失衡，而不是单一平台独有的 bug。",
+        "supportid": [
+          "48656507",
+          "48656678",
+          "48656812",
+          "48658340",
+          "48657716",
+          "48658944"
+        ]
+      },
+      {
+        "category": "Swift 小工具与语法细节",
+        "summary": "还有一小段评论在聊实现方式本身：有人觉得这正好展示了 macOS 上用 Swift 写一个极简后台工具有多轻量，基本就是一个 binary 加一个 .plist。随后话题转到 guard 语法，有人解释它的价值在于强制条件不满足时必须退出当前作用域，同时还能把绑定值留在后续代码里使用。也有人拿 Perl 的 unless、Rust 的 let ... else 做对比，讨论哪种写法更易读。这个分支虽然和 bug 无关，但说明帖子里的代码本身也激起了对 Swift 风格的兴趣。",
+        "supportid": [
+          "48657855",
+          "48656508",
+          "48655848",
+          "48655957",
+          "48656249",
+          "48657955",
+          "48658391",
+          "48658719"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "WindowServer",
+        "explanation": "macOS 负责窗口管理、输入分发和屏幕合成的系统进程。"
+      },
+      {
+        "term": "hardware cursor / software cursor",
+        "explanation": "hardware cursor 由显示硬件直接叠加；software cursor 则由系统重绘，通常更容易受合成和同步影响。"
+      },
+      {
+        "term": "overlay plane / cursor plane",
+        "explanation": "显示控制器里的独立图层，用来把光标或视频叠在主画面上，避免重绘整个屏幕。"
+      },
+      {
+        "term": "GPU command queue",
+        "explanation": "CPU 提交给 GPU 的待执行绘图命令队列。"
+      },
+      {
+        "term": "fence",
+        "explanation": "GPU/CPU 之间的同步标记，用来确认某段图形工作已经完成。"
+      }
+    ],
+    "context": "这篇帖子讨论的是一个 macOS workaround：用一个极小的后台程序每 10 秒记录 1 个像素，借此持续触发屏幕相关工作，缓解 MacBook Neo 上的 cursor lag。评论把焦点放在 macOS 的 WindowServer（窗口合成与输入分发服务）和硬件光标 plane 上，怀疑系统在切换到 software cursor、等待 GPU 完成前序绘图，或者进入低功耗状态时会停顿。有人认为这和 Apple Silicon（Apple 自研芯片架构）并不矛盾，因为 display controller、render device 和合成策略仍然可能出问题。帖子还顺带展示了 Swift（Apple 的编程语言）写出来的极简 app bundle 形态：一个 binary 加一个 .plist，就能做成常驻小工具。",
+    "emoji": "🙃",
+    "sarcastic_question": "为了光标顺滑，还得每10秒喂系统一像素？"
+  },
+  "articleSummary": "## 一句话总结\n通过每 10 秒录制 1 个像素的屏幕画面，强制 macOS 的窗口合成器保持活跃，从而彻底解决 Neo Cursor 在高负载下的光标卡顿问题。\n\n### Neo Cursor 卡顿的根源：系统为了省电“偷懒”\nNeo Cursor 的光标渲染依赖于 macOS 的窗口合成机制，但这个机制有个让人头疼的“节能特性”。当系统检测到屏幕内容长时间静止时，为了降低 GPU 负载和省电，它会大幅降低合成频率。这导致当你突然移动鼠标时，光标渲染跟不上，出现明显的掉帧和延迟。说白了，不是 Neo Cursor 的代码写得烂，而是 macOS 觉得你在“发呆”，就把渲染通道给半关了。\n\n### 既然不能关掉省电，那就骗它“我很忙”\n那怎么办？直接关闭系统的电源管理显然不现实，也不优雅。作者的核心思路其实很简单：既然系统在屏幕静止时偷懒，那就人为制造一点点“动静”，让系统以为屏幕还在变化，从而强迫它保持高频渲染。这就是所谓的“Keep Alive”机制，关键在于这个“动静”必须足够小，小到用户完全感知不到，但又能骗过系统的检测逻辑。\n\n### 极致的资源权衡：每 10 秒只截 1 个像素\n这里有个巧妙的设计：作者没有选择录制全屏，也没有选择高帧率，而是利用 `ScreenCaptureKit` 配置了一个极其极端的参数。他将录制区域设置为 `1x1` 像素，帧率设为每 10 秒 1 帧。这意味着每 10 秒钟，系统只需要处理 1 个像素的数据。这种负载对 CPU 和 GPU 来说几乎可以忽略不计，但它足以触发系统的屏幕变化检测，让合成器保持“清醒”状态。\n\n### 技术实现细节：用 Swift 构建一个“空转”输出流\n代码里实现了一个 `NullStreamOutput` 类，它遵循 `SCStreamOutput` 协议。当收到屏幕帧数据时，它只是简单地打印一条日志，然后直接丢弃数据，不做任何渲染或处理。配合 `SCStreamConfiguration` 中的 `minimumFrameInterval` 设置为 `CMTime(value: 10, timescale: 1)`，完美实现了“只触发，不处理”的逻辑。这种写法既满足了系统活跃度的要求，又把资源消耗降到了最低。\n\n### 智能暂停：在全屏模式下自动退场\n虽然这个方案很轻量，但作者还是考虑到了极致的用户体验。代码中集成了 `Accessibility` API 来监听窗口状态，增加了一个“Pause in Fullscreen”功能。当检测到前台应用进入全屏模式（比如在看视频或打游戏）时，程序会自动停止捕获。因为在全屏沉浸式体验中，Neo Cursor 的光标通常被遮挡或不需要，这时候彻底停止录制能进一步确保零干扰。\n\n### 从 Shell 脚本到原生 App 的打包艺术\n有意思的地方在于，这篇文章提供了一个单文件解决方案。它利用 Bash 脚本的 `heredoc` 语法，内嵌了完整的 Swift 源码，并在运行时动态调用 `swiftc` 编译成 `.app` 包。这不仅解决了分发问题，还自动处理了 macOS 繁琐的权限请求（Screen Recording 和 Accessibility）。对于开发者来说，这是一个非常精彩的“自包含”工具实现案例，展示了如何用最少的依赖解决底层系统交互问题。"
+}

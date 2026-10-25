@@ -1,0 +1,87 @@
+{
+  "id": 49415271,
+  "by": "setheron",
+  "title": "Executable Is a SQLite Database",
+  "url": "https://fzakaria.com/2026/08/23/your-executable-is-a-sqlite-database",
+  "score": 382,
+  "createdAt": 1787562610,
+  "aiSummary": {
+    "chinese_title": "SQLite 可执行文件：单文件应用、动态链接与 mmap 争议",
+    "discussion_overview": [
+      {
+        "category": "单文件应用与可变状态",
+        "summary": "支持者把它想象成一种“活”的单文件应用：程序、依赖、资源和运行时状态都放进同一个 SQLite 文件里。有人进一步设想把 Lisp image、内置虚拟文件系统和可运行时修改的额外表都塞进去，让文件随着使用不断演化。还有人希望加入 BEFORE/AFTER/REPLACE 这类 hook，以及运行时重新链接，使插件或依赖只要改数据库就能在下次调用时生效。整体上，这一派把它看成代码、数据和部署目标合一的激进单文件方案。",
+        "supportid": [
+          "49417700",
+          "49417991",
+          "49418265",
+          "49418905",
+          "49416696"
+        ]
+      },
+      {
+        "category": "mmap、页对齐与内核复杂度",
+        "summary": "真正被反复指出的阻碍，是 copied 和 mapped memory 的取舍：SQLite Blob 往往要复制，不能像原生可执行映像那样直接 mmap。有人考虑通过压缩 section、页对齐 BLOB，或者重写 SQLite binary format，让内容更适合页映射并减少启动拷贝。也有人提议把 SQLite driver 放进 kernel space，把它变成唯一的 filesystem 或 unikernel，但随即有人提醒这会把大量复杂 machinery 塞进内核。另一种观点认为，除非 latency 和 size 的 trade-off 变得更有利，否则这类方案很难胜过传统 loader。",
+        "supportid": [
+          "49418820",
+          "49417656",
+          "49418556",
+          "49418922",
+          "49418284"
+        ]
+      },
+      {
+        "category": "巧思有余，刚需不足",
+        "summary": "不少人认可这个点子很巧，也承认读起来很有趣，但并不觉得自己“必须拥有它”。有人明确表示，这主要对处理 ELF internals 的少数人更有价值，而不是对大多数只是正常使用可执行文件的人更有价值。还有人认为，把所有东西都塞进一个数据库未必比拆分成多个工具更好，真正的关键是能否在性能、体积或互操作性上带来明显收益。整体语气是欣赏黑客精神，但对实际落地保持克制。",
+        "supportid": [
+          "49417327",
+          "49417530",
+          "49418284"
+        ]
+      },
+      {
+        "category": "文件格式统一与历史类比",
+        "summary": "评论把这个想法放进更大的“所有东西都像数据库”的叙事里。有人说 PE/COFF（Windows 的可执行/对象文件格式）和 .NET assembly（.NET 程序集格式）本身就很像关系数据库，Office、Power BI、OpenDocument 等格式也被拿来类比。这个视角认为，过去几十年里很多工具都在重复发明类似数据库的打包方式，而 SQLite 可能把文档、应用、依赖和二进制统一进一个容器。也有人进一步猜测，它甚至可能演化成某种替代 container image 的格式，尤其适合把依赖一起封装时。",
+        "supportid": [
+          "49418820",
+          "49418335",
+          "49417871"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "SQLite",
+        "explanation": "嵌入式关系型数据库文件格式，这里被当作可执行容器和单文件应用载体。"
+      },
+      {
+        "term": "ELF",
+        "explanation": "Unix/Linux 常见的可执行文件和共享库格式，是这场讨论的核心对照物。"
+      },
+      {
+        "term": "mmap",
+        "explanation": "内存映射，把文件页直接映射到进程地址空间；是否能避免拷贝是争论焦点。"
+      },
+      {
+        "term": "dynamic linking",
+        "explanation": "运行时加载共享库并解析符号的机制，决定插件化和依赖替换是否可行。"
+      },
+      {
+        "term": "AppImage",
+        "explanation": "Linux 的单文件应用打包格式，常被拿来类比这种“一个文件装下应用”的思路。"
+      },
+      {
+        "term": "PE/COFF",
+        "explanation": "Windows 的可执行文件/对象文件格式，也被评论者类比成某种“数据库化”的容器。"
+      },
+      {
+        "term": "VFS（Virtual File System）",
+        "explanation": "虚拟文件系统接口，让应用把不同存储后端抽象成统一的文件访问层。"
+      }
+    ],
+    "context": "这篇文章讨论把可执行文件重新设计成基于 SQLite 的单文件容器，试图把代码、依赖、资源和运行时状态都塞进同一个数据库文件。评论里不断拿 ELF（Unix 的可执行/共享库格式）、AppImage（Linux 的单文件应用打包格式）、PE/COFF（Windows 的可执行/对象文件格式）和 .NET assembly（.NET 程序集格式）做类比，说明很多二进制格式本来就带有“数据库化”倾向。争议焦点主要是 dynamic linking、relocations、mmap（内存映射）和 VFS（Virtual File System，虚拟文件系统）：它们决定这种格式是方便打包，还是会在启动速度和内存访问上吃亏。也有人把它联想到 Smalltalk/Lisp 那种代码与状态可一起持久化、可在线修改的系统。",
+    "emoji": "🤔",
+    "sarcastic_question": "难道万物最终都要先塞进SQLite里吗？"
+  },
+  "articleSummary": "## 一句话总结\n\nSELF 把 SQLite 从“描述可执行文件的工具”推进到“可直接执行的文件格式”：它用数据库表替代 ELF 的手工结构，让分析、修改、动态链接和依赖闭包都变成 SQL 问题，但代价是启动延迟和内存映射共享能力尚未追平 ELF。\n\n## 正文\n\n### ELF 早就在重复造数据库，只是不肯承认\n\n作者对 ELF 的不满，不是因为它不能运行程序，而是因为它本质上已经在做数据库的工作。`.strtab` 和 `.dynstr` 是字符串驻留，`.hash` 与 `.gnu.hash` 是索引，section header table 类似 `sqlite_schema`，符号名偏移则像手写的 foreign key。甚至 `objcopy --strip-debug`，从抽象上看也无非是一次 `DELETE + VACUUM`。但 ELF 没有把这些能力交给一个真正的数据库，而是把它们压缩成大量紧耦合的偏移、section 和约定。于是，`ld.so`、binutils、LIEF、goblin、`readelf` 等工具，都得反复实现同一套解析和序列化逻辑。说白了，ELF 是一个为磁盘和带宽极其昂贵的时代设计的手工数据库。\n\n### sqlelf 证明了“用 SQL 看 ELF”并不只是玩具\n\n作者此前做过 `sqlelf`，它通过 SQLite virtual tables 将 ELF 暴露为可查询的数据。于是，原本需要 `readelf` 配合 `grep` 的事情，可以写成 `SELECT name FROM elf_symbols`。这个实验的价值不只在于查询体验更舒服，更在于它说明 ELF 结构可以自然映射为关系数据。可 `sqlelf` 仍然只是“用数据库观察 ELF”，并没有改变真正被执行的文件。随着 LLM 带来重新探索激进想法的动力，作者把问题推进了一步：能不能直接用 SQLite 替代 ELF？最终原型叫 SELF，即 Structured Executable & Linkable Format。\n\n### SELF 的最小运行时模型只有元数据和加载段\n\nSELF 不是“一个数据库描述某个 ELF”，而是那个可以 `chmod +x` 后直接运行的 SQLite 文件。最小可执行 SELF 只需要两张表：`self_meta` 保存 ELF header 级别的 key/value 元数据，`segments` 则保存每个 program header 对应的 load image。`segments` 的每一行包括原始 offset、`vaddr`、`filesz`、`memsz`、R/W/X 权限、对齐方式和实际 BLOB 内容。纯 BSS 段甚至不需要存储内容，只要让 `content` 为 `NULL` 即可。也就是说，加载器需要的核心信息，不再散落于 ELF header、program header 和各类 section 中，而是成为可直接查询的行。作者的结论是：把 ELF 运行所需信息表示为 SQLite 数据库，技术上并不复杂。\n\n### 符号、版本和工具元数据都从格式魔法变成普通表\n\n在 SELF 中，符号表被收敛成一张 `symbols` 表，并通过 `(name, version)` 上的 B-tree 索引完成查找。它取代了 ELF 中多张相关 section，以及 `.gnu.hash` 和 `.hash` 这类专用索引结构。符号版本不再需要 `.gnu.version_r`、`.gnu.version_d` 等机制，而只是 `version` 列中的一个值。字符串表也消失了，因为名称直接保存为 SQLite `TEXT`，不再需要 `st_name` 指向 `.strtab` 的偏移。更关键的是，`sections`、`notes`、`dynamic_entries` 这类主要服务于工具链的元数据表，删除后程序依然可以运行。于是 `strip` 不再是危险的 offset surgery，而是一笔事务：`DELETE FROM sections; DELETE FROM notes; VACUUM;`。\n\n### 读 ELF、改 ELF，最后都可以退化成 SQL\n\n这个格式最有意思的地方，是大量熟悉的 ELF 工具都不再需要理解二进制布局。`nm -D --undefined` 对应查询 `imports` view，`readelf -l` 查询 `segments`，`ldd` 则通过 `needed`、`symbols` 和 `segments` 的关联得出依赖库。作者给出的 `hello` 示例里，删除可选表后文件从 57,344 B 缩到 49,152 B，程序仍能输出 `Hello, world!`。对于修改型工具，`patchelf` 也可被理解为一次 `UPDATE`，而不是在紧凑二进制文件里腾挪 section。这里的核心转变是，ELF 的“格式知识”被提升为 schema、table 和 view。缺失的信息也不必扩展底层格式，只需暴露一个新的 view。\n\n### Linux 不需要认识 SELF，binfmt_misc 就能把它跑起来\n\nSELF 利用了 SQLite header 中 offset 68 的 4-byte `application_id` 字段，并将其标记为 `SELF`。因此，一个 SELF 文件同时具有 SQLite 的 magic `SQLite format 3\\0`，以及专属格式标记 `SELF`。Linux 侧不必修改内核，只需通过 `binfmt_misc` 注册这段 magic，并指定解释器 `self-exec`。在 NixOS 中，这是一段 `boot.binfmt.registrations.self` 配置：匹配 SQLite 文件头和 offset 68 的 `SELF`，然后交给解释器执行。`elf2self` 目前负责把现有 ELF 转换为 SELF，适合以 Nix 的 `postFixup` hook 形式逐包试验。真正的 `self-exec` 是一个链接了 `libsqlite3` 的小型 ELF 程序，它读取数据库、映射 segment、做 relocation，再跳转到入口点；它自己必须仍是 ELF，否则会触发解释器递归并得到 `-ELOOP`。\n\n### 动态链接才是数据库格式真正发挥想象力的地方\n\n静态执行并不难，真正复杂的是动态链接，而作者在这里试了两条路线。第一条保留 glibc 的 `ld.so`，借助 `rtld-audit` 的 `la_objsearch` 拦截库查找，并用 SQL 替代 `RUNPATH` 和 `LD_LIBRARY_PATH` 的文件系统搜索。这样，实际加载、relocation、lazy PLT、IFUNC、TLS 和 symbol versioning 仍由成熟的 glibc 完成，但“去哪找库”由数据库回答。演示中，即使磁盘上的 `libgreet.so.1` 已被删除，只要把库扫描进 `system.db`，设置 `SELF_SYSTEM_DB` 和 `LD_AUDIT`，程序仍能加载它。第二条路线更激进：`self-ld` 自己实现动态链接器，用 SQL 查 relocation 对应的符号、对象和 load bias，再直接 patch GOT。它还只是 proof-of-concept，但已经能够映射对象、发布 export、处理 relocation 并跳转执行。\n\n### 代价并不小，但 closure 让格式开始有了 ELF 没有的形态\n\n替代成熟格式，最终要看体积和延迟。SELF 因为携带 SQLite B-tree 开销，初始体积大约是对应 ELF 的两倍；但这些额外空间大多来自调试和工具元数据。删掉可选表后，`coreutils` 的 SELF 为 1,794,048 B，而 ELF 为 1,768,632 B，差距已经在 **1%** 以内。启动性能则更棘手：作者测量从 15 KiB 的 `hello` 到链接 47 个库、42 MiB 的 `gdb`，SELF 有约 **5 ms** 的固定 SQLite 打开和解释器启动开销，还要按映像大小复制数据。因为 segment BLOB 位于 B-tree page 中，无法像普通 ELF 那样直接 `mmap`，两个进程运行同一 SELF 也不能自然共享 text page。\n\n但作者认为，SQLite 的价值不止替换单个可执行文件，而是把整个依赖闭包装进一个数据库。传统 `ldd` 只给出 soname，并不能说明最终到底加载哪个具体文件；Nix 通过 `RUNPATH` 显式解析路径，而 SELF 则把这个关系存成 `needs.resolved_path` foreign key。`self closure` 可以把程序及其全部传递依赖封装进一个 `.db`，让共享库解析从“运行时猜测”变成“数据库中已确定的边”。这时 `ldd` 也不再是扫描外部文件系统，而只是一次 `JOIN`。原文在介绍这个 single-database closure 的后续能力时截断了，但到这里，SELF 的野心已经很清楚：它不是要把 ELF 换成更方便读写的容器，而是试图把可执行文件、链接关系和部署闭包统一成一个可查询、可事务化、可组合的数据系统。"
+}

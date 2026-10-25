@@ -1,0 +1,84 @@
+{
+  "id": 49576343,
+  "by": "torutofu",
+  "title": "Visualizing Rust's Vtables: How dyn Trait Works In Memory",
+  "url": "https://sofiabelen.github.io/projects/visualizing-rusts-vtables-how-dyn-trait-works-in-memory/",
+  "score": 130,
+  "createdAt": 1788633609,
+  "aiSummary": {
+    "chinese_title": "Rust dyn Trait/vtable 内存布局、dyn compatibility 与 C++ 对比",
+    "discussion_overview": [
+      {
+        "category": "术语更新：Object Safety 改称 dyn compatibility",
+        "summary": "评论区先纠正了 Rust 术语的变化：以前常说的 Object Safety，现在官方更倾向叫 `dyn compatibility`，因为核心就是这个 trait 能不能被用成 `dyn Trait`。有人指出文章虽然写得很新，但很可能开写时新命名还没普及，所以文中沿用了旧说法。相关评论还贴出了 Rust reference，强调规则本身比旧名字更完整、更清晰。",
+        "supportid": [
+          "49581090"
+        ]
+      },
+      {
+        "category": "C++ 对比争议：按值返回与对象切片",
+        "summary": "文章里关于 C++ 的说法被认为过于绝对，尤其是“虚函数总是走指针、返回类型也总是指针”这类表述被指出并不准确。评论者强调 C++ 当然可以按值返回对象，但一旦牵涉多态，就会遇到对象切片、栈上对象生命周期和静态存储类型不匹配的问题。有人还拿 Rust 的思路类比：如果需要类似的能力，可以让 trait 返回 `Box<dyn Trait>`，或者设计一个 `DynClone` 之类的 trait 来绕开 `Self` 的限制。",
+        "supportid": [
+          "49581246",
+          "49582322",
+          "49581334"
+        ]
+      },
+      {
+        "category": "ZST 的身份、指针比较与 borrow-checker",
+        "summary": "另一组讨论集中在 zero-sized type（ZST，零大小类型）上：为什么两个指向 ZST 的指针有时不能可靠地区分，它们到底有没有“身份”。有人解释 Rust 更偏向值相等而不是引用身份，若真要比较地址，可以直接用 `std::ptr::eq`，而不是期待 borrow-checker 代替程序员回答这个问题。还有评论强调，Rust 里只有非零大小对象才有有意义的独立身份；如果业务真的需要区分，给类型加一个 1 字节字段就能强制产生可比较的存储位置。",
+        "supportid": [
+          "49580294",
+          "49580543",
+          "49580488",
+          "49580411",
+          "49580795",
+          "49580988"
+        ]
+      },
+      {
+        "category": "追问 vtable 细节：不只是函数指针",
+        "summary": "有人希望作者继续逆向拆解 Rust 的 `vtable` 本体，而不只是展示 `dyn Trait` 的总体内存模型。评论里最初把它理解成一串方法实现的指针，但随后补充说 `vtable` 里还会有诸如对齐信息之类的元数据。这个方向反映出读者对 Rust trait object 运行时布局的兴趣，尤其是想知道它在更底层到底记录了哪些字段。",
+        "supportid": [
+          "49581006",
+          "49581235",
+          "49581504"
+        ]
+      },
+      {
+        "category": "写作评价与“可视化”预期落差",
+        "summary": "不少人先夸了文章的写作：结构清楚、开头抓人，甚至让人愿意回读一遍。也有人抓住标题里的“visualizing”不放，指出正文里并没有真正的图示，觉得标题和内容呈现方式有点不一致。整体上，这组评论说明文章的文字表达获得认可，但“可视化”这个承诺让部分读者产生了更强的图解期待。",
+        "supportid": [
+          "49582280",
+          "49582387"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "dyn compatibility",
+        "explanation": "Rust 对“能否用于 `dyn Trait`”这一能力的新版叫法，原先常被称为 Object Safety。"
+      },
+      {
+        "term": "vtable",
+        "explanation": "virtual table（虚表），`dyn Trait` 运行时用来存放方法入口和部分元数据的结构。"
+      },
+      {
+        "term": "ZST",
+        "explanation": "zero-sized type（零大小类型），在 Rust 里不占实际存储空间，相关的“身份/地址”语义会变得特殊。"
+      },
+      {
+        "term": "object slicing",
+        "explanation": "C++ 中把派生类对象按基类值复制时，派生部分被“切掉”的现象，是多态按值语义的经典坑。"
+      },
+      {
+        "term": "borrow-checker",
+        "explanation": "Rust 编译器的借用检查器，用来在编译期验证引用的生命周期、可变性和别名规则。"
+      }
+    ],
+    "context": "这篇文章在拆解 Rust 的 `dyn Trait`：trait object 在内存里通常是“数据指针 + vtable（虚表）指针”，而不是像普通对象那样直接暴露具体类型。评论区补充说，Rust 近年的官方术语把原来的 Object Safety 更名为 `dyn compatibility`，因为关键点是 trait 能否被放进 `dyn Trait`。讨论还把 Rust 和 C++ 放在一起比较，涉及 C++ 的虚函数、按值返回、object slicing（对象切片）以及 `Box<dyn Trait>` 这种把返回值装箱的思路。另一条线则围绕 ZST（zero-sized type，零大小类型）是否有“身份”、如何用 `std::ptr::eq` 比较指针，以及 borrow-checker（借用检查器）究竟在这里扮演什么角色。",
+    "emoji": "🤔",
+    "sarcastic_question": "标题都写“可视化”了，图到底被谁借走了？"
+  },
+  "articleSummary": "## 一句话总结\nRust 的 `dyn Trait` 并不像 C++ 那样把 vtable 指针塞进对象内部，而是通过“胖指针”（数据指针 + vtable 指针）在调用侧实现多态，这种架构差异决定了两者在对象大小、编译约束乃至所有权模型上的根本不同。\n\n## 正文\n\n### 从 C++ 的“惯性思维”陷阱说起\n作者作为一个 C++ 老手，初学 Rust 时试图通过寻找“一一对应”来理解新语言，结果发现这是个陷阱。Rust 不是“换了个语法的 C++”，如果强行套用旧模型，反而会错过它最革命性的设计哲学。这篇文章的起因是想搞懂 Rust 的多态在内存里到底长什么样。作者没有止步于文档描述，而是直接动手“解剖”内存，对比了 C++ 的虚函数和 Rust 的 `dyn Trait`。核心发现是：C++ 把多态的控制权（和开销）埋在对象里，而 Rust 把它交给了指针。\n\n### 静态分发与零大小类型的“惊喜”\n先看静态分发，这对应 C++ 的 CRTP（奇异递归模板模式）。Rust 的泛型在编译时会为每个具体类型生成独立副本，也就是 Monomorphization。这本身不稀奇，但作者在对比大小时发现了一个反直觉的现象：Rust 里的空结构体大小竟然是 0。在 C++ 里，对象大小至少为 1 字节以保证地址唯一，这是很多 C++ 程序员心中的“公理”。但在 Rust 里，所有权系统在编译期就能区分不同变量，不需要靠内存地址来“占坑”。这意味着 Rust 的零大小类型（ZST）完全没有内存开销，只有在 Debug 模式下编译器才会给它们分配假的栈地址方便调试。\n\n### 为什么必须引入动态分发？\n如果只是单一类型，泛型就够用了。但一旦你想在 `Vec` 里存不同类型的对象——比如 `Circle` 和 `Square`——泛型就撞墙了。`Vec` 要求元素类型和大小必须一致，而 Rust 又没有 C++ 那样的基类（Base Class）。这时候就必须引入动态分发，也就是 `dyn Trait`。解决方案是把对象装箱（`Box<dyn Trait>`）。这里的关键是：`Circle` 对象本身依然保持纯净（大小可能还是 0），它不需要像 C++ 对象那样内置一个 vtable 指针。多态的“魔法”完全发生在指针层面。\n\n### 胖指针：vtable 挂在“引用”上\n这就是文章最核心的“顿悟”时刻：`&dyn Draw` 是一个“胖指针”。普通指针 `&Circle` 只有 8 字节（64 位系统），指向数据；而 `&dyn Draw` 足足有 16 字节。作者通过 `transmute` 把它强行拆解，发现这 16 字节由两部分组成：一部分是指向数据的指针，另一部分是指向 vtable 的指针。vtable 是静态数据，同类对象共享；数据指针则随实例变化。这种设计把“如何分发”的决定权从“类定义时”推迟到了“使用时”：你用普通引用就是静态分发，用 `dyn` 引用就是动态分发。\n\n### 一个类型，多张 vtable\n为了验证 vtable 的独立性，作者做了一个实验：让 `Duck` 同时实现 `Fly` 和 `Swim` 两个 Trait。内存分析显示，同一个 `Duck` 实例，数据指针始终不变，但当你把它转为 `&dyn Fly` 或 `&dyn Swim` 时，伴随的 vtable 指针是完全不同的。这再次印证了 Rust 的设计逻辑：对象只是数据，vtable 是根据你请求的“视图”（Trait）动态匹配的外部元数据。这和 C++ 把 vtable 嵌入对象内部的模型截然不同。\n\n### Object Safety：Rust 给动态分发划的“红线”\n既然 `dyn` 这么好用，能不能所有 Trait 都用它？不行，Rust 提出了“Object Safety”的概念。最典型的限制是：Trait 方法不能返回 `Self`。比如 `Clone` Trait，它要求 `fn clone(&self) -> Self`。在静态分发时，编译器知道具体类型，知道要分配多大内存；但在动态分发时，调用者只知道有个 vtable，根本不知道返回值需要多少空间，编译器只能报错。C++ 没这个问题，因为 C++ 的虚函数通常返回指针或引用，而 Rust 如果要支持返回 `Self`，就得像 C++ 那样引入更复杂的机制，但它选择了保持简单和安全。\n\n### C++ 的引用与 Rust 的借用检查\n文章最后还顺带提了一嘴 C++ 的 `std::reference_wrapper`。在 C++ 里，引用本身不是对象，没法直接存进容器，得包一层 wrapper 才能模拟“可重新绑定的引用”。而在 Rust 里，借用规则由编译器铁腕强制执行，你不需要像 C++ 那样靠各种“补丁”设计来绕过语言的限制。这种对比让作者感叹，Rust 虽然学习曲线陡峭，但它强迫你重构心智模型，一旦适应了，你会发现这套逻辑比 C++ 更加自洽和严谨。"
+}

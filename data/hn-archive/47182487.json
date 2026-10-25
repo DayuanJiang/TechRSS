@@ -1,0 +1,105 @@
+{
+  "id": 47182487,
+  "by": "spacey",
+  "title": "Allocating on the Stack",
+  "url": "https://go.dev/blog/allocation-optimizations",
+  "score": 120,
+  "createdAt": 1772217024,
+  "aiSummary": {
+    "chinese_title": "Go 在栈上分配切片后备缓冲以避免堆分配（类似 SSO/smallvec）",
+    "discussion_overview": [
+      {
+        "category": "类 SSO/smallvec 的小对象栈内优化（正面）",
+        "summary": "多位评论者称赞 Go 编译器在切片（slice）后备存储不外泄且大小已知时，将其分配到当前栈帧以避免堆分配的做法，这与 C++ 的 small string optimization (SSO) 以及 Rust 的 smallvec 思路等价。具体细节包括 Go 的 slice 是 pointer/len/cap 三字元组，容量(capacity) 默认按分配大小类(fill size class) 确定，这解释了某些类型起始 capacity 很小的现象。评论举例说明在标准库层面常见此类优化（如 Scala 的集合实现），并提到 .NET JIT 在某些情况也能自动完成类似优化。总体观点是这是已知且高收益的微优化，能在不改动用户代码下减少分配开销并提升性能。",
+        "supportid": [
+          "47186406",
+          "47188412",
+          "47185219",
+          "47183854",
+          "47187830",
+          "47185097",
+          "47186435"
+        ]
+      },
+      {
+        "category": "C/C++ 的 alloca() 与可替代方案（风险与实践）",
+        "summary": "讨论把话题拉回到 C/C++ 的 alloca()：alloca() 通过移动栈指针快速分配内存，但分配的生命周期受限于调用栈帧且平台/实现不统一，容易导致栈溢出，因此被很多人视为危险且不可移植的做法。评论中提到可以用内联汇编或 __builtin_frame_address、获取局部变量地址来估算栈指针，Linux 下也能用 pthread_getattr_np 查询栈根/大小（glibc 扩展），而 .NET 提供 RuntimeHelpers.EnsureSufficientExecutionStack 来做保护。为规避 alloca 的问题，评论建议使用 thread_local 缓冲区、arena/帧分配器、small vector、固定大小分配器或在受控边界下把栈“搬”到大块内存等替代方案。",
+        "supportid": [
+          "47183696",
+          "47183893",
+          "47184275",
+          "47184516",
+          "47185113",
+          "47184777",
+          "47183978",
+          "47183821",
+          "47183879",
+          "47184365"
+        ]
+      },
+      {
+        "category": "运行时与内核限制：栈增长、按需映射与开销",
+        "summary": "有人指出把切片完全靠栈增长处理需要运行时与内核层面的配合，例如为每个 goroutine 留大间隔并按需 lazy map，或者改变当前 Go 将 goroutine 移动到新连续块的实现，这些都需要大量运行时改动。真正的瓶颈常常是 VMA（虚拟内存区）记账、相关 syscalls、页表扩展和 TLB（Translation Lookaside Buffer）刷新等开销，尤其在成千上万或上百万栈实例时会显著影响性能。评论提到 Linux 6.13 的 MADV_GUARD_INSTALL（轻量级 guard page）可减轻一些问题，但要在性能上与语言级方案竞争可能还需要更多内核或硬件支持。另外，较大的栈帧会损害缓存局部性，反而在常见场景下降低性能。",
+        "supportid": [
+          "47183952",
+          "47184120",
+          "47185418",
+          "47184631",
+          "47184825",
+          "47184555",
+          "47184777",
+          "47185612"
+        ]
+      },
+      {
+        "category": "语义、安全与编译器隐式决策的担忧",
+        "summary": "部分评论对编译器隐式将小对象放到栈上的做法表示担忧，认为把微观优化交给编译器可能会在边界条件下引入栈溢出或改变程序语义，降低可预测性与可控性。有人强调在 C++ 中 alloca() 并非标准，不能作为跨平台安全方案，另有人把这种行为归为“小对象装箱/隐式装箱（small-object boxing）”优化并认为应更透明。整体立场是：虽然优化有实际好处，但需要明确语义、可配置或可见的保证，否则会增加诊断难度与潜在风险。",
+        "supportid": [
+          "47187539",
+          "47184095",
+          "47184295",
+          "47184957",
+          "47188979"
+        ]
+      },
+      {
+        "category": "工具链与实务：PGO 的支持与限度",
+        "summary": "有人问到是否可以用 profile-guided optimization (PGO) 来提示编译器预留更大栈空间，回应是 Go 有 PGO 支持（例如 go build -pgo=...）。但也有实际经验指出将 PGO 工作流引入 CI 并不总能带来显著加速，收集和维护代表性 profile 的工程成本往往会抵消收益。结论是 PGO 可用但效果高度依赖项目和代表性负载，需权衡投入产出。",
+        "supportid": [
+          "47183994",
+          "47184199",
+          "47186270"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "alloca()",
+        "explanation": "C/平台函数 alloca()：在当前栈帧上分配内存（通过移动栈指针），速度快但生命周期受限于栈帧且实现/可移植性不一，存在栈溢出风险。"
+      },
+      {
+        "term": "SSO (small string optimization) / smallvec",
+        "explanation": "SSO/smallvec 模式：把短小对象直接内联在对象本体或元数据中以避免堆分配，常见于 C++ 的 SSO、Rust 的 smallvec 等实现。"
+      },
+      {
+        "term": "Go slice (pointer/len/cap)",
+        "explanation": "Go 的 slice 是由三个字组成的元组：底层指针、长度 (len) 和容量 (cap)，容量决定何时需要重新分配，编译器/运行时可据此做栈上优化。"
+      },
+      {
+        "term": "goroutine 可伸缩栈",
+        "explanation": "goroutine（Go 的轻量级线程）使用可增长/可搬移的栈实现，运行时在需要时扩展或搬移栈，这既支持栈上优化也带来了内存映射和复制的开销。"
+      },
+      {
+        "term": "TLB (Translation Lookaside Buffer)",
+        "explanation": "TLB：CPU 的地址转换缓存，用于加速虚拟地址到物理地址的映射；大量页面变动或频繁增长栈会导致 TLB miss，显著降低内存访问性能。"
+      },
+      {
+        "term": "MADV_GUARD_INSTALL",
+        "explanation": "MADV_GUARD_INSTALL：Linux 6.13 引入的轻量级 guard page hint，可用于更高效地实现保护页和按需映射，可能有助于运行时管理栈边界。"
+      }
+    ],
+    "context": "这次讨论基于一篇描述 Go（编程语言）编译器/运行时将可知大小且不外泄的切片后备存储分配到栈帧上的文章。评论把该优化与 C++ 的 SSO（small string optimization）、Rust 的 smallvec 和 C 的 alloca() 等既有技术对比，讨论了实现细节、收益与风险。话题扩展到 Go 的 goroutine（轻量级线程）可伸缩栈、虚拟内存区（VMA）记账、TLB（Translation Lookaside Buffer）开销以及 Linux 的 MADV_GUARD_INSTALL（轻量级 guard page）对按需映射的影响。总体是在权衡减少堆分配带来的性能收益与栈溢出、缓存局部性、可移植性及运行时/内核复杂性之间的取舍。",
+    "emoji": "⚙️",
+    "sarcastic_question": "堆分配太贵所以把风险交给编译器令人放心吗？"
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "id": 48745855,
+  "by": "andrenotgiant",
+  "title": "Postgres data stored in Parquet on S3: LTAP architecture explained",
+  "url": "https://www.databricks.com/blog/lakebase-ltap-rethinking-database-storage",
+  "score": 122,
+  "createdAt": 1783156261,
+  "aiSummary": {
+    "chinese_title": "Postgres 数据落 S3 Parquet：LTAP 的 OLTP/OLAP 争议",
+    "discussion_overview": [
+      {
+        "category": "热数据留页、冷数据落 Parquet 的双路径机制",
+        "summary": "评论里最核心的问题是：LTAP 并不是直接拿 S3 上的 Parquet 去跑所有查询，而是沿用现有的 Pageserver（页面服务器）缓存层。近期写入和 working set 仍然保留在 Postgres page format 和 NVMe 上，历史数据则异步转换成 Parquet 存到 S3。这样 OLTP 继续走热路径，OLAP 和实时分析可以同时利用冷数据与热数据的两种表示。有人把这种做法直接类比成 Lambda architecture（热路径+冷路径双轨架构）。",
+        "supportid": [
+          "48784910",
+          "48785058",
+          "48785968",
+          "48786156",
+          "48786572"
+        ]
+      },
+      {
+        "category": "统一存储 vs CDC 的现实代价",
+        "summary": "另一条主线是对“统一存储”叙事的怀疑。支持者强调，异步转换的目的就是避开 CDC（Change Data Capture）带来的 replication slot、内存和 CPU 消耗，让 OLTP 不必背着下游同步包袱。质疑者则认为，把问题从 CDC 挪到存储层并不等于消灭复杂度，真正难点是高吞吐写入下的转换延迟、实时分析的性能，以及是否能拿出真实规模的证据。也有人直接提出，与其把存储统一起来，不如做更好的 CDC、用 standbys，或者保留专用的 OLTP/OLAP 系统。",
+        "supportid": [
+          "48786172",
+          "48786227",
+          "48786275",
+          "48786312",
+          "48786341",
+          "48786631",
+          "48786704",
+          "48786802"
+        ]
+      },
+      {
+        "category": "历史版本、SCD type 2 与 time travel 的边界",
+        "summary": "很多讨论转向了“历史数据到底怎么保留”的建模问题。有人把 ETL/streaming replication 的价值总结为保留完整历史，典型做法就是 SCD type 2（带 valid_from/valid_to 的慢变维度表）。另一些人指出，Iceberg（开源表格式）和 Delta Lake（表格式）支持 time travel，但通常只能回到 catalog 里的快照，不是任意时间点；而且如果业务表本身设计得好，例如 email_history 这类历史关系本来就存在，就未必需要靠 CDC 人工补一层历史表。反方则强调 row change timestamp 不等于业务事件时间，延迟、回填和补数都会让“版本历史”与真实逻辑历史错位，所以显式时间戳仍然有价值。",
+        "supportid": [
+          "48746678",
+          "48784106",
+          "48784128",
+          "48784049",
+          "48786268",
+          "48786805",
+          "48783916",
+          "48784456",
+          "48785859"
+        ]
+      },
+      {
+        "category": "S3、对象存储与云账单的工程现实",
+        "summary": "有人第一反应就是担心大查询会不会把 S3 带宽账单打爆，但也有人指出同一区域的 EC2↔S3 流量通常不额外计费。随后讨论扩展到 S3-compatible object store：MinIO、Ceph、SeaweedFS、RustFS、Garage 都被提到，理由包括 Parquet 文件比行存更小、PB 级备份更容易复制，甚至比数据库 dump 和增量备份更省事。争论最后落到企业到底更在意价格还是风险：一派认为大公司上 AWS 主要是锁定和稳妥，另一派则说技术团队和 CFO/CEO 一直会盯着云成本，根本不存在“价格不重要”。",
+        "supportid": [
+          "48783861",
+          "48784838",
+          "48783899",
+          "48784409",
+          "48784519",
+          "48785540",
+          "48784124",
+          "48784148",
+          "48785093",
+          "48784270",
+          "48784482",
+          "48784896",
+          "48786165",
+          "48785463",
+          "48785099"
+        ]
+      },
+      {
+        "category": "作为应用底座的 LTAP：medallion 与权限复用",
+        "summary": "也有评论把 LTAP 看成不只是分析侧的存储优化，而是能同时放进 medallion architecture（分层数据架构）的两端。按这种理解，它既可以作为 OLTP 底座放在 Bronze 之前，也可以在 Gold 之后直接支撑分析型应用。这样做的吸引力在于少搭 ETL，并且能复用 Unity Catalog（统一目录与权限系统）里的 RBAC/ACLs，尤其适合构建分析型 PERN 应用。也有人暗示，这种用法说明 LTAP 的价值不只在仓库查询，而在于把事务库和分析平台合并成一个更统一的开发面。",
+        "supportid": [
+          "48784506",
+          "48785507"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "CDC（Change Data Capture）",
+        "explanation": "把数据库变更捕获出来并同步到下游系统的机制，常用于 OLTP→OLAP 同步。"
+      },
+      {
+        "term": "Parquet",
+        "explanation": "列式文件格式，适合分析扫描、压缩和对象存储归档。"
+      },
+      {
+        "term": "WAL（Write-Ahead Log）",
+        "explanation": "Postgres 的预写日志，用来记录事务变更并支持复制与恢复。"
+      },
+      {
+        "term": "LSN（Log Sequence Number）",
+        "explanation": "Postgres 中标记 WAL 位置的序号，常用来划分数据边界或同步进度。"
+      },
+      {
+        "term": "SCD type 2",
+        "explanation": "Slowly Changing Dimension Type 2，通过新增版本行保留维表历史。"
+      },
+      {
+        "term": "Lambda architecture",
+        "explanation": "把实时热路径和离线冷路径分开的数据架构思路。"
+      },
+      {
+        "term": "Iceberg / Delta Lake",
+        "explanation": "常见开源表格式，支持快照和 time travel 等能力。"
+      },
+      {
+        "term": "Pageserver",
+        "explanation": "负责缓存、重建并服务 Postgres page 的存储节点，热数据通常落在这里。"
+      },
+      {
+        "term": "Safekeeper",
+        "explanation": "保存一段 WAL 窗口并把它流向 Pageserver 或 replica 的组件。"
+      }
+    ],
+    "context": "这篇讨论围绕 Neon（一个把 Postgres 计算与存储分离的托管平台）相关的 LTAP 架构展开：近期写入和工作集仍留在 Pageserver（页面服务器）上的 Postgres page format，历史数据则异步转成 Parquet 存入 S3（对象存储），并通过 LSN（Log Sequence Number）划分冷热边界。评论者默认读者已经理解 OLTP/OLAP 分工、WAL（Write-Ahead Log）复制、CDC（Change Data Capture）和 SCD type 2 这些数据管道概念。争论的焦点是，这种“热页+冷 Parquet”的做法究竟是在消灭 ETL/CDC 复杂度，还是只是把复杂度移到存储层，同时能否真正支撑实时分析和事务读写。另一个背景是，很多人把它类比为 Lambda architecture（热路径+冷路径双轨架构）或 Iceberg/Delta Lake 的 time travel，但也提醒快照语义与业务历史并不完全等价。",
+    "emoji": "🤔",
+    "sarcastic_question": "把缓存层改成Parquet就叫零副本？"
+  },
+  "articleSummary": "# 一句话总结\nLakebase 通过将 Postgres 的 WAL 和数据文件剥离到独立的 SafeKeeper 和 PageServer 服务中，实现了存储计算分离，并利用 PageServer 将数据实时转存为 S3 上的 Parquet 格式，从而在单一数据副本上同时实现了高性能的 OLTP 事务和实时 OLAP 分析。\n\n---\n\n### 传统单体数据库的“紧耦合”困境\n现在的数据库大多还是“单体”架构，无论是 MySQL 还是 Postgres，核心逻辑都一样：计算引擎和存储（WAL 日志 + 数据文件）死死绑在一台机器上。这种设计虽然经典，但问题很明显：WAL 为了写性能而存在，数据文件为了读性能而存在，两者同处一室导致资源争抢。更麻烦的是，数据的持久性完全依赖本地磁盘的配置，一旦机器挂了或者磁盘配置有误（比如操作系统谎报了 flush 结果），数据就可能丢失。想要扩容读流量或者做高可用（HA），通常得物理克隆整个数据库，既费时又费钱，而且分析型查询还会直接干扰事务型业务的性能。\n\n### 核心思路：把存储“踢”出数据库\n既然单机是瓶颈，那解法就是“存储计算分离”。Lakebase 的做法很彻底：它把 Postgres 的计算节点变成了完全无状态的服务。原本放在本地磁盘上的 WAL 和数据文件，被分别移到了两个专门构建的分布式服务里。这样一来，计算节点就可以像容器一样随意启停、扩缩容，因为它不再拥有数据，只是负责处理逻辑。这个改动不仅让架构更符合云原生的弹性要求，也为后续解决数据一致性和实时分析打下了基础。\n\n### 写入不再怕丢：WAL 变成了 SafeKeeper\n在单体架构里，写入的持久性依赖本地磁盘 flush，这很不靠谱。Lakebase 把 WAL 剥离出来，变成了一个叫 SafeKeeper 的分布式存储服务。现在，一个事务要提交，不再等本地磁盘，而是通过 Paxos 协议把日志复制到 SafeKeeper 集群的大多数节点上。你可能会担心网络跳转会增加延迟，但实际上，任何正经的高可用 Postgres 本来就要做同步复制，所以这里并没有额外的开销。相反，因为去掉了本地 I/O 的瓶颈，这种架构反而能带来 5 倍的写入吞吐提升。\n\n### 读取不再受限：数据文件变成了 PageServer\n原本的数据文件被搬到了另一个叫 PageServer 的服务里。SafeKeeper 收到的日志会流式传输给 PageServer，后者异步地将变更应用到数据页上，并最终落盘到廉价的云对象存储（S3）中。你可以把 PageServer 看作是对象存储的一个写穿透缓存。至于读延迟，PageServer 通过多层缓存（内存、本地磁盘、远程 PageServer）来保证，绝大多数请求的延迟和单体数据库没区别，但你却获得了几乎无限的存储空间。数据不再受限于单机磁盘的大小，想存多少存多少。\n\n### 存储分离带来的“意外之喜”\n一旦 WAL 和数据文件都独立出去了，很多以前很难实现的功能就变得顺理成章了。比如“即时分支”，以前克隆数据库要物理拷贝整个数据集，慢得要命；现在因为数据在共享存储层，克隆只是一个元数据操作，几秒钟就能搞定。还有高可用，你不需要维护一个昂贵的物理备机，因为存储层本身就是高可用的，计算节点挂了直接换一个新的连上去就行。这种架构让数据库终于能像代码一样灵活，随时回滚、随时实验，而且不用担心把生产环境搞崩。\n\n### LTAP：打破事务与分析的“数据孤岛”\n最有意思的部分来了。既然 PageServer 已经在把数据往对象存储（S3）上写，那为什么不顺便把格式改一改？传统做法是，事务库用行存，分析库用列存，中间通过 CDC 或 ETL 搬运数据，导致有两份数据，不仅浪费钱还容易不一致。Lakebase 的 LTAP 架构在 PageServer 把数据写入 S3 时，直接把 Postgres 的行存格式转成了 Parquet 这种列存格式。这意味着，你在 S3 上只有一份数据，但 Postgres 可以用它做事务处理，Spark 等分析引擎可以直接读同一份 Parquet 做分析。\n\n### 最终效果：一份数据，两种世界\n这个设计的精妙之处在于，它没有试图造一个“全能引擎”，而是让数据格式来适配引擎。事务引擎继续用 Postgres 的行存缓存来保证低延迟，分析引擎直接读 S3 上的列存 Parquet 来保证高吞吐。两者在存储层合二为一，既消除了数据搬运的延迟，也省下了存储双倍数据的成本。说白了，这就是用现代云基础设施的“乐高积木”，重新拼出了一个既支持 ACID 事务又支持实时分析的数据库。"
+}

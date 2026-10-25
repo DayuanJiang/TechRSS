@@ -1,0 +1,79 @@
+{
+  "id": 47806021,
+  "by": "mfiguiere",
+  "title": "What Are Skiplists Good For?",
+  "url": "https://antithesis.com/blog/2026/skiptrees/",
+  "score": 225,
+  "createdAt": 1776574851,
+  "aiSummary": {
+    "chinese_title": "Skiplists 的实战用途：Redis、LSM、并发与交集查询",
+    "discussion_overview": [
+      {
+        "category": "生产场景中的实际用途",
+        "summary": "评论里列出的真实用法主要集中在有序映射和写多读多的内存索引上。Redis sorted set 用 skiplist 处理 range query 和 ordered iteration，再配合 hash table 做 O(1) lookup，是一个很典型的组合。还有人提到 LSM tree 的 memtable、交易账本的插入/删除和按 account balance 查询，以及全球复制的交易系统，说明 skiplist 在“需要频繁插删、同时保留顺序”的场景里还是有落地价值。也有人提醒，如果只是普通的随机访问，binary search 的 sorted array 往往更划算。",
+        "supportid": [
+          "47823009",
+          "47822026",
+          "47822211",
+          "47823054",
+          "47822612"
+        ]
+      },
+      {
+        "category": "性能局部性与 B-tree/B+ tree 怀疑",
+        "summary": "不少评论对 skiplist 的实用性持怀疑态度，核心理由是指针跳转太多，CPU cache locality 不如 B-tree/B+ tree。有人直言在真实机器上它们通常“不太适合干很多事”，因为访问一个值要 dereference 更多 pointer，单次 IO 或缓存命中能做的工作更少。还有人觉得如果需求主要是顺序加载或遍历，最直觉的方案其实是 B+ tree，而不是再造一个“skiptree”。也有评论指出，对某些问题来说简单 list 加一些技巧，反而会因为 locality 更好而跑得更快。",
+        "supportid": [
+          "47822450",
+          "47823155",
+          "47822089",
+          "47823637"
+        ]
+      },
+      {
+        "category": "并发实现、范围查询与交集优化",
+        "summary": "支持者强调 skiplist 的局部操作特性：插入、删除、前进几步通常只影响很小的范围，因此比 balanced BST 更容易写出 thread-safe 或 lock-free 实现。Java 的 ConcurrentSkipListMap 就被拿来作为例子，说明它在高 contention 下依然好用。另一条线是交集查询：在 postings lists 或其他半连续数据上，skip pointers 可以一次跳过一大段无关值，特别适合 intersection，而不是单值 lookup。有人还好奇这种“express lanes”为何要随机提升节点，问题的重点其实就在于用概率保证层高和搜索成本的平衡。",
+        "supportid": [
+          "47823172",
+          "47823060",
+          "47823019",
+          "47821949"
+        ]
+      },
+      {
+        "category": "文章里的系统设计背景",
+        "summary": "这篇文章背后的问题不是“拿 skiplist 存一堆值”，而是要在现有 SQL 数据库里表示和查询一棵树，而且还受制于某个 pricing model。作者说明他们的 fuzzing target 是一个容器网络、整套 Linux userland 以及 kernel 组成的系统，单纯从 t=0 重新 replay 全部状态在 read path 上太贵，所以只会在需要分叉新 timeline 的 write path 上重建。为了降低延迟，他们还用了 smart snapshotting，用更多 memory 换更低的重放成本。换句话说，这不是教科书式数据结构选择，而是在系统测试和状态重建约束下做的一次工程折中。",
+        "supportid": [
+          "47822413",
+          "47823658",
+          "47822089",
+          "47823578"
+        ]
+      },
+      {
+        "category": "AI 时代的数据结构知识焦虑",
+        "summary": "有评论把话题延伸到 agentic programming 和 LLM，担心大家会越来越少去思考并发数据结构、性能局部性和硬件约束，最后只剩下“多加机器”的解法。也有人反过来认为，硬件越来越贵反而逼着工程师更认真地做 resource allocation，不可能什么都交给更大 RAM 和更多 cores。还有嵌入式开发的例子：在 640 KiB SRAM 这种极小内存里，inplace_map、placement new、无 heap serialization 这些技巧不是炫技，而是为了避免 heap fragmentation 和资源爆炸。分歧不在于 AI 能不能写代码，而在于它是否会默认给出“能回答问题”的方案，而不是“真正适合约束”的方案。",
+        "supportid": [
+          "47822404",
+          "47823668",
+          "47822605",
+          "47822689",
+          "47822436"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "skiplist（跳表）",
+        "explanation": "一种带多层“express lanes”的有序链式结构，通常用随机提升节点来加速查找、插入和删除。"
+      },
+      {
+        "term": "B-tree / B+ tree（B树 / B+树）",
+        "explanation": "面向磁盘和缓存局部性优化的平衡树，通常更少指针跳转，适合范围扫描和高局部性访问。"
+      }
+    ],
+    "context": "这篇讨论围绕一篇介绍 skiplist 用途的文章展开，文章里提到作者在 Antithesis（一个做分布式系统 fuzzing 和故障测试的平台）里，为了在现有 SQL 数据库中存放和查询一棵树，做了一个叫 skiptree 的变体。评论者把它和 Redis sorted set、LSM tree（Log-Structured Merge Tree，一类写优化存储结构）、B-tree/B+ tree 的局部性优势放在一起比较，争论它更适合内存索引、范围查询还是复杂系统状态表示。另一层背景是 fuzzing：系统状态由 seed 决定，可按需重放，但整套容器、Linux userland 和 kernel 从头重建太慢，所以作者采用 snapshotting 在 read path 和 write path 之间做权衡。整个线程其实在讨论一个老问题：在现代硬件、数据库和并发场景下，skiplist 还有哪些真正值得用的地方。",
+    "emoji": "🤔",
+    "sarcastic_question": "除了面试题，Skiplists 还真能落地几次？"
+  },
+  "articleSummary": "## 一句话总结\n当 BigQuery 这种分析型数据库被迫处理树形结构的递归查询时，通过将 Skiplist 的思想泛化为“Skiptree”，把原本需要 O(depth) 次全表扫描的灾难级操作，优化成了仅需固定次数 JOIN 且成本可控的 SQL 查询。\n\n### Skiplist：不仅是链表的“快车道”\nSkiplist 本质上是一种基于概率的“多层链表”，用来替代平衡二叉树。它的核心思路很简单：底层是一个包含所有节点的链表，然后通过抛硬币（比如 50% 概率）把部分节点“提拔”到上一层，形成索引层。查找数据时，你像坐高铁一样先在顶层快速掠过，直到发现下一个节点太大，就下沉一层继续找。这种设计让查找复杂度从链表的 O(n) 降到了 O(log n)。虽然大家常吹捧它适合实现无锁并发，但在很长一段时间里，它对我来说只是个看着很酷但没啥用的“冷门”数据结构。\n\n### 真正的难题：在分析型数据库里爬树\n直到我们在 Antithesis 遇到一个棘手问题：我们需要在海量测试数据中追溯因果链，这本质上是在一棵巨大的树结构上做“向上折叠”操作——即从一个叶子节点一路爬到根节点。最自然的存储方式是用 `parent_id` 记录父节点，但这在 BigQuery 里是场灾难。BigQuery 是为大规模扫描设计的，点查询极慢。每爬一层树，就是一次点查询，也就是一次全表扫描。如果树深 20 层，你就得扫 20 遍全表，这在生产环境是不可接受的。\n\n### 拆分存储的方案行不通\n那能不能把树结构单独拿出来，存到擅长点查询的 OLTP 数据库里，把详细数据留在 BigQuery？理论上可行，但工程上会引入更多麻烦。因为数据是实时写入的，要保证两个数据库强一致，你就得搞两阶段提交（2PC）。而在当时，BigQuery 的一致性语义还很弱，搞 2PC 基本上是给自己挖坑。我们需要一个纯 SQL 的解法，既不引入外部依赖，又能避免递归查询带来的性能爆炸。\n\n### 从 Skiplist 到 Skiptree 的脑洞\n这时候 Skiplist 的灵感就来了：既然 Skiplist 能通过多层索引让链表查找“跳级”，为什么不能把树也做成多层的？这就是作者发明的“Skiptree”。你可以把它想象成一系列树堆叠在一起：Level 0 是完整的树，Level 1 是随机保留了 50% 节点的稀疏树，以此类推。对于树上的任意一条“根到叶子”的路径，它在每一层上的投影，其实就是一个 Skiplist。这种结构保留了树的逻辑关系，但引入了跨层的“捷径”。\n\n### 用 SQL JOIN 替代递归查询\n在 SQL 里落地这个想法，关键在于如何表示层级关系。作者没有用传统的 `parent_id`，而是设计了两个列：`next_level_ancestor` 指向上一层的最近祖先，`ancestors_between` 存储中间被跳过的节点列表。查询时，你只需要从 Level 0 开始，通过固定次数的 JOIN 一路“跳”到顶层。比如要找节点 I 的祖先，先在 Level 0 找到它的上层祖先 C，顺带收集中间节点 G；再在 Level 1 找到 C 的上层祖先 A。整个过程不需要递归，就是一个长 SQL 语句，虽然可能包含 40 个 JOIN，但它是非递归且可并行的。\n\n### 性能权衡与工程取舍\n这个方案最妙的地方在于成本控制。BigQuery 当时是按扫描数据量收费的，而不是按计算量。得益于 Skiplist 的几何级数分布特性，上层表的数据量极小，虽然 JOIN 了很多次，但总扫描量大约只相当于两次全表扫描。代价是生成的 SQL 语句巨大（动辄几 KB），人类根本没法写。解决办法也很简单：写个 JavaScript 编译器来自动生成这些 SQL。这个看似疯狂的 Skiptree 方案，最终支撑了 Antithesis 六年的业务，直到他们自研了专门的数据库。"
+}

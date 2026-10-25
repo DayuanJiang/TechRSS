@@ -1,0 +1,77 @@
+{
+  "id": 49176697,
+  "by": "lapcat",
+  "title": "IP and DNS Leaks in WebKit Affecting Proxy Browsers and iCloud Private Relay",
+  "url": "https://mysk.blog/2026/08/04/webkit-proxy-icloud-private-relay-ip-leak/",
+  "score": 123,
+  "createdAt": 1785888618,
+  "aiSummary": {
+    "chinese_title": "WebKit 在 iOS 上泄露真实 IP：WebAuthn、Private Relay 与代理浏览器争议",
+    "discussion_overview": [
+      {
+        "category": "WebAuthn/WebTransport 泄露真实 IP",
+        "summary": "测试结果显示，HTTPS 流量看起来仍能走中继，但在“Possible IP leaks”里，WebAuthn 会暴露真实 IP，WebTransport 也偶尔出现异常地址。有人提到自己几乎不用 WebAuthn，因此会考虑通过 Feature Flags 之类的方式把它关掉。也有人直接点出，WebAuthn 本质上就是 Passkeys 等认证能力的接口，泄露登录相关元数据并不意外。评论的潜台词是：对大厂来说，认证阶段本来就是最容易把身份和网络位置关联起来的地方。",
+        "supportid": [
+          "49177743",
+          "49177926",
+          "49180075",
+          "49181148"
+        ]
+      },
+      {
+        "category": "iOS 浏览器限制与 Psylo 卖点",
+        "summary": "不少人先质疑这类 iOS 浏览器的宣传，因为 Apple 不允许真正的第三方浏览器引擎，所谓浏览器通常只是 WebKit 外壳。也有人认为它的卖点不在于换引擎，而在于更激进地配置 WKWebView，例如避免跨标签共享状态，并关闭 DNS prefetch、WebTransport 和 WebAuthn。评论里还提到这些硬化手段可能和 Safari 的 Lockdown Mode 有部分重叠。争议点在于，这到底是实质性的隐私增强，还是只能在 Apple 设定的边界里做有限调参。",
+        "supportid": [
+          "49178195",
+          "49179223"
+        ]
+      },
+      {
+        "category": "WKWebView 网络栈与代理泄漏机制",
+        "summary": "有评论强调，不能把网络能力简单看成“只是渲染引擎的一部分”，因为 WKWebView（WebKit 的内嵌网页组件）确实参与请求处理，并提供阻断和修改请求的接口。另一种解释是，这个应用把自己配置成 WebKit 的 HTTP proxy，所以表面上像是在接管流量，但如果 WebKit 自己还有旁路请求，代理层就拦不住。于是问题被重新定义为：是浏览器界面、WebKit 网络栈，还是系统路由在负责出站流量。讨论的核心不是“能不能写代理”，而是“能不能覆盖所有流量路径”。",
+        "supportid": [
+          "49178451",
+          "49179590",
+          "49179661",
+          "49180504",
+          "49179144"
+        ]
+      },
+      {
+        "category": "iCloud Private Relay 的开关与自动化缺失",
+        "summary": "不少人喜欢 iCloud Private Relay（Apple 的隐私中继服务），但最不满的是它缺少可脚本化的开关，尤其希望能在自动化流程里临时启停，并同步控制 DNS-over-HTTP/DoH。虽然系统设置里可以临时关闭一天或永久关闭，但这并不适合 bash、Automator 之类的工作流。评论里有人尝试用 osascript、System Events、Automator 应用，甚至查看 `com.apple.networkserviceproxy.plist`，但也有人发现 Apple 明显通过 XPC daemon 和联网校验来限制任意启停。整体上，这反映出一个矛盾：越是面向隐私的系统功能，越不愿意给用户或脚本完整的程序化控制。",
+        "supportid": [
+          "49177131",
+          "49177176",
+          "49179616",
+          "49177412",
+          "49180938",
+          "49178637",
+          "49177531"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "WebAuthn",
+        "explanation": "网页认证接口，常用于 Passkeys 等无密码登录流程。"
+      },
+      {
+        "term": "WebTransport",
+        "explanation": "一种面向 Web 的低延迟传输机制，基于现代传输协议。"
+      },
+      {
+        "term": "WKWebView",
+        "explanation": "iOS 上用于嵌入网页内容的 WebKit 组件，也是许多第三方浏览器的基础。"
+      },
+      {
+        "term": "iCloud Private Relay",
+        "explanation": "Apple 的隐私中继服务，用于隐藏用户真实 IP 并减少网站可见的网络信息。"
+      }
+    ],
+    "context": "Psylo 是一个面向 iOS 和 iPadOS 的 privacy-first browser（隐私优先浏览器），但在 Apple 的平台规则下，第三方浏览器大多只能基于 WebKit（Safari 使用的浏览器引擎）或 WKWebView（iOS 内嵌网页组件）运行。文章讨论的是在一个泄漏测试站点上，WebKit 对某些网络能力的处理会暴露真实 IP 或 DNS 线索，尤其涉及 WebAuthn（网页认证接口）和 WebTransport（基于 Web 的传输机制）。评论把话题进一步扩展到 iCloud Private Relay（Apple 的网络中继隐私服务）和 DNS-over-HTTP/DoH（通过 HTTP 进行加密 DNS 查询），很多人希望能像脚本一样快速启停它们，但 Apple 似乎故意不给任意程序化开关，以防被恶意软件滥用。整场讨论其实是在问：在 Apple 严格限制浏览器生态的前提下，隐私保护究竟能靠应用配置补多少，哪些问题又是平台级限制无法绕开的。",
+    "emoji": "🔒",
+    "sarcastic_question": "连WebAuthn都漏IP，还谈什么隐私浏览器？"
+  },
+  "articleSummary": "## 一句话总结\n\nWebKit 的应用级代理并没有真正覆盖所有网络路径：DNS prefetch、WebAuthn Related Origin Requests 和 WebTransport 都能绕过代理及 iCloud Private Relay，直接暴露设备真实 DNS 或 IP；Psylo 1.3.1 的应对是默认禁用这些能力，再让用户按站点显式开启。\n\n## 正文\n\n### “所有流量走代理”这句承诺，漏在了 WebKit 的边缘路径\n\n事情从一个看似普通的 Psylo 用户反馈开始：明明浏览器已经配置了代理，为什么只有访问某些网站时，仍然会发生 DNS leak？Psylo 的设计本来很明确。每个 silo 的网页流量都经由 Mysk Private Proxy Network，或者用户自定义代理发出。理论上，站点应当只能看见代理服务器的 IP 和 DNS 请求。\n\n这套机制依赖 iOS 17 与 macOS 14 引入的 `WKWebsiteDataStore.proxyConfigurations`。它让 WebKit 容器可以在应用层为网页流量配置代理，也是 iOS 上 Tor Browser、Onion Browser、Psylo 等 proxy browser 的基础。问题在于，“网页发起的网络连接”并不总是由 WebKit 标准页面加载路径完成。\n\n作者最终找到的不是一个 DNS bug，而是三条绕过路径。它们分别是 DNS prefetching、WebAuthn Related Origin Requests 和 WebTransport。其中前者泄露真实 DNS 网络，后两者直接让目标服务器看到设备真实 IP。更麻烦的是，由于 App Store 要求所有 iOS 浏览器使用 WebKit，所有依赖这个代理 API 的 iOS proxy browser 都处于同一风险面。\n\n### DNS Prefetch 为什么只让“部分网站”泄露 DNS\n\n最初那个“只影响部分网站”的谜团，答案藏在 `<link rel=\"dns-prefetch\">` 里。这个 HTML hint 的目的本来是性能优化：网页预先让浏览器解析某个 hostname，等之后真正连接时就少一次 DNS lookup。说白了，它是在提前为未来的请求铺路。\n\n但 WebKit 处理这个 hint 时，没有沿用 `WKWebsiteDataStore.proxyConfigurations` 指定的代理 DNS 路径。它会通过设备正常的 DNS resolver 直接解析域名。于是恶意页面可以为每位访客生成一个唯一 hostname，塞进 `dns-prefetch` 标签，然后在自己的 authoritative DNS server 上观察请求来源。\n\n这时，服务器看到的不是代理侧的 DNS 请求，而是用户真实网络发出的查询。也正因为只有带有该标签的网站会触发预解析，原始报告才表现为“不是所有网站都泄露”。iCloud Private Relay 也挡不住它：虽然 Private Relay 通常会代理 Safari 的 DNS 查询，但这类 prefetch lookup 同样绕开了它。\n\n这个问题在 iOS 上的出现还很新。Desktop Safari 从 Safari 5 起就支持 `dns-prefetch`，但 iOS 一直忽略它，直到 iOS 26.0，也就是 2025 年 9 月才启用。讽刺的是，WebKit 此前还专门重写过 resolver，以便 private browsing 时不把 hostname 留进 system logs；但新的显式 prefetch 路径却在代理覆盖上留下了缺口。\n\n### WebAuthn 的验证请求，跑进了操作系统的另一套网络栈\n\n第二个问题更隐蔽，因为它伪装成一个现代身份认证功能。WebAuthn 是 passkey 背后的标准，而 Related Origin Requests 则允许同一组织旗下的一小组域名共享一个 passkey。比如用户的 passkey 绑定到 `example.com`，组织也许希望 `login.example.com` 或另一个关联域可以使用它。\n\n实现这一点时，如果页面请求的 credential `rpId` 与当前 origin 不同，客户端需要先请求：\n\n```text\nhttps://<rpId>/.well-known/webauthn\n```\n\n这个 JSON 文件声明哪些 origin 有权使用该 `rpId`。按直觉，这似乎只是一次普通 HTTPS 请求，应该和页面流量一样走代理。但关键转折在于：这次请求不是 WebKit 的页面网络栈发起的。\n\nWebKit 会把 WebAuthn ceremony 交给操作系统的 credential service，而由后者自行请求验证文件。这个系统服务不知道宿主 App 配了什么 `WKWebsiteDataStore.proxyConfigurations`，因此会直接从设备网络发出请求。页面还可以通过 `mediation: \"conditional\"` 在没有用户交互、没有显示认证 UI 的情况下触发它。\n\n所以，攻击者可以指定自己控制的 `rpId` hostname，让系统服务访问其 `.well-known/webauthn` 路径，并从请求中拿到真实 IP。iCloud Private Relay 同样无能为力，因为发起者不是 Safari，而是操作系统 credential service。该能力在 iOS 18.0 / Safari 18.0，即 2024 年 9 月正式可用，因此它影响的系统范围也比 DNS prefetch 更早。\n\n### WebTransport 为低延迟而生，却把 QUIC 直接连出了代理\n\n第三条路径来自 WebTransport。它是面向低延迟场景的 WebSocket 替代方案，运行在 HTTP/3 和 QUIC 之上，支持多个独立 stream，以及不可靠 datagram 传输；在 QUIC 不可用时还能回退到 HTTP/2。对实时交互、游戏或高频数据传输来说，这些能力很有价值。\n\n问题是，调用 `new WebTransport(url)` 后，WebKit 会直接建立 QUIC 连接。它为该连接创建自己的 network parameters，却没有把当前 session 的 proxy 配置传进去。结果就是，这条 HTTP/3 连接绕过了应用代理，服务端看见的又是设备真实 IP。\n\nPrivate Relay 的边界在这里再次暴露出来。它代理的是 Safari 的常规 web traffic，但 WebTransport 连接不在这条被代理的路径里，因此即使 Private Relay 已开启，WebTransport server 仍可以识别用户真实网络地址。这个 API 虽然在 2023 年就出现过早期痕迹，但直到 2025 年 12 月才针对支持足够完善 `Network.framework` 的平台启用，并在 iOS 26.4，也就是 2026 年 3 月公开发布。\n\n有一个例外值得注意：Onion Browser 的 “Silver” security level 会通过 Lockdown Mode 禁用 WebTransport。因此 Silver 级别用户不受这一条 leak 影响。不过，这只是恰好由更严格安全模式带来的保护，并不代表应用级代理本身覆盖了 WebTransport。\n\n### iCloud Private Relay 的问题，不是代理失效，而是流量根本没进代理\n\n文章最值得开发者警惕的地方，是它把 iCloud Private Relay 也纳入了影响范围。Private Relay 的设计是让 Safari 的网页流量和 DNS 查询经过双跳 relay，使任何单一方都无法同时获知用户身份和访问目标。它解决的是 Safari 常规网络路径上的隐私问题。\n\n但这三类 leak 的共同点是：它们发生在 WebKit 标准 page-loading process 之外。DNS prefetch 走设备正常 DNS 路径，WebAuthn 请求由 OS credential service 发出，WebTransport 则自行建立 QUIC 连接。既然流量从一开始就没有进入 Private Relay 的代理管道，自然谈不上被它保护。\n\n这也解释了为什么 VPN 不受影响。VPN 在系统网络层隧道化设备整体流量，而不是仅靠浏览器或 Safari 内部的代理策略。无论请求从 WebKit、系统 credential service 还是 QUIC 特殊路径发出，最终都仍会经过 VPN tunnel。\n\n换句话说，这不是“Private Relay 和 VPN 谁更好”的泛泛比较，而是代理边界不同导致的结果。应用层代理只能保护愿意服从该配置的网络栈；系统级 VPN 则把出口控制下沉到更低的层级。对于需要强匿名属性的 browser，这个区别尤其关键。\n\n### Psylo 1.3.1 的策略：先安全默认，再把例外交还给用户\n\nPsylo 1.3.1 没有等待 WebKit 修复底层行为，而是在浏览器层做了直接缓解。首先，它会拦截 `dns-prefetch` hint，阻止页面要求设备解析攻击者控制的 hostname。这样，最容易被网页静默触发的 DNS leak 被直接切断。\n\n对于 WebTransport 和 WebAuthn，Psylo 选择默认禁用。这个决定并不意味着它们没有正当用途：WebAuthn 对 passkey 登录很重要，WebTransport 也确实服务于低延迟 Web 应用。但在 proxy browser 的威胁模型中，它们当前的网络行为意味着真实 IP 泄露风险。\n\n因此 Psylo 没有把功能永久砍掉，而是提供 per-silo toggle。用户若确认某个站点需要 passkey 或 WebTransport，可以只在对应 silo 中显式重新启用。这样做的核心不是追求“功能最全”，而是让隐私代价可见、可控，且不让用户在毫不知情时付出真实 IP 的代价。\n\n文章也提到，作者已通知 Tor Project 和 iOS Onion Browser 的开发者，并提供了 `leaks.psylo.app` 作为 PoC 检测站点。对依赖 WebKit 应用级代理的浏览器开发者来说，这篇文章的结论很直接：不要把 `WKWebsiteDataStore.proxyConfigurations` 当成“所有流量都已代理”的安全边界。至少在 DNS prefetch、WebAuthn Related Origin Requests 与 WebTransport 上，它并不是。"
+}

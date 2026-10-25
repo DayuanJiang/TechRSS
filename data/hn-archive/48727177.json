@@ -1,0 +1,103 @@
+{
+  "id": 48727177,
+  "by": "modeless",
+  "title": "Memory Safe Context Switching (longjmp, setjmp) in Fil-C",
+  "url": "https://fil-c.org/context_switches",
+  "score": 125,
+  "createdAt": 1782781817,
+  "aiSummary": {
+    "chinese_title": "Fil-C 让 setjmp/longjmp 与 ucontext 也能 memory-safe",
+    "discussion_overview": [
+      {
+        "category": "setjmp/longjmp 的安全边界",
+        "summary": "讨论集中在 longjmp 只能跳回仍然有效的 stack frame，否则保存的上下文会指向已经失效的栈。有人认为这些 API 本身并不直接决定安全性，真正危险的是用什么机制驱动上下文切换，尤其是 sigaction(2) 相关路径；但回应者强调，不加约束时它们确实可能把程序带进坏栈并导致 memory corruption。Fil-C 的思路是把 longjmp 限定成更像异常展开，只允许在有效的调用栈范围内使用，从而不破坏 capability model。还有人顺手纠正了栈深度表述，指出应是同一帧或更深的帧才可跳转。",
+        "supportid": [
+          "48727584",
+          "48727786",
+          "48727662",
+          "48728515",
+          "48728809",
+          "48727644"
+        ]
+      },
+      {
+        "category": "copy-stack、delimited continuations 与栈复制",
+        "summary": "有人提出把 stack frames 先复制到别处，再在跳转时整体恢复，这其实很接近 delimited continuations。另一种思路是永远把 continuation 恢复回原来的主栈地址，这样就不是“搬迁栈”，而是避免栈位置变化。评论里也引用了更细的安全约束：跨 continuation chunk 边界时，栈上引用会暂时悬空，因此引用不能随便穿越这些边界。",
+        "supportid": [
+          "48727775",
+          "48727943",
+          "48728030"
+        ]
+      },
+      {
+        "category": "ucontext、Boost Fiber 与 signal mask 开销",
+        "summary": "讨论把 ucontext 和 Boost Context/Boost Fiber（C++ 的纤程与上下文切换库）直接对比，认为 ucontext 显得重，主要因为它会保存和恢复 signal masks。有人补充说 Fil-C 目前依赖 glibc 的实现，所以也继承了这类开销，但内部的 zfiber_context API 未来可以换成不保存 sigmask 的后端。还有人说明自己把 fiber 用在 cooperative multitasking 上，并用单独的 signal thread 来分发信号，说明这类设计常常要在性能、可移植性和信号语义之间折中。",
+        "supportid": [
+          "48727734",
+          "48727886",
+          "48727915"
+        ]
+      },
+      {
+        "category": "指针、可搬迁栈与运行时设计",
+        "summary": "很多评论都围绕一个核心问题：C 里的 pointers 让栈很难自由搬迁，因为任何指向栈内数据的地址都可能在移动后失效。相比之下，使用 base pointer 加 offset 的语言/运行时可以通过重设基址来重分配栈，Go 也因为能在大多数情况下知道指针位置而可以移动栈。有人幻想 80286 的 segmentation 如果赢了，或许能更轻松地做地址重定位，但也有人指出 shared libraries 需要多个 segment base，真正问题并没有消失，只是换了形式。",
+        "supportid": [
+          "48727775",
+          "48728590",
+          "48729637",
+          "48727917",
+          "48727994"
+        ]
+      },
+      {
+        "category": "不止 memory safety 的其他风险",
+        "summary": "还有人提醒，setjmp/longjmp 的风险不只是 memory safety，资源泄漏、绕过非 exception-safe 的库代码、以及 CPU 特定的 FP/vector/control state 没有恢复干净，都是现实问题。大家普遍认可 Fil-C 主要目标是阻止 memory corruption 和 capability 逃逸，但它不会自动修复这些更偏语义层面的 footgun。这个分歧让讨论从“栈是否有效”扩展到“上下文切换到底该承诺多少行为”。",
+        "supportid": [
+          "48727576",
+          "48728035",
+          "48728048"
+        ]
+      },
+      {
+        "category": "开发方式与生态插曲",
+        "summary": "线程末尾出现了一点元话题：有人问 Fil-C 是否已经用 Claude 辅助开发，得到的回应是只让 Claude 写过部分测试，真正的 longjmp/ucontext 工作并没有依赖 LLM。另一个玩笑则是希望看到 Jank（一个 Lisp 方言实现）跑在 Fil-C 上，顺便用上 Fil-C 的 garbage collector。虽然这些不是主线争论，但也反映了大家对该项目工具链和生态延展性的好奇。",
+        "supportid": [
+          "48727559",
+          "48727818",
+          "48727591",
+          "48730057"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "setjmp/longjmp",
+        "explanation": "C 语言的非局部跳转 API，用于保存/恢复执行上下文，但很容易因为栈帧失效而出错。"
+      },
+      {
+        "term": "ucontext",
+        "explanation": "POSIX 的用户态上下文切换接口，可用于 fibers、协程和手动调度。"
+      },
+      {
+        "term": "fiber",
+        "explanation": "一种轻量级、协作式的执行单元，通常由用户态调度切换。"
+      },
+      {
+        "term": "delimited continuations",
+        "explanation": "一种只捕获部分调用栈的 continuation 技术，常用于解释栈复制和恢复。"
+      },
+      {
+        "term": "sigmask / signal mask",
+        "explanation": "进程或线程当前屏蔽的信号集合；上下文切换时保存和恢复它会增加开销。"
+      },
+      {
+        "term": "capability model",
+        "explanation": "一种安全模型，限制代码能访问或破坏的资源范围。"
+      }
+    ],
+    "context": "Fil-C（一个强调 memory safety 的 C 运行时/实现）在处理标准 C 和 POSIX 里最危险的几类接口，尤其是 setjmp/longjmp（C 的非局部跳转 API）和 ucontext（POSIX 的用户态上下文切换接口）。文章讨论的不只是“能不能跳栈”，还包括 register allocation、stack spilling、signal masks 以及 capability model（能力安全模型）如何一起影响安全边界。评论区把话题进一步扩展到 fibers（轻量级协作式执行单元）、Boost Fiber/Boost Context（C++ 纤程与上下文切换库）和 delimited continuations（受限续延）这些实现路线。核心问题是：在存在 pointers 的 C 世界里，栈到底能不能安全搬迁，以及如何在不破坏 ABI 和性能的前提下把这些危险 API 包起来。",
+    "emoji": "🤓",
+    "sarcastic_question": "longjmp 都安全了，那栈崩了还算问题吗？"
+  },
+  "articleSummary": "# 一句话总结\nFil-C 通过将 `jmp_buf` 封装为受运行时管理的“能力对象”，并强制编译器识别 `setjmp` 的“两次返回”特性，彻底杜绝了悬空栈跳转和内存破坏，实现了在 C 语言中绝对安全的上下文切换。\n\n---\n\n### `setjmp` 的“两次返回”是万恶之源\n要理解 Fil-C 的设计，先得明白为什么 `setjmp`/`longjmp` 在传统 C 语言里这么危险。`setjmp` 的核心特性是它会“返回两次”：第一次是正常调用返回 0，第二次是 `longjmp` 跳转回来时返回非零值。这个特性让编译器的优化逻辑极其复杂。如果编译器不知道某个函数是 `setjmp`，它可能会复用栈上的 spill slots（溢出槽），导致 `longjmp` 回来时读到了脏数据。更糟糕的是，如果你在 `setjmp` 保存上下文后，所在的函数返回了或者线程退出了，栈内存被释放，此时再 `longjmp` 回去，程序就会在悬空栈上执行，引发莫名其妙的崩溃甚至安全漏洞。\n\n### 编译器必须“认出” `setjmp`，否则就是灾难\n为了防止 spill slots 被错误复用，编译器必须显式知道 `setjmp` 会返回两次，从而禁用某些激进的优化。在 Yolo-C（普通 C 环境）里，如果你通过函数指针间接调用 `setjmp`，或者用 inline assembly 把它藏起来，编译器就会“瞎了”。比如 Clang 在这种情况下会打印垃圾值，因为编译器没意识到 spill slot 不能复用。Fil-C 的做法非常强硬：它只允许直接调用 `setjmp` 符号，任何试图混淆调用方式的代码（比如赋值给函数指针）都会直接导致编译器报错（ICE）。这虽然不友好，但保证了编译器的优化逻辑永远是正确的。\n\n### `jmp_buf` 不再是内存块，而是“能力令牌”\n在传统实现里，`jmp_buf` 就是一块裸内存，保存了寄存器和栈指针，谁都能改，改坏了就崩溃。Fil-C 把它变成了一个指向不透明 `zjmp_buf` 对象的指针。这个对象完全由 Fil-C 运行时管理，用户代码无法伪造也无法篡改。当你调用 `setjmp` 时，编译器不仅保存寄存器，还会在当前的栈帧里注册这个 `zjmp_buf`。每个栈帧都维护着一个“有效跳转目标集合”，只有在这个集合里的 `zjmp_buf` 才是合法的。这就把原本基于内存地址的跳转，变成了基于“所有权”和“生命周期”的安全检查。\n\n### 运行时栈遍历：确保你只能往“上层”跳\n有了 `zjmp_buf` 和栈帧注册机制，`longjmp` 的安全性就变得可验证了。当你调用 `longjmp` 时，Fil-C 运行时会遍历当前的调用栈，逐帧询问：“这个 `zjmp_buf` 是你注册的吗？”如果遍历完发现目标 `zjmp_buf` 不在当前调用链的任何祖先帧中，说明你试图跳转到一个已经失效的栈帧（比如函数已经返回了），或者跳转到了完全不相干的栈，程序会直接 Panic。这从机制上保证了 `longjmp` 永远不会落到悬空栈上。即便你误传了参数，比如把当前上下文传给 `swapcontext`，也会被捕获并报错，而不是像在 Yolo-C 里那样产生未定义行为。\n\n### GC 根的保存：让垃圾回收器不迷路\n除了栈指针安全，Fil-C 还要解决垃圾回收（GC）的问题。`setjmp` 保存的是调用那一刻的快照，如果 `longjmp` 发生时，栈上的局部变量（GC Roots）已经变了，GC 可能会误回收还在使用的对象。Fil-C 的 `zjmp_buf` 里不仅存了寄存器，还存了一份当时栈帧的 GC Roots 快照。只要 `zjmp_buf` 对象还活着，这些根就会被 GC 持续标记。这里有个微妙的设计：Fil-C 假设 LLVM IR 中的 SSA 值在 `longjmp` 恢复时能正确回滚。如果这个假设不成立（比如编译器 Bug），就会出现 GC 认为指针是旧的，但实际栈上却是新指针的错位情况，这是目前实现中最“惊险”的地方。\n\n### 强制安全换来了绝对的确定性\n总结一下，Fil-C 并没有发明新的算法，而是用严格的生命周期管理和运行时检查，把 C 语言里最野的几个 API 关进了笼子。它通过禁止间接调用保证编译器优化的正确性，通过栈帧注册和遍历保证跳转目标的合法性，通过快照保证 GC 的准确性。虽然代价是失去了某些“灵活”的 hack 用法，甚至需要从源码构建才能使用 `ucontext`，但对于追求内存安全的系统级编程来说，这种 trade-off 显然是值得的。"
+}

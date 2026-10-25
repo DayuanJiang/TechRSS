@@ -1,0 +1,69 @@
+{
+  "id": 50157865,
+  "by": "jcalabro",
+  "title": "One Hash Bloom Filters",
+  "url": "https://calabro.io/ohbf",
+  "score": 124,
+  "createdAt": 1792452037,
+  "aiSummary": {
+    "chinese_title": "One Hash Bloom Filter：以空间代价换取缓存级查询速度",
+    "discussion_overview": [
+      {
+        "category": "单哈希的工程可行性与历史应用",
+        "summary": "评论指出，Gnutella 和 Gnutella2 曾用类似单哈希 Bloom filter 的机制在 P2P 网状网络中路由文件查询，以减少盲目泛洪。该方案并不完美，但已足以支撑非常大的用户规模，说明较弱的哈希独立性在实际系统中未必是致命问题。另有观点认为，单哈希方案在理论上可能更好，但分区设计应避免引入半相关置换和额外碰撞。有人还期待其能支持 filter merge，并希望看到不同输入规模下的 benchmark。",
+        "supportid": [
+          "50165666",
+          "50160896",
+          "50159456"
+        ]
+      },
+      {
+        "category": "从一个大哈希导出多个位索引",
+        "summary": "有实现者认为，没有必要为 Bloom filter 采用特殊的表大小或重复计算独立哈希；保留 2 的幂大小的表，再轻度混合一个哈希值即可得到额外位索引。对于 64-bit hash，可取部分 bit 定位 64-byte cache line，再从其余 bit 中抽取多个索引。评论强调多个派生索引不需要完全独立，部分 bit 重叠产生的半独立哈希通常已经够用。这样能避免每个 key 计算 k 个独立哈希在高性能场景中的成本。",
+        "supportid": [
+          "50160090",
+          "50160587",
+          "50160692",
+          "50160687"
+        ]
+      },
+      {
+        "category": "缓存局部性与并发性能对空间效率的代价",
+        "summary": "批评者指出，将 filter 切为块或分区会造成占用率不均：若为所有块预留低占用空间，整体 filter 会变大；若提高平均占用，则某些 hot block 的 false positive rate 会显著恶化。后续澄清称，文章结构同时使用 64-byte blocked Bloom filter 与互素大小的分区，前者才是该空间低效问题的主要来源。支持者则认为 64-byte block 是追求读取速度的标准优化，结合 SIMD query 接近此类结构的极限性能；并发写入时，同一 cache line 不能被两个 CPU 并行写入也是设计约束。相比之下，blocked Bloom filter 大约比 BuRR（bumped ribbon retrieval）大 50%，体现了明确的速度—空间权衡。",
+        "supportid": [
+          "50159640",
+          "50161977",
+          "50163872",
+          "50160642",
+          "50160912"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Bloom filter（布隆过滤器）",
+        "explanation": "一种概率型集合查询结构：能快速判断元素“可能存在”或“确定不存在”，但可能产生 false positive。"
+      },
+      {
+        "term": "One Hash / 单哈希方案",
+        "explanation": "只计算一次较大的 hash，再从其 bit 或经轻度混合后的结果派生多个 Bloom filter 位索引的方法。"
+      },
+      {
+        "term": "Blocked Bloom filter",
+        "explanation": "先由 hash 选择一个小块（常为一个 cache line），再让多个位索引都落在该块内，以提高缓存局部性。"
+      },
+      {
+        "term": "false positive rate",
+        "explanation": "实际不存在的元素被过滤器误判为可能存在的概率；块占用不均会令局部误判率升高。"
+      },
+      {
+        "term": "cache line",
+        "explanation": "CPU 缓存与内存传输的固定粒度，常见为 64 bytes；将查询集中于一条 cache line 可减少内存访问。"
+      }
+    ],
+    "context": "Bloom filter（概率型成员查询结构）通常对每个元素计算 k 个 hash，并设置 k 个 bit；查询很快，却会以 false positive 换取紧凑空间。该讨论围绕 One Hash Bloom Filter：从一次 64-bit hash 派生多个索引，以减少哈希计算和随机内存访问，特别适合高吞吐存储或网络系统。文中涉及的 blocked Bloom filter 会把位访问限制在单个 64-byte cache line，以利用 CPU 缓存和 SIMD（单指令多数据并行）加速，但块间负载不均可能牺牲空间效率和局部误判率。Gnutella/Gnutella2 是早期 P2P 文件共享网络，其用近似机制路由搜索请求的经历，被用作该优化具有现实可行性的例证。",
+    "emoji": "⚖️",
+    "sarcastic_question": "少算几次哈希，就能无视热块和误判吗？"
+  },
+  "articleSummary": "## 一句话总结\n文章介绍了 Bluesky 如何通过从传统 Bloom Filter 演进到 One Hash Bloom Filter（OHBF），并配合原子操作与 CPU 缓存对齐优化，成功解决了高并发场景下的锁竞争瓶颈，将部署时间从 90 分钟大幅缩减至 15 分钟。\n\n## 正文\n\n### 经典 Bloom Filter：省内存、省 I/O 的利器\nBloom Filter 是个典型的“以小博大”的数据结构，用极小的内存代价就能回答“元素是否在集合中”。答案只有两种：“肯定不在”或者“可能在”。在 Bluesky 的后端架构中，这玩意儿是核心组件。比如查询“用户 X 是否屏蔽了用户 Y”这类高频请求，如果 Bloom Filter 判定不存在，就能直接跳过昂贵的数据库查询。生产环境的数据很漂亮：命中率 99%，这意味着只有 1% 的请求会真正穿透去查 Scylla 数据库，极大地节省了 IO 成本。\n\n### 传统实现的性能瓶颈：锁竞争\n传统的 Bloom Filter 实现通常依赖 $k$ 次哈希计算。为了降低计算开销，Bluesky 之前使用的是基于 Kirsch 和 Mitzenmacher 论文的优化方案：用两个哈希函数推导出 $k$ 个位置，公式为 $(hash_1 + i \\times hash_2) \\% n$。他们用的是 Go 语言库 `bits-and-blooms`，性能不错，但有个致命问题：它不是线程安全的。为了在多线程环境下安全使用，必须加互斥锁。`pprof` 一跑，问题暴露无遗——锁竞争成了系统启动的最大瓶颈，导致一次全量部署竟然要耗时 90 分钟。\n\n### 第一次优化：无锁原子操作\n怎么解决锁竞争？最直接的办法就是干掉锁。Bluesky 的工程师 Jasmine 把库 fork 了一份，搞出了 `atomic-bloom`。核心思路很简单：用 CPU 的原子指令替代互斥锁。这一改动立竿见影，部署时间直接从 90 分钟掉到了 15 分钟。这说明在当时的场景下，Amdahl's Law（阿姆达尔定律）起作用了：锁竞争才是那个拖后腿的串行部分，解决了它，性能瓶颈就转移了。\n\n### 极致追求：只用一次哈希的 One Hash Bloom Filter\n虽然锁的问题解决了，但技术探索没停。能不能把哈希计算的开销也压到极致？Lu 等人的论文提出了 One Hash Bloom Filter（OHBF）的概念。核心思路很巧妙：不再使用一个大数组，而是把数组拆分成 $k$ 个大小互不相同的分区，且这些分区大小两两互质。这样只需要计算一次哈希，利用模运算在不同大小的分区中自然映射出 $k$ 个位置。Bluesky 基于此实现了 `gloom` 库，已经在生产环境稳定运行了 9 个月。\n\n### 硬件层面的极致优化：缓存行对齐\n除了算法层面的创新，`gloom` 在工程实现上也做到了极致。为了迎合 CPU 的 64 字节缓存行大小，它将 Bloom Filter 拆分成多个 64 字节的块。更狠的是，Go 的内存分配器不保证缓存对齐，作者通过“略微多分配一点内存 + `unsafe` 指针操作”强行对齐。这一套组合拳下来，保证了最坏情况下，一次查询只会触发一次 Cache Miss。此外，他们还用 Daniel Lemire 提出的优化技巧，用乘法指令替代了昂贵的除法取模运算，进一步压榨 CPU 性能。\n\n### 应对多核竞争：分片设计\n最后，文章提到了一个针对多核系统的优化：`ShardedAtomicFilter`。在裸金属服务器上，如果多个核心频繁争抢同一块数据，性能会下降。通过引入分片机制，将写入操作分散到多个后端 Filter 上，有效降低了多核竞争。从解决锁竞争到优化哈希计算，再到打磨 CPU 缓存与指令，Bluesky 把 Bloom Filter 这个经典数据结构优化到了极致，完美诠释了高性能系统开发的“斤斤计较”。"
+}

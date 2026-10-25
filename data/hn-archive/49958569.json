@@ -1,0 +1,88 @@
+{
+  "id": 49958569,
+  "by": "renehsz",
+  "title": "Self-hosted HTTP tunnels with SSH and Nginx",
+  "url": "https://vincent.bernat.ch/en/blog/2026-http-over-ssh",
+  "score": 129,
+  "createdAt": 1791155441,
+  "aiSummary": {
+    "chinese_title": "SSH+Nginx 自建 HTTP 隧道：便利、暴露面与 P2P 替代之争",
+    "discussion_overview": [
+      {
+        "category": "现成隧道工具与组合式方案",
+        "summary": "有人肯定以 SSH 和 Nginx 拼装方案的思路：复用已有、经过验证的工具，而非再运行一个专用 daemon。也有人指出 sish 已将 SSH 隧道专门化，除 HTTP(S) 外还支持 WebSocket、TCP、ProxyJump 内部别名、自动 TLS 与请求查看控制台，且可完全自托管。实际使用者称其曾在公司用于工程师与外部系统集成，说明这类需求并非罕见。争论也显示“只用 SSH client”的免费服务有可靠性问题，而 sish 需要部署特定 SSH server，ngrok 的自托管属性和免费层可用性也未必满足所有人。",
+        "supportid": [
+          "49960540",
+          "49961723",
+          "49960666",
+          "49960432",
+          "49960764",
+          "49960870"
+        ]
+      },
+      {
+        "category": "P2P、NAT 穿透与 SaaS 便利性的取舍",
+        "summary": "一派更期待 Iroh 这类 P2P 网络库承载 HTTPS：双方可借公共 relay 信令，再进行 NAT hole punching 建立加密直连，从而不需要公网 IP、端口转发或自建 proxy。讨论者澄清，这并非单独发明了加密或 NAT 穿透，而是把既有 ICE/TURN/STUN、TLS、QUIC、WireGuard 等能力组合成更易用的连接模型；现有 iroh-ssh 已可在 CGNAT 后转发 Web 界面。另一派希望像 DNTLS 一样实现完全无中介的私有共享，认为 Tailscale、Cloudflare 等 SaaS 虽方便，却把“self-hosted”的边界变得模糊。反驳者认为 WireGuard 本身不等于完整产品，设备发现和一键生成私有 HTTPS endpoint 等体验，正是 Tailscale 流行的原因。",
+        "supportid": [
+          "49959059",
+          "49959357",
+          "49960327",
+          "49959851",
+          "49958868",
+          "49959330",
+          "49959362",
+          "49959165"
+        ]
+      },
+      {
+        "category": "配置安全、访问控制与暴露面",
+        "summary": "最严厉的批评认为该配置过度复杂且存在 footgun：初始 Nginx 规则可能让外部请求指定 localhost 上任意监听端口，攻击者可用 curl 循环枚举端口，并绕过原本阻挡外部流量的 firewall。文章后半部分虽试图缓解此问题，但批评者仍主张直接选择高端口、缩窄开放范围，并仔细阅读 SSH remote forwarding 的行为；高端口本身又仍可能被扫描发现。还有人要求明确 threat model，包括泄露 URL、隧道枚举、被转发的凭据和遗弃 session 如何处理。针对仅向特定人开放内容，评论提出用 mTLS client certificate 限制浏览器访问，但移动浏览器的证书支持可能较差。",
+        "supportid": [
+          "49960432",
+          "49960672",
+          "49960764",
+          "49960870",
+          "49960794",
+          "49959358",
+          "49959799",
+          "49960004"
+        ]
+      },
+      {
+        "category": "直接公网托管是否已足够",
+        "summary": "有人认为多数个人用途根本不需要隧道：将路由器的 80/443 转发到家庭 LAN 的 Nginx，域名解析至家庭 IPv4，就能稳定托管静态文件，且已实践多年。反方指出暴露家庭 IP 有隐私和流量关联风险，即使具体的 torrent-IP 关联数据库可能误报很多。支持直连者则认为第三方企业服务同样会引入数据收集和商业激励，自托管反而避免依赖其持续经营。另一层现实限制是 ISP ToS 可能禁止或限制家庭宽带对外提供服务；企业环境还担忧用户把笔记本和内部服务随意暴露到公网，难以统一阻断。",
+        "supportid": [
+          "49959717",
+          "49959856",
+          "49959919",
+          "49959779",
+          "49959440",
+          "49960361",
+          "49960671"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "SSH remote forwarding（反向端口转发）",
+        "explanation": "由内网机器主动连接 SSH server，并让 server 上的端口转发回本地服务；常用于穿透 NAT 或让本地 Web 服务暂时可访问。"
+      },
+      {
+        "term": "NAT hole punching / ICE、STUN、TURN",
+        "explanation": "让两个位于 NAT 或 CGNAT 后的设备借助信令与中继协调尝试直连的技术体系；直连失败时通常需要 relay/TURN 兜底。"
+      },
+      {
+        "term": "WireGuard",
+        "explanation": "现代轻量 VPN 协议与实现，提供加密网络连接；但设备发现、身份分发、NAT 穿透和 HTTPS 发布等产品层能力仍需额外解决。"
+      },
+      {
+        "term": "mTLS（mutual TLS）",
+        "explanation": "双向 TLS 认证：服务器验证客户端证书，而不仅是客户端验证服务器证书，可用于将 Web 服务限制给持有证书的用户。"
+      }
+    ],
+    "context": "原文讨论用 SSH 反向端口转发与 Nginx（高性能 Web server 和 reverse proxy）搭建自托管 HTTP 隧道，使 NAT 或防火墙后的本地服务能通过域名和 HTTPS 被访问；文中的第三方子域名可替换为自己的域名。sish（基于 SSH 的开源隧道 server）和 ngrok（常用的托管隧道服务）代表了把这套能力封装成产品的路径，代价分别是运行专用 server 或依赖服务商。Iroh（面向点对点连接的网络库）与 iroh-ssh（其 SSH 转发实现）则尝试通过 relay 协调和 NAT 穿透避免公开端口及固定公网 IP。争议的核心不只是能否连通，还包括反向转发是否意外暴露 localhost 服务、URL 与凭据泄露后的访问控制，以及对 SaaS、中继和家庭公网 IP 的信任边界。",
+    "emoji": "⚠️",
+    "sarcastic_question": "把 localhost 全端口暴露出去，也叫自建安全？"
+  },
+  "articleSummary": "## 一句话总结\n作者仅用原生的 OpenSSH 和 Nginx，配合精巧的 URL Hash 校验机制，构建了一个无需额外依赖、自带访问控制的 Self-hosted HTTP 隧道服务。\n\n## 正文\n\n### 现有工具虽多，但“依赖”是个麻烦事\n朋友想预览你那还在打磨中的博客文章，但服务只跑在 `localhost:8080`。要把本地服务暴露到公网，市面上工具不少：商业化的 ngrok、Cloudflare Quick Tunnels 开箱即用；自建的 frp、localtunnel 性能不错但得装特定客户端；基于 SSH 的 sish 虽然只要 SSH 客户端，却依赖特定服务端。作者的想法很直接：能不能只用服务器上本来就有的 OpenSSH 和 Nginx，搞定这件事？\n\n### 核心思路：SSH 转发配 Nginx 反向代理\n基础搭建其实很简单。先用 SSH 的远程转发功能，把服务器的一个端口映射到本地的 8080 端口。这里有个技巧：远程端口指定为 `0`，让 SSH 服务器自动分配一个空闲端口（比如 41535）。接着，配置 Nginx 监听 443 端口，利用 `server_name` 的正则匹配 `^p(?<port>\\d\\d\\d\\d\\d)\\.ssh\\.luffy\\.cx$`，动态提取端口号，直接把请求代理到 `127.0.0.1:$port`。别忘了配上泛域名 DNS 解析和 Let's Encrypt 的泛域名证书，基础版隧道就跑通了。\n\n### 光靠端口做秘密，安全性还不够\n上面的方案有个明显缺陷：端口号是唯一的秘密。只要猜到端口号，谁都能访问。其他方案通常会在域名里加个随机字符串来防枚举，作者决定更进一步，利用 Nginx 的 `ngx_http_secure_link_module` 模块来做访问控制。这个模块能校验 Hash 和过期时间，但 Hash 是 Base64 编码的，里面有大小写和特殊字符，没法直接放进域名里（域名不区分大小写）。\n\n### 巧妙设计：把验证信息藏进 HTTP Basic Auth\n作者的解决方案很巧妙：把 Hash 和过期时间戳塞进 URL 的“用户名”部分。像这样：`https://hash--expires@p41535.ssh.luffy.cx/`。浏览器和 curl 都支持这种 HTTP Basic Auth 格式，Nginx 会把用户名部分存到 `$remote_user` 变量里。通过 `map` 指令，作者用正则把 Hash 和时间戳拆出来，拼成模块需要的逗号分隔格式。\n\n### Nginx 配置的“三板斧”\n安全逻辑怎么落地？首先，用 `secure_link_md5` 指令，结合时间戳、端口和预设密钥（`ZuPerS3cr3!`）计算 Hash 并比对。如果 Hash 不对，`$secure_link` 变量为空，直接返回 401 并带上 `WWW-Authenticate` 头，要求认证；如果 Hash 对但时间戳过期，变量值为 \"0\"，返回 410 Gone。只有校验通过，才执行 `proxy_pass`。同时，转发前要把 `Authorization` 头清空，免得把敏感信息传给后端，顺便加上 WebSocket 支持配置。\n\n### 脚本自动化：解决“临时端口”捉迷藏\n手动生成那个复杂的 URL 很麻烦，最大的难点在于 SSH 分配的临时端口号不会直接暴露给 Shell 环境。作者写了个辅助脚本来解决这个问题：通过 `ps` 命令向上遍历进程树，找到祖先进程 `sshd-session`，再用 `ss` 命令（需要 sudo 权限）查出这些进程监听的 TCP 端口。拿到端口后，脚本在本地计算 Hash、拼接过期时间，直接打印出完整的 URL，最后用 `sleep infinity` 保持会话不断开。\n\n### 最终效果：一条命令搞定自建隧道\n作者把这个脚本部署在服务器上，命名为 `http-over-ssh`，并在本地 `~/.ssh/config` 里配置好 `RemoteCommand`。现在，用户只需要执行 `ssh -R 0:localhost:8080 http-over-ssh`，就能拿到一个带访问控制、支持 WebSocket、有 HTTPS 保护的公网 URL。整个过程只依赖服务器上原本就有的 OpenSSH 和 Nginx，既满足了极简主义者的洁癖，又保证了安全性。"
+}

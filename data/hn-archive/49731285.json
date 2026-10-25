@@ -1,0 +1,115 @@
+{
+  "id": 49731285,
+  "by": "polyphilz",
+  "title": "Training a 4B model to produce 81% faster query plans than Postgres",
+  "url": "https://rohanbansal.com/qorl",
+  "score": 397,
+  "createdAt": 1789587056,
+  "aiSummary": {
+    "chinese_title": "4B模型给Postgres选计划提速81%，但评测与生产性被质疑",
+    "discussion_overview": [
+      {
+        "category": "评测条件过于理想化，81%提速外推价值有限",
+        "summary": "评论者主要质疑“81% faster query plans”这个数字的外推价值。被测数据集只有 8GB，能完全放进 memory，而且 shared_buffers 还被压得很小，查询又先 warm 过缓存，场景还是 read-only SELECTs，因此更像受控实验而不是生产环境。有人指出标题里没算上约 95 小时的训练时间，连总成本都没进入基准。也有人认为在 8GB 规模上用 4B model 讨论提速，离真正的 TB 级 OLTP 负载还很远。",
+        "supportid": [
+          "49733010",
+          "49732105",
+          "49735157",
+          "49734282",
+          "49734568",
+          "49733861"
+        ]
+      },
+      {
+        "category": "统计信息、数据漂移与 hints 维护成本",
+        "summary": "另一组评论聚焦在计划会不会稳定、会不会过时。Postgres 的 optimizer 依赖 statistics、输入参数和数据分布，数据一变，原本有效的 hint 或 plan 可能立刻失效，甚至因 correlated columns 和 skew data 而选错 index 或 scan。也有人分享 SQL Server、Postgres 升级导致回归的例子，说明即便是传统优化器也会因为统计失真或版本变更而翻车。有人补充说，LLM 生成的 plan 只要不是合法 plan，Postgres 仍会忽略，但这并不解决后续维护成本。",
+        "supportid": [
+          "49733800",
+          "49734441",
+          "49734886",
+          "49731991",
+          "49732109",
+          "49732199",
+          "49734855",
+          "49734065",
+          "49735109"
+        ]
+      },
+      {
+        "category": "更适合用 classic ML 或启发式，而不是 LLM",
+        "summary": "不少评论认为 query planning 本质上是 search/optimization 问题，而不是纯文本分类问题。它的候选计划空间会随着查询大小迅速膨胀，还牵涉代价估算、join ordering、register allocation 这类算法和数学都很重的决策，因此 LLM 被视为“太重的锤子”。有人更倾向于 classic ML、GNN、AlphaGo 风格的神经启发式，或者像 LLVM 那样用更贴近编译器特征的模型来学规则。也有人以 Jev model 为例讨论 bounded option 场景和 query optimization 场景并不匹配。",
+        "supportid": [
+          "49733064",
+          "49734151",
+          "49734168",
+          "49734526",
+          "49732317",
+          "49734173",
+          "49732805",
+          "49733284",
+          "49733437",
+          "49733719"
+        ]
+      },
+      {
+        "category": "离线生成 hints 的实用设想",
+        "summary": "也有评论把它理解成离线工具，而不是线上 planner。比较现实的设想是先用 LLM 扫描长 SQL，生成 hints 或 plan 建议，再把结果写进 git、测试环境或某个 view 的配置里，线上仍由 Postgres 负责执行和校验。有人提到可以把 query plan 缓存下来，或通过 pg_hint_plan 的 debug log 验证是否真的用了 hint；也有人想象成每个 library 旁边都带一个 CLI 和 tiny finetune。反对者则提醒，若 workload 或 statistics 变化，这种提前生成的 hints 很快就会失效。",
+        "supportid": [
+          "49734946",
+          "49731755",
+          "49732100",
+          "49732993",
+          "49734666",
+          "49734114",
+          "49735286",
+          "49731869",
+          "49734065",
+          "49733956",
+          "49733529",
+          "49733606",
+          "49733664",
+          "49733838"
+        ]
+      },
+      {
+        "category": "文章写得好，但读起来像长论文",
+        "summary": "少数评论单纯称赞文章本身写得好、图文漂亮。有人觉得它把许多 AI 和数据库的高级概念讲到非研究背景工程师也能跟上，读起来像一篇精心排版的 technical note。也有人调侃篇幅太长，像论文或需要 AI 总结才能快速消化。这个反馈更多是在夸作者的讲解能力，而不是认同结论。",
+        "supportid": [
+          "49734077",
+          "49733072",
+          "49732715",
+          "49732893",
+          "49732765",
+          "49733024",
+          "49734987"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "query planner / query planning",
+        "explanation": "数据库中负责为 SQL 选择执行顺序、join 顺序、索引扫描等方案的模块或过程。"
+      },
+      {
+        "term": "Cost Based Optimization (CBO)",
+        "explanation": "基于统计信息和成本估算，在多个候选执行计划中挑选预计最便宜方案的方法。"
+      },
+      {
+        "term": "statistics / cardinality estimates",
+        "explanation": "优化器用来估算表大小、选择性和行数分布的数据；失真会直接导致坏计划。"
+      },
+      {
+        "term": "pg_hint_plan",
+        "explanation": "Postgres 的 hint 扩展，可显式影响优化器选择的 join order、index scan 等计划。"
+      },
+      {
+        "term": "query hints",
+        "explanation": "对数据库优化器给出的计划建议或约束，用于引导它选择特定执行方案。"
+      }
+    ],
+    "context": "这篇文章讨论把 4B 参数的 LLM 微调成 PostgreSQL（开源关系型数据库）的 query planner helper，用 Astra trajectories（作者构造的查询轨迹样本）去生成候选 plans，再以 hints 的形式影响 Postgres 的执行选择。作者报告在一组 join-heavy SQL queries 上得到 1.81x geometric mean speedup 和 44.7% summed latency 降低，但训练过程要租用 2x H100 SXM GPU 和调用 OpenAI API，测试规模只有 8GB in-memory dataset。评论区的核心争议是这些结果是否能代表真实生产环境，因为数据集能放进 memory、shared_buffers 被压小、查询先 warm 再测，而且只覆盖 read-only SELECT。讨论还延伸到 PostgreSQL 的 cost-based optimizer、statistics、pg_hint_plan 扩展，以及“把 LLM 放在离线生成 hints 的位置，而不是在线热路径上”是否更现实。",
+    "emoji": "🤨",
+    "sarcastic_question": "81%提速，生产库出错时再跑95小时重训吗？"
+  },
+  "articleSummary": "## 一句话总结\n通过监督微调（SFT）和强化学习（RL），一个仅 4B 参数的开源模型成功学会了生成 Query Hints，在 Join 密集型查询上比 Postgres 默认优化器跑出了快 44.7% 的执行计划。\n\n## 正文\n\n### 优化器的老难题：基数估计的豪赌\nPostgres 的查询优化器看似无所不知，实则一直在赌博。它面临的核心难题是“Join Ordering”，这是一个已被证明的 NP-hard 问题。为了在合理时间内给出执行计划，Postgres 无法逐一统计每种路径的实际行数，只能依赖统计信息进行估算。它假设数据分布是均匀的，比如认为日本公司占 5%，那电影表里的关联数据也占 5%。一旦这个假设失效——比如那 5% 的日本公司其实拍了 50% 的电影——优化器就会在第一步选错 Join 顺序，导致后续一系列估算全部崩塌，查询性能因此大幅下降。\n\n### 既然猜不准，不如让模型来试错\n既然优化器的数学模型容易跑偏，能不能换个思路？作者发现，验证一个执行计划好不好很简单：跑一下看耗时就行。这种“结果导向”的任务非常适合强化学习。作者的目标不是去替代 Postgres 的优化器代码，而是训练一个模型，让它学会生成 `pg_hint_plan` 提示，强行引导 Postgres 选择更优的执行路径。这就像是给老司机配了个导航，虽然司机（Postgres）有自己的路线算法，但导航（模型）可以根据实际路况强制指挥变道。\n\n### 选对老师：从“蒸馏”开始入手\n作者没有选择从零训练，而是选用了 Empero 实验室基于 Qwen 2.5 蒸馏出的 4B 模型。这个选择很务实：4B 的体量正好能塞进家里的双卡 RTX 3090。为了让这个连完整 SQL 都不一定能生成的小模型“开窍”，作者先利用 GPT-4o 生成的 500 多条高质量轨迹进行了 SFT（监督微调）。这一步就像是把“好学生”的解题思路先灌进模型脑子里，让它先学会什么是正确的 Hint 格式，哪怕只是依葫芦画瓢。\n\n### 搭建严苛的“考场”与奖励机制\n训练 RL 最怕噪音干扰。为了拿到准确的奖励信号，作者搭建了一套极其严谨的测试环境：在本地运行四个 Postgres 容器，通过 `cgroups` 隔离资源，并在每次测试前清空 Linux Page Cache，确保每次跑分都像在“冷启动”状态下进行。更有意思的是，作者设计了一种自定义的 GRPO（Group Relative Policy Optimization）变体。它不直接看绝对耗时，而是让模型生成的 Hint 和 Postgres 默认计划跑多次对比，计算相对提升比例。这种设计巧妙地抵消了环境波动带来的噪音，让模型能精准捕捉到“快”的本质。\n\n### 最终成绩：比默认快了近一半\n实验结果令人振奋。在 113 个 Join 密集型查询（JOB 基准测试）中，这个经过 RL 调教的 4B 模型生成的执行计划，平均延迟比 Postgres 默认计划降低了 44.7%。更有意思的是，模型展现出了一定的泛化能力，在训练集之外的查询上也表现不俗。这说明模型并非死记硬背，而是真的学到了某种关于数据分布和 Join 代价的“直觉”，成功在 Postgres 擅长的领域击败了原生优化器。"
+}

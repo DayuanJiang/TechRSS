@@ -1,0 +1,129 @@
+{
+  "id": 48144584,
+  "by": "signa11",
+  "title": "C++26 Shipped a SIMD Library Nobody Asked For",
+  "url": "https://lucisqr.substack.com/p/c26-shipped-a-simd-library-nobody",
+  "score": 124,
+  "createdAt": 1778988046,
+  "aiSummary": {
+    "chinese_title": "C++26 的 std::simd：来得太晚还是新手入口？",
+    "discussion_overview": [
+      {
+        "category": "来得太晚且定位尴尬",
+        "summary": "很多人觉得 std::simd 来得太晚，正好夹在 compiler autovectorization 进步和手写 intrinsics 依然更强之间。对真正追求极致性能的人来说，它既挡不住数据布局、mask、unroll、microarchitecture 差异这些难题，也很难替代对硬件的精细控制。对只想让普通循环自动变快的人来说，理论上编译器就该完成这件事，而不是再给一个库。于是有人把它看成既不够简单，也不够强的折中方案。",
+        "supportid": [
+          "48165777",
+          "48165975",
+          "48166075",
+          "48166711",
+          "48166813",
+          "48167210"
+        ]
+      },
+      {
+        "category": "给 SIMD 新手的入口",
+        "summary": "支持者把 std::simd 看成给不想直接碰 intrinsics 的人一个可用入口。有人举例说，像扫描字节、做 OR、popcount 这类任务，只要能轻松拿到 60%~70% 的峰值性能，就已经很有价值。把底层指令包装成更 C++ native 的 API，至少能让代码更短、更清晰，也更容易进入 hot loop 的思维方式。对这类开发者来说，它不是替代专家工具，而是把 SIMD 从 PITA 变成可尝试的东西。",
+        "supportid": [
+          "48165918",
+          "48166055",
+          "48166741",
+          "48167210"
+        ]
+      },
+      {
+        "category": "可移植性与极致性能冲突",
+        "summary": "另一条主线是：可移植性和极致性能几乎天然冲突。评论里反复提到，真正的 SIMD 优化往往要改数据布局、按 microarchitecture 走不同路径，甚至要把同一算法写成不同实现。Google Highway、Boost.SIMD/Eve、NumPy 式 dispatch 都被当成折中方案，但它们也带来 compile-time 成本、code bloat 和维护复杂度。换句话说，能统一接口，不等于能统一性能。",
+        "supportid": [
+          "48165827",
+          "48165901",
+          "48166042",
+          "48166082",
+          "48167198",
+          "48167321",
+          "48166026"
+        ]
+      },
+      {
+        "category": "更像该交给语言和编译器",
+        "summary": "不少人认为真正该做的是把并行意图直接交给语言或编译器，而不是在库里绕一圈。有人回忆起更早的 ISPC-like 提案，认为如果 C++ 能显式表达向量化语义，autovec 才可能既可预测又足够强。也有人提到 GCC 和 clang 的 vector extensions，甚至希望语言直接提供 pext、pdep、aes 这类现代指令入口。Go 的实验性 SIMD 设计也被拿来当作新路线参考。",
+        "supportid": [
+          "48165884",
+          "48166371",
+          "48166040",
+          "48166400",
+          "48166105",
+          "48166641",
+          "48166493",
+          "48167105",
+          "48167210"
+        ]
+      },
+      {
+        "category": "SVE/RVV 可变向量宽度争论",
+        "summary": "SVE（ARM 的 Scalable Vector Extension）和 RVV（RISC-V Vector Extension）把争论推向了可变向量宽度：不同机器可能有完全不同的 vector length。有人认为把这种模型硬套成固定宽度库是误入歧途，因为一些数据库式 workload 需要 lane 级稀疏跟踪、mask 和特殊 load/store 才能高效。也有人反驳说，默认做 width-agnostic，再用 runtime dispatch 或块大小适配硬件就够了。分歧本质上是：你想要统一抽象，还是想让程序尽量贴近指令语义。",
+        "supportid": [
+          "48165995",
+          "48166326",
+          "48166570",
+          "48166668",
+          "48167265",
+          "48166704",
+          "48166895"
+        ]
+      },
+      {
+        "category": "文章本身被吐槽成 AI slop",
+        "summary": "还有一批评论根本是在吐槽文章本身。有人直接把它归为 AI slop，嫌它啰嗦、重复、信息密度低，读起来像把一个简单观点拉成了长篇。也有人认为即使写法不讨喜，里面还是有些能成立的技术观点。评论区还顺带引发了对 AI 写文章、AI 写代码和 craftsmanship 的老争论。",
+        "supportid": [
+          "48166367",
+          "48167033",
+          "48166377",
+          "48166474",
+          "48166452",
+          "48166621",
+          "48166985",
+          "48167002",
+          "48165802"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "std::simd",
+        "explanation": "C++26 标准库中的 SIMD 向量抽象，提供可移植的并行元素运算接口。"
+      },
+      {
+        "term": "autovectorization",
+        "explanation": "编译器把普通标量循环自动改写成 SIMD 指令的过程。"
+      },
+      {
+        "term": "intrinsics",
+        "explanation": "直接对应具体 SIMD 指令的编译器 API，控制力强但可移植性差。"
+      },
+      {
+        "term": "runtime dispatch",
+        "explanation": "根据 CPU 特性在运行时选择不同实现的机制。"
+      },
+      {
+        "term": "Highway",
+        "explanation": "Google 的可移植 SIMD 抽象库，支持多架构和运行时分发。"
+      },
+      {
+        "term": "Boost.SIMD/Eve",
+        "explanation": "一套偏高层的 C++ SIMD 库思路，强调可表达性和按目标架构做特化。"
+      },
+      {
+        "term": "ISPC",
+        "explanation": "Intel 的 SPMD/SIMD 编程语言/编译器，用语言级语义表达向量并行。"
+      },
+      {
+        "term": "SVE/RVV",
+        "explanation": "ARM SVE 和 RISC-V RVV 这类可变向量宽度指令集，长度由硬件决定。"
+      }
+    ],
+    "context": "C++26 这次把 std::simd（标准库里的 SIMD 向量抽象）纳入了标准，但这个方向在社区里争论了十多年。评论里提到，早在 2011 年就有人向 C++ 委员会提过类似 SIMD 方案，后来还讨论过把 ISPC（Intel 的 SPMD/SIMD 编程语言）式语义直接放进语言里。今天的分歧主要来自两边：一边觉得简单循环应该交给 compiler autovectorization（自动向量化），另一边认为真正高性能的场景必须靠 intrinsics、runtime dispatch 或专门的数据布局。Google Highway（一个可移植 SIMD 抽象与分发库）、NumPy（Python 数值库）以及 ARM SVE（可伸缩向量扩展）和 RISC-V RVV（RISC-V 向量扩展）都被拿来当作不同路线的对照。",
+    "emoji": "🤨",
+    "sarcastic_question": "编译器都自动向量化了，std::simd 还来教谁？"
+  },
+  "articleSummary": "抱歉，我无法直接分析这篇文章。\n\n你提供的文本内容实际上是 Substack 网站的反爬虫验证页面（Cloudflare challenge）的 HTML 和 JavaScript 代码，而不是文章《C++26 Shipped a SIMD Library Nobody Asked For》的正文内容。\n\n如果你能提供文章的**正文文本**（可以直接复制粘贴文字内容），或者**文章的链接**（如果我能访问的话），我很乐意按照你的要求，用技术博客的风格为你解读 C++26 SIMD 库的精髓。"
+}

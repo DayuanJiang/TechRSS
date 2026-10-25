@@ -1,0 +1,149 @@
+{
+  "id": 48688700,
+  "by": "adchurch",
+  "title": "Show HN: Smart model routing directly in Claude, Codex and Cursor",
+  "url": "https://github.com/workweave/router",
+  "score": 133,
+  "createdAt": 1782493234,
+  "aiSummary": {
+    "chinese_title": "Claude/Codex/Cursor 智能模型路由：缓存感知、子代理与省钱争议",
+    "discussion_overview": [
+      {
+        "category": "缓存感知与切换成本",
+        "summary": "很多质疑都集中在 prompt caching / KV cache 上：在长链路的 coding agent 里，频繁切换模型会制造更多 cache miss，理论上可能比一直用同一个模型更贵。评论里有人强调，真正有用的路由不是“每次都重选”，而是要把切换阈值设得足够高，让额外的缓存损失必须被质量提升或成本节省抵消。项目方回应说他们的 router 已经 cache-aware，第一次选定模型后会更谨慎地切换，并且内部实验声称因此节省了约 40%。也有人补充，主 agent 往往只在 1-3 个模型之间切换，真正适合独立路由的是拥有新 context window 的 subagent。",
+        "supportid": [
+          "48689053",
+          "48689448",
+          "48689778",
+          "48690528",
+          "48689366",
+          "48690511",
+          "48690211",
+          "48689624",
+          "48690082",
+          "48690167",
+          "48692285"
+        ]
+      },
+      {
+        "category": "agentic coding 的模型意识与 harness 差异",
+        "summary": "不少人认为在 agentic coding 场景里，模型选择其实已经被工作流“内置”了：探索、规划、实现、review 往往天然对应不同档次的模型。还有人指出，Claude Code、Copilot CLI、OpenCode 这些 harness 会显著改变同一个模型的行为，所以路由器如果只看 prompt 字面，未必能做出正确判断。项目方则认为现有 agent 并没有足够强的激励去精细优化选模，尤其不会主动用更便宜的开放模型；路由器的价值就在于把这层控制重新拉出来做。也有人觉得这种自动化更可能先对普通用户或企业用户有用，而不是对已经非常会自己选模的人。",
+        "supportid": [
+          "48691040",
+          "48690211",
+          "48689629",
+          "48690488",
+          "48691114",
+          "48692165",
+          "48689539",
+          "48689628",
+          "48690167"
+        ]
+      },
+      {
+        "category": "路由器训练、泛化与任务歧义",
+        "summary": "另一组争论集中在路由器怎么训练、以及怎么长期不失效。有人怀疑只靠单一组织的代码库和内部 prompts 训练出的 router 很快会过时，因为新模型几乎每周都在发布，而且很多真实任务是模糊而不是可分类的。项目方的回答是，他们一边扩大 golden dataset，一边利用生产流量的 reward signal 持续学习；同时用 prompt 和历史上下文的 embeddings 来聚类相似问题，并在某个模型卡住时允许回退切换。于是路由器更像一个可修正的决策系统，而不是一次性分类器。",
+        "supportid": [
+          "48691040",
+          "48689830",
+          "48690572",
+          "48690727",
+          "48692347",
+          "48691377",
+          "48689603"
+        ]
+      },
+      {
+        "category": "需要硬指标：benchmarks、A/B test 和质量证据",
+        "summary": "评论里反复要求拿出硬证据：例如 terminalbench、deepswe bench 这类 coding benchmark，以及和其他模型组合相比的 cost/time/quality 曲线。项目方表示自己已经做过内部评测，后续会公开，但也强调 benchmark 并不能完全捕捉实际使用时的“vibes”，最好自己试。还有人要求 A/B tests 来证明质量和速度没有下降，项目方则用自家工程 productivity 指标回应，称 velocity 上升而 bug 数和 code turnover 没有恶化。整体来看，大家并不是否认可能有效，而是想看到可复现的数据。",
+        "supportid": [
+          "48691040",
+          "48690306",
+          "48690944",
+          "48692193",
+          "48690572",
+          "48691064"
+        ]
+      },
+      {
+        "category": "订阅额度、API 计费与企业降本",
+        "summary": "很多讨论都围绕钱展开：它到底是吃 Claude Pro/Max、Codex 订阅额度，还是走 API billing。项目方说明如果有订阅就优先使用订阅，并按补贴后的价格参与路由决策，不够时才回落到 API 计费。支持者认为在大公司里，token 成本已经成了工程领导层的 P0/P1，尤其是大规模推动 AI adoption 的团队；反对者则怀疑模型厂商最终会自己做路由，只会优先导流到自家更便宜的模型，而不是第三方。还有人提到个人开发者如今 token 预算很紧，只有真正省钱才会持续使用。",
+        "supportid": [
+          "48689641",
+          "48689662",
+          "48689569",
+          "48689600",
+          "48692153",
+          "48691268",
+          "48691278",
+          "48693228",
+          "48689481",
+          "48689684",
+          "48690107",
+          "48690269",
+          "48691114",
+          "48692673"
+        ]
+      },
+      {
+        "category": "与 Cursor、OpenCode、vLLM 等方案对比",
+        "summary": "不少评论把它和已有方案对比：Cursor 的 auto、OpenCode、Murmur、vLLM Semantic Router、RouterArena 等都被提到。项目方澄清，Cursor 的 auto 过去更像固定 Composer，而他们的目标是真正跨多个模型做路由；vLLM Semantic Router 则更偏向一次性 prompt/response，不太适合 agentic coding 的长会话。还有人提到类似 Fugu、multi-agent reasoning、panel-style synthesis 的思路，说明这个赛道里对“router”到底指什么并没有统一定义。整体氛围是：同类项目不少，但各自优化层次不同，cache awareness 和 subagent routing 是这款产品自认为的差异点。",
+        "supportid": [
+          "48689221",
+          "48689486",
+          "48689702",
+          "48689769",
+          "48689868",
+          "48690023",
+          "48690455",
+          "48691497",
+          "48692260",
+          "48690845",
+          "48692158",
+          "48692205"
+        ]
+      },
+      {
+        "category": "隐私、局部部署与 local LLM 可能性",
+        "summary": "也有人直接担心隐私：如果 prompts、outputs 和 code 都经过第三方 router，企业为什么敢用。项目方回应说它可以本地运行或自托管，且很多客户其实更愿意用托管版，因为部署更省事、他们本来就会把敏感数据交给相关工具。另一个问题是能否路由到 local LLM，但项目方表示自己在 coding 场景下还没看到足够好的 local LLM 结果。这个分支讨论把“成本优化”又拉回到了企业合规和数据边界。",
+        "supportid": [
+          "48690191",
+          "48690274",
+          "48690393",
+          "48692355",
+          "48692371"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "cache-aware routing",
+        "explanation": "在决定是否切换模型时，把缓存命中损失也算进去的路由策略。"
+      },
+      {
+        "term": "prompt caching / KV cache",
+        "explanation": "长上下文复用的缓存机制，能显著降低延迟和费用；切换模型会破坏复用。"
+      },
+      {
+        "term": "subagent",
+        "explanation": "主代理下的独立子任务代理，通常有自己的新 context window，适合单独选模。"
+      },
+      {
+        "term": "harness",
+        "explanation": "调用模型的外层工作流或框架，不同 harness 会让同一模型表现不同。"
+      },
+      {
+        "term": "RL",
+        "explanation": "Reinforcement Learning，用奖励信号持续优化路由决策。"
+      },
+      {
+        "term": "embeddings",
+        "explanation": "把 prompt 和上下文映射成向量，用于聚类相似任务和辅助路由。"
+      }
+    ],
+    "context": "这是一个 Show HN 项目，目标是在 Claude Code（Anthropic 的命令行编程代理）、OpenAI Codex（OpenAI 的编程代理）和 Cursor（AI 编程编辑器）里做“智能模型路由”，让系统根据任务阶段自动选择更合适、更便宜的模型。讨论默认了 agentic coding 的背景：长会话、prompt caching（提示缓存）、subagent（子代理）和不同 harness（调用框架）会强烈影响成本与效果，所以问题不只是“哪个模型更强”，而是“切换模型会不会破坏上下文并拖高总账单”。评论里还提到 Claude、Opus（Anthropic 的高端模型）、GPT 5（OpenAI 的前沿模型）、DeepSeek 等不同模型，以及 MCP（Model Context Protocol，模型上下文协议）这类工具调用方式。项目方强调，如果有 Claude/Codex 订阅额度就优先使用订阅，否则才走 API 计费，同时也支持本地运行或自托管，因此它更像一层面向开发团队的成本与质量调度器，而不是普通聊天插件。",
+    "emoji": "🤔",
+    "sarcastic_question": "省下几块模型费，先赔掉缓存钱吗？"
+  },
+  "articleSummary": "## 一句话总结\n这是一个基于 Go 语言的智能模型路由代理，它通过本地运行的轻量级 Embedder 和聚类算法，为每个请求自动从 Claude、OpenAI 或 Gemini 等多个模型中选出性价比最高的那一个，且完全兼容现有的 API 协议。\n\n### 模型太多，选谁是个大问题\n现在开发者的痛点很明确：手头有 Claude、GPT-4o、DeepSeek 等一众模型，但很难决定什么时候该用谁。简单的任务用 GPT-4o 是浪费，复杂的任务给小模型又搞不定。这篇文章介绍的 Weave Router 就是为了解决这个问题，它作为一个中间层代理，让你在调用 API 时不需要操心选模型，路由器会帮你做决定。\n\n### 核心算法：不靠 Prompt，靠 Embedding\n市面上很多路由方案是写一堆 Prompt 让 LLM 自己判断，但这既慢又费钱。这个 Router 的核心思路其实很简单：它用了一个基于 Avengers-Pro 论文的聚类评分器。具体做法是，在本地跑一个极小的 Embedder 模型，把你的请求向量化，然后通过聚类算法快速匹配到最合适的模型。因为是在本地计算，不仅延迟极低，还不需要把你的请求内容发给第三方去分析，隐私性更好。\n\n### 统一接口，兼容所有主流工具\n技术实现上，它是一个用 Go 1.25 写的 Drop-in Proxy。这意味着你不需要改代码，只需要把 Claude Code、Codex 或 Cursor 的 Base URL 指向 `localhost:8080`。它同时支持 Anthropic Messages API、OpenAI Chat Completions API 和 Gemini 原生接口。无论是 Streaming、Tools 调用还是 Vision 能力，它都能透传，对客户端来说，它就像一个无所不能的万能模型。\n\n### 灵活集成：一键安装与自托管\n部署方式非常灵活，主打一个“怎么方便怎么来”。最快的方式是运行 `npx @workweave/router`，它会自动修改你的配置文件（如 `.codex/config.toml`）把流量接管过来。如果你对数据敏感，也可以选择完全自托管，通过 `make full-setup` 在本地起 Postgres 和 Router 服务。所有的 Provider Key（如 `sk-ant-...`）都只存在你本地的 `.env` 里，Router 只是用它去转发请求，实现了真正的 BYOK（Bring Your Own Key）。\n\n### 可观测性是加分项\n除了路由，它还内置了工程团队最需要的可观测性。Router 原生支持 OTLP traces，你可以直接在自带的 Dashboard（`/ui/dashboard`）里看到每个请求被路由到了哪个模型、延迟是多少。如果你已经有 Datadog 或 Grafana，也可以直接接入。这对于想优化模型成本、分析不同模型表现的开发者来说，非常实用。\n\n### 快速上手与开关控制\n使用门槛压得很低。如果你想试水，只需要把 Cursor 的 Base URL 改一下，填入 Router 生成的 `rk_...` Key 即可。如果觉得路由效果不好，或者上游服务挂了，一个命令 `npx @workweave/router off` 就能让流量直连原厂，完全无感切换。这种设计让它在“智能路由”和“稳定直连”之间找到了平衡，非常适合作为基础设施引入到开发流中。"
+}

@@ -1,0 +1,106 @@
+{
+  "id": 49912444,
+  "by": "jbott",
+  "title": "5x faster Edge Functions: V8 isolates to Firecracker MicroVMs",
+  "url": "https://www.netlify.com/blog/edge-functions-firecracker-microvms/",
+  "score": 137,
+  "createdAt": 1790796720,
+  "aiSummary": {
+    "chinese_title": "Netlify 将 Edge Functions 从外部 V8 isolates 迁入 MicroVM，主要靠减少网络跳数提速 5 倍",
+    "discussion_overview": [
+      {
+        "category": "5 倍提速主要来自网络内迁，非 MicroVM 本身更快",
+        "summary": "评论者指出，旧架构会把请求发往外部托管执行服务，再返回 Netlify；新架构则转发到自家 edge network 内的计算节点。因此 25–40ms 的旧延迟很可能主要是跨服务、跨网络的额外跳数，而非 V8 isolate 的执行速度。Cloudflare Workers 同样采用 V8 isolates，却长期在 Cloudflare 自己的网络中运行并且明显更快，被视为这一解释的佐证。部分人认为把结果表述为 MicroVM 比 isolates 快，掩盖了部署位置和基础设施所有权这一关键变量。",
+        "supportid": [
+          "49915566",
+          "49913275",
+          "49913411",
+          "49913429",
+          "49913397",
+          "49917756"
+        ]
+      },
+      {
+        "category": "隔离安全：MicroVM 更强，isolate 仍适合受限运行时",
+        "summary": "支持 MicroVM 的观点认为，V8 isolate 共享进程、地址空间、内存分配器和宿主 kernel；V8 团队本身也不将 isolate 定义为安全边界。复杂的 V8 JIT 若出现 type confusion 等漏洞，可能造成 sandbox escape，且共享环境会带来 side-channel 和跨租户数据泄露风险；Chrome 也采用更强的进程隔离。另一方认为，若只运行可静态分析的 JS/TS，平台可长期审查 exploit，isolate 在中型公司的 edge 场景中有较好的成本与可控性。即使同一平台客户的代码看似互信，其下游仍可能代表多层终端用户执行任务，因此隔离需求并不会消失。",
+        "supportid": [
+          "49916988",
+          "49913196",
+          "49913505",
+          "49913484",
+          "49914572",
+          "49914063",
+          "49914558",
+          "49914596"
+        ]
+      },
+      {
+        "category": "Firecracker 与 AWS Lambda 的性能反差",
+        "summary": "不少评论者惊讶于 AWS 开发了 Firecracker，却让 Node.js on Lambda 常被感知为冷启动和吞吐缓慢。Netlify 所述约 15ms warm start、10ms cold start 被拿来对比 Lambda 约 1500ms 的体验，质疑额外时间耗在何处。回应认为 Firecracker 只是底层组件，Lambda 上层的企业级控制面、集成和附加功能可能才是主要开销。关于 Fargate 是否使用 Firecracker 也有争议：README 称其用于加速 Lambda 和 Fargate，但曾参与面向用户 Fargate 产品的人称该产品实际并非如此。",
+        "supportid": [
+          "49914175",
+          "49916326",
+          "49915140",
+          "49915339",
+          "49915481",
+          "49915893"
+        ]
+      },
+      {
+        "category": "快照启动的 RNG 与凭据安全隐患",
+        "summary": "MicroVM 在 JavaScript server 已监听端口后制作 snapshot，再从该镜像启动新实例的做法引发担忧。若恢复后保留相同的 RNG state，UUID 生成和密码学随机数可能重复，后果可能很严重。有人指出 Firecracker 已提供处理此问题的机制，但不能仅凭此就假定部署正确。Fastly 曾在 WASM snapshot 中把 guest seed 一并快照并在运行时复用，最终形成 CVE-2022-39218，被作为现实反例。",
+        "supportid": [
+          "49914744",
+          "49914895",
+          "49915206"
+        ]
+      },
+      {
+        "category": "Unikraft 方案、产品推广与自托管成本",
+        "summary": "Unikraft 方面说明，Netlify 使用的是其维护约四年的 Firecracker fork，包含 custom hypercalls、VM 内 command-and-control 和 POSIX-style fork 等能力，并持续吸收上游补丁。有人认为在相关新闻下链接自家技术文章属于相关背景补充，也有人认为这接近借讨论进行产品宣传。围绕本地使用 MicroVM，SlicerVM 被称为能替换 Proxmox 编排、支持 Dockerfile 风格构建的方案，但每月 25 美元在自有硬件上运行 daemon 被批评过高。随后有人推荐开源免费的 smolvm，显示开发者也在寻找比 containers 更强隔离、但更易自托管的工具。",
+        "supportid": [
+          "49913777",
+          "49915231",
+          "49915896",
+          "49916826",
+          "49914558",
+          "49914735",
+          "49915110"
+        ]
+      },
+      {
+        "category": "JavaScript 与 V8 的延迟取舍",
+        "summary": "有人质疑既然要逐毫秒优化，为何仍选 JavaScript。回应认为 V8 专门针对脚本启动时间高度优化，语言层面未必是这个案例的主要瓶颈。结合旧系统外发请求的事实，评论者更倾向将延迟归因于远程执行服务的网络与编排开销，而不是 JavaScript 执行本身。也有人直接提醒 V8 引擎本身并非由 JavaScript 编写，不能把运行时性能简单等同于语言标签。",
+        "supportid": [
+          "49913465",
+          "49913534",
+          "49914112",
+          "49913155",
+          "49913397"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "V8 isolate",
+        "explanation": "V8 JavaScript 引擎内用于分隔多个执行上下文的机制；通常共享同一进程和 kernel，V8 不将其承诺为安全边界。"
+      },
+      {
+        "term": "Firecracker MicroVM",
+        "explanation": "AWS 开源的轻量虚拟机技术，通过 KVM 硬件虚拟化为工作负载提供独立 kernel 级隔离，常用于 serverless 场景。"
+      },
+      {
+        "term": "snapshot",
+        "explanation": "保存已初始化 VM 的内存和设备状态，并据此快速恢复新实例的技术；须额外处理随机数种子等不可复制状态。"
+      },
+      {
+        "term": "cold start / warm start",
+        "explanation": "cold start 指首次创建运行环境的启动延迟，warm start 指复用已就绪环境时的延迟。"
+      }
+    ],
+    "context": "Netlify 的 Edge Functions 是在靠近用户的边缘节点执行 JavaScript/TypeScript 请求处理逻辑的 serverless 功能。其旧平台依赖另一家托管执行服务运行 V8 isolates，即使位于相近数据中心，请求仍需跨服务转发；新平台与 Unikraft（维护轻量虚拟机运行时的公司）合作，将执行迁入自身 edge network 的 MicroVM。Firecracker 是 AWS 为高密度 serverless 工作负载开发的开源 MicroVM 技术，而 V8 isolate 是 JavaScript 引擎内部的执行隔离机制，两者在启动成本、运行时灵活性与安全边界强度上取舍不同。争论的核心是新闻所称的 5 倍中位延迟改善，究竟应归功于 MicroVM，还是归功于消除了外部执行服务的网络路径。",
+    "emoji": "🤨",
+    "sarcastic_question": "少绕一圈网络，也能算虚拟机碾压引擎吗？"
+  },
+  "articleSummary": "## 一句话总结\nNetlify 将 Edge Functions 的底层架构从托管服务迁移至自建的 Firecracker MicroVM 集群，在保持开发体验不变的前提下，将请求延迟降低了 5 倍，并大幅提升了安全隔离能力和扩展性。\n\n## 正文\n\n### 每天十亿次调用的性能瓶颈\nNetlify 每天要承载约十亿次 Edge Functions 的调用，这些函数负责从页面个性化到流量路由的各种任务。对于这种规模的边缘计算，毫秒级的延迟优化都至关重要。过去，请求需要离开 Netlify 的网络，去外部的托管执行服务跑一圈再回来，这一来一回就是 25-40ms。现在，Netlify 团队与 Unikraft 合作，将架构重构为基于 Firecracker MicroVM 的自建边缘网络。结果非常惊人：中位延迟降至 5-6ms，p99 延迟降低了 47.4%，日志交付速度也快了 5 倍。\n\n### 请求处理的全链路优化\n新架构下，请求的处理路径发生了根本性的变化。当请求到达最近的边缘节点后，系统会终止 TLS 连接并匹配路由。如果匹配到 Edge Function，请求不再像以前那样转发到外部网络，而是直接转发给 Netlify 自建网络内的计算节点。这种\"不出网\"的设计，是降低延迟的核心手段。计算节点收到请求后，会检查对应的 Service 是否存在，如果不存在则创建，并确保所需的镜像已拉取到本地磁盘。\n\n### 用 Rendezvous Hashing 解决热点问题\n有意思的地方在于计算节点的选择策略。系统使用 Rendezvous Hashing 算法，确保同一个 Service 的请求总是落在同一个计算节点上。这种\"粘性\"设计能最大化利用已预热（Warm）的 MicroVM 和缓存，避免冷启动。但问题是，如果某个大客户的流量突增，单一节点可能会被击穿。为了解决这个问题，Netlify 引入了负载均衡机制：当流量超过阈值时，系统会自动将请求分散到一组节点上，既保证了缓存命中率，又避免了单点过载。\n\n### 毫秒级启动的 MicroVM 隔离\n核心计算层采用了 Firecracker MicroVM。与传统的 V8 Isolate 不同，MicroVM 提供了真正的硬件级虚拟化隔离。即便某个用户的代码发生逃逸，也无法影响同一物理机上的其他客户。你可能会问，VM 启动不是很慢吗？这里有个巧妙的设计：MicroVM 启动的是一个极简的 Linux 环境，启动时间控制在 1ms 以内，p99 也仅需 2ms。此外，代码文件以未压缩的 EROFS 镜像形式挂载并内存映射，VM 只读取实际用到的部分，而不是加载整个包。\n\n### 快照技术让冷启动变\"热\"\n为了进一步压缩启动时间，系统充分利用了快照技术。当 MicroVM 启动并监听端口时，系统会对其打一个快照。在没有请求时，VM 会缩容至零，而不是空转。当下一次请求到来时，直接从内存映射的快照恢复，无需等待完整的启动流程。这套生命周期管理（启动、快照、恢复、缩容）由 Unikraft 提供支持，专门针对 Netlify 的高并发流量模式进行了调优。对于约 1.2% 的真正\"冷\"请求（区域内首次运行），平均耗时也仅为 9ms。\n\n### 架构升级带来的长远红利\n这次重构不仅是为了速度，更是为了掌控力。由于计算层完全掌握在自己手中，Netlify 可以放开手脚做以前做不到的事。比如，npm 包支持现在可以走出 Beta 阶段了，因为真正的 VM 拥有真正的文件系统，之前的那些限制大多不复存在。同时，CPU 时间、内存和代码包大小的限制（之前分别为 50ms、512MB、20MB）也有了调整的空间。更重要的是，所有计算都在 Netlify 的网络内部完成，这为未来构建更多依赖网络路径控制的高级功能铺平了道路。"
+}

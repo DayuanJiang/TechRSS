@@ -1,0 +1,87 @@
+{
+  "id": 49421806,
+  "by": "adesh_nalpet",
+  "title": "Show HN: PicoMQ – Durable Streams over HTTP, on object storage",
+  "url": "https://picomq.com/",
+  "score": 132,
+  "createdAt": 1787595612,
+  "aiSummary": {
+    "chinese_title": "PicoMQ：基于对象存储的多节点持久化 HTTP 流系统",
+    "discussion_overview": [
+      {
+        "category": "与 S2 / SlateDB 的对比",
+        "summary": "很多人把 PicoMQ 和 S2、S2-Lite 放在一起比较，核心差异集中在开源程度和部署形态。讨论里指出，S2 的开源版 S2-Lite 只支持单节点，而 PicoMQ 号称支持多节点/cluster，并且没有 feature gating。它没有简单地在 SlateDB 上继续扩展，而是重新做了面向 streaming 的 S3Stream engine，强调只把一件事做对。",
+        "supportid": [
+          "49425798",
+          "49426247",
+          "49424900"
+        ]
+      },
+      {
+        "category": "对象存储下的性能与延迟折中",
+        "summary": "最大争议是把 Kafka-like 流系统放到 object storage 上是否会太慢。回应里解释 PicoMQ 通过细粒度 streams、shared WAL、server-side batching 和 client-side in-memory pipelining，再配合 HTTP/2 来降低连接与写入开销，并声称单流吞吐可到 100 MiB/s。真正的代价是 durability ACK 延迟：普通 S3 大约 100–150ms，S3 Express One Zone 或 GCS Rapid Bucket 可以压到几十毫秒，而 disk/EBS-staged WAL 还被提到有机会继续降到个位数毫秒。",
+        "supportid": [
+          "49424585",
+          "49424785",
+          "49424722",
+          "49427386",
+          "49430267"
+        ]
+      },
+      {
+        "category": "适合细粒度流、聊天与原型场景",
+        "summary": "不少人认为它很适合需要有序广播的应用，比如 Discord-like 聊天、HN mirror，或者按用户、会话、车辆切分的事件流。回复里把 streams 类比成 rooms，强调保序语义让这类应用比把 topic 当“大表”更自然。还有人从原型阶段和简单 HTTP 交互角度看好它，认为单 binary、内嵌 admin dashboard 和 playground 适合快速试验；不过也有人直言，如果不能直接 serverless 跑起来，吸引力会打折。价格讨论则相当乐观：按 100 万消息/天、每条 200B 估算，月费可能只有几十到一百多美元，但读流量和 fanout 可能远高于写入量。",
+        "supportid": [
+          "49428721",
+          "49428798",
+          "49424942",
+          "49425109",
+          "49425209",
+          "49425540",
+          "49431939"
+        ]
+      },
+      {
+        "category": "durable streams 生态与替代项目",
+        "summary": "另一条主线是 durable streams 生态正在变化，尤其是 ElectricSQL 被 Databricks 收购后，大家担心其 durable streams 方向会被搁置。评论里提到 open PRs 和 issues 越积越多，也有人对项目后续是否有人接手表示悲观。PicoMQ 的作者则说自己最初试过 OpenRaft 路线，但最后选择让节点尽量 stateless，用 SQL database 维护 metadata command log，以降低运维复杂度；同时也把 Ursula/tonbo.io 这种另一类持久流项目拿来对比，承认它在 ACK latency 上可能更强。",
+        "supportid": [
+          "49426457",
+          "49426747",
+          "49427761",
+          "49427879",
+          "49426999"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "WAL",
+        "explanation": "Write-Ahead Log，先追加日志再确认，用于保证持久化和崩溃恢复。"
+      },
+      {
+        "term": "S3 Express One Zone",
+        "explanation": "AWS 的低延迟、单可用区 S3 存储类别，常被拿来做热 WAL 或低延迟写入层。"
+      },
+      {
+        "term": "SlateDB",
+        "explanation": "一个基于 object storage 的数据库，常被用作流存储或嵌入式存储底座。"
+      },
+      {
+        "term": "HTTP/2",
+        "explanation": "支持多路复用的 HTTP 版本，可减少连接开销并提升并发传输效率。"
+      },
+      {
+        "term": "KRaft",
+        "explanation": "Kafka 的元数据共识/控制面方案，用来替代 ZooKeeper 的那套机制。"
+      },
+      {
+        "term": "OpenRaft",
+        "explanation": "一个 Raft 共识实现库，评论中用于对比更复杂的强一致部署方案。"
+      }
+    ],
+    "context": "PicoMQ 是一个 Show HN 项目，目标是在 HTTP 之上、用 S3 之类的 object storage 提供 durable streams（可持久化流），把消息或事件顺序写入云对象存储。评论把它拿来和 Kafka（分布式流平台）、S2/S2-Lite（对象存储流存储项目）、SlateDB（基于对象存储的数据库）以及 ElectricSQL 的 durable streams 方向比较。讨论焦点主要是写入确认延迟、吞吐和运维复杂度，以及是否需要 S3 Express One Zone、GCS Rapid Bucket 这类低延迟存储来做 WAL。也有人关心它是否适合 Discord 式聊天、HN mirror 或其他按房间/会话划分的细粒度流场景，以及它的单 binary、HTTP API 和较低运维成本。",
+    "emoji": "🤔",
+    "sarcastic_question": "对象存储都能当 Kafka 了，还要什么延迟？"
+  },
+  "articleSummary": "## 一句话总结\n\nPicoMQ 的核心主张是：把 S3 兼容对象存储作为底座，通过 HTTP 提供可持久化、实时且可无限扩展的 streams，并鼓励按具体业务场景拆分独立 stream。\n\n## 正文\n\n### PicoMQ 想把对象存储变成实时消息流的持久化底座\n\nPicoMQ 的定位非常直接：它提供的是 “durable, real-time streams over HTTP”。  \n换句话说，生产者和消费者通过 HTTP 与 stream 交互，但数据的持久化依赖 S3-compatible object storage。  \n这意味着它并不把存储层建立在专用 broker 或本地磁盘之上，而是把对象存储作为架构基础。  \n文章强调的重点是 durability：stream 中的数据应当能够持久保存，而不只是短暂地经过一个实时分发通道。  \n同时，它也强调 real-time，说明 PicoMQ 试图让对象存储不仅承担归档角色，还能支撑实时数据流的使用方式。  \n不过，原文提供的内容尚未展开具体协议、数据布局、消费语义或延迟指标，因此这些实现细节仍需要查看完整文档确认。\n\n### 不要把所有消息塞进一个 topic，而是让每个用例有自己的 stream\n\n文章最明确的架构观点，是“Create a stream per use case”。  \n也就是说，不要把同一类记录不加区分地塞进一个大 topic，再靠消费者过滤或约定来划分用途。  \nPicoMQ 倡导按业务用例建立独立 stream，让不同用途的数据流天然隔离。  \n每个 stream 都是 independently addressable，意味着它们可以被单独定位和访问，而不是只能作为一个共享 topic 中的逻辑分区存在。  \n文章还用 “bottomless” 描述 stream，表达其容量不应受到传统单机队列或固定分区设计的明显限制。  \n最终目标是让单个 stream 可以从几乎空闲的状态，扩展到高吞吐场景，同时不要求所有业务共享同一条臃肿的数据管道。"
+}

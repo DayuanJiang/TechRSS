@@ -1,0 +1,112 @@
+{
+  "id": 48705910,
+  "by": "ibobev",
+  "title": "DLL that was not present in memory despite not being formally unloaded",
+  "url": "https://devblogs.microsoft.com/oldnewthing/20260625-00/?p=112467",
+  "score": 132,
+  "createdAt": 1782648020,
+  "aiSummary": {
+    "chinese_title": "DLL未正式卸载却消失：HMODULE低字节被写坏引发多种崩溃",
+    "discussion_overview": [
+      {
+        "category": "根因追踪与 Part 2 的价值",
+        "summary": "不少评论认为第二部分才是真正的关键，因为它把零散的推理收束到一个具体线索：DLL 的 HMODULE 低字节被某个未知写入改坏了。这样一来，表面上的“DLL 从内存中消失”其实只是同一个内存破坏问题的另一种表现，而不是独立故障。有人还指出，这类问题会形成 bucket spray，也就是同一根因制造出大量不同崩溃签名。",
+        "supportid": [
+          "48709077",
+          "48706693",
+          "48706778"
+        ]
+      },
+      {
+        "category": "调试手段与 Windows Internals",
+        "summary": "讨论里反复提到逆向调试、TTD（Time Travel Debugging）和查看模块加载情况，认为这些工具通常能把嫌疑范围大幅缩小。也有人分享更底层的经验：真正困难的不是“有没有工具”，而是能否从内存字节、异常记录、堆指针状态中立刻识别出线索。评论还提到《Advanced Windows Debugging》和 WinDbg，强调这类分析高度依赖 Windows Internals 和长期实战。",
+        "supportid": [
+          "48707388",
+          "48711122",
+          "48708138",
+          "48708890",
+          "48707240",
+          "48711239",
+          "48710512"
+        ]
+      },
+      {
+        "category": "软件调试的无解感",
+        "summary": "有评论把这类故事概括为软件开发的常态：能排除的都排除了，最后只剩下“也许永远不知道为什么”。这种态度从早年的“总会有解释”转向更成熟的“有些日子就是没有答案”，带着一点无奈但也很现实。也有人借机调侃，既然找不到真正凶手，那就只能继续把锅往别处推。",
+        "supportid": [
+          "48706713",
+          "48706970",
+          "48707037",
+          "48707955",
+          "48707018"
+        ]
+      },
+      {
+        "category": "崩溃遥测与 Microsoft 支持门槛",
+        "summary": "有评论直接问，什么样的支持级别才有机会让 Microsoft 真正重视一个 bug，尤其是在虚拟化场景下更难推动。另一条思路是：如果问题可稳定复现，并且每次都会生成 telemetry，就可以用自动化不停触发，让它在大量机器上不断冒出来。也有人对 crash reporting 数据的去向表示怀疑，担心这些崩溃数据收集后究竟被如何使用。",
+        "supportid": [
+          "48707117",
+          "48707245",
+          "48710512",
+          "48707655",
+          "48710077",
+          "48710037",
+          "48707404",
+          "48707488"
+        ]
+      },
+      {
+        "category": "对 Raymond Chen 这类专家与 Windows 传统的敬意",
+        "summary": "很多人表示，看到这种深挖调用栈和内存细节的文章，会再次意识到自己对计算机系统的理解还有很大边界。评论认为，能做到这种程度需要极强的 Windows Internals 背景，而普通应用开发者往往根本不会接触这些层面。还有人担心老一代 Windows 专家逐渐退出后，谁来接过这类复杂问题的排障能力。",
+        "supportid": [
+          "48706834",
+          "48708890",
+          "48707867",
+          "48713272",
+          "48709902",
+          "48707240",
+          "48707028"
+        ]
+      },
+      {
+        "category": "COM 设计是否过度复杂",
+        "summary": "有评论直言 COM（Component Object Model）很怪、很重，但也有人认为它在当年的目标下其实非常强大。支持者强调，COM/OLE 提供的是跨语言共享二进制库的一套标准化机制，比单纯导出 C ABI 更能处理多个实现并存的问题。讨论还拿 Direct3D 和 OpenGL 对比，说明 COM 的对象与 vtable 模型在多 GPU、多个驱动实现共存时有实际优势。",
+        "supportid": [
+          "48707873",
+          "48707973",
+          "48708168"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "TTD（Time Travel Debugging）",
+        "explanation": "一种录制并回放程序执行过程的调试技术，适合追查难复现的崩溃和内存破坏。"
+      },
+      {
+        "term": "bucket spray",
+        "explanation": "同一个根因导致很多不同的 crash bucket（崩溃分类/签名），让表面现象看起来像多个独立问题。"
+      },
+      {
+        "term": "heisenbug",
+        "explanation": "一种难以稳定复现、被观察时行为还会变化的 bug。"
+      },
+      {
+        "term": "HMODULE",
+        "explanation": "Windows 中表示已加载模块（DLL/EXE）的句柄；这里指它的字节被写坏后引发异常卸载或崩溃。"
+      },
+      {
+        "term": "WinDbg",
+        "explanation": "Windows 常用的专业调试器，常用于 dump 分析、内核调试和复杂用户态排障。"
+      },
+      {
+        "term": "COM/OLE",
+        "explanation": "Windows 的组件对象模型及其相关对象链接/嵌入体系，用于跨语言、跨模块的二进制组件交互。"
+      }
+    ],
+    "context": "这篇讨论来自 Raymond Chen 在 Old New Thing（微软工程师 Raymond Chen 的技术博客）上的一则 Windows 故障排查故事，起点是第三方应用里一个看起来像“DLL 没有正式卸载，却已经不在内存中”的崩溃。文章通过分析大量 crash dump、模块信息和调用栈，逐步发现真正的问题是某个字节被写坏，连带把 DLL 的 HMODULE 低字节改成了不该出现的值。评论区把这个案例放到 Windows Internals、WinDbg（Windows 调试器）、TTD（Time Travel Debugging，回放式调试）和 crash telemetry（崩溃遥测）的大背景下，讨论为什么这类内存破坏会生成多个不同的崩溃表现。shell32（Windows Shell 的核心 DLL）在这里更像受害者，真正的根因则是别处对内存的非法写入。",
+    "emoji": "🤯",
+    "sarcastic_question": "DLL都没卸载，难道问题就算消失了？"
+  },
+  "articleSummary": "## 一句话总结\n一个诡异的递归异常崩溃，根源竟是有代码在进程退出时通过 `VirtualFree` 强制释放了已被“钉住”的 combase.dll 内存，导致调用它的 shell32.dll 成了替罪羊。\n\n### 崩溃现场：陷入死循环的异常分发\nWindows shell32 团队收到了一个崩溃报告，矛头直指他们。打开 dump 一看，典型的栈溢出：`RtlDispatchException`、`KiUserExceptionDispatch` 和 `RtlLookupFunctionEntry` 这三个函数在调用栈里疯狂重复。说白了就是陷入了递归死循环：系统抛出异常，尝试分发处理，结果在查找处理函数时又触发了新的异常，周而复始直到栈被耗尽。顺着栈一路往下摸，最初的异常似乎发生在 `combase!CoTaskMemFree`，而调用它的正是 shell32 的清理代码。看起来 shell32 确实难辞其咎。\n\n### 离奇的指控：试图执行“不存在”的代码\n为了搞清楚最初到底发生了什么，作者检查了异常记录。结果显示，程序试图执行 `combase!CoTaskMemFree` 的指令，但系统报错说这是一个“不可执行”的地址。这很奇怪，`CoTaskMemFree` 可是系统 DLL 里的正经函数。作者用 `!address` 命令一查，发现这块内存区域的 `State` 竟然是 `MEM_FREE`，保护属性是 `PAGE_NOACCESS`。这意味着包含 `CoTaskMemFree` 的整个 combase.dll 内存区域，已经被标记为“空闲”了，根本不再属于任何已加载的模块。\n\n### 谎言与真相：Loader 认为还在，内存却没了\n更有意思的地方在于，如果你问 Windows 加载器（Loader）这个地址属于谁，它会一本正经地告诉你：“这是 combase.dll，而且它被‘钉住’了，永远不会被卸载。” 加载器的记录显示 `LoadCount` 为 `0xFFFFFFFF`（即 pinned），说明没人调用 `FreeLibrary` 卸载它。这就出现了一个矛盾局面：加载器的账本上 DLL 还在，但物理内存已经被抹掉了。这只能说明一件事：有人绕过了加载器，直接调用了 `VirtualFree` 之类的底层 API，暴力释放了这块内存。\n\n### 替罪羊的诞生：谁碰谁倒霉\n那 shell32 有错吗？其实没有。它只是在 `DLL_PROCESS_DETACH` 阶段，老老实实调用 `CoTaskMemFree` 来释放资源，结果一脚踩进了已经被挖空的陷阱。真正的凶手是某个未知的组件，它可能因为内存破坏（比如变量未初始化或指针被覆盖），错误地把 combase.dll 的基址当成了自己要释放的内存块。Shell32 只是不幸成为第一个“踩雷”的调用者，于是背上了崩溃的黑锅。\n\n### 数据不会说谎：这是一次典型的 Bucket Spray\n为了验证这个猜想，作者分析了该程序最近的 100 次崩溃。结果发现，虽然报错的模块五花八门（有的报 Access Violation，有的报 Stack Overflow，有的甚至显示 unknown），但核心模式完全一致：都是在 DLL 卸载通知阶段，试图调用一个已经被强制从内存中移除的 DLL。这类由同一个底层原因引发的多种不同崩溃表象，被称为“Bucket Spray”。统计显示，高达 46% 的崩溃都是这个“流氓卸载”导致的。虽然 shell32 团队洗清了嫌疑，但真正的幕后黑手依然逍遥法外。"
+}

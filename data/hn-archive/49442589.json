@@ -1,0 +1,97 @@
+{
+  "id": 49442589,
+  "by": "rguiscard",
+  "title": "Queryable Executables",
+  "url": "https://fzakaria.com/2026/08/24/actually-queryable-executables",
+  "score": 250,
+  "createdAt": 1787714408,
+  "aiSummary": {
+    "chinese_title": "可查询可执行文件：代码和状态都进单个 SQLite 文件",
+    "discussion_overview": [
+      {
+        "category": "奇技淫巧与 Hacker News 审美",
+        "summary": "很多评论把它看成“又疯又妙”的 HN 经典项目，核心吸引力就在于它把一个看似荒诞的想法认真做出来。有人直接说它离 dumb 很近，却也离 brilliant 很近，认为这种张力正是最有趣的地方。还有人把它和 PNG 里藏 spreadsheet、音频文件里跑 DOOM、纯 CSS 做 Minecraft、PDF 兼 NES rom 之类的 cursed project 并列，强调 HN 最迷人的就是这种技术恶作剧式创造力。甚至有人感叹，相比这些离谱但好玩的题目，HN 近来 AI 讨论太多了。",
+        "supportid": [
+          "49444460",
+          "49445504",
+          "49443317",
+          "49443959",
+          "49444933",
+          "49444252"
+        ]
+      },
+      {
+        "category": "二进制数据库化 / SQL 驱动运行时",
+        "summary": "另一条主线是把可执行文件理解成“可查询的程序镜像”：代码不再只是字节流，而像数据库表一样可用 SQL 访问。有人直接把它类比成 Lisp、APL、Smalltalk 的 image，只是这里由 SQL 驱动；也有人想象用 `SELECT text FROM executable WHERE arch = $(uname -m)` 之类的查询来选择不同架构的代码段。还有人顺手开玩笑说下一步就是给二进制写 ORM，或者把依赖更新写成 `UPDATE dependencies SET version=...`。这种讨论把“everything is a table”推到极限，变成了对程序结构本身的查询接口。",
+        "supportid": [
+          "49444956",
+          "49443023",
+          "49444293",
+          "49445144"
+        ]
+      },
+      {
+        "category": "单文件状态、升级与多实例",
+        "summary": "更具体的争论集中在单文件里的可写状态和升级流程。支持者喜欢把静态内容、运行时数据、甚至应用 schema 都塞进同一个文件，然后在启动时跑迁移，让每次启动都能自动升级；反对者则担心同一二进制的多个实例会争抢同一份状态。有人提出用 SQLite 的事务、`ATTACH` 多个数据库、甚至时间序列表达版本化数据，来实现回滚和零停机切换。也有人设想程序从 Web 接收新 code segment 后把它写回自己，把插件上传和自升级合二为一。",
+        "supportid": [
+          "49444156",
+          "49444853",
+          "49444934",
+          "49445548",
+          "49443918",
+          "49445420",
+          "49445144",
+          "49444565"
+        ]
+      },
+      {
+        "category": "安全边界与自修改风险",
+        "summary": "最强烈的保留意见是安全：一旦 executable 本身可写，原本只是 data mutation 的问题就可能变成 code mutation。评论里反复提到 privileged install location、多用户部署、以及 raw SQLite 没有 ACL 的现实限制，担心很难把只读代码页和可写运行时表真正隔离开。有人建议用自定义 SQLite VFS 再配合 `mprotect()`、W^X 或 `mseal()` 去硬隔离页面，但也明确提醒这种技巧不适合 security-sensitive 场景。甚至有人直接把它称作把 SQL Injection 提升到了新的攻击层级。",
+        "supportid": [
+          "49444282",
+          "49444395",
+          "49445211",
+          "49443918",
+          "49443183"
+        ]
+      },
+      {
+        "category": "历史先例与复古系统",
+        "summary": "也有不少人把它放进更长的技术史里看：OS/400（IBM i 的对象式系统）和 MUMPS 的 globals 都被拿出来当先例，说明把一切都当作对象或数据并不新。有人用“Everything old is new again”来概括这种复古感，认为很多旧想法只是当年没赢，并不代表它们不好。另一边，NixOS（声明式、偏不可变的 Linux 发行版）和 impermanence 工具被当成现代现实解法，用来分离用户真正想保留的数据和软件自己制造的垃圾。这个视角让项目看起来像是历史概念的重新组合，而不只是单纯怪诞。",
+        "supportid": [
+          "49444576",
+          "49444010",
+          "49444956",
+          "49445500",
+          "49445293"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "SQLite",
+        "explanation": "嵌入式关系型数据库，评论里被设想为同时承载代码、配置和运行时状态。"
+      },
+      {
+        "term": "mmap",
+        "explanation": "内存映射文件，把文件页直接映射进进程地址空间，便于把二进制和数据库页绑定。"
+      },
+      {
+        "term": "VFS",
+        "explanation": "SQLite 的虚拟文件系统接口，可自定义底层存储、映射和写入行为。"
+      },
+      {
+        "term": "W^X",
+        "explanation": "写入与执行互斥的内存安全策略，避免同一页同时可写又可执行。"
+      },
+      {
+        "term": "NixOS/impermanence",
+        "explanation": "强调声明式配置和可重建状态分离的 Linux 方案，常被用来解决配置垃圾和持久化问题。"
+      }
+    ],
+    "context": "这篇 Queryable Executables 讨论的是一种把程序代码、符号表、静态资源和运行时状态都放进单个 SQLite（嵌入式关系型数据库）文件里的实验性可执行文件设计。它延续了“可执行文件像数据库一样可查询/可迁移”的想法，甚至设想通过 SQL 更新依赖、执行迁移，把状态和代码一起打包发布。评论里还把它和 APE（Actually Portable Executable，一种实验性的可移植可执行文件格式）以及 fat binaries 联系起来，说明这不只是概念秀，而是在讨论如何把跨架构与单文件分发结合起来。很多人拿 Lisp/Smalltalk 的 image、OS/400（IBM i 的对象式系统）和 MUMPS globals 这些老系统作类比，强调“数据即程序/程序即数据”是一个很长的传统。另一条线则围绕 SQLite 的 VFS（虚拟文件系统接口）和 appendvfs 等扩展方式，讨论如何把内存映射、事务、以及写入限制拼成一个既能查询又能执行的文件格式。",
+    "emoji": "🤯",
+    "sarcastic_question": "下一步是不是连二进制都要写 ORM 了，还顺手自升级？"
+  },
+  "articleSummary": "## 一句话总结\n\nSELF 把可执行文件做成 SQLite 数据库，于是代码、静态资源、路由和运行时状态全都变成可查询、可事务化更新的表；一个 Web 服务最终可以真的是“一个能运行、也能 `SELECT` 的文件”。\n\n## 正文\n\n### 从“可执行文件是数据库”到“数据库也该保存程序状态”\n\n这篇文章是前文 *Your executable is a SQLite database* 的延伸。作者此前提出了 SELF 格式：程序本体不是 ELF 等传统二进制布局，而是一个 SQLite 数据库。Linux 通过 `binfmt_misc` 命中该文件后，交给自定义解释器处理。解释器从 `segments` 表读取机器码段，将其映射进内存，然后跳到入口点执行。  \n\n这样一来，原本属于二进制工具链的很多操作，都被压缩成了 SQL 操作。可一旦接受“程序是数据库”，很自然会冒出下一个问题：既然数据库能写，正在运行的程序能不能把自己的状态也写回自己？作者的答案是可以。于是，`/var`、`/tmp`、`/home` 这些用于承载应用状态的外部文件系统，在这个设想里都不再是必需品。程序可以把状态和自身一起放进同一个 SQLite 文件，并获得 SQLite 的事务语义。\n\n### self-httpd 证明：网页、服务端和访问日志可以是同一文件\n\n作者用 `self-httpd` 做了一个概念验证。它是一个 Web server，但同时也是一个单独的 SQLite 文件。这个文件中既有可执行程序，也有网站页面、路由定义、访问日志，以及用户点击按钮后的状态。服务端不是“旁边连着一个数据库”，而是直接运行在自己这份数据库之上。  \n\n演示很直观：`file server` 会把 `server` 识别成 SQLite 3.x database。启动 `./server --journal wal 8080` 后，访问首页会返回 HTML；随后可以直接用 `sqlite3 server` 查询 `presses` 表和 `visits` 表。对 `/api/press` 发一个 POST 请求，服务端写入的数据立刻出现在这个可执行文件内部。文章在线演示站点 `selfdb.exe.xyz` 甚至会实时展示自己包含的 `segments`、`symbols`、`relocations`、路由数量、表数量、访问量和按钮点击数。\n\n### 它借鉴 redbean，但把“可移植”换成了“可查询”\n\n这个想法并非凭空出现。作者明确致敬了 Justine Tunney 的 redbean：一个基于 Cosmopolitan Actually Portable Executable 的单文件 Web server。redbean 把 ZIP 自解压归档塞进可执行文件，并通过 Lua hooks 定制响应。它的核心价值是“一个文件到处运行”。  \n\nSELF 走的是另一条路线，甚至作者自己承认它没有 redbean 那么惊艳。它不需要额外嵌入 ZIP，因为 SQLite 本身就是容器格式；它不通过 Lua hook 扩展行为，而是通过向 `handlers` 表插入一行 SQL。例如，为 `/api/busiest` 注册一个 handler，本质上就是插入一条统计 `visits` 表的查询。说白了，redbean 是 **Actually Portable Executable**，SELF 则是 **Actually Queryable Executable**：前者强调 everywhere runnable，后者强调可以直接 `SELECT`。\n\n### 关键技巧在于：程序通过 argv[0] 打开自己\n\n但一个正在执行的文件，怎么找到自己并打开自己？通常人们会想到 `/proc/self/exe`，但在当前实现中不能依赖它。原因是 `binfmt_misc` 命中 SELF 文件时，内核实际 `execve` 的是解释器，而不是原始 SELF 文件。原始文件的路径会作为参数交给解释器。  \n\nSELF 的 `self-exec` 解释器会把参数向后透传，因此真正运行的程序拿到的 `argv[0]` 仍然是可执行文件自身的路径。解释器在跳转到程序入口前，会先释放自己持有的 SQLite 连接。于是用户程序可以直接执行 `sqlite3_open(argv[0], &db)`，重新打开自己。这样程序不仅能查询自己的 `segments` 表，也能查询紧挨着这些程序段的任意应用表；更重要的是，写入会跨进程、跨重启持久化。\n\n### Web server 的业务模型最终只剩三张表\n\n`self-httpd` 的业务部分非常朴素，只有 `routes`、`visits` 和 `presses` 三张表。`routes` 保存 URL、MIME 类型和页面内容 BLOB；`visits` 记录访问时间、User-Agent 和路径；`presses` 则记录用户按下按钮的事件。前者是构建后灌入可执行文件的内容，后两者是在程序运行时写回该文件的状态。  \n\n构建流程也刻意保持普通：先用 `cc -O2` 编译一个常规 ELF，然后通过 `elf2self` 转换成 SELF 文件。之后直接用 `sqlite3` 执行 schema DDL，并将 HTML 文件通过 SQLite 的 `readfile()` 插入 `routes` 表。请求到来时，程序从自己的 `routes` 表 `SELECT body` 作为响应，同时向 `visits` 表 `INSERT` 日志。网页展示的 segments、symbols、relocations 也不是编译期写死的，而是服务端运行时从自己的数据库中查询出来的。\n\n### 编辑线上页面不再是部署，而是一笔事务\n\n当代码和内容都在 SQLite 里时，一个有意思的结果出现了：修改运行中的网站就是一条 `UPDATE`。作者用 `sqlite3 server \"UPDATE routes ...\"` 直接替换 `/index.html` 的内容，不重启、不 reload、不重新 deploy。下一次 `curl` 请求就会拿到新页面。因为底层是 SQLite，这个修改天然受 ACID 事务保护，也可以 `ROLLBACK`。  \n\n更进一步，SQLite 现成的工具链也自动变成了应用的工具链。比如 `sqldiff --summary yesterday.server server` 可以精确告诉你一次“部署”修改了什么：示例里只有 `routes` 有 1 处变更，而 `segments`、`symbols`、`relocations` 都没有变化。全文检索同样不需要专门接入搜索系统，只需创建 FTS5 virtual table，将文本路由灌进去。之后程序仍然可以照常运行，只不过它现在“知道如何搜索自己”。\n\n### 部署又回到了 scp，但迁移状态变成 SQL\n\n作者认为，SELF 重新带回了大家怀念的 `scp` 加 `ssh` 单文件部署体验，但交付的不只是 PHP 文件或资源归档，而是完整的应用闭包，甚至可以延伸到 `libc`。不过代码和数据绑在一个文件中，也会立刻引出问题：重新部署时，旧状态如何保留？作者的回答是，把 redeploy 看成数据迁移。  \n\n新部署文件可以 `ATTACH '/srv/self/server' AS old` 挂载旧文件，再用两条 `INSERT ... SELECT` 迁移 `visits` 和 `presses`。随后替换文件并重启，新的程序版本就继承了旧版本的访问日志和业务状态。甚至从模型上说，`segments` 表也只是普通表，因此代码本身理论上也能以相同方式处理。文章没有把这当成成熟生产方案，而是刻意停留在“这个模型会带来什么可能性”的探索阶段。\n\n### 真正有趣的不是 Web server，而是格式边界被抹平\n\n作者最后强调，`self-httpd` 的代码还比较半成品，也承认其中有 AI 辅助的部分。但这不影响实验的价值：它证明了 SELF 在技术上可行，并展示了一个文件格式改变后，多少传统组件会失去存在必要。原本需要二进制格式、资源包、状态目录、日志目录、部署脚本和迁移框架分别解决的问题，被统一到 SQLite 的表、查询和事务里。  \n\n所以这篇文章的重点并不是“又一个单文件 Web server”。真正的命题是：如果我们不把 executable 看成一段固定的 byte layout，而把它看成一个可读写数据库，那么程序、内容和状态不必是三个系统。它们可以是同一个文件中的不同表。程序是数据库，数据库也是程序。"
+}

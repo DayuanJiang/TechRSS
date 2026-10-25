@@ -1,0 +1,91 @@
+{
+  "id": 49698607,
+  "by": "carllerche",
+  "title": "Principles for Fast Tokio Applications",
+  "url": "https://dial9-rs.github.io/blog/principles-for-fast-tokio-applications/",
+  "score": 223,
+  "createdAt": 1789403459,
+  "aiSummary": {
+    "chinese_title": "Tokio 高性能优化：busy-spinning、CPU 绑定、DPDK/SPDK 与 tracing 争议",
+    "discussion_overview": [
+      {
+        "category": "Tokio 服务器的运行时开销与低层优化",
+        "summary": "很多人把 Tokio server 的瓶颈归结为 runtime 的“meta-work”，比如进出 epoll、work stealing 和其他调度开销，而不是业务逻辑本身。为此，有人直接建议 busy-spinning、CPU pinning，以及 SPSC/MPSC ring buffer 这类更接近裸机性能的做法。也有人从 Axum 的深层调用栈切入，认为基于 Tokio 的高层框架会让性能路径看起来很“厚”，尽管部分函数在实践中会被 inline 掉。整体上，这一派认为 Tokio 能跑得快，但前提是你得非常克制地使用它的抽象。",
+        "supportid": [
+          "49699249",
+          "49703311",
+          "49699443",
+          "49701125"
+        ]
+      },
+      {
+        "category": "tracing / profiling 的价值与成本争论",
+        "summary": "评论区对 tracing 和 observability 的态度分歧很大。一边认为细粒度 tracing 对性能调优非常有价值，甚至可以借助 LLM 临时补上仪表，再删掉不进版本库。另一边指出 OpenTelemetry（OTel） span、latency histogram 和频繁读 clock 的开销可能高得离谱，尤其是在 async Rust 里把工作切得很碎时，观测成本会把真实热点淹没。还有人拿 eBPF、LLVM XRay、Tracy 和 JFR 做对比，争论重点是这些工具到底是“低开销观测”，还是只是比 in-app telemetry 稍微没那么糟。",
+        "supportid": [
+          "49699187",
+          "49699271",
+          "49703483",
+          "49703663",
+          "49700412",
+          "49701419",
+          "49703091",
+          "49701821",
+          "49703590",
+          "49699603",
+          "49699829",
+          "49699391",
+          "49699432",
+          "49701103",
+          "49700748",
+          "49703729"
+        ]
+      },
+      {
+        "category": "超出 Tokio 的架构级 IO 方案",
+        "summary": "当优化 Tokio 已经接近极限时，有人开始把视角移到更底层的 IO 栈。评论里提到 ef_vi/DPDK 这样的 kernel-bypass 网络方案，以及 SPDK 这种用户态存储框架，暗示此时可能不是“再调一调 Tokio”而是“换一整套 IO 模型”。后续问题也在问这些技术到底能不能和 Tokio 结合，还是本质上就是替代关系。这个分支反映出性能讨论已经从应用层调参，推进到了架构重写。",
+        "supportid": [
+          "49701674",
+          "49703451"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Tokio",
+        "explanation": "Rust 的 async runtime，用来调度 async tasks 和 I/O。"
+      },
+      {
+        "term": "epoll",
+        "explanation": "Linux 的事件轮询接口，常用于等待 socket 读写事件。"
+      },
+      {
+        "term": "Axum",
+        "explanation": "基于 Tokio 的 Rust Web 框架。"
+      },
+      {
+        "term": "eBPF",
+        "explanation": "Linux 内核里的可编程观测机制，可用于 tracing 和采样。"
+      },
+      {
+        "term": "OpenTelemetry（OTel）",
+        "explanation": "统一的可观测性标准，覆盖 traces、metrics 和 logs。"
+      },
+      {
+        "term": "XRay",
+        "explanation": "LLVM 的低开销插桩/采样方案，用于性能分析。"
+      },
+      {
+        "term": "DPDK",
+        "explanation": "用户态高速网络包处理框架，常用于 kernel-bypass 场景。"
+      },
+      {
+        "term": "SPDK",
+        "explanation": "用户态存储性能开发套件，用来绕过传统内核 I/O 路径。"
+      }
+    ],
+    "context": "Tokio 是 Rust 最常用的 async runtime，Axum 是建立在 Tokio 之上的 web framework。本文讨论的是如何让基于 Tokio 的 server 更快，核心是尽量减少调度、epoll 循环、任务切换和其它运行时开销。评论区把话题推向更极端的性能层面：有人主张 busy-spinning、CPU pinning 和 SPSC/MPSC ring buffer，也有人认为当你已经在调 Tokio 时，可能应该考虑 DPDK、ef_vi 这类 kernel-bypass 网络栈和 SPDK（用户态存储框架）。另一条主线则围绕 profiling/tracing 展开，涉及 OpenTelemetry（OTel）、eBPF、LLVM XRay、Tracy 和 JFR，争论点是可观测性到底是定位瓶颈的必需品，还是本身就会吞掉大量 CPU。",
+    "emoji": "🤨",
+    "sarcastic_question": "Tokio 优化的第一步，是先把 tracing 开满吗？"
+  },
+  "articleSummary": "## 一句话总结\n写好 Tokio 应用不在于死守规则，而在于在“公平性”与“批处理”、“竞争”与“隔离”之间做权衡，核心是依据真实指标而非假设进行调优。\n\n## 正文\n\n### 先确认你的应用真的“有病”\n很多开发者在 Tokio 应用里找性能问题，一找一个准。毕竟 Alice Ryhl 都建议每次 poll 时间最好在 10-100 微秒之间，而现实世界里绝大多数应用的 poll 时间都远超这个数。但问题是，这些“病症”可能根本不需要治。如果你没有真实的用户侧指标受损（比如 P99 延迟飙升），盲目优化这些长 poll 纯属浪费时间。很多时候，问题压根不在 Tokio，而在应用代码或分布式系统的交互上。如果非要盯一个指标，就看 **Schedule Latency Histogram**——它记录了任务就绪到实际运行的时间，这是 Tokio 与你的代码“配合”不畅的最直接症状。\n\n### 想要低延迟？学会主动让出 CPU\n低延迟的核心是公平。以 Redis pipeline 为例，如果一个连接一口气把缓冲区的数据都读完了，会导致某些连接独占 CPU，其他连接只能干等。虽然总吞吐量没变，但延迟会变得很难看。作者实测发现，在处理完一个请求后显式调用 `tokio::task::yield_now()`，能让延迟降低 10 倍。更聪明的做法是“自适应让出”：连续读了 4 个立即就绪的帧后再让出，既保证了公平，又没完全丢掉批处理的红利。如果你发现 P99 远大于 P50，或者一个 poll 里塞了太多 span，那就是时候考虑让步了。\n\n### 想要高吞吐？把开销摊薄在批次里\n公平是有代价的。每次让出 CPU、切换任务、在 Worker 间迁移，都是在消耗 CPU 周期。最典型的反面教材就是 `tokio::fs`。在没有 `io_uring` 的情况下，每次文件操作都会向共享的 blocking pool 提交一个任务，这简直是性能杀手。正确的做法是把一堆文件操作打包成一个大的 blocking 任务，甚至直接用专门的 OS 线程处理。同理，spawn task 也不是免费的午餐。如果你 spawn 了成千上万个只跑 10 微秒的小任务，光是调度的开销就比干活还大。\n\n### 小心全局资源的竞争瓶颈\nTokio 的 Worker 虽然能跨核扩展，但有些资源是全局共享的。比如 blocking pool 和全局任务队列。作者在 32 核机器上观察到，当 blocking 任务达到每秒 5 万次时，`spawn_blocking` 就会成为瓶颈，直接在火焰图上冒头。全局队列也是同理，一旦 Worker 本地队列溢出，或者非 Tokio 线程疯狂往里塞任务，队列就会积压。健康的全局队列应该时刻保持接近空置状态，如果它总是很深，说明你的任务分发策略出了问题。\n\n### 锁：让整个运行时停摆的“核武器”\n在异步代码里用锁，稍有不慎就是灾难。如果一个 metrics registry 被锁保护，而 flush 操作持有锁时做了耗时操作，所有想写 metrics 的 Worker 都会卡住，导致 work-stealing 失效，整个运行时直接瘫痪。切记，临界区要短到极致——比如只做一次 HashMap 更新。千万别在持有锁时做 I/O 或 `.await`。至于 `tokio::sync::Mutex`，它不仅锁开销大，还容易引发 FutureLock 问题，除非你的临界区真的长达数毫秒，否则别用它。\n\n### 并发不是越高越好，给它上个“限流阀”\nTokio 很擅长并发，但你的下游系统未必受得了。一个常见的惨剧是 workload 疯狂 fan-out，瞬间对 S3 发起 3000 个连接。解决方法很朴素：用 `Semaphore` 限制并发数。不需要什么花哨的自适应算法，一个简单的信号量往往就能救命。\n\n### 隔离干扰：给 Tokio 专属的“跑道”\nTokio 依赖 Worker 线程快速唤醒。如果宿主机负载过高，内核调度器可能要花 10-20 毫秒才能唤醒一个线程——对于追求个位数毫秒延迟的应用来说，这就是灭顶之灾。这在 Java 迁移到 Rust 的混合部署场景很常见：Java 进程一闲，Rust 进程就变快。解决办法是用 `cgroups` 或 CPU 亲和性，把 Tokio Worker 和其他线程（比如 `tracing_appender` 的后台线程）绑定到不同的核上。你不需要把所有核都给 Tokio，留几个给其他干扰源，延迟反而更稳。\n\n### 高级技巧：多运行时与“自旋”战术\n如果常规手段都不管用，可以考虑更激进的隔离策略：跑多个 Runtime。把延迟敏感的任务和后台任务分到不同的 Runtime，甚至绑定到不同的 CPU 核上，设置不同的 OS 优先级。这在 TokioConf 上已经是大家的共识。还有一个极客的“自旋”技巧：为了微秒级的极致延迟，不让出 CPU 而是空转等待，以此避免让出控制权带来的调度延迟。但这属于“核武器”，非必要勿用，尤其是在使用了 `tokio::join!` 的任务里，阻塞 executor 会让同任务内的其他并发分支全部卡死。"
+}

@@ -1,0 +1,110 @@
+{
+  "id": 48047930,
+  "by": "ludovicianul",
+  "title": "Idempotency Is Easy Until the Second Request Is Different",
+  "url": "https://blog.dochia.dev/blog/idempotency/",
+  "score": 251,
+  "createdAt": 1778404862,
+  "aiSummary": {
+    "chinese_title": "Idempotency-Key 遇到不同请求体：该缓存、报 409 还是走状态机？",
+    "discussion_overview": [
+      {
+        "category": "Key 语义与接口契约",
+        "summary": "很多评论把 Idempotency-Key 看成接口契约，而不是“尽量猜对”的提示。若同一个 key 已出现，最稳妥的做法是直接返回第一次的结果；如果 key 相同但请求体不同，则应当明确报错，常见说法是 400 或 409 Conflict。有人建议把 client-provided key 和 request payload hash 组合成复合键，这样既能缓存成功响应，也能暴露重复 key、请求体漂移之类的 bug。也有人强调，后台不该替客户端修复意图不明的请求，否则只是把重复消解的责任外包给用户或前端。",
+        "supportid": [
+          "48083181",
+          "48082481",
+          "48082998",
+          "48083310",
+          "48083004"
+        ]
+      },
+      {
+        "category": "idempotency vs atomicity",
+        "summary": "另一条主线是在纠正 idempotency、atomicity、deterministic behavior 之间的混用。多位评论者指出，真正的 idempotency 关注的是重复执行后的效果是否一致，而不是通信层面是否返回同样的文本，更不是把失败结果塞进缓存里。若请求在中途崩溃、事件没发出去、数据库事务没提交完整，那是 atomicity 问题，和是否又发了一次请求是两回事。还有人把它类比为 eventual consistency 或 CRDT 的思路：系统要收敛到相同状态，但并不意味着每次调用都必须“看起来一样”。",
+        "supportid": [
+          "48082375",
+          "48082452",
+          "48082700",
+          "48082803",
+          "48083369",
+          "48082522",
+          "48082565",
+          "48082777",
+          "48082825",
+          "48083172",
+          "48083042",
+          "48083219",
+          "48083293"
+        ]
+      },
+      {
+        "category": "生产事故与状态机实现",
+        "summary": "一些人从生产事故角度解释为什么这事并不简单。有人提到 checkout 中同一 key 被重复使用但 payload 已变，导致用户以为买了更多商品，实际只处理了部分订单，属于 silent data corruption。也有人遇到数据库暂时不可用时，把 key 标成 FAILED，结果客户端一重试就永久失败，等于把一次瞬时故障变成不可恢复的锁死。为此有人建议引入 distributed lock、持久化状态表和明确的 PENDING/COMPLETED/RESOURCE_UNAVAILABLE 区分，并在请求完成前再保存响应。",
+        "supportid": [
+          "48082998",
+          "48082908",
+          "48082560",
+          "48083467",
+          "48083180",
+          "48083421"
+        ]
+      },
+      {
+        "category": "客户端兜底还是服务端容错",
+        "summary": "还有一派更关心谁来承担容错成本。有人认为，面对客户端 bug，后端应该尽量缓解，让用户不会因为前端修复要等几周而受苦；但也有人提醒，这类临时兼容不该变成永久补丁，否则新版本就会继续依赖旧 hack。另一边则坚持，客户端如果带着同一个 key 却发出不同 intent，本来就是调用方的问题，服务端不该替你猜。这个分歧本质上是在争论：可靠性应该优先放在服务端韧性，还是放在严格的客户端契约上。",
+        "supportid": [
+          "48083884",
+          "48083921",
+          "48083811",
+          "48083310",
+          "48083662",
+          "48082421"
+        ]
+      },
+      {
+        "category": "POST/PUT 设计路径之争",
+        "summary": "不少评论把矛头指向 POST + Idempotency-Key 这种事后补丁式设计。有人建议直接用 PUT、DELETE 这类更接近幂等的 HTTP method，或者让客户端先生成 resource/transaction id，再用 PUT 创建实体。也有人提醒 GET 本来就不该改状态，所以浏览器返回、重放、重试都会让下单流程暴露重复提交风险。这个视角的核心是：如果业务动作本身不是幂等的，光加一个 header 并不能从根上解决问题。",
+        "supportid": [
+          "48082834",
+          "48083269",
+          "48083337",
+          "48083232",
+          "48083396"
+        ]
+      },
+      {
+        "category": "文章质量与 AI 痕迹",
+        "summary": "一个小分支在讨论文章本身的写作质量。有人认为它读起来像 AI 写的，节奏和标点都很别扭，组织也不够清楚。也有人反驳说它至少列出了一些常见坑，对团队分享仍有价值。于是争论变成了：内容是否足够有用，而不是写得像不像人。",
+        "supportid": [
+          "48083029",
+          "48083324",
+          "48083154",
+          "48083325"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Idempotency-Key",
+        "explanation": "HTTP 请求头，用来标识一次可重试的操作，便于服务端去重并返回第一次结果。"
+      },
+      {
+        "term": "atomicity",
+        "explanation": "原子性，强调操作要么完整生效，要么完全不生效，不留下半成品状态。"
+      },
+      {
+        "term": "eventual consistency",
+        "explanation": "最终一致性，指系统在并发或重试后，允许短暂不一致，但最终收敛到同一状态。"
+      },
+      {
+        "term": "409 Conflict",
+        "explanation": "HTTP 状态码，常用于表示同一幂等 key 被复用但请求语义或请求体发生冲突。"
+      }
+    ],
+    "context": "这篇文章围绕 HTTP 的 Idempotency-Key（请求头）讨论幂等重试，背景通常是支付、下单、超时重试这类一旦重复就会造成重复扣款或重复发货的场景。原文试图说明：当第二次请求的 key 相同但 body 不同时，单靠“记住这个 key”会遇到缓存命中、请求体变化、并发 in-flight、失败重试分类等边界问题。评论里把它和 REST 的 PUT/DELETE、事务幂等、atomicity（原子性）以及 eventual consistency（最终一致性）放在一起比较，强调幂等不等于“返回同样字符串”，而是重复操作后系统状态应可控。还有人补充了生产经验：要么用请求体 hash 和状态机区分同 key 的不同 intent，要么用 distributed lock（分布式锁）和持久化记录把 PENDING、COMPLETED、FAILED 这类状态显式化，避免把瞬时故障误处理成永久失败。",
+    "emoji": "🤯",
+    "sarcastic_question": "同一把 key，还想既重试又改单，凭什么让服务端猜？"
+  },
+  "articleSummary": "抱歉，我无法直接分析这篇文章。\n\n你提供的文本内容实际上是 Cloudflare 的反爬虫验证页面（\"Enable JavaScript and cookies to continue\"），而不是文章《Idempotency Is Easy Until the Second Request Is Different》的正文。\n\n为了帮你写出这篇技术博客的精髓，我需要文章的原文内容。你可以直接把文章的文本贴在这里，或者提供文章的链接（如果我能访问的话）。一旦拿到原文，我会立刻按照你的要求，用讲故事的方式把其中的技术逻辑拆解给你看。"
+}

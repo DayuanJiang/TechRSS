@@ -1,0 +1,101 @@
+{
+  "id": 49779329,
+  "by": "maharshi365",
+  "title": "Why MCP Was Always a Bad Idea",
+  "url": "https://maharship.com/blog/why-mcp-was-always-a-bad-idea/",
+  "score": 250,
+  "createdAt": 1789934407,
+  "aiSummary": {
+    "chinese_title": "MCP并非坏主意：CLI/API替代与受控代理接入之争",
+    "discussion_overview": [
+      {
+        "category": "MCP作为受控工具网关",
+        "summary": "支持者认为，MCP的关键价值并非让最强的 terminal agent 学会调用 API，而是把外部能力置于可控边界内。它可由代理层代管认证信息、限制可访问服务与操作范围，并记录每次工具请求，避免模型直接接触 API key 或云端凭据。对于没有 shell 权限、使用较小模型，或必须遵守 Principle of least privilege 的系统，开放 Bash 反而是过度授权。实践中可让沙箱化的 Claude Code 仅通过 MCP 操作虚拟文件系统，由外部编排器实际访问 AWS，从而保留隔离与完整审计。",
+        "supportid": [
+          "49779718",
+          "49782293",
+          "49784034",
+          "49779621",
+          "49783399",
+          "49783556",
+          "49783293"
+        ]
+      },
+      {
+        "category": "CLI与原生API可替代，还是应与MCP分工",
+        "summary": "批评者认为，成熟的 REST API、OpenAPI spec 和常规认证机制本已能实现服务调用、日志和权限控制，MCP常只是额外托管的一层转换器。对于高频、固定且可重复的流程，更合理的做法是先让模型生成一次确定性程序，之后直接运行 API 工作流，避免每次消耗 token 进行工具选择和推理。CLI 的拥护者还强调其反馈循环快，并可借助 `--dry-run` 验证操作结果。反方则指出，MCP本身正是那个确定性工具接口；若让模型从 `--help`、参数组合和零散文档中反复摸索，尤其面对内部或小众 CLI，未必比直接暴露结构化工具更省 token。",
+        "supportid": [
+          "49779865",
+          "49783314",
+          "49782200",
+          "49783251",
+          "49783404",
+          "49779541",
+          "49779562",
+          "49779830"
+        ]
+      },
+      {
+        "category": "动态发现、跨端使用与商业集成",
+        "summary": "MCP被视为适合未知服务动态发现的接口，而 HTTP API 通常假定客户端预先知道请求与响应的固定形状。CLI适合本机或稳定开发环境，却无法自然运行在 iPhone、Web client 等没有终端的客户端；远程 MCP 可在这些环境中统一接入。ChatGPT 和 Claude 的 Plugin store 提供一键安装和认证，也使MCP成为面向普通业务用户的集成渠道。具体案例包括 Microsoft Power BI Authoring MCP 可从 SQL 或 CSV 创建 semantic model，避免模型自行在网页上搜寻正确文档与调用步骤。",
+        "supportid": [
+          "49779771",
+          "49779691",
+          "49779790",
+          "49779632",
+          "49781994",
+          "49784487"
+        ]
+      },
+      {
+        "category": "协议设计、成本与实际安全仍受质疑",
+        "summary": "即便认可受控访问的目标，许多评论仍认为MCP早期一次性把全部工具描述载入 context 的设计会造成 context bloat 和 token 成本上升。有人将其形容为单体式设计：修补一个问题可能引入更多问题，且 JSON 作为传输格式也被批评不理想。安全性也并非由MCP自动获得：若密钥仍放在 agent 可读的环境变量或配置文件中，或直接向生产数据库开放 MCP，风险依然存在；还需处理 prompt injection 下用户身份与授权范围如何绑定。较温和的意见认为，改进后的 stateless HTTP 规范、独立代理和更严格的出站策略或许能修正这些缺陷，但不能把协议标签本身当作安全保证。",
+        "supportid": [
+          "49782621",
+          "49783640",
+          "49779518",
+          "49779648",
+          "49780319",
+          "49779646",
+          "49779583",
+          "49781930"
+        ]
+      },
+      {
+        "category": "应复用既有Web标准而非制造新语义",
+        "summary": "一些人认为MCP至少促使原本没有 REST API 的网站公开可自动化调用的服务，也推动了 OIDC provider 对 dynamic registration 的支持。另一派主张应更多复用 Swagger/OpenAPI：它已经定义接口描述与安全细节，可通过 `/.well-known` URI 发布，减少再包一层 MCP 的需要。围绕文档服务的争论尤其尖锐：用 `Accept-Language: rust` 表达编程语言偏好被认为是滥用既有 HTTP header。评论建议把 Python、TypeScript 等文档差异写入 URL，或定义新的明确 header，并让 agent 读取 sitemap，而不是模糊现有协议语义。",
+        "supportid": [
+          "49779765",
+          "49783605",
+          "49783516",
+          "49779693",
+          "49779820",
+          "49779552",
+          "49779748"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "MCP（Model Context Protocol）",
+        "explanation": "让AI agent 以统一方式发现并调用外部工具、服务和数据源的协议；常可通过中间层代理认证、权限和审计。"
+      },
+      {
+        "term": "OpenAPI Specification（OAS）",
+        "explanation": "以机器可读格式描述 HTTP API 的端点、参数、响应与认证方式的标准，Swagger 是其常见生态名称。"
+      },
+      {
+        "term": "Principle of least privilege（最小权限原则）",
+        "explanation": "只授予完成当前任务所必需的最少权限，以降低模型误操作、密钥泄露和越权风险。"
+      },
+      {
+        "term": "OAuth/OIDC",
+        "explanation": "OAuth 用于授权第三方访问资源；OIDC 在其基础上提供身份认证，常用于让用户连接外部服务而不直接暴露密码或密钥。"
+      }
+    ],
+    "context": "MCP（Model Context Protocol，一种让AI agent 发现并调用外部工具的标准接口）正被用于把企业内部系统、SaaS 服务和个人数据源接入 Claude、ChatGPT 等客户端。原文的前提是，具备 terminal、网络访问和强大 coding 能力的 agent 可以直接使用 CLI 或 REST API，因此MCP显得低效且多余。评论者则强调，真实部署常需要无 shell 的 Web 或移动端 agent、凭据隔离、最小权限、操作审计和跨组织的统一工具接入，这些都需要代理层或 MCP Gateway（一种集中执行权限与路由策略的网关）。争论的核心并非是否能发出 HTTP 请求，而是固定工作流应直接走 API，还是让面向未知任务的 agent 通过可发现、可治理的工具协议访问服务。",
+    "emoji": "⚖️",
+    "sarcastic_question": "既要代理直连万能终端，谁替你守住密钥？"
+  },
+  "articleSummary": "## 一句话总结\n随着 LLM 能力的飞跃，曾经为了弥补模型短板而设计的 MCP 协议已成累赘，直接调用 HTTP API 和 CLI 才是 Agent 进化的正确方向。\n\n## 正文\n\n### 那个为了\"笨模型\"而生的协议\nMCP（Model Context Protocol）诞生于 2024 年 11 月，彼时的 Anthropic 设计它的初衷很明确：给那时的 LLM \"外挂\"一套连接外部服务的标准。那时候的模型确实不够聪明，连 Claude Code 都还没影，通用的 Agent 工作流更是经常掉链子。虽然 MCP 让用户尝到了 AI 连接外部服务的甜头，甚至引发了爆发式增长，但作者一针见血地指出：这是一个为\"旧时代\"打造的协议。\n\n### 越来越臃肿的\"中间层\"\n随着生态膨胀，用户开始往环境里塞入大量的 MCP Server，结果就是严重的 Context Bloat（上下文膨胀）。每个 Server 都带着一堆工具和 Schema，把模型的上下文塞得满满当当。为了解决这个问题，Composio、MintMCP 这样的平台搞出了一些\"搜索/执行\"的通用模式来精简工具集。虽然这些方案在短期内有效，但大家似乎都在刻意忽略房间里的大象——模型本身正在变得越来越强。\n\n### 模型变强了，脚手架该拆了\n最有意思的转折点来了：各大 Lab 的模型能力突飞猛进。现在的模型不仅能直接在电脑上写代码、跑脚本，还能自主推理庞大的代码库。这带来了一个\"副作用\"——它们现在能直接调用 API 了。Cloudflare 甚至推出了 Code Mode，让 LLM 把调用逻辑组合成脚本在沙箱里跑。既然模型已经学会了用 `--help` 去探索 CLI，甚至能直接读懂没见过的 API 文档，那层包裹着 API 的 MCP Server 还有存在的必要吗？\n\n### 直接删掉大部分 MCP Server\n作者的方案简单粗暴：删掉大部分 MCP Server。拥有终端访问权限的 Agent 已经可以替代绝大多数 MCP Server，而且能力更强。当然，直接跑 CLI 也有小毛病，比如返回的 JSON/XML 太啰嗦，费 Token。但这并非死局，我们完全可以通过标准化的 HTTP API 协商来解决。\n\n### 让 Agent 像人类一样\"读\"网页\n与其维护复杂的 MCP 生态，不如回归 HTTP 协议本身，建立一套 Agent 友好的标准。比如，Agent 可以在请求头里带上 `Accept: text/markdown`，服务器收到后直接返回 Markdown 而不是那一堆乱七八糟的 HTML 标签。Vercel 的工程师还提议利用 `Accept-Language` 头，告诉文档站点\"我想要 Python 示例\"，这样 Agent 就不用在通用文档里大海捞针了。这个提议甚至得到了 Shopify CEO 的点赞支持。\n\n### 告别旧时代，拥抱原生能力\n说到底，互联网的繁荣靠的是标准协议，而 MCP 已经属于那个\"模型还不够聪明\"的旧时代。现在的 Agent 已经足够聪明，能写脚本，能明确表达需求。与其在 MCP 这个无底洞里越陷越深，不如让它光荣退役，让 Agent 直接基于成熟的 HTTP API 和 CLI 去构建未来。"
+}

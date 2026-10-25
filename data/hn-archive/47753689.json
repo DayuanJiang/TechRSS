@@ -1,0 +1,142 @@
+{
+  "id": 47753689,
+  "by": "soheilpro",
+  "title": "Building a CLI for All of Cloudflare",
+  "url": "https://blog.cloudflare.com/cf-cli-local-explorer/",
+  "score": 259,
+  "createdAt": 1776096632,
+  "aiSummary": {
+    "chinese_title": "Cloudflare cf 全平台 CLI：权限、短期 token、AI 友好体验",
+    "discussion_overview": [
+      {
+        "category": "权限分层与短期 token",
+        "summary": "评论最集中的需求是先把权限模型做好，再谈更强大的 CLI。很多人希望 `cf permissions check` 之类的命令能在本地开发时直接列出需要的 API token scopes，甚至自动创建最小权限的 key，避免部署前靠猜、靠查文档或反复试错。另一组建议是短期 token、按资源范围缩小权限，甚至通过 proxy mode 把宿主机的权限切片给容器。也有人指出 Cloudflare 现在主要按 zone（域名）授权，但 Workers 这类非 zone 资源很容易因为低权限被直接改掉或删掉，需要 resource groups 这类更细的隔离。",
+        "supportid": [
+          "47754283",
+          "47756263",
+          "47758330",
+          "47757234",
+          "47759549",
+          "47759681",
+          "47759862",
+          "47757544",
+          "47760287",
+          "47757631"
+        ]
+      },
+      {
+        "category": "AI agents 友好，但不能只顾 agent",
+        "summary": "另一条线是 AI agents 如何改变工具设计，但大多数人并不接受只为 agent 优化这件事本身。有人认为 agent 会自己用 CLI/API，真正难的是失败后的诊断，所以命令要给出明确的缺失 scope 和修复方式，而不是只给一个错误码。也有人强调，做给 agent 的好工具也会让负责管理它们的人类更轻松，因为人类同样需要少翻文档、少记命令。整体上，这一派把 CLI 看成 human+agent 共用的操作层，而不是纯粹的自动化接口。",
+        "supportid": [
+          "47757697",
+          "47756695",
+          "47755091",
+          "47759470",
+          "47757318",
+          "47758014",
+          "47755309",
+          "47754342",
+          "47754672",
+          "47756906",
+          "47754339",
+          "47754496"
+        ]
+      },
+      {
+        "category": "帮助文本与命令一致性",
+        "summary": "关于 `-h`、`--help`、补全和命令风格，评论几乎是集体要求更严格的一致性。有人反对短版和长版 help 返回不同内容，认为短版和长版应该是同一命令的别名，而更详细的说明应放在 man/info 里。另一些人则接受 `-h` 只给简版、`--help` 给长版，但前提是输出必须稳定、非交互，并且所有子命令的参数和颜色风格都要一致。更重要的是，统一 help 不只是美观问题，而是防止 coding agents 因为子命令形状不一致而 hallucinate 出错误命令。",
+        "supportid": [
+          "47757371",
+          "47757661",
+          "47757423",
+          "47759449",
+          "47758775",
+          "47758797",
+          "47757811",
+          "47760212",
+          "47757602",
+          "47759499"
+        ]
+      },
+      {
+        "category": "TypeSpec / OpenAPI / 生成式 CLI",
+        "summary": "不少评论把焦点放在接口建模和代码生成路线：TypeSpec、OpenAPI、AEP 风格的资源化 API 都被拿来比较。TypeSpec 被赞为比传统 OpenAPI 更简洁、更可读，还能更自然地表达 generics、sum/product types；而资源一致性高的 API 则能让 `aepcli`、自写 CLI 和 Terraform 更容易复用。Cloudflare 自己的 TypeScript schema 也被理解为同一路线的变体：把 API、CLI 命令和参数放进统一描述，再生成界面。",
+        "supportid": [
+          "47754848",
+          "47754970",
+          "47755889",
+          "47759562",
+          "47759715",
+          "47756147",
+          "47755502",
+          "47755606"
+        ]
+      },
+      {
+        "category": "TS 运行时、单二进制与打包争论",
+        "summary": "另一组争论集中在实现层：`cf` 是否开源、是否能做成单 binary，以及用 TypeScript 做 CLI 是否合适。质疑者认为 TS 依赖 node/npm，运行时和依赖管理都不如编译型工具省心，尤其是 CLI 这种要尽量拿来就用的场景；支持者则提到 Deno/Bun 已经能打包可执行文件，只是对 FFI、native library 之类支持还有限。整个讨论暴露出一个老问题：现代 JS/TS 工具链很适合快速迭代，但很多人仍然偏爱 Go 这类编译后直接分发的 CLI。",
+        "supportid": [
+          "47754314",
+          "47754649",
+          "47754190",
+          "47755190",
+          "47755544",
+          "47755526",
+          "47755776",
+          "47758215",
+          "47754269",
+          "47754348",
+          "47754435",
+          "47758191",
+          "47758380",
+          "47754734"
+        ]
+      },
+      {
+        "category": "产品覆盖与运维功能缺口",
+        "summary": "很多人之所以欢迎这个项目，是因为它有机会把 Cloudflare 现在分散的工作流重新收拢到一个入口里。评论里反复提到从 Wrangler、dashboard、raw API 来回切换很烦，也希望有 preview command、批量应用到多个 domain、统一的 environment 管理，以及更靠谱的 billing notification 和 usage analytics 对账。Terraform 经常被当作对照组：有人希望 CLI 成为 declarative layer 之上的薄壳，也有人直接抱怨 Cloudflare 的 Terraform provider 和迁移工具太脆弱，已经影响到对平台的信任。",
+        "supportid": [
+          "47755193",
+          "47754914",
+          "47755380",
+          "47758828",
+          "47759582",
+          "47754363",
+          "47757929",
+          "47757724",
+          "47754403"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Wrangler CLI",
+        "explanation": "Cloudflare 现有的 Workers 管理 CLI，常被拿来和新 `cf` 对比。"
+      },
+      {
+        "term": "resource groups",
+        "explanation": "按资源集合划分权限的隔离机制，用来把生产和非生产资源分开授权。"
+      },
+      {
+        "term": "short-lived token",
+        "explanation": "有效期很短的访问令牌，降低长期 token 泄露和误操作风险。"
+      },
+      {
+        "term": "TypeSpec",
+        "explanation": "一种用于描述 API 的 schema 语言，可据此生成接口、文档或 CLI。"
+      },
+      {
+        "term": "OpenAPI",
+        "explanation": "常见的 REST API 描述规范，评论中被用来对比 TypeSpec 和代码生成方案。"
+      },
+      {
+        "term": "Terraform provider",
+        "explanation": "Terraform 的云厂商插件，这里指 Cloudflare 的基础设施即代码管理方式。"
+      }
+    ],
+    "context": "Cloudflare 正在预览一个名为 `cf` 的 Cloudflare-wide CLI（覆盖 Cloudflare 多个产品的统一命令行工具），可通过 `npx cf` 或全局安装使用。它背后用一套 TypeScript schema 来描述 API、CLI 命令、参数和上下文，目标是把 dashboard、API 和 CLI 的入口统一起来，并更好地服务 coding agents。评论区把焦点放在权限安全、资源隔离、帮助文档一致性、以及是否该用 TypeSpec（一个 API schema 语言）、OpenAPI（API 描述规范）或生成式工具来做这件事。很多人也把它放进 Cloudflare 现有的 Wrangler CLI（用于 Workers 管理）和 Terraform provider（Terraform 的 Cloudflare 插件）语境里比较，讨论为什么现有工具体验不够统一。",
+    "emoji": "🤨",
+    "sarcastic_question": "权限分层都没做好，就让代理直通生产？"
+  },
+  "articleSummary": "## 一句话总结\nCloudflare 正在用一套基于 TypeScript 的统一 Schema 生成 CLI、SDK 和配置，目标是打造一个既能让 AI Agent 顺畅调用、又能完美支持本地开发的“全平台大一统”命令行工具。\n\n---\n\n### 以前靠人肉维护，现在必须靠机器自动生成\nCloudflare 的 API 表面极其庞大，拥有 100 多个产品和近 3,000 个 HTTP API 操作。以前，虽然 SDK 和 Terraform Provider 可以基于 OpenAPI Schema 自动生成，但 CLI 命令、配置文件、文档以及 Agent Skills 等接口的更新还得靠人工手搓。这种方式不仅容易出错，而且根本跟不上产品迭代的速度，更别提把所有 API 都塞进 CLI 里了。为了解决这个问题，他们决定从底层重构，搞一套能自动生成所有这些东西的“流水线”。\n\n### OpenAPI 不够用，TypeScript 才是终极解法\nOpenAPI Schema 擅长描述 REST API，但搞不定 CLI 这种涉及复杂交互、本地开发环境配置以及 RPC 绑定的场景。Cloudflare 的工程师发现，既然 TypeScript 是他们的通用语言，不如直接用 TypeScript 类型定义来作为这套系统的“源头”。这套新的 Schema 本质上就是一套带规范和约束的 TypeScript 类型，它不仅能描述 API，还能定义 CLI 命令参数和上下文。最妙的是，这套自定义 Schema 甚至还能反向生成 OpenAPI Schema，兼容性拉满。\n\n### AI Agent 需要的不是“灵活”，是“死板”的一致性\nAI Agent 非常依赖命令的一致性，如果有的命令用 `info` 查信息，有的用 `get`，Agent 就会懵圈。在几千人的大团队里靠 Code Review 保证命名统一无异于天方夜谭，所以 Cloudflare 把规则直接写进了 Schema 层面：强制用 `get` 不用 `info`，强制用 `--force` 不用 `--skip-confirmations`。此外，CLI 经常要在本地模拟资源（如 D1 数据库）和远程资源之间切换，如果默认行为不一致，Agent 很容易误操作。因此，他们统一了默认行为，并强制所有命令都支持 `--json` 输出，确保机器能读懂。\n\n### Local Explorer：把云端 API 完整镜像到本地\n除了重构 CLI，Cloudflare 还发布了 Local Explorer，这是一个在 Wrangler 和 Vite 插件中可用的本地资源查看器。以前你想看本地模拟的 KV 或 D1 数据，得去翻 `.wrangler/state` 目录或者用第三方工具，现在直接在开发时按 `e` 就能打开可视化界面。这不仅是给人看的，它还在本地起了一个服务（`/cdn-cgi/explorer/api`），提供了一份 OpenAPI 规范。这意味着你的 AI Agent 可以直接连这个本地接口，用操作远程 API 的方式来操作你的本地数据，真正实现了“本地即云端”的开发体验。\n\n### 你现在就能试玩，但这只是个开始\n目前这个新版 CLI（代号 `cf`）已经开放了技术预览，你可以直接跑 `npx cf` 或者 `npm install -g cf` 来尝鲜。不过要注意，现在的版本只包含了一小部分产品的命令，他们还在内部测试支持全 API 表面的版本。Cloudflare 这次选择在这么早期的阶段就公开，就是想听听开发者的反馈：你希望哪些 Dashboard 上的操作能变成一行 CLI 命令？你的 Agent 在哪里卡住了？这不仅仅是一个工具的更新，更是他们为 AI 时代开发体验铺路的第一步。"
+}

@@ -1,0 +1,93 @@
+{
+  "id": 47380270,
+  "by": "CharlieDigital",
+  "title": "MCP Is Dead; Long Live MCP",
+  "url": "https://chrlschn.dev/blog/2026/03/mcp-is-dead-long-live-mcp/",
+  "score": 246,
+  "createdAt": 1773520864,
+  "aiSummary": {
+    "chinese_title": "MCP存亡之争：可审计的企业边界 vs CLI/Skills 的轻量替代",
+    "discussion_overview": [
+      {
+        "category": "企业安全与可审计边界（支持MCP）",
+        "summary": "很多评论认为 MCP 的核心价值在于为企业提供确定性的“门”——在智能体决策与实际执行之间建立可控、可审计的边界，从而避免代理直接持有敏感凭据或随意调用 API。具体例子包括 NanoClaw 在把 WhatsApp 消息做确定性过滤后才交给代理、以及通过代理化 API keys 防止凭据泄露；还有提出的任务凭证（cryptographic warrants，例：tenuo 项目）用于在工具边界强制最小权限。远程 MCP（streamable HTTP）配合 OAuth 流与集中 telemetry 能让非技术用户以点击完成授权，并为组织提供访问控制、品牌口径与内部术语的一致性，便于审计与合规。",
+        "supportid": [
+          "47385024",
+          "47385762",
+          "47385436",
+          "47385767",
+          "47383023",
+          "47381478"
+        ]
+      },
+      {
+        "category": "CLI 与 Skills 支持者",
+        "summary": "反对者主张用 CLI + skills（或专门脚本）替代 MCP，因为 CLI 能直接利用本地上下文（如 git 分支、工作目录）、支持 Unix 风格的 filter/pipe 与 heredoc，从而用更小的上下文实现复杂组合。许多人指出 MCP 的兴起部分是由于早期代理无法运行本地命令：一旦代理能执行 CLI，许多 MCP 场景就显得多余；实践上可以把 CLI 打包成 skill 或随附 SKILL.md 以便代理按需加载，既保留发现性又避免一次性把大量工具 schema 注入上下文。还有评论强调传统的 CLI 沙箱技术（自定义 PATH、chroot 等）与精确脚本输出能更好地控制权限与 token 使用，减少脆弱面。",
+        "supportid": [
+          "47381944",
+          "47381210",
+          "47381277",
+          "47385635",
+          "47382341"
+        ]
+      },
+      {
+        "category": "协议本质与规格争议",
+        "summary": "不少人把 MCP 归结为在 streamable HTTP 上运行的 JSON-RPC + OAuth 的组合——传输层并不新颖，争论点在于规范对 AI 特有交互（session、resources、prompts、工具发现等）是否必要。批评者指出规范早期缺少安全设计（最初甚至没有 auth），被形容为“vibe-coded”或事后补丁；支持者则认为在真实使用模式出现后再固化安全方案更合理。另一个争议是能否用现有标准（OpenAPI/CLI+skill）解决互操作与文档问题，还是需要 MCP 所定义的“通信形状”来应对分布式、异步、多会话的代理场景。",
+        "supportid": [
+          "47381141",
+          "47381680",
+          "47385426",
+          "47385816",
+          "47381515"
+        ]
+      },
+      {
+        "category": "结构化输出与程序化调用优势",
+        "summary": "支持者强调 MCP 的 output schema（结构化输出）与“程序化工具调用”能显著提升代理效率：当代理以写代码（CodeAct / code-first）方式调用工具时，输入/输出 schema 允许一次性精确调用，避免把大块 JSON 或原始文本灌入上下文反复检查，从而节省 token 并降低探测式轮次。社区示例包括 Hugging Face 的 smolagents、Cloudflare 的 Code Mode，以及 Anthropic 的 programmatic tool calling；相关实测声称在若干工作流中能获得接近 98.7% 的 token 节省。因此即便 MCP 在传输层看似“只是 JSON-RPC”，其结构化 schema 对复杂 agent 流程带来的工程收益是被广泛引用的长期理由。",
+        "supportid": [
+          "47381282",
+          "47381062",
+          "47382098"
+        ]
+      },
+      {
+        "category": "折中方案与工程化优化",
+        "summary": "许多评论提出折中与工程化的实践来缓解 MCP 的上下文膨胀与信任问题：在推理时用代理/路由层做按需工具选择（BM25 或语义检索），只暴露少量相关 tool schema；引用 mcpproxy-go 等实现作为范例，通过 listTools/getToolDetails/execTool 的按需发现模式或 search_tools 优化避免一次性加载全量工具。还有建议把工具调用放在 forked context 或把完整响应存到磁盘，仅把压缩摘要回传主上下文；这些设计既保留了集中化的审计与认证优点，又把 token 与上下文压力降到可控范围，形成 MCP 与 CLI 之间的工程折中。",
+        "supportid": [
+          "47384716",
+          "47385243",
+          "47381478",
+          "47382341",
+          "47382098"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "MCP（Model Context Protocol）",
+        "explanation": "一种为 AI 代理与外部工具/服务定义交互语义的规范，包含 tools/resources/prompts、会话管理与认证等要素，常见实现为在 streamable HTTP 上运行的 JSON-RPC + OAuth 组合。"
+      },
+      {
+        "term": "JSON-RPC",
+        "explanation": "基于 JSON 的远程过程调用（RPC）协议格式，MCP 在传输层通常采用 JSON-RPC 来封装工具调用与响应。"
+      },
+      {
+        "term": "Skill / SKILL.md（代理技能文件）",
+        "explanation": "用于描述工具集合、参数、示例与常见陷阱的文档或封装文件，供代理按需加载，作为不依赖远端 MCP 的发现与使用层。"
+      },
+      {
+        "term": "输出 schema / output schema（结构化输出）",
+        "explanation": "MCP 规范中声明工具输入/输出结构的 schema，支持代理以代码方式精确调用工具，减少将大量原始输出写入上下文的需要，从而节省 token 并提高可靠性。"
+      },
+      {
+        "term": "任务凭证 / cryptographic warrant（warrant model）",
+        "explanation": "一种对代理授予受限、任务范围内权限的加密授权机制，在 MCP 工具边界验证并限制代理能执行的操作以降低越权风险。"
+      }
+    ],
+    "context": "Model Context Protocol（MCP）是一套为 AI 代理与工具/服务之间定义通信形态的规范，目标是解决身份认证、会话管理、工具发现和审计等企业级问题。讨论起于题为“MCP Is Dead; Long Live MCP”的争论帖，评论者基于两类现实前提展开：一是早期代理无法直接运行本地 CLI，从而催生对远程协议的需求；二是企业必须对代理执行路径、凭据与审计拥有确定性控制。争辩焦点集中在集中式 remote MCP（streamable HTTP + OAuth + telemetry）能否优于 CLI/skills，以及 MCP 的工程特性（resources/prompts、output schema）与实际实现细节（早期缺 auth、mcpproxy、按需路由等）如何影响可用性与安全。讨论还引用了若干实作案例与项目以说明折中方案：NanoClaw（消息预过滤）、tenuo（任务凭证）、mcpproxy-go（按需路由）以及 Cloudflare/Anthropic 在程序化工具调用上的实践。",
+    "emoji": "🔐",
+    "sarcastic_question": "把秘钥、审计和运行权交给MCP，合理吗？"
+  },
+  "articleSummary": "## 一句话总结\n别被“CLI 节省 Token”的营销忽悠了，对于企业级应用，基于 HTTP 的 MCP 才是解决鉴权、可观测性和复杂后端集成的终极方案。\n\n### CLI 节省 Token 的真相，其实没你想得那么美\n现在的技术圈风向变得比翻书还快，半年前大家还在疯狂追捧 MCP，现在一帮 KOL 又开始鼓吹 CLI 才是正义。核心论据是 CLI 能节省 Token，因为像 `git`、`curl` 这种工具早就存在于模型的训练集里，模型不需要额外的 Schema 说明就能直接用。这听起来很诱人，但问题在于，这只是针对通用 CLI 工具的情况。一旦你面对的是公司内部定制的 CLI 工具，模型根本没见过，你就不得不在 `README.md` 或者 `AGENTS|CLAUDE.md` 里写一大堆指令告诉模型怎么用。这时候，所谓的“上下文节省”瞬间就归零了，因为你还是得把工具定义塞进上下文里。\n\n### 渐进式加载的陷阱，看似省了实则亏了\n有人会说，CLI 的好处在于可以“渐进式加载”上下文，比如先用 `--help` 看看有哪些命令，需要时再深入看参数。但这其实是个伪命题。对于复杂的业务逻辑，Agent 最终还是得把整个命令树遍历一遍才能搞清楚怎么用，这反而增加了交互轮次。Vercel 的实践早就证明过，把完整的文档索引一次性给 Agent，效果反而比让它慢慢摸索要好得多。如果 MCP 的工具设计得足够精简， upfront 的 Schema 开销完全可以接受，而且还能让 Agent 在一开始就拥有全局视野，减少试错成本。\n\n### 别把 MCP over stdio 和 MCP over HTTP 混为一谈\n很多批评 MCP 的人，其实只体验过本地的 `stdio` 模式。说实话，在本地跑一个 MCP Server 确实有点多此一举，不如直接写个 CLI 来得痛快。但有意思的地方在于，MCP 还有一种基于流式 HTTP 的模式，这完全是另一个维度的产物。在这种模式下，MCP Server 是集中化部署的，Agent 只需要通过 HTTP 端点加一个 Auth Token 就能访问。这不仅仅是协议的转换，更是架构的升级，它让 Agent 能够调用那些本地根本跑不了的复杂后端能力。\n\n### 集中化管理，才是企业级落地的关键\n对于个人开发者来说，本地 CLI 够用了；但对于企业，集中化管理是刚需。想象一下，如果你的工具需要连接一个开启了 Apache AGE 图查询功能的 Postgres 实例，或者需要在 GitHub Actions 这种 ephemeral（临时性）环境中运行有状态的任务，本地 CLI 根本搞不定。而通过 HTTP 的 MCP Server，你可以把这些重逻辑都放在服务端，客户端只需要保持轻量。这不仅解决了环境限制，还能让工具的升级和分发变得像更新一个 URL 一样简单。\n\n### 鉴权与安全，CLI 的硬伤正是 MCP 的强项\n说到安全，CLI 的做法简直是灾难。为了让 Agent 调用 API，你不得不把 API Key 分发给每个开发者的本地环境，一旦有人离职，收回权限简直是噩梦。而 MCP over HTTP 允许你像管理普通 REST API 一样管理鉴权。开发者只需要通过 OAuth 访问 MCP Server，敏感的 Key 和 Secret 全部锁在服务端。权限回收？撤销 OAuth Token 就行了，开发者从来就没有直接接触过底层密钥，这才是企业该有的安全姿势。\n\n### 可观测性缺失，会让你的 Agent 运行在黑盒里\n最后，也是很多团队容易忽视的一点：Telemetry。如果你用 CLI 或者散落在各地的脚本，你根本不知道团队里的 Agent 到底在用什么工具、哪些工具是摆设、哪里在频繁报错。而集中式的 MCP Server 天然适合集成 OpenTelemetry。你可以像监控普通微服务一样，在 Datadog 里看到 Agent 的调用链路和指标。从“凭感觉编程”进化到“数据驱动的 Agentic Engineering”，这才是 MCP 在企业级应用中真正的价值所在。"
+}

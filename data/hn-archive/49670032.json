@@ -1,0 +1,82 @@
+{
+  "id": 49670032,
+  "by": "zdw",
+  "title": "Retrospectively Reverse-Engineering Apple's Neural Engine",
+  "url": "https://eiln.github.io/posts/ane.html",
+  "score": 134,
+  "createdAt": 1789200054,
+  "aiSummary": {
+    "chinese_title": "逆向拆解 Apple Neural Engine：偏向 CNN、被 Transformer 逼着变形",
+    "discussion_overview": [
+      {
+        "category": "ANE 为 CNN 设计，Transformer 只能硬改",
+        "summary": "不少评论从文章里最重要的结论出发：Apple Neural Engine（ANE）最初更像是为 CNN 和视觉流水线量身定制，而不是为 Transformer 时代准备的通用推理引擎。有人分享把 Transformer 移植到 ANE 的做法：把序列维放到最后、用 4D tensor 伪装成卷积输入，再用 1x1 convolution 代替 matmul，说明编程模型确实被硬件形状绑住了。也有人指出，这类嵌入式 NPU 在 ARM/RISC MCU 上同样会遇到“只对卷积特别快、换模型就要大量 profiling”的问题。",
+        "supportid": [
+          "49670378",
+          "49670906",
+          "49670462"
+        ]
+      },
+      {
+        "category": "ANE 的历史起点：自驾车项目与照片/视觉工作负载",
+        "summary": "评论普遍接受一种背景判断：ANE 很可能脱胎于 Apple 早期的 self-driving car 研发，因而天然偏向视觉相关的 CNN 工作负载。有人认为这是一种“把 10 年、约 100 亿美元的研究成果从未发布的项目里回收再利用”的结果，但也有人反驳说，把它称为纯粹闲置并不准确。反驳者举例指出，Photos 里的 face recognition 和 auto classification 这类功能确实在用 ANE，而在 iPhone 早期阶段，computational photography 和 CV 本来就是 ML 的杀手级场景。",
+        "supportid": [
+          "49671106",
+          "49672013",
+          "49671469",
+          "49671165",
+          "49670565",
+          "49670449",
+          "49670644"
+        ]
+      },
+      {
+        "category": "新一代 ANE 与 NAX 的硬件演进区别",
+        "summary": "讨论里有人追问 M4 及更晚代 ANE 是否带来新能力，回答里提到 M4 增加了 INT8 权重与激活的快速路径，也就是 w8a8。后续的 M5 Ultra、M6 和 A20 据说会有双 ANE block，更多体现为吞吐提升，而不一定是完全不同的编程能力。另一条关键纠正是：M5+ GPU 里的 NAX（Neural Accelerators）不是 ANE，它们更像做 matmul 的加速器，接近 NVIDIA GPU 的 tensor cores。",
+        "supportid": [
+          "49670508",
+          "49670764"
+        ]
+      },
+      {
+        "category": "Core AI 正在把 Apple 的推理栈往前推",
+        "summary": "有评论补充说，Apple 今年秋天会推出 Core AI，这个新框架要超出十年前的 Core ML（苹果旧机器学习框架）所覆盖的 PyTorch/TensorFlow 工作流。它允许应用在 CPU、GPU 和 Neural Engine 上使用更现代的模型架构与推理技术，说明 Apple 正在尝试把硬件能力和软件栈重新对齐。这个信息也间接解释了为什么围绕 ANE 的讨论会落到“过去的设计假设是否还能撑住当前模型潮流”上。",
+        "supportid": [
+          "49672095"
+        ]
+      },
+      {
+        "category": "文章质量高，也顺带被挑出细节",
+        "summary": "有评论先夸这篇分析很精彩，还顺手指出作者在相关的 DMA 文章里抓到了一个 bug。另一些人则围绕标题里的“accels”做了一个小玩笑，既可能是“accelerator”的双关，也可能只是人类式手误。这个细节被拿来证明文章不像典型的 bot 拼贴，而是带着真实工程语境的写作。",
+        "supportid": [
+          "49672086",
+          "49670265",
+          "49670370",
+          "49670294"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "ANE（Apple Neural Engine）",
+        "explanation": "Apple 芯片中的专用神经网络加速器，主要负责 ML 推理。"
+      },
+      {
+        "term": "CNN（卷积神经网络）",
+        "explanation": "早期 ANE 重点优化的模型类型，特别适合图像和视觉任务。"
+      },
+      {
+        "term": "Transformer",
+        "explanation": "基于 attention 的模型架构，现今很多 LLM 和序列任务的主流方案。"
+      },
+      {
+        "term": "NAX（Neural Accelerators）",
+        "explanation": "M5+ GPU 里的神经加速单元，更像矩阵乘加速器，不等同于 ANE。"
+      }
+    ],
+    "context": "这篇文章从硬件逆向的角度拆解 Apple Neural Engine（ANE，苹果芯片中的专用神经网络加速器），试图反推它原本为哪类 ML workload 设计。评论里补充说，它的历史背景很可能和 Apple 早期的 self-driving car 项目有关，因此数据通路和编程模型更偏向 CNN（卷积神经网络）以及视觉/照片处理，而不是今天主流的 Transformer。有人还提醒要区分 ANE 和 NAX（Neural Accelerators，M5+ GPU 里的矩阵乘加速单元），前者是独立的神经引擎，后者更接近 GPU tensor core。另有评论提到 Apple 正在推出 Core AI（新的推理框架）来覆盖 CPU、GPU 和 ANE，说明苹果也在尝试把旧硬件设计与新一代模型生态重新接起来。",
+    "emoji": "🤔",
+    "sarcastic_question": "把 CNN 硬套给 Transformer 也算前瞻？"
+  },
+  "articleSummary": "## 一句话总结\n这篇文章通过逆向工程 Apple Neural Engine (ANE) 的硬件架构，揭示了其专为 CNN 时代设计的“数据流优先”特性，并以此解释了为何它在 Transformer 时代逐渐被 GPU 取代。\n\n## 正文\n\n### 独立 NPU 的“谢幕演出”\n作者三年前就停止了 ANE 驱动的开发，因为他发现这个硬件模块实在“没什么大用”。AN E 的架构太“固执”，难以构建通用的加速平台，即便在 macOS 上，它主要也就干点 Finder 里生成预览图的杂活。更有意思的是，2025 年的 M5 芯片直接把 ANE 核心折叠进了 GPU，这基本宣告了独立 NPU 的终结。为了纪念这个“过气”的硬件，作者决定回头把当年的坑填上——逆向还原 M1 上 ANE 的完整架构，看看苹果当年到底在硅片里押注了什么。\n\n### 计算核心：MAC 只是表象\nANE 有 16 个计算核心，看起来就是一堆大规模并行的乘累加（MAC）阵列。但如果你觉得这就是 ANE 的全部，那就看走眼了。卷积层做点积，Attention 机制也做点积，MAC 本身并不挑 workload。真正让 ANE 在 2017 年的 CNN 模型上大杀四方的，是包裹在 MAC 外面的数据流设计——它假设了数据的复用模式是可预测的。Transformer 尤其是自回归解码打破了这个假设，导致 ANE 的硬件设计在新时代失效。\n\n### 精度与溢出的秘密\n深入到 MAC 内部，作者发现了一个关键细节：ANE 并不是简单的 FP16 计算。它的乘法器是 16 位的，但在 32 位寄存器里累加（Q16.16 定点数），最后才读出 FP16。为了验证这一点，作者构造了一个特殊的 CoreML 程序去探测累加器的范围。结果发现，当数值达到 32768 时，ANE 直接输出 `+∞`，这说明累加器在 $2^{15}$ 处发生了饱和——这正是 32 位定点数的有符号边界。这个设计细节直接暴露了 ANE 内部的定点计算本质。\n\n### 巧妙的激活函数实现\nANE 的非线性激活单元设计得非常“抠门”且精巧。MAC 运算结束后，结果直接送入后处理模块，省去了内存往返的开销。作者通过编译特定的 `TANH` 激活层并检查硬件寄存器文件，发现 ANE 并没有用复杂的电路计算双曲正切，而是存了一张 33 个 FP16 数值的查找表（LUT）。更有意思的是，ANE 利用硬件插值技术，仅用 33 个点就平滑地拟合了曲线，甚至还能把线性变换的缩放和偏置参数“折叠”进卷积权重里，在编译阶段就完成了优化。\n\n### 调度器：无聊但硬核\nANE 的驱动代码写得相当“无聊”。驱动根本不知道什么是卷积或矩阵乘法，它只负责把编译好的任务描述符塞进硬件队列，然后敲响“门铃”。这种机制有点像 GPU 的 Pushbuffer，软件提交命令流，硬件负责解析执行。寄存器的设计也充满了硬件工程师的“小心思”，比如用 `length - 1` 来编码长度，这是为了在 RTL 电路设计中让计数器更高效地归零。\n\n### 任务队列的物理映射\nANE 内部维护了 8 个任务队列，每个队列都有自己的寄存器块。作者通过逆向发现，每个队列都有状态、优先级、地址基址等寄存器。这种多队列设计允许硬件在不同的任务上下文间切换，而不需要 CPU 频繁干预。这再次印证了 ANE 的设计初衷：通过硬件调度来维持高效的数据流水线，尽量减少软件层面的干预。\n\n### 架构背后的时代局限\n回过头看，ANE 的每一个硬件设计决策——从定点累加、查找表激活到任务队列调度——都是为了满足 CNN 时代“可预测的数据复用”这一假设。当 Transformer 带来了不可预测的内存访问模式时，这套精心设计的专用电路反而成了累赘。M5 将 ANE 整合进 GPU，本质上就是承认了专用 NPU 架构在通用 LLM 负载面前的失败。这次逆向工程，不仅是技术的复盘，更是对那个“CNN 统治天下”时代的致敬与告别。"
+}

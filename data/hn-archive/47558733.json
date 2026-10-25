@@ -1,0 +1,72 @@
+{
+  "id": 47558733,
+  "by": "future-shock-ai",
+  "title": "From 300KB to 69KB per Token: How LLM Architectures Solve the KV Cache Problem",
+  "url": "https://news.future-shock.ai/the-weight-of-remembering/",
+  "score": 142,
+  "createdAt": 1774980619,
+  "aiSummary": {
+    "chinese_title": "LLM KV Cache 从 300KB 到 69KB/Token：GQA/MLA、KV量化与 prompt compression",
+    "discussion_overview": [
+      {
+        "category": "压缩结果也能被缓存",
+        "summary": "有人提出，除了改 LLM 架构本身，还可以更直接地压缩输入：把大文档或整段 codebase 压成更少的 token，再交给模型。Cartridges 这类方法会在冻结网络的前提下，用 gradient descent 去优化 KV cache，目标是让压缩表示更贴近原始内容而不是让模型随口发挥。另一个实用点是，压缩输出本身可以作为一层独立缓存存起来；在像 Edgee 这样的系统里，把 prompt compression 结果放进全球分布式 KV store，可以避免每次请求重复计算。因为相似上下文的压缩结果往往能跨 session 复用，这层“更高一层的缓存”有时比原始 KV cache 更值钱。",
+        "supportid": [
+          "47592527",
+          "47599317"
+        ]
+      },
+      {
+        "category": "KV量化的实战收益与代价",
+        "summary": "评论区补充说，文章讲架构还不够，推理阶段还能直接对 KV cache 做 quantization。有人在 llama.cpp 里把 keys 设成 q8、values 设成 q4，在 Qwen 70B 4-bit 和 Apple silicon 上确实把长上下文塞进了统一内存，说明缓存精度对可用上下文长度影响很大。也有人提醒这不是万能药：不同模型对 KV quantization 的耐受度差很多，混合 K/V 类型可能带来速度损失，小一些的 Mistral 版本甚至在 q8 下就明显掉质。TurboQuant 被看作更激进的下一步，目标是在几乎不损失质量的情况下把内存再压几倍，但对 attention-sensitive 任务，尤其 summarization，可能会出现 benchmark 看不出来的 ghost bugs。",
+        "supportid": [
+          "47592257",
+          "47592474",
+          "47597894",
+          "47599425"
+        ]
+      },
+      {
+        "category": "文章把不同层级的 memory 混在一起",
+        "summary": "另一类批评是，这篇文章把 KV cache、prompt caching、产品层的 saved memory、transcript storage、retrieval、summarization 和 long-context failure modes 都写成了一种泛泛的“memory”。评论认为这些机制的层级不同，失败模式也不同：KV cache 是推理时的临时状态，prompt caching 是请求级复用，summarization 则是应用层把旧文本丢掉后重写成更短提示。文中像“计算从 quadratic 降到 linear”这种说法，也只对增量解码且前缀已处理完的场景成立。整体感觉是术语基本用对了，但修辞把机制边界抹平了。",
+        "supportid": [
+          "47592256",
+          "47597364"
+        ]
+      },
+      {
+        "category": "OpenAI cache hit 定价纠错",
+        "summary": "还有人直接纠正文中的一个数字：OpenAI 对 cache hits 的折扣不是 50%，而是 90%，并附了官方 pricing 文档。这个差异看似只是小数点级别的问题，但如果文章把缓存成本当成论据，定价数字写错会明显影响对“记忆”经济性的判断。也就是说，哪怕讨论的是架构和压缩，落到 API 账单时也必须把比例说准。",
+        "supportid": [
+          "47595777"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "KV cache",
+        "explanation": "Transformer 推理时保存的 key/value 状态，用来避免对历史 token 重复计算 attention。"
+      },
+      {
+        "term": "KV quantization",
+        "explanation": "把 KV cache 以更低精度存储（如 q8/q4），以减少显存或内存占用。"
+      },
+      {
+        "term": "prompt compression",
+        "explanation": "把长文档、长提示词或 codebase 压缩成更短表示，再交给模型处理。"
+      },
+      {
+        "term": "GQA/MLA",
+        "explanation": "两类减少 attention 缓存占用的架构思路：通过共享或压缩 K/V 表示来降低每个 token 的存储成本。"
+      },
+      {
+        "term": "TurboQuant",
+        "explanation": "一种更激进的 KV 量化方案，目标是在尽量少损失质量的前提下大幅降低内存。"
+      }
+    ],
+    "context": "这篇文章围绕 LLM 在长上下文推理时的 KV cache 成本展开，核心问题是随着 token 数增加，attention 需要保存的 key/value 会迅速膨胀，于是不同架构试图把每个 token 的缓存从约 300KB 压到 69KB。评论区把讨论扩展到 GQA（Grouped Query Attention，一种共享 K/V heads 的 attention 设计）和 MLA（Multi-Head Latent Attention，一种把注意力状态压到 latent 表示里的设计），这些方法本质上是在减少“该记住多少”的开销。除了架构改动，大家也提到推理时的 KV quantization、llama.cpp（一个本地运行 LLM 的 C++ 推理实现）以及 TurboQuant（更激进的 KV 量化方案），说明实际可用的上下文长度往往是模型设计和工程技巧一起决定的。另一条线索是 prompt compression：像 Cartridges 这样的研究会先把大文本压成更少 token，甚至把压缩结果当作独立缓存放进 KV store 里复用。",
+    "emoji": "🤔",
+    "sarcastic_question": "把 KV cache、缓存、总结都叫记忆，就算讲明白了？"
+  },
+  "articleSummary": "# 一句话总结\nLLM 的 KV Cache 从 GPT-2 的 300KB 压缩到 DeepSeek V3 的 69KB，本质上是一场为了在有限显存中换取更长上下文的\"记忆压缩\"进化史。\n\n---\n\n### KV Cache 是显存里的\"物理账单\"\n\n当你向 ChatGPT 发送一个提问，模型在吐出第一个字之前，其实已经在 GPU 里干了件重活：把你的输入切分成 token，算出 Query、Key、Value 三个向量。这些 Key-Value 对（KV）会像砖块一样占满显存，这就是所谓的 KV Cache。说白了，它是模型为了\"不重复造轮子\"而存在的。如果没有这个缓存，每生成一个新 token，模型都得把之前的几千个 token 重新算一遍，计算量会从线性爆炸成二次方。但这东西是有代价的，GPT-2 时代每个 token 就要占 300KB，一场 4000 token 的对话光缓存就要吃掉 1.2GB 显存。你的每一次对话，在物理层面都是实打实的电费和租金。\n\n### 从\"各记各的\"到\"共用大脑\"\n\n既然显存这么贵，架构师们就开始动脑筋了。GPT-2（2019）采用的是最朴素的多头注意力，每个头都维护一套独立的 KV，谁也不搭理谁，结果就是 300KB/token 的巨额开销。到了 Llama 3（2024），情况变了。它引入了分组查询注意力（GQA），核心思路很简单：既然很多注意力头学到的东西是重复的，那干嘛不共享 Key 和 Value？这一招直接把开销砍到了 128KB/token，而且 benchmark 显示性能几乎没掉。这就像从每个人单独记笔记，变成了大家共用一本重点书，省纸且高效。\n\n### DeepSeek V3 的激进压缩术\n\n但这还不够，DeepSeek V3（2024）把压缩玩到了极致。它用的是多头潜在注意力（MLA），不再直接存原始的 KV 向量，而是先把它压缩到一个低维的\"潜在空间\"，推理时再解压。这招相当狠，即便是个 671B 参数的巨兽，每个 token 的缓存也只要 68.6KB。有意思的地方在于，这种有损压缩不仅没让模型变笨，反而在某些测试里比原版还强。这说明模型并不需要死记硬背每一个细节，只要抓住抽象特征就够了。Gemma 3 则走了另一条路，用滑动窗口只盯着最近的 1024 个 token，旧的模糊处理，反正人类也是这么记事的。\n\n### 缓存消失后的\"重建\"体验\n\n这些架构层面的优化，解决的是\"存得下\"的问题，但没解决\"留得住\"的问题。你打开一个一周前的 ChatGPT 对话发个消息，会发现明显的卡顿。这是因为 GPU 早就把之前的 KV Cache 踢出去了，模型不得不从头把历史记录重算一遍来重建缓存。OpenAI 和 Anthropic 的 API 定价也印证了这一点：缓存命中的话就给你打五折甚至一折，因为省下的就是实打实的 GPU 算力。所谓的\"长期记忆\"功能，其实是另一套存事实的系统，跟这个转瞬即逝的 KV Cache 没半毛钱关系。\n\n### 上下文越聊越烂的根源\n\n这就引出了一个很尴尬的现状：LLM 只有\"工作记忆\"（KV Cache）和\"长期知识\"（模型权重），中间缺了个\"中期记忆\"。一旦对话太长，KV Cache 里的注意力机制就会变薄，出现\"上下文腐烂\"（Context Rot），模型开始胡言乱语或重复车轱辘话。为了腾地儿，现在的通用做法是\"压缩\"（Compaction），让模型自己总结前面的对话。但这就像把会议纪要缩写成一句话，细节肯定会丢。Cursor 试着用强化学习教模型怎么压缩才不丢关键信息，但这在代码这种有明确对错的场景里还行，到了开放域对话，模型根本不知道自己丢了什么重要信息。\n\n### 用外部存储弥补架构缺陷\n\n既然模型脑子记不住，工程师就给它外接了\"硬盘\"。RAG（检索增强生成）、向量数据库、系统提示词，这些其实都是给模型外挂的\"备忘录\"。这听起来很笨，像是在给超级计算机贴便利贴，但这其实是最靠谱的方案。文件不会因为显存满了就自动删减细节，数据库里的记录是确定可查的。人类自己也是这么干的，大脑记不住的就写下来。这种\"外部记忆\"虽然不够优雅，但胜在透明、可控，出了问题人还能去查日志。\n\n### 从设计记忆到学会遗忘\n\n文章最后把视角拉到了科幻层面。从 GPT-2 的全量记忆，到 DeepSeek 的压缩抽象，再到 Mamba 这种干脆不要 KV Cache 的状态空间模型，每一次架构演进，其实都是人类在替 AI 决定\"什么是值得记住的\"。现在的 AI 还是被动的，人类设计好压缩率，设计好窗口大小。但像 Cursor 这种让模型自己学习如何管理上下文的尝试，可能是个开始。未来的 AI 也许不会只是被动地存数据，而是会像 Greg Egan 小说里的数字生命一样，主动重塑自己的认知架构，决定该遗忘什么，该保留什么。"
+}

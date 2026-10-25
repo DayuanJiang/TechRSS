@@ -1,0 +1,107 @@
+{
+  "id": 49750152,
+  "by": "gkfasdfasdf",
+  "title": "Jemalloc 5.4.0",
+  "url": "https://github.com/jemalloc/jemalloc/releases/tag/5.4.0",
+  "score": 254,
+  "createdAt": 1789710656,
+  "aiSummary": {
+    "chinese_title": "jemalloc 5.4.0：停更后恢复发布，HN热议内存分配器",
+    "discussion_overview": [
+      {
+        "category": "发布恢复与项目现状",
+        "summary": "这次 release 被认为有看点，主要是因为它在长时间没有新 tag 之后重新出现。评论里澄清了一个常见误解：项目并没有停止开发，只是发布节奏和打包节奏一度中断。也有人追问原作者 Jason Evans 是否还在参与，随后有人指出历史页面仍然保留了他的名字，但维护工作已经交接。前端热度还带着一点 HN 式情绪——有人明确表示宁可看这种基础设施软件，也不想再被 AI 新闻刷屏。",
+        "supportid": [
+          "49750698",
+          "49751456",
+          "49750646",
+          "49751573",
+          "49750659",
+          "49750661",
+          "49750627",
+          "49751331",
+          "49751630",
+          "49751695",
+          "49751847"
+        ]
+      },
+      {
+        "category": "命名与词源玩笑",
+        "summary": "不少评论先把 jemalloc 误读成法语梗，开玩笑地把它拆成“Je m'alloc du memory”。随后有人解释，这类名字通常来自实现者姓名首字母，比如 jemalloc、phkmalloc、dlmalloc 这一传统。讨论又顺势跑到 systemd 的命名和法语借词语法上，连“de la memory”这种说法都被拿出来调侃。整体就是一段典型的 Hacker News 语言学跑题，和发布内容本身关系不大，但很有社区气质。",
+        "supportid": [
+          "49751284",
+          "49751382",
+          "49751609",
+          "49751809",
+          "49751973",
+          "49752067",
+          "49751492"
+        ]
+      },
+      {
+        "category": "生产环境里的实际收益",
+        "summary": "一些用户直接分享了切换 jemalloc 后的真实收益，而且数字很夸张。有人在 Sidekiq 队列上把内存占用从 8 GiB 降到 1 GiB 以下，虽然代码里还有 leak，但 allocator 让问题不再立刻爆炸。还有人提到 Python/numpy 处理大图片时，glibc 会把大量内存留在进程里不还给 OS，换成 jemalloc 后这类问题明显缓解。也有 JVM 场景里，最初为了调试而替换 malloc，结果反而顺手修好了 native memory 耗尽的问题。",
+        "supportid": [
+          "49752019",
+          "49751630",
+          "49751758",
+          "49751632",
+          "49751421",
+          "49750998"
+        ]
+      },
+      {
+        "category": "为什么 GC 语言也会在乎 allocator",
+        "summary": "有评论质疑：既然大多数软件是 GC 语言写的，为什么还要关心 jemalloc。回复指出，JavaScript、Java、Python、Go、Rails 这些运行时内部仍大量使用 malloc 来管理自己的数据结构、缓冲区、线程栈和 native 代码。也就是说，即使业务代码本身没有直接碰 C，底层 allocator 的碎片化、归还内存能力和锁竞争仍会影响最终的内存占用与响应表现。这个讨论把 jemalloc 从“C 工具”扩展成了“影响整个 runtime 行为的基础设施”。",
+        "supportid": [
+          "49751225",
+          "49751421",
+          "49751758",
+          "49751632",
+          "49750998"
+        ]
+      },
+      {
+        "category": "allocator 设计取舍与自定义实现之争",
+        "summary": "评论里还展开了更底层的 allocator 设计争论。关于 tcmalloc 为什么从 thread cache 转向 CPU cache，有人解释说线程在 Linux 上会迁移到不同核心，per-thread cache 未必真能保持 locality，反而 per-CPU cache 更贴近实际调度。另一边则是“自己写 allocator”之争：支持者认为专用场景下能更安全、更快，甚至 10x throughput；反对者则强调，真正难的是在大量线程、长生命周期进程里维持稳定行为和可控的尾延迟。最后比较折中的观点是，把短生命周期对象交给 arena 或 bump-pointer，再让通用 malloc 处理剩余部分。",
+        "supportid": [
+          "49751655",
+          "49751846",
+          "49751824",
+          "49751013",
+          "49751204",
+          "49751100",
+          "49751236",
+          "49751443",
+          "49752150"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "jemalloc",
+        "explanation": "一种高性能 general-purpose memory allocator，常用来替代默认的 malloc。"
+      },
+      {
+        "term": "malloc",
+        "explanation": "C/Unix 中用于动态内存分配的接口，也常泛指各类内存分配器。"
+      },
+      {
+        "term": "glibc",
+        "explanation": "GNU C Library，Linux 上常见的标准 libc，包含默认的 malloc 实现。"
+      },
+      {
+        "term": "tcmalloc",
+        "explanation": "Google 开发的 thread-caching malloc 分配器，强调多线程场景下的性能。"
+      },
+      {
+        "term": "thread cache",
+        "explanation": "为线程保留的本地缓存，用于减少锁竞争、加速小对象分配。"
+      }
+    ],
+    "context": "jemalloc 5.4.0 是一次高性能 memory allocator 的新版本，jemalloc 最早由 Jason Evans 编写，常被用来替代 glibc（GNU C Library）的默认 malloc。评论里提到这次 release 之所以显得重要，是因为它在长期没有新 tag 之后重新出现，但项目并没有停止开发，只是发布节奏一度断档，维护权也已经交接。讨论背景还包括一篇关于 jemalloc 的 postmortem，以及 HN 上对基础设施软件重新获得关注的偏好。很多人把它和 Ruby on Rails、Sidekiq、Python、JVM/Hotspot 这类长生命周期服务联系起来，因为 allocator 选择会直接影响碎片、内存回收和尾延迟。",
+    "emoji": "🎉",
+    "sarcastic_question": "代码一漏内存，就靠换 jemalloc 来救命吗？"
+  },
+  "articleSummary": "## 一句话总结\nJemalloc 5.4.0 是一次专注于\"还债\"的版本，通过大规模重构实现前后端模块解耦，同时引入了 Pinned memory 支持和自适应 tcache 策略，并移除了多项遗留的运行时配置。\n\n## 正文\n\n### 超过 160 个提交，只为清理\"技术债\"\nJemalloc 5.4.0 并不是一个堆砌新功能的版本。这个版本包含了超过 160 个提交，核心主题非常明确：清理技术债。这包括代码重构、Bug 修复、测试覆盖率提升以及配置项的清理。虽然听起来像是内部大扫除，但这些改动直接关系到内存分配器在长期运行下的稳定性和可维护性。除此之外，还顺带做了不少可移植性的改进。\n\n### 支持内存锁定，适配 HugeTLB 场景\n新版本增加了一个非常实用的新特性：`EXTENT_ALLOC_FLAG_PINNED`。这是给自定义 extent-allocation hooks 用的。说白了，它允许开发者标记那些不可回收的内存映射，比如 HugeTLB pages。这些被标记的内存会被优先复用，从而避开常规的 decay 和 purge 管道流程。为了配合这个功能，官方还新增了一系列 `mallctl` 接口（如 `stats.pinned` 等），方便开发者监控 pinned memory 的使用情况和互斥锁统计。\n\n### tcache 策略大改：从\"一刀切\"到\"按需分配\"\n这次更新有一个比较激进的 Incompatible change。旧版本里，tcache（thread cache）的填充和保留策略是写死的固定值。但在 5.4.0 中，开发者把这个逻辑改了：现在会根据 GC 事件之间观察到的实际需求，动态调整每个 bin 的填充目标。这意味着分配策略会更聪明，不再盲目填充。代价是七个遗留的配置项（如 `lg_tcache_nslots_mul`、`tcache_nslots_small_min` 等）被直接移除。如果你之前的 `malloc_conf` 里还在用这些配置，它们会被静默忽略，相关的 `opt.*` 查询也会返回 `ENOENT`。\n\n### C++ 异常处理：从运行时检查改为编译时开关\n针对 C++ 的 `new` 操作符，Jemalloc 做了一个重要的架构调整。之前的 `experimental_infallible_new` 运行时选项被移除了，取而代之的是编译时选项 `--enable-cxx-infallible-new`。为什么要这么改？因为编译时开关能让编译器做更激进的优化，特别是在 move constructors 中。同时，这个改动还修复了 `new(std::nothrow)` 的契约问题，让语义更加精确。\n\n### 代码重构：把\"大泥球\"拆成模块\n这是本次更新最硬核的部分。原来的 `jemalloc.c` 就像一个巨大的上帝类，耦合了 arena 管理、初始化、fork 编排和分配调度。这次重构把这些逻辑全部提取出来，实现了前端模块化。同时，开发者还理顺了 tcache 和 arena 的所有权关系，消除了内部头文件的循环依赖。这还没完，页面分配边界也被简化了：旧的 `pai_t` 抽象层被移除，直接调用 PAC/HPA，把延迟工作和 decay 编排从 arena 中剥离了出来。\n\n### 引入 OS 抽象层，彻底隔离平台差异\n为了解决跨平台移植的痛点，Jemalloc 引入了一个 OS 抽象层。以前散落在核心代码里的平台相关代码——文件 I/O、进程信息、时间、同步原语、CPU 信息、虚拟内存操作、atfork 处理等——现在都被挪到了这个抽象层里。这么做的好处显而易见：核心分配逻辑变得干净，移植到新平台时只需要实现抽象层接口，不再需要到处打补丁。\n\n### 修复隐蔽的并发 Bug 和边界情况\n在 Bug 修复方面，有几个细节值得注意。首先是 `errno` 的保护，现在在 `free`、`free_sized` 以及基于 `process_madvise` 的页面清除操作中，都会保留 `errno` 的值，防止系统调用错误码被意外覆盖。其次是 TSD（Thread-Specific Data）生命周期的修复：修复了线程退出后，late deallocations 可能导致 TSD 被重新创建的边界问题；同时也解决了 bootstrap 分配时可能使用未初始化状态的问题。此外，还修复了 `arena_reset` 中潜在的死锁，以及 SAN（Sanitizer）中 prof-sampling 和 guard-page 交互的 Bug。\n\n### 可移植性提升：修好 macOS 和 GCC 16\n最后是可移植性改进。针对 macOS，修复了 `malloc_getcpu` 读取 CPU 编号错误的问题，并解决了编译警告。针对 GCC 16，移除了宏和函数语法中的 `-Wpedantic` 违规项，显式处理了字符串截断警告。后台线程的睡眠机制也改用了 `CLOCK_MONOTONIC`，防止时钟回拨导致线程卡死。对于 MinGW 构建，也修复了线程退出时的 TSD 清理问题。"
+}

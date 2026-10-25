@@ -1,0 +1,69 @@
+{
+  "id": 49642645,
+  "by": "eigenspace",
+  "title": "Julia 1.13 Highlights",
+  "url": "https://julialang.org/blog/2026/09/julia-1.13-highlights/",
+  "score": 167,
+  "createdAt": 1789330856,
+  "aiSummary": {
+    "chinese_title": "Julia 1.13偏性能打磨：冷启动仍是痛点",
+    "discussion_overview": [
+      {
+        "category": "语言气质与使用体验",
+        "summary": "不少评论把 Julia 的吸引力概括为一种“手感对”的语言体验。有人觉得它兼具清晰设计、表达力和不带传教味的社区氛围，这种感觉甚至比功能清单更重要。也有人从 Matlab、R 以及早年 BASIC、assembler 的经历出发，认为 Julia 在数学、科学计算、模拟和工程任务上很顺手。",
+        "supportid": [
+          "49689177",
+          "49689747",
+          "49690223"
+        ]
+      },
+      {
+        "category": "1.13以性能打磨和细节改进为主",
+        "summary": "这次 1.13 被描述为偏迭代式的版本，原因是发布节奏把更多大功能推迟到了 1.14。现阶段的重点放在更快的 GC、更低的 startup latency、更好的 interrupt handling、新 REPL 功能和更快的 package management 上。评论里还特别提到，给未注册包添加时，`[sources]` 配置会递归生效，这类细节对实际工作流很有帮助。也有人认为像 Java、C#、C++ 一样，重要特性拖几年再落地并不奇怪。",
+        "supportid": [
+          "49642674",
+          "49688452"
+        ]
+      },
+      {
+        "category": "冷启动与AOT仍是关键瓶颈",
+        "summary": "启动时间仍然是 Julia 被反复提到的老问题。有人喜欢它，但在很多场景下不常用，核心原因就是冷启动代价太高；只有在长时间运行的任务里，这个成本才容易被摊平。回应则指出 1.13 迄今拥有最快的 startup time，而且 AOT compilation 仍被列为后续版本的重点方向。",
+        "supportid": [
+          "49689128",
+          "49689142"
+        ]
+      },
+      {
+        "category": "GC、静态类型与语言趋势",
+        "summary": "有评论把这次的 GC 优化放到更大的语言趋势里理解，认为 Python 生态也在朝着更容易 fork 和更省内存的方向演进。另一些人指出，JS 走向 TS、Python 越来越多 typed Python，说明开发者已经接受静态类型带来的约束与收益。AI 也被提到会改变新语言的发现和使用方式，让老语言的新人流入减少。",
+        "supportid": [
+          "49690071",
+          "49689818",
+          "49689970"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "GC（垃圾回收）",
+        "explanation": "自动管理内存并回收不再使用对象的机制。"
+      },
+      {
+        "term": "AOT compilation（Ahead-of-Time Compilation，预先编译）",
+        "explanation": "在运行前先生成机器码，用于降低冷启动开销。"
+      },
+      {
+        "term": "REPL（Read-Eval-Print Loop）",
+        "explanation": "交互式命令行环境，便于边试边改代码。"
+      },
+      {
+        "term": "static typing（静态类型）",
+        "explanation": "在运行前或编译期检查类型，常用于提升可维护性并为性能优化提供空间。"
+      }
+    ],
+    "context": "Julia 是一种面向数值计算和 scientific computing 的高性能语言，常和 Python、R、Matlab 这类数据与科学计算工具比较。1.13 这版被定位为偏性能和稳定性的 release：由于发布节奏，很多 major features 被推到 1.14，因此这一版更像是对 GC、startup latency、interrupt handling、REPL 和 package management 的集中打磨。评论还提到 Julia 的包管理器里 `[sources]` section 在 `add` 未注册包时会递归生效，这是一个很实用但不算显眼的改进。讨论延伸到长期困扰 Julia 的 cold start 问题，以及 AOT compilation 是否能让它更适合短脚本和交互式工作流。与此同时，大家也拿 Python 的 typed Python、JS→TS 的演进作对比，说明语言社区正在更重视静态类型和运行效率。",
+    "emoji": "🚀",
+    "sarcastic_question": "Julia都1.13了，冷启动还要忍多久？"
+  },
+  "articleSummary": "## 一句话总结\nJulia 1.13 是一次侧重于\"体感性能\"的更新：通过大幅优化 TTFX 和 GC 标记策略解决了大型项目的延迟痛点，同时引入了原生的 REPL 语法高亮和更高效的 Hash 算法。\n\n## 正文\n\n### TTFX 优化：从\"够不够快\"到\"卡不卡顿\"\nJulia 长期以来最受诟病的就是 TTFX（Time To First X），即启动到第一次执行的时间。这次 1.13 版本在这个痛点上下了重手。数据很能说明问题：相比 1.12，包的预编译时间减少了约 30%；相比 1.10 (LTS)，也有 10-20% 的降幅。这背后是开发团队引入了更系统的基准测试流程，利用社区提交的真实工作流（Julia-TTFX-Snippets）进行针对性优化。甚至连启动时间本身也快了 20%，从 69ms 降到了 56ms。虽然几十毫秒听起来不多，但对于需要频繁重启 REPL 的开发场景，这种\"跟手\"的体感提升是非常明显的。\n\n### REPL 终于有了原生的\"妆容\"\n以前想让 Julia REPL 好看一点，你得装 OhMyREPL.jl。现在不用了，1.13 原生支持语法高亮。默认配色比较保守，不想太张扬，但如果你想换个心情，比如用 Monokai 风格，改改配置就行。除了高亮，历史搜索功能（Ctrl-R）也重做了，现在的体验很像命令行神器 `fzf`，支持模糊搜索、多选结果，甚至还能显示当时是在哪个 REPL 模式下执行的命令。另外，Windows 用户终于等来了 Bracketed paste 支持，粘贴几百行代码进 REPL 再也不会卡成幻灯片了。\n\n### Hash 算法换血：从 MurmurHash3 到 RapidhashNano\n这次更新把底层的 Hash 函数给换了。核心算法从老旧的 MurmurHash3 迁移到了 RapidhashNano。效果怎么样？实测长字符串的 Hash 耗时从 8.5 微秒直接跌到了 1.7 微秒，性能提升非常夸张。新算法不仅是流式的（不需要预先知道长度），而且实现从 C 代码变成了纯 Julia，维护起来更方便。对于自定义类型，以前想用通用 Hash 往往得先转成 String，现在直接定义 `codeunit` 就能接入，方便了不少。不过要注意，默认种子变了，自定义 Hash 方法千万别自己给 seed 设默认值。\n\n### GC 的\"减负\"艺术：不再遍历静态对象\n这是本次更新中最具技术含量的优化之一。以前每次 Full GC，都要去遍历 sysimage 和 package image 里的对象，把它们标记为存活。这些对象其实是\"死代码\"——加载后基本不会被释放，也很少变动。结果就是，包加载得越多，GC 扫描得越慢。1.13 的做法很巧妙：直接把这些镜像对象标记为\"永久存活\"，GC 标记阶段直接跳过不进。只有当这些对象真的发生变动（比如给函数加方法）时，才单独追踪。结果就是，Full GC 的时间不再看你加载了多少代码，而是看你的程序真正创建了多少堆内存。实测加载 GLMakie 后执行 Full GC，时间从 187ms 暴跌到 68ms。\n\n### 调度器修复：让 Ctrl-C 重新生效\n多线程调度这块修了不少陈年旧疾。最实用的一点是：Ctrl-C 终于能可靠地中断用户代码了，以前那种脚本卡死怎么按都没反应的情况应该会成为历史。另外，`@spawn` 的唤醒逻辑也改了，以前是唤醒所有空闲线程，现在只唤醒一个。这一改，在 Windows 和严重过载的机器上，某些 Spawn 密集型任务的性能直接提升了 10 到 300 倍。还有一个细节：空闲线程现在会停在一个专门的调度任务里，而不是抓着上一个任务不放，这让已结束的任务能更快被回收。\n\n### 开发体验的细节打磨\n新增了一个 `@__FUNCTION__` 宏，用法类似 `@__MODULE__`，能让你在匿名函数里引用自身，写递归匿名函数再也不用绕弯路了。调试方面，`@which` 等内省宏现在支持直接传类型参数，你可以直接把堆栈跟踪里的那一行复制进去查方法定义，省去了构造具体对象的麻烦。还有一个新命令行参数 `--trace-eval`，专门用来追踪顶层代码的执行进度，对于排查 CI 卡死、脚本假死非常有用，配合 GitHub Actions 的 Debug Logging 还能自动开启。\n\n### 包管理器的工程化改进\nPkg 这边的变化更偏向工程化。默认压缩算法从 gzip 换成了 zstd，压缩包体积能小 10% 左右。Manifest 文件现在会记录 Registry 的信息，这解决了团队协作中\"你装得上、我装不上\"的版本对齐问题。还有一个贴心的改动：`pkg> add` 现在会尽量装和当前环境已加载包一致的版本，避免了版本漂移。最后，`Pkg.test` 默认不再开启 strict bounds checking，测试跑得更快了。"
+}

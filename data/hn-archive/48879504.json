@@ -1,0 +1,102 @@
+{
+  "id": 48879504,
+  "by": "signa11",
+  "title": "Ghostel.el: Terminal emulator powered by libghostty",
+  "url": "https://dakra.github.io/ghostel/",
+  "score": 195,
+  "createdAt": 1783857016,
+  "aiSummary": {
+    "chinese_title": "Ghostel.el：基于 libghostty-vt 的 Emacs 终端模拟器",
+    "discussion_overview": [
+      {
+        "category": "Emacs 工作流一体化",
+        "summary": "很多用户喜欢 Ghostel 的核心原因，是它把终端内容变成了普通 Emacs buffer：可以直接搜索 scrollback、用键盘选择并复制整段文本，而不用频繁切到鼠标。有人还提到它让 Emacs 变成一个更完整的工作中枢，比如在 Codex 总结里直接点开代码引用，或者把终端和其他编辑操作统一到同一套快捷键和心智模型里。维护者也明确表示，这正是 Ghostel 想替代外置终端和部分旧式 Emacs 终端包的价值。",
+        "supportid": [
+          "48881207",
+          "48882161",
+          "48883084",
+          "48881014"
+        ]
+      },
+      {
+        "category": "line-mode 与 eshell 边界",
+        "summary": "也有用户强调，自己离不开 eshell，因为它能像普通 buffer 一样直接编辑输入文本，还能复用自定义 elisp 函数、evil-mode、xah-fly-keys 和拼写修正工具。维护者回应说 Ghostel 的 line-mode 已经可以把当前行当作 buffer 编辑，按 Enter 再发送，因此在提示符这一层上能接近 `M-x shell` 的体验。问题在于它不能像 eshell 那样自由编辑 scrollback，而且对依赖逐字符变化的补全或 TUI 可能会出问题。进入 vim 这类 alt-screen 程序时，line-mode 还会自动关闭，必要时虽可强制开启，但并不总是合适。",
+        "supportid": [
+          "48881932",
+          "48882126",
+          "48882785",
+          "48882843"
+        ]
+      },
+      {
+        "category": "性能提升与早期 bug",
+        "summary": "不少人认为 Ghostel 比 vterm 更快，尤其是像 lazygit 这类每帧都会重绘整屏的 TUI，或者大量滚动文本的场景，响应差异很明显。也有人反馈输入处理更可靠，ELisp API 更顺手，实际已经可以当日常主力使用。与此同时，评论里也反复提到一些早期 bug：清屏后顶部残留脏文本、buffer 重新显示时内容错乱、偶发冻结只能杀掉 buffer 重来。维护者表示这些问题和把 libghostty-vt 的内部状态精确同步到 Emacs buffer 有关，已经有 property-based tests 和已知 issue 在追踪，但项目仍处于打磨阶段。",
+        "supportid": [
+          "48880917",
+          "48881025",
+          "48882693",
+          "48881730",
+          "48881781",
+          "48882572"
+        ]
+      },
+      {
+        "category": "libghostty-vt 的差分渲染实现",
+        "summary": "有技术讨论专门追问它如何在不把整块终端栅格重绘一遍的情况下保持性能。维护者解释，PTy 的输出先进入 libghostty-vt，后者作为 source of truth 维护终端屏幕状态，Ghostel 再把这个状态和 Emacs buffer 做 diff，只替换真正变化的行。scrollback 被视为不可变，只有在被淘汰、切换 alt-screen 或窗口尺寸变化时才需要处理；同时库还提供 row-level dirty flags，帮助只更新脏行。相比依赖 C API，直接用 Zig API 还能拿到更多未暴露能力。",
+        "supportid": [
+          "48882080",
+          "48882184"
+        ]
+      },
+      {
+        "category": "Ghostty 稳定性与兼容性顾虑",
+        "summary": "有些人之所以犹豫，是因为自己遇到过 Ghostty 崩溃，尤其是在同时开很多 terminal、window 和 tab 的情况下，于是担心把它嵌进 Emacs 会放大风险。其他人则反驳说自己在较新的 Ghostty 版本上长时间高强度使用也没见过崩溃，怀疑更多是 GPU driver 或本地环境交互问题。另一个现实问题是 remote SSH 场景下的 TERM 和 terminfo 兼容性：如果远端没装对应 terminfo，很多 TUI 会异常，常见的退路仍然是把 TERM 设回 xterm-256color。",
+        "supportid": [
+          "48882446",
+          "48882533",
+          "48882748",
+          "48882483",
+          "48882024",
+          "48882178"
+        ]
+      },
+      {
+        "category": "命名、链接与安装方式",
+        "summary": "有人建议标题里应该明确写上 Emacs，因为这不是一个通用 terminal emulator，而是给 Emacs 用的终端包。也有人觉得首条链接直接指向 GitHub repo 会比文档页更容易看懂项目。评论里顺手解释了 .el 就是 Emacs Lisp 文件扩展名，并提到 native module 之所以是首次自动下载，是因为 MELPA/ELPA 没法方便地附带平台相关二进制；类似 jinx 这类包也常采用首次编译或下载的方式。",
+        "supportid": [
+          "48881998",
+          "48882043",
+          "48882353",
+          "48881523",
+          "48881722"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "libghostty-vt",
+        "explanation": "Ghostty 的终端状态/解析库，把 PTY 输出转成可渲染的屏幕网格。"
+      },
+      {
+        "term": "PTY",
+        "explanation": "伪终端，shell 和终端模拟器之间传递输入输出的接口。"
+      },
+      {
+        "term": "line-mode",
+        "explanation": "先在 Emacs buffer 中编辑输入、按 Enter 再发送到终端的模式。"
+      },
+      {
+        "term": "eshell",
+        "explanation": "Emacs 自带的 shell，强调像普通 buffer 一样可编辑。"
+      },
+      {
+        "term": "terminfo",
+        "explanation": "终端能力数据库，远程 SSH 时常用来让 TUI 识别终端特性。"
+      }
+    ],
+    "context": "Ghostel.el 是一个给 Emacs 用的终端模拟器，底层依赖 libghostty-vt（Ghostty 的终端解析/状态库），把 PTY 输出解析成终端网格后再同步到 Emacs buffer。评论里它常被拿来和 vterm（Emacs 终端包）、eat（另一个 Emacs 终端包）、term.el 和 eshell（Emacs 自带 shell）比较：前者强调把终端变成可搜索、可编辑的 buffer，后者更像完整 shell 环境。维护者补充了 line-mode、alt-screen（TUI 常用备用屏幕）和 hidden buffer 刷新的限制，说明它能改善键盘工作流，但并不打算完全复刻 eshell 的语义。另一个背景是它使用 Emacs native module，而 MELPA/ELPA（Emacs 包仓库）对平台专属二进制的分发不太友好，所以经常只能在首次使用时自动下载或本地编译。评论还顺带提到 Ghostty（底层终端）本身的稳定性，以及 SSH 场景下 TERM/terminfo 兼容问题，这些都会影响大家是否愿意把它作为日常主力。",
+    "emoji": "🤔",
+    "sarcastic_question": "终端都进 Emacs 了，崩一次是不是全家陪葬？"
+  },
+  "articleSummary": "## 一句话总结\nGhostel 是一个基于 Ghostty 的 libghostty-vt 引擎和 Zig 原生模块构建的 Emacs 终端模拟器，它用现代化的 VT 引擎解决了 vterm 等老牌方案在协议支持和渲染性能上的瓶颈。\n\n### 终端模拟器的核心难题：性能与协议的取舍\nEmacs 里的终端模拟器一直是个老大难问题。传统的 `term` 模式太慢，`vterm` 虽然引入了 C 模块提速，但底层的 libvterm 库已经有些年头了，很多现代终端协议都不支持。Ghostel 的思路很直接：既然造轮子难，那就站在巨人的肩膀上。它直接复用了 Ghostty 终端（目前最火的高性能终端之一）的核心引擎 `libghostty-vt`，并用 Zig 写了一个原生动态模块来处理繁重的 PTY I/O 和终端状态管理，把 Emacs 层解放出来只负责逻辑和交互。\n\n### 现代化协议带来的体验升级\n换用新引擎最大的红利就是对现代协议的完美支持。libvterm 做不到的事情，比如 Kitty 键盘协议、图形协议（支持 inline images）、OSC 8 超链接、丰富的下划线样式以及同步输出（DEC 2026），Ghostel 全都接上了。这意味着你在 Emacs 里跑 `htop` 或者 `neofetch` 时，能体验到和独立终端窗口一模一样的渲染效果，甚至连复杂的颜色查询（OSC 4/10/11）都能正常工作，不再有“残缺感”。\n\n### 灵活的输入模式设计\n交互体验上，Ghostel 借鉴了 `eat.el` 的设计，提供了五种输入模式来平衡“终端操作”和“Emacs 编辑”的冲突。默认的 `semi-char mode` 很聪明，它拦截了像 `M-x` 或 `C-c` 这种 Emacs 核心快捷键，把剩下的都透传给 shell。如果你需要全键盘操作（比如用 Vim），切到 `char mode` 即可；如果你只想像 `M-x shell` 那样按行输入，可以用 `line mode`。更有意思的是 `copy mode` 和 `emacs mode`，前者会冻结终端输出让你安心复制，后者则是实时更新，两者都支持按任意键自动退回终端模式，操作非常顺滑。\n\n### 深度集成与远程开发支持\n除了能当终端用，Ghostel 还试图打通 Shell 和 Emacs 的边界。通过配置 `ghostel-eval-cmds`，你可以直接在 Shell 里执行 Elisp 函数，比如输入 `gst` 就能在另一个窗口打开 `magit-status`。对于远程开发，它通过 TRAMP 实现了无缝衔接，支持自动注入 Shell 集成脚本，甚至能处理远程端的 `terminfo` 安装。这意味着你在 Emacs 里 `ssh` 到服务器，体验和本地终端几乎一致，不用再为了远程调试切出去开个 iTerm2 了。\n\n### 架构上的性能考量\n性能方面，Ghostel 的架构设计非常务实。它把 PTY 的所有权完全交给了 Zig 写的 Native 模块，避免了 Emacs Lisp 在处理高频 I/O 时的性能瓶颈。在渲染逻辑上，它采用了一种“Renderer-owned”的策略来维护 buffer 位置，避免了在 Elisp 层面做复杂的 `around-redraw` 补丁，从而减少了不必要的重绘开销。实测数据也支撑了这一点：在处理 `cat` 10MB 文件的突发流量时，它的吞吐量显著高于传统的 Emacs PTY 方案，且输入延迟极低。\n\n### 与 vterm 和 eat 的抉择\n那现在的问题是，我该从 vterm 迁移过来吗？如果你满足于基本的终端功能，vterm 依然够用。但如果你在意 Kitty 图形协议、需要更精确的键盘输入处理，或者看重 Ghostty 引擎未来的迭代潜力，Ghostel 是更现代的选择。相比纯 Elisp 实现的 `eat`，Ghostel 的 Native 模块在处理大量输出时更稳，不会轻易卡死 Emacs。说白了，Ghostel 就是把“独立终端的硬核性能”装进了“Emacs 的可编程环境”里。"
+}

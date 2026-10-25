@@ -1,0 +1,145 @@
+{
+  "id": 48414367,
+  "by": "coffeemug",
+  "title": "pg_durable: Microsoft open sources in-database durable execution",
+  "url": "https://github.com/microsoft/pg_durable",
+  "score": 378,
+  "createdAt": 1780675826,
+  "aiSummary": {
+    "chinese_title": "Microsoft 开源 pg_durable：Postgres 内 durable execution 引发队列/编排争论",
+    "discussion_overview": [
+      {
+        "category": "把队列和工作流放进 Postgres 的实用派",
+        "summary": "支持者认为，把 queue、ETL 和维护型任务放进 Postgres 能获得更强的数据本地性，备份、恢复和作业状态管理也会更统一。有人举例说，自己曾在 Postgres 上手工做过简单 job queue，用锁、轮询和 reservation 列来完成，`pg_durable` 或类似项目可以把这种做法产品化、工具化。还有人提到，如果数据库是唯一的有状态组件，那么应用重启后可恢复的工作流、进度回链和随数据一起部署的维护包都更自然。即便偏好把业务逻辑写在代码里的人，也承认这类能力对非业务逻辑的数据库维护任务可能很有价值。",
+        "supportid": [
+          "48414608",
+          "48415730",
+          "48415972",
+          "48414836",
+          "48414850",
+          "48415524",
+          "48415374",
+          "48414918"
+        ]
+      },
+      {
+        "category": "控制流放进数据库的可维护性问题",
+        "summary": "反对者最担心的是版本控制、调试、测试和发布：如果流程逻辑藏在数据库函数或触发器里，工程师很难像普通代码那样在 Git 里审查、回放和定位问题。有人直接指出触发器的典型缺点就是不可见、缺少版本追踪，而把它们放进 migration 虽然能改善一些问题，但仍然离理想状态很远。项目维护者也承认，`pg_durable` 仍需要围绕函数版本和生命周期形成更成熟的最佳实践，不过底层框架已经支持 function versions。另一些评论则对 DSL 的可读性和嵌入 SQL 的写法表示不适，觉得文档、可观测性和工具链都还不够成熟。",
+        "supportid": [
+          "48415630",
+          "48415782",
+          "48416304",
+          "48418350",
+          "48416974",
+          "48414709",
+          "48414989",
+          "48415444",
+          "48419493"
+        ]
+      },
+      {
+        "category": "和 Temporal / Airflow / Durable Task 的边界",
+        "summary": "不少评论把 `pg_durable` 视为和 `Temporal`、`Airflow` 或 Microsoft 自家的 `Durable Task` 竞争的编排方案，但它的核心差异是把执行状态直接放进数据库，而不是放在外部工作流服务里。支持者认为，这样能减少 round-trip，也更容易在同一个地方查看作业状态与数据状态，还能少养一套基础设施。质疑者则认为，外部 orchestrator 早就能很好地处理长流程，把控制流挪进 SQL 只是把老问题换一种更别扭的写法。微软方面补充说，他们已经在 AI workflow 中使用它，减少了代码量并提高了可靠性，而上层的 AI pipeline wrapper 只是更高层的用法，`pg_durable` 本身目标更广。",
+        "supportid": [
+          "48414641",
+          "48415640",
+          "48416149",
+          "48418862",
+          "48419681",
+          "48414890",
+          "48417502",
+          "48415406",
+          "48415053",
+          "48414662"
+        ]
+      },
+      {
+        "category": "Azure Postgres 与向量/搜索能力之争",
+        "summary": "另一条分支变成了对 Azure PostgreSQL 能力的吐槽：有人抱怨 Azure PG 跟不上现代 Postgres 生态，尤其是 hybrid search 和高维向量支持。微软人员回应说，Azure HorizonDB 已经提供 `pg_textsearch`、`pgvector` 和 `pg_diskann`，前者对应 BM25 风格检索，后者支持更高维度的向量和在索引内部做过滤。评论里还出现了 `Cosmos DB`、供应商锁定和“为什么不自己起一台 VM 跑 Postgres”的争论，反映出大家对云厂商 Postgres 路线的信任差异很大。这个话题和 `pg_durable` 本身关系没那么直接，但它说明微软在推广数据库内工作流时，也在同步推进自己的 Postgres 产品叙事。",
+        "supportid": [
+          "48415580",
+          "48416049",
+          "48417733",
+          "48416686",
+          "48417767",
+          "48419223",
+          "48416466",
+          "48419678"
+        ]
+      },
+      {
+        "category": "API 语义、幂等性与失败恢复",
+        "summary": "一些评论专门追问接口语义：`df.start()` 到底是创建一次执行实例，还是会因为重试而重复触发；`df.wait_for_schedule()` 是否幂等；`df.wait_for_signal()` 超时后返回的 `timed_out` 是否是固定字段。维护者解释说，`df.start()` 会生成一个 instance id，重复调用如果真的发生也会得到不同的实例；`wait_for_signal()` 在同一实例内只会执行一次，不会产生重复。未处理的 SQL 错误会让整个 function instance 失败，并把原始错误向上冒泡。大家的这些问题说明，他们不是只在看“能不能跑”，而是在确认它能否满足生产级的可恢复语义。",
+        "supportid": [
+          "48416974",
+          "48417478",
+          "48419010"
+        ]
+      },
+      {
+        "category": "Postgres 生态里的相邻方案与可插拔性",
+        "summary": "不少人把 `pg_durable` 放到更大的 Postgres workflow 生态里看，顺手提到了 `pgmq`、`pgflow`、`Absurd` 和 `duroxide` 等相邻项目。维护者表示，provider 层本来就是扩展点，当前只是先发布了最简单的实现，如果有人提交 `pgmq` provider 也很欢迎。评论里还出现了对 `PGRX` 的赞助期待，以及“什么时候有 `mssql_durable`”之类的调侃，说明社区对这类数据库原生编排工具的想象是可插拔、可移植的。整体上，大家并不把它看成孤立项目，而是看成 Postgres 任务/队列工具链里的一个新组件。",
+        "supportid": [
+          "48414693",
+          "48414779",
+          "48415005",
+          "48415704",
+          "48414723",
+          "48417756",
+          "48419522",
+          "48418099"
+        ]
+      },
+      {
+        "category": "Postgres 是否该承载一切的架构哲学争论",
+        "summary": "有一条长线讨论认为，对大多数公司来说，一个 Postgres 就够了，消息队列、分析系统和其他数据系统都可以在扩展上做出来。反对者马上指出，Postgres 之所以强，恰恰是因为它已经有丰富的扩展生态，比如 `PostGIS`、`TimescaleDB`、`Citus`、`pg_cron`、`pg_partman`、`pgvector` 等，问题不是“没有扩展性”，而是扩展性已经成为它的一部分。随后争论滑向是否该用 Rust 重写 Postgres，甚至让 LLM 帮忙重写；批评者则说，软件年代久不等于过时，真正危险的是破坏兼容性。这个分歧本质上是在讨论：到底应该把 Postgres 继续做成一个可扩展底座，还是把它改造成一个全新的通用数据平台。",
+        "supportid": [
+          "48417768",
+          "48418056",
+          "48418148",
+          "48418197",
+          "48418305",
+          "48418221",
+          "48418828",
+          "48418115",
+          "48418396",
+          "48417865"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "durable execution",
+        "explanation": "一种可恢复的长流程执行模型，任务崩溃后可以从 checkpoint 继续。"
+      },
+      {
+        "term": "Durable Task",
+        "explanation": "Microsoft 的长任务/工作流执行框架，可独立运行，也可接入 Azure Functions。"
+      },
+      {
+        "term": "pg_cron",
+        "explanation": "Postgres 扩展，用数据库内部的 cron 机制定时执行任务。"
+      },
+      {
+        "term": "pgmq",
+        "explanation": "基于 Postgres 的消息队列扩展。"
+      },
+      {
+        "term": "pg_textsearch",
+        "explanation": "Azure 讨论中提到的 Postgres 搜索扩展，用于 BM25 / hybrid search。"
+      },
+      {
+        "term": "pg_diskann",
+        "explanation": "Microsoft 的向量索引方案，支持高维向量检索和索引内过滤。"
+      },
+      {
+        "term": "pgvector",
+        "explanation": "Postgres 的向量存储与相似度检索扩展。"
+      }
+    ],
+    "context": "Microsoft 开源了 `pg_durable`，这是一个把 durable execution（可恢复的长流程执行）放进 Postgres 的扩展/框架，示例里会用 SQL/DSL 定义工作流节点、信号等待、sleep 和条件分支。它的目标是让长期任务、ETL、AI pipeline 之类的流程和数据库状态放在一起，崩溃后可以靠 checkpoint 和实例状态继续执行。评论区把它和 `Temporal`、`Airflow`、Microsoft 早先的 `Durable Task` 框架对比，也讨论了为什么不把控制流留在应用代码里、只把耐久状态放进数据库。讨论还延伸到 Azure PostgreSQL 的搜索/向量能力，比如 `pg_textsearch`、`pgvector`、`pg_diskann`，以及 Postgres 是否应该通过扩展承担更多数据系统职责。",
+    "emoji": "🤔",
+    "sarcastic_question": "把工作流全塞进数据库，就算更优雅了吗？"
+  },
+  "articleSummary": "## 一句话总结\nMicrosoft 开源的 `pg_durable` 把 Durable Execution（持久化执行）搬进了 PostgreSQL 内核，让你直接用 SQL 定义工作流，由数据库接管断点续传和容错，不再需要外挂队列、Worker 或复杂的编排服务。\n\n### 别再自己造轮子了：Postgres 里的“胶水代码”该退休了\n很多团队现在的后台任务架构其实挺“缝合”的：数据存在 Postgres，为了跑点长任务，得搞 `pg_cron` 定时，配 Redis 队列，写轮询 Worker，还得维护一张专门记状态的表。这种“拼积木”的方式最大的痛点不在于难写，而在于脆弱。一旦数据库崩溃、重启，或者某个长事务跑了一半挂掉，你就得手动去查状态表，重跑那些已经成功的步骤，甚至面临数据不一致的风险。`pg_durable` 的出现，就是为了把这些散落在 SQL、脚本和配置文件里的业务逻辑，重新收回到数据库内部。\n\n### 核心思路：把工作流变成一张可“存档”的图\n`pg_durable` 的核心设计思路其实很简单：它把一个长任务抽象成由 SQL 步骤组成的有向图。你不再写一个巨大的存储过程，而是用类似 `~>` 和 `|=>` 这样的操作符把 SQL 语句串联起来。比如，先查出未处理的文档 ID，再批量更新状态。关键在于，这个执行过程是“持久化”的。每跑完一步，`pg_durable` 就会自动打一个“存档点”（Checkpoint）。如果中间崩了，数据库重启后，它不会从头开始，而是读取最后一个存档点，接着往下跑。这就好比玩游戏不用从头通关，而是无限续关。\n\n### 架构上的巧思：计算紧贴数据，零外部依赖\n有意思的地方在于它的架构实现。它不是一个独立的服务，而是一个完全跑在 PostgreSQL 进程内的 Extension（扩展）。底层用 Rust 写了两个库：`duroxide` 负责编排逻辑（比如重放、定时器），`duroxide-pg` 负责把状态存回 Postgres 的表里。这意味着你不需要为了跑个任务去搭 Redis、Temporal 或者 Airflow。对于已经在重度使用 Postgres 的团队来说，这极大地降低了运维复杂度——你的备份策略、权限管理、高可用方案，直接就能套用到工作流引擎上。\n\n### 解决了长事务的噩梦：化整为零，步步为营\n从技术细节上看，`pg_durable` 解决了一个传统方案很难搞定的难题：长事务锁表。以前你用 `plpgsql` 写个跑半小时的存储过程，这期间锁一直占着，WAL（预写日志）疯涨，稍微有点并发就死锁。现在有了 `pg_durable`，它把大事务拆成了一个个独立的小步骤。步骤之间是断开的，上一个步骤提交了，锁就释放了，下一个步骤再开启新事务。这样既保证了逻辑的连贯性，又避免了对数据库并发性能的吞噬，特别适合那种大批量数据清洗或者向量嵌入生成的场景。\n\n### 开发体验：像写 Query 一样写工作流\n对于开发者来说，最直观的变化是写代码的方式。你不需要去学 Python 的 Operator 或者 YAML 配置，直接在 SQL 客户端里就能搞定。比如 `SELECT df.start('query1' |=> 'step2')`，这行代码一执行，后台就开始干活了。所有的状态都存在 `df.instances` 这类系统表里，你可以随时用 SQL 去查进度、看结果，甚至取消任务。这种“SQL-native”的体验，让 DBA 和后端工程师能在同一个语言体系下协作，不再有“代码在 Git，状态在 DB”的割裂感。\n\n### 现实考量：它不是万能药，但选对了场景很香\n当然，`pg_durable` 也不是万能的。如果你的任务就是一个简单的 `INSERT ... SELECT`，或者需要毫秒级同步响应，那直接用 SQL 就行，没必要上它。它也不适合那种逻辑极其复杂、需要大量内存计算或者非 HTTP 协议调用的任务。但如果你是做数据管道（ETL）、向量处理，或者需要维护那些必须“跑完不能停”的运维脚本，它能帮你省掉一大堆维护 Worker 和队列的心智负担。目前它支持 PostgreSQL 17 和 18，并且已经集成进了微软新发布的 Azure HorizonDB 服务里。"
+}

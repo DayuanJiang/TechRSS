@@ -1,0 +1,89 @@
+{
+  "id": 48536776,
+  "by": "MehrdadKhnzd",
+  "title": "Apple Foundation Models",
+  "url": "https://platform.claude.com/docs/en/cli-sdks-libraries/libraries/apple-foundation-models",
+  "score": 373,
+  "createdAt": 1781508066,
+  "aiSummary": {
+    "chinese_title": "Apple Foundation Models 接入 Claude：开发者抽象层、端侧模型与收费争议",
+    "discussion_overview": [
+      {
+        "category": "苹果借框架掌控 AI 入口",
+        "summary": "不少评论把这看成 Apple 把 LLM 变成可替换组件，同时把入口和品牌留在自己手里。框架能在本地模型、Apple 托管模型和第三方模型之间切换，所以有人猜 Apple 以后把自家模型塞回同一层时，开发者几乎不用改代码。也有人认为这会让 Apple 在 AI 分发和定价上占据上游位置，甚至通过订阅、默认位或 App Store 生态抽成变现。反对者则强调这只是开发者用的抽象层，用户端不一定知道底层是哪家模型。",
+        "supportid": [
+          "48539044",
+          "48537792",
+          "48538080",
+          "48537810",
+          "48538326",
+          "48539167",
+          "48539119",
+          "48539335"
+        ]
+      },
+      {
+        "category": "开发者侧统一 API / 可切换模型",
+        "summary": "另一组评论聚焦实现本身：Anthropic 这套包把 Claude 接进 Apple 的 Foundation Models framework，让开发者用同一套 Swift API 调用系统模型、Apple 的云模型或自定义 provider。有人提到它把 streaming、tool calling、structured output 这些能力也统一封装了，而且会在切换 provider 时保留同一条 transcript。也有人注意到文档里模型名既可以硬编码成 enum，也能用未编译进来的 ID 构造，说明它并不完全依赖固定版本。",
+        "supportid": [
+          "48538430",
+          "48537908",
+          "48537736",
+          "48539127",
+          "48539152",
+          "48538363"
+        ]
+      },
+      {
+        "category": "端侧模型存储与去重问题",
+        "summary": "端侧模型的存储和去重是另一大焦点。评论担心如果 10 个 App 各自下载同一个本地模型，手机会很快被占满，而目前看 Apple 只对系统自带模型提供共享路径，定制模型之间似乎没有现成的 dedup 机制。有人希望有统一的 model ID、共享缓存，甚至 block-level dedup 或按需拉取的 API；也有人把这个问题和 Python 虚拟环境、重复依赖包的臃肿类比，认为 AI 生态正在复制这种碎片化。",
+        "supportid": [
+          "48538178",
+          "48538363",
+          "48539134",
+          "48538429",
+          "48538579",
+          "48539261",
+          "48538478",
+          "48539240"
+        ]
+      },
+      {
+        "category": "生产部署、密钥与计费",
+        "summary": "实用派主要在追问怎么把它安全地放进生产环境。文档里明确说 `.apiKey` 只适合开发，正式版要走 `.proxied`，由开发者后端替客户端加上 Claude 凭证并做访问控制。这样可以避免把 key 塞进 iOS 二进制里，但代价是用户提示词和返回内容会经过自家服务器，隐私和信任成本立刻上升。还有人嫌这种模式还是按标准 API 计费，不如直接做用户端钱包和微支付。",
+        "supportid": [
+          "48538916",
+          "48539109",
+          "48538296",
+          "48538344",
+          "48538340",
+          "48539023",
+          "48538338",
+          "48539118"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Foundation Models framework",
+        "explanation": "Apple 提供的统一模型调用框架，可在本地、云端和第三方模型之间切换。"
+      },
+      {
+        "term": "on-device model",
+        "explanation": "直接在设备本地运行的模型，优点是低延迟和隐私，但会占用本地存储。"
+      },
+      {
+        "term": ".proxied / proxy",
+        "explanation": "生产环境中把请求转发到开发者后端，由后端注入 API key 并做授权。"
+      },
+      {
+        "term": "CoreML",
+        "explanation": "Apple 的模型部署与推理框架，常用于把训练好的模型迁移到 Apple 设备上高效运行。"
+      }
+    ],
+    "context": "这串讨论围绕 Anthropic 发布的 `ClaudeForFoundationModels` 仓库展开，它把 Claude 接到 Apple 的 Foundation Models framework（Apple 在 iOS 27/macOS 27 中提供的统一模型 API）上。这个框架允许应用在 Apple 设备本地模型、Apple 的 Private Cloud Computer（Apple 托管的私有云推理环境）和第三方模型之间切换，因此开发者可以用同一套 `LanguageModelSession`、tool calling 和 structured output 接口写代码。评论里很多争论其实建立在 Apple 一贯的产品策略上：把复杂能力藏在系统层，既强调隐私和本地推理，又保留未来把 Apple Intelligence 或 Siri 接回同一入口的空间。另一些评论则从 CoreML、SKAN（匿名广告归因框架）和 Differential Privacy（差分隐私）等 Apple 既有技术出发，讨论它是否真的能减少重复依赖、降低开发成本，还是只是在 App Store 生态里再加一层收费与控制。",
+    "emoji": "🤨",
+    "sarcastic_question": "这到底是开发者便利，还是苹果新收租口子？"
+  },
+  "articleSummary": "## 一句话总结\nAnthropic 发布了 `ClaudeForFoundationModels` Swift 包，让开发者能通过 Apple 原生的 `Foundation Models` 框架无缝调用 Claude API，实现端侧模型与云端大模型在代码层面的统一调度。\n\n### 统一接口：让云端 Claude 变身“本地”模型\nApple 推出的 `Foundation Models` 框架原本是为了方便开发者调用自家的端侧模型，但现在 Anthropic 做了一个适配层。核心思路其实很简单：他们把 Claude 封装成了一个遵循 `LanguageModel` protocol 的组件。这意味着什么？意味着你不需要写两套逻辑，直接用 `LanguageModelSession` 的标准 API（比如 `respond(to:)`、流式传输、Tool Calling）就能驱动 Claude。请求直接从你的 App 发到 Anthropic，Apple 不做中间人，也看不到数据，既保持了架构的统一，又兼顾了隐私。\n\n### 能力声明：拒绝“盲猜”，严格匹配模型特性\n这里有个巧妙的设计：模型能力的类型安全。文章提到，每个 `ClaudeModel` 常量都明确声明了自己支持什么——比如采样参数、自适应思考、结构化输出或者图片输入。为什么要这么做？因为如果你给一个不支持某功能的模型发了对应参数，API 会直接报错。这个包会在编译期或运行期帮你把好关，避免无效请求。特别是对于 Effort（推理强度）等级，框架默认只到 `high`，但通过这个包，你可以直接指定 `.xhigh` 或 `.max`，榨干 Claude 的最强性能。\n\n### 认证策略：开发直连，生产环境必须走代理\n在怎么用 API Key 这件事上，文章划了一条红线。开发阶段，你可以直接把 API Key 塞进 `.apiKey` 里图个方便。但一旦要上架，千万别这么干，因为二进制里的 Key 是可以被提取出来的。正确的做法是切换到 `.proxied` 模式：App 把请求发到你自己的后端，由后端加上 Key 再转发给 Anthropic。虽然这增加了一跳网络延迟，但这是保护账号余额不被刷爆的唯一安全路径。\n\n### 工具调用：区分本地执行与云端托管\nTool Calling（工具调用）在 AI 应用里很常见，但这个包把它分成了两类。一类是 Client-side tools，这是 Apple 框架原生支持的，模型调用工具时，代码是在你设备上跑的。另一类是 Server-side tools（比如联网搜索、代码执行），这是在 Anthropic 服务器上直接跑完返回结果的。配置上有点讲究，`serverTools` 是挂在 `ClaudeLanguageModel` 实例上的，而不是 Session 上。如果你想在同一个对话里切换不同的云端工具集，那就得创建不同的 Model 实例。\n\n### 结构化输出与错误映射：开发体验的细节打磨\n对于需要强类型返回的场景，直接用 `@Generable` 标记你的类型，包会自动利用 Claude 的 Structured Outputs 功能把结果塞进去。如果模型不支持，它会直接抛错而不是静默降级，这种“fail-fast”的态度对调试很友好。错误处理上也做了一层映射，把 API 的 429 错误转成 `.rateLimited`，超时转成 `.timeout`。你可以直接 Pattern Match 这些错误，比如遇到限流就自动降级回 Apple 的本地模型，保证 App 不挂。\n\n### 权衡取舍：什么能用，什么得牺牲\n虽然这个包极力想让你像用本地模型一样用 Claude，但受限于 Apple 的框架协议，有些功能还是不得不砍掉。比如 Prompt Caching 的缓存控制、Stop sequences、批处理、Token 计数这些，在 Messages API 里有的功能，在这里没法暴露给开发者。说白了，这是一个为了“统一体验”而做出的妥协。如果你只是想做个简单的聊天或辅助功能，这非常完美；但如果你需要精细控制 API 的每一个参数，可能还是得直接用原生的 SDK。"
+}

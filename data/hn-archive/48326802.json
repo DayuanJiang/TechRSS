@@ -1,0 +1,149 @@
+{
+  "id": 48326802,
+  "by": "tomasol",
+  "title": "SQLite is all you need for durable workflows",
+  "url": "https://obeli.sk/blog/sqlite-is-all-you-need-for-durable-workflows/",
+  "score": 615,
+  "createdAt": 1780078244,
+  "aiSummary": {
+    "chinese_title": "SQLite 做持久化工作流：Temporal、Litestream 与 Postgres 争论",
+    "discussion_overview": [
+      {
+        "category": "SQLite 作为本地/agent 持久化底座",
+        "summary": "不少人认为 SQLite 很适合做单机、单写者、边缘节点上的 durable workflows。有人直接把它用于 agent orchestration，让 agents 先生成 DAG，再把每一步状态写进 SQLite，便于重跑和诊断。也有人提到 Temporal（开源工作流编排引擎）在本地 SQLite 上跑得很顺手，配合 web UI、重试和长任务管理，几乎就是文章想表达的思路。Cloudflare D1（Cloudflare 的托管 SQLite）和 Durable Objects（Cloudflare 的持久化边缘对象）也被拿来说明这类“本地可持久化状态”方案并不新鲜。",
+        "supportid": [
+          "48327121",
+          "48330237",
+          "48326956",
+          "48328413",
+          "48329550",
+          "48329730",
+          "48328249",
+          "48328094",
+          "48330282",
+          "48327076",
+          "48327584"
+        ]
+      },
+      {
+        "category": "并发、分布式与“生产”边界之争",
+        "summary": "反对者把焦点放在 write concurrency 和分布式场景上，认为 SQLite 是 embedded database，不适合多个进程、多个机器同时改数据。支持者则反驳说，“生产”不等于高并发写入，大多数系统根本碰不到 Twitter/X 级别的 TPS，单机加 NVMe、单写队列和自然分片已经足够。讨论里还反复强调，SQLite 的 read concurrency 通常没问题，真正难的是大量并发写、HA/failover 和跨节点共享写入。于是争论最后落到一个更现实的问题：你的 workload 是单机小服务、按用户分片，还是必须上 Postgres/MySQL 那种网络数据库。",
+        "supportid": [
+          "48327679",
+          "48328066",
+          "48328114",
+          "48328309",
+          "48328324",
+          "48328382",
+          "48327823",
+          "48327877",
+          "48329912",
+          "48328167",
+          "48330039",
+          "48330112",
+          "48330302",
+          "48329216",
+          "48330208",
+          "48328499",
+          "48329089",
+          "48329575"
+        ]
+      },
+      {
+        "category": "从 Markdown/JSON/jq/grep 转向 SQLite",
+        "summary": "另一派讨论认为，SQLite 的最大价值不是“它是数据库”，而是它比 Markdown、JSON 和各种 grep/jq 组合更像一个可查询的数据结构。很多人提到，深层 JSON 很快就会逼你写 parser，文本文件的搜索和更新都是 O(n)，而 SQLite 可以直接做 UPDATE、JOIN、增量刷新和复杂过滤。对 agent 来说，这一点尤其明显：直接查一行 SQLite 往往比翻 Markdown、跑 jq 或 grep 更省 token，也更容易保持数据纪律。DuckDB（面向分析的嵌入式 SQL 引擎）还被拿来和 awk、shell 脚本对比，说明 SQL 在局部数据处理上确实很强。",
+        "supportid": [
+          "48327227",
+          "48328238",
+          "48330345",
+          "48329210",
+          "48328204",
+          "48327990",
+          "48330262",
+          "48328028",
+          "48329017"
+        ]
+      },
+      {
+        "category": "Temporal、Litestream 等方案的运维与可靠性成本",
+        "summary": "评论区也把 Temporal（工作流编排引擎）、Litestream（SQLite 到对象存储的异步复制工具）、Oban 和 DBOS 拉进来对比。Temporal 被认可的点是 retries、长任务、可观测性和 web UI 很完整，但它也被说成“heavy”，managed 方案可能贵，自托管则会带来明显的 ops burden。Litestream 则被认为是给 SQLite 补 durability 的常见方式，但有人指出它的异步复制天生可能丢最新写入，甚至某些版本还出现过疯狂同步流量的问题。这个分歧本质上是在问：你是愿意接受一套更重的工作流系统，还是接受 SQLite 之外再加一层复制/备份基础设施。",
+        "supportid": [
+          "48329309",
+          "48330193",
+          "48330594",
+          "48330672",
+          "48330445",
+          "48327247",
+          "48327872",
+          "48328974",
+          "48329078",
+          "48327250",
+          "48327354",
+          "48327464",
+          "48327567",
+          "48330627",
+          "48330279",
+          "48327076"
+        ]
+      },
+      {
+        "category": "类型系统、schema 演进与 DuckDB 替代",
+        "summary": "有评论集中吐槽 SQLite 的类型系统偏弱，尤其是日期/时间、ALTER TABLE 和约束演进不如 Postgres 顺手。回应则强调 strict tables、CHECK constraints 和一组 PRAGMA 就能补掉不少坑，真正的问题更多是默认配置和向后兼容。DuckDB（更偏分析型的嵌入式 SQL 引擎）被拿来做对照：它像“类型更严格的 SQLite”，但工作负载更偏 OLAP，不完全等同于 SQLite 的 OLTP 场景。这个分支讨论的核心不是性能，而是 schema 表达力和长期维护成本。",
+        "supportid": [
+          "48329530",
+          "48329591",
+          "48329951",
+          "48329844",
+          "48330217",
+          "48330288",
+          "48329643",
+          "48329817",
+          "48330162",
+          "48329904",
+          "48329872"
+        ]
+      },
+      {
+        "category": "架构哲学：YAGNI 还是提前留余地",
+        "summary": "讨论里还有一条很强的元主题：到底该不该为了未来可能的扩展，提前上更复杂的架构。有人主张 YAGNI，认为很多 workflow 需求根本不需要一开始就搭数据库服务器、sharding 和复杂 control plane；也有人觉得适度 over-engineering 反而能减少以后被架构卡死的概率。所谓 N+1 原则也被提出来：只多设计一个可预见场景，不要走到 N+2 那种纯猜未来的程度。最终大家并不是只在争 SQLite，而是在争“现在最简单可维护”与“未来不被锁死”之间的平衡。",
+        "supportid": [
+          "48329476",
+          "48330365",
+          "48328902",
+          "48327709",
+          "48328442"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Temporal",
+        "explanation": "开源工作流编排引擎，擅长 retries、长任务、状态恢复和可观测性。"
+      },
+      {
+        "term": "Litestream",
+        "explanation": "把 SQLite 的 WAL 异步复制到对象存储的备份/恢复工具。"
+      },
+      {
+        "term": "WAL（Write-Ahead Log）",
+        "explanation": "预写日志机制，先写日志再落盘，用于崩溃恢复和复制。"
+      },
+      {
+        "term": "DuckDB",
+        "explanation": "嵌入式分析型 SQL 引擎，常用于本地分析和 ETL。"
+      },
+      {
+        "term": "sharding（分片）",
+        "explanation": "按用户或键把数据拆到多个独立分区/实例，以降低单库写压力。"
+      },
+      {
+        "term": "ACID",
+        "explanation": "事务的原子性、一致性、隔离性、持久性保证。"
+      }
+    ],
+    "context": "这篇讨论围绕“durable workflows（能在崩溃后继续恢复的长流程任务）”展开，场景多半是 agent orchestration（智能体任务编排）和本地应用。文章主张把状态直接放进 SQLite（嵌入式数据库），再用 Litestream（把 SQLite 复制到对象存储的工具）之类方案补足持久化。评论区把 Temporal（开源工作流编排引擎）、Postgres（网络数据库服务器）、DuckDB（嵌入式分析型 SQL 引擎）和 Cloudflare D1/Durable Objects（边缘托管的持久化组件）都拉进来比较。争论核心不是“能不能存数据”，而是单机/单写者、分片、重试、可观测性和 HA/failover 这几种需求到底要怎么平衡。",
+    "emoji": "⚖️",
+    "sarcastic_question": "写个工作流，真要先搭一套分布式军火库吗？"
+  },
+  "articleSummary": "抱歉，你提供的这段内容实际上是 Cloudflare 的反爬虫验证页面（\"Just a moment...\"），而不是真正的技术文章原文。因此我无法基于此进行分析和总结。\n\n如果你能提供文章的**原始文本**（或者把网页内容复制粘贴过来），我很乐意立刻按照你的要求，用讲故事的方式为你拆解这篇关于 \"SQLite is all you need for durable workflows\" 的技术干货。"
+}

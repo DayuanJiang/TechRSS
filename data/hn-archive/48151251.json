@@ -1,0 +1,92 @@
+{
+  "id": 48151251,
+  "by": "DASD",
+  "title": "Jank now has its own custom IR",
+  "url": "https://jank-lang.org/blog/2026-05-08-optimization/",
+  "score": 144,
+  "createdAt": 1779063063,
+  "aiSummary": {
+    "chinese_title": "Jank 引入自定义 IR：先做语言级优化，再交给 LLVM",
+    "discussion_overview": [
+      {
+        "category": "自定义 IR 与 LLVM 分工",
+        "summary": "评论普遍认为，自定义 IR 不是在重复造轮子，而是在把语言特定的优化前移到 LLVM 之前。对 Clojure 这种动态、GC、强多态语言来说，直接喂给 LLVM 的信息太少，很难让它理解函数分派、arity dispatch、类型标签等语义。Julia 被多次拿来举例：它在 LLVM 之前已经有多层 IR，并且还保留了 world age 之类只对这种语言有意义的机制。MLIR 也被提到，但反对意见认为它最终还是要落到 LLVM，关键仍是自定义 dialect/IR 是否足够贴近语言语义。",
+        "supportid": [
+          "48176516",
+          "48177403",
+          "48177404",
+          "48177547",
+          "48175022",
+          "48176509",
+          "48177525"
+        ]
+      },
+      {
+        "category": "JVM 生态与性能基线",
+        "summary": "另一条主线是在提醒大家别把 OpenJDK 当成整个 JVM。评论列出多种 JVM 实现和特性：AOT、real-time GC、JIT cache、value type 实验、pauseless GC、云端 JIT，意思是 JVM 的性能空间远比单一基线大。与此同时，spec 里并没有规定线程、GC、JIT/AOT 的具体实现，所以很多优化取决于具体 VM，而不是语言表面上看起来像不像 C++。也有人补充，reflection、unsafe、JNI/FFM、动态 agents 会阻碍优化，因此代码是否 idiomatic、是否会用 profiler 和调试器，同样会直接影响性能。",
+        "supportid": [
+          "48174286",
+          "48176501",
+          "48176907",
+          "48176974",
+          "48177084",
+          "48177169",
+          "48176516"
+        ]
+      },
+      {
+        "category": "动态性、REPL 与失效机制",
+        "summary": "关于动态性，评论重点讨论了 inlining 之后还能不能在 REPL 里热更新。JVM 版 Clojure 里，var 往往要通过间接层指向函数才能保留可重定义性，但这会让 JVM 很难内联和进一步优化；如果改用 direct linking，性能更好，却失去 REPL 里即时修改行为的能力。Julia 的 world age 机制被当作更精巧的折中：方法表按版本固定，通过 backedge 失效传播，既能保持动态重定义，又能让编译器把调用链当成近似静态来做跨过程优化。",
+        "supportid": [
+          "48174372",
+          "48174703",
+          "48175261",
+          "48177215",
+          "48177390"
+        ]
+      },
+      {
+        "category": "LLVM 仍负责低层优化",
+        "summary": "也有人专门追问 LLVM 到底还能帮什么。回复指出，Jank 的 custom IR 会先把 arity 检查、递归分发、类型测试等高层噪音去掉，再交给 LLVM 做 DCE、load/store 优化、常量传播、寄存器分配，以及部分 inlining。进一步的方向是按 tagged int 或 unboxed 类型做 specialization，让信息在递归和调用链中保留下来，获得比现在更大的性能收益。换句话说，LLVM 仍是重要后端，但真正决定语言性能上限的是前面的语义建模。",
+        "supportid": [
+          "48174302",
+          "48175047"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "IR",
+        "explanation": "Intermediate Representation，中间表示，编译器在源代码和机器码之间使用的内部形式。"
+      },
+      {
+        "term": "LLVM IR",
+        "explanation": "LLVM 使用的底层中间表示，适合做后端优化和目标平台代码生成。"
+      },
+      {
+        "term": "MLIR",
+        "explanation": "Multi-Level Intermediate Representation，可为特定语言或领域定义 dialect，再逐层降到 LLVM。"
+      },
+      {
+        "term": "world age",
+        "explanation": "Julia 的版本化可见性机制，按“世界版本”固定方法表，支持动态重定义与优化共存。"
+      },
+      {
+        "term": "direct linking",
+        "explanation": "Clojure 的直接链接编译方式，把函数调用变成静态调用，性能更好但 REPL 热更新能力变弱。"
+      },
+      {
+        "term": "REPL",
+        "explanation": "交互式读求值打印循环，常用于即时重定义和测试代码。"
+      },
+      {
+        "term": "PGO",
+        "explanation": "Profile-Guided Optimization，基于运行剖面数据来调整编译优化策略。"
+      }
+    ],
+    "context": "Jank 是一个用 C++ 实现的 Clojure（运行在 JVM 上的 Lisp 方言）实现，文章介绍它现在加入了自己的 custom IR，然后再把结果交给 LLVM（编译器基础设施）生成代码。评论区争论的核心，是动态语言在保留 REPL（交互式读求值打印循环）热更新时，能否同时享受像静态语言一样的 inlining 和其他优化。为了说明这种取舍，大家拿 Julia、Clojure 不同编译模式，以及多种 JVM 实现来对比。另一个背景是基准测试：作者用 OpenJDK 21（Java 的开源参考实现）做对照，但评论认为这不能代表整个 JVM 生态，包括 OpenJ9（另一种 JVM 实现）、GraalVM（支持强力 JIT/AOT 的 JVM 生态）和 ART（Android Runtime，Android 的运行时）。",
+    "emoji": "🤔",
+    "sarcastic_question": "只靠 LLVM，难道它会通灵懂 Clojure 语义吗？"
+  },
+  "articleSummary": "## 一句话总结\njank 引入了一套基于 SSA 的高层自定义 IR，专门针对 Clojure 语义设计，旨在通过内联算术运算等优化手段，填补与 JVM 在性能上的巨大鸿沟。\n\n### 为什么 LLVM 搞不定 Clojure 的优化\n\njank 之前一直把优化工作甩手给 LLVM，但这有个根本性的矛盾：LLVM IR 太底层了。它根本不懂 Clojure 的 vars、transients 或者持久化数据结构这些概念。Clojure 的动态特性依赖大量的多态和间接调用，这意味着当 jank 把代码翻译成 LLVM IR 时，优化机会早就被这些抽象层给抹平了。作者意识到，想要真正提速，不能只优化运行时或编译器本身，必须得在更懂 Clojure 的层级上做文章。\n\n### 量身定制的 IR 才是破局关键\n\n既然不需要做一个通用的编译器平台，作者决定为 jank 设计一套专属的 IR。这套 IR 的抽象层级比 JVM bytecode 还要高，直接针对 Clojure 的语义。据作者所知，目前还没有其他 Clojure 方言敢迈出这一步。这套 IR 在内存中是 C++ 数据结构，但可以渲染成 Clojure 数据方便调试。它采用了 SSA（静态单赋值）形式，并且由控制流图（CFG）组成，这让后续的数据流分析和优化变得有迹可循。\n\n### 从 IR 到 C++ 的精准映射\n\n这套 IR 的设计非常务实，它生成的 C++ 代码和 IR 结构有着肉眼可见的一一对应关系。比如 IR 里的 `var-deref` 操作，到了 C++ 里就是直接的 `->deref()` 调用；动态调用则变成了 `jank::runtime::dynamic_call`。这种直译关系不仅让代码生成逻辑清晰，也为后续的优化打下了基础。作者花了六周时间重写了代码生成管线，把之前的 AST 直接生成 C++ 改成了先转 IR 再生成 C++。\n\n### 递归 Fibonacci 暴露出的性能鸿沟\n\n新 IR 上线后，第一个拿来祭刀的基准测试是递归计算斐波那契数列（fib 35）。这个测试虽然简单，但涵盖了多态算术、递归、垃圾回收和运行时开销四个关键维度。结果很残酷：Clojure on JVM（OpenJDK 21）只需要 200 毫秒，而 jank 足足跑了 5,522 毫秒。这 27 倍的差距说明，光有 IR 架构还不够，必须得有针对性的优化 Pass。\n\n### 算术内联：消除动态调用的开销\n\n优化的第一刀砍向了算术运算。Clojure 里像 `max` 这样的函数调用，如果不做处理，就是一次昂贵的 var 查找和动态调用。作者借鉴了 Clojure 的元数据机制，通过 `:inline` 和 `:inline-arities` 元数据，在分析阶段就把函数调用替换成具体的实现逻辑（比如直接调用 C++ 的 `jank::runtime::max`）。这就像 C++ 把函数定义写在头文件里一样，不仅消除了 var 的解引用开销，还避免了原生值的装箱操作，为后续编译器进一步内联铺平了道路。"
+}

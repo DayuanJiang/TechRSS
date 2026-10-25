@@ -1,0 +1,131 @@
+{
+  "id": 49817289,
+  "by": "zuckerborg0101",
+  "title": "Strands Harness",
+  "url": "https://strandsagents.com/blog/introducing-strands-harness/",
+  "score": 134,
+  "createdAt": 1790176828,
+  "aiSummary": {
+    "chinese_title": "AWS 开源 Strands Harness：省 token 跑分、Pi 缺席与数据隐私争议",
+    "discussion_overview": [
+      {
+        "category": "跑分优势与基准有效性",
+        "summary": "Strands 宣称在 Terminal Bench 2.1 上，以同一 Fable 5 模型运行时，得分 69.7，高于 Claude Code 的 61.8，成本则显著更低；另有图表称 OpenCode 达到 66.3%、成本 73.42 美元，对比 Claude Code 的 248.05 美元。这被视为 harness 的上下文管理、工具编排和 token 策略会实质影响准确率与成本的证据。反对者指出 Terminal Bench 2.1 已趋于饱和，省 token 后维持近似分数未必具统计显著性，且不同机构采用的 agent harness、sandbox 与通过标准并不相同。批评还聚焦其压缩策略：工具结果超过 1500 tokens 改为链接、上下文 85% 时仅保留最近四条消息，可能在长程任务中损害效果。",
+        "supportid": [
+          "49817721",
+          "49818622",
+          "49818774",
+          "49825121",
+          "49820055",
+          "49822334"
+        ]
+      },
+      {
+        "category": "Pi 未纳入测试的公平性争论",
+        "summary": "大量评论质疑测试选择了 Oh My Pi（OMP）却排除了原版 Pi，认为 OMP 会向上下文注入更多功能与工具，不能代表轻量、启动开销低且不会频繁生成 subagents 的 Pi。一方认为原版 Pi 的 MCP、web fetch、subagents 等能力依赖插件，存在多个同名插件和不同组合，测试者无法客观决定何种配置才与 Strands 对等。另一方认为应至少测试 Pi 默认配置，或采用下载量最高的 MCP adapter，并在报告中清楚标注配置；排除它反而容易让人怀疑它的 token 效率和通过率难以击败。Strands 团队回应会考虑补做 Pi 测试，同时强调 OMP 被选作较标准化的 Pi 扩展形态。",
+        "supportid": [
+          "49817571",
+          "49818305",
+          "49820263",
+          "49820483",
+          "49826936",
+          "49818125",
+          "49818407",
+          "49817541",
+          "49820546"
+        ]
+      },
+      {
+        "category": "原生 harness、开放通用层与供应商锁定",
+        "summary": "一派担心模型供应商正针对自家 harness 训练 agent，因此每次模型更新都要重新验证第三方 harness，原生工具可能拥有隐性适配优势。另一派恰恰反对原生方案，认为它们会为供应商的 token 消耗和商业利益优化；理想状态是出现一个模型无关的开源 harness 标准，让模型厂商竞争对它的兼容性。评论认为 Pi 难成为这一标准，因为它高度依赖插件和个人配置，缺少稳定、统一的目标接口；但可在其上形成一个标准化衍生层。MiMo 2.5 Pro 的案例也显示 harness 适配的重要性：它仅阅读仓库时是优秀的安全漏洞发现器，加入 treesitter、semgrep 和 shell 等更多工具后反而明显退化，而新版 MiMo 2.6 据称通过多 harness 训练改善了这一问题。",
+        "supportid": [
+          "49817858",
+          "49818162",
+          "49819237",
+          "49820208",
+          "49819988",
+          "49819912",
+          "49819194",
+          "49820225"
+        ]
+      },
+      {
+        "category": "自建与可定制 harness 的吸引力",
+        "summary": "不少开发者认为自行搭建 agent harness 并不困难，甚至可以让强模型把定义明确的子任务委派给弱模型来节省成本，因此不接受“必须另造一套 harness 才能轻松定制”的前提。Pi 因可定制 system prompt、扩展和 hooks 而受到偏爱：用户可在新会话选择启用的 skills 与 MCP、自动 compact、按任务切换模型和 effort，或直接调用 CLI 而非 MCP。也有人将文章交给 ChatGPT 自动为个人 harness 创建 issues，或把原先自建功能迁入 OpenCode plugins；不过这些用户同时批评 OpenCode 仍显粗糙。对他们而言，免费开源已不足以构成采用理由，因为自行实现的成本迅速下降，而个人工作流的贴合度更重要。",
+        "supportid": [
+          "49817961",
+          "49817745",
+          "49817900",
+          "49817752",
+          "49819262",
+          "49819115",
+          "49820062"
+        ]
+      },
+      {
+        "category": "成本、订阅限制与多模型工作流",
+        "summary": "自定义 harness 的实际使用者往往通过 open-weight models、Ollama 套餐、OpenRouter 或 OpenAI/Opencode 订阅控制成本，并将昂贵 frontier models 留给规划、审查或兜底。例如有用户以每月 20 美元的 Ollama 计划运行 DeepSeek 和 GLM，只对目标明确的小任务提问，额外模型需求才使用 OpenRouter。也有工作流让 Anthropic 负责规划和执行、OpenAI 负责 code review，并按任务自动切换模型；但 Anthropic 对订阅用于 custom harness 的限制被认为推动用户转向 API 计费或其他模型。企业用户则希望获得 Codex 式本地项目体验，同时可按项目锁定 provider、统一显示多个模型，并将云端或本地子 agent 的账单正确归属。",
+        "supportid": [
+          "49817708",
+          "49817801",
+          "49818531",
+          "49817955",
+          "49818056",
+          "49817977"
+        ]
+      },
+      {
+        "category": "产品定位、AWS 动机与信任问题",
+        "summary": "Strands 团队确认项目来自 AWS，称其为开源软件，可部署在 Cloudflare Containers 和 Modal 等 AWS 之外的平台，并已支撑 Amazon 内部数千个 agent，目标是生产环境的可靠运行。怀疑者认为 AWS 在 AI 领域落后、近半年强推 AgentCore，因此很难将该发布与云业务、治理和基础设施导流完全切开；也有人指出 Kimi 3 加入 Bedrock 后次日发布并非巧合。产品页面本身也被批评没有讲清它究竟是 harness、orchestrator 还是 agent framework，以及用户需使用 GUI 还是 Python/JavaScript 配置；provider 覆盖面也被认为不如 Pi 和 OpenCode。额外的信任扣分来自网站将多个仓库的 stars 汇总展示为 13000+，而最高单一仓库实际约 7800 stars。",
+        "supportid": [
+          "49817942",
+          "49818680",
+          "49817581",
+          "49818727",
+          "49819442",
+          "49820062",
+          "49819879",
+          "49820163",
+          "49817732"
+        ]
+      },
+      {
+        "category": "第三方工具的数据泄露风险",
+        "summary": "部分用户因近期 ZAI 的 zcode 事件而拒绝使用其 harness：据称该工具会在无设置开关、静默重试的情况下，把整个 repo 连同完整 git history 上传云端，解释是为文件索引优化而遗漏了开关。评论者担心详细 commit 信息和由 Claude 生成的代码历史会成为高价值训练或蒸馏材料，并提到 Grok 两个月前也出现过类似行为。虽然后续项目开源，且有人认为代码可审计，但开源后的历史被清除并不能消除对既往行为和默认数据路径的疑虑。这也强化了“宁可使用可控的 Pi/OpenCode 或自建方案”的立场。",
+        "supportid": [
+          "49820198",
+          "49820399",
+          "49820921",
+          "49822859",
+          "49823672"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Harness（Agent harness）",
+        "explanation": "围绕编码 agent 的执行外壳，负责 system prompt、上下文、工具调用、子 agent、模型接入、压缩和成本控制等运行机制。"
+      },
+      {
+        "term": "Pi",
+        "explanation": "高度可扩展、偏轻量的开源 agent harness；许多高级能力通过 plugins 配置，而非默认内置。"
+      },
+      {
+        "term": "MCP",
+        "explanation": "Model Context Protocol，让模型以标准化方式连接外部工具、数据源和服务的协议。"
+      },
+      {
+        "term": "Terminal Bench",
+        "explanation": "用于评估 agent 在终端环境完成真实软件工程任务能力的基准；成绩会受 harness、sandbox 和评测配置影响。"
+      },
+      {
+        "term": "OMP（Oh My Pi）",
+        "explanation": "构建在 Pi 理念周边、提供更多开箱功能的 harness；因上下文和工具更丰富，token 成本通常高于原版 Pi。"
+      }
+    ],
+    "context": "Strands Harness 是 AWS 团队发布的开源 agent harness，面向把类似 Claude Code、Codex 的编码 agent 工作流部署到云端或生产环境；团队称它也可部署至 Cloudflare Containers（Cloudflare 的容器运行环境）和 Modal（云端计算平台）。其宣传核心是通过限制工具输出、上下文压缩、MCP（Model Context Protocol，模型连接外部工具的协议）服务器和 subagents（由主 agent 调度的子代理）降低 token 消耗，并在 Terminal Bench（终端软件工程任务基准）上保持或提升成绩。讨论的背景是编码 agent 的“harness 层”正成为竞争点：同一模型在 Claude Code、OpenCode、Pi（可扩展的轻量开源 harness）或自建环境中的表现、成本和隐私边界都可能不同。与此同时，ZAI 的 zcode 被曝曾静默上传完整代码仓库及 git history，使开发者对第三方 harness 的默认数据处理和供应商锁定更加警惕。",
+    "emoji": "🤨",
+    "sarcastic_question": "少塞上下文多跑分，就能替我写完长任务吗？"
+  },
+  "articleSummary": "## 一句话总结\nStrands 发布了一款开箱即用的 Agent SDK，通过精心设计的上下文管理策略，在保持甚至超越 Claude Code 准确率的同时，将成本降低了 28% 到 77%。\n\n## 正文\n\n### 本地跑得欢，上云就抓瞎\n很多开发者都有过这样的体验：用 Claude Code 或 Codex 在本地写 Agent 原型，感觉特别顺滑，一切 \"just worked\"。但一旦想把这套东西部署到云端，或者自己从头撸一个通用 Agent，立马就会发现事情没那么简单。你不得不面对一堆棘手的基础设施问题：如何高效管理上下文窗口？怎么做 Prompt Caching？怎么设计工具调用？这些 \"脏活累活\" 往往比写核心逻辑还要费劲。说白了，缺的就是一个能跑在生产环境里的、现成的 Agent 框架。\n\n### 既要省钱，又要好用\nStrands harness 就是为了解决这个问题发布的。它是一个通用的 Agent harness，支持 Python 和 TypeScript，一行代码就能跑起来。最关键的是，它没有为了省钱而牺牲效果。根据官方数据，在使用相同的 Claude 或 GPT 模型时，Strands harness 在六个 benchmark 测试中比其他主流 harness **成本降低了 28%**，而且准确率持平甚至更高。更有意思的是，对比 DeepSeek Harness 这种极致省 token 的方案，Strands 的准确率明显胜出——这说明单纯压榨 token 并不是最优解。\n\n### 秘密武器在于上下文管理\n那它是怎么做到的？核心思路其实很简单：默认配置做好了极致的优化。Strands harness 内置了 Prompt Caching 和一套精心设计的上下文管理策略。这套策略规定：当工具返回结果超过 1500 tokens 时，自动截断；当上下文窗口占用超过 85% 时，触发摘要压缩；如果发生溢出，则在循环内进行上下文恢复。这些默认策略直接决定了它的性价比。实测数据很惊人：在使用 Fable 5 模型时，Strands harness **成本比 Claude Code 低了 77%**，同时在 Terminal Bench 2.1 上的得分反而更高。\n\n### 开箱即用的全家桶\n对于开发者来说，这东西好用在哪？`create_harness()` 返回的 Agent 自带全套装备。它默认集成了 Shell、文件读写（read/write/edit）和 Web 工具——这些都是模型已经熟知的原语，而不是为特定任务定制的奇技淫巧。它还能自动管理上下文窗口，把臃肿的工具结果存到文件里，并缓存请求中复用的部分。此外，它支持跨运行的长期记忆，支持通过 session ID 恢复对话，甚至能把开放式子任务委托给内置的 helper agent，用 checklist 追踪多步骤任务。\n\n### 部署自由，定制随心\n部署方面，Strands harness 支持所有主流模型提供商，包括 Amazon Bedrock、Anthropic、OpenAI、Google，甚至是本地的 Ollama 和 LiteLLM。你可以把它打包成 Linux 容器，扔到 Modal、Cloudflare Containers、Google Cloud Run 或者 Amazon ECS 上跑。如果你觉得默认配置不够用，完全可以深度定制：替换模型、增加工具，甚至直接修改底层的 Strands Harness SDK。官方还提供了一个 Strands CLI，让你用自然语言快速原型化，然后通过 `/export` 命令导出 TypeScript 或 Python 代码，接着用你喜欢的 Coding Agent 继续迭代。\n\n### 现在就能上手\n想试试的话，安装非常简单：Python 用户 `pip install strands-harness`，TypeScript 用户 `npm install @strands-agents/harness`。如果你想先体验一下交互式原型，也可以装 CLI：`npm install -g @strands-agents/cli`。无论你是想快速验证一个 Agent 想法，还是想构建一个生产级的通用 Agent，Strands harness 都提供了一个相当有竞争力的起点。"
+}

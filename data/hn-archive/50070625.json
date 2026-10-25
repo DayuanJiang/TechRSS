@@ -1,0 +1,96 @@
+{
+  "id": 50070625,
+  "by": "0xdeafbeef",
+  "title": "Wanted to download an ISO, ended up writing a kernel exploit",
+  "url": "https://blog.dfb.sh/blog/eap770-root-for-two-zeros/",
+  "score": 344,
+  "createdAt": 1792050647,
+  "aiSummary": {
+    "chinese_title": "下载 ISO 后为定位 TP-Link Wi‑Fi 数据损坏而写 Linux kernel exploit",
+    "discussion_overview": [
+      {
+        "category": "TP-Link 产品质量、售后与过早 EOL",
+        "summary": "多名用户认为，设备从购入起就出现视频缓冲、大文件传输异常等问题，不应被当作可容忍的小瑕疵，而应直接退货以向厂商施压。有人指出 TP-Link 连旧硬件版本的固件都无法在数据库中找到，客服还要求用户拍摄设备和包装照片；也有 Omada 用户称设备两周内故障，尽管接在 UPS 上仍被客服归咎于未使用浪涌保护器。讨论尤其质疑一款早期 WiFi 7 路由器在支持期内零更新即 EOL，认为这等同于出厂时便放弃维护。也有人提醒，硬件 offload 缺陷并非 TP-Link 独有，昂贵企业 NIC 也会出现，问题常在硬件或 firmware 而不只是 driver。",
+        "supportid": [
+          "50100679",
+          "50101946",
+          "50101439",
+          "50101505",
+          "50101721",
+          "50101355"
+        ]
+      },
+      {
+        "category": "校验和卸载破坏 TCP 的可靠性假设",
+        "summary": "讨论解释了事故的关键：WLAN NIC/firmware 执行 checksum offload，在数据被缓存一致性问题或其他故障损坏后，仍对损坏后的内容重算 TCP checksum，因此 TCP 会把坏数据当作正确数据交给上层。TLS 收到错误的 record MAC 后会中止连接，因为 TLS 建立在 TCP 提供可靠、未损坏字节流的假设上，异常内容通常被视为篡改而非普通丢包。评论者认为 TLS 再加一层重试并不合适，多个协议层同时重试会放大流量，甚至造成自我 DoS。该问题也揭示 TCP checksum 并非端到端数据完整性保证；缺少 ECC 的内存、NIC buffer RAM 或电气故障都可能造成类似静默损坏，而 rsync、SSH、WireGuard 等额外校验机制更能发现问题。",
+        "supportid": [
+          "50102256",
+          "50100921",
+          "50101120",
+          "50101112",
+          "50101144",
+          "50101079"
+        ]
+      },
+      {
+        "category": "以 OpenWrt 和分层设备规避厂商固件",
+        "summary": "不少人把购买前核对 upstream OpenWrt 支持视为基本筛选条件，因为可替换的开源固件比依赖厂商生命周期更可控；也有人建议将 TP-Link 硬件刷入 OpenWrt 以兼顾价格和可维护性。另一种方案是把路由、防火墙交给运行 Coreboot 和 OPNsense 的独立设备，再使用 Ubiquiti AP 与交换机，从而让 Wi‑Fi AP 只承担 LAN 到无线的桥接工作。评价并非一概否定廉价设备：长期运行的非网管 dumb Ethernet switch 因功能简单往往非常可靠，真正容易失效的是带有复杂配置、offload 和“高级”能力的廉价网关。Ubiquiti 也被认为并非无瑕疵，只是相较消费级路由器有较稳定的部署和更新路径；Cudy、GL.iNet 等能运行 OpenWrt 的型号也被列为替代选择。",
+        "supportid": [
+          "50101726",
+          "50101958",
+          "50102002",
+          "50101304",
+          "50101718",
+          "50101978"
+        ]
+      },
+      {
+        "category": "LLM 安全审查阻碍防御性研究",
+        "summary": "多位安全从业者称，即使加入 Anthropic 的 Cyber Verification Program，Claude 仍会拒绝漏洞确认、旧恶意软件逆向、修复 SQL injection、含 SSH 测试用例的 Bash parser，甚至实现本地测试平台控制服务。批评者认为这类规则只依据关键词或粗粒度风险分类，无法理解同机 file descriptor 操作、兽医 PCR 结果网页等显然无害的上下文，因此迫使用户改用 DeepSeek、Kimi、GLM 或 ChatGPT。有人推断厂商的真正目标是避免其工具与 exploit 产生关联后的舆论和法律风险，而非阻止攻击本身，因为其他模型仍可快速给出同样结果。也有评论提到验证计划分层，普通用户可能只有受限的 blue-team 权限；围绕模型是否应要求用户礼貌互动的条款，则引发了对企业拟人化聊天机器人的讽刺。",
+        "supportid": [
+          "50100605",
+          "50100730",
+          "50101487",
+          "50100662",
+          "50100774",
+          "50100964"
+        ]
+      },
+      {
+        "category": "嵌入式驱动与内核维护的现实",
+        "summary": "有嵌入式从业者称，消费电子内部软件常是脚本、第三方 driver 与临时方案拼成的混合物，缺少严谨的软件工程文化，因此从 datasheet 或逆向厂商实现重写 driver 曾是实际工作。另一方补充，现代 WiFi 7 driver 往往依赖运行独立 OS 的 proprietary blob，开源 driver 很多时候只是连接内核与 blob 的桥梁，这限制了彻底重写的空间。评论者认为参与 Linux kernel 修复如今的门槛已降低，AI 可协助了解 kernel mailing list 流程，但提交者必须投入真实验证工作，不能投递 AI slop。还提到 kernel 中 isofs 文件系统代码可能存在不少小漏洞，恶意 CD image 不应随意挂载，说明消费硬件排障很容易延伸到内核安全研究。",
+        "supportid": [
+          "50101321",
+          "50101702",
+          "50101582"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "checksum offload（校验和卸载）",
+        "explanation": "网卡或无线 NIC 代替 CPU 计算 TCP/IP checksum 以降低 CPU 开销；若 DMA、缓存一致性或 firmware 出错，可能对已损坏的数据重新计算校验和。"
+      },
+      {
+        "term": "OpenWrt",
+        "explanation": "面向路由器和嵌入式网络设备的开源 Linux 发行版，可替换部分厂商 firmware，并提供较长期的社区维护和可配置性。"
+      },
+      {
+        "term": "TCP/TLS record MAC",
+        "explanation": "TCP 负责可靠传输，TLS 在其上用 record MAC 验证记录完整性；当 offload 让损坏数据通过 TCP 校验时，TLS 会以 bad record mac 发现异常并断开。"
+      },
+      {
+        "term": "EOL（End of Life）",
+        "explanation": "产品生命周期结束，厂商通常停止发布 firmware、安全修复和技术支持；网络设备过早 EOL 会长期保留功能和安全缺陷。"
+      },
+      {
+        "term": "Cyber Verification Program（CVP）",
+        "explanation": "模型厂商向安全研究者提供的身份或用途验证计划，理论上可放宽防御性安全任务限制，但评论者认为其权限分级和拒答规则仍过于严格。"
+      }
+    ],
+    "context": "事件源于一台 TP-Link 的早期 WiFi 7 无线设备在下载大型 ISO 时产生间歇性数据损坏：底层 WLAN NIC 的 checksum offload 因缓存同步类问题对坏数据重算了 TCP checksum，导致 TCP 未察觉而 TLS 以 bad record mac 拒绝内容。为定位这种表面上像网络抖动、实则涉及 Linux kernel、DMA 与无线 firmware 的故障，原作者最终走到编写 kernel exploit 的安全研究路径。该型号据称在未获得任何 firmware 更新的情况下已 EOL，而设备又是在其他国家购买，退货和获得旧版本 firmware 都很困难。讨论同时映射到家用网络设备依赖封闭 firmware、OpenWrt 兼容性，以及 Claude 等模型对防御性漏洞研究频繁拒答的更广泛争议。",
+    "emoji": "🤦",
+    "sarcastic_question": "Wi‑Fi 7 路由器零更新，漏洞算出厂功能吗？"
+  },
+  "articleSummary": "## 一句话总结\n作者为了修复 TP-Link EAP770 v1 接入点因高通驱动 DMA 缓存一致性 Bug 导致的下载文件损坏，在官方停止维护且系统权限被锁死的情况下，利用 CVE-2022-0185 漏洞编写内核 Exploit 提权，成功关闭了有问题的硬件加速功能。\n\n## 正文\n\n### 买回来的新设备竟然是个\"弃婴\"\n故事始于 2023 年 8 月，作者入手了一台全新的 Wi-Fi 7 接入点 TP-Link EAP770。起初只是偶尔视频缓冲，直到通过 Wi-Fi 同步大文件时，SSH 频繁报出 MAC 错误。作者一度怀疑是 SSH 或 rsync 的问题，甚至写了重试脚本绕过。直到后来使用 Tailscale（基于 WireGuard）传输稳定了，才暂时搁置了疑问。然而，当作者在 2025 年试图更新固件时，才发现自己踩了个大坑：TP-Link 官网只有 v2 版本的固件，客服确认 v1 已经 EOL（End-of-Life），不再提供任何支持。更讽刺的是，Wi-Fi 7 标准在 2024 年 9 月才正式定稿，这台设备连 Wi-Fi 联盟认证都没有，作者实际上买到了一款还没正式长大就被厂商抛弃的\"孤儿\"产品。\n\n### 抓包定位：校验和竟成了帮凶\n到了 2026 年，问题愈发严重。下载 NixOS ISO 时 TLS 报错 `bad record mac`，甚至换用 HTTP/1.1 都无法彻底解决。作者终于决定彻底排查，通过 tcpdump 抓包发现了一个惊人的现象：TCP 段内有连续 64 字节的数据错误，但 TCP 校验和却是正确的。这意味着，数据在传输过程中被篡改，且之后有某个环节重新计算了校验和，让错误的数据\"合法\"通过了。通过有线向无线发送已知数据的对比测试，作者确认损坏只发生在 LAN 到 Wi-Fi 的方向，且总是 64 字节对齐——这正好是 IPQ9574 CPU 的缓存行大小。嫌疑锁定了接入点内部的以太网到 Wi-Fi 桥接路径，特别是高通的 SFE/PPE 硬件加速模块。\n\n### 修复只需两条命令，但厂商不让你改\n定位到问题后，解决方案出奇地简单：只需在 sysfs 里关闭 SFE/PPE 功能即可。\n```bash\necho 0 > /sys/sfe/l2_feature\necho 0 > /sys/sfe/ppe_rfs_feature\n```\n但现实是残酷的。这两条命令需要 root 权限，而 TP-Link 提供的 SSH shell 只有 uid 1，且没有任何 capabilities。系统加固做得相当严密，白名单机制过滤了所有尝试，甚至没有 v1 的固件包可供刷机修改。摆在作者面前的路只有两条：要么花 200 美元买个新的，要么想办法搞定这个被锁死的内核。\n\n### 逼上梁山：手写内核漏洞利用\n既然软的不行，那就来硬的。作者利用 CVE-2022-0185（`legacy_parse_param` 的整数下溢漏洞）配合管道缓冲区操作，构建了一条完整的提权链。由于没有 KASLR，且内核基址可以通过 QEMU 模拟和源码推测找到，攻击路径清晰起来：首先通过堆喷射和溢出篡改管道缓冲区的元数据，泄露内核地址；接着伪造 `pipe_buf_operations` 结构体，利用管道写入实现任意物理地址读写；最后扫描内核 `.data` 段找到 `modprobe_path` 并覆盖它，通过触发 `request_module` 以 root 权限执行任意命令。整个过程如履薄冰，因为 4KB slab 溢出后状态被破坏，每次启动只有一次机会，一旦失败设备就会崩溃重启，一切重头再来。\n\n### 真凶浮现：DMA 缓存一致性 Bug\n成功提权并关闭加速功能后，数据损坏问题消失了。那么，SFE/PPE 到底做错了什么？深入分析高通的 `qca-nss-dp` 驱动源码，作者发现了根本原因：这是一个 DMA 缓存一致性问题。在数据包发送路径上，驱动只清洗了 `skb` 线性数据部分的缓存行，然后标记 `fast_recycled` 将缓冲区回收。当这个缓冲区被再次用于接收数据时，驱动看到 `fast_recycled` 标志，竟然直接跳过了失效操作。问题在于，之前的清洗范围很小，缓冲区其他位置可能还残留着\"脏\"缓存行。当网卡通过 DMA 将新数据写入内存后，CPU 的脏缓存行可能被回写，覆盖了刚接收到的数据。由于 SFE/PPE 硬件加速器会重新计算校验和，这 64 字节的错误数据就带着合法的校验和被发送给了客户端，导致 TLS/SSH 层校验失败。\n\n### AI 辅助调试的讽刺一幕\n文章最后还提到了一个有意思的插曲。在排查 Bug 时，Opus 5.5 表现出色，但在作者开始编写 Exploit 时，Opus 5.5 却频繁触发\"安全审查\"机制，切断会话，哪怕作者只是提及\"本地提权\"。反倒是 Opus 4.8 配合完成了复杂的漏洞利用工作。作者吐槽道，这种一刀切的安全策略阻碍了正当的安全研究，而更先进的 GPT-6 Astra 反而没有这种误报问题。最终，作者通过十七个小时的努力，不仅修好了自己的网络，也为社区揭露了高通驱动中隐藏已久的顽疾。"
+}

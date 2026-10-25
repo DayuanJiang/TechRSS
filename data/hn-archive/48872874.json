@@ -1,0 +1,69 @@
+{
+  "id": 48872874,
+  "by": "saisrirampur",
+  "title": "We scaled PgBouncer to 4x throughput",
+  "url": "https://clickhouse.com/blog/pgbouncer-clickhouse-managed-postgres",
+  "score": 137,
+  "createdAt": 1783784438,
+  "aiSummary": {
+    "chinese_title": "SO_REUSEPORT+peering 让 PgBouncer 吞吐翻 4 倍",
+    "discussion_overview": [
+      {
+        "category": "用内核多路复用+peering 扩 PgBouncer",
+        "summary": "讨论重点是如何在不引入 HAProxy 的情况下，把多个 PgBouncer 实例高效跑起来。做法是用 SO_REUSEPORT 让内核直接把连接分发给多个进程，再通过 peering 机制让实例彼此协调，减少额外的 userspace 转发开销。有人补充这套方式在 Kubernetes 里也很自然，既能在单机上开多个进程，也能跨机器部署，还能应对云厂商维护导致的滚动故障。评论里还直接贴了配置片段，说明大家对落地配置和实际收益都很关心。",
+        "supportid": [
+          "48873105",
+          "48873403",
+          "48873820",
+          "48874217",
+          "48874261",
+          "48873164",
+          "48873824"
+        ]
+      },
+      {
+        "category": "PgBouncer vs Odyssey/pgdog 的替代方案之争",
+        "summary": "另一条线是在 PgBouncer、Odyssey 和 pgdog 之间做选择。有人直接推荐 Odyssey，认为它就是更可扩展的 PgBouncer；也有人说 pgdog 在实际使用里效果很好，而且最初就是为了修补 PgBouncer 的短板、为 horizontal scaling 和 sharding 打基础。作者则表示自己先选了最成熟、最贴近 Postgres 生态的 PgBouncer，因为它已经把 prepared statements 等长期痛点补上了，而且很多客户在 10K+ 连接下也能稳定工作。整体来看，大家并不是否定替代品，而是在权衡成熟度、兼容性和扩展能力。",
+        "supportid": [
+          "48873488",
+          "48873682",
+          "48874193",
+          "48873876",
+          "48874240",
+          "48873867"
+        ]
+      },
+      {
+        "category": "Postgres 连接模型仍需 pooling",
+        "summary": "评论里也回到了 Postgres 为什么到今天还离不开 connection pooling。有人回忆早年就觉得它的连接模型很重，回复则指出现在已经能扛住成千上万连接，但每次新建连接仍有几十毫秒级成本，因为底层要 fork 进程。问题在于很多应用框架并不会认真复用连接，而 serverless 架构又会在短时间内制造大量连接，把数据库推向极限。于是即使 10K+ 连接“能跑”，不少人仍认为几百个连接配合 pooling 才更合理。",
+        "supportid": [
+          "48875651",
+          "48875767",
+          "48873867"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "PgBouncer",
+        "explanation": "Postgres 的连接池/代理，用来复用后台连接、降低频繁建连的开销。"
+      },
+      {
+        "term": "SO_REUSEPORT",
+        "explanation": "Linux 的 socket 选项，允许多个进程监听同一端口，由内核分发新连接。"
+      },
+      {
+        "term": "peering",
+        "explanation": "PgBouncer 实例之间互相发现和协作的机制，用于多实例部署时的连接协调。"
+      },
+      {
+        "term": "connection pooling",
+        "explanation": "复用少量数据库连接来承载大量请求，避免频繁建连带来的性能损耗。"
+      }
+    ],
+    "context": "这篇讨论围绕一篇介绍如何把 PgBouncer（Postgres 连接池/代理）吞吐提升 4 倍的文章展开。核心做法是用 SO_REUSEPORT（Linux socket 选项）让多个进程共享同一监听端口，再借助 peering 机制协调这些实例，而不是像 HAProxy 那样再多走一层 userspace 转发。评论区还把 Odyssey（一个可扩展的 PgBouncer 替代方案）和 pgdog（面向 Postgres 代理与水平扩展的项目）拉进来比较，说明这一类工具的竞争点主要在成熟度、可扩展性和是否支持更复杂的连接管理。背景上，这也连到 Postgres 长期以来的 per-connection 成本、serverless 场景下的连接风暴，以及为什么很多系统最终还是要依赖 connection pooling。",
+    "emoji": "🚀",
+    "sarcastic_question": "四倍吞吐后，连接风暴就算彻底驯服了？"
+  },
+  "articleSummary": "## 一句话总结\n通过 `so_reuseport` 部署多进程 PgBouncer 集群，并利用进程间 Peering 解决请求路由问题，成功将连接池吞吐量提升了 4 倍，榨干了多核服务器的性能。\n\n### 单线程模型是 PgBouncer 的天然天花板\nPgBouncer 的设计非常简单，它就是单线程的。这意味着无论你的服务器有多少个 CPU 核心，它只能死死占用一个。在 AWS `c7i.4xlarge` 这种 16 vCPU 的机器上，剩下的 15 个核只能在那儿摸鱼。一旦并发量上来，瓶颈根本不在后端的 Postgres，而是卡在这个单线程的连接池上。你明明买了法拉利的引擎，却只装了个拖拉机的变速箱，这谁受得了？\n\n### 用 SO_REUSEPORT 组建多进程舰队\n既然单进程跑不满，那最直接的思路就是跑多个进程。ClickHouse Managed Postgres 的做法是，根据机器的核心数启动对应数量的 PgBouncer 进程。这里有个巧妙的设计：所有进程都绑定同一个端口，并开启 `so_reuseport`。这样内核会自动把进来的连接分发给不同的进程。对客户端来说，它们连的还是那个老端口，根本不知道背后其实有一整支舰队在服务。\n\n### 请求错位带来的取消难题\n但多进程架构引入了一个棘手的问题：Postgres 的取消请求。当你想取消一个查询时，客户端会发一个携带 cancel key 的新连接。因为内核负载均衡是随机的，这个取消请求很可能被分发给进程 B，但持有会话的其实是进程 A。结果就是，进程 B 收到请求一脸懵逼，根本不知道这个 key 对应谁，取消操作也就失败了。这在生产环境里是不可接受的。\n\n### 进程间 Peering 完美补位\n解决办法就是引入 Peering（对等互联）机制。让这些 PgBouncer 进程互相“认识”，形成一个集群。如果一个进程收到了不属于它的取消请求，它不会直接丢弃，而是转发给真正持有该会话的进程。这样一来，无论请求落在哪个进程上，最终都能准确找到目标。配合 Transaction Pooling 模式，事务一提交连接就回池，再加上把连接数预算均摊到各个进程，整个集群既安全又高效。\n\n### 压测数据：4 倍吞吐量的实锤\n光说不练假把式，作者在 AWS 上跑了 `pgbench` 进行对比。单进程模式下，随着并发从 8 加到 256，吞吐量在 87k TPS 左右就触顶了，甚至开始下降。而 16 进程的舰队模式，一路飙升到了 336k TPS，整整提升了 4 倍。更有意思的是，单进程模式下的机器整体 CPU 利用率只有 10% 左右，而舰队模式能跑到 50% 以上。这说明单进程确实浪费了绝大部分硬件资源。\n\n### 什么时候该上这套方案？\n当然，多进程也不是万能药。在并发连接数很少（比如个位数）的情况下，单进程因为少了调度开销，性能反而还略快一点。但一旦进入高并发场景，单核就成了那堵撞不破的墙。如果你的监控显示 PgBouncer 的 CPU 已经打满，而 Postgres 还很闲，那就是时候考虑这套方案了。把连接池从瓶颈变回透明的管道，这才是它该有的样子。"
+}

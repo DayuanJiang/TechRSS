@@ -1,0 +1,110 @@
+{
+  "id": 47922957,
+  "by": "varun_ch",
+  "title": "The Woes of Sanitizing SVGs",
+  "url": "https://muffin.ink/blog/scratch-svg-sanitization/",
+  "score": 233,
+  "createdAt": 1777305041,
+  "aiSummary": {
+    "chinese_title": "SVG 清洗难题：XSS、CSP 与安全子集",
+    "discussion_overview": [
+      {
+        "category": "CSP/iframe sandbox 才是根治",
+        "summary": "不少人认为，真正可靠的方案不是继续补 sanitizer，而是直接用 CSP 和 sandbox 把能力关死。有人展示了在 iframe 的 srcdoc 里用 <meta http-equiv='Content-Security-Policy'> 内联设置策略，即使内容来自不可信输入，现代浏览器也会在 meta 加载后把它当成不可被脚本修改的约束。还有人补充，CSP 只能越加越严，和 HTTP 头一起使用时 <meta> 也只能收紧不能放宽。进一步的思路是结合 Sec-Fetch-* 头限制资源在错误上下文里被当作 document/iframe 载入，不过这类做法还要考虑 service worker 和 Content-Disposition 等边界情况。",
+        "supportid": [
+          "47923915",
+          "47924328",
+          "47925870",
+          "47925964",
+          "47926028",
+          "47924317"
+        ]
+      },
+      {
+        "category": "安全子集/新格式替代完整 SVG",
+        "summary": "另一派主张，不要把完整 SVG 直接暴露给终端用户，而是定义一个静态、受限的子集，只保留 paths、fills 等大多数真实场景需要的元素。评论里提到可以把图像当成 img 里的 SVG 那样处理：禁脚本、禁外链、把 CSS 作用域锁在 SVG 内部，这基本已经接近浏览器对 IMG-embedded SVG 的行为。有人顺势提议做成新格式或新规范，比如 tinyVG、SVG-ES，甚至把危险能力做成显式开关或版本位，像 Excel 把危险功能藏在开关后面一样。也有人补充 SVG Tiny 之类的既有 profile 已经存在，只是生态和标准化不够统一。",
+        "supportid": [
+          "47923270",
+          "47923659",
+          "47923710",
+          "47923786",
+          "47923816",
+          "47923702",
+          "47923802",
+          "47925280",
+          "47923765",
+          "47926137",
+          "47926208"
+        ]
+      },
+      {
+        "category": "黑名单/正则不可靠，SVG 攻击面太广",
+        "summary": "很多评论把重点放在一个老问题上：SVG 的危险面远不止 <script>，而是遍布 parser、属性和值的各个角落。名单里包括 image、feImage、on* 事件、foreignObject、DTD/namespace tricks，以及会发起外部请求的 CSS 或 presentational attributes；只靠黑名单或正则删除 script tag 远远不够。有人强调，HTML5 parser 最终会识别出真正的 script 节点，所以“看起来不像脚本”的绕法并不稀奇。也有人直接指出 SVG 本来就是 markup language，不是纯图片，所以它能像 HTML 一样危险；更务实的做法是只接受白名单里的节点和属性，或者把上传 SVG 重新生成成驯化版而不是原样信任。",
+        "supportid": [
+          "47925925",
+          "47925832",
+          "47924502",
+          "47924361",
+          "47923593",
+          "47923930",
+          "47926912",
+          "47924792"
+        ]
+      },
+      {
+        "category": "安全和功能的权衡",
+        "summary": "也有人提醒，sanitize 之后最先丢掉的往往是动画和动态交互，而这恰好是设计和产品常用的能力。有人提到 SMIL animation、服务器端动态改 fill/color，以及 drop shadow 等在真实工具链里都很常见，删太狠会让 SVG 失去可用性。Phoenix LiveView 场景里，把 SVG 放进 img 标签后就没法再按事件动态更新路径和颜色；而 Scratch 之类平台则会先把 SVG inline 进 DOM 里测 bounding box，再尽快移除，说明很多流程确实需要短暂可访问的 SVG。这个分歧本质上是在安全边界和编辑体验之间找平衡。",
+        "supportid": [
+          "47923632",
+          "47926113",
+          "47924968",
+          "47925019",
+          "47925117",
+          "47923593",
+          "47923516",
+          "47924902"
+        ]
+      },
+      {
+        "category": "现成 API 只能部分缓解",
+        "summary": "有人提到 HTML Sanitizer API 默认允许一小部分 SVG，但它对 CSS 几乎无能为力，因为默认直接禁掉 style。也有人说 DOMPurify 这类库为了体积和通用性，不会替你把 SVG 的所有危险解析规则都做成完整 preset。于是很多问题表面上像 sanitizer 该怎么写，实际上更像浏览器层是否能提供一个默认安全模式。在这一点上，CSP 被反复当成比事后清洗更靠谱的底线。",
+        "supportid": [
+          "47924513",
+          "47924773",
+          "47924409",
+          "47923915"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "CSP（Content Security Policy）",
+        "explanation": "浏览器级安全策略，用来限制脚本执行、资源加载和可嵌入内容；在这里被视为比事后清洗更可靠的防线。"
+      },
+      {
+        "term": "srcdoc",
+        "explanation": "iframe 的内联文档属性，可直接把一段 HTML 作为页面内容加载；常和 sandbox、CSP 一起用来关住不可信内容。"
+      },
+      {
+        "term": "Sec-Fetch-Dest / Fetch Metadata",
+        "explanation": "浏览器发送的请求元数据头，用来告诉服务器这次请求是 document、iframe 还是 image 等上下文，便于按用途拒绝危险载入。"
+      },
+      {
+        "term": "SVG Tiny",
+        "explanation": "SVG 的受限 profile，目标是保留常见矢量绘图能力，同时去掉一部分动态和高风险特性。"
+      },
+      {
+        "term": "tinyVG",
+        "explanation": "一个更轻量的新矢量格式提案，主张用更小的能力集合替代完整 SVG。"
+      },
+      {
+        "term": "SMIL",
+        "explanation": "SVG 的动画规范，支持在图形内部定义时间轴动画；常被认为是 sanitize 后容易丢失的功能。"
+      }
+    ],
+    "context": "这篇讨论围绕一篇讲 SVG sanitizer 困难的文章展开，背景与 Scratch（一个面向儿童的编程教育平台）在 2019 年发现的 SVG XSS 问题有关：上传的 SVG 里如果含有 <script>，加载时就可能执行。SVG（可缩放矢量图形）虽然常被当作图片格式，但本质上是 XML/markup，支持脚本、外部资源、事件处理器和嵌入 HTML 的 foreignObject，所以防护面比普通 PNG/JPG 复杂得多。评论里反复比较了几种防线：浏览器级 CSP（Content Security Policy，内容安全策略）、iframe sandbox、img 方式加载 SVG，以及 Fetch Metadata Request Headers 对请求场景的限制。也有人把问题放到更高层，认为与其在用户空间不断补洞，不如定义一个更安全的 SVG 子集或新格式，让常见的静态图形能默认安全渲染。",
+    "emoji": "🧯",
+    "sarcastic_question": "把SVG脚本一删，XSS就真的自动消失了吗？"
+  },
+  "articleSummary": "### 一句话总结\nScratch 试图通过不断修补清洗逻辑来防御用户上传的恶意 SVG，但历史证明这种“打地鼠”式的防御注定失败，因为浏览器解析器的攻击面远超人工维护的黑名单。\n\n### 根本矛盾：为了功能必须引入不安全\nScratch 之所以陷入这个泥潭，核心原因在于它的架构设计。为了更精确地测量 SVG 的边界框，Scratch 必须将用户上传的 SVG 解析并直接挂载到主文档的 DOM 树中。不管这个 SVG 在页面里停留的时间有多短，只要它进入了 DOM，浏览器就会按照标准去解析它。这意味着攻击者控制的代码实际上就在你的上下文里运行了。为了修补这个架构上的“原罪”，Scratch 只能构建越来越复杂的清洗基础设施，试图在解析前把危险部分剔除。\n\n### 2019-2020：正则表达式与 DOMPurify 的溃败\n最早的防御手段非常原始，仅仅是用正则表达式删除 `<script>` 标签。结果显而易见，攻击者利用大小写绕过（如 `<SCRIPT>`）或者使用 `onerror` 事件处理器轻松绕过。到了 2020 年，Scratch 引入了 DOMPurify 这个业界标准的库来清洗 HTML。这确实挡住了直接的脚本注入，但也仅仅是挡住了第一波攻势。DOMPurify 的设计目标并不是阻止所有网络请求，它只管脚本执行，不管数据外泄，这为后续的漏洞埋下了伏笔。\n\n### 2022-2023：防住了脚本，没防住数据外泄\n当脚本注入被堵死后，攻击者的注意力转向了 HTTP 请求泄露。2022 年发现，SVG 中的 `<image>` 标签可以通过 `href` 属性发起外部请求，直接记录加载者的 IP 地址。虽然 DOMPurify 不管这事，但 Scratch 通过添加 Hook 强行删除了远程 URL。然而好景不长，2023 年又发现 CSS 里的 `@import` 也能干同样的事。Scratch 只好又集成了一个 JS 写的 CSS 解析器，专门用来剥离样式表里的危险语句。\n\n### 2025-2026：CSS 解析器的噩梦\n接下来的几年变成了 CSS 特性的“猫鼠游戏”。攻击者发现 `url()` 函数可以藏在 CSS 变量里，或者用转义字符（如 `\\75\\72\\6c`）来绕过检测。Scratch 的应对方案是不断增加清洗代码的复杂度，去处理多重 URL、转义序列和变量引用。代码变得越来越臃肿，维护成本直线上升，但依然无法覆盖所有边缘情况。这种修补方式本质上是在维护一个永远赶不上浏览器标准更新的黑名单。\n\n### 2026：样式污染带来的新攻击维度\n除了数据泄露，SVG 的样式隔离问题也开始爆发。攻击者发现利用极长的 `transition` 时间配合强制浏览器重绘的 CSS 技巧，可以让 SVG 里的样式“泄漏”到整个 Scratch 页面。这不仅仅是恶作剧，攻击者可以隐藏举报按钮，或者把点赞按钮放大到覆盖全屏进行诱导点击，甚至伪造官方警告进行钓鱼。这种攻击不需要执行脚本，仅靠 CSS 的渲染机制就能破坏页面 UI，而且目前还没有被修复。\n\n### 未来的绝望：永远追不上的浏览器标准\n最让人绝望的是，这种防御注定是滞后的。作者披露了 `image-set()` 的漏洞，甚至预测了未来 CSS 标准中 `src()` 和 `image()` 函数带来的潜在风险。目前的清洗逻辑只针对现有的已知特性，而浏览器标准在不断进化。只要 Scratch 还坚持把用户内容直接挂载到 DOM 里，这种“发现漏洞 -> 修补代码 -> 等待下一个漏洞”的循环就永远不会结束。"
+}

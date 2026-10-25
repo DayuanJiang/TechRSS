@@ -1,0 +1,171 @@
+{
+  "id": 48476466,
+  "by": "levkk",
+  "title": "PgDog is funded and coming to a database near you",
+  "url": "https://pgdog.dev/blog/our-funding-announcement",
+  "score": 380,
+  "createdAt": 1781101262,
+  "aiSummary": {
+    "chinese_title": "PgDog 获 550 万美元融资：PostgreSQL 分片、HA 与升级痛点",
+    "discussion_overview": [
+      {
+        "category": "HA 与 major version upgrade 痛点",
+        "summary": "很多人把 Postgres 的核心问题定义为高可用和 major version upgrade，而不是单纯的吞吐不够。有人说单个 cluster 扛住很高 TPS 并不难，但 primary 挂掉时人工 failover、替换 standby、同步 sequence 的流程非常脆弱。评论里多次提到 logical replication、CloudNativePG（一个 Kubernetes 原生 Postgres 管理工具）和 RDS blue green deployment（AWS 的蓝绿部署）能把停机压到几秒到一分钟左右，但仍然很依赖手工步骤。争论的焦点是：Postgres 缺的并不是能升级，而是一个足够顺手、开源、通用的切换方案。",
+        "supportid": [
+          "48479463",
+          "48477318",
+          "48477583",
+          "48477774",
+          "48478747",
+          "48477897",
+          "48478502",
+          "48477435",
+          "48477549",
+          "48477844",
+          "48478092",
+          "48478354"
+        ]
+      },
+      {
+        "category": "分片与横向扩展",
+        "summary": "有用户在问能否把一个 4TB 单库拆成多个约 500GB 节点，再用 proxy 统一接入。关于 20TB 是否算大争论很大：有人认为对多数业务已经巨大，也有人说对 Postgres 来说这未必需要 sharding，关键要看 working set、IOPS 和数据冷热分布。评论还提到单实例写入受 WALWriter 单线程和 I/O 天花板限制，连接本身也会吃 CPU 和 RAM，所以水平扩展和分片不是为了好看，而是在绕开单机瓶颈。产品方则说明 PgDog 支持 schema-based sharding，面向的就是已经需要拆库的部署。",
+        "supportid": [
+          "48477262",
+          "48478921",
+          "48477382",
+          "48478957",
+          "48477967",
+          "48477598",
+          "48478147",
+          "48477771",
+          "48478132",
+          "48477722",
+          "48477666",
+          "48476719",
+          "48476827",
+          "48477222",
+          "48477902",
+          "48477949",
+          "48479178",
+          "48479237"
+        ]
+      },
+      {
+        "category": "与 PgBouncer / Citus / Aurora 的对比",
+        "summary": "评论经常把 PgDog 放到现有产品谱系里比：它不是 extension，而是前置 proxy，所以能直接部署，不必等 upstream 或云厂商支持。和 PgBouncer（PostgreSQL 连接池器）相比，它不仅做连接复用，还承担读负载均衡和 sharding；和 Citus（PostgreSQL 分布式扩展）比，作者更强调 OLTP，而不是 Citus 擅长的复杂 OLAP 查询。也有人把它和 Mongo 的客户端拓扑感知、Aurora（AWS 托管数据库）的 failover 体验、PlanetScale（托管 MySQL 平台）做类比，核心都在于谁来处理拓扑变化和路由逻辑。整体上大家认可把 coordinator（协调节点）从单机里解放出来是卖点，但也承认这会比单纯池化复杂得多。",
+        "supportid": [
+          "48476903",
+          "48477239",
+          "48479207",
+          "48479085",
+          "48479238",
+          "48478902",
+          "48478342",
+          "48479137",
+          "48477025",
+          "48477243"
+        ]
+      },
+      {
+        "category": "连接池与客户端兼容坑",
+        "summary": "不少真实用户分享了 PgBouncer 带来的坑：长事务会把 pool 占满，SQLAlchemy（Python ORM）的客户端池可能继续拿着已经死掉的连接，某些 SET 和 prepared statements 还得绕开池化器。还有人提到 transaction pooling 场景下 LISTEN/NOTIFY 一直是个麻烦点，而 PgDog 被夸在这方面做得更顺。也有人直言自己在低流量时几乎感受不到 PgBouncer 的收益，但当 Postgres 连接数上去时，每个 connection 都是进程，CPU 和 RAM 迟早会被吃光。这个主题的共识是：在大规模或多租户环境里，连接池不是可选项，而是基础设施。",
+        "supportid": [
+          "48478430",
+          "48478596",
+          "48477525",
+          "48477192",
+          "48476917",
+          "48477763",
+          "48476883"
+        ]
+      },
+      {
+        "category": "一致性与多主的硬约束",
+        "summary": "有人直接问 PgDog 能不能让 PostgreSQL 像标准 PG 一样工作，回复则很明确：跨 shard write 需要 2PC（两阶段提交），reads 也只能做到 eventual consistency。随后讨论转向 multi-master（多主复制）为什么一直难做：commit/replication lag、长查询保留历史版本、以及 synchronous replication 带来的资源消耗，都可能把整个 cluster 拖慢。评论普遍认为这是一组充满 trade-off 的问题，不是简单补个功能就能解决。商业 RDBMS 以及 MySQL 的 Galera cluster（MySQL 的多主集群方案）都被拿来做对照。",
+        "supportid": [
+          "48476815",
+          "48476871",
+          "48476878",
+          "48478282",
+          "48478321",
+          "48479460",
+          "48478562",
+          "48478734"
+        ]
+      },
+      {
+        "category": "生产口碑与落地案例",
+        "summary": "已经在生产里用的人给出不少正面反馈：有人说从 PgBouncer 迁到 PgDog 后没有问题，也有人认为它在连接代理扩容、Aurora failover 和 LISTEN/NOTIFY 上都很实用。更细的落地案例里，用户用自建 controller 自动生成配置、批量 reload，做到了 2-3 秒级的无连接中断切换。另一些人甚至表示跑了几个月都很稳定，说明这个方向不只是概念，而是有真实部署价值。团队也顺势提到正在做更开箱即用的 enterprise edition。",
+        "supportid": [
+          "48477525",
+          "48477192",
+          "48476917",
+          "48476883",
+          "48478994",
+          "48477177",
+          "48479050"
+        ]
+      },
+      {
+        "category": "团队、资金与安全疑虑",
+        "summary": "融资和团队规模也被拿来反复讨论。有人担心 3 个工程师加上 550 万美元 runway 很难同时覆盖 enterprise sales、support 和 QA，毕竟数据库代理一旦出问题，客户业务会直接停摆。支持者则认为团队并不是随便三个人，而是有多年 database 经验，而且融资至少给了他们扩编和继续打磨产品的时间。还有人顺手挑了一个看起来很随意的 commit，担心 supply-chain attack（供应链攻击）风险，团队则回应说每一行代码都会 review，而且只有内部员工能 merge；也有人提醒最好把适用场景讲清楚，少把 Postgres 包装成银弹。",
+        "supportid": [
+          "48479268",
+          "48479373",
+          "48477284",
+          "48478624",
+          "48477531",
+          "48477895",
+          "48478054",
+          "48479301",
+          "48479347",
+          "48478486",
+          "48478939"
+        ]
+      },
+      {
+        "category": "文档、部署与多租户配置门槛",
+        "summary": "早期用户更关心怎么把它接进生产：有人希望除了 Helm 和 Docker 之外还能有直接可跑的 binary、brew/apt/crates.io（Rust 包生态）发布包和更完整的 GitHub release。Kubernetes 场景里，tenant-per-schema、多数据库多租户和频繁变更配置会让 pgdog.toml / users.toml 的生成与重载变得很别扭。有人给出用 controller、External Secrets Operator（Kubernetes 密钥同步工具）和 watcher sidecar 的办法，把配置刷新做成原子切换；也有人提到 open-source 版的 passthrough auth 在 SCRAM 下还有已知问题。团队的回应是 enterprise edition 正在做开箱即用，但开源版的运维体验还会继续改善。",
+        "supportid": [
+          "48476970",
+          "48477391",
+          "48477927",
+          "48477176",
+          "48477439",
+          "48476892",
+          "48477177"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "sharding",
+        "explanation": "把数据拆到多个 Postgres 实例上，靠路由层做水平扩展。"
+      },
+      {
+        "term": "logical replication",
+        "explanation": "按变更同步数据而不是整库文件复制，常用于升级和蓝绿切换。"
+      },
+      {
+        "term": "PgBouncer",
+        "explanation": "PostgreSQL 的连接池/事务池代理，用来复用连接、减轻后端开销。"
+      },
+      {
+        "term": "multi-master",
+        "explanation": "多个节点都可写的复制架构，能提高可用性但一致性更复杂。"
+      },
+      {
+        "term": "Citus",
+        "explanation": "PostgreSQL 的分布式扩展，提供分片与分布式查询能力。"
+      },
+      {
+        "term": "OLTP/OLAP",
+        "explanation": "事务型/分析型工作负载的两类典型场景，优化目标不同。"
+      }
+    ],
+    "context": "这篇帖子讲的是 PgDog（一个用 Rust 写的 PostgreSQL 前置 proxy），它同时做 sharding、connection pooling、load balancing 和故障切换。评论把它放进 Postgres 真实运维痛点里讨论，尤其是 self-managed 场景下的 HA、major version upgrade、长事务、以及大规模连接管理。有人用 logical replication、CloudNativePG（一个 Kubernetes 原生 Postgres 管理工具）和 RDS blue green deployment（AWS 的蓝绿部署）来说明，很多升级和迁移其实靠切换流程而不是单点功能。帖子还提到它拿到 550 万美元融资，投资方包括 Basis Set、YC（Y Combinator 创业孵化器）和 Pioneer Fund，因此评论也延伸到 enterprise sales、QA、文档和供应链安全。",
+    "emoji": "🤔",
+    "sarcastic_question": "三个人顺手把分片、HA、升级都包圆了？"
+  },
+  "articleSummary": "## 一句话总结\nPgDog 作为一个高性能的 PostgreSQL 代理，通过在数据库前增加一层无依赖的分片层，解决了 Postgres 的水平扩展难题，让单库架构也能轻松应对百万级 QPS 和百 TB 级数据。\n\n### Postgres 的唯一短板就是扩展性\n作者的观点很直接：Postgres 几乎是完美的数据库，MongoDB 或 DynamoDB 之所以存在，纯粹是因为 Postgres 在扩展性上不够给力。如果能搞定 Postgres 的水平扩展，让它能轻松处理 100 TB 的表和每秒 100 万次查询，你根本不需要其他数据库。这也是他们构建 PgDog 的初衷——不换数据库，只是在它前面加个代理，把“单机”变成“集群”。\n\n### 真实战场磨砺出来的技术方案\n这不是一个拍脑袋想出来的 Side Project，而是从 Instacart 这种大规模生产环境里长出来的经验。作者曾在 Instacart 负责数据库架构，经历过 2020 年 4 月业务量暴增 5 倍的极限挑战。当时他们面临每秒数十万个生鲜订单的写入压力，通过在 RDS、Aurora 和 EC2 上手动分片，用第一性原理解决了实际问题。现在，这套经过实战验证的技术被封装成了 PgDog。\n\n### 部署简单，但性能强悍\nPgDog 的核心设计哲学是“无侵入”和“高性能”。你可以把它部署在任何地方——本地机房、云账号甚至笔记本上。使用方式极其简单：拉取 Docker 镜像，修改 `DATABASE_URL`，剩下的交给 PgDog。它没有隐藏的 Serverless 成本，也不依赖复杂的基础设施，只要你提供 CPU，它的多线程代码就能把性能吃干抹净。\n\n### 生产环境已经验证了它的能力\n虽然是个初创项目，但 PgDog 的数据相当能打。目前它已经在生产环境中处理了超过 200 万 QPS，已知管理的分片数据量超过 20 TB。开源社区的活跃度也佐证了它的可靠性：GitHub 上的 Docker 拉取量超过了 140 万次，而且团队保持着每周四发版的节奏，迭代非常稳定。\n\n### 拿到融资，准备长期深耕\n对于开发者来说，最怕用的工具突然停更。PgDog 是一家只有三个人的小公司，但他们刚从 Basis Set、YC 和 Pioneer Fund 等机构拿到了 550 万美元融资。这意味着他们有足够的跑道去长期维护这个项目。作者强调这并不是一次业务转型，Scaling Postgres 是他们唯一且持续的目标。如果你在 AWS 上有更复杂的需求，他们还提供带 SLA 支持的企业版。"
+}

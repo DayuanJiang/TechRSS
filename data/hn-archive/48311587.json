@@ -1,0 +1,62 @@
+{
+  "id": 48311587,
+  "by": "speckx",
+  "title": "Tracing HTTP Requests with Go's net/HTTP/httptrace",
+  "url": "https://blainsmith.com/articles/httptrace-with-go/",
+  "score": 168,
+  "createdAt": 1780307440,
+  "aiSummary": {
+    "chinese_title": "Go 的 net/http/httptrace：HTTP 请求追踪与连接复用",
+    "discussion_overview": [
+      {
+        "category": "Go 标准库与平台完整性",
+        "summary": "不少评论把这篇文章当成 Go 生态优势的例子：不是只看语法，而是看从开发到调试的整套体验。有人认为 C# 和 .NET 也有类似感觉，核心平台本身就能提供足够完整的库和工具，让很多应用不必很快转向第三方依赖。也有人补充说，虽然 NuGet 包管理并不总是直观，但关键点在于主平台能覆盖大多数常见需求，减少还没开始就要自己造轮子。",
+        "supportid": [
+          "48355961",
+          "48356512",
+          "48357069",
+          "48357217"
+        ]
+      },
+      {
+        "category": "httptrace 的实际价值：连接复用与性能排查",
+        "summary": "讨论里最实用的部分是连接复用监控，因为做 benchmark、比较 client 库或排查本地/docker 环境问题时，这一点会直接影响结果。有人指出如果连接池没用对，即使目标服务就在本机，也可能出现大量连接建立开销，甚至触发 file descriptor exhaustion。还有人分享自己曾手写过一个嵌入式 Connection 结构体来回调事件，但也承认对于更完整的请求阶段追踪，httptrace 可能更省事。作者则说明这个能力正是 probes.dev（一个以 tracing 为核心的服务）准备上线时非常有用的功能。",
+        "supportid": [
+          "48359126",
+          "48355695",
+          "48356493",
+          "48356394"
+        ]
+      },
+      {
+        "category": "Go 并发原语带来的开发吸引力",
+        "summary": "另一条评论线索是对 Go 本身的好感，尤其来自并发模型的直接体验。有人说刚接触 Go 不久，就在 concurrency 章节里被 goroutine 和 channel 吸引，感觉像重新获得了写 Ruby 时那种顺手和愉快。对比 Node 里折腾 websockets 的经历后，这种内建并发原语显得更简单，也更适合网络相关的代码。",
+        "supportid": [
+          "48363200"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "httptrace",
+        "explanation": "Go 的 net/http 子包，用来监听 HTTP client 请求生命周期中的各类事件，例如 DNS、connect、TLS、写请求和收到首字节等。"
+      },
+      {
+        "term": "connection reuse / connection pooling",
+        "explanation": "复用已有 TCP 连接而不是每次新建连接的机制，既影响性能，也会影响 benchmark 的可信度。"
+      },
+      {
+        "term": "goroutine",
+        "explanation": "Go 的轻量级并发执行单元，通常比传统线程更便宜，适合高并发任务。"
+      },
+      {
+        "term": "channel",
+        "explanation": "Go 用于在 goroutine 之间传递数据和同步的并发原语。"
+      }
+    ],
+    "context": "这篇帖子围绕 Go 标准库里的 net/http/httptrace（用于跟踪 HTTP 客户端请求各阶段事件的包）展开，重点是如何观察连接建立、复用和请求生命周期信号。评论里反复强调 connection reuse（连接复用）对 benchmark、客户端库对比和本地/docker 压测的重要性，因为连接池用错会扭曲性能结果，甚至导致 file descriptor exhaustion（文件描述符耗尽）。作者补充说，这个能力会用于 probes.dev（一个围绕 tracing 的服务）上线准备。讨论还顺带比较了 Go 与 C#/.NET（微软的语言与运行时平台）的“标准库够不够完整”，以及 Go 的 goroutine 和 channel（并发原语）为什么会让人觉得写网络程序更顺手。",
+    "emoji": "🛠",
+    "sarcastic_question": "不看连接复用就敢做 benchmark？"
+  },
+  "articleSummary": "## 一句话总结\nGo 标准库里的 `net/http/httptrace` 通过将 Trace 绑定在 `context.Context` 上，实现了零侵入、可组合的 HTTP 请求全链路监控，从 DNS 解析到 TLS 握手再到首字节返回，一切尽在掌握。\n\n### 为什么用 Context 而不是接口？\n\n按照常规思路，做追踪通常会在 `http.Client` 里加个 `Tracer` 接口，但这在 Go 里行不通。Go 的设计很巧妙，它不依赖接口注入，而是利用 `context.Context` 作为载体。你通过 `httptrace.WithClientTrace` 把一个包含回调函数的 `ClientTrace` 结构体塞进 Context，Transport 层会在关键时刻通过 `httptrace.ContextClientTrace` 把它取出来执行。这种设计最大的好处是天然支持透传：只要你的中间件老老实实传递 Context，追踪信息就能一路跟随，完全不需要修改 `http.Client` 的定义。而且，因为每个请求都有自己的 Context，同一个 Client 发起的并发请求可以携带完全不同的 Trace，互不干扰。\n\n### 像 curl 一样拆解请求耗时\n\n理解了原理，我们可以先写个类似 `curl --trace` 的 CLI 工具来练手。核心思路很简单：定义一个结构体记录各个阶段的时间戳，然后在 `ClientTrace` 的各个 Hook（如 `DNSStart`、`TLSHandshakeDone`）里调用 `time.Now()`。请求结束后，把这些时间戳相减，就能得到 DNS 查询、TCP 连接、TLS 握手、服务器处理以及内容传输各自消耗的时间。这比单纯看总耗时要有用得多，一眼就能看出瓶颈是在网络握手还是后端逻辑。而且这不需要任何第三方依赖，也不需要搞代理，标准库直接开箱即用。\n\n### 封装一个自动追踪的 RoundTripper\n\n写个一次性的 CLI 虽然爽，但在实际项目里，我们更希望给 `http.Client` 配一个自动追踪的 Transport。这就要用到 `http.RoundTripper` 接口了。我们可以封装一个 `TracingTransport`，在 `RoundTrip` 方法里，先基于当前请求的 Context 创建并挂载 Trace，然后调用底层 Transport 发起请求。这里有个细节要注意：如果请求的 Context 里已经挂了 Trace，再次调用 `WithClientTrace` 不会覆盖旧的，而是组合执行。这意味着你的通用追踪逻辑不会破坏业务代码里可能已经埋下的点，两者可以共存。\n\n### 别忘了 Body 关闭时的耗时\n\n用 `RoundTripper` 做追踪有个坑：`RoundTrip` 方法返回的时候，只是读完了 Header，还没读 Body。如果你在 `RoundTrip` 结束时就记录结束时间，算出来的只是 TTFB（Time to First Byte），漏掉了下载内容的时间。要解决这个问题，得把返回的 `res.Body` 包一层，在 `Close` 方法里记录结束时间。这样，只有当调用方真正读完数据并关闭 Body 时，整个请求的生命周期才算结束，统计出来的总耗时才是准确的。\n\n### 利用 GotConn 监控连接复用\n\n除了看耗时，`httptrace` 还能帮你查连接池的毛病。`GotConn` 这个 Hook 会传回一个 `GotConnInfo`，里面有个 `Reused` 字段。如果你发现对同一个域名发请求，这个字段一直是 `false`，那说明连接复用失效了。这通常是因为你没用全局的 `http.Client`，或者是忘了关闭 Response Body 导致连接没放回池子里。以前这种问题得抓包才能看出来，现在用 `httptrace` 几行代码就能在日志里现原形。"
+}

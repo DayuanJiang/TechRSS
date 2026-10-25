@@ -1,0 +1,93 @@
+{
+  "id": 50077225,
+  "by": "aragonite",
+  "title": "Yet another way to invoke functions without parentheses",
+  "url": "https://blog.ikaes.de/yet-another-way-to-invoke-functions-without-parentheses/",
+  "score": 243,
+  "createdAt": 1792147225,
+  "aiSummary": {
+    "chinese_title": "借 Error stack 与隐式转换实现 JavaScript 无括号调用函数",
+    "discussion_overview": [
+      {
+        "category": "JavaScript 黑魔法的机制、魅力与风险",
+        "summary": "核心技巧通过改写 Object.prototype.message、Array.prototype.toString 和 Error.prepareStackTrace，再把读取到的 x.stack 赋给 x.valueOf。末尾的一元 + 会触发对象向数字的隐式转换，进而调用 valueOf；由于 valueOf 已被替换为动态构造出的函数，函数就在没有显式括号的情况下执行。评论者既赞叹 JavaScript 的 prototype、隐式转换和错误栈钩子能组合出惊人的效果，也认为这类机制晦涩、可怕且不适合生产代码。尤其是修改全局 prototype 与依赖 valueOf 的转换行为，容易制造难以追踪的副作用，并常与 CVE 安全漏洞有关。",
+        "supportid": [
+          "50116732",
+          "50116761",
+          "50116841",
+          "50116785",
+          "50117387"
+        ]
+      },
+      {
+        "category": "浏览器兼容性：依赖 V8 私有能力",
+        "summary": "该技巧并非标准 JavaScript 的可移植特性，因为它依赖 Error.prepareStackTrace。评论指出此 API 在文档中属于 optional API，目前实质上由 V8 实现，因此 Firefox 不会按预期工作。有人将此视为 Chrome 先实现、再期待其他浏览器跟进的典型模式。也就是说，代码即使在 Chrome 或 Node.js 中成功，也不能据此假定跨浏览器可用。",
+        "supportid": [
+          "50117115",
+          "50117339"
+        ]
+      },
+      {
+        "category": "函数应用顺序与 pipe/postfix 记法",
+        "summary": "有评论希望将函数写在参数之后，以便将数据流按从左到右的阅读顺序呈现，而不是阅读 f(g(h(x))) 时从内层向外追踪。其他人指出，若按实际求值讨论，函数引用本身也可能需要先求出，例如 foo.bar(x) 会先读取 foo.bar；所以“看起来的顺序”不等于完整的执行顺序。Mathematica 的 x // f、Erlang/F#/Haskell 的 |> 被举为更实用的 postfix 或 pipe 写法，尤其适合单参数函数、currying 或连续变换。传统 f(x) 则被解释为源于数学中“x 的 f”式属性描述，而非过程式流水线。",
+        "supportid": [
+          "50117797",
+          "50118295",
+          "50117932",
+          "50118092",
+          "50118195",
+          "50117883",
+          "50118182",
+          "50118030",
+          "50117999"
+        ]
+      },
+      {
+        "category": "代码怪诞美学与怀旧式调侃",
+        "summary": "不少评论把这段代码视为有趣的语言恶作剧，而不是值得模仿的编程风格，并联想到 Unix/C 语法笑话、Perl 的乱码刻板印象和早期 JavaScript 的 workaround。有人展示在 template literal 出现前，把多行 shader 塞进函数注释、再用 toString 和正则提取的旧技巧，说明语言限制常催生诡异写法。围绕“pre-LLM 时人们还关心 code”的感慨，则引来反驳：程序员仍然关心代码，把当下简单归结为只是在看 AI 或 babysitting agents 是怀旧式自夸。网站视觉也被嘲为像勒索信，整体氛围是对技术黑魔法的兴奋、嫌恶与玩笑并存。",
+        "supportid": [
+          "50116896",
+          "50117107",
+          "50117516",
+          "50116963",
+          "50117568",
+          "50117458",
+          "50117188",
+          "50117321",
+          "50118005",
+          "50116791",
+          "50117412",
+          "50117122",
+          "50117490",
+          "50117554",
+          "50117734",
+          "50116740",
+          "50117019",
+          "50118160"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Error.prepareStackTrace",
+        "explanation": "V8 提供的可选错误栈格式化钩子；访问 Error.stack 时可用它接收错误对象和调用栈，并自定义返回值。"
+      },
+      {
+        "term": "valueOf 与隐式转换",
+        "explanation": "对象参与 +x 等数值转换时，JavaScript 会尝试调用 valueOf 取得原始值；若该方法被替换，转换过程可带来意外副作用。"
+      },
+      {
+        "term": "prototype（原型）",
+        "explanation": "JavaScript 对象共享属性和方法的继承机制；修改 Object.prototype 等全局原型会影响大量对象，风险很高。"
+      },
+      {
+        "term": "pipe / postfix operator",
+        "explanation": "将前一步结果传给后续函数的链式语法，如 x |> f 或 x // f，用于让数据流更接近从左到右的阅读方式。"
+      }
+    ],
+    "context": "原帖展示了一种 JavaScript 语法黑客：借助 Error 对象的 stack 访问、V8 JavaScript 引擎的 Error.prepareStackTrace 钩子、原型方法替换和一元加号触发的隐式转换，使函数在源码中不出现常规调用括号也能执行。它利用了 JavaScript 中对象转换会调用 valueOf 的规则，并把本应是错误栈的结果变成可调用函数。该方法高度依赖 V8 的非标准实现，因而在 Firefox 等非 V8 浏览器中不可靠，也因全局 prototype 污染而不具备工程实践价值。讨论同时延伸到数学函数记法、函数式语言的 pipe 操作符，以及 Perl、早期 JavaScript 中以可读性换取技巧的“代码高尔夫”文化。",
+    "emoji": "🪄",
+    "sarcastic_question": "为了省一对括号，值得献祭可读性和兼容性吗？"
+  },
+  "articleSummary": "## 一句话总结\n作者发现了一种利用 `Error.prepareStackTrace` 配合原型链污染，在禁止使用括号的场景下执行任意 JavaScript 代码的技巧。\n\n### 楔子：不用括号怎么执行函数？\n在 JavaScript 安全研究或某些特定的 CTF 场景中，我们常会遇到一个有趣的挑战：如何在完全不使用括号 `()` 的情况下执行函数？作者最近发现了一个新的解法，切入点是 V8 引擎中一个不起眼的 API——`Error.prepareStackTrace`。\n\n### 切入点：被忽视的 `prepareStackTrace`\n这个技巧的核心在于 `Error` 对象的 `prepareStackTrace` 函数。通常我们用它来自定义堆栈信息的格式，但鲜有人关注它的调用时机。当访问 `Error` 实例的 `stack` 属性时，V8 会自动调用这个函数。更有意思的是，它的函数签名与 `Function constructor`（函数构造器）惊人地一致：第一个参数是 error 对象，第二个参数是结构化的堆栈信息。\n\n### 尝试：签名匹配就能直接用吗？\n既然签名一致，作者尝试直接把 `Error.prepareStackTrace` 赋值为 `Function`。理论上，当我们访问 `stack` 时，系统会尝试用 `Function` 构造器去处理 error 和堆栈数组。但问题来了：直接执行会报 SyntaxError。原因很简单，`Function` 构造器期望第二个参数是合法的 JS 代码字符串，而堆栈信息本质上是一个存有代码位置的 `Array` 对象，显然不是合法代码。\n\n### 破局：控制 `Array` 的字符串表达\n既然卡在数组转字符串这一步，那能不能让数组“变成”我们想要的代码？作者指出，关键在于控制 `Array.prototype.toString()`。只要能篡改这个方法，让数组在被字符串化时返回我们的恶意 payload，就能绕过语法检查。最直接的方法是直接覆写 `Array.prototype.toString`，让它返回指定的字符串。\n\n### 进阶：利用原型链污染“借刀杀人”\n作者并没有止步于直接覆写，而是展示了一种更隐蔽的利用方式——原型链污染。他发现可以利用 `Error.prototype.toString` 来间接达成目的。通过污染 `Object.prototype.message`，我们可以控制 Error 对象的字符串输出。接着，将 `Array.prototype.toString` 指向 `Error.prototype.toString`。这样，当数组尝试转字符串时，实际上会去读取被污染的 `message` 属性，从而返回我们注入的代码。\n\n### 收尾：触发执行的最后一步\n现在我们有了能生成恶意函数的机制，剩下的就是如何在不使用括号的情况下触发它。这里用到了经典的 `valueOf` 技巧。只要覆写对象的 `valueOf` 方法，然后将其置于需要原始值的上下文中（比如进行算术运算 `+x`），JS 引擎就会自动调用该方法。作者将 `valueOf` 指向了我们构造好的 `stack` 属性，最后通过一个简单的 `+x` 触发了整个链条。\n\n### 最终 Payload\n整套组合拳打下来，最终的代码非常精简。它不需要括号，仅通过修改原型链和利用类型转换机制，就成功执行了 `alert(1337)`：\n\n```javascript\nObject.prototype.message='alert\\x281337\\x29';\nArray.prototype.toString=Error.prototype.toString;\nError.prepareStackTrace = Function;\nconst x = new Error;\nx.valueOf=x.stack;\n+x;\n```"
+}

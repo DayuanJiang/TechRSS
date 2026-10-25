@@ -1,0 +1,125 @@
+{
+  "id": 49766611,
+  "by": "ksec",
+  "title": "Tin: full-text search for Postgres",
+  "url": "https://planetscale.com/blog/introducing-tin",
+  "score": 142,
+  "createdAt": 1789827638,
+  "aiSummary": {
+    "chinese_title": "PlanetScale Tin：Postgres 云端 FTS、BM25 与锁定争议",
+    "discussion_overview": [
+      {
+        "category": "AI/LLM 加速数据库搜索实现",
+        "summary": "不少评论把这类新功能看成是 LLM + 领域专家在真实工程里的落地案例。核心观点是，BM25 这类算法本身并不新，真正困难的是把它和 Postgres 的存储引擎、索引维护、更新合并、`ctid` 之类的内部细节结合起来。有人认为，LLM 已经能在一定程度上自己推导出设计选择，但模型常常会把性能瓶颈判断错，最后还是要靠熟悉 Postgres 内部的人来把方向拉正。也有人提醒，这些思路并非 AI 时代才出现，类似实现早就有了，AI 更多是在加速既有方案成熟化。",
+        "supportid": [
+          "49767392",
+          "49767548",
+          "49769628",
+          "49768789",
+          "49767938",
+          "49768007",
+          "49768933",
+          "49767467"
+        ]
+      },
+      {
+        "category": "云端专有功能、标题与 vendor lock-in",
+        "summary": "很多人先质疑的是产品边界：本地版本只是测试语法，真正的性能和完整能力只在托管服务里提供。于是有人认为标题更像“给自家云版 Postgres 加全文检索”，而不是一个可随处安装的通用扩展。评论里还提到不能 bare metal 自部署、以及把关键能力锁在云端会让人联想到 vendor lock-in。也有人反驳说，既然是 Postgres 搜索，靠 coding agent 迁移未必困难，但这并没有消除对“云端独占”的不适感。",
+        "supportid": [
+          "49766812",
+          "49766881",
+          "49767488",
+          "49767777",
+          "49768690",
+          "49767377",
+          "49767497",
+          "49767600"
+        ]
+      },
+      {
+        "category": "Postgres 内置 FTS 已成熟，是否真有必要再做一层",
+        "summary": "不少人提醒，Postgres 自带全文检索已经存在很多年，`tsvector`、`tsquery`、`tsrank` 以及 GIN/GiST 都不是新东西。质疑者因此觉得，把已有能力重新包装成新品，更多像 marketing 而不是能力跃迁。支持者则强调，内置方案缺少 corpus-wide 统计驱动的排序，像 BM25 或 tfidf 这类能力做不到；TIN 还被声称在基准测试里更快，并补上高亮、span query、term expansion、精确 `count(*)`、runtime scoring knobs 等特性。争论的焦点不是“有没有搜索”，而是“搜索是否足够快、足够可调、足够像现代搜索引擎”。",
+        "supportid": [
+          "49767954",
+          "49768161",
+          "49768502",
+          "49768190",
+          "49768082",
+          "49768139",
+          "49767935",
+          "49768170",
+          "49768227",
+          "49767796",
+          "49768248",
+          "49768659"
+        ]
+      },
+      {
+        "category": "把搜索做进数据库 vs 外部 Lucene 索引",
+        "summary": "讨论里反复出现一个老问题：搜索应该放在数据库里，还是继续维护独立的 Lucene 索引。支持整合的人认为，把系统记录和搜索放在同一个引擎里，可以省掉同步、重建索引、主键回写、应用层 join 和 enrichment 这些脏活。反对者则说，关系型数据和文档检索本来就有 impedance mismatch，很多团队宁愿让 SQL 负责事实数据，再让外部搜索引擎负责倒排索引。也有人补充，Postgres 不是 SQLite：它要面对 MVCC 可见性检查、heap tuple churn，以及把 posting 直接映射到物理 `ctid` 的复杂性，所以“把 Lucene 直接塞进数据库”并不简单。",
+        "supportid": [
+          "49766882",
+          "49767391",
+          "49767419",
+          "49767486",
+          "49767822",
+          "49767662"
+        ]
+      },
+      {
+        "category": "开源许可、专有扩展与商业模式争论",
+        "summary": "评论区另一条主线是开源伦理和商业模式。有人觉得，在开源底座上扩展后把关键功能留在闭源云端，是一种“开源引流、专有变现”的做法，哪怕许可允许，观感也不好。另一派则认为，这正是企业投资 open source 的动力：许可证只要求遵守 license，不要求把上层产品也免费开源。讨论还分裂到 GPLv3/AGPLv3 这类 copyleft 许可上，有人强调它们确实会要求发布衍生工作，也有人坚持开源只是许可证，不是道德框架。与此同时，也有人指出这类项目确实会推动 Postgres、LLVM、pgrx 等上游贡献。",
+        "supportid": [
+          "49766881",
+          "49768985",
+          "49769397",
+          "49767843",
+          "49767912",
+          "49768017",
+          "49768750",
+          "49769021",
+          "49768589",
+          "49768013"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "BM25",
+        "explanation": "常见的信息检索排序算法，依据词频和文档频率给搜索结果打分。"
+      },
+      {
+        "term": "tsvector/tsquery/tsrank",
+        "explanation": "Postgres 内置全文检索的文本向量、查询语法和排名体系。"
+      },
+      {
+        "term": "GIN",
+        "explanation": "Postgres 的 Generalized Inverted Index，适合倒排索引型检索。"
+      },
+      {
+        "term": "GiST",
+        "explanation": "Postgres 的通用索引框架，能支持多种数据结构，但文本检索通常不如 GIN 直接。"
+      },
+      {
+        "term": "MVCC",
+        "explanation": "Multi-Version Concurrency Control，多版本并发控制，Postgres 用它处理并发读写与可见性。"
+      },
+      {
+        "term": "ctid",
+        "explanation": "Postgres 中表示行物理位置的元组标识，常用于直接定位表内记录。"
+      },
+      {
+        "term": "Tantivy",
+        "explanation": "Rust 写的全文检索引擎/库，常用于构建倒排索引。"
+      },
+      {
+        "term": "Lucene",
+        "explanation": "经典开源搜索引擎库，很多独立搜索系统都基于它或受其影响。"
+      }
+    ],
+    "context": "Tin 是 PlanetScale（一个数据库托管服务商）推出的 Postgres 全文检索能力，主打 BM25、倒排索引式性能和更丰富的查询语义。评论里有人提醒，本地 GitHub 版本只是用于测试语法，真正的性能与功能主要在其云服务里提供，所以它更像托管版 Postgres 的增值搜索模块。讨论之所以热烈，是因为 Postgres（一个关系型数据库）早就自带 `tsvector`/`tsquery` 这套全文检索体系，而业界还有 ParadeDB、Timescale 的 pg_textsearch、SQLite FTS、Lucene 等不同路线可比。名字里的 TIN 还会和 PostGIS（Postgres 地理空间扩展）里的 Triangulated Irregular Network 缩写撞车，因此评论里也有人特地提醒别混淆。",
+    "emoji": "🤨",
+    "sarcastic_question": "Postgres 都有 FTS 了，还要再包装一遍吗？"
+  },
+  "articleSummary": "## 一句话总结\nTIN 是一款为 Postgres 打造的原生全文索引扩展，通过直接使用 Postgres 内部的 `ctid` 作为文档标识，在保证事务正确性的同时，实现了比现有方案快数倍甚至数十倍的查询性能。\n\n## 正文\n\n### 现有方案的痛点：功能与性能难以兼得\n开发者对 Postgres 全文搜索的需求一直很强烈，但现有的选择总让人感觉差点意思。不管是内置的 GIN 索引，还是第三方的 ParadeDB、pg_textsearch，都在功能或性能上有明显短板。有的不支持复杂的布尔查询或排序，有的在处理并发写入时直接“罢工”。TIN 的出现就是为了填补这个空白：它既要支持短语查询、正则匹配、BM25 排序等高级功能，又要完美适配 Postgres 的事务、复制和备份机制。说白了，就是想在 Postgres 内部造一个真正好用且极速的搜索引擎。\n\n### 硬碰硬的 Benchmark：数据不会说谎\n为了验证 TIN 的实力，文章进行了一场相当硬核的对比测试。测试环境选在 AWS i7i.8xlarge 实例上，限制 Postgres 容器只能用 8 vCPU 和 32GB RAM，这显然是有意制造“内存装不下索引”的压力场景。测试语料来自 Stack Exchange，包含 1.5 亿文档，容量达 85GB。竞争对手包括 ParadeDB、pg_textsearch 和 Postgres 原生 GIN 索引。结果非常残酷：除了 TIN 和 ParadeDB，其他索引在部分测试中直接因为内存溢出（OOM）无法完成。\n\n### 索引构建与空间：TIN 又快又省\n在索引构建阶段，TIN 展现出了惊人的效率。构建整个索引仅需 8 分 10 秒，而 ParadeDB 用了 19 分钟，原生 GIN 更是慢到了 2 小时以上。更关键的是内存占用，TIN 只需要标准的 32GB 内存就能跑完全程，而 pg_textsearch 甚至需要 128GB 内存才能完成构建。这意味着 TIN 对硬件资源更加友好，不需要为了建索引而专门升级机器配置。\n\n### 查询性能碾压：不仅仅是快一点\n在核心的混合查询（AND/OR/短语）Benchmark 中，TIN 的 QPS 达到了 199，是 ParadeDB（7.9 QPS）的 25 倍；P99 延迟仅为 256ms，比对手低了 26 倍。原生 GIN 在处理 Disjunction（OR 查询）时直接内存溢出，根本无法完成测试。即使在 TIN 最不擅长的场景下，它的吞吐量也是对手的 8 倍以上。如果索引能完全放入内存（Wikipedia 8GB 语料测试），TIN 的 QPS 甚至能冲到 10,260，P99 延迟仅 2ms，这种数量级的差距确实称得上 \"mind-blowingly fast\"。\n\n### 并发写入：读写互不干扰\n全文索引最怕的就是写入拖慢读取。在模拟每秒 1000 次更新的并发场景下，TIN 依然保持了稳定的性能，10 分钟内完成了 27 万次更新，查询 QPS 仅从 148 小幅下降到 125。相比之下，ParadeDB 的查询 QPS 直接从 17 跌到了 2.2，延迟飙升。pg_textsearch 更是尴尬，由于锁竞争激烈，写入几乎停滞，仅完成了 735 次更新。TIN 这种“读写兼得”的能力，对于生产环境的高并发场景至关重要。\n\n### 核心黑科技：直接使用 ctid\nTIN 为什么能这么快？核心在于它对文档 ID 的设计。传统的搜索引擎（如 Lucene）通常使用从 1 开始的连续整数作为文档 ID，配合 Delta 编码来压缩倒排链。但在 Postgres 里，行数据的物理位置是用 `ctid`（即 `(page, offset)`）来标识的。如果用传统方案，就需要维护一个“文档 ID 到 ctid”的映射表，这无疑增加了开销和复杂度。TIN 的做法非常巧妙：它直接把 `ctid` 当作文档 ID 存入倒排索引。\n\n### 向量化计算：现代 CPU 的红利\n直接使用 `ctid` 带来了一个巨大的优势：TIN 可以直接对 `ctid` 进行位运算。因为 `ctid` 的结构是 `(page, offset)`，TIN 可以利用现代 CPU 的 SIMD 指令（如 AVX-512），对倒排链进行高度向量化的交集和并集计算。这种设计不仅省去了映射表查找的开销，还极大地压榨了 CPU 的计算能力。这就是为什么 TIN 在处理复杂查询时，I/O 吞吐量（MB/query）远低于对手，却能跑出更低的延迟——它把计算这件事做得足够极致。"
+}

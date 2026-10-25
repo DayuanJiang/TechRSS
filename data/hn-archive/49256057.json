@@ -1,0 +1,86 @@
+{
+  "id": 49256057,
+  "by": "j0selit0",
+  "title": "What I learned by putting GitHub Copilot behind a MitM proxy",
+  "url": "https://www.lighthousenewsletter.com/p/i-put-github-copilot-behind-a-mitm",
+  "score": 124,
+  "createdAt": 1786456843,
+  "aiSummary": {
+    "chinese_title": "Copilot 经 MitM/eBPF 暴露上下文、.env 与会话历史",
+    "discussion_overview": [
+      {
+        "category": "流量反向工程 Copilot harness",
+        "summary": "作者把 GitHub Copilot 的流量导到 mitmproxy（一个中间人代理）里，主要是想弄清它的 harness 怎么运作，以及为什么 quota 会消耗得这么快。观察到的内容包括模型/能力发现与路由、ghost completions（后台补全）时的上下文注入、以及把最近编辑过的其他文件一起带入请求。更令人意外的是，.env 也可能被卷进上下文，而 Copilot/Chronicle（会话记忆组件）的 SQLite session store 还能保存历史 prompts/responses，模型还会通过 tool calls 回查这些历史。评论里还提到作者对照了 VS Code（Visual Studio Code）的源代码，把 wire 上看到的行为和实际实现对应了起来。",
+        "supportid": [
+          "49256392"
+        ]
+      },
+      {
+        "category": "eBPF/uprobes 绕过 pinning 抓 plaintext",
+        "summary": "另一条线集中在 eBPF（Linux 内核的可编程追踪框架）是否比 MitM proxy 更方便。评论指出，借助 uprobes（用户态探针），eBPF 可以挂到用户进程或库函数上，在加密前、解密后直接拿到 raw plaintext，因此不必和 certificate pinning、mTLS 正面硬碰。有人把这种方式类比成内置在内核里的 ld_preload，更适合做调试和生产环境观测；也有人解释说 eBPF 从最初的 network 工具一路扩展到系统多个层面，所以现在不只看包，还能做函数级 tracing。讨论中还有人疑惑它到底如何落点，说明这个技巧对不少人来说仍然比较“黑盒”。",
+        "supportid": [
+          "49260152",
+          "49260839",
+          "49261137",
+          "49261491",
+          "49261384"
+        ]
+      },
+      {
+        "category": "安全默认：sandbox 与 env 隔离不足",
+        "summary": "不少人把这篇拆解当成一个安全提醒：这类 agent/IDE 工具最好跑在没有 env access 的 sandbox 里。评论特别惊讶的是，最近编辑会把其他文件带进上下文，连 .env 这种敏感文件也可能被纳入，等于把 secrets 暴露面放大了。有人认为大公司为了创新会在安全上做妥协，这种做法虽然可以理解，但不应成为默认状态；相反，治理和权限模型本身就该按 agent-native 的方式重做。整体语气是在提醒：一旦上下文边界太松，",
+        "supportid": [
+          "49258053",
+          "49258637",
+          "49259780"
+        ]
+      },
+      {
+        "category": "模型质量与 episodic memory 体验",
+        "summary": "另一位评论者把焦点放在 Copilot 的实际编码体验上，尤其是 Java 场景下的表现。即便接入了 Fable 5 或 Opus 5 之类更强的模型，Copilot 仍被认为不够顺手，说明产品层的 harness 和 memory 设计同样关键。讨论里最受关注的是 episodic memory：Copilot 往往要等任务结束后才写入记忆，于是中间的探索、失败和分支尝试都被抹掉了。对比之下，Codex 的多线程模型会把 turn outputs 及时纳入 episodic memory，让多步骤问题更容易保留推理轨迹。",
+        "supportid": [
+          "49260556"
+        ]
+      },
+      {
+        "category": "开源/替代工具与桌面框架吐槽",
+        "summary": "还有一些补充性评论在纠正事实或转换视角。有人指出 Codex client 是开源的，因此相关实现不必只靠抓包推测。也有人认为不一定非要 MitM proxy，用 Wireshark 或相邻工具就可能达到类似观察效果，重点在于能不能看到系统交互而不是代理形式本身。最后还有一句对 Electron（跨平台桌面应用框架）的老梗吐槽，认为很多人用它要么因为 network effects，要么因为替代品太少。",
+        "supportid": [
+          "49258724",
+          "49263487",
+          "49261149"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "MitM proxy",
+        "explanation": "位于客户端和服务器之间的中间人代理，用来拦截、查看或修改通信内容。"
+      },
+      {
+        "term": "eBPF",
+        "explanation": "Linux 内核里的可编程观测/追踪机制，可在较低开销下捕获系统和应用行为。"
+      },
+      {
+        "term": "uprobes",
+        "explanation": "eBPF 的用户态探针，能挂到进程或库函数上，观察函数调用前后数据。"
+      },
+      {
+        "term": "certificate pinning",
+        "explanation": "客户端只信任预设证书的机制，常用于阻止中间人拦截 TLS 流量。"
+      },
+      {
+        "term": "mTLS",
+        "explanation": "mutual TLS，双方都用证书相互认证的 TLS，常用于增强通信安全。"
+      },
+      {
+        "term": "episodic memory",
+        "explanation": "把任务过程中的中间步骤和结果保存成可回忆的历史，供后续推理使用。"
+      }
+    ],
+    "context": "GitHub Copilot 是 GitHub 的 AI 编程助手，常嵌在 VS Code（Visual Studio Code，微软的代码编辑器）里，通过一个 harness 把模型调用、上下文拼装和会话记忆串起来。作者把它的流量送进 mitmproxy（一个中间人代理）后，观察到模型路由、context 注入、ghost completions（后台补全）以及通过 Chronicle（Copilot 的会话/记忆组件）背后的 SQLite session store 读取历史 prompts/responses。评论进一步指出，它可能把最近编辑的其他文件甚至 .env 一起纳入上下文，这也是大家争论“默认权限是否过宽”的原因。另一条背景线是 eBPF（Linux 内核的可编程追踪框架）和 uprobes（用户态探针）：它们能在加密前后直接抓 plaintext，因此在某些场景下比传统 MitM 更容易看到真实数据流。评论还顺带把它和 Codex（OpenAI 的另一套编码代理工具）对比，并纠正 Codex client 是开源的。",
+    "emoji": "😬",
+    "sarcastic_question": "都能把明文和 .env 抓出来，还算私密吗？"
+  },
+  "articleSummary": "## 一句话总结\n\n作者通过 mitmproxy 抓取 VS Code 中 GitHub Copilot 的真实网络流量，发现 Copilot 不只是“把提示词发给模型”，而是在启动、模型选择和补全阶段持续上传账号、仓库与编辑器上下文，其中跨文件上下文的行为尤其值得警惕。\n\n## 正文\n\n### 读源码之前，先让运行时自己说话\n\n作者最初想直接翻 VS Code 源码，看看 Copilot 到底在后台做了什么。可问题在于，面对数百万行代码，如果连问题都还没形成，搜索只会消耗大量时间和 token。更关键的是，源码告诉你“应用可能做什么”，却不一定告诉你“它此刻实际上做了什么”。而且 VS Code 的开源属性本身是个例外，Claude、ChatGPT Desktop、Codex、Notion 和 Slack 等应用并没有可供随意阅读的完整源码。于是作者换了一条更实用的路径：先被动观察网络请求，再根据请求和响应提出问题，最后才回到源码确认猜测。说白了，这是一种从运行时行为倒推架构与产品逻辑的 reverse engineering 方法。\n\n### Electron 的统一外壳，让这套方法可迁移\n\n作者之所以选 VS Code 和 Copilot，不只是因为自己每月越来越早用完 Copilot credits。更重要的是，这类 AI 桌面应用大多建立在 Electron 之上，包括 Cursor、Notion、ChatGPT Desktop 和 Claude Desktop。Electron 把 Node.js runtime、HTML、CSS 和 JavaScript 打包起来，再通过 Chromium 渲染界面，因此能用一套主要代码跨 Windows、macOS 和 Linux 交付。这个共同技术栈意味着，它们通常也共享相近的进程与网络架构。网络请求既可能走 Chromium renderer 的 HTTP/WebSocket stack，也可能由 Node.js 的 `http`、`https` 或 `fetch` 发出。对流量拦截来说，这个差异很关键，因为你配置了代理，也不代表每个进程、每条请求都会自动经过代理。\n\n### MITM 的难点不在抓包，而在让每个进程都愿意走代理\n\n作者使用的工具是 mitmproxy，它作为 man-in-the-middle proxy 接收客户端请求、转发到目标服务，再把响应返回给客户端。因为 Copilot 流量基本都走 HTTPS，真正的关键是让客户端信任 mitmproxy 本地生成的 CA。这样原本端到端的一条 TLS 连接，会被拆成“应用到 mitmproxy”和“mitmproxy 到目标服务器”两条连接，代理才能解密并观察内容。为了让 VS Code 的流量进入代理，作者将 `Http Proxy` 指向 `http://localhost:8080`，关闭 `Http Proxy Strict SSL`，并把 `Http: Proxy Support` 设为 `override`，以强制 extension 也支持代理。这里还有个很现实的坑：即使重启了 VS Code，Extension Host 进程也可能仍是旧的，导致扩展流量没被抓到。解决办法是执行 `Developer: Restart Extension Host`，确认新的 `Code Helper` PID 和启动时间出现后，再观察 mitmweb 中的请求。\n\n### Copilot 启动时，先完成身份、策略和能力协商\n\n流量一旦进了 mitmproxy，作者很快发现 VS Code 启动阶段的大部分请求都与 GitHub 或 GitHub Copilot 有关。即使用户还没敲一个字，Copilot 已经在进行一轮初始化通信。作者将其归为六类：`Auth & Session`、`Config & Policy`、`MCP Registry`、`Repo & Session Context`、`Model Discovery` 和 `Recent repos`。其中第一步是典型 OAuth 流程：获取 OAuth token，将其交换为短生命周期 token，再验证用户是否具备相应 entitlement。之后 Copilot 还会查询账号与套餐可用的模型和 agent 能力。它先请求 `/models` 获取通用模型列表，再请求 `/agents/swe/models` 确认哪些模型适合 Software Engineering 的 agentic capabilities。\n\n### Auto 模式并非直接调用模型，而是先给任务判意图\n\n真正有意思的部分发生在 bootstrap 之后。作者在所有实验里选择 Copilot 的 `Auto` 模式，并观察到每次发送消息后、模型实际回答前，都会先请求 `/models/session/intent`。这个 endpoint 会把 prompt 按可能的意图打分，例如 `code-gen`、`debugging`、`reasoning` 和 `tool-use`。意图分类的结果再参与模型选择，决定当前任务由可用模型中的哪一个来完成。GitHub 的公开文档已经说明 Auto model selection 的存在，但抓到真实请求和响应，能让这条决策链更具体地呈现出来。换句话说，Auto 并不是一个固定模型的别名，而是一层位于模型调用之前的任务路由机制。\n\n### 最值得关注的发现：禁用 `.env` 并不等于它不会成为上下文\n\n作者接着测试了 inline completions 和 ghost text。当前正在编辑的文件会被放进补全请求作为上下文，这本来就是 Copilot 生成代码建议的预期行为。于是他在 `.env` 文件中放入一个伪造 secret，并确认编辑 `.env` 本身没有触发 HTTP 请求。看起来一切正常，因为 Copilot 已经对 `.env` 文件禁用。可是，当他转而打开完全无关的 `pyproject.toml` 并开始输入时，一条 completion request 仍然被发出。文章给出的可见内容在这里截断，但作者显然正要说明：请求由 `pyproject.toml` 中的按键触发，不代表其携带的上下文只来自 `pyproject.toml`，而跨文件上下文才是这个实验真正暴露出来的问题。"
+}

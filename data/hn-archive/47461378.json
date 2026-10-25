@@ -1,0 +1,81 @@
+{
+  "id": 47461378,
+  "by": "bjornroberg",
+  "title": "Ghostling",
+  "url": "https://github.com/ghostty-org/ghostling",
+  "score": 237,
+  "createdAt": 1774048853,
+  "aiSummary": {
+    "chinese_title": "Ghostling：用 libghostty 把 TUI 打包成桌面应用",
+    "discussion_overview": [
+      {
+        "category": "TUI 作为桌面应用分发",
+        "summary": "不少人把它看成一种把纯 TUI 变成可分发桌面应用的实用办法，类似 Electron 之于 web app，但更轻。有人已经把 libghostty 用在 Trolley 这类包装器里，甚至把现有 TUI 直接包成 Windows 可运行程序，说明这个思路确实能落地。评论里还提到想把 Wordgrinder 之类工具搬到 Mac app 形态，也有人说这段示例代码本身很适合作为“能跑起来的 demo”。最大的共识是：如果手头只有 TUI，这种封装方式是个很酷的分发 hack。",
+        "supportid": [
+          "47462254",
+          "47464004",
+          "47463559",
+          "47463665",
+          "47462216"
+        ]
+      },
+      {
+        "category": "C 里嵌入字体和资源的构建技巧",
+        "summary": "讨论的焦点之一是项目如何把字体和二进制资源塞进可执行文件：通过 CMake 自动生成头文件，把字节数组编进 C 源码。有人原本想用 C23 的 `#embed`，但因为工具链支持不足退回到这种方案；也有人提到 `xxd -i` 早就能做这件事。评论进一步指出，这类方法只适合小资源，资源一大编译时间和内存都会膨胀，于是有人推荐 LIEF 这种能直接修改 PE、Mach-O、ELF 的库来做更通用的资源注入。还有人补充说，XPM、早期 BASIC/Java、甚至 Linux kernel 里都早已存在类似“源码里带数据”的做法，所以这并不是新发明。",
+        "supportid": [
+          "47462132",
+          "47462454",
+          "47463510",
+          "47462255",
+          "47463890",
+          "47462720",
+          "47463147",
+          "47463779",
+          "47462504"
+        ]
+      },
+      {
+        "category": "终端模拟器职责边界：WM 与 tmux 才管 tabs",
+        "summary": "另一派更关心终端模拟器该做多少事，认为 tabs、windows 和 session management 本来就该交给 window manager（WM）和 tmux 处理。这个观点下，终端只要够简单、稳定即可，所以 urxvt、st、foot、rxvt-unicode 这类轻量方案依然有市场。评论里还提到在 tiling WM 下把终端边框、滚动条都去掉，只让 tmux 负责分屏和会话恢复，自动保存 session 的好处非常明显。争论也延伸到非 tiling WM 是否支持 tabs，以及 macOS 自带 tabs 但体验并不理想；同时大家希望未来能有更好的 OSC 支持和更像 st 那样但不那么别扭的插件机制。",
+        "supportid": [
+          "47462521",
+          "47463517",
+          "47463578",
+          "47463686",
+          "47463617",
+          "47463784"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "libghostty",
+        "explanation": "Ghostty 的可嵌入库，用来把终端渲染与交互能力封装进其他程序。"
+      },
+      {
+        "term": "TUI",
+        "explanation": "Terminal User Interface，运行在终端里的文本界面。"
+      },
+      {
+        "term": "tmux",
+        "explanation": "终端复用器，可管理 session、split、scrollback 等。"
+      },
+      {
+        "term": "#embed",
+        "explanation": "C23 的预处理指令，可直接把二进制资源嵌入源码。"
+      },
+      {
+        "term": "xxd -i",
+        "explanation": "Vim 自带的工具，可把二进制文件转成 C 数组。"
+      },
+      {
+        "term": "LIEF",
+        "explanation": "可修改 PE、Mach-O、ELF 可执行文件并注入资源的库。"
+      }
+    ],
+    "context": "Ghostling 是围绕 libghostty（Ghostty 这个现代 terminal emulator 的底层可嵌入库）做的示例项目，目标是把 TUI 像 Electron 包装网页那样封装成可分发的桌面应用。帖子里的实现用了 C 和 CMake，把字体等资源生成头文件并编进程序，因此评论很快转向“怎么把二进制资源优雅地塞进跨平台可执行文件”这个老问题。大家讨论了 C23 的 `#embed`、`xxd -i`、XPM（可直接以 C 形式包含的图像格式）以及 LIEF 这类能改 PE/Mach-O/ELF 的工具，核心是在 Windows、macOS、Linux 之间统一资源打包方式。另一个相关背景是终端生态里的职责分工：很多人习惯用 tmux 管 session，用 window manager（WM）管窗口和 tabs，所以会质疑 terminal emulator 是否真的需要自己做一整套 tabs 和会话管理。",
+    "emoji": "🤯",
+    "sarcastic_question": "把 TUI 套个壳就算跨平台创新？"
+  },
+  "articleSummary": "# 一句话总结\nGhostling 是一个用单文件 C 代码实现的极简终端，它剥离了 GUI 依赖，证明了 libghostty 的核心仿真逻辑可以被灵活嵌入到任何应用中。\n\n### 终端模拟器的“瘦身”实验\nGhostling 本质上是一个为了展示 libghostty C API 能力而生的 Demo 项目。作者没有选择直接复用 Ghostty GUI 那套复杂的 Metal/OpenGL 渲染管线，而是用 Raylib 搭建了一个单线程、基于 2D 图形的渲染环境。这么做不是为了造一个更好用的终端，而是为了证明 libghostty 的核心逻辑足够独立，甚至不需要 libc 依赖，就能在各种奇怪的环境下跑起来。当然，因为是 C 语言写的 Demo，作者也坦诚没做太严格的安全审计，大家看看就好，别真拿它当主力工具。\n\n### libghostty 到底提供了什么？\n很多人分不清“终端模拟器”和“终端 GUI”的区别，Ghostling 把这个界限划得很清楚。它依赖的 libghostty-vt 是一个零依赖库，只负责最脏最累的活：VT 序列解析、光标位置管理、文本重排、回滚缓冲以及渲染状态管理。它不负责画像素，也不负责管窗口，只告诉你“这里该画个红色的 A，那里光标要移到第 5 行”。因为这部分逻辑是直接从 Ghostty GUI 里抠出来的，所以它继承了 SIMD 优化的解析速度、顶级的 Unicode 支持以及经过数百万用户验证的健壮性。\n\n### 虽然代码少，但核心功能没阉割\n你可能会觉得一个单文件 Demo 肯定是个“残废”，但有意思的是，Ghostling 几乎支持所有正经终端该有的特性。24-bit 真彩色、256 色调色板、粗体斜体、Unicode 字形处理这些都不在话下，连 Kitty 键盘协议、鼠标追踪（X10/SGR/URxvt 等多种格式）和滚动条拖拽这种高级功能都齐活了。说白了，只要不是涉及 GUI 布局的功能（比如分屏、标签页），libghostty-vt 都能帮你搞定，而且效果和 Ghostty GUI 一模一样。\n\n### 它不做什么：把自由留给开发者\nlibghostty 的定位非常清晰：它只管“模拟”，不管“界面”。所以你不会在 Ghostling 里看到分屏、多窗口、会话管理，甚至连配置文件和搜索 UI 都没有。这并不是做不到，而是作者刻意保持最小化（MVP），把这些“上层建筑”留给使用 libghostty 的开发者自己去实现。你想用 Electron 写个 Web 终端？或者用 Rust 写个游戏里的控制台？libghostty 都不管，它只给你最底层的渲染状态 API。\n\n### 为什么选 C 而不是 Zig？\nGhostty 原生是 Zig 写的，而且 libghostty-vt 本身就有完善的 Zig API，那为什么这个 Demo 要用 C？原因很现实：C 的生态更广，更容易被其他语言绑定。作者希望通过这个 C API 的 Demo，向 Rust、Go 甚至 Python 开发者展示，只要有一层极薄的 FFI 绑定，任何语言都能拥有顶级的终端模拟能力。至于 Raylib 和 CMake，纯粹是因为作者顺手选了它们，实际上你想用 SDL 还是 Vulkan，libghostty 完全不介意。\n\n### 性能提示：Debug 模式会很慢\n如果你想自己编译跑一下，记得一定要开 Release 模式。原文特别警告，Debug 构建会非常慢，因为 Ghostty 内部为了正确性加了大量的安全检查。一旦开启优化（`-DCMAKE_BUILD_TYPE=Release`），它就能展现出 libghostty 真正的高性能实力。毕竟，核心逻辑可是经过了 SIMD 优化和严格的 Fuzz 测试的，这点自信还是有的。"
+}

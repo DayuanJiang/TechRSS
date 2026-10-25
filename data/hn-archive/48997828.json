@@ -1,0 +1,160 @@
+{
+  "id": 48997828,
+  "by": "surprisetalk",
+  "title": "Some more things about Django I've been enjoying",
+  "url": "https://jvns.ca/blog/2026/07/21/more-nice-django-things/",
+  "score": 122,
+  "createdAt": 1785051628,
+  "aiSummary": {
+    "chinese_title": "Django 仍被赞强在 ORM/迁移/admin，async 与模板语法争议大",
+    "discussion_overview": [
+      {
+        "category": "async Python 的坑与防御策略",
+        "summary": "评论里对 async Python 的吐槽非常集中：最常见的是一不小心就把 event loop 阻塞住，或者用 `asyncio.gather` 把并发一下子放大到把 socket 和 file descriptor 用光。还有人提到 task 需要被持有引用，否则可能因为弱引用机制在生产环境里被提前回收，取消、race condition、deadlock 也都更难排查。也因此，有人主张只保留一层很薄的 async 外壳，里面尽量调用隔离好的 synchronous 代码，或者直接转向结构化并发和更高约束的库。",
+        "supportid": [
+          "49056394",
+          "49063449",
+          "49062090",
+          "49063245",
+          "49062512"
+        ]
+      },
+      {
+        "category": "低吞吐量多半是部署/测试方式问题",
+        "summary": "关于 2-3 RPS 的数字，绝大多数评论都认为这更像部署或测试方式的问题，而不是 Django 本身的极限。有人指出 `ab -n 1000 -c 1` 并不代表真实流量，开发服务器、静态文件由 Django 处理、单核/慢 VPS、以及没用上 gunicorn/nginx 和缓存，都会把吞吐量压得很低。也有人给出经验值：正确的 `nginx -> gunicorn -> Django` 组合、加上 template caching、page caching 和 SQLite PRAGMAs，通常应该比这高很多，甚至在老机器上也能做到几十到上百 RPS。",
+        "supportid": [
+          "49055730",
+          "49063168",
+          "49055898",
+          "49062851",
+          "49055941",
+          "49055982",
+          "49056043",
+          "49056494",
+          "49056427",
+          "49063483",
+          "49056321",
+          "49056261",
+          "49063251",
+          "49063343",
+          "49058489",
+          "49063014",
+          "49057386",
+          "49058052",
+          "49062222",
+          "49056999"
+        ]
+      },
+      {
+        "category": "Django 的 ORM、迁移和 admin 仍是杀手锏",
+        "summary": "不少人把 Django 的最大价值放在 ORM、migrations 和 admin 上，甚至会在 Go、Java 或 Rust 栈里继续复用 Django 的 models 作为数据库单一真相来源。评论里有人用它来管理 mysql 到 postgres 的迁移，也有人说会根据 Django models 生成 DAO 或 hibernate 类，省得自己重新维护 schema 逻辑。另一条更尖锐的经验是：一旦项目拆成很多 Django apps，跨 app 的 foreign key 和迁移历史很容易形成循环依赖、难以 squash 的迁移堆积；因此有些人更倾向于单一 core app，或者把数据库和模型抽成独立库来管理。与此同时，SQLAlchemy/Alembic、Go 的 Goose、Laravel 的 migrations 也被拿来对比，但 Django 仍因 admin 和 DSL 体验被频繁称赞。",
+        "supportid": [
+          "49055979",
+          "49058346",
+          "49059382",
+          "49060769",
+          "49062025",
+          "49062703",
+          "49062982",
+          "49062414",
+          "49062541",
+          "49062626",
+          "49062582",
+          "49056906",
+          "49062056",
+          "49056963",
+          "49058352"
+        ]
+      },
+      {
+        "category": "模板语法过于保守，Jinja2 更灵活",
+        "summary": "模板语法这一段的争议点很明确：Django template 不允许括号、算术、表达式赋值、块捕获和直接调用 model methods，这让一些人觉得它过度保守，甚至迫使他们复制模板代码。支持这种设计的人则认为，这正是在提醒你把复杂逻辑挪回 Python function 或 view 里，这样更好测试，也更容易做 caching 和格式化。Jinja2 被认为是一个现实的替代方案，因为它可以作为 Django 的 template backend 使用，但迁移并不完全无痛，尤其是 `csrf_token`、`response.context`、模板目录命名和第三方 Django app 兼容性都可能出坑。",
+        "supportid": [
+          "49057556",
+          "49063476",
+          "49058234",
+          "49058659",
+          "49058814"
+        ]
+      },
+      {
+        "category": "查询 DSL 与 operator overloading 之争",
+        "summary": "对 Django 用双下划线写过滤条件的吐槽也不少，有人觉得它像把 SQL 语义藏进了字符串，宁愿要一个能靠 operator overloading 表达的真正 query DSL。讨论里提到 Python 的比较运算符其实可以返回表达式对象而不是布尔值，这和 NumPy、SQLAlchemy 的做法类似，也可以把 `LIKE` 之类的字符串匹配变成字段方法。另一边的回应则强调现有写法有现实好处：它几乎能直接抄进 admin 页面或 DRF 的 query string 里，做临时报表和排查问题特别方便；Peewee 和 SQLAlchemy 也被当作不同设计路线的例子。",
+        "supportid": [
+          "49055914",
+          "49062418",
+          "49056114",
+          "49056505",
+          "49056746",
+          "49056889",
+          "49057054",
+          "49063060",
+          "49057230",
+          "49063051",
+          "49063173",
+          "49063180",
+          "49057275"
+        ]
+      },
+      {
+        "category": "与 Go/.NET/Rust 等栈的取舍",
+        "summary": "还有一条更宏观的线索，是大家在 Django、Go、Rust、Haskell、.NET、Rails 和 Java 之间做个人偏好比较。有人更喜欢 Go + SQLite 的低内存和稳定编译，觉得 Python/Django 太费资源；也有人反驳说 Django 的 built-in 组件确实能让产品更快落地，省掉很多重复劳动。评论里对 .NET 的评价也很高，认为它开箱即用的数据库、logging 等配套非常顺手，而另一些人则提醒：Django 本身也是个已经稳定了很多年的成熟框架，很多今天的优点并不是新发明。也有人分享从 Haskell 转到 Rust 的经历，强调开发体验和性能权衡。",
+        "supportid": [
+          "49055963",
+          "49056237",
+          "49056325",
+          "49056704",
+          "49062499",
+          "49062784",
+          "49063160",
+          "49062816",
+          "49055581",
+          "49055883",
+          "49058719"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "asyncio",
+        "explanation": "Python 的异步 I/O 标准库和事件循环模型，用来写并发网络程序，但也容易踩到阻塞和取消问题。"
+      },
+      {
+        "term": "structured concurrency / TaskGroup",
+        "explanation": "把一组并发任务放在同一作用域里统一管理的并发方式，可减少任务泄漏和取消混乱。"
+      },
+      {
+        "term": "ORM",
+        "explanation": "对象关系映射层，用 Python 对象或模型来操作数据库。"
+      },
+      {
+        "term": "migrations",
+        "explanation": "数据库结构演进的版本化记录和工具，用来按步骤修改表结构与数据。"
+      },
+      {
+        "term": "Jinja2",
+        "explanation": "Python 常用模板引擎，语法更灵活，可作为 Django 的模板后端替代。"
+      },
+      {
+        "term": "gunicorn",
+        "explanation": "常见的 Python WSGI 生产服务器，通常用于替代开发服务器承载真实流量。"
+      },
+      {
+        "term": "nginx",
+        "explanation": "常用反向代理和静态资源服务器，常放在 Django 前面分担请求。"
+      },
+      {
+        "term": "SQLite",
+        "explanation": "轻量级嵌入式关系数据库，部署简单，但并发写入能力和服务型数据库不同。"
+      },
+      {
+        "term": "QuerySet / Q / F",
+        "explanation": "Django ORM 的查询构造工具：QuerySet 表示惰性查询结果，Q 用于组合复杂条件，F 用于引用字段表达式。"
+      }
+    ],
+    "context": "这篇帖子原本在分享作者喜欢 Django 的一些点，评论区则把话题扩展到生产部署、模板、ORM 和异步编程等老问题。很多讨论默认前提是典型 Django 生产栈：nginx（反向代理与静态资源服务器）在前，gunicorn（常用 WSGI 生产服务器）承载请求，后面可能接 SQLite（嵌入式数据库）或 Postgres。有人把 Django 看成不只是 Web 框架，而是一个强大的数据库管理工具，尤其是 models、migrations 和 admin。另一些人则拿 async Python、Jinja2、SQLAlchemy、Go、.NET、Rust 来对比，争论的是灵活性、性能和开发者体验之间的取舍。",
+    "emoji": "🤔",
+    "sarcastic_question": "拿 dev server 跑 prod，还敢谈 Django 性能？"
+  },
+  "articleSummary": "## 一句话总结\n作者在尝试用 Django 构建“2010 风格”的传统后端渲染网站时，发现 Django 的 QuerySet 和模板过滤器极大提升了开发体验，但也踩了“误关模板缓存”的性能坑，并意识到函数式视图比类继承更适合自己。\n\n### 为什么我要回到 2010 年写网站？\n作者以前习惯用静态站点生成器或者 Vue.js 这种前端为主的技术栈，逻辑都在前端。但当他需要构建一个多页面的复杂应用时，前端路由和状态管理让他感到疲惫。于是他决定反其道而行之，尝试把逻辑集中在后端，用 SQL 数据库加服务端渲染 HTML 的老派方式。这听起来像倒退，但核心思路其实很简单：无论逻辑全在前端还是全在后端，只要集中在一处，维护起来就比分散在两端要轻松。\n\n### QuerySet 让 SQL 查询变得像读小说\n作者以前觉得“我会写 SQL，为什么要用 Query Builder？”，但 Django 的 QuerySet 改变了他的看法。通过自定义 `EventQuerySet`，他可以把复杂的 `WHERE` 条件封装成链式方法，比如 `Events.objects.approved().for_tab(tab).is_free()`。这种写法不仅业务逻辑清晰，而且在 View 层调用时非常直观。虽然定义这些过滤器的语法有点繁琐，但考虑到代码可读性的巨大提升，这笔交易非常划算。\n\n### 模板过滤器是提升幸福感的小工具\nDjango 模板里内置的过滤器解决了很多琐碎的 HTML 生成问题。比如 `urlize` 和 `linebreaksbr` 能自动把纯文本转换成带链接和换行的 HTML，`json_script` 能安全地把 Python 字典转成 JSON 插入页面。这些功能虽然都很小，但省去了自己写工具函数的麻烦。特别是 `querystring` 这个过滤器，它能智能地修改当前 URL 的参数（比如保留筛选条件只翻页），这种处理 URL 参数的便利性在传统开发中往往被低估。\n\n### 数据库迁移依然是 Django 的杀手锏\n在开发过程中，作者对 Django 的自动数据库迁移系统赞不绝口。随着对问题理解的变化，他频繁修改数据模型，目前已经执行了 19 次迁移。如果是手动写 SQL 脚本来管理 Schema 变更，这简直是噩梦，但 Django 让这一过程变得无痛。这种随时调整数据结构的能力，让他在探索业务逻辑时没有了后顾之忧。\n\n### 视图继承看起来很美，但函数式更实在\nDjango 文档经常推荐使用类视图和继承来复用代码，作者尝试了四个视图共享父类的设计，结果体验很糟糕。他果断切换回函数式视图，发现逻辑线性展开比在继承树里跳来跳去要清晰得多。这验证了一个观点：虽然 Django 内部大量使用 Mixin 和继承（比如定义 QuerySet 时），但在业务代码里强行套用继承模式，往往会增加不必要的认知负担。\n\n### 性能优化的第一直觉往往是错的\n当 LLM 爬虫把流量打到每秒 10 个请求时，作者发现他的 Django 站点在一台 10 美元的 VPS 上只能抗住 2-3 RPS。作为一个 Go 开发者，他本能地想去查数据库、加索引。但用 `py-spy` 做 CPU Profiling 后，他发现瓶颈不在数据库，而在模板渲染。这让他意识到，在 Django 这种全栈框架里，性能问题可能出在任何地方，不能只盯着数据库看。\n\n### 开启模板缓存，性能瞬间起飞\n顺着性能文档排查，作者发现自己竟然误关了 `cached template loader`。这个开关默认是开启的，能避免每次请求都重新编译模板。开启后，站点的吞吐量直接从 2-3 RPS 提升到了 12 RPS，CPU 占用也大幅下降。这个经历给他提了个醒：Django 的配置项非常复杂，很容易因为误配置导致性能崩塌。对于他的场景，先用 CPU Profiler 找到热点，比盲目优化数据库查询要有效得多。"
+}

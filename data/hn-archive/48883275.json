@@ -1,0 +1,144 @@
+{
+  "id": 48883275,
+  "by": "systima",
+  "title": "Claude Code sends 33k tokens before reading the prompt; OpenCode sends 7k",
+  "url": "https://systima.ai/blog/claude-code-vs-opencode-token-overhead",
+  "score": 616,
+  "createdAt": 1783882214,
+  "aiSummary": {
+    "chinese_title": "Claude Code 33k tokens vs OpenCode 7k：subagents、缓存争议",
+    "discussion_overview": [
+      {
+        "category": "subagents 过度并行烧 token",
+        "summary": "不少人认为真正烧钱的是 subagents，而不是主 agent 本身。Claude Code 一旦判断任务复杂，就会并行拉起多个 subagents，它们要分别读取代码库、复制上下文，还可能让父上下文的缓存失效。评论里多次提到模型过于偏向探索、验证和搜索，哪怕很简单的改动也会先跑一堆 tool call，导致预算在还没开始干活时就被耗掉。相对地，顺序执行或让主 agent 直接做完，往往更省。",
+        "supportid": [
+          "48883796",
+          "48884047",
+          "48883919",
+          "48884357",
+          "48884889",
+          "48885044",
+          "48883843",
+          "48884904",
+          "48884781"
+        ]
+      },
+      {
+        "category": "缓存、system prompt 与工具开销",
+        "summary": "另一派强调，33k 里很大一部分可能是 system prompt、tool schema、MCP 服务器信息、skills 等固定开销，不等于每次都真正付 33k 的动态成本。有人展示 /context 里 Claude Code 的 system prompt 其实只有几千 token，但 system tools 和其它组件加起来仍然不少；还有人提醒，subscription endpoint 的 cache 读可能更便宜，甚至可在 1 小时内复用。也有人从工程角度指出，不同 harness、插件数量、预加载工具的策略不同，初始 JSON 体积可以差很多，所以初始 token 数本身就很容易误导。",
+        "supportid": [
+          "48885056",
+          "48885081",
+          "48883780",
+          "48884089",
+          "48883545",
+          "48885008",
+          "48883874",
+          "48885025",
+          "48885036",
+          "48883978",
+          "48884600",
+          "48884979"
+        ]
+      },
+      {
+        "category": "何时 subagent 真的有用",
+        "summary": "也有评论为 subagents 提供正当场景：在复杂代码库里做探索、找不同切面，或者做独立 code review 时，并行子代理能把检索面铺得更广。关键是任务是否真正独立；如果只是同一堆上下文的平行复制，那就只会重复读文件和重复花钱。有人建议把搜索类 subagent 降到 Haiku 这类更便宜的模型，把高能力模型留给规划和最终审核；也有人认为项目级的 AGENTS.md 或 CLAUDE.md 规则文件能替代一部分子代理工作，只是容易过时。",
+        "supportid": [
+          "48883949",
+          "48884568",
+          "48883843",
+          "48883917",
+          "48885044",
+          "48885038",
+          "48884712"
+        ]
+      },
+      {
+        "category": "Anthropic 激励与锁定争议",
+        "summary": "很多人把这事理解成商业激励问题，怀疑 Anthropic 有意让 Claude Code 更吃 token，从而把用户推向更高订阅档或企业方案。有人甚至把 Anthropic 说成 token merchant，认为锁定自家 harness、限制替代客户端，是在把锁定效应和用量增长绑在一起。反对者则认为这类推断太阴谋论，真正原因可能是要让订阅端在 KV cache 和产品体验上保持一致，而不是故意浪费推理；另一边也有人指出 GPU 紧缺时，单纯加大 token 消耗未必是理性选择。还有人观察到新版本模型更啰嗦，即便 benchmark 更高，也可能天然吃更多 tokens。",
+        "supportid": [
+          "48883663",
+          "48884034",
+          "48883991",
+          "48884087",
+          "48883767",
+          "48884683",
+          "48884459",
+          "48884692",
+          "48884276",
+          "48883996",
+          "48883528",
+          "48883789"
+        ]
+      },
+      {
+        "category": "替代 harness 与自建方案",
+        "summary": "不少人干脆换到 Codex、OpenCode、Pi，或者自己写 harness，理由是更透明、成本更可控。有人觉得 Codex 的审批和可观察性更好，OpenCode + Claude 的结果也差不多甚至更好；Pi 则以极简和插件化著称，适合自己拼出更小的 system prompt。还有人分享本地模型加 repair step、context pruning 和工具守卫的组合，说明很多体验差异并不只来自模型本身，而是来自执行层设计。整体气氛是：与其抱怨平台，不如自己掌握执行层。",
+        "supportid": [
+          "48883768",
+          "48884194",
+          "48884399",
+          "48883534",
+          "48883554",
+          "48883799",
+          "48883634",
+          "48884560",
+          "48883710",
+          "48883549",
+          "48883730",
+          "48884179",
+          "48883894",
+          "48884057"
+        ]
+      },
+      {
+        "category": "方法论质疑：光看 token 不够",
+        "summary": "不少评论认为原帖的比较方法还不够严谨，单看 33k vs 7k 不能说明谁更好。大家要求同时比较任务深度、输出质量、耗时、cache 命中，以及是否用了旧模型或额外网关，因为这些因素都会把数字拉歪。原帖后来也表示会补更复杂的任务和可复现输入输出，说明这种 harness 对比如果不把环境锁死，很容易变成 apples-to-oranges。在他们看来，tokens 只是成本维度之一，不能替代 intelligence、time、quality 的综合判断。",
+        "supportid": [
+          "48883969",
+          "48883721",
+          "48884612",
+          "48884827",
+          "48883815",
+          "48883520",
+          "48884620",
+          "48884125",
+          "48883681",
+          "48883698",
+          "48883581"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "subagent",
+        "explanation": "主 agent 额外拉起的子任务执行体，可并行搜索、审查或探索上下文，但也会重复消耗 token。"
+      },
+      {
+        "term": "prefix cache / cache hit",
+        "explanation": "复用已计算前缀的缓存机制；命中后后续调用更便宜，也更快。"
+      },
+      {
+        "term": "system prompt",
+        "explanation": "给模型的顶层规则、角色和工具说明，常占据很大上下文。"
+      },
+      {
+        "term": "harness",
+        "explanation": "把模型、工具、权限、审批和缓存串起来的执行框架或外壳。"
+      },
+      {
+        "term": "tokenflation",
+        "explanation": "任务越来越 agent 化后，token 消耗持续膨胀的现象。"
+      },
+      {
+        "term": "MCP",
+        "explanation": "Model Context Protocol，用标准接口把外部工具或服务接到 agent 上的协议。"
+      }
+    ],
+    "context": "这场讨论围绕一篇对比：Claude Code（Anthropic 的命令行 coding agent/harness）和 OpenCode（一个开源 coding agent/harness）在同样的模型上，启动时分别会先送出约 33k 和 7k tokens。评论里补充说，Claude Code 的初始负载往往不只是 system prompt，还包括 tool schemas、MCP（Model Context Protocol，模型上下文协议）服务器信息、skills、subagents 等，所以表面数字不一定等于每次真实计费。大家还在比较 Anthropic 的 subscription endpoint、cache hit 计费，以及锁定自家 harness 是否会让 token 消耗变得更大。讨论也延伸到 Codex、Pi（一个极简可插件化的 agent harness）和自建 harness，核心是在说 AI coding agent 的成本和体验其实由模型、工具、缓存和执行层一起决定。",
+    "emoji": "🤨",
+    "sarcastic_question": "还没读 prompt 就先烧33k，是在优化谁的钱包？"
+  },
+  "articleSummary": "### 一句话总结\nClaude Code 的架构设计是“重装上阵”，虽然通过批量调用减少了请求次数，但其巨大的系统 Prompt 和低效的缓存机制导致在简单任务和配置复杂场景下的 Token 消耗远超轻量级的 OpenCode。\n\n---\n\n### 基础开销：还没干活，账单已经 4.7 倍了\n我们让两个 Agent 做最简单的任务——回复一个“OK”，结果令人咋舌。Claude Code 在用户输入之前，就已经扔出去了约 33,000 个 Token，而 OpenCode 只有 7,000 个左右。这 4.7 倍的差距主要来自两方面：一是 Claude Code 的系统 Prompt 本身就很大（即便禁用工具也比 OpenCode 大 3 倍），二是它塞进了 27 个工具的 Schema，相比之下 OpenCode 只有 10 个。说白了，Claude Code 是带着全套“背景代理”和“编排套件”上场的，而 OpenCode 就是个拿着核心工具的极简主义者。这意味着每次对话还没开始，Claude Code 就已经占用了 200k 上下文窗口的六分之一。\n\n### 缓存陷阱：OpenCode 是省钱，Claude Code 是烧钱\n既然 Payload 这么大，Prompt Caching 应该能救场吧？事实并非如此。OpenCode 的请求前缀在每次运行中都是字节级一致的，这意味着缓存写一次，后面全是极便宜的读取。但 Claude Code 在会话中期会反复重写数万个 Token 的缓存内容，导致它在同一任务上写入的缓存 Token 量是 OpenCode 的 54 倍。要知道缓存写入是按 1.25 倍溢价收费的，这就是为什么用 Claude Code 时你会看到用量仪表盘蹭蹭往上涨。缓存省钱的秘诀在于“稳”，而 Claude Code 显然太“动态”了。\n\n### 多步任务：大基数遇上少请求，竟然打平了\n有意思的地方在于，当我们测试一个复杂的多步任务（写代码-运行-测试-修复）时，局势发生了逆转。虽然 Claude Code 的单次请求成本高得离谱，但它把所有工具调用打包成了一次性并行处理，只用了 3 次请求。OpenCode 虽然单次便宜，但老老实实串行调用，用了 9 次请求。结果就是：33k 乘以 3，和 7k 乘以 9，总 Token 量竟然差不多。这说明了一个核心逻辑：如果你的任务能高度并行，Claude Code 的高昂“入场费”或许能被更少的“过路费”摊薄；否则，那就是纯亏。\n\n### 配置膨胀：生产环境下的“一切”数字\n一旦脱离实验室环境，加上真实的配置文件，Token 消耗就会爆炸。一个生产环境的 72KB 指令文件（如 AGENTS.md）会给每次请求增加 20,000 个 Token；五个普通的 MCP 服务器再加 5,000 到 7,000 个。我们在一个包含 MCP 服务器、插件和指令文件的真实配置下测试，发现 OpenCode 的首次请求达到了 90,817 个 Token，而 Claude Code 也达到了 75,000 个。这比它们的“裸奔”状态膨胀了 10 倍以上。配置越重，Claude Code 那个本来就臃肿的基础架构就越吃力。\n\n### Subagents：成本倍增的终极杀手\n如果你觉得基础开销大还能忍，那 Subagents（子代理）就是真正的无底洞。当我们把任务分发给两个子代理时，Claude Code 的总消耗从 121,000 飙升到了 513,000 Token，足足翻了 4.2 倍。原因很简单：每个子代理都要重新经历一次“启动流程”（加载系统 Prompt 和工具 Schema），然后父代理还要把子代理的对话记录全吃进去。相比之下，OpenCode 的子代理设计要轻量得多，只携带极简的 Prompt 和工具。在 Agentic AI 中，委托虽然强大，但每一次委托都是一次昂贵的“重启”。\n\n### 模型差异：新模型能“减肥”吗？\n为了排除模型干扰，我们又在 Claude Fable 5 上跑了一遍。好消息是，差距确实缩小了：从 Sonnet 4.5 的 4.7 倍降到了 3.3 倍。这是因为 Claude Code 会根据模型智能调整 Prompt，给 Fable 5 发送的指令比给 Sonnet 的少了很多（从 27,787 字符减到 10,526 字符）。但这只是“少胖”而已，并没有改变“重”的本质。OpenCode 则非常稳定，在不同模型下发送的 Payload 几乎完全一致。这种稳定性在生产环境下其实比“智能调节”更让人放心。\n\n### 总结：架构选择决定了成本上限\n这篇文章的核心发现不是谁更“好”，而是它们的设计哲学完全不同。Claude Code 选择了“大而全”，自带复杂的编排能力和大量工具，适合复杂、并行的多步任务，但你要忍受巨大的基础开销和缓存低效。OpenCode 选择了“小而美”，极简主义让它成本低、缓存稳，适合轻量级或串行任务。对于开发者来说，关键是要意识到：你的 Agent 在真正干活之前，可能已经把你的预算吃掉了一半。"
+}

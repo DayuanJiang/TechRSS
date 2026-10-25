@@ -1,0 +1,141 @@
+{
+  "id": 49331423,
+  "by": "galnagli",
+  "title": "AI-Generated GitHub Copilot \"Autofix\" Allowed Compromise of Snowflake's Jira",
+  "url": "https://www.wiz.io/blog/red-agent-snowflake-copilot-cicd-bug",
+  "score": 359,
+  "createdAt": 1786977617,
+  "aiSummary": {
+    "chinese_title": "Snowflake Jira 注入漏洞牵出 Copilot 误归因与 GitHub Actions 设计缺陷",
+    "discussion_overview": [
+      {
+        "category": "静态分析与安全 lint",
+        "summary": "很多评论认为，这类 GitHub Actions 工作流如果没有静态分析，几乎就是把安全问题留给运气。有人直接推荐 `zizmor`、`actionlint`、`shellcheck` 之类的工具来抓 `${{ }}` 模板展开、quote injection 和危险的 shell 片段。讨论里还提到，某些条件判断在 nullable 事件字段上会“看起来能用”，但实际上可能在 issues 场景里悄悄失效。总体上，这条线的核心观点是：至少要让 CI 在合并前自动拦掉明显的安全 footgun。",
+        "supportid": [
+          "49333161",
+          "49333456",
+          "49334899",
+          "49335891",
+          "49333959",
+          "49332126",
+          "49332565",
+          "49334418"
+        ]
+      },
+      {
+        "category": "YAML + shell 的脚本化陷阱",
+        "summary": "不少人把矛头指向 GitHub Actions 本身的表达方式：YAML 里再嵌 shell，本来就很容易把配置、逻辑和代码搅成一锅。评论反复抱怨，工作流不该把脚本直接塞进 `run:` 块里，而应该尽量放到独立脚本文件，用 `env:` 传值，甚至用数组参数避免空格拆分和注入。也有人说，Jenkins 虽然复杂，但至少更像一层调度；而 GitHub Actions 的问题是它既不是完整编程环境，又迫使你写非平凡的 shell。这个分支的结论很一致：YAML 不是问题的唯一来源，但它把 footgun 变得更密集、更隐蔽。",
+        "supportid": [
+          "49334713",
+          "49332462",
+          "49333611",
+          "49333863",
+          "49334813",
+          "49335730",
+          "49332593",
+          "49332680",
+          "49333120",
+          "49334067",
+          "49335322",
+          "49333215",
+          "49334075",
+          "49334680"
+        ]
+      },
+      {
+        "category": "AI 热潮、误报与责任归因",
+        "summary": "一部分评论认为，这件事并不能证明 AI 本质上更糟，因为人类早就会写出不安全代码。真正不同的是，AI 被包装成“文明级变革”时，任何一个低级失误都会显得特别刺眼，于是引发更强烈的反弹。也有人把它类比成 self-driving car 事故：出错不稀奇，稀奇的是宣传口径把它说得像几乎不会错。另一边则有人反击，认为今天的模型离可靠还差得远，过度乐观的叙事本身才是问题。",
+        "supportid": [
+          "49333733",
+          "49334628",
+          "49336882",
+          "49336836",
+          "49336918",
+          "49335256",
+          "49334437",
+          "49336527",
+          "49336299",
+          "49334567",
+          "49336046",
+          "49334047"
+        ]
+      },
+      {
+        "category": "代码审查瓶颈与人类复核",
+        "summary": "很多人把重点放在“生成代码变便宜了，但审代码并没有同等变便宜”上。评论里提到，过去大量 review 本来就只是 LGTM 式的快速扫一眼，而 AI 时代如果继续这样做，就会把原来的侥幸变成系统性风险。还有人明确反对 autoapprove “minor” AI PR，理由是如果模型本身都挡不住安全问题，那它也不够资格判断什么是 minor。这个讨论的底色很现实：自动化可以加速产出，但安全敏感变更仍然需要真正读代码的人。",
+        "supportid": [
+          "49336008",
+          "49334578",
+          "49331825",
+          "49332114",
+          "49331947",
+          "49332059",
+          "49332214",
+          "49332762",
+          "49332218",
+          "49332292",
+          "49333945",
+          "49333490",
+          "49336121"
+        ]
+      },
+      {
+        "category": "文章归因与事实细节争议",
+        "summary": "不少评论指出，漏洞并不是 Copilot 直接“写出来”的，而是人类提交的改动引入了问题。Copilot 更像是参与了 PR 的自动修复或共同署名，但后续的 review、合并以及安全扫描并没有抓住真正的漏洞。有人还追溯了 PR 历史、squash merge 和分支差异，说明文章标题把“共同署名”和“责任归属”混在了一起。这个分支的共识是：故事本身很重要，但归因不能为了标题效果而变形。",
+        "supportid": [
+          "49332696",
+          "49334658",
+          "49332964",
+          "49334262",
+          "49334674",
+          "49336714",
+          "49333653",
+          "49331819",
+          "49332330",
+          "49334667"
+        ]
+      },
+      {
+        "category": "GitHub 平台应更 fail-closed",
+        "summary": "另一些评论把责任直接推回 GitHub：为什么允许把 issue title 这种不可信字符串直接拼进脚本，为什么 `github.event.pull_request` 这类字段在 issues 事件里会默默变成 null 却还能继续放行。大家质疑平台至少该对 `${{ }}` 插入 `run:`、危险条件判断和 null 语义给出警告或报错，而不是把安全责任全部外包给用户和第三方工具。这里的核心不是某一个仓库写得糟，而是 GitHub Actions 的默认设计到底有没有把安全放在第一位。",
+        "supportid": [
+          "49333411",
+          "49334028",
+          "49332364",
+          "49334418",
+          "49335371"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "GitHub Actions",
+        "explanation": "GitHub 提供的 CI/CD 工作流系统，常用 YAML 定义步骤并执行 shell 命令。"
+      },
+      {
+        "term": "YAML",
+        "explanation": "常见配置格式；在 CI/DevOps 场景里容易因缩进、表达式和嵌入逻辑产生 footgun。"
+      },
+      {
+        "term": "zizmor",
+        "explanation": "专门检查 GitHub Actions 工作流安全问题的静态分析工具。"
+      },
+      {
+        "term": "actionlint",
+        "explanation": "GitHub Actions 的 lint 工具，可发现语法问题和部分危险写法。"
+      },
+      {
+        "term": "shellcheck",
+        "explanation": "Shell 脚本静态分析工具，常用于检查引用、分词和注入风险。"
+      },
+      {
+        "term": "template-injection",
+        "explanation": "把不可信输入通过模板展开变成代码或命令，从而触发注入攻击的模式。"
+      }
+    ],
+    "context": "这篇讨论围绕 Snowflake 的内部 Jira 工作流被 GitHub Actions 触发后出现安全问题展开，原文把事件和 GitHub Copilot Autofix 联系在一起。评论里补充说，相关工作流原本在把 Jira 处理从旧的 Atlassian JIRA actions 和 gh-actions 迁到直接 `curl` 调 API 的过程中引入了复杂性，而真正危险的点是把 `github.event.issue.title` 这类不可信输入直接拼进 shell `run` 块。GitHub Actions（GitHub 的 CI/CD 工作流系统）使用 YAML（配置标记语言）加表达式语法，稍不注意就会出现 quote injection、null 误判和 fail-open 行为，所以 `env:`、外部脚本、`shellcheck`、`zizmor`、`actionlint` 这些工具才会被反复提起。评论还纠正了一个关键细节：漏洞归因并不完全是 Copilot 本身，很多人认为更准确的说法是人类提交了有问题的改动，而 AI 只是没有帮忙挡住它。",
+    "emoji": "😬",
+    "sarcastic_question": "连 `null` 都放行，还谈什么安全？"
+  },
+  "articleSummary": "## 一句话总结\n\n这起事件的关键不在于“AI 写错了代码”，而在于一个带有 Copilot Autofix 共同署名、且被 AI 审查放行的 PR，移除了原本防注入的安全模式，让任何人都能通过 GitHub Issue 标题接管 Actions runner，并窃取 Snowflake Jira 凭据。\n\n## 正文\n\n### 一个只存活了五天的漏洞，被自动化攻击者迅速捡走\n\n2026 年 6 月 23 日，Wiz 的自主安全研究工具 Red Agent 在 Snowflake 的公开 GitHub 组织中，发现了一个严重的 GitHub Actions 漏洞。目标仓库是 `snowflakedb/snowflake-connector-net`，问题出在处理 Jira 工单的 `.github/workflows/jira_issue.yml`。这个 workflow 会在 GitHub Issue 被创建时触发，而创建公开仓库 Issue 并不需要任何特殊权限。也就是说，任意 GitHub 用户都可以把自己的 Issue 标题送进这条自动化链路。漏洞从 6 月 18 日合入，到 6 月 23 日被发现和验证，只暴露了五天。  \n\n这五天很有代表性：过去，CI/CD 配置里的漏洞可能要等人工审计很久才会暴露；现在，自动化安全 Agent 可以主动扫描组织、定位风险 workflow、生成 exploit，再根据运行错误迭代 payload。Wiz 的 Red Agent 做的正是这件事。它不是只报告“这里可能有注入”，而是实际完成了命令执行和凭据外传验证。换句话说，攻击侧的发现窗口已经被压缩到小时甚至分钟级别。  \n\n### 真正的回归，是安全的数据流被字符串拼接替代了\n\n这条 workflow 原本有一套更安全的处理模式：先将 Issue 标题放入 `env:` 变量，再通过 `jq` 构造 JSON payload。这个设计的价值在于，攻击者输入被当作数据处理，而不是被直接嵌进 shell 脚本。只要数据和命令边界还在，Issue 标题里即使出现引号、分号或 shell 特殊字符，也不应该改变脚本语义。  \n\n但 6 月 18 日合入的 PR #1218 改掉了这件事。新代码直接将 `${{ github.event.issue.title }}` 插入 `run:` 中的 shell 命令。GitHub Actions 会先进行 expression template expansion，之后 shell 才执行最终拼出的脚本。于是，一个包含单引号的 Issue 标题，就能从 `echo '...'` 的字符串上下文中逃逸出来，接着执行任意命令。  \n\n说白了，漏洞不是某个复杂的 GitHub Actions 边缘行为，而是最经典的一类错误：把不可信输入直接插进 shell。更值得警惕的是，这次修改移除的恰好是仓库此前已经采用的安全模式，即 `env:` 加 `jq --arg`。Wiz 的结论是，这个带有 “Copilot Autofix powered by AI” 共同署名的 squash commit 引入了注入向量。文章随后也特别澄清：Copilot 是该合并 PR 和代码变更的共同作者，并将其检查为 all-clear；但具体代码变更是否由 AI 辅助生成，目前并不确定。  \n\n### 看似存在的安全门，其实对所有人都敞开\n\n如果只看 workflow 的 `if:` 条件，开发者可能会以为它限制了触发者。问题在于，这个判断引用了 `github.event.pull_request`，而 workflow 的触发事件却是 `issues: opened`。对于 Issue 事件来说，`github.event.pull_request` 永远是 `null`。  \n\n因此，原本类似于“排除某个 bot”的判断，实际上退化成了 `null != 'whitesource-for-github-com[bot]'`。这个表达式始终为真。任何普通 GitHub 用户创建 Issue，都能让 workflow 运行。于是攻击链就完整了：无需仓库写权限，无需 Pull Request，无需绕过审批，只要提交一个精心构造的 Issue 标题即可。  \n\n这里有个很典型的 CI/CD 安全教训：访问控制条件不能只看“有没有写”，还必须在真实 event payload 下验证语义。一个针对 Pull Request 字段的判断，放到 Issue workflow 里，可能不是“不够严”，而是根本没有任何保护作用。Red Agent 正是同时识别到了不可信输入进入 `run:` 和这个失效 gate，才将其判定为可实际利用的高危问题。  \n\n### Agent 不只是发现漏洞，还会根据 Bash 报错修正攻击载荷\n\nWiz 的初始 exploit 尝试使用了常见的 `#` 注释技巧，想把后续 shell 内容注释掉。但脚本中存在 `TITLE=$(...)` 这样的命令替换结构，`#` 同时吞掉了闭合括号，导致 GitHub Actions runner 返回 Bash 的 unexpected EOF / syntax error。对传统自动化扫描器来说，这一步往往意味着“验证失败”。  \n\n但 Red Agent 没有停在这里。它分析了错误原因，意识到问题不是注入点不存在，而是 payload 破坏了外围 shell 语法。随后，它将 payload 调整为使用 `; echo '`，先正确结束当前 shell 结构，再执行外传逻辑。几秒后，Wiz 的 out-of-band listener 收到了来自 GitHub Actions runner 的回调。  \n\n回调来自 Azure IP `20.106.182.197`，其中包含 Base64 编码的 Jira 凭据。这个细节很重要，因为它说明漏洞已经不是理论上的 command injection，而是在真实 GitHub-hosted runner 上完成了验证。攻击者控制的是一个 Issue 标题，最终却能读取 workflow 所能访问的 secret，并把它送到外部服务。CI/CD 平台里的 shell 注入，危险通常就在于此：代码执行环境往往天然持有比外部用户更高的权限和更多的令牌。  \n\n### 被拿到的不是普通 token，而是 Snowflake Jira 的读取权限\n\nWiz 外传得到的 token 对应 `qa@snowflake.net`，可认证到 `snowflakecomputing.atlassian.net`。它授予了对 Snowflake Jira 中多个项目的读取权限，包括工程、Security Compliance 和 Bug Bounty Tracking 项目。文章还展示了通过该 token 访问 Snowflake Jira portal 的截图。  \n\n这说明攻击影响并没有停留在“某个 GitHub Actions job 被执行了一段命令”。一旦 workflow secret 被带出，攻击者可以继而访问内部协作系统中的漏洞、工程任务、合规信息和安全运营记录。虽然文章没有声称获得了更高权限或进一步横向移动，但只读访问这类 Jira 项目本身就足以造成严重信息泄露。对于安全团队而言，这类 token 的价值，往往不低于直接的云 API 凭据。  \n\n值得注意的是，Wiz 表示其 PoC 测试中访问的数据已被安全删除。Snowflake 后续也通过详细审计日志确认，在五天暴露窗口内，没有其他外部第三方访问该 endpoint。所有异常查询都能匹配到 Wiz 的测试 IP。也就是说，这次事件被及时发现并负责任披露，没有证据表明发生了真实的第三方滥用。  \n\n### Snowflake 当天修复，但这次事故暴露的是 AI 时代的审查缺口\n\nSnowflake 在 6 月 23 日收到 HackerOne 报告后，当天完成了修复。修复 commit 是 `1dc7766`，对应 PR #1402，核心动作是恢复原先的安全处理方式：通过 `env:` 传递输入，再用 `jq --arg` 解析和构造数据。受影响的 Jira token 随后被撤销，并于 6 月 24 日完成轮换。  \n\n时间线也很清晰：6 月 18 日，PR #1218 合入并让漏洞上线；6 月 23 日，Wiz 发现、利用并报告；Snowflake 同日修补；6 月 24 日轮换凭据。Snowflake 的官方回应强调，调查没有发现未经授权的访问，并感谢 Wiz 通过 HackerOne 进行负责任披露。就处置速度而言，这是一场标准且有效的应急响应。  \n\n但文章真正想指出的，并不是 Snowflake 修得够不够快，而是软件供应链的一个新现实：AI 参与代码编写、修改或审查，并不意味着安全风险会自动下降。这里的 AI 相关事实尤其值得精确表述：Copilot Autofix 被列为合并 commit 的共同作者，并对该 PR 和代码修改给出了 all-clear；但文章更新后明确表示，无法确认实际代码是否由 AI 辅助生成。无论代码最初由谁写，AI 审查未能识别“安全结构化解析被直接 shell 插值替换”的回归，才是这起事件最值得复盘的地方。  \n\n### 最该加的 Guardrail，是阻止安全模式被悄悄删掉\n\n这次事件的核心思路其实很简单：不要让不可信输入直接进入 shell，也不要让 AI 或人工重构轻易抹掉已有的安全边界。对于 GitHub Actions 来说，`${{ ... }}` 直接插入 `run:` block 是高风险信号，尤其当输入来自 Issue、PR 标题、评论、分支名或其他外部可控字段时。更稳妥的方式是经由 `env:` 传递，再使用参数化工具处理数据，例如这里恢复使用的 `jq --arg`。  \n\n更深一层的问题是，AI 工具通常缺少历史上下文。它可能看到一段 `env:` 加 `jq` 的代码显得冗长，于是倾向于“简化”为字符串插值；但它不知道这段冗长代码本来就是为了避免 shell injection。安全团队需要把这种经验固化成 guardrail，而不是期待每一次 AI review 都能理解设计意图。  \n\n最终，这个案例给开发团队的提醒不是“不要用 Copilot”，而是要把 AI 产出的代码、AI 参与审查的 PR，与人类代码放到同一套严格的 SAST、workflow lint、secret exposure 和安全 review 流程中。特别是当改动涉及 `run:`、权限条件、token、webhook 输入和 JSON/shell 边界时，审查重点不应只是“功能是否正常”，而应是“攻击者控制的数据能否改变执行语义”。因为在自动化攻击 Agent 面前，一个漏洞存活五天，已经足够长了。"
+}

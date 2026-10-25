@@ -1,0 +1,147 @@
+{
+  "id": 48061602,
+  "by": "JoachimSchipper",
+  "title": "Stop MitM on the first SSH connection, on any VPS or cloud provider",
+  "url": "https://www.joachimschipper.nl/Stop%20MITM%20on%20the%20first%20SSH%20connection,%20on%20any%20VPS%20or%20cloud%20provider.html",
+  "score": 126,
+  "createdAt": 1778440205,
+  "aiSummary": {
+    "chinese_title": "云 VPS 首次 SSH 防 MITM 引导法",
+    "discussion_overview": [
+      {
+        "category": "SSH 内建机制其实已有替代方案",
+        "summary": "不少评论指出，这个方法并不算全新，因为 SSH 早就有 host certificate 和 SSHFP 这两类机制。前者是用 SSH CA 给服务器主机密钥签名，客户端只需信任 CA；后者是把主机指纹放进 DNS，再由 ssh 按记录校验。有人强调 SSHFP 只有配合 DNSSec 才有强保证，否则 DNS 仍然能被篡改。也有人提到 Monkeysphere 这类老项目，说明这个方向早就有人做过，只是实现和自动化程度不同。",
+        "supportid": [
+          "48089119",
+          "48090301",
+          "48091184",
+          "48091488",
+          "48087343",
+          "48086841"
+        ]
+      },
+      {
+        "category": "真正难点是首次启动的信任引导",
+        "summary": "有评论把问题定义为 bootstrapping：新 VM 刚创建出来时，还没有可被信任的身份，只能先借助某个临时可信通道。文章里的做法是通过 cloud-init（云主机首次启动注入配置的工具）塞入临时 host key，首次连接确认后再旋转成正式密钥。评论认为这更像是 provisioning 流程的问题，而不是单靠 PKI 就能一劳永逸解决。也有人提醒，如果 cloud-init user-data 在脚本跑完前就被截获，或者控制平面本身不可信，攻击仍然可能发生。",
+        "supportid": [
+          "48092354",
+          "48087077",
+          "48087255",
+          "48088644",
+          "48090795",
+          "48089250",
+          "48090643",
+          "48087312",
+          "48091507"
+        ]
+      },
+      {
+        "category": "公钥认证能挡经典 MITM，但挡不住假服务器",
+        "summary": "一条长讨论纠正了“用了 public key authentication 就不可能 MITM”的简化说法。更准确地说，SSH 会把客户端签名绑定到 Diffie-Hellman key exchange 生成的 session identifier 上，所以 MITM 不能把客户端认证转发到真实服务器。可是一旦第一次连接没有校验主机密钥，攻击者仍然可以冒充服务器和用户交互，用户看到的只是一个假的主机环境。这样攻击者虽然不能替用户登录真实服务器，却仍可能骗走 API key、让用户执行恶意脚本，或者借 agent forwarding 进一步扩散风险。",
+        "supportid": [
+          "48087396",
+          "48087519",
+          "48087986",
+          "48089624",
+          "48088725",
+          "48090504",
+          "48087031",
+          "48090750",
+          "48089249",
+          "48089279",
+          "48090667",
+          "48091219",
+          "48088038",
+          "48089328",
+          "48093316",
+          "48088056"
+        ]
+      },
+      {
+        "category": "把指纹放到云厂商面板/API 也只是换信任点",
+        "summary": "有人觉得 VPS 提供商应该在 dashboard 或 API 里直接展示 host fingerprint，这样用户就不用手动比对。回应则指出，这并没有消灭信任问题，只是把信任从 SSH 首次连接转移到了云厂商的控制平面；如果面板或 API 被攻破，照样能撒谎。还有人提议在构建阶段直接塞入客户端公钥，但评论指出 SSH 并不要求服务器事先知道客户端公钥，恶意服务器仍可接受任意钥匙。这个分支还顺带提醒，agent forwarding 在不受信任主机上尤其危险。",
+        "supportid": [
+          "48087202",
+          "48088805",
+          "48089328",
+          "48093316"
+        ]
+      },
+      {
+        "category": "事后审计与日志威慑 MITM",
+        "summary": "另一派讨论提出，既然难以完全阻止 MITM，那就记录 session key fingerprint 到双方的 append-only log，事后对照即可发现是否被中间人过。这个思路针对的是想避免暴露的 nation-state attacker：如果攻击迟早会留下可比对痕迹，动手成本就会升高。质疑者则问，真正的 write-only log 如何实现，MITM 是否能转发指纹，以及这类能力是不是应该由系统日志体系来做，而不是由 OpenSSH 单独负责。有人提到远程日志、WORM tape 这类更传统的不可篡改存储，也有人直接反对把 blockchain 塞进来。",
+        "supportid": [
+          "48086532",
+          "48092289",
+          "48092684",
+          "48086607",
+          "48088100",
+          "48089980",
+          "48093932",
+          "48089349",
+          "48090754"
+        ]
+      },
+      {
+        "category": "运维上更像是跳板机、控制台和零接触生产",
+        "summary": "不少评论把焦点放回运维实践：把 SSH 视为 break-glass 工具，而不是日常入口。建议包括用 serial console 或 VNC 做首次登录，配合 jumpbox 和 internal VLAN，或者直接把控制端口从公网隔离出去。有人在 homelab 里结合 step CA（一个 SSH/X.509 证书颁发系统）和 Ansible（自动化运维工具），但仍然卡在“第一台机器怎么先被信任”这个鸡生蛋问题上。评论里也有人提到 zero touch prod，强调如果真要大规模自动化，就应尽量把首次信任建立成受控流程。",
+        "supportid": [
+          "48088250",
+          "48091072",
+          "48086869",
+          "48086592",
+          "48089984",
+          "48089409",
+          "48089671",
+          "48090649"
+        ]
+      },
+      {
+        "category": "人类可读指纹的可视化尝试",
+        "summary": "还有一条支线在讨论如何让人更容易比较 fingerprint。OpenSSH 的 RandomArt 本身就是把 hash 转成图案，便于人工肉眼确认；也有人提到用 emoji 序列来做同样的事。有人甚至设想把随机位喂给 seeded image generation LLM，生成更容易记忆的图像，但回应认为真正难点不是“画得像不像”，而是不同实现必须产生完全一致的结果。这个方向更像是 UX 问题，而不是 cryptography 本身的问题。",
+        "supportid": [
+          "48088388",
+          "48090669"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "SSHFP",
+        "explanation": "DNS 中存放 SSH 主机公钥指纹的记录，ssh 可据此自动比对主机密钥。"
+      },
+      {
+        "term": "DNSSec",
+        "explanation": "DNS 安全扩展，用签名保护 DNS 响应不被伪造或篡改。"
+      },
+      {
+        "term": "cloud-init",
+        "explanation": "VM 首次启动时执行的初始化工具，常用于注入配置、密钥和脚本。"
+      },
+      {
+        "term": "SSH CA / host certificate",
+        "explanation": "用 CA 给 SSH 主机密钥签证书，客户端只需要信任 CA 根。"
+      },
+      {
+        "term": "Diffie-Hellman key exchange",
+        "explanation": "SSH 协商共享密钥的过程，session identifier 也由此产生。"
+      },
+      {
+        "term": "agent forwarding",
+        "explanation": "把本地 SSH agent 转发到远端主机，方便跳板但对不可信主机很危险。"
+      },
+      {
+        "term": "RandomArt",
+        "explanation": "OpenSSH 把 fingerprint 渲染成图案的方式，方便人眼比对。"
+      },
+      {
+        "term": "WORM",
+        "explanation": "write once read many，指写入后不可修改的存储或日志介质。"
+      }
+    ],
+    "context": "这篇讨论围绕“首次 SSH 连接如何避免 MITM”展开，文章提出通过 cloud-init（云主机首次启动注入配置的工具）先塞入临时 host key，再在首次连接后替换成正式密钥，从而绕过传统 trust-on-first-use（首次见到就先信任）的风险。评论区拿 SSH 已有的 host certificate、SSHFP（DNS 中的 SSH 主机指纹记录）和 DNSSec（DNS 安全扩展）来对比，认为问题未必新，但实现上常被忽略。也有人把焦点放在 bootstrap：新 VPS 或物理机在拿到真实身份之前，总要先依赖某个可信通道，这在 Hetzner、OVH、Linode 这类云环境里通常会落到 cloud-init、控制台、VNC、serial console 或内部管理网络上。另一个现实背景是 Ansible（自动化运维工具）等系统往往本身就跑在 SSH 上，所以“第一台机器怎么先被信任”会形成鸡生蛋问题，进而引出 step CA（一个 SSH/X.509 证书颁发系统）、jumpbox、StrictHostKeyChecking 和 agent forwarding 等实践讨论。",
+    "emoji": "🔐",
+    "sarcastic_question": "都说防 MITM，第一步却还得先信云厂商一把？"
+  },
+  "articleSummary": "## 一句话总结\n利用 cloud-init 注入一个临时的 SSH Host Key 来建立安全连接，拿到服务器生成的“真”密钥后立即丢弃临时密钥，从而在不依赖云厂商特定方案的情况下，彻底杜绝首次 SSH 连接时的中间人攻击。\n\n### 首次连接的“默认选项”其实是个坑\n每次新开一台 VPS，不管是 AWS 还是 Hetzner，第一次 `ssh` 连接时总会弹窗提示“无法确认主机真实性”。大多数时候，我们下意识就会敲 `yes`，这就是所谓的 Trust On First Use (TOFU)。但这其实是个巨大的安全隐患：如果你敲 `yes` 的瞬间，正遭遇中间人攻击，你的流量就被劫持到了攻击者的代理服务器上。虽然像 AWS 或 Fly.io 提供了私有的验证方案，但很多云厂商（比如 Hetzner）根本没这功能，这就逼着我们必须找一个通用的解决办法。\n\n### 直接把私钥塞进 cloud-init 是在“裸奔”\n既然 cloud-init 能在启动时注入配置，那能不能直接把长期的 SSH Host Private Key 预置进去？这样你本地 `known_hosts` 里预先存好公钥，连接就能验证了。但作者强烈反对这种做法，因为这是在“裸奔”。cloud-init 的 user-data 通常会暴露在元数据服务里（比如 `http://169.254.169.254`），只要 VM 上有个进程被 SSRF 打穿，或者云厂商内部出问题，你的私钥就泄露了。更糟的是，这私钥是长期有效的，一旦泄露，后患无穷。\n\n### 核心思路：用“一次性”密钥做跳板\n那怎么办？作者提出了一个很巧妙的设计：**只注入一个临时的 SSH Host Key**。这个临时密钥只负责一件事：帮你安全地完成第一次握手。一旦连上，脚本会立刻在服务器上生成真正的、长期使用的 SSH Host Key，并通过刚才的安全通道把公钥传回来。整个过程结束后，那个临时的私钥就失效了。说白了就是：用一把“一次性钥匙”去开门，进门换锁，然后把一次性钥匙扔了。\n\n### 攻击者拿到了数据，但拿不到时机\n这个方案最硬核的地方在于它对时间窗口的控制。即使攻击者完全控制了网络，并且在脚本跑完后从元数据服务里窃取了那个临时私钥，他也毫无用处。因为当攻击者拿到密钥时，服务器已经换成了新的“真”密钥，旧的临时密钥已经被废弃了。作者在脚本里把临时密钥放在临时目录，绝不写入 `known_hosts`，就是为了防止误用。这种设计确保了密钥材料在它还有价值的时候，绝对不会落到攻击者手里。\n\n### 借助 OpenSSH 的密钥轮换机制做最后一道防线\n拿到真公钥后，怎么存进本地的 `known_hosts` 也很讲究。脚本没有简单地把公钥追加写入文件，而是利用了 OpenSSH 自带的 `UpdateHostKeys` 机制。这有什么好处？它能防止被入侵的服务器往你的 `known_hosts` 里注入恶意数据，也能确保只有服务器真正控制的密钥才会被写入。同时，它还能自动处理 `HashKnownHosts` 这些配置选项，省去了很多繁琐的兼容性处理。\n\n### 即使管理员电脑被黑，服务器私钥依然是安全的\n这个方案的威胁模型想得很周全。假设攻击者不仅控制了网络，还黑掉了管理员的电脑，但他只要没真正连上过服务器，就拿不到服务器的长期私钥。因为那个长期私钥从来没离开过服务器，也没在管理员电脑上出现过。反之，如果服务器或云厂商本身作恶，他们也没法攻陷你的管理员电脑，因为我们依然信任 SSH 协议的加密强度。这种双向的防御逻辑，才是这个脚本真正“硬核”的地方。"
+}

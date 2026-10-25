@@ -1,0 +1,94 @@
+{
+  "id": 47335325,
+  "by": "ibobev",
+  "title": "Why Mathematica does not simplify sinh(arccosh(x))",
+  "url": "https://www.johndcook.com/blog/2026/03/10/sinh-arccosh/",
+  "score": 127,
+  "createdAt": 1773559269,
+  "aiSummary": {
+    "chinese_title": "为什么 Mathematica 不简化 sinh(arccosh(x))：复数分支与 CAS 的保守策略",
+    "discussion_overview": [
+      {
+        "category": "分支切口与多值性",
+        "summary": "核心观点是 arccosh 在复平面上是多值的，定义中包含对数和开根号会引入分支，输入位于分支切口两侧会产生不同的主值。评论中给出修正后的数值例子：ArcCosh[-2 + 0.001 I] 与 ArcCosh[-2 - 0.001 I] 返回大致相差符号的虚部（约 1.31696 ± 3.14102i），显示沿切口左右取值不同。虽然把 Sinh 作用在这些主值上并在虚部趋于零时会得到相同的极限（评论提到趋向 -Sqrt[3]），但在未指定分支或域的情况下不能把 sinh(arccosh(x)) 在整个复域上统一替换为单一代数式，所以 Mathematica 对此类变换保持保守。",
+        "supportid": [
+          "47385306",
+          "47389012",
+          "47385284"
+        ]
+      },
+      {
+        "category": "约束与假设导致的保守简化",
+        "summary": "很多评论将问题归结为 CAS 在缺乏变量域或分支假设时必须谨慎处理符号变换，常见示例是 sqrt(x^2) 的简化问题。对实数有 sqrt(x^2)=|x|，在额外假设 x>0 时可以化为 x，但对任意复数不成立：例如 x = -i 时 sqrt(x^2) = sqrt(-1) = i 而 |x| = 1，且实现上 sqrt 通常返回主平方根而非 ±，因此没有域信息不能盲目替换。评论指出需要显式假设（如 Mathematica 的 Assuming）或类型推导才能允许更强的简化。",
+        "supportid": [
+          "47385088",
+          "47385395",
+          "47385968",
+          "47389467",
+          "47385528"
+        ]
+      },
+      {
+        "category": "Mathematica 的实现、可视性与启发式",
+        "summary": "有人希望 Mathematica 把 Simplify/Integrate 等核心启发式开源以便理解为何不做某些简化，但这既是公司技术护城河又并非全黑盒。评论里也指出并非完全不可查看：许多以 Wolfram Language 实现的函数可以通过 FunctionRepository 或 ResourceFunction 的 PrintDefinitions 检视，但整体仍受专有许可限制。Simplify 的行为来源于大量具体规则、策略选择和一个 ComplexityFunction（默认在叶子数与数字精度间折中），规则顺序和多轮传递会显著影响结果，因而看起来像黑箱但实际上由可调整的启发式集合驱动。",
+        "supportid": [
+          "47385172",
+          "47385947",
+          "47385983",
+          "47386608",
+          "47386150",
+          "47389532"
+        ]
+      },
+      {
+        "category": "“简化”目标与度量的冲突",
+        "summary": "评论中有人强调“简化”并无单一定义：对人类可读的形式与对计算机效率最低开销的形式可能相互冲突。把复合函数用对数、指数和根号展开在算术或操作数上可能更复杂，因此按不同成本函数（如更少运算符、函数调用或叶子数）会得到不同的“简化”结果。评论还讨论了在何种上下文下应优先哪种目标，并指出用户可以通过调整 ComplexityFunction 或提供约束来控制 Simplify 的偏好。",
+        "supportid": [
+          "47385144",
+          "47386382",
+          "47387394",
+          "47387633",
+          "47387826"
+        ]
+      },
+      {
+        "category": "LLM 与形式化证明对 CAS 的影响讨论",
+        "summary": "有评论提出本地可用的 LLM 加上形式化证明器（如 Coq 或 Lean）能否在错误检测或推导上替代传统 CAS。反对观点认为 Coq/Lean 面向形式化证明，适用场景不同，而 Mathematica 更像将 numpy+sympy+matplotlib 等一体化的交互式数值与符号环境，两类工具短期内互补胜于替代。总体结论是 LLM 与证明助手能增强验证和发现错误的能力，但不会立即完全取代现有 CAS 的功能与生态。",
+        "supportid": [
+          "47387714",
+          "47388373"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "branch cut（分支切口 / branch cut）",
+        "explanation": "复分析中为把多值函数限制为单值而在复平面上划定的一条曲线或区间，跨过它函数值会发生不连续或跳变。arccosh 等函数由对数和开根号构造，切口位置决定从不同方向逼近时得到的主值差异。"
+      },
+      {
+        "term": "principal value / principal branch（主值 / 主分支）",
+        "explanation": "对多值复函数约定的一条单值分支，CAS 通常采用主分支作为默认输出。比如 principal square root 返回主平方根（一个确定的复数）而不是 ± 两个解。"
+      },
+      {
+        "term": "Riemann surface（Riemann surface / 黎曼面）",
+        "explanation": "把多值复函数的不同分支看作多层“面”粘合起来的几何对象，用于描述解析延拓与分支结构，能直观解释为何某些函数在复平面上不能用单一表达式全域定义。"
+      },
+      {
+        "term": "removable singularity / holomorphic extension（可去奇点 / 全纯延拓）",
+        "explanation": "函数在某点可能无定义但邻域极限存在，这个点称为可去奇点，可以通过定义适当值把函数解析延拓为全域解析函数。评论用 x/x 在 0 点的可去奇点举例，说明在复分析意义下可以把 x/x 扩展为恒为 1 的全纯函数。"
+      },
+      {
+        "term": "ComplexityFunction（Mathematica 的 Simplify 复杂度函数）",
+        "explanation": "Mathematica 中 Simplify 用来评估表达式'复杂度'的代价函数，默认策略在表达式叶子数与数字精度之间折中；用户可定制该函数以改变 Simplify 的偏好。"
+      },
+      {
+        "term": "Assuming（Mathematica 的 Assuming）",
+        "explanation": "Mathematica 用于在特定假设（如变量为实数、正数等）下执行符号运算和简化的机制，向系统提供域/符号约束以启用更多合法的替换。"
+      }
+    ],
+    "context": "讨论源自一篇探讨为何 Mathematica 不把 sinh(arccosh(x)) 自动化简的文章，评论把问题归因于复分析中的分支和主值选择会导致多值或沿切口不同的取值。具体数值例子（如 ArcCosh[-2 ± 0.001i] 给出相反符号的虚部，而 Sinh 在 t→0 的极限趋于 -Sqrt[3]）被用来说明切口处值与极限的细微差别。评论还提出更广泛的 CAS 设计考虑：没有域/分支假设时系统需保守，Mathematica 的 Simplify 受 ComplexityFunction 与启发式策略顺序影响，而许多实现细节因为专有许可而不是完全开源。额外话题包括通过 FunctionRepository/PrintDefinitions 可部分查看 Wolfram Language 实现，以及 LLM 与形式化证明器与 CAS 的潜在互补关系。",
+    "emoji": "🤔",
+    "sarcastic_question": "你确定在没指明分支的情况下还能直接简化？"
+  },
+  "articleSummary": "## 一句话总结\nMathematica 拒绝将 `Sinh[ArcCosh[x]]` 简化为 √(x² − 1)，并不是因为它算错了，而是因为它在复数域的分支切割上严格守住了数学定义的正确性。\n\n### 从三角函数到双曲函数的“意外”\n作者原本在研究三角函数与反三角函数的复合，比如 `Sin[ArcCos[x]]`，Mathematica 能完美地将其简化为 √(1 − x²)。这符合我们的直觉，于是作者顺理成章地把目光转向了双曲函数，想看看 `Sinh[ArcCosh[x]]` 会不会也乖乖简化成教科书上的 √(x² − 1)。但有意思的地方在于，Mathematica 这次“叛逆”了，它吐出了一个看起来极其复杂的表达式：√((x−1)/(x+1)) * (x+1)。这让人不禁想问：明明手算就能化简，为什么 Mathematica 非要绕个弯子？\n\n### 直觉化简背后的数值陷阱\n乍一看，Mathematica 给出的那个复杂式子确实可以化简。如果你把 (x+1) 移进根号里变成 (x+1)²，再开根号，确实能得到 √(x² − 1)。但这在数学上是个危险的假设，因为它默认了 √(x+1)² = x+1 恒成立。作者举了个例子：当 x=2 时，直觉告诉我们 √(2² − 1) 应该是 √3。但如果你直接算 `Sinh[ArcCosh[2]]`，Mathematica 的那个“复杂”式子会正确地给出 −√3。这说明，简单的代数化简在某些值域下是会出错的，而 Mathematica 保留的“复杂”形式才是对的。\n\n### ArcCosh 的定义比你想的要复杂\n问题的根源在于 `ArcCosh` 的定义。在实数域，我们说 `ArcCosh[x]` 是双曲余弦等于 x 的那个正数，这没问题。但一旦进入复数域，或者 x 小于 1，事情就变味了。因为 `cosh` 是偶函数，反函数不是单值的，所以必须引入分支切割。Mathematica 的文档写得很清楚：`ArcCosh[z]` 在复平面有一条从 −∞ 到 +1 的分支切割。这意味着，在处理这条线上的数值时，函数的行为取决于你是从“上面”还是“下面”逼近它，这直接影响了最终结果的符号。\n\n### 根号函数的“脾气”也不小\n除了 `ArcCosh`，`Sqrt`（平方根）函数也有类似的“脾气”。我们在化简时默认 √(x+1)² = x+1，但这只在 x ≥ -1 时成立。对于复数函数，`Sqrt` 同样有一条分支切割（通常是 (−∞, 0]），并且约定取极限时的连续性。Mathematica 之所以不化简，是因为它必须同时兼顾 `ArcCosh` 和 `Sqrt` 这两个函数在复平面上的分支定义。它给出的那个看似啰嗦的表达式，实际上是为了保证在所有可能的输入下（包括复数和负实数），结果都是解析连续且正确的。\n\n### 如何让 Mathematica“听话”\n那如果我们确定 x 的范围是安全的，比如只关心 x ≥ -1 的情况，怎么办？这时候就需要显式地告诉 Mathematica 你的假设。作者演示了，如果你加上 `Assumptions -> {x >= -1}`，Mathematica 就会立刻放下戒备，乖乖把那个复杂的式子简化成我们熟悉的 √(x² − 1)。这其实揭示了一个核心思路：符号计算引擎的“不智能”，往往是因为它比我们更严谨，它在替我们防守那些我们容易忽略的数学边界。"
+}

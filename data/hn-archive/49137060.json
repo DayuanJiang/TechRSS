@@ -1,0 +1,105 @@
+{
+  "id": 49137060,
+  "by": "juhopitk",
+  "title": "Postmortem for Kernel Soundness Bug #14576",
+  "url": "https://leodemoura.github.io/blog/2026-8-1-postmortem-for-kernel-soundness-bug-14576/",
+  "score": 121,
+  "createdAt": 1785610226,
+  "aiSummary": {
+    "chinese_title": "Lean kernel soundness bug：AI 辅助的 Collatz 证明其实能导出 False",
+    "discussion_overview": [
+      {
+        "category": "漏洞时间线与修复",
+        "summary": "评论先把事件经过补全：Lean 的 kernel soundness bug #14576 在 7 月下旬被报告并修复。最初引发关注的是一个 AI 辅助写出的 Collatz “disproof”，后来被压缩成一个很小的 repro，最终显示它其实能导出 False。有人指出这个 exploit 还同时踩中了另一个 proof checker 的漏洞，所以独立 kernel 之所以还能挡住，是因为它需要两个实现都保持最新。也有人进一步建议，security-oriented models 可以专门拿来找 unsound steps、missing checks 和 hardening 机会。",
+        "supportid": [
+          "49137061",
+          "49140177"
+        ]
+      },
+      {
+        "category": "形式化证明的信任边界",
+        "summary": "不少人强调，formal proof 不是绝对无误，而是把错误空间尽量缩到 verifier 或 kernel 本身。Lean 的 kernel 被刻意设计得很小，是为了减少可信基座的面积，但这并不意味着它永远不会出 soundness bug。有人拿 Rust type checker 偶发的 soundness 问题作类比，提醒大家 verified result 只是非常强、但仍然有条件的保证。也有人说，tactic-heavy proofs 本来就容易显得像 slop，真正关键的是 kernel 是否能严密挡住不该通过的推导。",
+        "supportid": [
+          "49137446",
+          "49137536",
+          "49137567",
+          "49138146",
+          "49140494",
+          "49137671",
+          "49137886"
+        ]
+      },
+      {
+        "category": "Collatz 只是烟幕",
+        "summary": "评论区普遍认为，这次事件和 Collatz conjecture 本身关系不大，所谓“证伪”更像是吸引眼球的包装。原始叙事被认为是一个 flashy gimmick，维护者甚至更希望看到一个直接的 False 证明，因为那样更容易暴露 kernel 问题。还有人指出，Lean 允许 non-constructive proofs，所以“给出反例”这种说法本来就可能误导读者，把一个并不真正闭合的对象伪装成 counterexample。最后的共识是：重点不是 Collatz，而是 proof 被 kernel 错误接受了。",
+        "supportid": [
+          "49137448",
+          "49137829",
+          "49138144",
+          "49139470"
+        ]
+      },
+      {
+        "category": "soundness 与 completeness 术语争论",
+        "summary": "有评论专门区分了 soundness 和 completeness：soundness 是“可导出的都应当为真”，而 completeness 则是“真命题都能导出”或更常见的 refutation completeness。这里的 bug 属于 soundness failure，因为它让 proof checker 接受了本不该成立的命题。相反，如果只是让一个原本不可证的命题变得可证，那更接近 completeness bug，而且这类问题通常更容易在测试里暴露。讨论里还顺带提到 Gödel incompleteness theorem，用来提醒大家：一致性和完全性本来就不是随便能同时得到的。",
+        "supportid": [
+          "49139245",
+          "49139534",
+          "49139615",
+          "49140484",
+          "49140500"
+        ]
+      },
+      {
+        "category": "Metamath 对比",
+        "summary": "另一条线把 Metamath（一个以极小 kernel 和多实现交叉验证著称的形式化证明系统）拿来对比，认为它的优势在于 verifier 足够小，甚至可以很快实现。支持者强调，Metamath 的数据库会被多个独立实现交叉检查，这让它在设计上更接近“可审计的最小可信基础”。但反方很快指出，原始 C verifier 也出现过 bug，所以小 kernel 并不是银弹。比较稳妥的看法是：它的 metatheory 很讨喜，但工程上仍然离不开多实现互检和持续修补。",
+        "supportid": [
+          "49137726",
+          "49137792",
+          "49138941",
+          "49140331"
+        ]
+      },
+      {
+        "category": "AI/Claude 是否背锅",
+        "summary": "关于 AI 的争论也很明显：有人直接把问题归因于 Claude 或 AI 参与代码生成，但其他评论指出，真正出 bug 的 kernel 代码大多是多年老代码，修复也只是少量改动。有人明确表示，没有证据证明这次 soundness bug 是 LLM 代码导致的，更像是普通的人类疏漏。也有人认为，项目采用 Claude 反映的是对 slop 的容忍度，但这和漏洞成因不是一回事。更关键的还是 kernel review、独立审查，以及不要把“模型生成”当作天然的因果解释。",
+        "supportid": [
+          "49137495",
+          "49137685",
+          "49137550",
+          "49137561",
+          "49137655",
+          "49137730",
+          "49137836",
+          "49137935"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "soundness（健全性）",
+        "explanation": "证明系统的核心性质：凡是能被导出的命题都应该是真的。"
+      },
+      {
+        "term": "kernel（内核）",
+        "explanation": "theorem prover 里最小、最可信的检查核心，其他结果最终都要过它。"
+      },
+      {
+        "term": "completeness / refutation completeness（完备性 / 反证完备性）",
+        "explanation": "表示所有应当可证的东西都能被推出，或所有假命题都能推出 False。"
+      },
+      {
+        "term": "nested inductive types（嵌套归纳类型）",
+        "explanation": "一种递归定义的数据类型，这次漏洞正是利用了 kernel 处理它时的缺陷。"
+      },
+      {
+        "term": "Metamath",
+        "explanation": "一个以极小 kernel 和多实现交叉验证著称的形式化证明系统。"
+      }
+    ],
+    "context": "Lean 4（一个交互式定理证明器）在 7 月曝出并修复了 issue #14576：它的 kernel（最小可信检查器）错误接受了一个利用 nested inductive types（嵌套归纳类型）的证明，从而可能导出 False。最先传播出来的是一个 AI 辅助写出的 Collatz conjecture（关于整数迭代是否最终进入 1 的经典猜想）的“证伪”，但后来被缩减成更小的反例，说明真正的问题在于 soundness，而不是 Collatz 本身。评论还把这个事件放到更大的背景里讨论：形式化证明的可信度最终取决于 verifier/kernel，哪怕是 Rust、Coq、Isabelle 或 Metamath（一个以极小 kernel 和多实现互检闻名的系统）也都不能被当成绝对无漏洞。AI 可以帮助生成证明或发现漏洞，但若底层检查器有缺陷，形式化结果的保证就会被削弱。",
+    "emoji": "⚠️",
+    "sarcastic_question": "连 verifier 都会错，还叫绝对证明？"
+  },
+  "articleSummary": "## 一句话总结\nLean 内核曾因处理嵌套归纳类型时的参数检查缺失导致 Soundness 漏洞，虽仅可通过元编程触发，但官方已修复并引入 AI 辅助审计以强化内核安全性。\n\n### AI \"证伪\" 猜想，实则踩中内核盲区\n事情起因是 Ramana Kumar 在 7 月 25 日发布了一个仓库，声称用 AI 辅助给出了 Collatz 猜想的 \"无 sorry 证伪\"。这听起来很震撼，但问题在于这个 \"证明\" 并非数学上的突破，而是利用了 Lean 内核的一个 Bug。这个漏洞藏在内核处理嵌套归纳类型的逻辑里：当消除一个归纳类型 `T` 的嵌套出现时，如果参数 `Ds` 是幻影类型（即构造函数字段中未提及），它们就会从生成的辅助类型中消失。这导致类型检查被绕过，攻击者可以借此构造出 `False` 的证明。有意思的是，这个 Bug 只能通过元编程直接向内核发送声明来触发，前端通常会拦截这种错误项，所以这属于实现层面的疏漏，而非 Lean 元理论的缺陷。\n\n### 独立校验器也中招，双重漏洞才让攻击得手\n为了验证 Lean 代码的正确性，社区通常会使用独立的内核进行二次检查，比如 Chris Bailey 用 Rust 写的 `nanoda`。令人意外的是，这个伪造的 Collatz 证明竟然也通过了一周前的 `nanoda` 版本。这并不是因为 `nanoda` 不靠谱，而是这里发生了一次罕见的 \"双重漏洞\" 叠加：官方内核漏掉了对嵌套归纳类型参数的检查，而当时的 `nanoda` 虽然检查了这一处，却没验证投影节点中的类型名称。攻击构造的表达式恰好避开了官方内核的检查点，又击中了旧版 `nanoda` 的盲区。这说明独立校验依然有效，毕竟要同时攻破两个不同的实现很难，但也提醒用户必须保持两个内核都更新到最新版本。\n\n### 试图限制元编程是治标不治本\n漏洞曝光后，有人提议限制或移除元编程能力，认为这样就能堵住攻击路径。但这其实是个误区，因为 Elaborator（ elaborator）在设计上就是 \"不可信\" 的。系统的 Soundness 绝不能依赖于一个不可信的组件拒绝构建错误的项。攻击者如果想搞破坏，完全可以直接写 `.olean` 文件或者修改内存，这些手段都能直接绕过 Elaborator。核心思路其实很简单：内核必须在自己的进程中独立拒绝类型错误的声明。这种关注点的分离和隔离，恰恰是证明项体系的主要优势之一。\n\n### 引入网络安全 AI，把内核代码翻了个底朝天\n修复完这个紧急漏洞后，Lean FRO 并没有止步，而是做了一件很硬核的事：他们找来了 OpenAI 的 Daniel Selsam，专门用网络安全领域的 AI 模型对 Lean 内核进行了审计。结果很有成效，AI 发现了几个其他的编程错误，虽然这些 Bug 同样只能通过元编程触发，且都被 `nanoda` 拦截了，但官方还是全部修复了。除了修补具体漏洞，他们还强化了内核不变量，确保未来的代码更加健壮。现在，`comparator.live` 默认运行 `nanoda`，并且每天追踪上游更新，确保校验器始终与内核同步。\n\n### 验证工作仍在继续，但这次危机也是契机\nMario Carneiro 的 `lean4lean` 项目试图在 Lean 内部形式化 Lean 的类型理论，并证明内核实现了该理论。虽然这个项目还在进行中，一致性证明尚未覆盖归纳类型，但那个待验证的实现也继承了官方内核的同一个 Bug。这听起来有点尴尬，但这其实意味着，一旦他们试图完成这部分的验证，这个 Bug 本来也会被发现。这次事件虽然惊险，但也促使社区投入更多资源去寻找专家、开发新内核并完善理论验证，长远来看对 Lean 生态的健康发展是一件好事。"
+}

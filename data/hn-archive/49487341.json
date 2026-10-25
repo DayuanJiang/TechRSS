@@ -1,0 +1,109 @@
+{
+  "id": 49487341,
+  "by": "ingve",
+  "title": "Samsung's Processing-in-Memory (PIM)",
+  "url": "https://chipsandcheese.com/p/hot-chips-2026-samsungs-processing",
+  "score": 225,
+  "createdAt": 1787986810,
+  "aiSummary": {
+    "chinese_title": "三星 PIM：瞄准 LLM 推理的内存内计算",
+    "discussion_overview": [
+      {
+        "category": "LLM 推理是核心落地点",
+        "summary": "不少评论把 PIM 的价值直接放在 LLM 推理上，因为这类工作负载高度依赖矩阵乘法、权重读取和 KV cache 访问，瓶颈往往是 memory bandwidth 而不是算术本身。有人设想只要把模型装进更多 RAM，就能让更大的模型跑在本地，甚至提到 64GB 条子、8B fp8 模型和多路服务器堆满 PIM memory 的场景。也有人引用文中的带宽数据，认为 DRAM 芯片内部可用带宽远高于对外接口，因此把简单运算放到内存旁边确实有现实动机。",
+        "supportid": [
+          "49488736",
+          "49487849",
+          "49488243",
+          "49488713",
+          "49488041",
+          "49488381",
+          "49488473",
+          "49487869",
+          "49489016"
+        ]
+      },
+      {
+        "category": "实现细节与算子适配受质疑",
+        "summary": "另一条主线是对现有实现不太乐观，认为 PIM 并不天然适合所有矩阵运算。评论指出 DRAM 制程并不擅长复杂逻辑，所以这类方案更像是一个带更高带宽的弱 NPU，同时还受制于专门的编程模型、压缩/量化格式支持不足等问题。对于 GEMM 这类更通用的矩阵-矩阵乘法，大家普遍认为需要复杂 tiling、跨 bank 搬运和更多读写开销；相比之下，GEMV 更像是 PIM 的主场，而如果工作集能放进 cache，PIM 的意义又会大幅下降。",
+        "supportid": [
+          "49488558",
+          "49488702",
+          "49488538",
+          "49488573",
+          "49488597",
+          "49487913",
+          "49488164",
+          "49488215",
+          "49488505",
+          "49487989"
+        ]
+      },
+      {
+        "category": "老想法新包装，落地史很长",
+        "summary": "有评论把 PIM 看成一个反复出现的老概念，而不是全新的突破。有人回忆类似思路早在 1980 年代的 ISA 扩展内存、computer-on-a-card 里就出现过，说明“把计算挪近存储”的想法循环了很多轮。也有人提到 Samsung 早在 Hot Chips 和 ISCA 上展示过 HBM2 PIM 原型，但每年 trade show 上都有大量 exotic accelerators 最终没有下文，所以真正缺的是能驱动 adoption 的 killer app。",
+        "supportid": [
+          "49488429",
+          "49488944",
+          "49487784"
+        ]
+      },
+      {
+        "category": "效率提升不一定压低总需求",
+        "summary": "讨论还延伸到 AI data centers 的扩张逻辑。支持者认为 PIM、ASICs 之类优化会持续降低推理成本，未来可能让 local inference 变得足够便宜，从而在某个 tipping point 之后减少一部分云端需求。反方则搬出 Jevons Paradox，强调效率提升会让单位算力更便宜、适用场景更多，最终可能反而推高总需求，所以单靠优化未必能抵消数据中心的持续扩建。",
+        "supportid": [
+          "49488861",
+          "49488880",
+          "49488967",
+          "49488949"
+        ]
+      },
+      {
+        "category": "部署形态、能耗与安全边界",
+        "summary": "除了性能，评论也在讨论系统工程层面的代价。有人担心 RAM 也会需要主动散热，毕竟计算从 CPU/GPU 挪到 memory subsystem 后，热设计并不会自动消失。也有人设想更现实的落地方式：让一个精简 RTOS 从 CPU cache 运行，把 PIM memory 作为 network-attached accelerator 使用；安全方面则有人担心“self changing RAM” 会带来新漏洞，但也有人反驳说这反而更接近把 memory 维持为纯 data。",
+        "supportid": [
+          "49488620",
+          "49488588",
+          "49488637",
+          "49488855",
+          "49488690",
+          "49489024"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "PIM（Processing-in-Memory）",
+        "explanation": "把部分计算直接放到内存芯片内部或附近，减少 CPU/GPU 与内存之间的数据搬运。"
+      },
+      {
+        "term": "GEMV",
+        "explanation": "矩阵-向量乘法，常被认为比 GEMM 更适合 PIM 这类内存内计算架构。"
+      },
+      {
+        "term": "GEMM",
+        "explanation": "矩阵-矩阵乘法，通用性更强，但对 PIM 的 bank 划分和数据搬运要求更高。"
+      },
+      {
+        "term": "LLM",
+        "explanation": "Large Language Model，大语言模型；本帖里被视为 PIM 最现实的落地场景之一。"
+      },
+      {
+        "term": "KV cache",
+        "explanation": "推理时保存注意力机制的 Key/Value 缓存，常占用大量内存并消耗带宽。"
+      },
+      {
+        "term": "DRAM",
+        "explanation": "动态随机存取存储器，PIM 主要想直接利用其内部 bank 和带宽。"
+      },
+      {
+        "term": "HBM2",
+        "explanation": "High Bandwidth Memory 2，高带宽内存；评论提到 Samsung 之前在这种模块上展示过 PIM 原型。"
+      }
+    ],
+    "context": "Samsung 的 Processing-in-Memory（PIM）是在 DRAM（动态随机存取存储器）里加入简单计算单元，让部分运算直接发生在内存附近，以减少数据搬运成本。评论里提到 Samsung 早先在 Hot Chips（芯片架构会议）和 ISCA（计算机体系结构顶会）上展示过 HBM2（High Bandwidth Memory 2，高带宽内存）相关原型，这次讨论则把焦点进一步放到 LLM 推理上。之所以引发关注，是因为大模型推理常常受限于 memory bandwidth，而不是纯算力；有人还对比了芯片内部带宽和外部接口带宽，认为差距正是 PIM 想要利用的空间。讨论同时涉及 GEMV、GEMM、KV cache 以及本地 inference 等概念，整体是在争论这种“把 CPU 放进 cache / 把算力放进内存”的路线究竟会不会真正落地。",
+    "emoji": "🤔",
+    "sarcastic_question": "把算力塞进内存，就能解决带宽和应用问题了？"
+  },
+  "articleSummary": "## 一句话总结\n\nSamsung 的 LPDDR5X-PIM 把 MAC 单元塞进每个 DRAM bank，用标准 LPDDR5X 命令撬动 614 GB/s 内部带宽，但硬件兼容性的背后，是极其棘手的软件隔离、调度与缓存一致性问题。\n\n## 正文\n\n### 真正闲置的不是 DRAM 容量，而是芯片内部带宽\n\nIn-memory compute 吸引人的地方，从来不只是“离数据更近”。传统 CPU、GPU 或 NPU 访问 DRAM 时，数据必须穿过芯片外部接口。这个接口的带宽和延迟，往往才是瓶颈。  \n但 DRAM 内部其实由多个 bank 组成，每个 bank 都有独立的读写逻辑。内存控制器即使能并行激活多个 bank，也无法通过外部总线取走全部内部带宽。  \nSamsung 的思路很直接：既然数据已经在 bank 里，计算就别把它搬出去。说白了，就是让 DRAM 自己完成部分 MAC 运算。  \n这正是 LPDDR5X-PIM 的出发点：不是替代传统计算核心，而是绕开“DRAM 到核心”这条昂贵的数据搬运路径。\n\n### 每个 bank 都有一个小型 MAC 引擎\n\nSamsung 的 LPDDR5X-PIM 基于 LPDDR5X-9600，单颗芯片有 16 个 bank。与普通 DRAM 不同的是，每个 bank 旁边都放置了一个 PIM block。  \n这个 PIM block 可以直接访问自己绑定的 DRAM bank，不受芯片外部总线限制。于是 16 个 bank 同时工作时，可以利用高达 614 GB/s 的芯片内部带宽。  \n相比之下，普通 DRAM 访问最多并行命中两个 bank，峰值带宽约为 76.8 GB/s。两者之间不是一点优化，而是内部数据路径和外部数据路径的根本差异。  \n每个 PIM block 内部包含 MAC tree、寄存器文件和控制逻辑。它有一个 1024-bit 指令寄存器文件，可容纳 64 条 16-bit 指令。  \n此外还有 4 kbit source register file，用来放 activation vector；模型权重则直接驻留在相连的 DRAM bank 中。计算前还可用 2 kbit scale register 中的 scale factor 对权重缩放。\n\n### 算力不算惊人，但它本来就靠堆叠取胜\n\n从单颗芯片看，PIM 的峰值算力并不夸张。每个 PIM block 每个 data clock 可持续执行 4 个 INT8 或 FP8 MAC。  \n如果不按 DDR 的双数据率口径计算，就是每周期 8 个 MAC。输入权重降到 4-bit 后，吞吐还能翻倍。  \n最终，一颗 LPDDR5X-PIM 封装的总计算吞吐约为 2.4 TOPS。这个数字放在今天的 AI 加速器面前，显然不算高。  \n但 PIM 的设想并不是靠一颗 DRAM 取胜，而是随着内存容量一同横向扩展。比如 8 颗芯片可以达到 9.6 INT8 TOPS，基本接近 Intel Meteor Lake 的 NPU。  \n问题也随之出现：8 颗 16 GB LPDDR5X 芯片意味着 128 GB 系统内存。为了获得这份算力，系统得先承担相当高的内存容量和成本。\n\n### 最巧妙的设计，是不改 LPDDR5X 协议\n\nPIM 方案最有意思的地方，不是 MAC 阵列本身，而是它尽量维持了标准 LPDDR5X 接口。Samsung 没有要求主机使用新的内存控制器协议。  \n它把一部分特殊 row address 当成类似 MMIO 的控制入口。每个 channel 都预留一对 row，用来切换工作模式。  \n激活其中一个 row，芯片进入 single-bank mode，也就是普通 DRAM 模式。激活另一个 row，则进入 multi-bank mode，命令会同时作用到全部 16 个 bank。  \n这样，PIM 才能真正使用整颗芯片的内部带宽。还有另一类每-bank 特殊 row，可以让普通 read/write 命令改为访问 PIM 寄存器。  \n也就是说，Samsung 复用了原本的 ACT、READ 和 WRITE 命令，只是通过特殊地址改变了它们的语义。\n\n### 它像一台被 DRAM 命令驱动的受限 SIMD 机器\n\n典型流程是，软件先在普通 single-bank mode 下把模型权重写入 DRAM。然后切到 multi-bank mode，再进入 PIM Registers Activated mode。  \n在这个模式下，主机的写命令不再写普通 DRAM，而是写入 PIM 的 source、scale 和 instruction register。由于处于 multi-bank mode，这些写入会广播到 16 个 bank。  \n因此，16 个 PIM block 会执行相同操作，使用相同的 activation 和 scale factor。只有每个 bank 中存储的权重不同。  \n这本质上是一台限制很强的 SIMD 处理器。广播不是一个可选优化，而是避免主机侧写带宽成为瓶颈的必要条件。  \n每个 DRAM packet 为 256 bit，填满一个 source register 需要 16 次 write。若逐 bank 配置 16 个 bank，就需要 256 次 write，PIM 的优势很快会被主机到寄存器的传输开销吃掉。\n\n### READ 触发计算，WRITE 把结果落回 DRAM\n\n完成寄存器准备后，软件发出的 READ 命令会有新的含义。它不再从 DRAM 取回数据，而是触发 PIM block 进行计算。  \n计算结果会累积到 PIM 的 vector register file，简称 VRF。之后，WRITE 命令再让 PIM block 把 VRF 内容写回各自的 DRAM bank。  \n这里还有一个现实问题：普通内存控制器会重排访问。若 PIM 指令默认按顺序消费 source register 元素，重排就会破坏计算语义。  \nSamsung 为此加入了 Address Align Mode，或 AAM。在 AAM 下，指令根据被访问的 column address 推断 source register 索引。  \n这样即使内存控制器重排请求，PIM 仍能从地址本身恢复正确的操作数对应关系。计算完成后，系统切回 single-bank mode，DRAM 又恢复普通读写行为。\n\n### 硬件协议兼容，不等于系统软件能轻松兼容\n\nSamsung 在内部测试中获得了相对标准 LPDDR5X 的巨大性能提升，这并不意外。真正困难的部分，是 PIM 改变了 DRAM 命令的含义。  \n当一个线程正在用 READ 触发 PIM 计算时，另一个线程的普通读操作也可能意外触发计算。更糟的是，普通 WRITE 可能让 VRF 中的数据被写回错误地址。  \n内存控制器和 DRAM 并不知道某次访问属于哪个线程。因此 PIM 不能和普通内存访问自然共存，哪怕它们来自不同线程。  \nSamsung 的建议是隔离出一块 PIM memory region。但典型系统会将地址交错映射到多个 memory channel，以充分利用带宽。  \n如果为了 PIM 而把某些 channel 设为专用区域，普通程序无法使用这些 channel 的带宽，PIM 程序也失去了其他 channel 的算力与带宽。考虑到单芯片仅 2.4 TOPS，这种资源割裂尤其尴尬。\n\n### 缓存、抢占和中断，才是 PIM 落地的硬骨头\n\n即使 PIM 区域被隔离，多线程和多进程仍然很难处理。应用内的不同线程必须用锁保护 PIM 区域，避免一个线程计算时，另一个线程发起普通访问。  \n放到现代操作系统里，问题会进一步扩大。不同进程可能互不知道对方正在使用 PIM，调度器也不能把一次普通内存访问误送进 PIM 模式。  \n如果要抢占正在执行 PIM 的线程，系统必须先退出 PIM mode。随后还要读出每个 bank 内的 instruction、source、scale 和 vector register 状态，并保存上下文。  \n中断和上下文切换因此会变得非常复杂。最保守的做法可能是运行 PIM 代码时阻塞其他线程并禁用中断，但这会损害多线程性能和系统响应能力。  \n缓存一致性同样绕不过去：PIM 可以在 DRAM 内生成新数据，而 cache hierarchy 对此毫不知情；反过来，缓存也可能吞掉本应触发 PIM 的访问。Samsung 因而建议将 PIM memory 映射为 uncacheable，但这又会让 CPU 和 GPU 因 DRAM 延迟而严重停顿。\n\nSamsung 的设计证明了一件事：用标准 DRAM 协议暴露 in-memory compute，并非做不到。它甚至在硬件接口上相当优雅。可一旦把“内存访问”变成“可能执行计算的命令”，操作系统、缓存和并发模型的默认假设都会被打破。PIM 的瓶颈，最终可能不在 MAC 单元，而在如何让整台计算机安全地接受一块“会自己算”的内存。"
+}

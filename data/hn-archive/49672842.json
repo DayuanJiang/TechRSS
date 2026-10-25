@@ -1,0 +1,94 @@
+{
+  "id": 49672842,
+  "by": "lalitmaganti",
+  "title": "I made a build visualizer to understand Bun's compile times",
+  "url": "https://lalitm.com/post/buildprof/",
+  "score": 131,
+  "createdAt": 1789239654,
+  "aiSummary": {
+    "chinese_title": "buildprof 可视化 Bun 编译耗时：Zig/Rust 对比、LTO 与并行瓶颈",
+    "discussion_overview": [
+      {
+        "category": "构建可视化工具的实用价值",
+        "summary": "评论者普遍把这个工具看成非常实用的 build profiler，不只是画图，而是能解释构建里哪些阶段最慢。有人把它类比为 Electric Insight（一个曾经很强但商业化的构建分析工具），并指出这类工具不仅能估算加核心是否值得，还能对比两次 build，找出为什么一个快一个慢。作者表示已经计划加入 diffing builds 功能，而且依赖 Perfetto trace processor 的架构让自动化报告很容易做。还有人说它几乎立刻帮自己定位了一个之前没法解释的编译时间谜团。",
+        "supportid": [
+          "49675919",
+          "49677354",
+          "49679058",
+          "49677978",
+          "49679571"
+        ]
+      },
+      {
+        "category": "Bun 的 Zig/Rust 编译时间对比并不简单",
+        "summary": "一开始有人希望结论会是 Bun 的 Zig build 明显快于 Rust，但作者表示自己花了大约 3 周晚上和周末做这件事后，已经没有精力继续深挖优化。后来他判断，真正能动的地方可能只是把 Bun 的 Zig module 拆成大约 100 个部分，但这种拆分未必代表 Bun 真正会 ship 的形态。有人把所有 bun_* crates 的 rustc 调用强行串行化，结果只慢了约 1 分钟，说明 crate 并行并不是主因。作者还给出实测：clean release 下 Zig 3m36s 对 Rust 5m50s，clean debug 3m07s 对 3m27s，incremental debug 也只差十几到二十秒。",
+        "supportid": [
+          "49675359",
+          "49675681",
+          "49677081",
+          "49677143"
+        ]
+      },
+      {
+        "category": "Zig 编译器架构与并行化限制",
+        "summary": "另一条线专门解释 Zig 为什么不能直接照搬 Rust 的多 crate 模型。Zig 的每个 module 默认都在同一个 compilation unit 里编译，如果硬拆成多个部分，就得手工导出和导入 C ABI 接口，还会失去 slices、generics、非 extern structs 等语言特性。有人补充说 Bun 团队试过把 Zig 的 semantic analysis 并行化，速度确实能提高约 4 倍，但构建结果会变得不 deterministic，因此不能简单加线程池了事。也有人提到 Zig 0.17 预计会靠 incremental compilation 改善首次编译之外的体验。",
+        "supportid": [
+          "49678497",
+          "49676003",
+          "49681772"
+        ]
+      },
+      {
+        "category": "LTO 与链接阶段可能才是串行瓶颈",
+        "summary": "有人指出，真正串行的未必是编译本身，而是链接阶段，尤其是 full LTO。讨论里问到 visualizer 是否把 link time 和 codegen 分开，作者回应说文章正是在拆这两个部分，而且 `--compiler-traces` 还能通过 lld 提供的注释看到更细的链接过程。这个角度把“编译慢”重新定义成了源代码生成、对象文件链接、跨模块优化三段不同的问题。",
+        "supportid": [
+          "49679099",
+          "49679111"
+        ]
+      },
+      {
+        "category": "自动化优化与人类理解的分工",
+        "summary": "还有人把 buildprof 想成可以喂给 LLM 的优化输入，直接自动试参数、自动 hill climb 编译时间。作者认为从 Perfetto trace 数据上做自动报告其实很容易，甚至可以只靠几条 SQL 就生成结论。可视化界面依然重要，因为很多问题首先需要人看懂“为什么会这样”，而不是只知道哪个参数更快。另一个评论则直接吐槽了现在一有好工具就想让机器替代人的讨论风气。",
+        "supportid": [
+          "49675551",
+          "49675597",
+          "49675711"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "LTO",
+        "explanation": "link-time optimization，链接时优化；在链接阶段跨 object file 做全局优化。"
+      },
+      {
+        "term": "incremental compilation",
+        "explanation": "增量编译；只重新编译变更部分，减少开发时等待。"
+      },
+      {
+        "term": "semantic analysis",
+        "explanation": "编译器语义分析阶段，负责类型检查、名字解析和作用域验证。"
+      },
+      {
+        "term": "compilation unit",
+        "explanation": "编译单元；Zig 里通常把一个 module 作为整体参与编译。"
+      },
+      {
+        "term": "lld",
+        "explanation": "LLVM 的 linker，负责链接，也能输出更细的编译/链接追踪信息。"
+      },
+      {
+        "term": "Perfetto trace processor",
+        "explanation": "用于查询和分析 trace 数据的引擎，常被这类构建可视化工具用来做统计和回放。"
+      },
+      {
+        "term": "Rust crate",
+        "explanation": "Rust 的代码包/编译单元，天然支持分开编译并行链接。"
+      }
+    ],
+    "context": "这篇讨论围绕作者自制的 buildprof（一个把构建过程转成时间线和依赖图的可视化分析工具）展开，目标是拆解 Bun 的编译耗时。Bun（一个用 Zig 实现大量核心逻辑的 JavaScript runtime）曾经把部分代码从 Zig 迁到 Rust，因此评论区主要在比较 Zig 与 Rust 的编译模型、并行度和增量编译体验。讨论里反复出现的关键技术包括 LTO、lld、semantic analysis、incremental compilation，以及 Zig 目前把模块放在同一个 compilation unit 里的设计。有人还把它和 Electric Insight（一个老牌但私有的构建分析工具）对比，并提到 Perfetto trace processor 这类 trace 分析基础设施，说明这类工具既能定位瓶颈，也能比较两次构建差异。",
+    "emoji": "🧪",
+    "sarcastic_question": "把模块拆成100份就能秒过 Rust 吗？"
+  },
+  "articleSummary": "## 一句话总结\n作者为了探究 Bun 从 Zig 迁移到 Rust 后构建速度提升 5 倍的真正原因，开发了一款开源追踪工具 buildprof，最终发现性能差异主要源于 LTO 策略和代码结构的并行度，而非单纯的语言差异。\n\n## 正文\n\n### 一条推文引发的“悬案”\n事情的起因是 Bun 首席架构师 Jarred Sumner 发的一条推文：Bun 1.3.14（Zig 时代）在 Linux 上的构建时间中位数为 30 分钟，而 1.4.0（Rust 时代）仅需 5 分 37 秒。这 5 倍的性能提升让作者感到不可思议，因为按常理，Zig 项目的编译速度通常快于复杂度相当的 Rust 项目。更有意思的是，推文中提到旧的 Zig 构建使用了 Full LTO，而新的 Rust 构建使用的是 ThinLTO。作者直觉认为，这个细节可能藏着关键线索，于是决定复现数据，一探究竟。\n\n### 构建过程其实就是进程树\n作者在复现环境后，得到了与推文相近的数据（Zig 耗时 24 分 24 秒，Rust 耗时 5 分 40 秒）。但单纯看时间无法定位瓶颈，他需要一种能透视整个构建过程的方法。这就催生了 buildprof 这款工具。它的核心思路很巧妙：从操作系统的视角看，无论你是 Cargo、Ninja 还是 Make，本质上都是进程在启动子进程。buildprof 记录所有进程的起止时间和文件 I/O，将其绘制成时间轴。这种方案不仅与构建系统无关，还能自然地覆盖自定义脚本和依赖下载等非编译步骤。\n\n### 罪魁祸首是 Full LTO 吗？\n将 buildprof 指向 Zig 时代的构建过程，问题立刻暴露无遗：最后的链接步骤 `ld.lld` 独占了 16 分钟，占了总时长的三分之二。点击查看链接器命令，确实开启了 Full LTO。为了确认 LTO 的具体开销，作者开启了 `--compiler-traces` 深入链接器内部。结果发现，链接器在执行 `OptModule` 等编译器 Pass 上花费了超过 10 分钟——这意味着链接器不仅仅是在拼接文件，还在进行大量的全程序优化。相比之下，Rust 构建的链接步骤仅需 2 分 24 秒，且使用的是并行度更高的 ThinLTO。\n\n### WebKit 的“幽灵”干扰\n既然 LTO 影响这么大，如果把 Zig 构建的 LTO 策略改成 ThinLTO，能追平差距吗？作者修改了构建参数，结果链接时间只缩短了 3 分 40 秒，依然耗时近 13 分钟。通过追踪文件依赖，作者发现链接器的输入中包含 `libJavaScriptCore.a` 等 WebKit 库。原来，Bun 并没有编译这些库，而是直接下载了预编译版本。检查这些预编译库的构建参数发现，它们依然使用了 Full LTO。这意味着即便 Bun 自身代码用了 ThinLTO，链接器在处理这些庞大的依赖库时，依然被迫进行昂贵的全量优化。\n\n### 结构性差异才是硬伤\n作者不得不检出 WebKit 源码，用 ThinLTO 重新编译并替换了依赖库。这一次，链接时间终于降到了 7 分 22 秒，总构建时间降至 15 分 11 秒。虽然进步明显，但依然比 Rust 版本慢了近三倍。作者再次审视时间轴，发现了决定性的差异：Rust 版本的 Bun 被拆分成了 90 多个 Crates，可以充分利用多核并行编译；而 Zig 版本依然将所有代码编译为单一的模块。这种结构性的单线程瓶颈，导致 Zig 构建在链接开始前就要等待漫长的编译过程，且链接器面对的是巨大的单一优化单元，难以并行处理。\n\n### 真相大白\n总结下来，这并不是一场简单的“语言之争”。Full LTO 导致的链接瓶颈确实拖累了 Zig 构建，但这只解释了部分问题；预编译依赖库的错误配置进一步扩大了差距；而最根本的差异在于代码结构——Rust 的多 Crate 架构天然支持并行编译，而 Zig 的单体架构则限制了并发能力。作者的工具 buildprof 不仅还原了真相，也展示了如何通过进程级追踪，精准定位构建系统中的隐蔽瓶颈。"
+}

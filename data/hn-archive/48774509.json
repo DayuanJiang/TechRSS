@@ -1,0 +1,127 @@
+{
+  "id": 48774509,
+  "by": "furkansahin",
+  "title": "PostgreSQL and the OOM Killer: Why You Must Use Strict Memory Overcommit",
+  "url": "https://www.ubicloud.com/blog/postgresql-and-the-oom-killer-why-we-use-strict-memory-overcommit",
+  "score": 136,
+  "createdAt": 1783085447,
+  "aiSummary": {
+    "chinese_title": "PostgreSQL、OOM killer 与 strict overcommit：数据库可用，桌面易踩坑",
+    "discussion_overview": [
+      {
+        "category": "Linux 默认内存策略",
+        "summary": "不少人把 Linux 的默认 vm 策略骂成离谱，认为系统会在内存压力、磁盘压力下都出问题，最后还常靠 OOM killer 随机牺牲进程收场。有人强调，关掉 swap 往往更糟，memory compression 也没作为默认能力普及，所以系统经常不是“正常退出”，而是直接卡死。对比之下，Windows 和 macOS 被认为在多数 workload 上更能平滑降级。还有评论把责任归到 kernel mm 维护方向，认为它越来越偏向 hyperscalers 和 cloud vendor，普通用户绕开 OOM killer 的办法越来越少。",
+        "supportid": [
+          "48778694",
+          "48778882",
+          "48778829",
+          "48776152",
+          "48776630"
+        ]
+      },
+      {
+        "category": "Postgres 场景下 strict overcommit 的收益与边界",
+        "summary": "支持 strict overcommit 的声音主要来自运行 Postgres 的服务端场景。Ubicloud（一个托管 PostgreSQL 的云服务商）表示，规模化运营后发现这比默认策略更稳，但也明确说它只适合特定 workload，不能推广成 Linux 默认。另一条经验是把 Go 后端和 PostgreSQL 放在同一台机器上时，overcommit=0 会让大查询直接失败，overcommit=2 又可能让整台机器不稳，于是改用 GOMEMLIMIT、cgroup，或者把数据库拆到独立服务器。还有人认为真正成熟的数据库应该自己做 memory accounting 和 OOM 恢复，甚至提到 MariaDB 的 PSI 监控最后因为误清空 InnoDB buffer pool 而被默认关闭。",
+        "supportid": [
+          "48775268",
+          "48775510",
+          "48778581",
+          "48775169",
+          "48775846",
+          "48777452",
+          "48775769",
+          "48778316",
+          "48779135",
+          "48775329",
+          "48779829",
+          "48779874"
+        ]
+      },
+      {
+        "category": "运维调参与 OOM 保护",
+        "summary": "有评论纠正了文章对 mode 0 的描述，认为现代内核的 heuristic 没有文中那么复杂，真正该用的是 OOM Score Adjust 和内核保留内存参数，而不是手工调 CommitLimit。另一些人提醒，mode 2、overcommit_ratio 和 fork() 之间有联动，改之前最好先在 QA/Perf 环境做 load test，并用部署脚本渐进式修改 sysctl。支持者强调，给关键进程设负值 oom_score_adj、给可牺牲进程设正值更实用；反对者则说这仍然无法保证“正确的进程”被杀，Postgres 后端一旦触发页故障，往往还是会连累 sibling 并进入 crash recovery。",
+        "supportid": [
+          "48774853",
+          "48776344",
+          "48778706",
+          "48779596"
+        ]
+      },
+      {
+        "category": "桌面环境的 footgun 争议",
+        "summary": "在桌面环境里，strict overcommit 被很多人视为典型 footgun。原因不是它没有逻辑，而是 Firefox、JVM、Slack、Discord 这类软件往往默认不认真处理 malloc() 失败，结果更容易提早报错甚至直接崩溃。有人描述自己关闭 overcommit 后系统会先卡住一两分钟，只能手动关掉随机程序看谁在吃内存；也有人反问，既然 Postgres 这种少数程序能优雅处理分配失败，为什么要拿这个例外去要求整个桌面生态。另一派则认为，关闭 overcommit 只是把 OOM 换成更早的失败，还会浪费大量系统内存。",
+        "supportid": [
+          "48779069",
+          "48779834",
+          "48779967",
+          "48779994",
+          "48780408",
+          "48780478",
+          "48778149",
+          "48775494",
+          "48776757",
+          "48775029",
+          "48778684",
+          "48778453"
+        ]
+      },
+      {
+        "category": "Windows/pagefile 与 swap 对比",
+        "summary": "Windows 被拿来当对照：很多人认为它默认不做 Linux 式的激进 overcommit，而是把 commit charge 和 page file 的 backing budget 算得更严。支持者因此觉得它在低内存时更像是先让真正的罪魁祸首失败，而不是随机牺牲别的进程。反方则补充，Windows 其实也有 lazy page allocation，只是它对 stack、commit 和 backing store 的边界更保守；与此同时，Linux 这边的 swap、zswap、memory compression、PSI 等机制被拿来说明，问题并非技术上做不到，而是默认取舍不同。讨论最后又回到同一个问题：既然 paging 还能救场，为什么要让 OOM killer 成为最后兜底？",
+        "supportid": [
+          "48776698",
+          "48778509",
+          "48778169",
+          "48779343",
+          "48776875",
+          "48779455",
+          "48776674",
+          "48776867",
+          "48776736",
+          "48776841",
+          "48776747",
+          "48776969",
+          "48777135",
+          "48778142",
+          "48779693",
+          "48780519",
+          "48779982"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "strict overcommit（严格内存 overcommit）",
+        "explanation": "Linux 的内存提交模式，要求系统在承诺新内存时有足够 backing store，减少事后 OOM。"
+      },
+      {
+        "term": "OOM killer",
+        "explanation": "Linux 在内存耗尽时挑选并终止进程的机制。"
+      },
+      {
+        "term": "OOM Score Adjust（oom_score_adj）",
+        "explanation": "给进程设置 OOM 优先级的参数，数值越低越不容易被杀。"
+      },
+      {
+        "term": "cgroup",
+        "explanation": "Linux 的资源隔离机制，可限制单个进程或进程组的内存等资源。"
+      },
+      {
+        "term": "GOMEMLIMIT",
+        "explanation": "Go runtime 的内存上限提示，用来约束程序的总体内存占用。"
+      },
+      {
+        "term": "PSI（Pressure Stall Information）",
+        "explanation": "Linux 的压力监控指标，用来观察内存、IO、CPU 拥塞程度。"
+      },
+      {
+        "term": "page file（页面文件）",
+        "explanation": "Windows 用来作为提交内存后备的磁盘空间，相当于内存承诺的保险。"
+      }
+    ],
+    "context": "这场讨论围绕 Linux 内核的 memory overcommit 策略，尤其是 strict overcommit（通常对应 vm.overcommit_memory=2），它要求系统对已提交内存有足够的 backing store。原文把 PostgreSQL（一个关系型数据库）与 OOM killer 绑定在一起，主张数据库类服务宁可在分配阶段返回 ENOMEM 并回滚，也不要等内核压力爆表后随机杀进程。评论进一步扩展到 Ubicloud（一个托管 PostgreSQL 的云服务商）、Go runtime 的 GOMEMLIMIT、cgroup（Linux 的资源隔离机制）以及 OOM Score Adjust（oom_score_adj，Linux 的进程 OOM 优先级参数）等实践。另一条主线则拿 Windows 的 commit/pagefile 机制、swap、zswap（压缩交换）、PSI（Pressure Stall Information，压力停顿指标）和 MGLRU（多代 LRU 回收）来对比不同系统处理低内存的哲学。",
+    "emoji": "😬",
+    "sarcastic_question": "难道随机杀进程就算更好的内存管理了吗？"
+  },
+  "articleSummary": "## 一句话总结\nPostgreSQL 必须开启 Strict Memory Overcommit（`vm.overcommit_memory=2`），将潜在的 OOM Kill（导致全库崩溃）转化为可控的单次内存分配失败，同时要警惕 Linux 6.5 内核中一个会导致 `Committed_AS` 虚高的单字符 Bug。\n\n### PostgreSQL 为什么死不起 OOM Kill\n\nLinux 的内存管理机制允许进程申请超过物理内存的虚拟内存，只有在真正读写时才分配物理页。这种“乐观”策略一旦失手，内核就会召唤 OOM Killer 随机挑选一个进程杀掉。对于普通应用，重启就行；但对于 PostgreSQL，这是灾难。PostgreSQL 采用多进程架构，所有 backend 进程共享内存段。如果 OOM Killer 杀掉了一个正在写共享内存的进程，由于 OS 层面没有事务保证，共享内存可能处于不一致状态，导致静默数据损坏。为了保护数据，PostgreSQL 的 postmaster 进程一旦检测到子进程被杀，就会假设最坏情况发生，主动干掉所有剩余进程并进入崩溃恢复。这意味着一次 OOM 会导致全库掉线，且高负载下的 WAL 回复会让停机时间无限拉长。\n\n### Strict Overcommit：把灾难变成报错\n\n为了防止 OOM Killer 暴走，最有效的办法是开启 Strict Overcommit（`vm.overcommit_memory=2`）。在这种模式下，内核不再“乐观”地承诺内存，而是严格计算 `Committed_AS`（所有进程已承诺的内存总和），一旦超过 `CommitLimit`，直接拒绝分配并返回 `ENOMEM`。这对 PostgreSQL 来说是完美的保护机制：当某个 backend 申请内存失败，它只需向客户端报错并回滚当前事务，数据库主进程和其他连接完全不受影响。这把“延迟的、毁灭性的崩溃”变成了“早期的、优雅的报错”。当然，这招最好在专用数据库服务器上用，因为机器上跑的其他不可控进程可能会吃掉内存配额。\n\n### 8GB 内存上凭空多出的 648GB\n\n作者团队在 Ubicloud 的 PostgreSQL 服务中开启了 Strict Overcommit，结果几周后开始频繁报 OOM，明明物理内存还剩很多。排查 `/proc/meminfo` 发现，一台 8GB 内存的机器上，`Committed_AS` 竟然高达 651GB，而正常机器只有 2.7GB。他们首先怀疑是 PostgreSQL 的 Huge Pages（大页内存）被重复计算了，因为每个 backend 进程的 VSZ（虚拟内存）里都映射了 2GB 的共享内存段。但检查 `/proc/<pid>/smaps` 发现，这些大页区域并没有 `VM_ACCOUNT` 标志，说明内核正确地将它们排除在了 `Committed_AS` 之外。把所有带 `ac` 标志的内存区域加起来，实际只有 2.43GB。结论很明确：内核的 `vm_committed_as` 计数器在疯狂泄漏，凭空多出了 648GB 的“幽灵内存”。\n\n### Linux 6.5 内核里的一个字符引发的血案\n\n通过对全集群数据的分析，他们发现运行 Linux 6.5 内核的服务器出现内存虚高的概率是 6.8 版本的 52 倍，且虚高数值与运行时间成正比（每周复合增长约 4.7%）。这显然是个内核 Bug。最终，借助 LLM 审查代码提交记录，他们找到了罪魁祸首：Linux 6.5 引入的一个提交修改了 `do_vmi_munmap()` 的返回值约定，但在 `mm/mremap.c` 的 `move_vma()` 函数中，开发者把错误检查条件从 `< 0`（判断负数）改成了 `!`（判断非零）。这一改把逻辑搞反了：原本只在 unmap 失败时执行的“回补内存计数”操作，现在在每次成功 unmap 时都执行了。这导致每次内存重映射（mremap）操作都会让 `Committed_AS` 单调递增。Linus Torvalds 后来亲自修复了这个 Bug，把那个判断条件改了回去。\n\n### 如何设置 Commit Limit：80% 内存 + 2GB\n\n排除了内核 Bug 后，就可以放心开启 Strict Overcommit 了。关于 `CommitLimit` 的设置，作者给出的经验公式是：`overcommit_kbytes = total_memory_kb * 0.8 + 2 * 1048576`。简单说，就是物理内存的 80% 再加 2GB。预留 20% 是为了给内核数据结构（如页表、slab cache、网络缓冲）留空间，这部分内存并没有浪费，内核会拿它来做 Page Cache 加速文件读取，而且 Page Cache 是可回收的，不计入 `Committed_AS`。至于额外加的 2GB，则是为了应对 PostgreSQL 进程本身的非共享内存开销（如 work_mem、maintenance_work_mem）以及一些侧边车进程的内存需求，确保数据库在高负载下不会因为内核的“严苛”而被误杀。"
+}

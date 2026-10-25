@@ -1,0 +1,90 @@
+{
+  "id": 50063717,
+  "by": "khalidkhair",
+  "title": "Janas: Run LLMs larger than RAM by streaming experts from SSD",
+  "url": "https://github.com/prabanta-dev/janas",
+  "score": 133,
+  "createdAt": 1791856874,
+  "aiSummary": {
+    "chinese_title": "Janas以SSD流式加载MoE专家突破RAM，遭质疑重复造轮子与预填充瓶颈",
+    "discussion_overview": [
+      {
+        "category": "并非首创，但专用优化仍有价值",
+        "summary": "多位评论者认为，把模型或 MoE experts 从 SSD 按需换入并非新思路，llama.cpp 等工具早已具备类似能力，Strata、DwarfStar4 等项目也在做相近的事。因此有人将 Janas 看作又一次“重新发明 swap”，并质疑其使用较旧的模型而未跟进 Qwen 3.8。不过也有人指出，针对单一模型、特定硬件和特定量化格式重写推理引擎，可能比通用 llama.cpp 快到约 2 倍，不能只因功能重叠就否定实现价值。评论还认为现有方案缺少统一比较与整合，但 expert cache 策略高度依赖模型甚至 prompt，尚不存在可直接合并的一套标准答案。",
+        "supportid": [
+          "50066255",
+          "50068098",
+          "50065668",
+          "50066973",
+          "50065026",
+          "50067279",
+          "50068215",
+          "50065459"
+        ]
+      },
+      {
+        "category": "62 tok/s只解决生成，agent仍受预填充拖累",
+        "summary": "一方认为约 62 tok/s 的 token generation 已足够本地聊天和普通个人使用，60 tok/s 左右是交互不再令人烦躁的门槛。反方强调这通常只是 decode 速度；agentic work 的主要 token 消耗常是读取代码、文档、工具输出和网页，单页 HTML 就可能产生数千 token，因此更关键的 prefill/input 吞吐可比输出高数百倍。若 prefill 也只有 60 tok/s，长上下文和工具调用会非常慢，且后台 agent 会长时间占用 GPU 与 VRAM，拖累浏览器、VS Code 等前台任务。也有实际测试称，通过 3-bit quantization 和专用引擎，旧款 V100 可达到约 193 tok/s decode、目标 3K prefill，说明本地 agent 体验取决于整套吞吐而非单一生成数字。",
+        "supportid": [
+          "50064801",
+          "50065187",
+          "50065566",
+          "50065682",
+          "50065698",
+          "50066976",
+          "50065212",
+          "50068469"
+        ]
+      },
+      {
+        "category": "带宽、缓存和硬件资源决定实用性",
+        "summary": "评论者质疑低于 50GB/s 的位流是否值得投入，认为直接增加 DRAM 可能更简单；在 32GB RAM 上运行 Qwen 35B A3B 仅约 8 tok/s 的用户则期待此类方案改善本地体验。SSD 流式方案的核心风险是没有把正确的 experts 留在内存中：缓存算法既不直观，又会随模型和 prompt 变化。把存储放到 S3、Dropbox 等网络虚拟磁盘理论上可行，但 TCP 开销和网络延迟会令速度荒谬，低延迟 SAN 或许才勉强适用。有人预期未来会出现集成 NVMe 或 Flash 的 GPU、High Bandwidth Flash，以及以多块 NVMe RAID0 提供高读取带宽的服务器，从硬件层面缓解瓶颈。",
+        "supportid": [
+          "50066720",
+          "50065884",
+          "50065026",
+          "50067279",
+          "50065035",
+          "50065221",
+          "50064842",
+          "50065643",
+          "50065700"
+        ]
+      },
+      {
+        "category": "开源本地AI的期待与对vibe coding的警惕",
+        "summary": "支持者把不断出现的开源权重模型与本地工具视为对抗少数厂商垄断的重要基础，并欢迎更多开源实现。另一方面，评论中对项目是否由 AI 辅助仓促生成抱有明显怀疑，认为未支持新模型可能是 agent 依赖过时训练知识的迹象，甚至建议 GitHub 标明生成代码所用模型和 token 成本。实际开发者反驳“几天 vibecode 就能完成”的印象：构建适配 gfx1201 的 Gemma 4 推理引擎工作量很大，还要处理 GPU OOM、驱动重置和显示资源预留。为了让 31B 模型在 16GB 显卡上运行，权重需低于 4-bit，并利用 Radeon 9070 XT 的 int4 WMMA；这体现了真正的性能工程与简单拼装之间的差别。",
+        "supportid": [
+          "50068808",
+          "50068495",
+          "50065514",
+          "50066237",
+          "50067230",
+          "50068115"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "MoE experts（混合专家模型专家模块）",
+        "explanation": "Mixture-of-Experts 模型由多个专家子网络组成，每次推理通常只激活部分专家；SSD 流式方案试图按需加载这些模块以降低 RAM/VRAM 占用。"
+      },
+      {
+        "term": "prefill / decode",
+        "explanation": "prefill 是处理输入 prompt 并建立上下文状态的阶段，decode 是逐 token 生成输出的阶段；两者吞吐不同，不能只用 tok/s 的生成速度判断 agent 性能。"
+      },
+      {
+        "term": "quantization（量化）",
+        "explanation": "将模型权重从 bf16、fp8 等较高精度压缩为 int4、3-bit 等低位格式，以减少内存和带宽需求，但可能影响精度并需要专用计算支持。"
+      },
+      {
+        "term": "VRAM",
+        "explanation": "显卡显存；LLM 推理中的权重、KV cache 和桌面显示都可能争用它，超额分配可能导致 OOM、驱动重置或桌面卡死。"
+      }
+    ],
+    "context": "Janas 是一个本地 LLM 推理项目，主张将 Mixture-of-Experts（MoE，一种每次只调用部分专家子网络的模型架构）的 experts 从 SSD 按需流式读入，使模型总权重可超过主机 RAM。讨论者将它与 llama.cpp（广泛使用的本地大模型推理框架）、Strata（面向 Qwen 系列 MoE 模型的 SSD 流式推理项目）和 DwarfStar4 等现有方案比较，因此争议集中于它是否有新的性能或缓存策略。Qwen、Gemma、DeepSeek 等是不同机构发布的开源或开放权重大模型家族；它们的大型版本常需借助低比特量化、SSD 卸载或多 GPU 才能在消费级硬件运行。此类系统的难点不只是把权重放进 SSD，还包括 SSD 带宽、专家预测与缓存命中率、长上下文 prefill，以及避免推理任务独占 GPU 和 VRAM。",
+    "emoji": "💾",
+    "sarcastic_question": "把专家塞进SSD后，预填充要等到明天吗？"
+  },
+  "articleSummary": "## 一句话总结\nJanas 通过“按需从 SSD 流式加载 Expert”的缓存策略，让 MoE 大模型在内存不足时依然能跑出远超 llama.cpp 的速度。\n\n## 正文\n\n### 核心思路：把 SSD 当显存用，只加载必要的 Expert\nJanas-LLM 的核心目标很明确：在普通笔记本上跑大模型，哪怕模型比内存还大。它的做法很“暴力”但有效——权重常驻 SSD，推理时只从磁盘流式加载当前 Token 需要的 Expert，同时把高频 Expert 缓存在内存里。这样，一个 48 GB 的 Qwen3-Next-80B 模型就能在 32 GB 内存的笔记本上流畅运行，完全不需要把模型完整加载进内存。\n\n### 性能对比：速度碾压 llama.cpp，尤其是“爆内存”场景\n实测数据很惊人。在同一台笔记本（Intel Core Ultra 9 185H, 32GB RAM, NVMe SSD）上，Janas 跑 Qwen3-Next-80B（48.4 GB）能达到 62 tok/s（读 Prompt）和 24 tok/s（生成），而 llama.cpp 只有 16 tok/s 和 2.8 tok/s。更关键的是，llama.cpp 在面对这种“模型比内存大”的情况时，需要特殊的编译选项和参数才能跑起来，而且速度惨不忍睹。Janas 则是无参数直接跑，速度优势明显。\n\n### 小模型也受益：密集模型同样有提升\n不仅是“爆内存”的大模型，对于能塞进内存的模型，Janas 也有优势。比如 Qwen3.8-27B（17.6 GB），Janas 读 Prompt 速度 30.6 tok/s，生成 4.4 tok/s，而 llama.cpp 是 25.6 tok/s 和 2.1 tok/s。哪怕是 Qwen3.5-2B 这种小模型，Janas 的生成速度（52 tok/s）也比 llama.cpp（28 tok/s）快了近一倍。这说明它的优化不仅限于 MoE 模型的 Expert 加载，对整体推理流程也有改进。\n\n### 硬件依赖：NVMe SSD 是硬门槛\n当然，这种方案对硬件有要求。作者明确提到，测试环境是 NVMe SSD（读取速度约 5.7 GB/s）。Janas 使用 `O_DIRECT` 直接读取磁盘，绕过系统缓存，同时尽可能占满空闲内存作为 Expert Cache。如果 SSD 速度不够，或者内存余量太小导致系统开始 Swap，性能会急剧下降。所以，作者建议第一次测试时务必在空闲机器上运行，避免把桌面环境卡死。\n\n### 实验性质：API 不稳定，但模型格式固定\n需要注意的是，这个项目目前标记为“实验性”的。命令行参数和公开 API 变动频繁，可能一周变好几次。但好消息是，已经转换好的 `.jns` 模型文件格式是稳定的，后续版本都会兼容。项目提供了 Linux 和 Windows 的预编译版本，也支持从源码编译，依赖只有 C 库，非常轻量。\n\n### 技术细节：自动调优与 Draft Model 加持\nJanas 会自动测试不同线程配置的速度，选择最优解。比如在测试机上，它通常选择 12 个性能核心线程来处理 Prompt 和单 Token 生成。此外，它还支持 Draft Model（推测解码），利用模型自带的预测块或小型 Draft 模型来加速生成。在 Qwen3.6-35B-A3B 上，开启 Draft 后速度从 25 tok/s 提升到了 34 tok/s，效果显著。\n\n### 局限与展望：目前只在一台机器上调优\n作者很诚实地承认，所有开发和测试都在同一台笔记本（Debian 13 + Intel Core Ultra 9）上完成。虽然代码里有自动检测硬件并调整策略的逻辑，但在其他 CPU（尤其是没有 AVX-VNNI 的）、AMD 芯片、独立显卡或慢速磁盘上的表现完全未知。如果你在其他硬件上运行，作者非常希望你能反馈 `janas-bench` 的测试结果，帮助项目适配更多环境。"
+}

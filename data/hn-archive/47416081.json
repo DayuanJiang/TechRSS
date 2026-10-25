@@ -1,0 +1,102 @@
+{
+  "id": 47416081,
+  "by": "syrusakbary",
+  "title": "Edge.js: Run Node apps inside a WebAssembly sandbox",
+  "url": "https://wasmer.io/posts/edgejs-safe-nodejs-using-wasm-sandbox",
+  "score": 149,
+  "createdAt": 1773783051,
+  "aiSummary": {
+    "chinese_title": "Edge.js：可插拔 JS 引擎的 Node.js/WASM 沙箱，兼容 Next.js",
+    "discussion_overview": [
+      {
+        "category": "安全模式与文件系统边界",
+        "summary": "不少人被 `--safe` 是否默认开启搞糊涂了，因为标题看起来像是天然沙箱，但维护者说明当前默认是非 sandbox 的 native 模式，只有加 `--safe` 才切到 WebAssembly 路径。这样做的理由一是 native 路径快约 10–20%，二是先把 Wasm 集成打磨成熟再把它做成默认。关于 `fs`，评论里最实际的问题是“sandbox 里还能不能读磁盘”，答案是只暴露当前工作目录，方便本地开发，但不会任意访问全盘。`process.cwd()` 的行为差异也被拿来当成一个小实验，帮助理解安全边界到底在哪里。",
+        "supportid": [
+          "47417907",
+          "47417323",
+          "47417398",
+          "47418590"
+        ]
+      },
+      {
+        "category": "实际用途与隔离边界质疑",
+        "summary": "讨论里有明显怀疑声：把隔离责任从 OS/container 转移到 runtime（WASIX + shims）是否真的更安全，尤其在 hostile workloads、native modules 和 `libuv` 参与时。有人直接把 Firecracker（微虚拟机）拿来对比，认为如果只是为了跑不可信代码，微虚拟机已经能支持任意语言，Node 专用方案到底为何更优并不明显。也有人提出更现实的需求是云端函数、个人电脑上缺少安装权限的用户、或 AI coding/agent 场景；在这些场景里，单个 Edge.js process 只服务一个 tenant 可能比多租户共享更可控。整体上，质疑焦点不是“能不能跑 JS”，而是能否在高并发、资源滥用、逃逸向量面前真正守住边界。",
+        "supportid": [
+          "47421026",
+          "47420147",
+          "47420272",
+          "47421907",
+          "47421933"
+        ]
+      },
+      {
+        "category": "浏览器内运行 Node 的想象与现有项目",
+        "summary": "有一条很强的想象线是：把 Node 直接搬进浏览器，像 WebContainers 一样在前端跑完整应用，但用 in-memory `fs` 和禁用 fork 等方式接受浏览器限制。维护者明确表示这条路是可行的，而且会比其他方案更兼容；相关项目 BrowserPod（一个在浏览器里运行 Node/Python 的项目）也被拿来做对照。评论里还提到可以演示 `localhost:3000`、甚至配一个轻量 WASM database，让这种“浏览器里的 nodejs”更像真实开发环境。这个方向把 Edge.js 从服务器沙箱扩展成了一个可能的前端开发运行时。",
+        "supportid": [
+          "47417906",
+          "47418120",
+          "47418135",
+          "47420057",
+          "47419740"
+        ]
+      },
+      {
+        "category": "引擎可插拔与 Node/Next.js 兼容性",
+        "summary": "不少评论在追问底层架构：Edge.js 说自己支持可插拔 JS engine，那到底是调用 Wasmer，还是把 V8/JSC 直接编译进 WebAssembly 再跑起来。维护者和其他回复暗示，核心思路更接近后者，而且可选 engine 包括 V8、SpiderMonkey、QuickJS、Hermes 等。兼容性也是卖点之一：它被描述为能通过非 VM 模块的 Node spec tests，并且对 Next.js 也是 fully compatible。`edge node`、`edge npm`、`edge pnpm` 这类例子则说明它不是要重做一套 package 体系，而是尽量让现有 `node` 工作流原样迁移。",
+        "supportid": [
+          "47420882",
+          "47421027",
+          "47417727",
+          "47418788",
+          "47418845",
+          "47418947"
+        ]
+      },
+      {
+        "category": "LLM/agent 沙箱与 Electron 嵌入",
+        "summary": "很多人把它看成 LLM-generated code 的安全执行层：在 Electron app 里跑模型生成的脚本，或者给 agent workload 单独开沙箱，都是高频场景。相关回复里提到，Edge.js 理论上可以借 Electron 自己的 V8 做一个“sandboxed within electron”的执行环境，而不是依赖更重的外部容器。另一种思路是每个 sandboxed call 单独起一个 Edge.js process，用进程隔离换取更稳的多租户边界。这个方向的吸引力在于，它更贴近 AI 工具链中“频繁执行不可信代码但又不能放开权限”的现实需求。",
+        "supportid": [
+          "47418493",
+          "47418956",
+          "47421907",
+          "47421933"
+        ]
+      },
+      {
+        "category": "跨平台与 iOS 落地",
+        "summary": "平台问题也被问到：是否能跑在 iOS、如何处理文件系统和 networking、以及能否挂上自定义 handler。维护者给出的答案是，iOS 上理论可行，可以考虑 JavascriptCore（Apple 的 JS 引擎）、V8 的 jitless 模式或 QuickJS；只是目前还没有现成原型。这个回答说明 Edge.js 目标不是绑定某个宿主环境，而是尽量把“JS 运行时 + host capability”拆开。对想在移动端或受限设备上嵌入 Node 生态的人来说，这一点很关键。",
+        "supportid": [
+          "47418484",
+          "47418867",
+          "47419860"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "WebAssembly/WASM",
+        "explanation": "一种可移植的低级字节码格式，可在浏览器或其他运行时的沙箱中执行。"
+      },
+      {
+        "term": "WASIX",
+        "explanation": "在 WASI 基础上扩展的接口层，提供更接近 POSIX 的文件、进程和网络能力。"
+      },
+      {
+        "term": "V8",
+        "explanation": "Google 的 JavaScript engine，广泛用于 Node.js 和 Chromium。"
+      },
+      {
+        "term": "QuickJS",
+        "explanation": "轻量级、可嵌入的 JavaScript engine，适合受限环境。"
+      },
+      {
+        "term": "Next.js",
+        "explanation": "基于 React 的全栈框架，常被用作 Node 生态兼容性测试对象。"
+      }
+    ],
+    "context": "Wasmer（一个 WebAssembly 运行时/工具链项目）发布了 Edge.js，目标是让现有 Node.js 应用在 `--safe` 模式下跑进 WebAssembly sandbox，同时尽量保持对 Node.js 生态的兼容。评论区最关心的不是“能不能跑”，而是默认是否真的沙箱化、`fs`/网络/进程边界怎么限制，以及它与 WASIX（在 WebAssembly 上补充类 POSIX 系统能力的扩展）和传统容器、Firecracker（微虚拟机）相比的安全模型。维护者补充说，当前默认并不启用 sandbox，而是通过 `edge`、`node`、`npm` 之类的包装命令维持原有工作流，并宣称可插拔 JS 引擎（V8、QuickJS、SpiderMonkey、Hermes 等）和 Next.js 兼容性。讨论还延伸到浏览器、Electron、iOS 和 LLM/agent 代码执行等场景，核心问题是能否在低运维成本下安全运行不可信代码。",
+    "emoji": "🤔",
+    "sarcastic_question": "默认都不沙箱了，安全模式还算核心卖点吗？"
+  },
+  "articleSummary": "## 一句话总结\nEdge.js 通过将 JS 引擎原生运行与系统调用 WebAssembly 沙箱隔离相结合，实现了在不修改代码的前提下，以接近原生的性能和完全的安全性运行现有 Node.js 应用。\n\n### 为什么不能直接用 Node.js？\nNode.js 虽然稳健，但在 Serverless 场景下有两个硬伤：一是它强绑定 V8 引擎，缺乏灵活性；二是它自身不提供安全沙箱，必须依赖 Docker 或硬件虚拟化。对于追求高密度部署和毫秒级启动的 Wasmer 来说，沉重的容器化方案是绝对不可接受的，这迫使他们必须寻找一条既能跑 Node 应用，又能轻量级隔离的新路。\n\n### 之前的 WinterCG 方案为什么行不通？\nWasmer 之前尝试过 WinterJS，试图通过兼容 WinterCG 标准来切入 Edge 市场。但问题来了，WinterCG 只是一个 API 的子集，导致大量现有框架无法直接运行，造成了严重的生态碎片化。为了解决兼容性问题，Cloudflare 甚至不得不重新实现 Next.js。Wasmer 意识到，与其让应用适配平台，不如让平台完美兼容 Node.js，哪怕这难度要大得多。\n\n### 为什么不把整个 Node 编译进 WebAssembly？\n他们确实试过把 Node.js（包括 V8）编译成 WASIX，虽然能跑，但性能代价太高，因为 V8 只能以解释器模式在 Wasm 内运行，效率大打折扣。有意思的地方在于，他们发现其实不需要把 JS 引擎也关进笼子——JS 本身就是沙箱化的，真正危险的是系统调用和原生模块。于是，架构思路发生了根本性的转折：只隔离不安全的部分。\n\n### 核心架构：只隔离“不安全”的部分\nEdge.js 的设计非常巧妙，它把运行时拆成了两半：JS 引擎（如 V8）直接在宿主机上原生运行，保证性能；而文件读写、网络操作等系统调用则通过 WASIX 进行严格的沙箱隔离。为了实现这一点，他们没有直接暴露 V8 的 C++ API（那样会破坏沙箱安全），而是选择了 Node 的 NAPI 作为抽象层。NAPI 本来就是为了解耦引擎版本设计的，这正好成了 Edge.js 的“万能插头”。\n\n### 复刻 Node 的“味儿”靠的是这些细节\n光有架构还不够，要保证行为和 Node.js 一模一样，还得复刻它的底层依赖。Edge.js 直接使用了和 Node 相同的底层库：libuv 做事件循环，simdutf 处理 UTF8，llhttp 解析 HTTP，甚至连 ares 做 DNS 解析都照搬了过来。这种“拿来主义”极大地减少了兼容性 Bug，让 Edge.js 能够自信地承诺支持 Node.js v24 的全部特性，包括 Next.js 和 Astro 等主流框架。\n\n### 兼容性实测：吊打 Bun 和 Deno\n数据不会说谎。在基于 Node.js 官方测试套件的对比中，Edge.js 通过了 3626 个测试中的 3592 个（超过 99%），而 Bun 和 Deno 的通过率分别只有 40% 多。特别是在 `node:fs`、`node:http`、`node:crypto` 和 `node:worker_threads` 等核心模块上，Edge.js 几乎是全绿，而竞品则是一片红黄。这说明在“完全兼容 Node”这个目标上，Edge.js 确实走出了一条不一样的路。\n\n### 性能取舍：现阶段 correctness > speed\n目前 Edge.js 在开启 `--safe` 沙箱模式时，性能大约是原生 Node.js 的 70%-95%。虽然比原生慢一点，但考虑到它提供了无需 Docker 的强安全隔离，这个代价是值得的。作者坦承，在 0.x 版本他们是有意牺牲速度来换取正确性的。未来随着 JS snapshotting 的引入，启动速度和运行性能还有巨大的优化空间。\n\n### 这一切是怎么做到的？感谢 AI\n最后有个有趣的彩蛋：这么复杂的底层移植工作，Wasmer 团队竟然只花了几周就完成了。这主要归功于 AI（文中提到使用了 `gpt-5.4`）。团队里甚至有不懂 C++ 和 Node 内部的开发者，靠着 AI 辅助也能参与修复 Bug。这或许解释了为什么一个小团队能在短时间内搞定这种通常需要一两年人力的大工程。"
+}

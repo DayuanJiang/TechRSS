@@ -1,0 +1,102 @@
+{
+  "id": 47571330,
+  "by": "radimm",
+  "title": "Good CTE, Bad CTE",
+  "url": "https://boringsql.com/posts/good-cte-bad-cte/",
+  "score": 154,
+  "createdAt": 1774955458,
+  "aiSummary": {
+    "chinese_title": "SQL CTE 的歧义、递归与性能权衡",
+    "discussion_overview": [
+      {
+        "category": "术语歧义与标题门槛",
+        "summary": "很多人一开始被标题里的 CTE 搞糊涂，因为这个缩写在不同领域含义差很多。有人先想到 chronic traumatic encephalopathy（与运动脑损伤相关的神经退行性疾病），也有人想到 compile-time execution 之类的编译期概念，所以文章没有先定义术语被认为不够友好。也有人替作者辩护，说站点名里就带 SQL，读者本应知道 CTE 指的是 Common Table Expression；但评论里也承认，对没接触过的人来说，这种省略会直接影响阅读入口。",
+        "supportid": [
+          "47583982",
+          "47584367",
+          "47584959",
+          "47585584",
+          "47587250",
+          "47591899",
+          "47586999",
+          "47586341",
+          "47583996"
+        ]
+      },
+      {
+        "category": "文章教学价值与新收获",
+        "summary": "不少评论把这篇文章评价为很扎实的教学材料，尤其是递归 CTE 和组织结构图的例子，让人真正搞懂了它的用法。有人提到自己以前默认 CTE 只是把查询拆开写得更清楚，没想到还能把 DML 语句嵌进 CTE 里。还有人指出文章顺带解释了 aggregation 在 CTE 中可能带来的问题，以及如何通过这些例子补足自己对 SQL 细节的认知。",
+        "supportid": [
+          "47586468",
+          "47587039",
+          "47585835",
+          "47589400",
+          "47584672"
+        ]
+      },
+      {
+        "category": "CTE 与查询优化/执行计划",
+        "summary": "讨论里最集中的技术争论是：CTE 到底主要是代码组织工具，还是一种优化手段。很多人认为它最大的价值是提升可读性，而把 CTE 当作 optimization fence（优化屏障）更多是某些数据库早期实现造成的副作用。评论还提到 PostgreSQL 12 之前更容易对 CTE 形成物化边界，而后来很多 planner 会直接 inlining，查询写法不一定决定最终执行路径。有人甚至表示自己原本以为中间结果会自动展开，才会想做一个把 CTE 拆成步骤并展示结果的 UI。",
+        "supportid": [
+          "47584155",
+          "47584361",
+          "47584672",
+          "47584954",
+          "47585793",
+          "47584085"
+        ]
+      },
+      {
+        "category": "物化、临时表与工作负载权衡",
+        "summary": "当 CTE 影响性能时，有人建议把中间结果拆成独立查询，先写入 unlogged temporary tables，再按后续步骤加索引。这个思路被认为更适合分析型、一次性的重查询，而不是持续在线的 OLTP 场景。也有人补充现实限制：如果报表查询跑在 replica 上，temporary tables 往往就不方便用了。还有人抱怨 SQL Server 缺少类似 Postgres 的 materialize 关键字，只能手工把写得很清晰的 CTE 改回临时表。",
+        "supportid": [
+          "47589734",
+          "47589863",
+          "47590070",
+          "47590091",
+          "47590160"
+        ]
+      },
+      {
+        "category": "递归 CTE 与层级查询替代方案",
+        "summary": "关于递归 CTE，评论强调它底层其实是迭代式 working table 机制，并不是真正意义上的函数递归。有人拿 Oracle 的 CONNECT BY 做对比，认为它更像深度优先层级遍历，还带有 cycle detection、stack depth 等辅助能力。另一种反驳是，标准 CTE 同样能覆盖这些需求，而且 Oracle 和 PostgreSQL 都支持相应的 SQL 标准；还有人提到 DuckDB 通过 USING KEY 继续扩展了递归 CTE 的能力，说明这个方向还在演化。",
+        "supportid": [
+          "47584167",
+          "47586066",
+          "47585835",
+          "47586683"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "CTE (Common Table Expression)",
+        "explanation": "SQL 中通过 WITH 子句定义的临时结果集，常用于拆分复杂查询并提升可读性。"
+      },
+      {
+        "term": "recursive CTE",
+        "explanation": "一种可引用自身的 CTE，用于树形、层级和图遍历等递归查询。"
+      },
+      {
+        "term": "optimization fence",
+        "explanation": "数据库把 CTE 当作不可轻易穿透的边界，可能阻止优化器重写或下推条件。"
+      },
+      {
+        "term": "materialization",
+        "explanation": "把中间结果实际落盘或固定下来，而不是直接把 CTE 展开到最终查询里。"
+      },
+      {
+        "term": "temp tables",
+        "explanation": "临时表，用于保存中间结果，常配合索引来提升多步骤查询性能。"
+      },
+      {
+        "term": "OLAP/OLTP",
+        "explanation": "OLAP 偏分析型批量查询，OLTP 偏在线事务处理；两者对 CTE 和临时表的适用性不同。"
+      }
+    ],
+    "context": "这篇文章讨论 SQL 里的 Common Table Expressions（CTE，通常用 WITH 子句定义的临时结果集），核心是在“写得清楚”与“跑得快”之间如何取舍。评论区把重点扩展到不同数据库的实现差异：PostgreSQL 12 之前常把 CTE 当成 optimization fence（优化屏障），后来更多会 inlining；SQL Server 用户则常在 CTE 和 temp tables 之间切换；Oracle、DuckDB 也被拿来比较递归查询能力。讨论还延伸到 recursive CTE、materialization、unlogged temporary tables、OLAP/OLTP 这些概念，说明这种写法既影响可读性，也会影响执行计划和索引策略。标题里的 CTE 还因为是缩写而引发歧义，有人先想到 chronic traumatic encephalopathy（运动损伤相关的脑病）或 compile-time execution，进一步放大了“先定义术语”的争议。",
+    "emoji": "🤓",
+    "sarcastic_question": "CTE不先定义，是想让人猜SQL还是脑损伤？"
+  },
+  "articleSummary": "# 一句话总结\nPostgreSQL 12 彻底颠覆了“CTE 是优化栅栏”的旧观念，现在的 CTE 默认会被内联优化，只有特定场景（如递归、多次引用或包含副作用）才会被物化。\n\n---\n\n### CTE 曾经是性能杀手，但很多人还在用\n很多开发者喜欢用 CTE（Common Table Expression），并不是因为它代码结构有多现代，而是因为它迎合了人类的“命令式思维”。说白了，大家写 CTE 就像在给数据库下指令：“先做这个，再做那个”。这种写法虽然读起来顺口，但在 PostgreSQL 12 之前，这其实是个性能陷阱。那时候的 CTE 是一个“优化栅栏”，数据库优化器完全看不穿 CTE 的边界。不管你外面怎么过滤，数据库都会老老实实先把 CTE 里的结果全部算出来存进临时表，然后再去扫描这个临时表。这意味着索引失效、谓词下推失效，性能大打折扣。\n\n### PostgreSQL 12 的核心变化：默认内联\nPostgreSQL 12 做了一个非常关键的改动：它把 CTE 当作子查询来处理了。对于非递归、没有副作用且只引用一次的 CTE，优化器会直接把它内联到主查询中。这有什么好处？这意味着所有的过滤条件可以合并，索引可以正常使用，执行顺序也可以被优化器自由重排。你写代码时享受了 CTE 的清晰逻辑，但数据库执行时却得到了子查询的高效性能。文章里的例子很直观：原本在 PG 11 里需要两步扫描的操作，在 PG 12 里直接合并成了一次对原表的扫描，原本用不上的复合索引现在也能生效了。\n\n### 什么时候会触发物化？看这几种情况\n虽然默认是内联，但优化器很聪明，它知道什么时候必须物化。最常见的情况是你多次引用了同一个 CTE。比如你写了一个 `summary` CTE 做聚合，然后在主查询里 `JOIN` 了它两次。这时候物化就是必须的，因为“算一次、用两次”比“算两次”效率高得多。另外，递归 CTE（比如处理树形结构的员工层级）因为需要在迭代间维护工作表，所以必须物化。还有包含 `INSERT/UPDATE/DELETE` 的 CTE，为了保证副作用只执行一次且顺序可控，也强制物化。这些逻辑都符合直觉，不需要死记硬背。\n\n### 函数的易变性决定了 CTE 的命运\n这里有个容易踩坑的细节：函数的易变性。如果你的 CTE 里调用了 `VOLATILE` 级别的函数（比如 `random()` 或 `clock_timestamp()`），优化器会强制物化。为什么？因为如果不物化，函数在查询计划的不同阶段被调用多次，结果可能不一致，这在逻辑上是错误的。但有意思的是，很多人误以为 `STABLE` 函数（比如 `now()`）也会阻止内联，其实并不会。因为 `now()` 在同一个事务内结果是不变的，优化器完全可以放心地把它内联进去，和其他条件合并处理。如果你发现带 `now()` 的 CTE 被物化了，别怪函数，去检查是不是你引用了多次或者用了 `MATERIALIZED` 关键字。\n\n### 手动控制：你可以教优化器做事\n既然优化器的判断是基于规则的，PostgreSQL 12 也给了你推翻它的权利。如果你发现某个 CTE 计算成本极高，虽然只引用一次，但你宁愿牺牲谓词下推也要避免重复计算，你可以加上 `MATERIALIZED` 关键字。反过来，如果你确信某个 CTE 即使被引用多次也应该内联（或者你想强制利用索引），也可以用 `NOT MATERIALIZED`。这就像是给了开发者一个“上帝模式”，让你在“可读性”和“极致性能”之间做最后的微调。不过大多数情况下，相信优化器的默认选择就够了。"
+}

@@ -1,0 +1,115 @@
+{
+  "id": 48527145,
+  "by": "losfair",
+  "title": "Caddy compatibility for zeroserve: 3x throughput and 70% lower latency",
+  "url": "https://su3.io/posts/zeroserve-caddy-compat",
+  "score": 138,
+  "createdAt": 1781447468,
+  "aiSummary": {
+    "chinese_title": "zeroserve 兼容 Caddy：吞吐 3 倍、延迟降 70%，但缺 ACME 遭质疑",
+    "discussion_overview": [
+      {
+        "category": "功能缺失与“兼容”争议",
+        "summary": "不少评论认为“Caddy compatible”只是表面兼容，因为最关键的 ACME 自动证书和插件生态都没覆盖。有人直言这相当于把“真正有用的部分”拿掉了，剩下的兼容意义有限。也有人承认代码库看起来更干净，可能更容易审计，但在生产环境里缺 ACME 已经足以让人直接放弃。若只是想要更快的替代品，很多人会优先考虑 nginx（一个成熟的高性能 Web server / reverse proxy）。",
+        "supportid": [
+          "48529161",
+          "48529239",
+          "48527912",
+          "48527934",
+          "48531609"
+        ]
+      },
+      {
+        "category": "基准测试是否有意义",
+        "summary": "对 3 倍吞吐和 70% 降延迟的结果，很多人持保留态度，认为这更像是一个合成化的 HTTP/1.1 微基准。有人强调 nginx（经典高性能 Web server / reverse proxy）本来就被极度优化，能在这种测试里保持领先并不意外。也有人指出，如果 Caddy 关闭 GC（垃圾回收）去跑这种“极短单请求”场景，可能也会更快，但这并不能说明真实业务里谁更有价值。整体看法是：这类 benchmark 可能测到了测试模型，而不是线上负载的瓶颈。",
+        "supportid": [
+          "48527710",
+          "48528053",
+          "48531078",
+          "48531630"
+        ]
+      },
+      {
+        "category": "mTLS 与客户端证书的糟糕 UX",
+        "summary": "有人在访问时被 Chrome 弹出选择证书窗口，觉得非常怪异，甚至担心网站在动浏览器里用于报税和政务的个人证书。随后有评论解释，这其实是 mTLS（Mutual TLS，双向 TLS 认证）的正常流程：浏览器被要求出示客户端证书，用户可以选择也可以取消。问题在于浏览器对客户端证书的界面几乎没有上下文，选错后也很难修正，错误页和重定向处理同样别扭，因此这套机制很少适合公开网站。有人还提到可以借助 passkeys 改善这类认证体验。",
+        "supportid": [
+          "48527937",
+          "48528695",
+          "48528843",
+          "48529464",
+          "48531350",
+          "48533327",
+          "48533432",
+          "48529476",
+          "48531915",
+          "48532613",
+          "48531297"
+        ]
+      },
+      {
+        "category": "io_uring / eBPF / JIT 的安全顾虑",
+        "summary": "安全性是另一条主线。有人对把 io_uring（Linux 的异步 I/O 接口）直接暴露给服务表示强烈担忧，因为最近才出现过安全通告。也有人进一步问，写 webserver 时用 io_uring 是否有更安全的方式，还是应该退回 libuv（一个通用异步 I/O 库）来换取更保守的实现。另一组评论则把担心集中在 JIT（Just-In-Time compilation，运行时即时编译）和 eBPF（extended Berkeley Packet Filter，一种受限程序执行技术）上，认为这会扩大攻击面；反驳者则强调 attack surface 取决于具体实现，且 zeroserve 用的不是 Linux 内核原生 eBPF runtime，所以内核 verifier 的那些限制不完全适用。",
+        "supportid": [
+          "48532233",
+          "48530924",
+          "48531675",
+          "48532735",
+          "48532723",
+          "48527871"
+        ]
+      },
+      {
+        "category": "何时才会成为瓶颈",
+        "summary": "一些人从实用角度追问：Caddy 什么时候真的会成为瓶颈？回答是，大多数应用里后端比 proxy 慢得多，所以代理层通常不是问题。只有在高 connection churn、频繁 TLS handshake、短连接洪峰，或者高 RPS 的小响应场景里，proxy 的 CPU 才会先被打满。也有人提到像 CDN 这类场景更可能看重这类优化，但又有人指出 CDN 并不一定会用 Caddy。",
+        "supportid": [
+          "48527696",
+          "48530691",
+          "48529036",
+          "48530602",
+          "48531751",
+          "48532546"
+        ]
+      },
+      {
+        "category": "项目成熟度与 track record",
+        "summary": "对项目长期可靠性的怀疑也很明显。有人直接把它归类为“vibe-coded、6 个月后就死掉的 Rust 项目”，认为真正需要性能的团队不会押注在没有支持和历史记录的随机 server 上。反方提醒，新项目本来就需要从零开始，nginx 和 Envoy（Lyft 推出的代理）也都曾经是零 track record。区别在于它们背后有明确的生产需求和组织背书，因此更容易建立信任。",
+        "supportid": [
+          "48530110",
+          "48531214",
+          "48531199",
+          "48531674"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "ACME",
+        "explanation": "Automatic Certificate Management Environment，用于自动申请和续期 TLS 证书的协议，Caddy 的核心卖点之一。"
+      },
+      {
+        "term": "mTLS",
+        "explanation": "Mutual TLS，客户端和服务端都用证书互相认证的一种 TLS 方式。"
+      },
+      {
+        "term": "client certificate",
+        "explanation": "客户端证书，用于 mTLS 中证明客户端身份，但浏览器的选择和管理体验通常很差。"
+      },
+      {
+        "term": "io_uring",
+        "explanation": "Linux 的异步 I/O 接口，主打高性能，但也常伴随安全与复杂度争议。"
+      },
+      {
+        "term": "eBPF",
+        "explanation": "extended Berkeley Packet Filter，可在受限环境中运行程序，常用于网络和内核相关优化。"
+      },
+      {
+        "term": "JIT",
+        "explanation": "Just-In-Time compilation，运行时即时编译；能提升性能，但也会让攻击面和实现复杂度上升。"
+      }
+    ],
+    "context": "zeroserve 是一个试图兼容 Caddy 配置/行为的高性能 Web server，标题宣称在某些基准下吞吐提升 3 倍、延迟下降 70%。Caddy（一个带自动 HTTPS 的 Go 语言 reverse proxy / web server）以易用和 ACME 自动证书著称，但评论指出这次兼容并不包括 ACME 和插件生态。讨论同时牵涉到 nginx（经典高性能 Web server / reverse proxy）、mTLS（双向 TLS 认证）、io_uring（Linux 异步 I/O 接口）和 eBPF（可受限执行的技术）等实现路线。很多人把它看成一次用 Rust、JIT 或类似机制追求极致性能的实验，同时质疑这类优化是否真能超过成熟代理在真实流量中的表现。",
+    "emoji": "🤨",
+    "sarcastic_question": "连 ACME 都没有，兼容的是空气吗？"
+  },
+  "articleSummary": "## 一句话总结\nzeroserve 通过将 Caddy 配置文件 JIT 编译为 eBPF 并在 `io_uring` 事件循环中运行，实现了比标准 Caddy 高 3 倍的吞吐量和低 70% 的延迟。\n\n### 把 Caddyfile 变成机器码的疯狂想法\nzeroserve 本质上是一个运行在用户空间的高性能 HTTPS 服务器，它的核心玩法是跑 eBPF 脚本。这次更新引入了一个兼容 Caddy 的模式，这不仅仅是简单的配置解析，而是直接把 Caddyfile 拿来 JIT 编译。流程是这样的：Caddyfile 先被编译成 eBPF 字节码，然后再进一步编译成原生的 x86_64/ARM64 机器码。说白了，它把你熟悉的配置文件直接变成了能在 CPU 上飞跑的底层指令，完全绕过了传统服务器解释配置的开销。\n\n### 性能炸裂：3 倍吞吐是怎么来的\n作者在 AMD Ryzen 7 3700X 上跑了一份 HTTPS 反向代理的 Benchmark，数据非常夸张。zeroserve（基于 clang）跑出了 38,948 req/s，而标准 Caddy 只有 12,529 req/s。这不仅是 3 倍的吞吐量差距，延迟指标更是惨烈：Caddy 的 P99 延迟高达 13.11ms，而 zeroserve 只有 3.91ms。更有意思的是，zeroserve 的内存占用（RSS）只有 30.9 MiB，不到 Caddy (67.4 MiB) 的一半。这证明了把配置逻辑编译成 eBPF 的路径是正确的，它消除了大量传统网络栈中的冗余处理。\n\n### 和 Nginx 同台竞技也不落下风\n很多人可能会问，这玩意儿跟老牌高性能服务器 Nginx 比怎么样？Benchmark 里也给了答案。Nginx 的吞吐量是 37,424 req/s，P99 延迟 4.24ms，内存占用 25.7 MiB。可以看到，zeroserve 在吞吐量上已经超过了 Nginx，延迟表现也略优，虽然内存占用比 Nginx 稍高一点（多了 5MiB 左右），但考虑到它支持动态 eBPF 脚本的灵活性，这点内存换来的可编程性绝对划算。这表明 zeroserve 并没有为了追求 eBPF 的噱头而牺牲基础性能，它是实打实的高性能。\n\n### 真正的杀手锏：可编程的中间件\n如果只是跑得快，那无非是又一个 Nginx。但 zeroserve 的 eBPF 是图灵完备的，这意味着你可以在 Caddyfile 里直接调用自定义代码。文章给了一个很硬核的例子：反向代理到 S3 兼容存储桶时，直接在请求转发前调用 `io.su3.aws-sigv4` 插件进行 AWS SigV4 签名。这种设计把复杂的鉴权逻辑下沉到了网络层，不需要再写额外的 Sidecar 服务。对于有经验的开发者来说，这种在配置文件里直接嵌入高性能逻辑的能力，才是它最吸引人的地方。\n\n### 极简的迁移体验\n虽然底层技术很硬核，但作者把使用门槛降得很低。你不需要重写现有的 Nginx 或 Caddy 配置，只要下载二进制文件，加一个 `--caddy` 参数就能跑。命令行简单到 `./zeroserve --caddy /etc/caddy/Caddyfile` 即可启动。这种“即插即用”的体验，配合其底层的性能爆发力，让 zeroserve 看起来像是一个披着 Caddy 兼容外衣的超级引擎。对于想在不改变现有配置习惯的前提下榨干机器性能的开发者，这绝对值得一试。"
+}

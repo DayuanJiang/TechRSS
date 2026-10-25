@@ -1,0 +1,108 @@
+{
+  "id": 47180569,
+  "by": "nnx",
+  "title": "We deserve a better streams API for JavaScript",
+  "url": "https://blog.cloudflare.com/a-better-web-streams-api/",
+  "score": 386,
+  "createdAt": 1772202647,
+  "aiSummary": {
+    "chinese_title": "JavaScript 流 API 该如何改：Uint8Array 原语、Promise 开销与 MaybeAsync 流迭代器提案",
+    "discussion_overview": [
+      {
+        "category": "MaybeAsync 流迭代器（next 可同步或返回 Promise）的提案与争论",
+        "summary": "有人提议把流抽象为单一的“stream iterator”，即 next() 可以直接返回 {done, value} 或返回 Promise<{done, value}>，目标是：用一个迭代器代替嵌套迭代器，允许在数据可用时保持同步路径以避免 Promise 开销，减少为每个小单元创建 Promise（消除“promise thrash”），并在需要时管理并发性。支持者认为这能避免为同一逻辑写两套（sync/async）代码，并在常见热路径显著提速；反对者指出混合同步/异步签名会带来语义模糊（Zalgo 风险）、实现复杂性（需要防御多次 eager next() 调用），而且把字节扁平化为单个项会导致对象与 GC 开销暴增。评论中还有实测数据指出 await 的开销巨大（node 24 中对 trivial 函数 await 与直接调用的性能比约为数十倍），说明设计权衡并非纯理论问题。",
+        "supportid": [
+          "47181466",
+          "47182175",
+          "47183237",
+          "47183143",
+          "47181959",
+          "47183592"
+        ]
+      },
+      {
+        "category": "以 Uint8Array/字节块为原语——和底层 I/O 对齐的观点",
+        "summary": "不少人主张将流的语言级原语保持为按块的字节缓冲（Uint8Array），理由是这与操作系统与低级 I/O（如 readv/writev）本质对齐，避免自动扁平化导致的 buffer bloat，并且更容易从 C/C++ 等底层库封装过来。针对文本解码的担忧（例如 UTF‑8 码点跨块切割）有人指出常见做法是保留 1–2 个尾部字节作为状态（restartable UTF‑8），把编码/解析作为单独的转换器实现；反过来批评者认为只用字节块作为原语会让多步骤可组合变换变得笨重，需要把很多逻辑内联成大变换，从而丧失流的可组合性优势。",
+        "supportid": [
+          "47181893",
+          "47182170",
+          "47183506",
+          "47183630",
+          "47181913"
+        ]
+      },
+      {
+        "category": "Promise/await 的开销、BYOB 与缓冲管理的性能考量",
+        "summary": "评论反复强调实际性能痛点不是 Promise 对象本身，而是 await/for‑await‑of 在热路径中保留调用栈并触发事件轮询的开销，实测显示对简单同步步骤使用 await 会极大变慢。BYOB（bring your own buffer，调用者提供缓冲区让读取填充）被视为减少 GC 与复制、提升吞吐的关键，但 WHATWG 的 Web Streams 中 BYOB 的正确实现复杂且不易用；有人引用 Go 的简洁 pull/read API（read(b: Uint8Array)）作为理想化参考，并提出可选的 buffer 回收策略（如 stream.returnChunk）或线性类型思路来复用缓冲区并避免不必要分配。",
+        "supportid": [
+          "47183237",
+          "47184821",
+          "47181232",
+          "47181074",
+          "47182220"
+        ]
+      },
+      {
+        "category": "可组合的流变换、并发与回压（pipeline 与反馈问题）",
+        "summary": "大量评论从函数式与并行处理角度谈可组合性：像 Elixir、Clojure 的 stream/transducer 模式将流作为多阶段懒变换的组合单元，用来在不全量聚合的情况下逐步处理数据。实践中要支持 backpressure 和反馈（例如评论里用“每第三个成品作为输入”的装配线例子说明如果强制批处理会导致死锁），所以理想的流抽象应内建并发控制与回压语义。有人展示语言设计（例如自研的 Eidos）或库实现如何通过迭代器、管道（|>）与编译器级融合（inlining、kernel fusing）同时获得可组合性与性能。",
+        "supportid": [
+          "47183300",
+          "47182301",
+          "47181663",
+          "47182753",
+          "47183630"
+        ]
+      },
+      {
+        "category": "Web Streams 在 Node/服务端的实践痛点与开发者体验（DevX）",
+        "summary": "多条评论抱怨 Web Streams 最初以浏览器为优先设计、再移植到 Node 时产生摩擦：在处理大文件、服务间管道或简单变换时，开发者经常要为简单操作包一层 TransformStream 才能使用，强调 AsyncIterator 与 for‑await‑of 更契合现有 async/await 生态且组合直观。有人怀念 Node 旧有 stream 的 .pipe() 模式及其直觉式回压，另有观点认为只要把流定义为 AsyncIterator<Uint8Array> 就能兼顾互操作性并减少适配成本；总体上争论集中在“标准偏重浏览器用例”与“服务端高吞吐需求”的错位上。",
+        "supportid": [
+          "47182726",
+          "47182066",
+          "47181845",
+          "47181232"
+        ]
+      },
+      {
+        "category": "已有替代实现与生态实验（Repeater、pull‑stream、Observables、OKIO 等）",
+        "summary": "评论里列举了多种已有库与提案作为参考：Repeater（@repeaterjs/repeater）用接近 Promise 构造器的风格实现可取消的异步迭代，pull‑stream 以函数式、无类的轻量方式组织流，Observables 提案已移至 WHATWG 并在 Chrome 有实现，而 Java 的 OKIO 则是按字节缓冲与零复制设计的成熟工程。这些实现各自权衡了 API 简洁性、性能、并发与 UX，表明社区在语言层或库层已有大量实作经验可借鉴，标准制定应吸收这些教训而非重复发明。",
+        "supportid": [
+          "47181953",
+          "47183781",
+          "47182771",
+          "47182398",
+          "47181678"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Uint8Array",
+        "explanation": "JavaScript 的 TypedArray，用于表示原始字节缓冲区。在流与 I/O 场景中常作为传输单元以对齐操作系统和低级库的字节语义。"
+      },
+      {
+        "term": "BYOB (bring your own buffer)",
+        "explanation": "一种读取接口语义：调用方传入一个 Uint8Array 缓冲区，读取器直接填充该缓冲以避免额外分配与拷贝，从而降低 GC 压力并提升高吞吐性能。"
+      },
+      {
+        "term": "AsyncIterator / async iterable",
+        "explanation": "支持异步拉取项的迭代器协议（可配合 for‑await‑of 使用），每一步通常以 Promise<{done,value}> 表示，适合异步 I/O，但在每步 await 的热路径可能带来性能开销。"
+      },
+      {
+        "term": "Web Streams (WHATWG Streams API)",
+        "explanation": "WHATWG 定义的浏览器端 Streams 标准（ReadableStream/TransformStream/WritableStream），被用于 fetch 等 web 平台 API，设计偏向浏览器用例，移植到服务端会产生互操作与性能权衡。"
+      },
+      {
+        "term": "Zalgo（synthetic deferral）",
+        "explanation": "源自“Do not unleash Zalgo”一文，指 API 有时同步有时异步的激活模式会导致不确定行为和理解成本，设计上通常应避免“有时同步有时异步”的不一致性。"
+      },
+      {
+        "term": "Transducers",
+        "explanation": "一种源自 Clojure 的可组合变换抽象，允许把多个数据转换步骤串联为单一高效管道，适用于流式处理以避免中间集合分配。"
+      }
+    ],
+    "context": "讨论围绕 WHATWG 的 Web Streams 标准与 JavaScript 生态中处理字节流、文本解码与变换管道的实际痛点展开。文章作者与评论者在权衡“以字节块(Uint8Array)为原语”与“允许按需同步返回以避免 Promise 开销”的设计路径，涉及 GC、BYOB、await/for‑await‑of 的性能成本，以及服务端（Node）与浏览器端的适配差异。评论还引用了 Go、Java(OKIO)、Clojure/Elixir 的惯用做法和现存库（Repeater、pull‑stream、Observables）来说明不同设计的工程折衷。读者应具备 Promise/async/await、Generator、TypedArray 与基本 I/O 概念来理解这些讨论。",
+    "emoji": "🔁",
+    "sarcastic_question": "我们还要发明多少互不兼容的新流API来折腾大家？"
+  }
+}

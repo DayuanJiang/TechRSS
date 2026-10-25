@@ -1,0 +1,96 @@
+{
+  "id": 49626718,
+  "by": "wcrichton",
+  "title": "A Design Space Exploration of Async/Await",
+  "url": "https://cel.cs.brown.edu/blog/design-space-async-await/",
+  "score": 344,
+  "createdAt": 1789161627,
+  "aiSummary": {
+    "chinese_title": "Async/await 九维设计空间：取消、挂起与线程模型争论",
+    "discussion_overview": [
+      {
+        "category": "九维框架很实用",
+        "summary": "很多评论认为这篇文章把原本零散的 async/await 经验系统化了，尤其适合正在做语言或运行时设计的人。九个设计维度让人意识到 async 不是单一特性，而是一组彼此牵连的取舍。有人把这种演化类比为 lexical scope 和 dynamic scope：早期争论很多，但最终会逐渐收敛出更合理的默认值。也有人直接把它看成很强的教学工具，甚至可以拿来比较不同 async 系统之间的“相似度”。",
+        "supportid": [
+          "49667176",
+          "49666689",
+          "49665634",
+          "49666060",
+          "49666109",
+          "49665808"
+        ]
+      },
+      {
+        "category": "C++ 异步库像 DSL",
+        "summary": "有评论指出，C++ 之所以无法被归到某个固定的 async 设计点，是因为它把几乎所有轴都开放给库和程序员选择。表面上这很优雅、很中立，但代价是每个库都像一门 async DSL，跨项目迁移经验很难直接复用。网络视频播放器的例子被拿来说明这一点：网络收包、vsync、硬件解码、音频 pull 模式、音视频同步和 GUI 回调，可能都要求不同的异步模型。结论是，真实系统里通常不存在“一种 async 方案包打天下”。",
+        "supportid": [
+          "49667413",
+          "49667566"
+        ]
+      },
+      {
+        "category": "取消与挂起语义之争",
+        "summary": "讨论集中在 `await` 到底承诺了什么：它是否一定会 suspend，还是运行时可以在任务已完成时直接继续执行。有人举 C# 的 `Task.FromResult()` 说明，同一个 `await` 点并不总会真的挂起，因此“await = suspend”并不成立。另一些评论把重点放在 cancellation 上，认为 Trio 风格的取消、JavaScript 的 AbortSignal，以及 cancel token 机制，都涉及“谁能取消任务”和“任务是否必须主动检查取消”。这也引出对 “colored functions” 的不满：同样写法在不同框架里可能有完全不同的语义。",
+        "supportid": [
+          "49667176",
+          "49666216",
+          "49666317",
+          "49667679",
+          "49666107"
+        ]
+      },
+      {
+        "category": "async/await 与线程、并行的边界",
+        "summary": "不少人反对把 async/await 讲成“线程的替代品”，认为问题的根源从来不是线程本身，而是共享可变状态加上大量 semaphore 的糟糕用法。只要改成 actor、message passing、worker pool 或 structured concurrency，线程模型就会变得可控很多，而不是灾难。另一派则强调 async/await 的核心价值在于把一串异步操作串起来，避免为每个 I/O 点都开线程，但这并不自动解决多核并行、音视频同步或 GUI 回调协作的问题。评论里也不断提醒要区分 concurrency 和 parallelism，尤其在提到 Java virtual threads 时更容易混淆。",
+        "supportid": [
+          "49666550",
+          "49666798",
+          "49667447",
+          "49666355",
+          "49666522",
+          "49667335",
+          "49667008",
+          "49666156"
+        ]
+      },
+      {
+        "category": "语言生态与具体案例差异",
+        "summary": "有人拿测试结果开玩笑，说自己明明主要写 C#，却被测成 JS 开发者；也有人补充 C# 在 `main` 退出时会终止未完成任务，这类细节往往是很多开发者平时不会碰到的。Trio 被夸赞设计得很细腻，但也有人认为它输给 asyncio 主要不是技术，而是惯性和 stdlib 特权。Zig 这一支讨论则更技术化：它现在没有旧意义上的 async/await，历史上的 stackless coroutines 已被移除，0.16 版本改用 userland I/O API，而社区还在推动用低层 buffer API 把 stackless coroutines 以新形式带回来。整体上，这些例子都在说明：同样叫 async/await，不同语言的语义和运行时支撑可以差别巨大。",
+        "supportid": [
+          "49666585",
+          "49667621",
+          "49666158",
+          "49667679",
+          "49666827",
+          "49667763"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "structured concurrency",
+        "explanation": "结构化并发：把子任务放进明确的作用域和生命周期中管理，减少失控的后台任务和资源泄漏。"
+      },
+      {
+        "term": "stackless coroutines",
+        "explanation": "无栈协程：挂起时只保存必要状态，不保留完整调用栈，常用于实现轻量级 async/await。"
+      },
+      {
+        "term": "AbortSignal / cancellation token",
+        "explanation": "取消信号/取消令牌：把“请求取消”显式传给异步任务的机制，常用于中断长任务或传播取消。"
+      },
+      {
+        "term": "concurrency vs parallelism",
+        "explanation": "并发与并行：并发强调任务交错推进，并行强调真正同时执行；两者在异步讨论中经常被混淆。"
+      },
+      {
+        "term": "suspension semantics",
+        "explanation": "挂起语义：`await` 是否保证一定暂停当前执行，还是允许运行时在某些情况下直接继续跑完。"
+      }
+    ],
+    "context": "这篇 arXiv 论文《A Design Space Exploration of Async/Await》把不同语言里的 async/await 拆成九个设计维度来比较，关注的不只是语法，而是运行时如何挂起、恢复、取消和调度任务。评论里反复拿 JavaScript、C#、Swift、Python 的 asyncio（Python 标准库异步库）、Trio（一个 Python 异步运行时）、Tokio（Rust 异步运行时）、C++ 和 Zig（系统编程语言）做对照，因为同样叫 `async/await`，语义可能完全不同。大家特别在意 cancellation、`await` 是否真的会 suspend、以及任务生命周期该由谁控制，这些都会直接影响语言和库的设计。另一条主线是把 async/await 和 threads、structured concurrency（结构化并发）以及 Java virtual threads（Java 的虚拟线程）区分开来，讨论它们究竟是在解决并发问题，还是在规避共享内存加锁/信号量带来的复杂度。",
+    "emoji": "🤔",
+    "sarcastic_question": "九个维度都能吵成这样了，还叫异步简单吗？"
+  },
+  "articleSummary": "## 一句话总结\n看似通用的 `async`/`await` 背后，各语言运行时的语义差异极大，作者提炼出了九大设计维度，揭示了为何同样的代码在不同语言里会有截然不同的执行结果。\n\n## 正文\n\n### 看似相同的语法，截然不同的结果\n现在的编程语言都在推崇 `async`/`await`，核心理念也很一致：让并发代码看起来像顺序执行的 \"straight-line code\"。但问题是，这种语法上的一致性极具欺骗性。作者写了一段极简的伪代码：一个函数写日志，另一个函数通过 `spawn` 把它扔到后台执行，主函数则继续往下跑。这段代码如果放在七种主流语言的运行时里跑一遍，你会得到四种完全不同的输出结果。更夸张的是，如果稍微改动一下代码逻辑，这七种运行时竟然**没有任何两种**会产生相同的输出。\n\n### \"热\"与\"冷\"的起点之争\n为什么会有这种差异？你可能听说过 \"Hot\" 和 \"Cold\" 任务的概念。简单说，\"Hot\" 指的是调用后任务立马开始跑，\"Cold\" 则是返回一个静止对象，非得 `await` 它才动。作者把这个定义为 **\"Eagerness（渴望度）\"** 维度。这只是冰山一角，作者从现代语言的实现中提炼出了九个关键的**设计维度**。这些维度决定了程序的**可观察语义**——不仅仅是性能好坏，而是程序逻辑到底对不对。作者把这些维度按任务生命周期分成了三类：生（Start of Life）、死（End of Life）、取消。\n\n### 任务的生命周期边界：谁才是老板？\n这就解释了开头那段代码的分歧点。关键维度在于 **\"Extent（范围）\"**：任务能不能活得比创建它的函数作用域更久？像 Swift 和 Python 的 Trio 库选择了 **\"Dynamic Extent\"**，意思就是任务不能\"爹死子还在\"。当 `fire_and_forget` 函数返回时，它里面 `spawn` 出来的任务必须得有个交代。这就引出了下一个维度 **\"Destruction（销毁）\"**：作用域结束时，任务是乖乖等它跑完，还是直接杀掉？\n\n### 同样是\"短命\"，死法也不一样\nSwift 和 Trio 都限制了任务的生命周期，但它们的处理方式截然不同。Swift 选择了 **\"Cancelled Destruction\"**，函数结束直接发取消信号，任务被迫中止，所以程序只输出了 \"AC\"。而 Trio 选择了 **\"Awaited Destruction\"**，函数结束时会耐心地等待任务跑完，所以输出是完整的 \"ABC\"。你看，仅仅是对\"任务生命周期\"和\"怎么死\"这两个维度的选择不同，同样的代码逻辑就走向了完全不同的分支。\n\n### 用形式化模型终结混沌\n为了把这笔烂账算清楚，作者没有止步于定性分析，而是构建了一个形式化语义模型。他们把那些设计维度变成了具体的推导规则。文中的状态转换图非常直观：每个方框是抽象机器的状态，箭头是推导步骤。大部分规则在各语言里都一样，但高亮的那几步——比如任务是 Lazy 还是 Eager，作用域结束是 Cancel 还是 Await——就是决定程序命运的岔路口。这套模型让我们能精确地追踪每一步执行，解释了为什么那个简单的日志程序会有如此多的\"正确\"答案。"
+}

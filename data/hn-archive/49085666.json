@@ -1,0 +1,135 @@
+{
+  "id": 49085666,
+  "by": "garyhtou",
+  "title": "Zig's Incremental Compilation Internals",
+  "url": "https://mlugg.co.uk/posts/incremental-compilation-internals/",
+  "score": 244,
+  "createdAt": 1785255019,
+  "aiSummary": {
+    "chinese_title": "Zig 增量编译：debug 版限制与 Rust 安全争论",
+    "discussion_overview": [
+      {
+        "category": "Zig 设计为增量编译而生",
+        "summary": "评论者普遍认可 Zig 的工具链工作，尤其是把编译器内部结构朝着更容易做 incremental compilation 的方向调整。有人指出 semantic analysis 是最难增量化的部分，因此语言设计本身会直接影响能否把改动局部化；Zig 这些年对设计做出的取舍，正是为了让这件事更可行。也有人提到 Rust 其实也有增量编译，但在一个已成熟的大型 codebase 上继续重构到更彻底的模型非常困难。GHC（Glasgow Haskell Compiler，Haskell 编译器）的文件级增量被反复拿来作为可借鉴的参考。",
+        "supportid": [
+          "49086705",
+          "49086956",
+          "49087037"
+        ]
+      },
+      {
+        "category": "Rust 慢编译更多来自架构而非安全检查",
+        "summary": "不少人反对把 Rust 的慢编译简单归因于安全检查，认为真正拖慢的是 proc macros、name resolution、monomorphized generics，以及先产出 library 再链接成 binary 的传统流水线。proc macros 因为可能带副作用，即使做 incremental compilation 也常常要反复展开；而很多中间产物最后又会被丢弃，造成大量无用工作。有人提出 hint-mostly-unused、gc-sections、按需编译或更细的阶段划分，希望把“只编译最终需要的东西”做得更彻底。也有人说 C++ 的 REPL、hot reloading 和 binary libraries 说明更快的迭代并非幻想，只是 Rust 目前没有把它放在首要目标里。",
+        "supportid": [
+          "49086755",
+          "49086769",
+          "49087034",
+          "49087153",
+          "49087612",
+          "49087275",
+          "49088050",
+          "49088630",
+          "49087260"
+        ]
+      },
+      {
+        "category": "memory safety 的门槛之争",
+        "summary": "围绕 memory safety 的争论几乎成了主线：一边认为真正重要的是能否把 safe code 和 unsafe escape hatch 明确分开，因此 Rust、Java 这类语言更像是有清晰边界的安全语言，而 Zig/C 没有这种分界。另一边则反对把某一种妥协说成 table stakes，认为不同程序对低级控制、复杂度、编译时间和可验证性的取舍完全不同，Zig 的空间安全提升也有现实价值。Fil-C（一个试图用运行时检查提升 C 安全性的项目）被拿来反复比较，有人认可方向，有人批评它把“runtime trap”和“compile-time prevention”混为一谈，并且宣传方式带有对立情绪。还有人指出它目前更像 engineering demo，离可直接上生产还有距离。",
+        "supportid": [
+          "49087137",
+          "49087230",
+          "49087186",
+          "49087290",
+          "49087483",
+          "49087726",
+          "49087952",
+          "49088315",
+          "49089357",
+          "49088033",
+          "49088294",
+          "49089847"
+        ]
+      },
+      {
+        "category": "当前只覆盖自托管 debug 后端",
+        "summary": "当前版本的限制也被多次提醒：这套 incremental compilation 只作用于 Zig 的 self-hosted codegen backend，而且还没有完整 optimization passes，所以现在基本只覆盖 debug builds。评论里提到 interprocedural 优化，尤其是 inlining，会天然削弱增量编译的收益，因此即使未来扩展到 release builds，也很可能只能开放部分优化。混合 C/Zig 项目目前不对 C 源码提供同等缓存，因为 Zig 只缓存 Zig AIR，不保存 C 的编译信息。关于 C 编译本身，讨论提到 arocc/translate-c 和逐步摆脱 LLVM 依赖的计划，但这些路线还没有完全定型。",
+        "supportid": [
+          "49086148",
+          "49086793",
+          "49086355",
+          "49086988",
+          "49087554",
+          "49088036",
+          "49089188",
+          "49089538",
+          "49086354"
+        ]
+      },
+      {
+        "category": "共享库方案与二进制 patching 权衡",
+        "summary": "有人对文章里的巨大 debug binary 设计提出异议，觉得更简单的办法是拆成很多小 shared libraries，再由主程序链接。支持者担心这样更不容易因为 ctrl+C、patch 失败或主二进制损坏而出问题，并且更符合递进式构建的思路。反对者则用实测提醒，shared library 太多会让 dynamic linker 开销迅速上升：1000 个库的启动时间已经明显变差，100 个也不算轻。最终大家更倾向于把它当成工程权衡，而不是一个可以无成本替换的架构。",
+        "supportid": [
+          "49087883",
+          "49088119",
+          "49088111"
+        ]
+      },
+      {
+        "category": "编译速度本身就是生产力",
+        "summary": "很多人借这个话题重申 compilation speed 本身就是长期被低估的生产力因素。有人回忆 Java 当年能吸引大量 C++ 开发者，重要原因之一就是编译更快、迭代更顺；Go 的存在也常被概括为对快速编译的追求。还有人提到 Modula-2 和 Object Pascal 之所以令人怀念，除了语言特性，编译器跑得快也是关键。这个角度把 Zig 的工作看成一种把开发体验重新摆上台面的工程实践。",
+        "supportid": [
+          "49086505",
+          "49087753",
+          "49087282",
+          "49086995"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "incremental compilation",
+        "explanation": "增量编译，只重新编译受改动影响的部分，以缩短反馈周期。"
+      },
+      {
+        "term": "semantic analysis",
+        "explanation": "语义分析，编译器解析名字、类型和作用域关系的阶段，最难做成增量化之一。"
+      },
+      {
+        "term": "proc macros",
+        "explanation": "Rust 的过程宏，能在编译期运行代码并生成或改写 AST，灵活但常影响编译速度。"
+      },
+      {
+        "term": "borrow checking",
+        "explanation": "Rust 的借用检查，用静态分析约束引用、生命周期和别名，防止许多内存错误。"
+      },
+      {
+        "term": "unsafe blocks",
+        "explanation": "Rust 中显式标记的不安全代码区域，用来隔离需要绕过静态检查的操作。"
+      },
+      {
+        "term": "Zig AIR",
+        "explanation": "Zig 的抽象中间表示（Abstract Intermediate Representation），用于缓存和复用编译信息。"
+      },
+      {
+        "term": "comptime",
+        "explanation": "Zig 的编译期执行机制，允许在编译阶段运行代码并生成结果。"
+      },
+      {
+        "term": "monomorphized generics",
+        "explanation": "泛型单态化，把泛型按具体类型展开成专门代码，常增加编译和代码生成成本。"
+      },
+      {
+        "term": "inlining",
+        "explanation": "内联，把函数体展开到调用处；有利于性能，但会削弱增量编译的复用效果。"
+      },
+      {
+        "term": "LLVM",
+        "explanation": "常用的编译器后端/基础设施，功能强但会让自托管和增量流程更复杂。"
+      }
+    ],
+    "context": "这篇讨论围绕 Zig（一个强调显式控制和高性能的系统编程语言）的 incremental compilation 内部实现展开，核心是缓存 Zig AIR（Zig 的抽象中间表示）并尽量把语义分析局部化。评论区很快把话题扩展到 Rust（强调 memory safety 的系统编程语言）和 Java（JVM 语言）的编译速度与安全模型对比，争论焦点从“能编译多快”变成“安全边界怎么定义”。有人补充说 Rust 的慢编译主要来自 proc macros、monomorphized generics 和传统 library/binary 流水线，而不是安全检查本身；也有人指出 Zig 目前主要只在 self-hosted 后端和 debug builds 上可用，release 优化、C 混编和更完整的后端支持还在推进。对比里还反复提到 GHC（Glasgow Haskell Compiler，Haskell 编译器）的文件级增量、LLVM（常用编译器后端）和 Fil-C（试图提升 C 安全性的项目）等背景。",
+    "emoji": "🤔",
+    "sarcastic_question": "编译都慢成这样了，还指望谁耐心等你优雅？"
+  },
+  "articleSummary": "## 一句话总结\nZig 通过精细的依赖图追踪和直接二进制热补丁，将增量编译的耗时压缩到了毫秒级，让大型项目的代码修改能像脚本语言一样即时生效。\n\n### 毫秒级重构并非魔法，而是架构设计的红利\nZig 团队最近把增量编译从概念验证变成了日常可用的生产力工具。简单来说，当你修改代码时，编译器不再傻傻地重编整个项目，而是精准定位变动的函数，重新编译后直接把机器码“补丁”进二进制文件里。效果非常惊人：在一个名为 Fizzy 的像素编辑器项目上，初次构建耗时 5 秒，但随后的每一次代码修改，重编都在 50–70ms 内完成。这种体验目前需要 Zig 的 `master` 分支（0.17.0 才会合并进正式版），因为它依赖一些最新的 Linker 特性。\n\n### 文件处理阶段：利用纯函数特性实现极速缓存\n编译的第一阶段是处理源文件，包括 Parse 和 AstGen，产出 ZIR（Zig Intermediate Representation）。这部分的优化思路很直接：因为每个文件的处理都是“纯函数”，不依赖外部状态，所以天然适合并行。更重要的是，得益于 Zig 的 Data-oriented design，ZIR 可以直接通过 `writev/readv` 系统调用读写磁盘，根本不需要复杂的序列化过程。这意味着我们可以轻松地把 ZIR 缓存在磁盘上，下次编译时只处理文件哈希变化的部分。这也是为什么很多用户感觉 Zig 只有第一次编译慢，后续几乎秒开。\n\n### 语义分析：增量编译最难啃的骨头\n真正的挑战在于语义分析，也就是类型检查和 `comptime` 求值。这是编译器最复杂的部分，也是 Zig 语言设计为了迁就增量编译而做过特殊调整的地方。核心思路是把编译工作拆解成独立的“分析单元”，比如 struct 的内存布局、变量的类型、const 的值或者函数体。这些单元之间通过依赖图连接，比如函数体依赖它用到的全局变量的类型。只要搞清楚谁依赖谁，当某个源码变更时，我们就能顺着图精准地找到哪些单元需要重新分析，而不是牵一发而动全身。\n\n### 依赖图如何精准定位“脏”数据\n为了实现这种精准定位，Zig 不仅记录单元间的依赖，还记录单元对“源码区域”的依赖。ZIR 会为每个声明生成哈希值，分析单元就依赖这些哈希。比如你把 `const lucky_number = 42` 改成 `43`，编译器会发现对应的源码哈希变了，于是标记依赖它的单元失效。接着，编译器重新分析这个常量的值，发现值确实变了，再继续顺着图标记依赖这个值的函数体（如 `testLuck` 和 `getSomething`）为失效。这种级联更新非常高效，只会在真正受影响的代码路径上传播。\n\n### 代码生成：从 AIR 到 MIR 的并行转化\n语义分析完成后产出 AIR，下一步就是代码生成，将其转化为接近机器指令的 MIR。好消息是，这一步和文件处理一样，也是“令人尴尬的并行”。只要不涉及跨函数优化（如内联），不同函数的代码生成之间完全不共享状态。我们可以把需要处理的函数扔进线程池队列，并行跑满所有 CPU 核心。当然，这里有个小细节需要注意控制队列大小，防止内存占用爆炸，但整体架构非常适合增量更新。\n\n### 最终目标：直接修改内存中的二进制文件\n虽然原文在代码生成部分截断了，但结合开头提到的“patch the resulting bytes into the output binary”，我们可以推导出最后一步：Linker 的增量更新。传统的增量编译可能只是重生成对象文件，但 Zig 的做法更激进——它直接在内存中修改已有的二进制输出。因为前面的步骤已经保证了只有极少数函数的机器码发生了变化，所以直接替换这些字节段是可行的。这省去了重新链接的巨大开销，也是 Zig 能把重编时间控制在几十毫秒内的关键秘诀。"
+}

@@ -1,0 +1,120 @@
+{
+  "id": 48819308,
+  "by": "levkk",
+  "title": "Why we built yet another Postgres connection pooler",
+  "url": "https://pgdog.dev/blog/why-yet-another-connection-pooler",
+  "score": 226,
+  "createdAt": 1783447267,
+  "aiSummary": {
+    "chinese_title": "又一个 Postgres 连接池：状态泄漏、游标兼容与分片路由",
+    "discussion_overview": [
+      {
+        "category": "AGPL 许可取向",
+        "summary": "不少评论先肯定了项目选择 AGPL，而不是近年常见的 BSL 变体。有人认为这更接近传统开源精神，也更适合网络部署场景下的代码回馈。回应里提到，选择 AGPL 是有意识的价值判断，因为 GPL 生态曾帮助自己自学编程，所以希望把这种机会再传递出去。",
+        "supportid": [
+          "48824483",
+          "48824589"
+        ]
+      },
+      {
+        "category": "连接复用导致会话状态泄漏",
+        "summary": "讨论的核心风险是连接池复用后，前一个客户端留下的会话状态会“泄漏”给下一个客户端。评论举了 `SET`、字符集、临时表、甚至半截事务等例子，说明问题不只是性能，而是连接语义本身会被改变。有人指出 pgbouncer 通过 `server_reset_query` 和不同 pool mode 尽量把连接清理干净，但这仍然是在吞吐和正确性之间做取舍。也有人强调这并非 Postgres 独有，MySQL 等持久连接方案同样会遇到，而且往往非常难排查。",
+        "supportid": [
+          "48821159",
+          "48821224",
+          "48823975",
+          "48821250",
+          "48821352",
+          "48823121"
+        ]
+      },
+      {
+        "category": "按应用隔离连接池",
+        "summary": "另一条思路是把不同应用、不同版本、甚至不同数据库语义拆成独立的池。有人建议让连接池根据类似 User-Agent 的元数据自动分流，但很快有人指出数据库 user 本身就能承担这层隔离。还有人提到可以直接用不同数据库名，或者为每个应用单独部署 bouncer；相比之下，给每个版本设计一套复杂的池级路由逻辑显得更重。",
+        "supportid": [
+          "48824224",
+          "48824295",
+          "48824384",
+          "48825049",
+          "48825520"
+        ]
+      },
+      {
+        "category": "不做 query cache / schema switching",
+        "summary": "有人问是否会加入 Select 的 query caching，或者支持 schema switching 来服务多租户场景。回复很明确：没有这类计划，因为没有应用上下文时缓存很难做对，失效、错误命中和语义污染的风险都很高。另一位评论者顺势问起 `django-tenant` 前面的 schema 切换，但整体态度是这类能力更适合应用层或专门组件，而不是塞进连接池。",
+        "supportid": [
+          "48823135",
+          "48823229",
+          "48824418",
+          "48823237"
+        ]
+      },
+      {
+        "category": "Django 与 server-side cursors 的兼容性坑",
+        "summary": "真实落地时，transaction pooling 最容易踩坑的是 Django 的 `queryset.iterator()` 这类依赖 server-side cursors 的写法。因为游标是 session-level 对象，一旦连接被池化复用，就可能直接失效，只能全局禁用并退回 client-side 取数。还有人提到 `statement_timeout` 这类启动参数在 pgbouncer 后面会被静默忽略，需要改到池子的 connect query 里设置。评论也指出，若为了游标而固定连接，会明显削弱池化收益；也有人认为 server-side cursors 本身就是不好的设计。",
+        "supportid": [
+          "48820428",
+          "48823670",
+          "48824475"
+        ]
+      },
+      {
+        "category": "NOTIFY 语义与性能的权衡",
+        "summary": "有人追问 NOTIFY 的性能修复是否意味着它不再是事务性的。回应承认，从最严格的定义看它确实不再完全满足事务语义，但工程上仍能投递大多数消息。这个方案更像“足够好”的通知通道，而不是能替代 Kafka 的 durable work queue。",
+        "supportid": [
+          "48822502",
+          "48822682"
+        ]
+      },
+      {
+        "category": "Postgres 版 Vitess / 中间层竞争",
+        "summary": "评论把这个项目放进更大的 Postgres 中间层竞争里看待。有人提到 ClickHouse 也在讨论如何扩展 pgbouncer，说明 so_reuseport、横向扩展和分片仍是痛点；而 pgDog 被期待通过多线程、rewrite、读副本路由、自动 sharding 和 NOTIFY/LISTEN 更接近 Vitess 那类能力。随后讨论延伸到 Supabase 的 Multigres（一个面向 PostgreSQL 的 Vitess 风格方案）和 PlanetScale 的 Postgres 版 Vitess，大家既关心谁能先做到生产可用，也在比较这些方案的开源与落地进度。",
+        "supportid": [
+          "48821488",
+          "48821975",
+          "48823217",
+          "48824349",
+          "48825366",
+          "48825478",
+          "48825519",
+          "48825536",
+          "48825608"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "AGPL",
+        "explanation": "GNU Affero GPL，一种要求网络服务场景也公开修改代码的开源许可证。"
+      },
+      {
+        "term": "BSL",
+        "explanation": "Business Source License，源码可见但会限制一段时间内的商业使用。"
+      },
+      {
+        "term": "pgbouncer",
+        "explanation": "Postgres 常用的轻量级 connection pooler，通过复用后端连接降低开销。"
+      },
+      {
+        "term": "transaction pooling",
+        "explanation": "pgbouncer 的一种模式，按事务而不是按会话复用连接，不能依赖 session 状态。"
+      },
+      {
+        "term": "server-side cursors",
+        "explanation": "由数据库服务器端维护的游标，适合流式取数，但依赖连接的会话状态。"
+      },
+      {
+        "term": "NOTIFY/LISTEN",
+        "explanation": "Postgres 内建的发布/订阅式通知机制，用于异步消息传递。"
+      },
+      {
+        "term": "Vitess",
+        "explanation": "最初用于 MySQL 的分片与路由中间件，常被拿来类比更高级的数据库中间层。"
+      }
+    ],
+    "context": "这篇讨论围绕一个新的 Postgres connection pooler 展开，背景是 pgbouncer（Postgres 里最常见的连接池）长期依靠复用后端连接来降低开销，但会把会话级状态一并复用。评论里反复提到 `SET`、字符集、临时表、broken transaction 和 server-side cursors，说明连接池最难处理的不是吞吐，而是语义一致性。作者被拿来和 MySQL 的 pooler、ClickHouse 的扩展实践，以及 Vitess（一个 MySQL 分片与路由中间件）做比较，因为大家关心的不只是“能连上”，还包括读写路由、自动 sharding 和通知机制。另一个背景线索是项目选择 AGPL（一个要求网络部署也开源修改的许可证），评论把它和常见的 BSL（Business Source License）做了对比。",
+    "emoji": "🤔",
+    "sarcastic_question": "又要池化又要分片，数据库是瑞士军刀吗？"
+  },
+  "articleSummary": "## 一句话总结\nPgDog 通过内置 SQL 解析器和多线程架构，解决了传统连接池（如 PgBouncer）为了性能必须牺牲 `SET` 会话状态和 `LISTEN/NOTIFY` 功能的妥协，让扩容 Postgres 不再需要修改应用代码。\n\n### 现有方案的“漏桶”困境\nPostgres 生态里的工具大多遵循 UNIX 哲学，专注把一件事做好，PgBouncer 就是典型代表。虽然它很稳，但在实际部署时，它引入了一个“有漏洞的抽象层”。说白了就是，你为了加个连接池，却不得不改变使用数据库的方式。对于存量项目来说，这往往意味着要改动成千上万行生产代码，而且这些代码通常还缺乏测试覆盖。作者认为，为了性能而牺牲数据库的原生特性，这个代价太大了。\n\n### 为什么 SET 命令成了连接池的噩梦\n连接池最大的痛点在于会话状态，也就是 `SET` 命令。比如你为了跑个慢查询，临时设置了 `statement_timeout`，或者依赖 `SET` 变量来做行级安全策略（RLS）。在连接池模式下，连接被复用，上一个客户端的状态会“泄漏”给下一个客户端。轻则导致查询超时策略失效，重则 RLS 失效，数据莫名其妙消失。传统的建议是“别用 SET 了”，但这等于让你放弃 Postgres 的原生功能，或者干脆别用连接池。\n\n### 用 SQL 解析器“欺骗”客户端\nPgDog 的解决方案很直接：既然不能阻止用户用 `SET`，那就让代理层来处理状态同步。它内置了一个 SQL 解析器，能识别 `SET` 语句，把变量名和值提取出来存在代理端的连接上下文里。当客户端发来查询时，PgDog 会先比对状态，如果不匹配，就自动补上 `SET` 命令。这里有个巧妙的设计：如果多个变量不一致，它会利用查询流水线技术，在一个网络往返里批量更新。这样既保留了功能，又把性能损耗降到了最低。\n\n### 让 LISTEN/NOTIFY 在连接池下复活\n`LISTEN` 和 `NOTIFY` 是 Postgres 原生的发布订阅功能，但在引入连接池（特别是事务模式）后，这功能基本就废了。PgDog 想让这个功能“无痛”恢复。它在内部处理这两个命令，利用 Tokio 的 `broadcast` 通道在同进程内的客户端间转发消息。如果是多进程部署，它会通过一个专门的连接把命令发给 Postgres，利用数据库本身作为消息 Broker。这相当于 PgDog 自己伪装成了 Postgres，把复杂的消息路由逻辑封装了起来，还保留了事务语义。\n\n### 多线程架构带来的吞吐红利\nPgDog 是基于 Rust 的 Tokio 异步运行时构建的，利用多线程 Worker 模型来处理并发。这跟 PgBouncer 的 `SO_REUSEPORT` 或 RDS Proxy 的自动扩容不一样，后者本质上还是要把连接池“分片”到不同进程。一旦某个进程过载，绑在上面的客户端全得遭殃。而 PgDog 的多线程架构能更充分地利用多核 CPU，用更少的数据库连接服务更多的客户端，还能更好地应对突发流量。这意味着你不需要依赖复杂的内核参数或云厂商的控制平面，运维心智负担也小了很多。\n\n### 生产环境验证过的性能\n理论讲得再好，还得看实战数据。PgDog 已经在生产环境跑了一年多，目前支撑着每秒 200 万次查询（2M QPS）。作者用这个数据证明，你不需要在“功能完整性”和“高性能”之间做二选一。如果你正被 PgBouncer 的各种限制搞得焦头烂额，或者不想为了上连接池去重构代码，这个基于 Rust 的新工具或许是个值得尝试的替代方案。"
+}

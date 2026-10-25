@@ -1,0 +1,109 @@
+{
+  "id": 47203827,
+  "by": "darshkpatel",
+  "title": "We Built a Video Rendering Engine by Lying to the Browser About What Time It Is",
+  "url": "https://blog.replit.com/browsers-dont-want-to-be-cameras",
+  "score": 132,
+  "createdAt": 1772530865,
+  "aiSummary": {
+    "chinese_title": "通过篡改浏览器时间逐帧渲染：实现、前例与争议",
+    "discussion_overview": [
+      {
+        "category": "demoscene 与 kkapture 先例",
+        "summary": "评论指出这个思路并非新鲜事：约二十年前 demoscene 社区就遇到实时捕获困难，并出现了 kkapture 这样的工具来解决它。kkapture 通过等待渲染完成并对程序返回“正确”的时间（包装 timeGetTime、QueryPerformanceCounter 等 API），使演示以指定帧率认为自己在运行，从而得到稳定的逐帧输出。评论还提到 farbrausch 的作品（如 .kkrieger、Breakpoint 演示）作为背景示例，说明当时为了体积和视觉表现不得不采用类似技巧。有人补充说这类时间虚拟化在游戏行业和测试场景仍有应用价值，例如加速时间或用于测试场景中锁定时间的 lint 检查。",
+        "supportid": [
+          "47230954",
+          "47231009",
+          "47231389",
+          "47234530",
+          "47232235",
+          "47232427"
+        ]
+      },
+      {
+        "category": "篡改时间的技术局限与错位",
+        "summary": "把浏览器的时间 API 打补丁能让渲染“看起来”更平滑，但会触发大量边缘情况。评论详细列举了定时器语义被破坏的例子：setTimeout/setInterval 与去抖（debounce）逻辑会被严重拖慢或按帧步进，从而改变程序行为；单纯每帧触发回调会导致预期的时间轴语义丢失。异步任务也会“逃逸”控制——必须在捕帧前清空 microtask queue，否则未决的 Promise/微任务会在错误时刻执行；评论建议用 await new Promise(setTimeout(...)) 或 MessageChannel 等技巧来强制耗尽队列。还有人提醒 requestAnimationFrame、CSS/SVG 动画和基于 AudioWorklet（Web Audio 的低延迟处理）的同步可能绕开这些时间修改，导致捕获结果不一致或无法按预期工作。",
+        "supportid": [
+          "47230294",
+          "47230743",
+          "47234677",
+          "47230565",
+          "47230691"
+        ]
+      },
+      {
+        "category": "内核修改 vs 硬件/软件录制 的替代路径",
+        "summary": "有人问为何不在浏览器引擎层实现录制：理论上内核修改能最精确地拿到每帧，但代价是需要深厚的 C++、Chromium 渲染流水线和 GPU API 知识，且维护成本高。评论里有开发者确实修改过 Chromium 并从渲染系统深处抓帧，但碰到了非确定性和工程复杂性问题，最终放弃或觉得收益有限。替代方案包括使用 OBS（开源录屏）、ffmpeg + nvenc（NVIDIA 硬件编码）或外置 HDMI 采集卡，这些方法在实践中常常能以更低成本获得稳定高质量视频。Chromium 自身也有 virtual time 功能（例如 --virtual-time-budget）可用来控制渲染时间，但评论认为它并不能解决所有同步与维护问题。",
+        "supportid": [
+          "47230300",
+          "47231129",
+          "47231301",
+          "47230565",
+          "47230659",
+          "47230999"
+        ]
+      },
+      {
+        "category": "演示真实性、写作风格与开源争议",
+        "summary": "多条评论从产品伦理角度质疑：把页面渲染“美化”为平滑视频是否会误导潜在客户，特别是当演示掩盖真实性能时可能带来商业/信任风险；也有人反驳说演示的目标是视觉呈现而非复现真实用户体验。另有大量批评集中在原文写作风格上，评论认为文中措辞、结构像由 LLM 自动生成（短句、枚举、营销化语气），并对作者基于 WebVideoCreator 的改动没有开源表示不满。整个讨论把技术可行性、产品诚实与内容创作规范三方面的问题绑在一起，社区对此相当敏感且分歧明显。",
+        "supportid": [
+          "47230263",
+          "47230304",
+          "47230544",
+          "47232231",
+          "47230646",
+          "47230339"
+        ]
+      },
+      {
+        "category": "实际需求与市场价值（高帧率、运动模糊等专业用途）",
+        "summary": "尽管实现上有诸多挑战，部分评论者强调这类逐帧捕获在 motion graphics 和广告制作中有实际价值：可以渲染大量子帧并混合以产生高采样运动模糊，或者以高于设备刷新率的帧率生成极其平顺的动画效果。有人展示了他们通过修改 Chromium 或其他深度手段得到的示例视频来证明效果，但也有观点认为这是一个小众市场，AI 自动化工具可能降低需求。总体上社区认为技术能产生独特可视化效果，但商业可行性、工程维护成本与稳定性仍是关键阻碍。",
+        "supportid": [
+          "47230565",
+          "47231373",
+          "47230691",
+          "47230708",
+          "47234835"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "kkapture",
+        "explanation": "demoscene 中用于高质量捕帧的工具，等待渲染完成并对程序返回伪造的时间戳，包装 timeGetTime、QueryPerformanceCounter 等 API，使程序以指定帧率认为自己在运行。"
+      },
+      {
+        "term": "requestAnimationFrame",
+        "explanation": "浏览器的帧回调 API（requestAnimationFrame），通常由浏览器根据墙钟驱动呈现每一帧；篡改时间或帧调度会改变 rAF 的可见行为或需要特殊处理。"
+      },
+      {
+        "term": "Chromium virtual-time-budget（Virtual Time）",
+        "explanation": "Chromium 的时间虚拟化特性（如命令行开关 --virtual-time-budget），用于控制或快进渲染时间以便测试或离线渲染，但在兼容性和同步上有局限。"
+      },
+      {
+        "term": "OBS（Open Broadcaster Software）",
+        "explanation": "开源的直播与录屏软件，常作为不改动浏览器引擎即可高质量捕获屏幕和浏览器输出的实用替代方案。"
+      },
+      {
+        "term": "nvenc",
+        "explanation": "NVIDIA 的硬件视频编码器（nvenc），常与 OBS 或 ffmpeg 配合用于高性能、低延迟的视频录制与转码。"
+      },
+      {
+        "term": "microtask queue",
+        "explanation": "JavaScript 的微任务队列（Promise.then、queueMicrotask 等）；在逐帧捕获场景下需要显式耗尽以防异步回调在错误时间点执行，常用 MessageChannel 等技巧辅助控制。"
+      },
+      {
+        "term": "AudioWorklet",
+        "explanation": "Web Audio 的低延迟处理模块（AudioWorklet），可以用来把动画与音频严格同步，因此不会被简单的墙钟时间虚拟化所影响。"
+      },
+      {
+        "term": "WebVideoCreator（Vinlic 的项目）",
+        "explanation": "一个开源项目，实现了基于浏览器的帧捕获与视频生成的基本思路，原文作者声称在此基础上做了改造。"
+      }
+    ],
+    "context": "原文描述的是通过篡改浏览器时间和打补丁定时器/API 来让页面以“固定帧率”逐帧渲染，从而生成看起来非常平滑的演示视频；作者提到他们基于 Vinlic 的 WebVideoCreator 做了改造。社区将这种做法与二十年前 demoscene 的 kkapture 进行对比，指出先例与实现细节（如包裹 timeGetTime/QueryPerformanceCounter）。评论集中在工程可行性与边界条件：定时器语义、microtask queue、requestAnimationFrame 行为、AudioWorklet 同步等会让该方法脆弱；替代方案包括修改 Chromium 内核或使用 OBS/ffmpeg+nvenc/采集卡。同时讨论还延伸到演示是否会误导客户、作者是否应开源改动以及原文写作风格是否像 LLM 产出等伦理与质量问题。",
+    "emoji": "🤔",
+    "sarcastic_question": "把浏览器时间骗平滑，就能糊弄客户吗？"
+  },
+  "articleSummary": "抱歉，我无法直接访问或分析您提供的文章内容。\n\n您提供的文本是 Cloudflare 的拦截页面，显示访问被阻止，而不是关于 \"Video Rendering Engine\" 的技术文章原文。\n\n为了能帮您完成这篇技术博客的解读，请您提供文章的**正文内容**（可以直接复制粘贴文本），或者提供一个**可访问的链接**。一旦拿到原文，我会立刻按照您的要求，用讲故事的方式为您拆解其核心技术思路。"
+}

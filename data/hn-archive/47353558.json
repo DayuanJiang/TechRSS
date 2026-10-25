@@ -1,0 +1,101 @@
+{
+  "id": 47353558,
+  "by": "guyb3",
+  "title": "Show HN: OneCLI – Vault for AI Agents in Rust",
+  "url": "https://github.com/onecli/onecli",
+  "score": 130,
+  "createdAt": 1773334257,
+  "aiSummary": {
+    "chinese_title": "OneCLI（Rust）：代理式 Vault 为 AI agent 注入凭据，能否防泄露与滥用？",
+    "discussion_overview": [
+      {
+        "category": "支持：代理拦截（proxy-intercept）与 OneCLI 思路",
+        "summary": "许多评论认为代理拦截是正确的体系结构：把占位/假 API key 交给 agent，而在代理端替换或注入真实凭据，保证真实密钥不进入 agent 内存或日志。OneCLI 被视为把秘密存储（vault）和代理结合的合理实现，且用 Rust 实现被认为适合安全敏感组件。代理还能在转发前审查请求、按主机或路径注入凭据，并在多数 SaaS 不支持细粒度授权时弥补不足。实战经验（如类似 Airut / OpenClaw 的实现）显示这种方式能显著减少凭据被写入仓库、日志或模型输出的风险。",
+        "supportid": [
+          "47359912",
+          "47355698",
+          "47354122",
+          "47355069",
+          "47354879",
+          "47357558"
+        ]
+      },
+      {
+        "category": "质疑：代理无法根本防止 prompt‑injection 与滥用",
+        "summary": "反对者指出代理只是将信任边界移动到网络侧，并不能从根本上阻止被 prompt‑injected 的 agent 滥用能力：即便 agent 看不到真实密钥，它仍可利用被注入的占位 token 发起恶意请求、删除数据或产生费用。更严重的是 agent 可能把代理返回的令牌或代理认证令牌泄露出去，从而实现凭据重用。被认为更“牢靠”的方案是把认证材料放在与 agent 隔离的 sidecar 并用 mTLS，但这会引入 PKI/证书管理和高昂运维复杂度。评论普遍认为还需要请求级别的授权（如 OPA 策略）、主机/路径限定和短期令牌等附加控制，单靠占位 token 容易产生假安全感。",
+        "supportid": [
+          "47356645",
+          "47358129",
+          "47360369",
+          "47356415",
+          "47359147",
+          "47354790",
+          "47356630"
+        ]
+      },
+      {
+        "category": "实现难点与工程实践细节",
+        "summary": "工程实现存在很多实际障碍：部分客户端不遵守 HTTP_PROXY（需要特殊变量，如 Node 24+ 的 NODE_USE_ENV_PROXY=1），对 AWS 等服务还必须精确复现并重新签名 SigV4/SigV4A 请求。实践者倾向于在独立容器里运行透明 MITM proxy，并把自签证书注入被代理进程的信任存储，或在 Kubernetes 中用 sidecar + iptables 做流量重定向。可行的硬化措施包括对凭据做主机/路径限定、为每个请求做 HMAC 签名与审计、以及使用短期/按任务派生令牌；同时需注意占位符密钥可能触发企业密钥扫描器，需要在格式上做兼容处理。",
+        "supportid": [
+          "47354122",
+          "47354640",
+          "47354854",
+          "47353933",
+          "47354798",
+          "47356190",
+          "47355136",
+          "47357868",
+          "47353841",
+          "47356758"
+        ]
+      },
+      {
+        "category": "使用现有 Vault/Secrets Manager 与最佳实践",
+        "summary": "很多人主张不要盲目自建秘密管理：HashiCorp Vault、AWS Secrets Manager/STS 等成熟产品支持 RBAC、动态短期凭证与审计，能更安全地按需下发受限凭据。正确做法是用最小权限和按需发放机制，让 agent 或其工具以受限凭据在代理/sidecar 中按需获取密钥，而不是把长期或 root 级凭据直接交给 agent。评论中有人分享了基于 Vault 的脚本和在 OpenClaw 场景下的实作经验，也有团队把代理和 vault 后端结合，做组级访问控制与每次请求的 HMAC 签名以满足团队与 CI 的审计需求。总体观点是：代理可作为一层防护，但应与成熟的 secrets 管理、短期令牌和严格授权策略结合使用，否则容易重现安全漏洞。",
+        "supportid": [
+          "47354125",
+          "47359912",
+          "47359147",
+          "47355168",
+          "47355698",
+          "47354879",
+          "47355069"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "mTLS (mutual TLS)",
+        "explanation": "双向 TLS，客户端和服务器互相验证证书，用于把认证材料绑定在代理/sidecar 上而不暴露给被代理进程；需要证书颁发、轮换和 PKI 运维。"
+      },
+      {
+        "term": "MITM proxy / transparent MITM",
+        "explanation": "能终止并重新加密 TLS 的代理，通过呈现受信/自签证书来解密 HTTPS 流量以便注入或替换凭据，通常要求将代理证书加入被代理环境的信任存储。"
+      },
+      {
+        "term": "sidecar container",
+        "explanation": "一种将辅助进程（如代理）与主应用同宿主的容器模式，常通过 iptables 或流量拦截把主进程的网络流量导入代理，从而在进程隔离层面防止密钥泄露。"
+      },
+      {
+        "term": "HTTP_PROXY / HTTPS_PROXY",
+        "explanation": "常用的环境变量，很多 HTTP 客户端据此将流量发往代理；部分平台（例如 Node）历史上默认不遵守该变量，需要额外配置（如 NODE_USE_ENV_PROXY=1）。"
+      },
+      {
+        "term": "HashiCorp Vault（Vault）",
+        "explanation": "成熟的秘密/凭据管理系统，支持 RBAC、动态短期凭证与审计，用于按需发放受限凭据并实现最小权限与审计追踪。"
+      },
+      {
+        "term": "短期/按任务派生令牌 (short‑lived derived tokens)",
+        "explanation": "为特定任务或主机生成的临时凭据，作用域有限且可在任务完成后撤销，用以缩小凭据泄露带来的影响面。"
+      },
+      {
+        "term": "SigV4 / SigV4A",
+        "explanation": "AWS 的请求签名协议，替换或注入 AWS 凭据时需要对请求重新签名，精确复现签名算法存在实现复杂度。"
+      }
+    ],
+    "context": "Show HN 帖子展示了 OneCLI——一个用 Rust 写的面向 AI agent 的“vault/代理”工具，设计思路是让 agent 使用占位（fake）API key，代理在转发时注入真实凭据以避免密钥落地或进入模型内存。讨论在“代理+密钥存储”是否能真正降低泄露风险上分歧很大：支持者认为能防止密钥被写入仓库或日志并弥补 SaaS 缺乏细粒度授权的短板；反对者指出 prompt‑injection、滥用能力和凭据重用仍可能造成严重后果。评论还引出了大量实施细节和运维问题，涉及 MITM/forward‑proxy（需要注入证书）、sidecar 与 iptables 重定向、Node 对 HTTP_PROXY 的兼容性、对 AWS 的 SigV4 签名问题，以及将代理与成熟的 Vault（如 HashiCorp Vault）或 AWS STS 等短期凭证服务结合的实践与风险评估。多位评论建议将代理作为一层防护并配合 RBAC、短期令牌、主机作用域限制、请求级授权（如 OPA/Open Policy Agent）和审计，以在团队和 CI 场景下达成可接受的安全性。",
+    "emoji": "⚠️",
+    "sarcastic_question": "给模型占位密钥就能阻止它乱删生产数据吗？"
+  },
+  "articleSummary": "## 一句话总结\nOneCLI 是一个用 Rust 写的开源凭证管理工具，专门解决 AI Agent 访问第三方服务时的密钥安全问题，核心思路是让 Agent 只持有短期 Token，而永远接触不到真实的 API Key。\n\n### AI Agent 的安全软肋：不能把 Key 硬编码在 Prompt 里\n现在的 AI Agent 越来越强，能帮你查数据库、发邮件甚至操作 AWS。但这就带来了一个尴尬的问题：Agent 需要凭证才能干活。你肯定不敢把 AWS 的 Secret Key 直接写在 Prompt 里，那等于在裸奔；如果每次都人工手动输入，又违背了自动化的初衷。说白了，我们需要一个中间层，既能给 Agent 开门，又不能让它把钥匙带走。\n\n### 现有的 Vault 方案对 Agent 来说太重了\n你可能会想，HashiCorp Vault 或者云厂商的 KMS 不是早就解决这问题了吗？确实，但这些传统方案是为基础设施设计的，不是为 AI 设计的。让 Agent 去调用复杂的 Vault API，或者配置繁琐的认证链，不仅开发成本高，而且很多轻量级的 Agent 根本跑不动这些重型依赖。我们需要一个更轻量、更 Agent-native 的方案。\n\n### OneCLI 的核心思路：把 CLI 变成安全守门人\nOneCLI 的设计非常巧妙，它把自己伪装成一个 CLI 工具。你只需要在配置文件里声明好 \"Agent 可以访问哪些服务\"，OneCLI 就会在本地启动一个守护进程。当 Agent 需要调用 GitHub API 时，它不直接拿 Key，而是请求 OneCLI。OneCLI 验证权限后，直接在本地代为发起请求，或者签发一个极短期的 Token 给 Agent。\n\n### 用 Rust 重写是为了极致的安全与性能\n作者选择用 Rust 来实现这个工具，显然是经过深思熟虑的。处理密钥这种敏感数据，内存安全和类型安全是底线，Rust 的所有权机制能从编译层面杜绝很多悬垂指针或数据泄露的风险。而且，作为一个可能常驻后台的守护进程，Rust 的异步运行时和极低的资源占用，比 Python 或 Node.js 方案更适合这种对性能和稳定性要求极高的场景。\n\n### 简单的配置，企业级的隔离\n虽然底层逻辑复杂，但 OneCLI 暴露给开发者的接口却很简单。你只需要定义一个 Policy，比如 \"Agent A 只能读 GitHub Repo，不能删\"。这种策略即代码 的方式，让安全审计变得非常透明。有意思的地方在于，它把复杂的权限校验逻辑封装在 CLI 内部，对外只暴露标准的调用接口，Agent 根本不需要知道背后的认证逻辑有多复杂。\n\n### 给 Agent 一张\"受限通行证\"而不是万能钥匙\nOneCLI 最终实现的效果，是给 AI Agent 发了一张\"受限通行证\"。Agent 拿到的是一次性的、有严格权限限制的访问令牌，或者根本拿不到令牌，只是通过 OneCLI 做了一次中转。这样即使 Agent 被 Prompt Injection 攻击了，或者输出了错误日志，攻击者拿到的也是一堆废代码，真正的敏感凭证始终安安静静地躺在你的本地存储里。"
+}

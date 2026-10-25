@@ -1,0 +1,103 @@
+{
+  "id": 49812769,
+  "by": "bashbjorn",
+  "title": "Jev in 25 Lines of Python",
+  "url": "https://www.nobodywho.ai/posts/jev-in-25-lines/",
+  "score": 634,
+  "createdAt": 1790151030,
+  "aiSummary": {
+    "chinese_title": "“25行 Python 复刻 Jev”引争议：logprob 分类不等于校准的高性能模型",
+    "discussion_overview": [
+      {
+        "category": "logprob 量化与校准可靠性",
+        "summary": "评论者认为，直接读取 chat model 的首个选项 token 的 logprob 很脆弱：模型原本可能想生成解释性 prose，导致首 token 的概率反映的是句子开头而非最终选择。即使要求只输出 A/B/C，仍需检查选项概率总和是否达到 95%乃至 99%，否则说明模型没有真正遵循格式。另一些人强调，LLM 和深度神经网络普遍存在 calibration 问题：模糊案例也可能给出 99.8% 这类过度自信的概率。Jev 被认为真正的难点不在于把最大概率换算成 confidence，而在于训练出跨任务相对校准的概率分布。",
+        "supportid": [
+          "49813052",
+          "49813549",
+          "49813152",
+          "49813378",
+          "49815455",
+          "49814490"
+        ]
+      },
+      {
+        "category": "结构化输出和受限解码可缓解格式问题，但不保证正确",
+        "summary": "多位评论者主张用 structured output、JSON schema、BNF grammar 或预定义标签替代裸 A/B/C token，以避免模型写成“答案是 C，因为……”时首 token 被误判。llama.cpp 的 grammar 参数可限制生成空间，静态选项集合也能让 malformed output 接近于零；将选项、schema 和明确指令放入 system prompt 也能进一步稳定结果。反方指出，格式受限只保证类型合法，不保证语义正确，更不会自动消除 hallucination 或让概率得到校准。还有经验表明，让模型输出 high/low 等结构化置信度有时比 token logprob 更实用，但数字置信度仍不能等同传统 ML 的概率估计。",
+        "supportid": [
+          "49813156",
+          "49813136",
+          "49814944",
+          "49813583",
+          "49813575",
+          "49814294"
+        ]
+      },
+      {
+        "category": "“25行复刻”未证明性能等价",
+        "summary": "批评者认为文章导入现成 Solution、调用模型或 API 后宣称“25 lines”有明显的“画猫头鹰其余部分略过”意味，代码简短并不代表复现了完整产品。核心缺口是没有给出与 Jev 的 error rate、latency、compute、长 context 表现及格式失败率的对照；用 8-bit quantized 的 Qwen 0.6B 也不能证明具备所谓 frontier intelligence。支持者则认为，prompt processing 是主要耗时，多个分类问题可在 batch 中并行只预测少数 token，因此开放模型方案可能在 LLM 场景里接近 Jev 的速度。争论最终集中于：没有独立 benchmark，既不能证明“本地方案一样好”，也不能证明 Jev 的商业优化没有价值。",
+        "supportid": [
+          "49815460",
+          "49813031",
+          "49814085",
+          "49813117",
+          "49813182",
+          "49813112"
+        ]
+      },
+      {
+        "category": "Jev 的定位：零样本分类器还是既有技术的包装",
+        "summary": "一派将 Jev 理解为针对分类任务优化的小模型：保留 LLM 的零样本或 few-shot 指令理解，却跳过聊天式输出，从而以更低成本返回确定的类别结果。与 BERT 类分类器相比，这种路线理论上不需要为每个新任务准备大量标注数据和 fine-tuning；但反驳意见指出，Hugging Face 上早已有 zero-shot classifier，不能把这种能力说成新发明。评论者也质疑“System One”叙事，因为 Kahneman 的人类双系统心理学比喻并不严谨，可能只是用“快、无 chain-of-thought”包装模型不擅长推理的限制。实际价值被认为取决于是否存在大量原本会用 frontier LLM 询问任意是非题、但又愿意接受较小专用模型的场景。",
+        "supportid": [
+          "49815019",
+          "49815598",
+          "49815291",
+          "49815497",
+          "49814660",
+          "49814998"
+        ]
+      },
+      {
+        "category": "营销炒作、parody 标签与可验证性",
+        "summary": "不少人把文章视为 content marketing：先以严肃口吻暗示产品容易被复刻，再在末尾标记为 parody 并导向其他实现，容易模糊技术批评和推广的界线。有人认为 Jev 从 stealth 中推出后很快被简化实现，说明其卖点可能是开发者并不陌生的组合；也有人反驳，类似实现不等于拥有足够好的输出质量、校准和工程细节。围绕产品条款的讨论还提到，若服务条款限制竞争性 benchmark、蒸馏或逆向，外部就更难验证其性能声明。整体语气既嘲讽 AI 创业淘金热，也要求用公开指标而不是宣传语裁定优劣。",
+        "supportid": [
+          "49813768",
+          "49813007",
+          "49813277",
+          "49813626",
+          "49813000",
+          "49814572"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "logprob（对数概率）",
+        "explanation": "模型对下一个 token 分配概率的对数；可用于比较候选标签，但会受 tokenization、提示格式和模型原本想续写内容影响。"
+      },
+      {
+        "term": "Calibration（概率校准）",
+        "explanation": "预测为 80% 的样本应约有 80% 正确；神经网络常会在不确定案例中给出过高置信度。"
+      },
+      {
+        "term": "Constrained decoding（受限解码）",
+        "explanation": "用 grammar、JSON schema 或允许 token 集限制模型只能生成规定结构，以减少格式错误，但不保证答案语义正确。"
+      },
+      {
+        "term": "Zero-shot / few-shot classification",
+        "explanation": "无需或仅需少量示例、标注数据，就通过自然语言标签和指令完成分类的方式。"
+      },
+      {
+        "term": "BERT",
+        "explanation": "一种双向 Transformer 编码器模型，常被 fine-tune 为高效分类器；通常依赖任务相关的标注训练数据。"
+      },
+      {
+        "term": "RLCD（Reinforcement Learning for Calibrated Decisions）",
+        "explanation": "面向“校准决策”的强化学习训练思路，目标是让模型输出的类别概率更贴近真实正确率。"
+      }
+    ],
+    "context": "Jev 是 TypeSafe AI 推出的分类模型，主张以较快、低成本且类型稳定的方式处理零样本或 few-shot 分类，并强调经过校准的决策概率。原文以一个本地 Qwen（开源大语言模型）和 token logprob 的 Python 小脚本模拟“给选项、读概率、选类别”的流程，末尾又声明文章是 parody，并链接了更完整的 OpenJev 开源复现。讨论建立在一个关键区别上：受限输出能让接口稳定返回合法标签，但不等于模型在模糊样本上准确、概率可信，或具有 Jev 宣称的 frontier-level 能力。争议也关联 BERT（双向 Transformer 编码器）式传统分类、structured output（结构化输出）和 LLM 推理成本之间的取舍。",
+    "emoji": "🙄",
+    "sarcastic_question": "把概率涂成数字，0.6B就成frontier了吗？"
+  },
+  "articleSummary": "## 一句话总结\n这篇文章用 25 行 Python 代码实现了所谓的 \"Jev\" 模型，以此揭示其本质：Jev 并非什么颠覆性的 AI 范式，不过是约束 Token 输出并对 Logits 做概率归一化罢了。\n\n## 正文\n\n### Jev 被捧上了天，但作者决定拆台\n最近 Twitter 上铺天盖地都在讨论 Jev，有人甚至把它吹成了大语言模型的下一个前沿范式。作者显然不买账，与其听各路大神在那儿\"Jev 这、Jev 那\"地造概念，不如直接看代码。文章的标题就叫《Jev in 25 Lines of Python》，态度很明确：别整那些虚的，让我们看看这玩意儿到底是个啥。核心意图很简单，就是去魅。\n\n### 所谓的\"黑科技\"，起步只需一个 GGUF 模型\n代码的第一步非常朴实无华，甚至有点\"复古\"。作者直接在本地加载了一个 GGUF 格式的模型——具体用的是 `Qwen/Qwen3-0.6B-GGUF`。有意思的地方在于参数设置：`n_ctx=512`，`logits_all=True`。懂行的开发者一眼就能看出端倪，这里的关键不是模型有多强，而是必须要拿到 Logits。说白了，这根本不需要调用什么远程 API，随便找个本地能跑的小模型就能开工。\n\n### 核心逻辑：把生成任务变成选择题\n接下来是 Jev 的核心用法：约束输出。作者定义了一个邮件分类任务，选项是 `[\"Legitimate\", \"Spam\", \"Phishing\"]`。Prompt 的构造很讲究，强制模型在 `assistant` 的回复中直接输出选项标签（A、B、C）。这一步的意图很明确：与其让模型自由生成文本，不如把问题收窄，逼它只吐出代表选项的那个 Token。这就是所谓的\"决策模型\"的底色。\n\n### 拿到 Logits，手动算出概率\n模型推理并没有用常见的 `generate()`，而是用了更底层的 `model.eval()`。为什么？因为我们需要拿到最后一个 Token 对应的原始 Logits。代码里最硬核的一步来了：作者根据标签（\"A\", \"B\", \"C\"）对应的 Token ID，从 Logits 向量里把这三个位置的分数提取出来。这一步直接绕过了模型原本的采样逻辑，直接操作底层向量。\n\n### 数学原理其实就是 Softmax 的变种\n有了 Logits，怎么变成概率？作者手动实现了 Softmax。代码里用了 `numpy.logaddexp.reduce` 来计算归一化因子，把 Logits 转成 Log Probabilities，最后算出标准的概率分布。结果显示，\"Phishing\" 的概率是 0.885，远高于其他两项。这个过程揭示了一个事实：Jev 的\"概率校准\"本质上就是从 Logits 里提取数值，并没有什么魔法。\n\n### 官方宣传的那些\"高大上\"概念，代码里全都没有\n算出概率后，文章进入高潮部分。作者列出了官方宣传中那些听起来很吓人的术语：System One decision model、RLCD（Reinforcement Learning for Calibrated Decisions）、合成数据训练……结果呢？这 25 行代码里统统没有。作者用一种反讽的语气指出：我们没调 API，没搞强化学习，也没造合成数据，但这依然跑通了 Jev 的核心功能。\n\n### 剥去外衣，Jev 的本质就是快、本地、私有\n那么，这 25 行代码到底实现了什么？作者总结了四点：分类、速度快、本地运行、数据不出域。这才是 Jev 真正的价值所在——不是什么新的 AI 范式，而是把 LLM 当作一个高效的、本地的概率分类器来用。对于注重隐私和延迟的开发者来说，这种用法确实有吸引力，但完全没必要把它神化。\n\n### 这是一次技术\"打假\"，也是开源精神的体现\n文章最后，作者摊牌了：这就是一篇 Parody（戏仿）博客。但他同时也给出了建设性的链接，指向了 OpenJev 等更完善的开源实现。这波操作既讽刺了过度营销，又给开发者指了路。核心观点很清晰：Jev 是个好思路，把生成式模型变成判别式模型来用，但别被营销术语忽悠了，它背后的原理其实就在那几行 Numpy 操作里。"
+}

@@ -1,0 +1,89 @@
+{
+  "id": 47348192,
+  "by": "WithinReason",
+  "title": "Avoiding Trigonometry (2013)",
+  "url": "https://iquilezles.org/articles/noacos/",
+  "score": 135,
+  "createdAt": 1773310862,
+  "aiSummary": {
+    "chinese_title": "避免三角函数：用向量代数（dot/cross）、quaternions 与 Rodrigues 替代角度",
+    "discussion_overview": [
+      {
+        "category": "用向量/代数替代三角函数",
+        "summary": "许多评论指出，当输入本身是向量时，把角度作为标量中间表示通常是多余且低效的。可以把角表示为 (cos θ, sin θ) 或 unit complex numbers，用几何平均 sqrt(z1*z2) 求角平分线，配合 stereographic transform 将许多 trigonometric 步骤替换为代数运算。把 dot/cross 的几何含义直接代入 Rodrigues' rotation formula，或用 Householder transformation（两次反射构造旋转）都能减少算术操作数并避免不必要的 acos/cos round-trip，从而更简洁和高效。评论也提到 change of basis 能把某些看似三角的问题转换为纯代数问题，但当解含 transcendental（超越）数时仍需数值近似。",
+        "supportid": [
+          "47348702",
+          "47349177",
+          "47349371",
+          "47348939",
+          "47349270"
+        ]
+      },
+      {
+        "category": "工程折衷：角度更直观且便于维护",
+        "summary": "另一些评论强调实践中的可维护性与可理解性：角度表示对人类直观（例如鼠标/摇杆输入、UI 配置）非常友好，pitch/yaw 在游戏里用于 billboard particles、FPS 相机等场景非常方便。拆成更专用的代数抽象会带来学习成本和维护负担，而在绝大多数应用中性能差别微小，且诸如 -ffast-math 的编译优化会缩小代数替换带来的开销。只有在需要任意轴旋转、稳定插值或避免 gimbal lock 时，工程上才倾向于切换到 quaternions 或矩阵表示，因此实际代码常在直观性与数值/性能之间折中。",
+        "supportid": [
+          "47349541",
+          "47349402",
+          "47350417",
+          "47350925",
+          "47350643",
+          "47351313"
+        ]
+      },
+      {
+        "category": "四元数与旋转群作为实用中间方案",
+        "summary": "不少人提出用 quaternions（四元数）作为折中：以 quaternions 与向量为主要原语，能在多数场景下避免显式 trig 调用。例如 Quaternion::from_unit_vecs 基于 cross product，rotate_vec 用 quaternion-vector 乘法，只有在概念上确实需要角度（如 from_axis_angle、SLERP、某些 dihedral angle 计算）时才会用到 sin/cos 或 acos。有人还建议在高维情形下考虑更一般的 spin groups 或 bivectors 来保持统一性，这既保留了组合变换的便利性，又减少了三角函数的出现。",
+        "supportid": [
+          "47349375",
+          "47350925",
+          "47350417",
+          "47349954"
+        ]
+      },
+      {
+        "category": "数值性能与稳定性考量",
+        "summary": "评论中讨论了性能与数值稳定性：dot/cross 属于固定次数的代数运算，通常比调用 sin()/acos() 更廉价且指令数更少；理论上 sin 的高精度计算复杂度也更高（引用 Brent 的复杂度分析）。把角度作为中间量会引入额外 round-trip（例如 acos→cos 相互抵消）并导致需要 clamp-before-acos 的 hack 来修补边界误差，进而带来不稳定或物理引擎爆炸性的错误。尽管编译器或库优化能缓解部分开销，但在热路径或高频调用中直接用向量代数替代三角运算能明显降低误差传播与执行成本。",
+        "supportid": [
+          "47349954",
+          "47349371",
+          "47351313",
+          "47349541",
+          "47349469"
+        ]
+      },
+      {
+        "category": "Rational Trigonometry（理性三角学）与争议",
+        "summary": "有评论引用 Norman Wildberger 的 Rational Trigonometry 作为极端例子：该体系用 quadrances（平方距离）与比例替代角和开根号，主张完全摒弃典型的角度表示。支持者认为这一方法带来了有趣的几何与代数连接并有教育价值，但反对者指出作者在集合论与实数哲学上的广泛断言存在问题，某些关于实数或公理的宣称被认为是误读或过度泛化。总的来看，Rational Trigonometry 提供了值得借鉴的技巧，但评论者警告要区分这些技巧与不可证实的全面性结论。",
+        "supportid": [
+          "47348889",
+          "47348898",
+          "47351650",
+          "47351815"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "quaternions（四元数）",
+        "explanation": "四元数（quaternions）：一种四维数系，用于表示和组合三维旋转，支持通过四元数乘法对向量旋转，常用于避免 gimbal lock 并实现平滑插值（如 SLERP）。"
+      },
+      {
+        "term": "dot product（点积）",
+        "explanation": "点积（dot product）：两个向量的标量积，可用于计算夹角余弦（cosθ）、投影或判断正交性，是把几何关系直接转为代数条件的基础运算。"
+      },
+      {
+        "term": "cross product（叉积）",
+        "explanation": "叉积（cross product）：仅在三维定义的向量运算，返回一个垂直于原两向量的向量，常用于求旋转轴、面积或在构造旋转变换（替代 sin/cos 步骤）时使用。"
+      },
+      {
+        "term": "Rodrigues' rotation formula（Rodrigues' 旋转公式）",
+        "explanation": "Rodrigues' rotation formula：给定旋转轴和角度的闭式构造方法，可以直接用轴向量和角的代数组合得到旋转矩阵，且可通过代入 dot/cross 的几何量减少不必要的角度中间量。"
+      }
+    ],
+    "context": "原文主张在处理向量输入时避免把旋转先转换为角度再反向转换，因为这会引入额外的 acos/cos round-trip、数值不稳定和性能开销。评论讨论了多种替代策略：把角表示为 (cos θ, sin θ) 或 unit complex numbers，用 geometric mean sqrt(z1*z2) 求角平分线；把 dot/cross 的几何含义直接代入 Rodrigues' rotation formula（一个由轴角构造旋转矩阵的闭式公式）；以及用 quaternions（四元数）或 Householder transformation（线性代数中通过反射构造旋转的方法）来避免显式三角函数。也有人提到更激进的替代理论，如 Norman Wildberger 的 Rational Trigonometry（以 quadrance 替代距离），但其在集合论和实数处理上的宣称存在争议。总体讨论聚焦在数学上的优雅表示与工程上可维护、数值稳定与性能之间的权衡。",
+    "emoji": "🔄",
+    "sarcastic_question": "你真的每次都要把向量变成角度再变回来吗？"
+  },
+  "articleSummary": "## 一句话总结\n在 3D 引擎内部处理几何运算时，直接使用向量运算（Dot/Cross Product）替代三角函数，不仅能消除昂贵的 `acos`/`sin` 调用，还能避免精度丢失和归一化开销，从而获得更稳定、更高效的代码。\n\n### 三角函数是给输入用的，不是给引擎核心用的\nInigo Quilez 开篇就抛出了一个很犀利的观点：如果你在 3D 算法的核心逻辑里看到 `sin`、`cos` 或 `atan`，那通常意味着代码写错了。这并不是说三角函数没用，它们在用户输入或 API 边界层是必须的；但在处理向量、旋转和几何关系的内部逻辑中，引入“角度”这个抽象概念往往是多此一举。核心思路其实很简单：点积和叉积已经编码了所有的方向信息，前者对应余弦，后者对应正弦。既然我们手里有向量，为什么要绕一圈把向量转成角度，再转回向量呢？这不仅破坏了几何直观性，还引入了不必要的计算开销。\n\n### 一个典型的“教科书式”错误写法\n文章举了一个非常常见的例子：让一个物体的 Z 轴对齐到目标方向向量 `d`。很多开发者（甚至是经验丰富的）会下意识地写出“标准”代码：先用 `dot` 算出夹角的余弦，再用 `acos` 求出角度，接着用 `cross` 算出旋转轴并归一化，最后把角度和轴喂给 `rotationAxisAngle` 函数。为了防止浮点数误差导致 `acos` 越界，还得加个 `clamp`。这套流程看起来逻辑严密，但问题在于：为了算一个旋转矩阵，你调用了 `acos`、`sin`、`cos`、`normalize` 和 `clamp`，每一行代码都在“杀一只小猫”（意指无谓的性能损耗和复杂度）。\n\n### 既然算出来又马上用回去，为什么要算？\n有意思的地方在于，如果你把 `rotationAxisAngle` 的实现展开，你会发现一个荒谬的事实：你费尽周折用 `acos` 算出角度 `ang`，紧接着在函数里又调用了 `cos(ang)`。数学上 `cos(acos(x))` 就是 `x` 本身！这意味着我们完全可以跳过提取角度这一步。这里有个巧妙的设计：虽然 `cos` 可以省掉，但 `sin` 怎么办？毕竟矩阵里还需要正弦值。这就引出了几何运算的关键——点积和叉积是孪生兄弟，点积管平行（余弦），叉积管垂直（正弦）。既然我们已经在算旋转轴（叉积），那正弦信息其实就藏在叉积的长度里。\n\n### 用向量代数替换三角恒等式\n既然叉积的模长就是 `sin(angle)`（假设向量已归一化），我们就不需要显式计算角度了。直接用 `dot` 算出余弦 `c`，用 `length(cross)` 算出正弦 `s`，直接填入矩阵公式。这一步消除了 `acos`、`sin` 和 `clamp`。但这还不够完美，因为 `length` 函数里藏着开平方运算，依然昂贵。利用三角恒等式 `sin² + cos² = 1`，我们可以用代数方法消去开方。通过将矩阵中的除法因子提取并化简，原本复杂的 `1/sin` 运算最终被简化成了 `k = 1 / (1 + c)`。这不仅去掉了开方，还把潜在的奇点（向量平行时）处理得更优雅。\n\n### 最终方案：纯粹、快速且稳定\n经过这一顿操作，最终的 `rotationAlign` 函数里没有任何三角函数，也没有归一化或开方，只有基础的加减乘除和点积、叉积。这不仅仅是性能上的胜利（省去了昂贵的超越函数调用），更是数值稳定性的提升——你不用担心浮点误差导致 `acos` 喂了 NaN，也不用处理归一化零向量的特殊情况。更重要的是，这种思维方式让你重新审视几何问题：很多所谓的“三角函数恒等式”，本质上就是向量关系的某种代数表达。一旦你习惯了用向量思考，你会发现原本复杂的公式其实只是简单的几何直觉。"
+}

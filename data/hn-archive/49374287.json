@@ -1,0 +1,108 @@
+{
+  "id": 49374287,
+  "by": "gmays",
+  "title": "DiffusionGemma Technical Report",
+  "url": "https://arxiv.org/abs/2608.00146",
+  "score": 135,
+  "createdAt": 1787234442,
+  "aiSummary": {
+    "chinese_title": "DiffusionGemma：复用 Gemma MoE checkpoint 的离散文本扩散模型",
+    "discussion_overview": [
+      {
+        "category": "架构与训练方式",
+        "summary": "讨论里最吸引人的点是，DiffusionGemma 不是从零训练，而是把 Gemma 系列的 decoder-only/MoE checkpoint 改造成 denoiser。评论指出它利用了原模型在生成 token 时并不直接使用的全词表 logits，因此可以通过架构改造、SFT 和 distill 把离散 diffusion 做成可用模型。还有人提到它会根据概率分布的 entropy 自适应调整推理步数，这让“多少步收敛”变成了输入相关的问题。图像 diffusion 只给 score function，不直接给概率分布，所以这种技巧不能直接照搬。",
+        "supportid": [
+          "49374803",
+          "49377956"
+        ]
+      },
+      {
+        "category": "本地运行与吞吐优化",
+        "summary": "不少评论在分享本地重实现经验，涵盖 macOS、Rust+CUDA、Metal 以及不同代号 GPU 的实际速度。有人在 M3 机器上跑到约 15 tok/s，也有人提到带 drafter 后可把吞吐推到 20-30 tok/s，甚至在特定卡上达到更高输出速率。讨论中的优化关键词包括 pre-drafted canvas、MTP、INT8 和 nvfp4，核心思路都是尽量减少 diffusion 需要的步数或提高单步效率。与此同时，也有人认为 diffusion 对 Metal 并不总是友好，尤其在代码场景里还要兼顾结构正确性。",
+        "supportid": [
+          "49376900",
+          "49377461",
+          "49378551",
+          "49378486",
+          "49378572",
+          "49375028"
+        ]
+      },
+      {
+        "category": "服务端部署与 GPU 生态",
+        "summary": "有人确认这个模型可以在 vLLM 里跑起来，并在单张 5090 上拿到 900+ TPS 的输出。即便如此，评论也指出它仍然不如传统的 26B-A4B 稳定，structured outputs、tool calls 之类能力会明显掉分。另一个现实问题是 ROCm 兼容性差，AMD 平台上常见 kernel 缺失，让部署体验远不如 NVIDIA。相关讨论最后把矛头指向 AMD 软件栈，而不是硬件性能本身。",
+        "supportid": [
+          "49378722",
+          "49378908",
+          "49379911",
+          "49380921"
+        ]
+      },
+      {
+        "category": "编码工作流与工具链重构",
+        "summary": "一条主线是：如果模型真的能以极高速度写代码，编译器、解释器和测试运行方式都要跟着变。有人设想让 LLM 提交补丁后立刻并行跑单元测试，同时把类型检查、构建和分片测试放到远端集群上重叠执行，以免 CPU 成为瓶颈。JVM 被拿来做类比，因为它把编译和运行拆开后，整体 turnaround time 往往比传统本地编译栈更好。还有评论强调，stack trace 几乎是 LLM 的理想上下文，LLM 在读错误栈这件事上可能比人类更占优势。",
+        "supportid": [
+          "49377719",
+          "49377984",
+          "49380428",
+          "49381812"
+        ]
+      },
+      {
+        "category": "准确率、直觉与未来路线",
+        "summary": "另一组评论在追问：这种 diffusion 文本模型能否缩小和 autoregressive（AR）模型之间的 accuracy gap，甚至靠 Bidirectional Reasoning 和 Self-Correction 形成优势。有人从人类写作方式出发，认为“草稿—修订—定稿”本来就很像多轮 canvas 去噪，所以这种模型并不违背直觉。也有人纠正了一个常见误解：文本 diffusion 用的是离散输出空间，并不是图像 diffusion 那种预测 noise 的连续过程。至于 DFlash 2 和 JEPA，评论的态度更谨慎，认为 DFlash 2 这类 speculative decoding head 主要是给 AR 模型加速，而 diffusion 模型更现实的收益是提升低 batch 下的算力利用率。",
+        "supportid": [
+          "49375173",
+          "49374800",
+          "49375028",
+          "49378067",
+          "49378260",
+          "49378620",
+          "49374833",
+          "49380512",
+          "49375148",
+          "49376375",
+          "49377038"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "discrete diffusion",
+        "explanation": "在离散 token 空间里做扩散/去噪的生成方法，不是图像里那种连续像素扩散。"
+      },
+      {
+        "term": "MoE",
+        "explanation": "Mixture of Experts，一种只激活部分专家网络的模型结构，常用于扩大参数规模同时控制计算量。"
+      },
+      {
+        "term": "SFT",
+        "explanation": "Supervised Fine-Tuning，用标注数据对基础模型做监督微调。"
+      },
+      {
+        "term": "distill",
+        "explanation": "蒸馏训练，用大模型输出或行为去监督较小模型。"
+      },
+      {
+        "term": "canvas",
+        "explanation": "扩散文本模型中的中间序列载体，模型会在它上面反复去噪和修正。"
+      },
+      {
+        "term": "MTP",
+        "explanation": "Multi-Token Prediction，一类一次预测多个未来 token 的辅助头/训练方法。"
+      },
+      {
+        "term": "vLLM",
+        "explanation": "一个高吞吐的 LLM 推理与服务引擎，常用于模型部署。"
+      },
+      {
+        "term": "ROCm",
+        "explanation": "AMD 的 GPU 计算软件栈，很多模型在这套生态里的兼容性和性能会受限制。"
+      }
+    ],
+    "context": "这份 DiffusionGemma technical report 讨论的是把 Gemma 系列的 decoder-only 模型改造成文本 diffusion 模型，而不是像传统 autoregressive（AR）模型那样按顺序预测下一个 token。评论里提到它并非从零训练，而是复用现有 MoE checkpoint，再结合 SFT、distill 和一系列架构改动，让离散 token 上的去噪变得可行。讨论重点延伸到多 canvas 推理、按 entropy 自适应步数，以及如何在本地 GPU、vLLM 和 AMD/ROCm 环境里获得更高吞吐。很多人也把它和代码生成、编译器、测试并行化联系起来，猜测这种高吞吐模型可能会改变本地开发工作流。",
+    "emoji": "🚀",
+    "sarcastic_question": "既然是复用 checkpoint，还算“新架构”吗？"
+  },
+  "articleSummary": "## 一句话总结\n\nDiffusionGemma 把 Gemma 4 从逐 token 的 AR 解码器，改造成能并行迭代生成 256-token 块的离散扩散模型，并以不到原始训练 token 预算 10% 的微调成本，换来了单张 H100 约 1,500 tokens/s 的生成速度。\n\n## 正文\n\n### AR 解码的瓶颈，不在模型不会算，而在必须排队\n\n传统 autoregressive（AR）语言模型生成文本时，必须一个 token 接一个 token 地预测。即使 GPU 很强，后一个 token 的计算也依赖前一个 token 的结果。长输出场景里，这种顺序依赖会把推理延迟和吞吐量牢牢限制住。Speculative Decoding 能缓解问题，但它本质上仍围绕 AR 解码展开。DiffusionGemma 瞄准的正是这个瓶颈：不再让 256 个 token 排队生成，而是让它们作为一个 block 被并行处理。说白了，它试图把文本生成从“逐字续写”，变成“先给一版粗稿，再不断同步修订”。\n\n### 关键改动是离散扩散：并行细化 256 个 token\n\nDiffusionGemma 采用 discrete diffusion 来生成文本。模型不是直接从左到右给出下一个 token，而是对包含 256 个 token 的块进行迭代式去噪和细化。这样的生成过程允许一个 forward pass 同时推进多个位置，因此绕开了 AR 的串行解码瓶颈。报告给出的平均结果是，DiffusionGemma 每次 forward pass 可生成约 20 个 token。最终，在单张 NVIDIA H100 上，它的输出吞吐量约为每秒 1,500 个 token。作者认为，这一速度即使与采用先进 speculative decoding 的 AR 模型相比，也有显著优势。\n\n### 没有从头训练，而是把 Gemma 4 改造成扩散模型\n\n有意思的地方在于，团队并没有为扩散语言模型从零开始预训练一个新基座。DiffusionGemma 的起点是 mixture-of-experts 的 Gemma 4 模型，其 activated parameters 为 3.8B，总参数量为 25.2B。也就是说，它是在一个已经具备语言、多模态和长上下文能力的 AR 模型上做转换。训练流程分为两个阶段，而且总计算预算较为克制。整个流程使用的训练 token 不到原始 AR 模型总训练 token 预算的 10%。这意味着作者想证明的不是“扩散模型可以靠巨量额外训练追上 AR”，而是“现有 AR 模型可以相对高效地迁移到扩散生成范式”。\n\n### 两阶段训练把“会去噪”和“生成得又快又好”分开解决\n\n第一阶段是 supervised fine-tuning，目标是教会模型进行双向 denoising。这里的“双向”很关键：模型不再只能利用左侧上下文，而是要在一个待生成 block 内综合不同位置的信息恢复文本。仅仅学会去噪还不够，因为扩散采样要面对质量和步数之间的权衡。于是第二阶段将 reinforcement learning 与 sampler distillation 结合起来。前者用于提升生成质量，后者则面向更高效的采样过程。作者强调，这两个目标是在第二阶段联合优化的：既要让结果可用，也要减少达到可用结果所需的推理成本。\n\n### 速度不是用能力硬换来的，至少报告声称没有\n\n扩散微调后，DiffusionGemma 仍保留了起始 Gemma 4 的 thinking mode、多模态输入和长上下文支持。这个结果很重要，因为它说明转换目标并不只是做一个高速的纯文本补全器。报告还指出，DiffusionGemma 在完整评测套件上构成了生成速度与模型能力之间新的 Pareto frontier。换句话说，在其评测范围内，模型没有为了更快吞吐而简单牺牲掉全部能力。这里需要注意，给出的摘要没有展开具体 benchmark 名称和分项分数。若要判断“Pareto frontier”的严格含义，仍需要查阅技术报告的完整实验表格和评测设置。\n\n### 最耐人寻味的是，它没有彻底失去 AR 能力\n\n通常会以为，一个经过 diffusion fine-tuning 的模型会彻底告别 AR 解码。DiffusionGemma 的结果并非如此：它依然能够进行 AR generation，而且性能退化仅被描述为“minor”。这为 hybrid diffusion-AR decoding 留下了空间。模型可以在适合高吞吐的任务里用扩散式 block 生成，也可能在需要严格自回归控制的场景中回退或切换到 AR 解码。报告没有在摘要中说明这种混合解码的具体策略，但它点出了一个值得关注的方向：AR 和 diffusion 未必是两套完全割裂的模型范式。DiffusionGemma 的核心价值，正是在已有 Gemma 4 能力之上，尝试把两种生成方式放进同一个模型里。"
+}

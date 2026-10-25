@@ -1,0 +1,78 @@
+{
+  "id": 50202762,
+  "by": "giancarlostoro",
+  "title": "Jank – The native Clojure dialect with seamless C++ interop",
+  "url": "https://jank-lang.org/",
+  "score": 148,
+  "createdAt": 1792730458,
+  "aiSummary": {
+    "chinese_title": "jank：以 LLVM/Clang 原生编译、无缝调用 C++ 的 Clojure 方言引发 Agent REPL 讨论",
+    "discussion_overview": [
+      {
+        "category": "REPL 与不可变数据适合 Agent 开发",
+        "summary": "支持者认为，Agent 若能直接驱动 REPL，就可持续试验代码而不必反复重启或完整编译，原生代码访问进一步扩大了可操作范围。Clojure 的持久化、不可变数据结构被认为有利于多线程并行迭代，减少共享可变状态带来的混乱。有人称 Agent 已能高效探索其 Clojure 代码库并充分使用 REPL。针对 Jupyter Notebook 易因忘记运行过哪些 cell 而出现状态错乱的担忧，回应指出 nREPL 配合偏函数式、不可变的编程习惯与 Jupyter 的工作模型不同，现有实践中未见这是主要问题。",
+        "supportid": [
+          "50203669",
+          "50205673",
+          "50204628",
+          "50205102",
+          "50205150",
+          "50206880"
+        ]
+      },
+      {
+        "category": "LLM 编写 Lisp/Clojure 的括号问题是否已解决",
+        "summary": "讨论者回忆早期模型常生成不配对括号，尤其在较长的 Clojure 或 ClojureScript 文件中可能破坏整个代码库。较乐观的看法是，近一年的 SOTA 模型已明显改善：过去可借助 clojure-mcp 编辑工具或把文件限制在约 50 LOC 来规避，现在多数模型面对更长文件也能保持括号平衡。也有人认为不应宣称问题“完全消失”，只是出错频率降低；另有实际使用者表示自己已经很久没有遇到坏括号。争论还涉及技术进展速度：提问者只是隔了一年未试，并非不了解领域，不能将合理的旧经验质疑一概嘲讽。",
+        "supportid": [
+          "50205831",
+          "50208944",
+          "50206062",
+          "50206328",
+          "50210504",
+          "50206336",
+          "50210305",
+          "50209154",
+          "50210572"
+        ]
+      },
+      {
+        "category": "jank 的 C++ 集成与原生定位",
+        "summary": "评论将 jank 描述为保持完整 Clojure 语义、默认不可变数据结构，同时不依赖 JVM 的原生实现。它嵌入 Clang 和 LLVM，因此可直接理解 C++ header、使用 C++ 类型系统并调用 C++，而非为每个库手写 binding。模板、virtual function、exception、overload resolution 与 RAII 等 C++ 特性据称都可直接使用，且 jank 本身还能编译成 C++。Rust、Swift、Zig 等其他 LLVM 生态语言则仍通常通过 C ABI 连接；有人因此询问它与 clasp（Common Lisp 的 C++ 实现）的差异。",
+        "supportid": [
+          "50210108",
+          "50211269",
+          "50206766"
+        ]
+      },
+      {
+        "category": "与 Janet 的取舍及小众语言的 Agent 支持",
+        "summary": "有人将 Janet 与 jank 区分为两条路线：jank 是带原生 C++ interop 的完整 Clojure，而 Janet 是深受 Clojure 影响、面向嵌入式脚本的轻量语言。Janet 的拥护者看重其便携、无需 JVM，并以它替代 Python 处理 Agent harness 中的脚本任务。另一方指出，模型对 Janet 这类训练材料较少的语言可能表现不佳；经验回应是需提供强约束的 skill、持续沉淀失败案例，并用运行时 type guard 等辅助模块把常见陷阱编码化。由此得出的实践观点是，Agent 并非不能处理小众语言，关键在于每种语言是否有可加载、可维护的操作知识。",
+        "supportid": [
+          "50206766",
+          "50206963",
+          "50207076",
+          "50207164",
+          "50207743"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "REPL / nREPL",
+        "explanation": "Read-Eval-Print Loop 的交互式编程环境；nREPL 是 Clojure 的网络化 REPL 协议与工具生态，可在运行中的程序内求值和调试。"
+      },
+      {
+        "term": "持久化不可变数据结构",
+        "explanation": "更新时保留旧版本并结构共享的数据结构，可减少共享可变状态，便于并发和交互式试验。"
+      },
+      {
+        "term": "C++ interop",
+        "explanation": "语言与 C++ 库、类型和语法特性直接互操作的能力；jank 目标是避免常见的手写 binding 样板代码。"
+      }
+    ],
+    "context": "jank 是一个将 Clojure（JVM 上常见的 Lisp 方言）编译到原生环境的项目，核心做法是嵌入 Clang（C/C++ 编译器前端）和 LLVM（编译器基础设施），以直接接入 C++ header 与库。它试图把 Clojure 的 REPL 驱动开发、持久化不可变集合与 C++ 的 RAII（以对象生命周期管理资源）等能力结合起来，而其他语言一般仍通过 C ABI（二进制接口约定）接入。讨论将这一模式放在 Agent 编程背景下：LLM 可在持续运行的 REPL 中快速修改和验证，但也引出状态管理、长文件括号配对及小众语言知识不足的问题。Janet（轻量、可嵌入的 Lisp 风格脚本语言）和 clasp（面向 C++ 互操作的 Common Lisp 实现）被作为相邻但定位不同的参照物。",
+    "emoji": "🧪",
+    "sarcastic_question": "既要免编译又要零状态，Agent 真不会把 REPL 玩成 Jupyter 吗？"
+  },
+  "articleSummary": "## 一句话总结\njank 把 Clojure 的 Lisp 语法和 REPL 开发体验搬到了 C++ 生态里，实现了无需胶水代码的真正无缝互操作。\n\n### 不做桥梁，做透传\n\n我们见过很多试图打通不同语言生态的项目，通常的做法是写一层厚厚的绑定层，处理类型转换、内存管理、异常捕获。jank 的思路完全不同：它直接基于 C++ 实现，把 C++ 的类型系统、模板、RAII 甚至是重载决议都内化进了语言核心。这意味着你不需要写任何 boilerplate 代码，直接 `include` 头文件就能调用。作者举了个例子，直接在 Clojure 代码里引入 `boost::filesystem`，用 `try/catch` 捕获 C++ 异常，甚至能直接调用 `.what()` 方法。这种互操作不是\"桥接\"，而是\"透传\"。\n\n### REPL 驱动的 C++ 开发\n\n对于习惯了 Java 生态的 Clojure 开发者来说，jank 把 Java interop 换成了 C++ interop，但保留了最核心的 REPL 体验。这背后是 jank 内置了一个基于 LLVM 的 JIT 运行时，配合 Clang 进行即时编译。你可以在编辑器里通过 nREPL 插件连接，修改游戏逻辑、调整 UI 界面，代码改动立即生效。这种\"热更新\"能力在 C++ 游戏开发领域简直是降维打击——以前改一行代码可能要重新编译链接几分钟，现在就像写脚本语言一样流畅。\n\n### 原生构建系统的工程化考量\n\njank 没有另起炉灶搞一套新的构建工具，而是选择了兼容 Leiningen。这很聪明，直接复用了 Clojure 社区成熟的依赖管理和插件生态。更有意思的是它的 native build system，能自动发现系统已安装的库，或者直接从源码编译依赖。在 `project.clj` 里，你可以像声明 Java 依赖一样声明 C++ 库，还能通过 `:profiles` 配置不同的优化等级（比如 debug 用 `-O0`，release 用 `-O3`）。这解决了脚本语言调用原生库时的\"依赖地狱\"问题，让 C++ 库的管理变得像 `npm install` 一样简单。\n\n### 游戏开发才是它的杀手锏\n\n文章最后给出了一个极具说服力的场景：用 jank 结合 ImGui 和 GLFW 写游戏。代码里没有任何繁琐的初始化注册，直接调用 `glfwInit`、`ImGui.Begin`，逻辑清晰得就像在写伪代码。在游戏开发这个对性能极其敏感、C++ 占据统治地位的领域，jank 提供了一条新路：既拥有函数式编程不可变数据的优雅，又能在性能瓶颈处无缝切换到 C++。没有 Marshalling 开销，没有跨语言调用的心理负担，这可能是目前最接近\"完美的动态 C++\"的方案。"
+}

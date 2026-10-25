@@ -1,0 +1,96 @@
+{
+  "id": 47792374,
+  "by": "jgrahamc",
+  "title": "Artifacts: Versioned storage that speaks Git",
+  "url": "https://blog.cloudflare.com/artifacts-git-for-agents-beta/",
+  "score": 165,
+  "createdAt": 1776363005,
+  "aiSummary": {
+    "chinese_title": "Cloudflare Artifacts：Git 式版本存储与懒加载文件系统",
+    "discussion_overview": [
+      {
+        "category": "懒加载仓库与 Agent 启动",
+        "summary": "不少人对 ArtifactFS 的“lazy filesystem”思路很兴奋：先只拉取 Git repo 的 tree 和 refs，不下载文件内容，等到读取时再补齐。这样 sandbox 启动后就能更快进入工作状态，特别适合 coding agents 和临时环境。还有人设想把它和“只提交改动的 blob”结合，做成对任意 Git repo 的单文件级编辑能力，甚至把它当作更通用的 content-addressed 存储入口。",
+        "supportid": [
+          "47801891",
+          "47798029"
+        ]
+      },
+      {
+        "category": "市场定位与目标用户存疑",
+        "summary": "一部分评论者并不觉得它比 Git、GitHub、branches 和 worktrees 更有必要，认为这更像是在给现有流程再包一层。支持者则强调，真正的痛点是 GitHub 创建大量 repo 或 branch 既贵又受限，而 Git 本身并不依赖某个平台，能在很多地方直接运行。也有人追问目标用户是谁，怀疑大多数 coding agent 平台已经有现成 sandbox，哪怕初始化慢几分钟也能接受；如果想更快，预热 Docker 容器池也能把启动压到十几秒。",
+        "supportid": [
+          "47801652",
+          "47799165",
+          "47800484",
+          "47801791"
+        ]
+      },
+      {
+        "category": "成本、资源上限与功能缺口",
+        "summary": "评论里最现实的担忧是成本：有人指出 PUT/POST 价格大约是 S3 的 30 倍，意味着批量操作很关键。另一个问题是 Cloudflare Durable Object 的 128MB 内存上限，若仓库有几千个文件和一些历史，push 时的 delta resolution 可能很快撞到限制。与此同时，当前文档只清楚列出 clone、init、import，大家还在追问 list branches/tags、list objects、commit history、raw object 读写、merge、按 path 读对象等能力，不过回复称这些功能会陆续补上。",
+        "supportid": [
+          "47797272",
+          "47800980",
+          "47797602",
+          "47799296",
+          "47800555"
+        ]
+      },
+      {
+        "category": "开放 backend 与统一版本化存储",
+        "summary": "有评论希望它最终不是一家厂商的专有服务，而是一个可替换 backend，最好能做成 S3-compatible 的 Git backend，直接跑在任何 S3-compatible service 上。有人还提到 awslabs 的 git-remote-s3，说明“让 Git 远程接对象存储”已经有现成路线可参考。另一种更大的设想是把 Dropbox、GitHub 和 Artifacts 统一看成“版本化文件系统”，只是分别服务非技术用户、开发者和 agents；因此它更像 API-first git repos，而不只是传统 source control 工具。",
+        "supportid": [
+          "47700775",
+          "47800806",
+          "47799068",
+          "47796251"
+        ]
+      },
+      {
+        "category": "Git 适用边界与架构争论",
+        "summary": "一条长评论强烈质疑“agents 改变了 source control、filesystem 和 persistent state”这个前提，认为代码量主要由产品需求决定，而不是由 agent 产量决定。评论者还反对把 Git 当成“存大量小数据的数据库”，指出 Git 本来就不是为通用数据库设计的。更关键的是，Git 在非平面文件、非 line-oriented diff 的场景里很吃力，因此真正需要的可能是更好的模块化能力，比如只 checkout 相关 subtree、只提交相关 subtree，而不是重新包装 Git API。",
+        "supportid": [
+          "47798459"
+        ]
+      },
+      {
+        "category": "隐私与协作外化的焦虑",
+        "summary": "也有人从更宽的技术和社会角度看待这件事：他们喜欢把 state 外化成文件、把 Git 当作分布式系统底座，并对 Zig、WASM、ArtifactFS FUSE driver 这些实现选择非常看好。Cloudflare 把每个 session 的 filesystem state 和 history 持久化到独立 repo 的做法尤其令人兴奋，因为它能让 LLM 编程过程更可追踪、可重放。可同一件事也带来明显不安：如果工作过程和思考轨迹都被持续记录，协作会更方便，但个人隐私和自己的“屏幕空间”也会被进一步侵蚀。",
+        "supportid": [
+          "47796157"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "ArtifactFS",
+        "explanation": "Cloudflare 的文件系统层/驱动，用 Git 仓库作为后端，并按需读取文件内容。"
+      },
+      {
+        "term": "blobless clone",
+        "explanation": "只拉取 Git 仓库的 tree 和 refs，不下载 blob 文件内容的 clone 方式。"
+      },
+      {
+        "term": "content-addressed storage",
+        "explanation": "按内容哈希定位数据的存储模型，内容不变则地址不变。"
+      },
+      {
+        "term": "FUSE",
+        "explanation": "Filesystem in Userspace，用用户态程序把远端存储挂载成本地文件系统。"
+      },
+      {
+        "term": "Durable Object",
+        "explanation": "Cloudflare 的有状态运行单元，可保存会话状态但受资源上限约束。"
+      },
+      {
+        "term": "WASM",
+        "explanation": "WebAssembly，一种可在多种 runtime 中运行的低级字节码格式。"
+      }
+    ],
+    "context": "这篇讨论围绕 Cloudflare 发布的 “Artifacts: Versioned storage that speaks Git”，核心是把 Git 既当版本控制协议，也当一种通用的状态存储接口。文中重要组件 ArtifactFS（一个基于 FUSE 的文件系统层）会在 sandbox 启动时先做 blobless clone，只取文件树和 refs，再按需读取文件内容，让 coding agent 能更快开始工作。Cloudflare 还说内部 agent 会把每个 session 的文件系统状态和历史保存到单独的 Artifacts repo，这让它特别面向 agent、sandbox 和大仓库场景。评论区因此围绕 GitHub 与 Git 的差别、S3 成本、Cloudflare Durable Objects（有状态边缘单元）的内存上限、Windows 上的 FUSE 支持，以及是否真的需要“Git for everything”展开。",
+    "emoji": "🤔",
+    "sarcastic_question": "把 Git 再包一层就能解决所有版本化和存储问题吗？"
+  },
+  "articleSummary": "## 一句话总结\nCloudflare 推出了 Artifacts，这是一个基于 Durable Objects 和 Wasm 构建的原生存储系统，旨在为 AI Agents 提供一个能通过 Git 协议操作、支持海量实例和极速 Fork 的版本化文件系统。\n\n### AI 时代的存储瓶颈：传统 Git 扛不住了\n现在的开发模式变了，AI Agents 正在以前所未有的速度生成代码，未来 5 年的代码量可能会超过人类历史总和。传统的代码托管平台是为人设计的，根本扛不住这种 7x24 小时不间断、并发量巨大的 Agent 需求。Cloudflare 觉得我们需要一个新的底层设施：一个专为 Agents 设计的、分布式的版本化文件系统。这就是 Artifacts，它不仅能通过 API 编程创建，还能完美兼容现有的 Git 客户端，让每个 Agent 会话或沙箱都能瞬间拥有独立的 Repo。\n\n### 为什么选 Git？因为它是 Agents 的母语\n既然是做新系统，为什么还要用 Git？说白了，因为 AI 模型最懂 Git。Git 的操作逻辑已经深深刻在模型的训练数据里了，与其发明一个新协议让 Agent 重新学习，不如直接给它一个标准的 Git Remote URL。更有意思的是，Git 的数据模型不仅仅适合存代码，任何需要“时间旅行”、状态回滚和 Diff 的场景都适用。Cloudflare 内部甚至用它来持久化 Agent 的会话历史和文件系统状态，通过 Fork 机制，同事之间可以像共享代码分支一样共享调试会话，非常灵活。\n\n### 技术内核：用 Zig 写的微型 Git 引擎\n为了在 Cloudflare 的边缘环境运行，他们没有用现成的庞大库，而是用 Zig 语言手写了一个 Git 协议引擎，并编译成了 Wasm。这个设计非常精妙：整个二进制文件只有 100KB 左右，没有任何外部依赖，却实现了 SHA-1、zlib 压缩、delta 编码和完整的 Smart HTTP 协议。Zig 对内存的手动控制能力在资源受限的 Durable Objects 环境下显得尤为重要，而且这套代码既能在 Wasm 里跑，也能编译成原生程序进行测试，一举两得。\n\n### 架构细节：如何在边缘存储海量 Repo\nArtifacts 的底层架构建立在 Durable Objects 之上，利用其强一致性和有状态特性，支撑起数千万个独立的 Repo 实例。存储层利用了 DO 内置的 SQLite，针对 Git 的大文件做了分块处理，并配合 R2 做快照、KV 存 Auth Token。为了应对 DO 只有 128MB 内存限制，他们大量使用了流式处理，直接把 Wasm 输出的字节流返回给客户端，避免在内存中缓存整个对象。在数据传输上，系统会保留原始的 delta 数据，如果客户端已有基础对象，就直接传输差异部分，既省带宽又省内存。\n\n### 解决大仓库痛点：ArtifactFS 的“异步克隆”\n普通的 Git Clone 对于小项目没问题，但面对几个 GB 的大型仓库，Agent 可能要等上两分钟才能开始工作，这太慢了。为了解决这个问题，Cloudflare 开源了 ArtifactFS，核心思路是“异步水合”。它先只拉取文件树和引用，让 Agent 能立刻看到目录结构并开始工作，然后在后台通过一个守护进程并发下载文件内容。更聪明的是，它会优先下载 `package.json` 等配置文件和源码，把图片等二进制大文件排在后面。如果 Agent 读取的文件还没下载完，读取操作会阻塞直到就绪，对上层应用完全透明。\n\n### 定价策略：专为海量微 Repo 设计\n最后聊聊钱，既然是给 Agents 用的，肯定不能按传统 Repo 的收费方式来。Cloudflare 的定价逻辑是：你要跑一百万个 Repo 也没问题，我们按存储量和操作次数收费。操作费是每 1000 次 0.15 美元（每月送 1 万次），存储费是每 GB 每月 0.5 美元（每月送 1GB）。这种模式意味着那些偶尔用用的小仓库几乎不花钱，而那些频繁操作的大仓库则按需付费，非常适合那种“用完即弃”或者“海量并发”的 Agent 使用场景。"
+}

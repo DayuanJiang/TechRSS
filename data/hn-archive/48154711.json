@@ -1,0 +1,83 @@
+{
+  "id": 48154711,
+  "by": "matt_d",
+  "title": "How to Write to SSDs [pdf]",
+  "url": "https://www.vldb.org/pvldb/vol19/p1469-lee.pdf",
+  "score": 128,
+  "createdAt": 1778886624,
+  "aiSummary": {
+    "chinese_title": "数据库与 SSD 写入优化：写放大、Zoned XFS、ZNS/FDP",
+    "discussion_overview": [
+      {
+        "category": "论文补充与核心结论",
+        "summary": "评论先集中在论文的补充材料：作者说明扩展版已放到 arXiv，附录里补了 VLDB 版容纳不下的细节和 FAQ。有人概括这项工作是在单机上对 800GB 级大型数据库的 write amplification、性能下降和磨损做系统分析，主要看 MySQL 和 PostgreSQL。也有人认为这类结果可能推动更优化的存储表格式或其他数据库内部布局。",
+        "supportid": [
+          "48157245",
+          "48157607"
+        ]
+      },
+      {
+        "category": "Zoned XFS 与文件系统层方案",
+        "summary": "有评论指出，论文似乎少了 Zoned XFS 的引用。Zoned XFS 是 Linux 上专门处理 zoned device 数据放置的文件系统，而论文当前只在 regular XFS 上做了评估。作者表示会把这条参考补到 arXiv 版，并承认直接评测 Zoned XFS 会很有意思。评论还给出 zonedstorage.io 作为 Linux 实现资料入口，并提到论文里使用 RocksDB 的结果可作为对照。",
+        "supportid": [
+          "48157710",
+          "48158765",
+          "48157989"
+        ]
+      },
+      {
+        "category": "对 SQLite 与现有 DBMS 的适用性",
+        "summary": "另一条主线是这套方法能推广到哪些数据库。有人认为 SQLite 也可能出现类似的 write amplification，因为它同样是 page-based DBMS，并且有 in-place updates，只是单写线程设计会让细节不同。作者补充说，收益大小取决于 fill factor、write skewness 以及写入速率相对 SSD 特性的关系，所以不是所有架构都能等比例受益。也有人强调，这类工作更像给数据库工程师提供理解和优化 WAF 的框架，而不一定直接催生全新的数据库类型；PostgreSQL 的 pluggable storage engines 和列式、分片扩展则被当作已有 prior art。",
+        "supportid": [
+          "48155367",
+          "48156212",
+          "48157942",
+          "48155766",
+          "48158818"
+        ]
+      },
+      {
+        "category": "ZNS/FDP/SMR 的更广泛存储背景",
+        "summary": "硬件层面的讨论从 SMR 硬盘一路延伸到 ZNS（Zoned Namespace）和 FDP（Flexible Data Placement）。有评论解释说，SMR、zoned storage 甚至 open-channel flash 的共同点，都是让写入更偏向顺序化和更可控的数据亲和性。FDP 被描述为 NVMe 2.1 里终于落地的简单标记机制，能把相关写入归到同一个 placement 组里，但这类设备常常不容易买到，很多时候要找企业销售。也有人提到 SSDFS 这类文件系统仍在维护，说明这个方向没消失，只是硬件和生态还不够普及。",
+        "supportid": [
+          "48155492",
+          "48155853",
+          "48158728"
+        ]
+      },
+      {
+        "category": "自指式幽默",
+        "summary": "还有一层是标题带来的自指式幽默：有人说点开链接后才发现自己也在把这个 PDF 写进 SSD。另一个回应干脆把浏览器缓存放到 ramdisk 上，等于用内存来躲开磁盘写入。这个玩笑正好和正文主题呼应，也暴露出大家对 SSD 写入成本的敏感。",
+        "supportid": [
+          "48155134",
+          "48157427"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "写放大（Write Amplification, WAF）",
+        "explanation": "一次逻辑写入触发多次底层闪存写入，既影响性能也加速磨损。"
+      },
+      {
+        "term": "ZNS（Zoned Namespace）",
+        "explanation": "NVMe SSD 的分区式命名空间，要求 zone 内按顺序写，便于控制数据布局。"
+      },
+      {
+        "term": "FDP（Flexible Data Placement）",
+        "explanation": "NVMe 2.1 的写入分组/标记机制，让主机把相关写入放到更接近的位置。"
+      },
+      {
+        "term": "SMR（Shingled Magnetic Recording）",
+        "explanation": "重叠磁道硬盘技术，通常更适合顺序写，随机写代价更高。"
+      },
+      {
+        "term": "Zoned XFS",
+        "explanation": "Linux 上面向 zoned device 的 XFS 变体，把数据放置控制下沉到文件系统层。"
+      }
+    ],
+    "context": "这篇 VLDB（Very Large Data Bases，数据库顶会）论文 How to Write to SSDs 讨论数据库在 SSD 上的写入方式如何影响 write amplification、性能下降和磨损，实验主要围绕 800GB 级别的 MySQL 和 PostgreSQL 工作负载。评论区补充说，arXiv 的扩展版加入了附录和 FAQ 式回答，适合追更多实验细节和方法边界。讨论把问题延伸到文件系统和设备层，包括 Zoned XFS（面向 zoned device 的 Linux 文件系统）、ZNS（Zoned Namespace，一种要求 zone 内顺序写的 NVMe 方案）以及 FDP（Flexible Data Placement，NVMe 2.1 的写入分组机制）。大家也在追问这些思路能否同样适用于 SQLite、PostgreSQL 这类现有 DBMS，还是会促成新的表格式、存储引擎或布局策略。",
+    "emoji": "💾",
+    "sarcastic_question": "连 PDF 都得先写进 SSD 才算实测吗？"
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "id": 48558147,
+  "by": "dzonga",
+  "title": "Stop Using JWTs",
+  "url": "https://gist.github.com/samsch/0d1f3d3b4745d778f78b230cf6061452",
+  "score": 370,
+  "createdAt": 1781637661,
+  "aiSummary": {
+    "chinese_title": "JWT适合服务间认证，浏览器会话别硬上",
+    "discussion_overview": [
+      {
+        "category": "浏览器登录态更适合 opaque cookie",
+        "summary": "多数评论把 JWT 的主要问题限定在 browser-based user sessions。大家普遍认为，把 JWT 当作网页登录的主会话凭证，会让注销、封禁、改密失效都变复杂；相比之下，opaque session ID + server-side session store 更短、更直观，也更符合 web 习惯。有人接受“先用 cookie 做 session，再按需签发短期 JWT”的混合方案，但不赞成把 JWT 直接当浏览器登录态。",
+        "supportid": [
+          "48560101",
+          "48563983",
+          "48561066",
+          "48564627",
+          "48561857",
+          "48561653",
+          "48560512"
+        ]
+      },
+      {
+        "category": "服务间认证与短期 token 的正当用途",
+        "summary": "另一派强调 JWT 在 service-to-service、machine-to-machine 和 OIDC 场景很常见。评论里举了 Google metadata server、Envoy、RabbitMQ、跨服务权限票据等例子，核心好处是下游节点只验签名、aud 和 exp，不必每次回源 session store。支持者认为短 TTL + refresh + RS256/PPK 足以让 JWT 成为实用的 access token，而不是长期登录态。",
+        "supportid": [
+          "48559864",
+          "48560417",
+          "48561031",
+          "48560083",
+          "48562785",
+          "48560390",
+          "48560642",
+          "48564340",
+          "48564855"
+        ]
+      },
+      {
+        "category": "撤销机制与“无状态”到底值不值",
+        "summary": "围绕撤销机制的争论最激烈。反对者说一旦要用 revocation list、nonce、jti、minimum_issued_at 或 per-user secret，JWT 的“无状态”优势就被削掉了，甚至不如直接存 session。支持者则反驳，真正需要维护的是一个只包含未过期撤销项的小表，通常比活跃 session 更小，也更容易在多区域复制；对跨洲系统来说，避免每次请求打回中央数据库才是关键。",
+        "supportid": [
+          "48562157",
+          "48559986",
+          "48560529",
+          "48560869",
+          "48562006",
+          "48561767",
+          "48563390",
+          "48563345",
+          "48561078",
+          "48561625",
+          "48560657"
+        ]
+      },
+      {
+        "category": "历史漏洞与库默认值",
+        "summary": "关于安全性，评论把焦点放在早期 JWT/JOSE 库的危险默认值上，比如 `alg: none`、public key 当 shared secret、以及各种验证绕过。有人认为这些问题早已被现代库和 RFC 8725 收紧默认值解决，按正确姿势使用并不复杂；另一边则坚持，协议若天然提供太多 foot-gun，本身就不算好设计。争论还顺带牵出 SAML、X.509 这类标准：不是不能用，而是实现面太大、攻击面太宽。",
+        "supportid": [
+          "48560023",
+          "48561302",
+          "48561386",
+          "48562607",
+          "48561160",
+          "48565098",
+          "48560694",
+          "48564552"
+        ]
+      },
+      {
+        "category": "替代方案与混合架构",
+        "summary": "替代方案主要集中在 PASETO、Macaroons 和各种混合架构。PASETO 被一些人视为更安全的 token 格式，但也有人吐槽它生态不足、官网证书都过期；Macaroons 则被认为更适合 attenuation、confinement 和第三方 delegation，尤其适合 agent 时代。还有人直接建议大多数场景用 opaque random string 就够了，或者让 cookie 负责登录、JWT 只负责短期 tenant-specific 权限票据。",
+        "supportid": [
+          "48562444",
+          "48563090",
+          "48565064",
+          "48565068",
+          "48564008",
+          "48560613",
+          "48563434",
+          "48564439",
+          "48562765"
+        ]
+      },
+      {
+        "category": "Cookies、localStorage 与 XSS/CSRF",
+        "summary": "评论还大量讨论 token 存储位置：localStorage、HttpOnly cookie、SameSite、Secure 各自的安全边界。支持 cookie 的人强调 HttpOnly 能阻止脚本直接窃取 token，localStorage 一旦泄露就能在有效期内离线重放；反对者则提醒，HttpOnly 只能防“偷”，挡不住 XSS 在受害者浏览器里直接发请求。争点最后落到一个更现实的问题：真正该控制的是 XSS 和 CSRF 风险，而不是简单地神化某一种存储介质。",
+        "supportid": [
+          "48564107",
+          "48559892",
+          "48562418",
+          "48560583",
+          "48562945",
+          "48561412",
+          "48563186"
+        ]
+      },
+      {
+        "category": "对标题与证据的质疑",
+        "summary": "很多人对这篇“Stop Using JWTs”的语气本身很反感，觉得它把一个工程取舍写成了绝对化口号。有人指出文中经常把 cookies 和 JWT 混为一谈，或者只拿个别实现漏洞当成标准本身有罪；也有人要求拿出实际攻击数据或严谨证据，而不是重复老掉牙的“不能单独撤销”论调。整体情绪更像是：JWT 有坑，但这篇标题太像 clickbait 了。",
+        "supportid": [
+          "48559822",
+          "48565173",
+          "48564426",
+          "48565218",
+          "48562946",
+          "48563563",
+          "48563256",
+          "48561926"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "JWT",
+        "explanation": "JSON Web Token，一种可签名的 bearer token，常用于身份断言和短期授权。"
+      },
+      {
+        "term": "JOSE",
+        "explanation": "JSON Object Signing and Encryption，JWT 相关的签名/加密标准家族。"
+      },
+      {
+        "term": "OIDC",
+        "explanation": "OpenID Connect，建立在 OAuth2 上的身份层协议，常发放 JWT 形式的 ID token。"
+      },
+      {
+        "term": "revocation list",
+        "explanation": "撤销列表，记录已失效但尚未过期的 token 或 session，用于提前作废登录。"
+      },
+      {
+        "term": "PASETO",
+        "explanation": "一种更保守的 token 格式，减少算法选择和误用空间。"
+      },
+      {
+        "term": "Macaroons",
+        "explanation": "支持 attenuation 和第三方 caveats 的授权 token，适合细粒度 delegation。"
+      }
+    ],
+    "context": "这次讨论围绕一篇强烈主张“别再在 web session 里用 JWT”的文章/ gist 展开，核心对象是 JWT（JSON Web Token，一种可签名的 bearer token）在浏览器登录、API 访问和分布式系统中的适用性。评论不断把 JWT 和 cookie session、OAuth2/OIDC（基于 OAuth2 的身份层协议）、JOSE（JSON Object Signing and Encryption，一组签名/加密标准）放在一起比较，因为很多争议其实来自“认证、授权、存储机制”被混在了一起。支持者强调短期 access token、跨区域验证和身份提供方分离；反对者强调撤销、XSS/CSRF、实现复杂度和 foot-gun。讨论还延伸到 PASETO（更保守的 token 格式）、Macaroons（可逐步收缩权限的 token）以及 revocation list、`iat`、`jti` 这些具体设计。",
+    "emoji": "🤨",
+    "sarcastic_question": "JWT真这么烂，怎么还没把全网炸穿？"
+  },
+  "articleSummary": "# 一句话总结\nJWT 根本就不该用来做用户登录态保持，既不安全也没必要，老老实实用服务端管理的 Session Cookie 才是正解。\n\n### JWT 的设计初衷其实并不包含“维持登录”\n很多开发者把 JWT 当作登录认证的银弹，但这其实是个误解。JWT 规范从设计之初，就只适用于生命周期极短的 Token（比如 5 分钟以内）。而用户登录会话通常需要保持几天甚至几周，这直接违背了 JWT 的设计初衷。如果你强行把 JWT 用在 Session 上，本质上是在用一个错误的工具干一件它不擅长的事。\n\n### 所谓的“无状态认证”在安全面前是个伪命题\n大家喜欢 JWT 的理由通常是“无状态”，服务端不需要存 Session 就能验证。但问题是，在真实场景下，想要安全地撤销 Token 或应对安全漏洞，你根本做不到完全无状态。你最终还是得在服务端维护一套状态（比如黑名单或 Token ID），既然都要存数据库了，那所谓的“无状态优势”就不复存在了。与其为了这点噱头去折腾 JWT，不如直接用成熟的 Session 方案，把数据都存在服务端，既简单又安全。\n\n### 把 JWT 存在 LocalStorage 是在给黑客开后门\n更糟糕的是，很多人为了方便，把 JWT 存在浏览器的 LocalStorage 里。这简直是安全灾难，因为任何运行在页面上的恶意 JavaScript 代码（比如 XSS 攻击）都能直接读取 Token。相比之下，标准的 Session Cookie 配合 `HttpOnly` 标志，可以杜绝 JS 脚本窃取 Token。所以，为了所谓的“开发便利”牺牲核心安全性，这笔买卖怎么算都亏。\n\n### JWT 规范本身的安全性就备受专家质疑\n抛开使用场景不谈，JWT 规范本身的安全性在安全专家圈子里也是声名狼藉。原始规范甚至允许通过算法混淆来伪造 Token，这种低级错误让人很难信任这个标准。虽然现在修复了一些问题，但作为一个安全相关的标准，它的历史包袱太重了。如果你确实需要短期的签名 Token，不如看看 PASETO 这种专门为安全设计的新标准，别在 JWT 这棵树上吊死。\n\n### 别被大厂的实践误导了，Google 也不这么用\n肯定有人会反驳：“Google 都在用 JWT！” 但其实 Google 并没有用 JWT 来维持浏览器端的用户登录 Session，他们用的依然是传统的 Cookie Session。Google 用 JWT 仅仅是在不同服务之间做单点登录（SSO）的数据传输，而且他们有顶级的安全团队来维护这套复杂的实现。对于绝大多数普通应用来说，盲目模仿这种做法，除了增加复杂度，没有任何好处。\n\n### 回归传统：Session Cookie 才是朴实无华且可靠的方案\n说了这么多，那到底该用什么？答案很简单：回归传统，用服务端管理的 Session Cookie。几乎所有主流的 Web 框架都内置了成熟的 Session 支持，配置起来非常简单。比如在 Node.js 的 Express 里，你只需要引入 `express-session` 中间件，再配个数据库存储（推荐用 `connect-session-knex` 接 PostgreSQL 或 MySQL）。别觉得这技术老，它之所以能存活这么久，就是因为它在安全性和可靠性上经过了时间的检验。"
+}

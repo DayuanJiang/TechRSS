@@ -1,0 +1,109 @@
+{
+  "id": 47966625,
+  "by": "KraftyOne",
+  "title": "Does Postgres Scale?",
+  "url": "https://www.dbos.dev/blog/benchmarking-workflow-execution-scalability-on-postgres",
+  "score": 126,
+  "createdAt": 1777579815,
+  "aiSummary": {
+    "chinese_title": "Postgres 扩展性之争：写入瓶颈、分区与 DBOS",
+    "discussion_overview": [
+      {
+        "category": "写放大与索引/分区调优",
+        "summary": "评论普遍认为，插入性能随着表和索引变大而下降，核心原因是 write amplification：每条写入都要同步维护所有索引。有人建议把最新数据放在只带 PK 的 Hot heap 表里，旧数据批量迁到带完整索引的 Cold 分区，把索引重算摊薄。另一些人推荐按单调递增 id 或时间戳做 range partitioning，最新分区少建索引，甚至用 BRIN 替代部分 BTREE 以降低写放大。调优建议还包括检查 COPY、多行 INSERT、fillfactor、max_wal_size、checkpoint_timeout、WAL 盘、vacuum，以及先排除 hash index 和 UUID 这类可能放大开销的因素。",
+        "supportid": [
+          "47969384",
+          "47971392",
+          "47968011",
+          "47970696",
+          "47968120",
+          "47971218",
+          "47969088",
+          "47970353",
+          "47971390"
+        ]
+      },
+      {
+        "category": "纵向扩展很强，但多核不线性",
+        "summary": "也有人强调，Postgres 的扩展性并不是“能不能用”的二元问题，而是多数项目根本不需要超出它的纵向能力。评论里指出，现代单机可以轻松给到数百核和数 TB RAM，但单个 PostgreSQL 实例对更多 CPU 核的收益并不线性，4–8 核倒是很轻松。还有人认为很多团队把 10 年后的极端规模想得过早，实际更常见的是先把业务跑稳，而不是先上分布式。另一个共识是：Postgres 的文档很好，但真正把它调到能跑高负载往往需要不少经验和手工操作。",
+        "supportid": [
+          "47967691",
+          "47971913",
+          "47970554",
+          "47970525",
+          "47970569"
+        ]
+      },
+      {
+        "category": "横向扩展与高可用仍是痛点",
+        "summary": "横向扩展和高可用被认为是 Postgres 的真正难点，但也不是完全没办法。评论中提到 patroni、etcd、HAProxy、CloudNativePG、Pigsty、Autobase、pgdog、Multigres、Neki 等工具或项目，目标分别是自动故障转移、集群管理、读写分离或更方便的多节点部署。问题在于，很多方案主要解决可用性和读扩展，而写入扩展、master-master 复制和跨节点一致性仍然很难。结果就是：能做出 HA，但通常要接受更多运维复杂度和更差的写性能。",
+        "supportid": [
+          "47967457",
+          "47967596",
+          "47967791",
+          "47967722",
+          "47970853",
+          "47972233",
+          "47969488",
+          "47967862",
+          "47971472"
+        ]
+      },
+      {
+        "category": "基准测试方法被质疑",
+        "summary": "对原文基准测试的质疑非常集中。有人指出把 144K writes/s 当成亮点很误导，因为图里 p50 在接近峰值时从 10ms 飙到 1s，已经是饱和状态，不是生产可用区间。另一些人认为这更多是在测当前 RDS 实例的 I/O 上限和 WAL 刷盘能力，而不是真正的 Postgres 上限；更合理的比较应该看更高 IOPS、local NVMe、以及 p95 和更长时间窗口。还有人补充说，300 秒测试太短，checkpoint、bgwriter、autovacuum 和 bloat 都会让长期表现变样。",
+        "supportid": [
+          "47970347",
+          "47970930",
+          "47968450",
+          "47968660",
+          "47971091"
+        ]
+      },
+      {
+        "category": "DBOS/Temporal 与 Postgres 工作流层",
+        "summary": "另一条支线把话题转向 DBOS 这个基于 Postgres 的 durable workflows/queues 层，以及它和 Temporal 的对比。支持者认为，Postgres 本身足够强，配合 DBOS 可以把 Python 的长任务、队列和工作流做得很轻量，甚至能支撑每天约 40 亿次 workflow。质疑者则盯住 Conductor、executor recovery 和商业许可，担心有些能力被服务化或收费；回应则是 Conductor 只是可选，Workflow/queue 本身可自托管。Temporal 这边则被指出更老、更成熟、MIT 开源且可自建，因此很多采用差距更像是时间和生态差，而不只是产品优劣。",
+        "supportid": [
+          "47967329",
+          "47971818",
+          "47970487",
+          "47970767",
+          "47968191",
+          "47968838",
+          "47969525",
+          "47970314"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "WAL",
+        "explanation": "Write-Ahead Log，Postgres 先写入的恢复日志；大量写入时常成为瓶颈。"
+      },
+      {
+        "term": "B-tree / BTREE",
+        "explanation": "Postgres 最常见的通用索引类型，写入时需要随每条数据一起维护。"
+      },
+      {
+        "term": "BRIN",
+        "explanation": "Block Range Index，适合按时间或范围顺序增长的大表，写入开销通常比 B-tree 更低。"
+      },
+      {
+        "term": "autovacuum",
+        "explanation": "Postgres 自动清理 dead tuples 的后台机制，配置不当会影响长时间写入性能。"
+      },
+      {
+        "term": "checkpoint",
+        "explanation": "将脏页刷回磁盘并推进恢复点的过程，频繁或配置不佳会放大写入抖动。"
+      },
+      {
+        "term": "partitioning",
+        "explanation": "把大表拆成多个分区来隔离热数据和冷数据，常用于缓解写入和索引维护压力。"
+      }
+    ],
+    "context": "这篇讨论源自一篇用 AWS RDS（Amazon 的托管数据库服务）上的 PostgreSQL（开源关系型数据库）做写入基准的文章，原文试图说明它能支撑每天数十亿次 workflow。评论区首先争论的是：这到底是在测 Postgres，还是在测 WAL 刷盘和索引维护的上限。有人拿同硬件上的 MySQL/InnoDB 作对比，认为 Postgres 在索引增长后更早出现写入衰减；也有人指出，换成分区、BRIN、COPY、autovacuum 调优或更合理的 checkpoint 配置后，结果会很不一样。后半段讨论则延伸到 DBOS（一个基于 Postgres 的 durable workflows/queues 层）与 Temporal（一个 durable workflow 平台）的比较，以及 Postgres 在 HA/横向扩展上需要的工具链，如 patroni、etcd、HAProxy 和 CloudNativePG。",
+    "emoji": "🤨",
+    "sarcastic_question": "144K 写入一到峰值就抖成这样，也叫扩展？"
+  },
+  "articleSummary": "# 一句话总结\n别急着分库分表，一台配置够顶的 Postgres 单机就能抗住每天 120 亿次写入或处理 40 亿个工作流。\n\n---\n\n### 真正的瓶颈不在硬件，而在 WAL 刷盘\n作者先测了 Postgres 的“裸”写入性能，用大量 Python 客户端往一个简单的三列表里插数据。结果相当惊人：单机居然撑到了 **144K writes/s**。为了搞清楚天花板在哪，作者没只看 CPU 或 IOPS 这种表面指标，而是去查了 `pg_stat_activity`。有意思的地方在于，虽然 CPU 和磁盘都没跑满，但瓶颈出现了——**WAL（Write-Ahead Log）**。Postgres 的机制是先把改动写进 WAL，刷盘（fsync）成功后才告诉客户端“搞定”，真正的数据页更新是后台异步做的。因为所有写操作都要排队等这一个 WAL 刷盘，所以不管你硬件多强，这里就是那个绕不过去的“独木桥”。\n\n### 工作流场景下的性能折损\n光测简单的 INSERT 还不够，作者模拟了真实的“持久化工作流”负载。这种工作流为了不丢状态，生命周期里至少要写两次库：开始一次，结束一次。测试结果显示，单机能处理 **43K workflows/s**。这比刚才的 144K raw writes 低了不少，原因很直接：一是工作流本身涉及多次写入（43K 工作流实际上对应了 86K 次数据库写操作），二是工作流表结构复杂得多（31 列、9 个索引），刷一次 WAL 需要处理的数据量更大。但即便如此，这个量级也意味着每天能处理 **40 亿个工作流**，对绝大多数应用来说都绰绰有余。\n\n### 引入队列后，锁竞争成了新麻烦\n接下来的测试更贴近生产环境：客户端把任务塞进 Postgres 队列，Worker 再从队列里取出来执行。这种模式下，一个任务要触发 4 次写入。结果性能掉到了 **12.1K workflows/s**。这次瓶颈变了，不再是 WAL，而是**锁竞争**。因为所有 Worker 都盯着队列头部的几行记录抢着读（尽管用了 SKIP LOCKED 优化），并发一高，大家都在等锁。作者还提了个细节，因为 Python 效率相对低，需要开很多客户端才能把库打满，这反而加剧了抢锁的情况。\n\n### 用“多队列”策略找回性能\n既然大家都抢一个队列的头部导致锁竞争，那解决办法就是把队列拆散。作者测试了把任务分发到多个队列（或者叫分区）的效果。随着队列数量增加，吞吐量确实上去了，最终达到了 **30.6K workflows/s**。这大概是直接启动工作流性能的三分之二，这个差距是合理的，毕竟队列模式多了额外的写入开销。在这个规模下，瓶颈又乖乖地回到了 WAL 刷盘上。这说明只要解决了锁竞争，Postgres 的吞吐能力依然强悍，根本不需要急着上复杂的分布式方案。"
+}

@@ -1,0 +1,86 @@
+{
+  "id": 49970871,
+  "by": "E-Reverance",
+  "title": "Dust: Pretraining Transformers Without Backpropagation",
+  "url": "https://qlabs.sh/research/dust",
+  "score": 232,
+  "createdAt": 1791237042,
+  "aiSummary": {
+    "chinese_title": "Dust 无反传预训练：高成本零阶搜索的并行与扩展性之争",
+    "discussion_overview": [
+      {
+        "category": "零阶方法被认为难敌精确梯度",
+        "summary": "批评者认为，Dust 本质上是对权重施加扰动、用大量 forward pass 做 Monte Carlo 估计，再据此寻找更新方向；相较 backprop 直接给出梯度，这既慢又不新颖。对于常见的平滑或 Lipschitz 神经网络目标，梯度提供的信息会随参数维度增大而更有价值，而随机方向的命中率并不会同样改善。评论还指出，Lipschitz 凸优化中 gradient-based 与 derivative-free 方法存在严格复杂度差距；即使神经网络是非凸的，也缺乏理由相信这一劣势会彻底反转。若目标是实际训练效率，更值得探索的是 Muon 这类利用神经网络结构的 gradient-based optimizer。",
+        "supportid": [
+          "49974026",
+          "49974043",
+          "49973983"
+        ]
+      },
+      {
+        "category": "可能价值在于绕开 Hessian 条件与探索新轨迹",
+        "summary": "支持者认为，backprop 的收敛会受 Hessian conditioning 影响，因此不依赖显式反向微分的优化方式或许能避开某些病态条件。evolutionary methods 虽然昂贵且朴素，但适用范围更广，因而值得重新研究，而不应仅按单次训练成本否定。也有人将两类算法置于 Empirical Risk Minimisation 所限定的 Pareto frontier 中，认为它们仍在同一数据驱动的性能边界内竞争。实验中最出人意料的信号是，Dust 的 243M 模型在多数 population size 下优于一个小约 120 倍的模型，暗示增大模型未必会让这种群体式搜索的样本效率恶化。",
+        "supportid": [
+          "49973704",
+          "49974088",
+          "49972849"
+        ]
+      },
+      {
+        "category": "并行化优势取决于硬件与通信结构",
+        "summary": "提问者将 Dust 理解为计算效率较低、但更易并行；回复认为这并不自动成立，因为 backprop 本身主要也是高度并行的 matrix multiplication。支持替代路线的一方强调，Neural Predictive Coding（NPC）等局部、异步规则不需全局严格协调，若有匹配的硬件，可能降低同步和能耗负担；在超大规模及深度维度上，零阶方法也可能减少 pipeline parallel 的 bubbles。反方则指出，现有 GPGPU 对全局协调、带宽和快速读写内存非常友好，缺少 backprop 往往要以更多 FLOPs 和更差 sample efficiency 为代价。即使将网络拆到多台机器，层间 activation 和梯度仍须跨边界传输大量数据，训练基础设施的核心难题仍是以最少通信维持同步。",
+        "supportid": [
+          "49971488",
+          "49971640",
+          "49973430",
+          "49972217",
+          "49972645",
+          "49973187"
+        ]
+      },
+      {
+        "category": "生物启发的局部学习并非直接适合 GPU",
+        "summary": "讨论将大脑和 GPU 视为两种约束完全不同的计算 substrate：大脑的物理连线、带宽和快速工作记忆昂贵，因而更自然地采用局部、异步、递归的数据流。GPGPU 则拥有可复用的通用计算单元和廉价的全局协调，Transformer 的 many-to-many attention 与反向传播反而适配这种结构。NPC 被提及为更具生物合理性的路线，因为权重可局部更新；PCL 还进一步最小化 activation energy 并加入 inhibitory neurons。评论同时提醒，不能只用设备峰值功率比较大脑和 LLM：每项任务的耗电、速度、通信与记忆成本必须一并比较。",
+        "supportid": [
+          "49972392",
+          "49972217",
+          "49972427",
+          "49972786",
+          "49973008"
+        ]
+      },
+      {
+        "category": "在线持续学习仍受遗忘问题制约",
+        "summary": "有人设想把无反传方法用于已由 backprop 训练的 checkpoint 微调，或在不同训练阶段切换，以探索是否能进入不同的学习轨迹。另一个潜在用途是让模型持续 live-training，获得类似 neuroplasticity 的能力；Dust 因无需保存大量反向传播中间状态，训练内存可能仅需关注每层输入 activation。可是这并不解决 catastrophic forgetting：模型吸收新数据时会覆盖旧知识。Transformer 也缺少按既有知识评估更新价值、以及将不同功能隔离保护的内在机制，因此不会因换用 Dust 就自然拥有持续学习能力。",
+        "supportid": [
+          "49971693",
+          "49972571",
+          "49973045",
+          "49973020"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Backpropagation（反向传播）",
+        "explanation": "通过链式法则从损失向后计算各参数梯度的训练方法，是当前 Transformer 预训练的标准方案。"
+      },
+      {
+        "term": "Derivative-free / zeroth-order optimization（无导数／零阶优化）",
+        "explanation": "不直接计算梯度，而是根据扰动参数后的目标值变化来估计更新方向；通常需要更多函数评估。"
+      },
+      {
+        "term": "Neural Predictive Coding（NPC）",
+        "explanation": "一种以局部预测误差更新权重的学习框架，目标是在特定条件下逼近 backprop 的梯度，同时减少全局同步。"
+      },
+      {
+        "term": "Catastrophic forgetting（灾难性遗忘）",
+        "explanation": "模型继续用新数据训练时，性能会显著损失先前学到任务或知识的现象。"
+      }
+    ],
+    "context": "Dust 是一种尝试在 Transformer 预训练中不用 backpropagation 的方法；评论将其描述为通过多组权重扰动和 forward pass 的结果来选择或估计更新方向，因此属于 derivative-free（无导数）或 zeroth-order（零阶）优化路线。它所挑战的是当今依赖 GPU 大规模矩阵乘法、前向加反向传播以及复杂分布式同步的主流训练栈。讨论也关联到 Neural Predictive Coding（NPC，一类基于局部预测误差的异步学习方法）、evolutionary methods（群体搜索式优化）和 continual learning（持续学习）等替代范式。争议焦点在于：Dust 的实验扩展信号是否足以抵消其大量额外 forward pass、较差样本效率和通信协调问题。",
+    "emoji": "🤔",
+    "sarcastic_question": "多跑千次前向传播，就能替代梯度了？"
+  },
+  "articleSummary": "## 一句话总结\nDust 通过在激活空间进行扰动，将 Evolution Strategies (ES) 的种群概念“虚拟化”到了每一个 Token 上，首次实现了在 Transformer 预训练任务上与 Backpropagation 分庭抗礼，甚至在特定计算规模下超越后者。\n\n## 正文\n\n### 深度学习的“苦涩教训”与 Backprop 的王座\n深度学习过去十年的繁荣，本质上是 Backpropagation（反向传播）、可微架构与专用硬件协同进化的结果。Backprop 固然高效，但它是一个强约束：它要求函数必须可微，且限制了我们对 Loss Landscape 的探索方式。这让人联想到 Sutton 提出的“苦涩教训”——那些依赖人类先验（如可微性）的方法，在算力爆炸的时代往往会被更通用的暴力搜索方法取代。就像 AlphaGo Zero 最终超越了人类知识辅助的版本，我们不禁要问：如果不再依赖 Backprop 的解析梯度，而是用纯粹的搜索算法来训练大模型，会发生什么？\n\n### 传统 ES 的算力瓶颈\n想用搜索替代 Backprop，最直接的路径是 Evolution Strategies (ES)。传统的 ES 方法（如 EGGROLL）在权重空间做扰动，通过评估扰动后的模型表现来估计梯度。但问题在于“种群成本”：每一个种群成员都需要一份独立的权重拷贝和一次独立的前向传播。这意味着，即便使用低秩扰动，种群大小依然受限于你能并行跑多少个 Batch。在动辄千亿参数的今天，这种“一人一票”的评估方式在算力上不仅奢侈，而且低效。\n\n### 巧妙的“虚拟种群”设计\nDust 的核心创新在于它换了一个空间做文章：与其扰动权重，不如扰动激活值。这就是所谓的 Node Perturbation。在 Transformer 中，作者对每个 Token 的线性层输出独立添加高斯噪声。这一招妙在“借力”：一个 Sequence 有几千个 Token，一次前向传播就能并行评估几千个“虚拟成员”的表现。这就好比你不需要为每个士兵单独组织一场演习，而是让他们在同一场战役中各自为战，最后根据战果论功行赏。通过这种方式，Dust 把种群大小扩大了三个数量级，且无需实际复制权重。\n\n### 既然扰动，如何论功行赏？\n有了扰动，下一步就是 Credit Assignment（功劳分配）。Dust 的逻辑很直观：如果一个 Token 处的扰动降低了该位置的 Loss，那这个扰动就是好的，应该被强化。具体来说，对于线性层，Dust 计算扰动前后的 Loss 差值作为 Reward，然后用 Reward 加权的噪声平均值来估计输出端的误差。最后，利用前向传播已保存的输入，通过外积算出权重梯度。这和 Backprop 的数学形式惊人地一致，唯一的区别在于：Backprop 靠链式法则精确计算误差，而 Dust 靠大规模种群投票来估计误差。\n\n### 竟然真的能打：超越 Backprop 的可能性\n实验结果令人意外。这是首个在 Transformer 预训练任务上能和 Backprop 叫板的 Zeroth-order 方法。更有意思的是，在种群规模足够大（即算力充足）的情况下，Dust 甚至在多个场景下超越了 Backprop。这暗示了一个颠覆性的可能：Backprop 也许只是低算力时代的局部最优解，而在高算力体制下，基于搜索的方法可能探索到更好的解。此外，Dust 比基于权重的 ES 方法（如 EGGROLL）效率高出 $10^3$ 到 $10^4$ 倍，彻底打破了 ES 无法 Scale 的刻板印象。\n\n### 大模型反而更“省心”\n通常我们认为模型越大，优化越难，需要的样本越多。但 Dust 揭示了一个反直觉的现象：更大的模型反而更具“种群效率”。实验显示，243M 参数的模型在大多数种群规模下都优于 120 倍小的模型。这说明过参数化不仅提供了更多参数，还可能提供了更好的搜索几何结构。随着种群增大，Dust 估计的梯度与 Backprop 的真实梯度对齐度越来越高，且这种对齐在高达 1B Token 的规模上依然稳健，证明了其 Scaling 潜力。\n\n### 算力换自由：通往未来的钥匙\n当然，Dust 目前并不是来“终结” Backprop 的。作者很坦诚：现在的它还需要更多算力才能达到同等效果，短期内不是为了替代现有的训练流程。但它的意义在于打破了“Backprop 不可替代”的神话，为那些 Backprop 难以处理的架构（比如带有外部程序循环、或者需要长时间回溯的 Transformer）打开了大门。这是一次回归“第一性原理”的尝试——当我们不再执着于可微性，转而拥抱更通用的搜索算法时，也许才是通向更强泛化能力的开始。"
+}

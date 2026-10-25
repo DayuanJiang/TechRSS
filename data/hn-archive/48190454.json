@@ -1,0 +1,73 @@
+{
+  "id": 48190454,
+  "by": "LelouBil",
+  "title": "CISA Admin Leaked AWS GovCloud Keys on GitHub",
+  "url": "https://krebsonsecurity.com/2026/05/cisa-admin-leaked-aws-govcloud-keys-on-github/",
+  "score": 321,
+  "createdAt": 1779203426,
+  "aiSummary": {
+    "chinese_title": "CISA 管理员泄露 AWS GovCloud 密钥，内部密码表也外泄",
+    "discussion_overview": [
+      {
+        "category": "直接失误与严重疏忽",
+        "summary": "评论者普遍认为这不是普通失手，而是明显的 gross negligence：AWS GovCloud 密钥被放到 GitHub 之后，即使有人主动提醒，泄露方也没有及时响应。更糟的是，后续还发现了 `AWS-Workspace-Firefox-Passwords.csv` 这类文件，里面竟然保存着多个 CISA 内部系统的明文用户名和密码。大家把矛头指向弱密码、缺少密码管理器和基本流程失守，认为这类问题“离谱到不该发生”。",
+        "supportid": [
+          "48194131",
+          "48194376",
+          "48194427"
+        ]
+      },
+      {
+        "category": "LLM 与 secrets 的扩散风险",
+        "summary": "另一组评论把事件延伸到更广泛的 secrets 管理问题：`.env`、日志、磁盘上的配置文件都可能被 LLM 读到，从而把敏感信息带出原本受控的环境。有人担心把本地文件交给 ChatGPT、Claude、Anthropic 或 OpenRouter 时，模型会直接读取整份文件，甚至让秘密在不知不觉中暴露。对应的建议很一致：定期审计和轮换 secrets，尽量用 SOPS、Vault 这类工具，减少明文落盘的时间和范围。",
+        "supportid": [
+          "48193806",
+          "48194346",
+          "48194182",
+          "48193934",
+          "48194164"
+        ]
+      },
+      {
+        "category": "API key 正在被 workload identity 取代",
+        "summary": "有评论借机主张应该尽快摆脱 API key 这种长期静态凭据，因为它们容易过度授权、也更容易泄露。替代方案被点名为 workload identity、roles 和 OIDC 这类机制：让运行中的服务拥有自己的身份，再按最小权限分配访问范围，而不是共享一把可复制的密钥。讨论里也提到，云厂商已经在推动这种迁移，但并不是所有平台都跟上了。",
+        "supportid": [
+          "48194125",
+          "48194147",
+          "48194421",
+          "48193964"
+        ]
+      },
+      {
+        "category": "机构层面的反复失守",
+        "summary": "还有评论指出，这并不是孤立事件，同一机构此前还被曝把敏感文档上传到 ChatGPT，说明问题更像是持续性的内部纪律和流程失效。有人把责任进一步归到当前管理层，认为他们没有为这种局面做好准备，也没有建立足够的控制措施。整体来看，这条线把事故解释成组织治理失败，而不只是某个管理员的一次误操作。",
+        "supportid": [
+          "48193853",
+          "48194305"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "AWS GovCloud",
+        "explanation": "AWS 面向政府和受监管工作负载的隔离云区域，通常用于更严格的合规场景。"
+      },
+      {
+        "term": "API key",
+        "explanation": "用于调用服务的长期凭证，若泄露，攻击者可直接冒用权限。"
+      },
+      {
+        "term": "workload identity",
+        "explanation": "给服务或机器分配独立身份并按最小权限授权，用来替代共享的静态密钥。"
+      },
+      {
+        "term": "SOPS/Vault",
+        "explanation": "用于加密和集中管理 secrets 的工具，减少明文密码和密钥直接出现在磁盘或代码中。"
+      }
+    ],
+    "context": "这条新闻说的是美国 CISA（Cybersecurity and Infrastructure Security Agency，负责联邦网络安全的机构）的一名管理员或承包方，把 AWS GovCloud（AWS 面向政府工作负载的隔离云区域）密钥放到了 GitHub 上。评论里又提到一个 `AWS-Workspace-Firefox-Passwords.csv` 文件，里面存着多个内部系统的明文账号密码，说明问题已经不只是单个 key 泄露，而是整套 secrets 管理都很松散。另有评论提到同一机构还把敏感文档上传到 ChatGPT，进一步把讨论推向“内部信息随手乱放”的风险。围绕这件事，大家在争论静态凭据、`.env` 文件、日志和 LLM 访问本地文件的风险，以及是否应该尽快用 roles、OIDC、SOPS、Vault 这类方式替换掉明文 secrets。",
+    "emoji": "😬",
+    "sarcastic_question": "连CISA都把密钥贴GitHub了，还谈什么安全治理？"
+  },
+  "articleSummary": "## 一句话总结\n美国网络安全局 CISA 的一名承包商把 GitHub 仓库当成了私人网盘，不仅把 AWS GovCloud 的高密密钥和明文密码传到了公网，甚至还手动关闭了 GitHub 的密钥检测功能，导致了近年来最尴尬的政府数据泄露事件。\n\n### 并不是所有仓库都适合叫 \"Private-CISA\"\n这事儿起因是 GitGuardian 的研究员 Guillaume Valadon 发现了一个名为 \"Private-CISA\" 的 GitHub 仓库。虽然名字里带着 \"Private\"（私有），但它实际上是一个完全公开的仓库。这里面存的东西简直让人不敢相信：不仅有云密钥、Token，还有明文密码、日志，甚至详细记录了 CISA 内部是如何构建、测试和部署软件的。Valadon 说他一开始以为这是假的，因为内容太敏感了，结果深入分析后发现，这竟然是真的。对于负责国家基础设施安全的 CISA 来说，这简直是教科书级别的安全卫生反面教材。\n\n### 为了方便，亲手关掉了最后一道防线\n最让人无语的不是泄露本身，而是泄露的方式。Valadon 查看提交日志发现，这位管理员不仅把敏感文件传上去了，还特意运行命令禁用了 GitHub 默认的 \"Secrets scanning\" 功能。这个功能本来能自动阻止用户发布 SSH 密钥或其他机密信息，算是 GitHub 提供的最后一道防线。为了方便上传，这道防线被手动关掉了。仓库里还有一个叫 \"importantAWStokens\" 的文件，里面直接躺着三个 AWS GovCloud 服务器的管理员凭证，简直是把大门钥匙挂在了门把手上。\n\n### 把 GitHub 当成同步盘，后果很严重\n安全专家 Philippe Caturegli 验证了这些凭证的有效性，发现它们确实能以高权限登录三个 AWS GovCloud 账户。他还发现了一个更有意思的细节：这个仓库似乎被承包商当成了工作笔记本或者同步工具。因为仓库里混合使用了 CISA 关联邮箱和个人邮箱，这看起来像是有人在用 GitHub 同步工作电脑和家里的电脑文件。这种操作模式虽然方便了个人，但直接把内部系统的凭证暴露在了公网之上，包括一个叫 \"LZ-DSO\" 的安全开发环境。\n\n### 攻击者梦寐以求的 \"持久化\" 入口\n除了云服务器凭证，仓库里还泄露了 CISA 内部 \"artifactory\"（代码包仓库）的明文密码。Caturegli 指出，这才是最危险的地方。Artifactory 存放着他们构建软件所需的所有代码包，如果攻击者在这里植入后门，那么 CISA 每次构建新软件时，都会自动部署这个后门。这相当于拿到了一个持久化的 foothold（立足点），可以在内网横向移动。虽然目前没有迹象表明数据已被恶意利用，但这个潜在的风险窗口是巨大的。\n\n### 密码简单到令人发指，撤销速度慢得离谱\n虽然 CISA 发言人回应说目前没有数据被泄露的迹象，但这次暴露的时间跨度长得吓人。这个仓库创建于 2025 年 11 月，而承包商的账号早在 2018 年就有了。更有趣的是，即使 KrebsOnSecurity 和 Seralys 通知了 CISA，仓库被下线后，那些暴露的 AWS 密钥竟然在 48 小时后依然有效。此外，承包商使用的密码策略也非常弱，很多密码就是平台名加上年份（比如 \"PlatformName2026\"），这种弱密码即便在内网也是巨大的安全隐患。\n\n### 人员流失与安全崩塌的连锁反应\n最后，这起事故也折射出 CISA 目前面临的窘境。自第二届特朗普政府开始以来，该机构失去了近三分之一的工作人员，被迫进行早期退休、买断和裁员。在预算和人员都捉襟见肘的情况下，运营安全（OpSec）的标准显然难以维持。虽然 CISA 表示会对团队成员保持最高标准的诚信要求，但这次由 Nightwing 承包商引起的泄露，无疑给这个本就艰难的时期又添了一道丑陋的伤疤。"
+}

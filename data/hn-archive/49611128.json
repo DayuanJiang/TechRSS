@@ -1,0 +1,158 @@
+{
+  "id": 49611128,
+  "by": "stared",
+  "title": "Benchmarking Qwen3.8 27B quantizations: 4-bit holds up, 1-bit collapses",
+  "url": "https://quesma.com/blog/qwen38-27b-quantizations-benchmarked/",
+  "score": 246,
+  "createdAt": 1788882629,
+  "aiSummary": {
+    "chinese_title": "Qwen3.8-27B量化实测：4-bit稳、1-bit塌，3-bit和KV cache成焦点",
+    "discussion_overview": [
+      {
+        "category": "评测统计与随机基线",
+        "summary": "有人先质疑文章把 Wilson 95% confidence intervals 解释成 run-to-run 波动，指出这种区间只说明重复抽样时覆盖真实参数的频率，并不等于单次重跑的不确定性。随后回复把 confidence interval、prediction interval 和 Bayesian credible interval 区分开来，还用高斯分布与 posterior predictive distribution 解释为什么同一任务集重跑时结果可能大幅摆动。另一个分支追问为什么分数会落到 random guessing 附近甚至更低，得到的解释是 multiple-choice 题里可能有 trick questions，baseline 也要看评分定义。",
+        "supportid": [
+          "49612046",
+          "49613783",
+          "49614218",
+          "49614794",
+          "49612281",
+          "49612857",
+          "49614350",
+          "49614528"
+        ]
+      },
+      {
+        "category": "低比特靠“多想”补偿",
+        "summary": "一种主流解读是：低比特量化会改变 next-token 分布，但模型可以通过“多想一会儿”把损失补回来。有人推测 Qwen3.8-27B 在 XHIGH reasoning 模式下会生成更多 token，因此即使 4-bit、3-bit 的每步概率略差，最终成功率也能接近 bf16。讨论里还提到 decode 往往是 bandwidth-bound，所以更小的模型即便多吐一些 token，整体未必更慢；但在边界任务上，Q5、Q6 之外很快就会碰到明显 cliff。",
+        "supportid": [
+          "49612992",
+          "49613097",
+          "49613685",
+          "49613714",
+          "49613891",
+          "49613098",
+          "49613522",
+          "49613183",
+          "49614172",
+          "49614060",
+          "49612349"
+        ]
+      },
+      {
+        "category": "3-bit、KV cache 与显存诉求",
+        "summary": "很多评论其实更关心“哪种量化才能塞进哪块卡”。有人明确指出，真正关键的是 16GB 以下显卡的 3-bit 区间，因为它往往能把 100k+ context 和可接受性能一起装进来，而 4-bit 在这种容量下常常不够用。也有人追问不同 4-bit 方案（如 Q4_K_M、NVFP4）和动态 3-bit GGUF 的差异，以及 KV cache quantization 在长上下文里到底能省多少显存。跟帖里还出现了 RX 9070XT、5060 Ti、RTX 5090、M1 Max、RTX 3090 等实测，说明大家更想要的是“在手头硬件上到底怎么跑得动”。",
+        "supportid": [
+          "49611970",
+          "49612375",
+          "49615745",
+          "49613194",
+          "49612516",
+          "49612755",
+          "49612305",
+          "49612782",
+          "49613575",
+          "49614010",
+          "49615504",
+          "49612926",
+          "49612850",
+          "49613628",
+          "49613840",
+          "49615483",
+          "49615427",
+          "49614416",
+          "49612491",
+          "49614519",
+          "49614092"
+        ]
+      },
+      {
+        "category": "1-bit 塌缩与低比特极限",
+        "summary": "关于 1-bit，评论几乎是一边倒地悲观：正常预训练好的模型直接压到 1-bit，通常只会“塌掉”，想要可用效果得在 pre-training 阶段就做 QAT，而且需要远超常规规模的数据补偿。现实使用里，2-bit 也被吐槽成慢到几乎没法干活，说明低比特不只是质量问题，还是实际吞吐问题。还有人拿自制 benchmark 说事，认为某些任务在 Q5/Q6 就已经到边缘了，因此“4-bit 以上就没差别”并不成立。",
+        "supportid": [
+          "49614653",
+          "49614457",
+          "49613285",
+          "49614060",
+          "49614213",
+          "49614261",
+          "49612569"
+        ]
+      },
+      {
+        "category": "文章可读性与 LLM 写作争议",
+        "summary": "帖子本身也引发了对文章写作方式的争论：有人觉得 prose painful、图表标注含糊，怀疑作者是不是用 LLM 写了大部分内容。作者回应说只用了 AI 做 proofreading，图表虽然是 vibe-coded，但也经过不少手工修正，自己才是写作者。评论区因此延伸到一个更大的问题：面对 AI 辅助文章，应该看它是不是“像人写的”，还是只看它是否准确、紧凑、值得花时间读；也有人直说，LLM 时代最宝贵的是别浪费读者注意力。",
+        "supportid": [
+          "49612561",
+          "49613214",
+          "49612662",
+          "49612864",
+          "49612835",
+          "49615852",
+          "49612914",
+          "49613877",
+          "49613701",
+          "49612799",
+          "49612885",
+          "49613432",
+          "49613630",
+          "49615076",
+          "49612620",
+          "49612823",
+          "49615224"
+        ]
+      },
+      {
+        "category": "本地模型可用性 vs 云端",
+        "summary": "在“本地模型到底有没有用”的问题上，评论出现了明显分歧。悲观者认为 consumer compute 还不够，旧 Mac 上的 Qwen3.8-27B 太慢，直接用 cloud frontier model 更便宜也更稳定；乐观者则反驳说，像 RTX 5060 这种卡已经能把 4-bit Qwen3.8-27B 跑到可用速度，甚至能做 coding 和 debugging。也有人把它和 Claude Opus、DeepSeek V4 Flash、MiMo V2.5、Qwen3.6-35B-A3B 对比，结论大致是：本地模型已经能覆盖一部分 surgical edits 和离线任务，但离全面替代 frontier models 还差得远。",
+        "supportid": [
+          "49612780",
+          "49613794",
+          "49614134",
+          "49614446",
+          "49612053",
+          "49612229",
+          "49612349",
+          "49613962",
+          "49612529",
+          "49612241",
+          "49614092"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Terminal Bench 2.1",
+        "explanation": "一个偏终端/命令行任务的 benchmark，用来测模型在 shell、脚本和工具调用上的表现。"
+      },
+      {
+        "term": "bf16",
+        "explanation": "Brain Floating Point 16，一种常用的 16-bit 浮点 baseline 精度。"
+      },
+      {
+        "term": "Q4_K_M",
+        "explanation": "llama.cpp / GGUF 里常见的 4-bit quantization 格式，常被当作本地模型基准配置。"
+      },
+      {
+        "term": "KV cache quantization",
+        "explanation": "把 attention 的 key/value cache 也压缩，主要用来节省长上下文所需的 VRAM。"
+      },
+      {
+        "term": "GGUF",
+        "explanation": "llama.cpp 生态常用的模型文件格式，便于本地加载各种 quantized models。"
+      },
+      {
+        "term": "QAT",
+        "explanation": "Quantization-Aware Training，先在训练阶段考虑量化误差，以提升极低比特模型可用性。"
+      },
+      {
+        "term": "Wilson 95% confidence interval",
+        "explanation": "一种比例/二项估计的置信区间方法，但它不等于单次重跑的波动范围。"
+      }
+    ],
+    "context": "这篇帖子围绕 Qwen3.8-27B（一个约 270 亿参数的 open-weight LLM）在不同量化精度下的 benchmark 展开，重点是从 bf16 一路压到 4-bit、3-bit、2-bit 乃至 1-bit 后，Terminal Bench 2.1 这类终端/命令行任务还能保留多少能力。量化能显著减少显存占用，让 16GB 左右的消费级 GPU 也有机会跑大模型，但代价通常是速度、上下文长度或边界任务稳定性。评论里还反复提到 KV cache quantization、GGUF（llama.cpp 常用的模型格式）、Q4_K_M、IQ3、NVFP4 等实现细节，因为这些直接决定了本地部署是否可行。整场争论其实是在问：对 coding 和 agent 工作流来说，模型“够用”的门槛到底在哪里，以及 benchmark 应该如何同时衡量准确率、推理 token 数和硬件成本。",
+    "emoji": "🤔",
+    "sarcastic_question": "都压成1bit了，还想它稳得像bf16？"
+  },
+  "articleSummary": "## 一句话总结\n对于 Qwen3.8 27B 模型，4-bit 量化是性价比之王，性能几乎无损且能塞进 24GB 显存；但千万别碰 1-bit 量化，那是真的会“变傻”。\n\n## 正文\n\n### 4-bit 竟然是“满血”平替？\nQwen3.8 27B 的全量 `BF16` 模型足足有 55 GB，这体积直接把大多数消费级显卡拒之门外。但如果你把目光转向 Unsloth 的 `Q4_K_M` 量化版，情况就完全不同了。这个版本体积缩水到 17 GB，不仅能轻松塞进 RTX 4090（24 GB），还能留出约 64k tokens 的显存给上下文。更关键的是，在 Terminal-Bench 2.1 这种硬核的 Agent 编程基准测试中，它的得分竟然和全量模型一模一样。这意味着，只要你不追求极致的 1-bit 压缩，你完全可以在家用显卡上跑“满血”版模型。\n\n### 量化到底伤不伤筋动骨？\n量化这事儿，社区里一直有争议，很多人抱怨量化后的模型“变笨了”。作者之前的测试也发现，单纯看 KL 散度或者 token 预测差异，其实很难判断模型解决实际任务的能力是否下降。有时候模型只是换了个说法，答案质量没变；有时候一个关键 token 预测错了，整个逻辑就崩了。所以这次作者直接上硬菜：跑 GPQA Diamond（科学问答）、IFBench（指令遵循）和 Terminal-Bench 2.1（编程任务）。这可是个烧钱的活，作者在 Modal 上烧了大约 3000 美元的 GPU 费用，用的还是 L40S、H100 和 H200 这种高端卡。\n\n### 2-bit 还能打，1-bit 直接“脑死亡”\n测试结果很有意思。在 GPQA Diamond 和 IFBench 上，`Q4_K_M` 和 `Q8_0` 的表现几乎没区别，甚至 2-bit 的 `UD-Q2_K_XL` 也只是轻微掉点，依然能打。但一旦到了 1-bit，画风突变。在 GPQA Diamond 上，1-bit 模型的得分直接跌到了随机猜测的水平。更讽刺的是，作者发现“思考”得越久，模型越蠢：在 `xhigh`（高思考强度）模式下，模型经常思考到 token 预算耗尽，最后只能返回一个空答案。虽然 Unsloth 宣称 1-bit 模型保留了 72% 的 top-1 准确率，但剩下的那 28% 显然才是决定任务成败的关键。\n\n### 2-bit 模型虽然慢，但没“变笨”\n在 Terminal-Bench 2.1 的测试中，`Q4_K_M` 再次证明了它的实力，完美复现了官方的 BF16 成绩。即使到了 2-bit 的 `UD-Q2_K_XL`，虽然通过率有所下降，但依然能达到 Opus 4.7 或 Gemini 3.1 Pro 的水平，远非废物。更有意思的是，作者对比了解题过程：2-bit 模型解题用的“回合数”和全量模型一样，只是输出的 token 数量多了约 25%。这说明它只是稍微“啰嗦”了一点，并没有因为量化而丧失逻辑规划能力。\n\n### 结论：拥抱量化，但别走极端\n综合来看，如果你是在本地跑实验，首选 `Q4_K_M`，它在 17 GB 的体积下几乎零损耗。对于简单任务，`UD-Q2_K_XL`（约 11 GB）也完全够用。至于 1-bit，那就是个深坑，千万别踩。作者最后也提到，虽然大家普遍担心 KV Cache 的量化影响更大，但模型权重的量化其实没那么可怕。只要避开那个“悬崖”，量化应该被拥抱，而不是被恐惧。"
+}

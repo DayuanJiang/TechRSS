@@ -1,0 +1,123 @@
+{
+  "id": 47265521,
+  "by": "janandonly",
+  "title": "Remotely unlocking an encrypted hard disk",
+  "url": "https://jyn.dev/remotely-unlocking-an-encrypted-hard-disk/",
+  "score": 145,
+  "createdAt": 1772748007,
+  "aiSummary": {
+    "chinese_title": "远程解锁加密硬盘：Mandos、Tang/Clevis、TPM 与 initramfs 方案比较",
+    "discussion_overview": [
+      {
+        "category": "Mandos 与 Tang/Clevis 的设计与可操作性比较",
+        "summary": "评论中多人介绍并推荐 Mandos 作为已有的网络解密方案：Mandos 可在 initramfs 阶段从网络获取 LUKS 密码，支持 initramfs-tools 与 Dracut，并自 2011 年起出现在 Debian 包中。开发者指出 Mandos 采用 PGP 存储服务器端数据、通过 TLS + 客户端密钥提供前向安全，并使用 DNS-SD 与原始公钥而非 X.509，通信协议简单（先发协议号再发数据），因此设计更为直观可读。与之对比，Tang/Clevis 使用 McCallum–Relyea 交换并以 REST/JSON 为交互格式，概念上相似但实现更复杂；评论者强调 Mandos 的简洁性和长期存在的 Debian 生态优势，同时也承认两者在包装与平台偏好上有差异。",
+        "supportid": [
+          "47267666",
+          "47268514",
+          "47268525",
+          "47267915"
+        ]
+      },
+      {
+        "category": "物理接触与中间人风险，以及 TPM/secure boot 的权衡",
+        "summary": "多条评论指出只要攻击者有物理接触，就能在本地截获或篡改 initramfs、抓取解密密钥或利用内存/供电手段绕过网络解锁，简单的网络解密在物理攻破场景下并不能保证机密性。有人提醒 dm-verity 只保证块完整性而不提供机密性，不能替代 LUKS；建议若需机密性应将 LUKS 密钥封存在 TPM2 并绑定到特定 PCR 值（如通过 systemd-cryptenroll 或 Clevis+Tang 严格证书固定），但这样会带来更新内核/固件后的重新封装运维负担。评论还讨论 TPM 与 secure boot/UKI 的组合可以防止 initramfs 被替换并限制离线解密，但 UKI 把 pre-rootfs 合并签名会令某些网络解锁方案失效，并存在总线窃听（bus-tapping）、bustapping 与设备克隆等现实攻击向量，表明没有万无一失的方案，取决于威胁模型和运维成本。",
+        "supportid": [
+          "47267015",
+          "47272596",
+          "47268377",
+          "47268629",
+          "47271375",
+          "47269028",
+          "47269708",
+          "47270221",
+          "47268946"
+        ]
+      },
+      {
+        "category": "实际替代与工程化做法：kexec、SSH-in-initramfs、bastion Pi 与 PiKVM",
+        "summary": "很多评论分享了工程化的替代方案：通过 kexec 生成一个 tmpfs 中的临时 initrd（包含 keyfile）并跳转到该内核，可以在受控重启时实现无交互解密；另一常见方法是在 initramfs 启动轻量 SSH（如 dropbear 或 dracut-sshd）以远程输入密码。有人描述用 Raspberry Pi 做 bastion 的流程：先 SSH 到 Pi，再发 Wake-on-LAN 唤醒主机、反向隧道转发 SSH 到本地 initramfs，解密后按常规启动；也有用 PiKVM / Teensy 模拟 USB 键盘与屏幕、或用 Tor 建隧道的老办法。评论给出了具体实现细节与工具链接（dracut-sshd、mkinitcpio-wifi、TinySSH 等），并强调这些方案在没有 TPM 或受限硬件时尤其实用。",
+        "supportid": [
+          "47267949",
+          "47270232",
+          "47266760",
+          "47268327",
+          "47269654",
+          "47268638",
+          "47268115",
+          "47267594"
+        ]
+      },
+      {
+        "category": "运维权衡：打包生态、RAID 限制与自动化风险",
+        "summary": "讨论指出将网络组件放入 initramfs（例如把 Tailscale 放入 initramfs）会带来证书轮换与更大的攻击面，维护成本不可忽视；有人因此倾向于更保守的 initramfs 内容。打包与生态也影响可部署性：Mandos 与 initramfs-tools/Debian 更契合，Tang/Clevis 更偏向 Red Hat/dracut，Mandos 在 Red Hat 上缺少官方打包。RAID 结构也改变攻击面：单盘拔出只对 RAID1 有效，RAID5/6 无法通过拔盘离线解密；另外 Mandos 客户端有可配置的离线超时（评论中提到默认五分钟）来缩短被离线篡改的窗口。最后，许多人提醒避免在无足够恢复手段的深夜做未经测试的升级，或采用 UKI+secure boot+TPM 等更重的保护来换回自动重启能力。",
+        "supportid": [
+          "47267795",
+          "47268525",
+          "47268615",
+          "47268680",
+          "47267665",
+          "47268945"
+        ]
+      },
+      {
+        "category": "社区兴趣、已有工具与可借鉴的实践经验",
+        "summary": "讨论显示这是一个既有实用价值又充满折衷的工程问题：不少人把远程解锁当成有趣且可实现的 preboot hack，并分享了长期运行的个人实践和工具。现成或半成熟的方案很多：ZFSBootMenu 提供带 FDE 的远程 SSH 与快照恢复，企业/工业环境也存在将预引导认证放到在线服务的 BitLocker 风格解决方案。评论里还有 WiFi hook、mkinitcpio/dracut 钩子、TinySSH、dracut-sshd、以及社区对旧硬件无 TPM 的“ novel but useful” 评价，说明选择常常基于硬件可用性、预算与威胁模型而非单一最佳方案。",
+        "supportid": [
+          "47267809",
+          "47268954",
+          "47268342",
+          "47273100",
+          "47266848",
+          "47267039",
+          "47268418"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "initramfs",
+        "explanation": "initramfs（引导时的临时根文件系统）：内核启动后加载的最小 Linux 用户空间，用于挂载真实根文件系统、执行磁盘解密或进行早期恢复，具有自己的 PID 1（可为 systemd 或 shell）。"
+      },
+      {
+        "term": "Mandos",
+        "explanation": "Mandos（网络解密/远程解锁工具）：一个在 initramfs 阶段通过网络获取磁盘解密数据的方案，早期开发并长期与 Debian/initramfs-tools 生态兼容，使用 PGP、TLS 和 DNS-SD 等标准组件。"
+      },
+      {
+        "term": "Tang",
+        "explanation": "Tang（无状态网络解密服务器）：常与 Clevis 配合使用，采用 McCallum–Relyea 风格的密钥交换并通过 REST/JSON 提供无状态解密服务，Red Hat/Fedora 生态常见。"
+      },
+      {
+        "term": "Clevis",
+        "explanation": "Clevis（客户端自动解密框架）：在 initramfs 中作为客户端自动向 Tang 或其它解除封装服务请求密钥以解密 LUKS 等卷，支持多种策略与绑定方式。"
+      },
+      {
+        "term": "LUKS",
+        "explanation": "LUKS（Linux Unified Key Setup）：Linux 上常用的全盘加密格式，解密通常发生在 initramfs 阶段，需要通过 passphrase、keyfile 或硬件（如 TPM）提供密钥。"
+      },
+      {
+        "term": "TPM",
+        "explanation": "TPM（Trusted Platform Module，硬件信任根）：安全芯片用于本地封存密钥与测量启动链，常与 PCR 值绑定以在启动链一致时释放密钥，从而防止引导链被替换后自动解密。"
+      },
+      {
+        "term": "PCRs",
+        "explanation": "PCRs（Platform Configuration Registers）：TPM 中记录系统引导组件哈希值的寄存器，密钥可绑定到特定 PCR 值；若引导链或内核参数变化，PCR 值不同会阻止 TPM 释放密钥。"
+      },
+      {
+        "term": "kexec",
+        "explanation": "kexec（内核快速加载机制）：允许从当前运行的内核加载并跳转到另一个内核而不完整重启，常用于载入包含临时 keyfile 的 initrd 实现无交互重启解密。"
+      },
+      {
+        "term": "dm-verity",
+        "explanation": "dm-verity（只读块完整性校验）：用于验证块设备数据完整性和引导链一致性，但不提供数据保密，无法替代磁盘加密以防止密钥被窃取。"
+      },
+      {
+        "term": "Dropbear",
+        "explanation": "Dropbear（轻量级 SSH 服务）：常被放入 initramfs 中为远程输入 LUKS 密码提供早期 SSH 访问的轻量实现，适合资源受限环境。"
+      }
+    ],
+    "context": "全盘加密（如 LUKS）要求在内核引导早期提供解密密钥，这对无头或远程服务器在远程重启时构成阻碍。社区发展了多类方案来在 initramfs 阶段进行网络解密：例如 Mandos（一个基于 PGP/TLS 的网络解密工具，偏向 Debian/initramfs-tools 生态）与 Tang/Clevis（Red Hat/Dracut 生态常见的 REST/JSON+自动解密组合），也有通过在 initramfs 启动 SSH（dropbear/dracut-sshd）、kexec 临时 initrd、或用 Raspberry Pi 做 bastion 的工程化做法。评论围绕可用性、运维成本与安全边界展开讨论：物理接触会使网络解密方案面临被 MITM 或抓包的风险，TPM 与 secure boot 可减轻部分风险但增加更新与恢复运维负担，RAID 类型与引导镜像格式（如 UKI）也会影响可行性。",
+    "emoji": "🔐",
+    "sarcastic_question": "把initramfs联网拿密钥，真比把钥匙放机箱安全？"
+  },
+  "articleSummary": "## 一句话总结\n通过把 Tailscale、SSH 和网络配置塞进 initramfs，作者成功在 Linux 启动早期建立了一个加密且受限的通道，实现了远程输入密码解锁全盘加密的桌面。\n\n---\n\n### 加密启动带来的远程管理死局\n作者有一台经常断电重启的 Arch Linux 桌面，为了安全启用了全盘加密。这本来没问题，但他经常出差，需要通过 SSH 远程连回家干活。一旦家里断电，机器重启后就会卡在等待输入解密密码的界面，导致彻底失联。虽然 BIOS 设置了来电自启，Tailscale 也能解决动态 IP 的问题，但核心矛盾依然存在：**不输入密码，系统起不来；系统起不来，网络就不通；网络不通，就没法远程输密码**。这简直是个死循环。\n\n### 把 initramfs 当作一个微型操作系统来用\n那怎么办？作者的思路非常清奇：既然 Linux 启动早期运行的 initramfs 本质上就是一个运行在内存里的微型操作系统，那能不能在这个阶段就把网络跑通？说白了，initramfs 不仅仅是个加载驱动的过渡环境，它有自己的 PID 1（在 Arch 上就是 systemd）和服务管理机制。这意味着我们完全可以像在宿主机里一样，在这个微型系统里安装网络工具和 SSH 服务，在解密盘之前就把“后门”打开。\n\n### 用 Tailscale Tags 把安全风险降到最低\n在启动环境里放 SSH 和 VPN 密钥，听起来就像是在裸奔。作者当然也意识到了这点，但他用 Tailscale 的 ACL（访问控制列表）做了一个巧妙的设计。他引入了 `tag:initrd`，这个标签是绑定在机器上的，而不是绑定在用户账号上的。通过配置策略，他允许普通用户账号访问这台机器，但**严禁这台带标签的机器主动发起任何连接**。这样，即使 initramfs 里的密钥泄露，攻击者也只能被动等待连接，无法利用它作为跳板攻击内网其他设备。\n\n### 精简的 Dropbear 与唯一的解锁命令\n有了网络通道，还需要一个轻量级的 SSH 服务。作者选择了 `dropbear` 而不是臃肿的 OpenSSH，并利用 `mkinitcpio-systemd-extras` 这个工具链把它集成进去。为了防止有人通过 SSH 拿到 Shell，作者把 Dropbear 的 `command` 参数强行锁定为 `systemd-tty-ask-password-agent`。这意味着，你连上 SSH 后**唯一能做的事就是输入密码**，输入完连接就断开，根本拿不到任何交互式 Shell。此外，他还特意生成了独立的 Dropbear host key，避免和宿主机的 SSH 私钥混用，防止密钥泄露。\n\n### 系统配置的最后一公里\n光有服务还不够，还得告诉系统怎么用它们。作者在 `/etc/mkinitcpio.conf` 里加入了 `sd-network`、`tailscale` 和 `sd-dropbear` 这几个 hooks，并配置了早期的 DHCP 网络设置。这里有个关键细节：因为早期启动时网卡命名规则还没加载好，必须手动配置 `network-initramfs` 目录下的网络文件。最后，为了让系统在等待密码时不超时重启，他修改了内核启动参数，加上 `x-systemd.device-timeout=0`，让 systemd 死等直到收到密码。\n\n### 暴力美学下的完美解锁\n做完这一切，重新生成 initramfs 后，奇迹发生了。机器重启后卡在密码输入界面，但作者在世界的另一端，通过 Tailscale SSH 连到了 `hostname-initrd` 这个节点。屏幕上没有熟悉的 Shell 提示符，只有一个等待密码的提示。输入密码回车，家里的桌面立刻继续启动，无缝进入系统。整个过程就像是一场精心策划的“劫案”，在系统最脆弱的早期阶段潜入，拿到钥匙（解锁），然后全身而退，不留痕迹。"
+}

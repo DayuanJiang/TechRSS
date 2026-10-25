@@ -1,0 +1,88 @@
+{
+  "id": 48169874,
+  "by": "Bibabomas",
+  "title": "Show HN: Semble – Code search for agents that uses 98% fewer tokens than grep",
+  "url": "https://github.com/MinishLab/semble",
+  "score": 347,
+  "createdAt": 1779052863,
+  "aiSummary": {
+    "chinese_title": "Semble：面向 agent 的代码语义搜索，号称比 grep 少 98% token",
+    "discussion_overview": [
+      {
+        "category": "基准只测检索，不测端到端",
+        "summary": "评论首先质疑这 98% token 节省到底是怎么量出来的，因为当前 benchmark 只看 retrieval accuracy / NDCG，而不是 agent 最终能否把编码任务做对。有人指出，grep 本身不消耗 token，真正消耗的是后续 readfile 和反复试探；如果只看返回片段里是否包含答案，可能会高估工具价值。还有人提醒，agent 常会换不同 query、调整 k 值或重复调用，结果会非常依赖具体使用方式，单纯比较数字并不稳定。",
+        "supportid": [
+          "48170972",
+          "48171050",
+          "48171250",
+          "48171278",
+          "48171416",
+          "48171711",
+          "48171482",
+          "48171680",
+          "48172031"
+        ]
+      },
+      {
+        "category": "模型默认偏好 grep，工具得被强制接入",
+        "summary": "有评论说 coding models 往往被 RL 到“信任 grep”，换成别的检索工具后会反复重试、重新读文件，最后 token 节省被抵消掉。为了解决这个问题，有人把规则写进全局 CLAUDE.md，或者通过 custom harness、hooks 和自定义记忆系统强制 agent 使用 LSP、RTK 之类的工具。也有人反馈某些 Anthropic models 已经会主动调用新工具，但如果 CLI 不支持某些参数，报错反而会让 agent 白白浪费更多 token。",
+        "supportid": [
+          "48172599",
+          "48173663",
+          "48173687",
+          "48172742",
+          "48173096",
+          "48173503",
+          "48173726",
+          "48173835",
+          "48173893",
+          "48173601"
+        ]
+      },
+      {
+        "category": "与 LSP 和其他检索工具对比",
+        "summary": "不少人把 Semble 放到 LSP、RTK、ck、colgrep、context-mode、serina、codebase-memory-mcp 这些工具谱系里比较，核心问题是它到底比现有语言感知检索强多少。有人认为代码天然有结构，像 `maki.sh` 的 index 功能那样，用真实 parser 而不是简单 grep，确实可能显著减少需要喂给模型的上下文。评论里也有人希望把这些工具一起纳入同一套 benchmark，而不是只拿 grep 做对照，因为真正的竞争对象显然不止传统命令行搜索。",
+        "supportid": [
+          "48173657",
+          "48174181",
+          "48173521",
+          "48173270",
+          "48173704",
+          "48173813",
+          "48173477"
+        ]
+      },
+      {
+        "category": "人类也能用，且可扩展到文档",
+        "summary": "有评论认为 semantic code search 不只是给 agent 用，人类在大型 codebase 里同样会受益，因为它能按语义而不是字符串匹配来找结构。另有人追问它能否用于 API docs 或 AI memory files，随后补充说已经加入 `--include-text-files`，可以把 markdown、text、json 也纳入索引。这个方向让工具从“代码搜索”扩展成更通用的项目内知识检索，而不只是一个给模型省 token 的黑箱组件。",
+        "supportid": [
+          "48173163",
+          "48171856",
+          "48171927"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "NDCG",
+        "explanation": "一种检索排序指标，关注结果相关性及其排序位置，常用于评估搜索系统而不是任务最终成功率。"
+      },
+      {
+        "term": "LSP",
+        "explanation": "Language Server Protocol，编辑器与语言服务器之间的标准协议，可提供定义、引用、符号等语言感知能力。"
+      },
+      {
+        "term": "RTK",
+        "explanation": "评论中提到的一种面向 coding agent 的检索/工具框架，用来替代或补充 grep。"
+      },
+      {
+        "term": "harness",
+        "explanation": "agent 的运行框架，用来接管工具调用、规则约束和重试逻辑，控制模型如何使用外部工具。"
+      }
+    ],
+    "context": "Semble 是一个面向 coding agent 的代码搜索工具，主打用语义检索替代传统 grep，以更少的上下文 token 把相关代码片段送给模型。帖子里的“98% fewer tokens”引发了争议，因为评论者很快追问：这究竟只是检索阶段的节省，还是能真正改善端到端编码任务。讨论还牵涉到 Claude Code、Codex CLI、Copilot CLI 这类 agent 工具，以及 LSP（Language Server Protocol，语言服务器协议）和 RTK 这类更偏语言感知的搜索方案。有人也指出，这类工具不只适合代码库，借助 `--include-text-files` 之类的选项，还能索引 markdown、text、json 等文档和记忆文件。",
+    "emoji": "🤔",
+    "sarcastic_question": "连答案都找不全，还省 98% token 干嘛？"
+  },
+  "articleSummary": "## 一句话总结\nSemble 通过结合轻量级静态嵌入与 BM25，在 CPU 上实现了毫秒级的代码搜索，能以 99% 的 SOTA 准确率帮 AI Agent 节省 98% 的 Token 消耗。\n\n### AI 读代码的痛点：不是搜不到，是读太慢\n现在的 AI Agent（如 Claude Code、Cursor）在处理代码库时，基本都依赖 \"grep + read\" 的模式。这种模式有个致命缺陷：为了找到几行关键代码，Agent 往往要把整个文件甚至多个文件读进上下文。这不仅浪费了大量 Token，还拖慢了推理速度。Semble 的核心思路很简单：别让 Agent 读废话，只给它看真正相关的代码片段。\n\n### 拒绝重型模型：用静态嵌入换速度\n为了实现毫秒级响应，Semble 没有使用那些动辄上亿参数的 Code LLM 或 Transformer 模型。它选择了一个非常轻量的方案：静态的 Model2Vec 嵌入模型（potion-code-16M）。因为模型是静态的，查询时不需要进行 Transformer 的前向传播，直接查表就能拿到向量。这就解释了为什么它能在普通 CPU 上把查询时间压到 1.5 毫秒，比那些需要 GPU 加速的重型模型快了 10 倍以上。\n\n### 双路召回：语义和字面一个都不能少\n光靠语义搜索是不够的，因为开发者经常会搜具体的函数名或变量。Semble 的设计很聪明，它同时跑两路检索：一路用刚才说的静态嵌入做语义匹配，另一路用 BM25 做传统的关键词匹配。最后通过 Reciprocal Rank Fusion (RRF) 算法把两路结果融合。这样既能理解 \"如何处理认证\" 这种自然语言，也能精准定位 `getUserById` 这种具体符号。\n\n### 代码感知的排序：懂代码才能搜得准\n召回只是第一步，排序才是见真章的地方。Semble 在重排序阶段加入了很多\"懂代码\"的逻辑。比如，它会优先展示定义了某个符号的代码块，而不是引用它的地方；如果查询词是 `parse config`，它会自动匹配 `parseConfig` 或 `ConfigParser` 这种变体；甚至还会识别测试文件和兼容层代码，把它们降权，确保核心业务代码排在前面。\n\n### 极致的本地化体验：无 API、无 GPU\n对于开发者来说，Semble 的部署门槛极低。它不需要 API Key，不需要 GPU，也不依赖任何外部服务，完全在本地 CPU 上运行。索引一个平均大小的代码库只需要 250 毫秒。它既可以作为 MCP Server 直接集成到 Claude Code 或 Cursor 中，也可以作为 Python 库嵌入到自己的脚本里，甚至支持直接传 Git URL 进行远程搜索。\n\n### 真实效果：98% 的 Token 节省不是吹的\n数据不会骗人。在 63 个仓库、1250 个查询的基准测试中，Semble 的 NDCG@10 达到了 0.854。这已经达到了 137M 参数的 CodeRankEmbed Hybrid 模型 99% 的性能水平，但索引速度快了 218 倍。更重要的是，在 Token 效率上，Semble 只用 2k Token 就能达到 94% 的召回率，而传统的 grep+read 模式需要消耗 100k Token 才能达到 85% 的召回率。对于按 Token 付费的 AI 应用来说，这实打实地省下了 98% 的成本。"
+}

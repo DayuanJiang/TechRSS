@@ -1,0 +1,96 @@
+{
+  "id": 49781862,
+  "by": "nateb2022",
+  "title": "ReBarUEFI: Resizable BAR for almost any UEFI system",
+  "url": "https://github.com/xCuri0/ReBarUEFI",
+  "score": 232,
+  "createdAt": 1790117438,
+  "aiSummary": {
+    "chinese_title": "ReBarUEFI：为旧 UEFI 主板解锁 ReBAR，却要赌 BIOS 改机风险",
+    "discussion_overview": [
+      {
+        "category": "ReBAR 的底层机制与实际作用",
+        "summary": "ReBAR 是 PCIe 的 Resizable BAR 能力：固件可把 GPU 的 BAR（Base Address Register）映射窗口从传统的 256MB 扩大到数 GB，通常接近整块 VRAM。这样 CPU 能直接寻址更多 GPU 显存，不必频繁通过小窗口搬运或切换数据页，从而减少访问开销。评论用 `lspci -vv` 的示例说明，支持该能力的 GPU 会列出可选 BAR 大小，而旧固件往往只采用兼容性的最小值。大型 BAR 必须映射到 4GB 以上地址空间，因此还依赖 64-bit 地址支持和相应的固件配置。",
+        "supportid": [
+          "49810282",
+          "49810280",
+          "49809759",
+          "49811214",
+          "49810053"
+        ]
+      },
+      {
+        "category": "旧主板缺功能，ReBarUEFI 与 BIOS 补丁的价值",
+        "summary": "不少旧工作站主板和笔记本的 PCIe 硬件本已支持 ReBAR，却因 BIOS/UEFI 没有启用选项或缺少 Above 4G decoding，无法使用大显存 GPU 的完整能力。x79、Haswell 等平台用户曾手工修改 BIOS：有人为 12GB VRAM GPU 解锁地址空间，也有人植入 NVMe DXE 驱动以从 PCIe 转 M.2 卡上的 NVMe SSD 启动。ReBarUEFI 的吸引力正是在不更换整个平台的前提下，补齐厂商未暴露的固件能力。也有用户希望借此解决 Dell 笔记本虽支持 ReBAR、却被厂商固件和驱动限制的外接 Intel Arc GPU 多屏问题。",
+        "supportid": [
+          "49809673",
+          "49809906",
+          "49810203",
+          "49811327"
+        ]
+      },
+      {
+        "category": "性能收益不是无条件的“免费加速”",
+        "summary": "ReBAR 常被描述为让 CPU 一次看到全部 VRAM，游戏中可能带来约 5% 到 15% 的提升，Intel Arc GPU 也尤其依赖它取得正常性能。不过它不是单一开关式的万能优化：驱动和游戏仍要决定何时直接映射显存、何时使用 staging buffer，实际收益取决于软件访问路径。有人报告 RTX 3070 在显存耗尽并向主内存 paging 时开启后卡顿加重；反驳意见认为这更可能是游戏的 VRAM 管理或 BIOS 问题，ReBAR 本身减少复制操作而非制造分页。对于 ML、蛋白质折叠等非游戏 GPU 工作负载，评论只提出需求，未给出明确的普适收益结论。",
+        "supportid": [
+          "49811602",
+          "49809864",
+          "49810419",
+          "49809757",
+          "49810163",
+          "49809773",
+          "49812312"
+        ]
+      },
+      {
+        "category": "Coreboot：开放固件的希望与可用性争议",
+        "summary": "有人将这类改 BIOS 的需求视为转向 Coreboot 的理由：开源固件可以绕开专有工具，添加 NVMe 启动、CPU microcode 或未获官方支持的 CPU 支持。支持者认为桌面平台已有 MSI Z690-A/Z790-P、MSI B850-P 等较新的可用移植，服务器侧也有 Gigabyte MZ33-AR1，现状比过去只支持老旧或稀有参考板好得多。批评者则指出 Coreboot 覆盖的主板仍有限，且有人认为项目更服务商业客户，对旧主板补丁和修复响应不足。配置体验也有分歧：早期 SeaBIOS 配置常需重新编译刷写，但较新的 Dasharo 方案可借助 TianoCore/EDK2 提供启动菜单和设置界面。",
+        "supportid": [
+          "49810323",
+          "49811575",
+          "49811649",
+          "49811741",
+          "49811768",
+          "49811933"
+        ]
+      },
+      {
+        "category": "文档缺乏入门解释引发争执",
+        "summary": "多位读者表示项目 README 虽提到性能收益，却没有先解释 BAR、MMIO 和具体使用场景，导致不知道该项目为何值得关注。技术性回复补充说，BAR 是 PCI 设备向 CPU 地址空间暴露内存或 I/O 区域的配置寄存器；小 BAR 迫使 GPU 显存经窗口化访问。有人认为读者应自行查资料，但其他人指出网上材料常复述营销文案，恰恰没有说明性能为何改善，因此提出基础问题是合理的。争论反映出此类底层固件项目即使目标明确，也需要把兼容性、地址映射和适用条件讲清楚。",
+        "supportid": [
+          "49809519",
+          "49809558",
+          "49809692",
+          "49810848",
+          "49809772"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "ReBAR（Resizable BAR）",
+        "explanation": "PCIe 的可调整 BAR 大小能力，可让设备把 CPU 可见的显存映射窗口扩大，通常用于让 CPU 更直接地访问 GPU VRAM。"
+      },
+      {
+        "term": "BAR（Base Address Register）",
+        "explanation": "PCI 配置空间中的寄存器，用于声明设备内存或 I/O 区域的大小，并由固件/操作系统安排其映射地址。"
+      },
+      {
+        "term": "MMIO（Memory-Mapped I/O）",
+        "explanation": "把外设寄存器或设备内存映射进 CPU 地址空间，使 CPU 可用普通读写指令访问，但延迟和缓存语义不同于普通 RAM。"
+      },
+      {
+        "term": "Above 4G decoding",
+        "explanation": "UEFI/BIOS 设置，允许 PCIe 设备的 64-bit MMIO 区域映射到 4GB 以上地址；大容量 GPU BAR 通常需要它。"
+      },
+      {
+        "term": "Coreboot",
+        "explanation": "开源系统固件项目，旨在替代或接管主板厂商 BIOS/UEFI 的初始化流程，但硬件支持和配置体验因平台而异。"
+      }
+    ],
+    "context": "ReBarUEFI 是面向 UEFI（现代 PC 固件接口）系统的项目，目标是为许多厂商未提供 ReBAR 开关的机器启用 PCIe 的大 BAR 映射能力。早期 PC 为兼容 32-bit 地址空间和多个 PCI 设备，GPU 往往只暴露约 256MB 的 VRAM 窗口；现代 GPU 显存增大后，这会增加 CPU 与显存之间的数据调度成本。AMD 曾将该 PCIe 标准能力营销为 Smart Access Memory，并在 Zen 3 CPU 与 RX 6800 GPU 组合上推广；Intel Arc GPU 也特别依赖它，而老平台常因缺少 Above 4G decoding 或固件策略而被禁用。讨论同时延续了固件可控权之争：用户既想给旧硬件补上 NVMe 启动和 ReBAR，也要面对闭源 BIOS、刷写失误及 Coreboot（开源系统固件）平台覆盖有限的现实。",
+    "emoji": "🔓",
+    "sarcastic_question": "硬件早会做，为什么还得冒险刷 BIOS 解锁？"
+  },
+  "articleSummary": "## 一句话总结\n这是一个通过编写 UEFI DXE 驱动并配合固件补丁，强行让不支持 Resizable BAR 的老主板“解锁”该功能的硬核方案。\n\n## 正文\n\n### 老主板也能吃上新蛋糕\n很多开发者手里可能还跑着老机器，想体验 Resizable BAR（以下简称 ReBar）带来的性能红利，甚至如果你用的是 Intel Arc GPU，这功能更是刚需。但厂商通常不会给老主板开这个选项。这个项目叫 ReBarUEFI，核心思路很直接：既然 BIOS 不支持，那就写一个 UEFI DXE 驱动塞进固件里，强行把这事给办了。\n\n### 劫持 PCI 枚举的“中间人”\n它是怎么做到的？原理其实是在 PCI 枚举阶段做手脚。这个驱动模块会替换掉 `PciHostBridgeResourceAllocationProtocol` 里的 `PreprocessController` 函数。系统启动时，`PciBus` 模块进行 PCI 设备枚举，会调用这个新函数。新函数会先检查设备是否支持 ReBar 能力，然后根据 NVRAM 里存的配置把 BAR 大小设好，最后再调用原始函数。这样一来，系统就能按照新的大小分配地址空间了。\n\n### 硬件限制与破解之道\n但问题来了，很多老固件对大块 BAR 地址的处理有硬伤。比如有些固件会把 64-bit BAR 强行降级成 32-bit，或者人为限制 BAR 大小不能超过 4GB、16GB 甚至 64GB。作者为此准备了一系列 UEFIPatch 补丁，专门用来移除这些人为限制。有意思的是，对于 Sandy/Ivy Bridge 这种老架构，除了打补丁，还得配合 DSDT 修改才能搞定 MMIO 空间范围的问题。\n\n### 动手之前要看清门槛\n想用这个工具，你得先看看自己的主板条件。最理想的情况是开启 4G Decoding，如果 BIOS 里没这选项，作者也提供了 Wiki 教你怎么开启隐藏选项。实在不行，还能通过减小 TOLUD（Top of Low Usable DRAM）来腾出空间，但这样 BAR 最大只能到 2GB。另外，必须关闭 CSM（兼容性支持模块），否则这招不灵。\n\n### 实操：刷机与配置\n具体怎么搞？你需要按照 Wiki 指南，把编译好的 FFS 模块加到固件镜像的 DXE volume 里，刷入修改后的 BIOS。启动进入系统后，运行 ReBarState 工具设置 BAR 大小。大多数情况下直接设为 `32`（无限制）就行，如果点背开不了机，那就得清 CMOS 甚至扣电池重置，然后尝试设小一点的值。\n\n### 不完美的性能提升\n那效果咋样？作者用自己的 i5 3470 + RX 580 做了测试，虽然只能设到 2GB BAR，但在驱动开启 ReBar 后，FPS 最高能提升 12%。这说明即便不是最优解，老机器也能从中获益。不过要注意，如果你用的是 NVIDIA Turing（20/16 系列）显卡，得去用另一个叫 NvStrapsReBar 的项目，因为那类显卡的 ReBar 支持比较特殊。\n\n### Linux 用户的“免刷”特权\n如果你是 Linux 用户，其实有个“作弊”方法。只要开启 4G Decoding，新版内核能自动处理 BAR 重分配，根本不用刷 BIOS。但 Windows 用户就没这待遇了，目前已知不刷 BIOS 几乎没法用。这也侧面反映了 Linux 内核（特别是 amdgpu 驱动）在硬件抽象层上的灵活性。"
+}

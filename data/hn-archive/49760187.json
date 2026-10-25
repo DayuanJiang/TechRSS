@@ -1,0 +1,109 @@
+{
+  "id": 49760187,
+  "by": "datadrivenangel",
+  "title": "Claude Code now reads AGENTS.md if there is no Claude.md",
+  "url": "https://code.claude.com/docs/en/changelog",
+  "score": 694,
+  "createdAt": 1789766450,
+  "aiSummary": {
+    "chinese_title": "Claude Code 终可回退读取 AGENTS.md，用户仍吐槽只补了最基本兼容",
+    "discussion_overview": [
+      {
+        "category": "标准兼容与省事",
+        "summary": "很多人把这次更新看成终于补上了最基础的标准兼容：Claude Code 在没有 CLAUDE.md 时改读 AGENTS.md，意味着以前靠单行指针文件、同步脚本或手工映射维持的一堆兼容工作可以少做了。有人明确表示，自己现在可以删除那些只负责把 `CLAUDE.md` 指向 `AGENTS.md` 的文件。整体情绪不是惊喜，而是“早该如此”，只是承认它至少让工作流更省事了。",
+        "supportid": [
+          "49760323",
+          "49760391",
+          "49760890",
+          "49760485",
+          "49760399",
+          "49761625",
+          "49760367"
+        ]
+      },
+      {
+        "category": "兼容仍不完整：skills 和配置问题",
+        "summary": "最集中的保留意见是，这个改动只覆盖了 instruction file 的回退逻辑，却没有解决 `.agents/skills` 之类更深层的约定。有人仍然需要用 git hook、symlink 或递归脚本把 `.agents/skills` 映射到 `.claude/skills`，说明真正麻烦的是整套 harness 约定而不是一个文件名。还有人提到 Claude Code 会先看 `settings.json`，而且可能用默认值覆盖 CLAUDE.md 里的明确指令，这被认为是很危险的行为。",
+        "supportid": [
+          "49760389",
+          "49761251",
+          "49761610",
+          "49760765",
+          "49760582",
+          "49761266",
+          "49761354"
+        ]
+      },
+      {
+        "category": "被竞争压力逼出来的改动",
+        "summary": "不少评论把这次变化解读成用户流失和竞争压力的结果，而不是主动拥抱社区标准。Shopify 公开表示可能禁用 Claude Code，直到它支持 AGENTS.md 和 `.agents/skills`，这被看作非常直接的外部压力。也有人认为最初坚持 `CLAUDE.md` 本来就是 business decision，目的是锁定用户、制造品牌曝光；现在改口说明市场份额和迁移压力已经开始起作用。",
+        "supportid": [
+          "49760774",
+          "49760447",
+          "49761166",
+          "49761379",
+          "49760444",
+          "49760620",
+          "49760733"
+        ]
+      },
+      {
+        "category": "统一标准 vs 模型定制",
+        "summary": "另一条主线是，AGENTS.md 到底应不应该成为跨模型统一入口。支持者觉得一个简短、provider-agnostic 的说明文件很有价值，至少比每个工具都维护一套重复规则现实得多；反对者则认为不同模型、不同版本的失败模式差异很大，硬套同一份 prompt 可能反而是 antipattern。评论里还讨论了 token 和 turns 成本，认为文件太长会吃上下文，而层级太多又会让 agent 反复重读、误解，所以更稳妥的做法往往是把规则写得很短，或把复杂任务拆成研究、方案、实现几个阶段。",
+        "supportid": [
+          "49760871",
+          "49761255",
+          "49761058",
+          "49761004",
+          "49761030",
+          "49761175",
+          "49761063",
+          "49761347",
+          "49761028",
+          "49761382"
+        ]
+      },
+      {
+        "category": "symlink 与跨平台工作流负担",
+        "summary": "在真正落地之前，很多用户早就靠 symlink、hard link 或者 post-checkout hook 自己补过一轮兼容。问题是 Git 对 symlink 和 hard link 的支持并不对称，Windows 上又常受 Developer Mode、长路径和工具链限制，导致跨平台仓库里维护多个别名文件非常别扭。还有人提到 nested instruction files，说明简单地 `ln -s` 一下并不能覆盖所有子目录场景，最后还是得写脚本做递归处理。",
+        "supportid": [
+          "49760427",
+          "49760455",
+          "49760530",
+          "49760588",
+          "49760619",
+          "49761229",
+          "49761300",
+          "49761168",
+          "49761607"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "AGENTS.md",
+        "explanation": "给 AI agent 提供仓库级指令的 Markdown 文件约定，常用于统一项目内行为规则。"
+      },
+      {
+        "term": "CLAUDE.md",
+        "explanation": "Claude Code 优先读取的同类指令文件名，常被用作 Anthropic 生态里的默认项目说明。"
+      },
+      {
+        "term": "symlink",
+        "explanation": "符号链接，让一个文件名指向另一个文件，常用于让多个工具共享同一份指令内容。"
+      },
+      {
+        "term": "harness",
+        "explanation": "包装和运行 agent 的外壳，负责读配置、加载指令并执行工具调用。"
+      },
+      {
+        "term": ".agents/skills",
+        "explanation": "用于组织 agent skills 的目录约定，按需提供特定能力或子任务规则。"
+      }
+    ],
+    "context": "Claude Code（Anthropic 的命令行 AI 编码助手）这次新增了回退逻辑：如果项目里没有 CLAUDE.md，就去读 AGENTS.md。AGENTS.md 是一种仓库级指令文件，很多人会在项目根目录或子目录里放它，用来告诉 agent 如何工作；之前为了兼容 Claude Code 和 OpenAI Codex（OpenAI 的代码代理工具）等不同 harness（运行/包装模型的外壳），用户经常手工维护 CLAUDE.md、AGENTS.md，甚至用 symlink 把两者绑在一起。评论里还提到 `.agents/skills`（用于组织 agent skills 的目录约定）和 `settings.json` 等更细的配置问题，说明争议并不只是“读不读这个文件”，而是整套工具链到底能不能遵循统一标准。讨论背景里还有 Shopify CEO Tobi Lütke 公开施压、威胁禁用 Claude Code 的消息，这让很多人把这次更新理解为对用户迁移和竞争压力的被动回应。",
+    "emoji": "🙃",
+    "sarcastic_question": "连读AGENTS.md都能被吹成重大创新吗？"
+  },
+  "articleSummary": "## 一句话总结\nClaude Code 新版引入了 `AGENTS.md` 作为备选指令文件，并针对企业级网关和自动模式计费逻辑做了一系列关键修复。\n\n## 正文\n\n### 指令文件有了“备胎”\n如果你在项目里习惯用 `CLAUDE.md` 来给 AI 立规矩，现在多了一个选择。9 月 18 日的更新里，Claude Code 新增了对 `AGENTS.md` 的支持。逻辑很简单：如果项目根目录没有 `CLAUDE.md`，工具会自动去读 `AGENTS.md`。这算是给开发者省了点配置功夫，毕竟很多项目已经有了给其他 Agent 看的说明文档。你可以在 `/config` 的 “Project instructions” 里改这个配置。不过要注意，这个功能目前还没覆盖到 Bedrock、Vertex 或 Foundry 平台。\n\n### 自动模式的计费逻辑变了\n对企业用户和 API 调用者来说，9 月 19 日的更新更值得关注。自动模式的分类器现在默认跑在服务端了。这有什么好处？以前本地分类器可能产生额外的开销费用，现在服务端分类器不收这笔钱。如果你用的是 Bedrock 或 Vertex 等平台，不想用这个新默认值，得手动设置环境变量 `CLAUDE_CODE_AUTO_MODE_SERVER=0` 来退回旧逻辑。为了让你心里有数，`/status` 面板里还专门加了一行 “Auto mode server”，告诉你当前会话的分类器到底跑在哪。\n\n### 网关代理的“出口边界”问题\n这次更新还解决了一个网络请求的细节问题。有些企业网关的出口流量必须走正向代理。新加的环境变量 `CLAUDE_GATEWAY_PROXY_IS_EGRESS_BOUNDARY=1` 就是为此设计的。开启后，出站请求会把主机名直接交给代理，而不是在本地解析。同时，网关上游配置里也支持加静态 `headers` 了，方便你在服务商前面再挂一层自己的代理。\n\n### 那些让人头疼的“卡死”和崩溃\n说实话，这次修复的 Bug 清单看着挺让人后怕的。比如 `claude -p` 和 Agent SDK 会话在内部错误后直接挂起，不给结果也不退出，现在好歹会报错并退出码 1 了。还有对话里如果混进了空的文本块，后续请求会一直报错 “text content blocks must be non-empty”，这问题也修了。更离谱的是，如果你在机器上跑了一个旧版 CLI（比如 IDE 插件自带的），它竟然能把当前新版 CLI 给弄登出，现在这个冲突也解决了。\n\n### 工具调用的各种“坑”\n文件操作和搜索工具这次也排了几个雷。比如 Write 工具如果目标路径是个已存在的目录，以前会静默结束并拒绝权限，现在会明确报错。Edit 工具处理转义字符时有个逻辑漏洞，会把 `\\uXXXX` 错误识别，导致改错地方，现在也修正了。还有 Grep 和 Glob 在系统资源耗尽时以前会报“无匹配”，现在会老实告诉你系统资源不足。\n\n### 界面与交互的体验优化\n交互体验上的修复虽然琐碎，但很影响心情。比如后台任务跑完了，如果你正开着 `/tasks` 面板，界面上会多一行提示告诉你有更新。以前拖拽选择文本后，“已复制”的提示有时候不显示，现在也修好了。最关键的是，修复了一个罕见的渲染错误导致屏幕停止更新的问题，这要是碰上了，整个会话就白瞎了。\n\n### 其他关键修复\n还有一些零散但重要的修复。比如 Windows 上偶发的内存溢出导致工具调用没跑起来，以及 `claude update` 在版本查询失败时错误地报告“已是最新”。插件安装时如果正被占用，以前会安装失败并损坏副本，现在会保留原样不动。这些细节都在告诉开发者，这个工具正在变得越来越“皮实”。"
+}

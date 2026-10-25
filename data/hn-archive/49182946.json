@@ -1,0 +1,96 @@
+{
+  "id": 49182946,
+  "by": "Anon84",
+  "title": "Building an Advanced Agentic Harness",
+  "url": "https://data4sci.com/blog/building-an-advanced-agentic-harness",
+  "score": 122,
+  "createdAt": 1785940262,
+  "aiSummary": {
+    "chinese_title": "高级 Agentic Harness：DAG 编排、上下文管理与 benchmark 争议",
+    "discussion_overview": [
+      {
+        "category": "缺少 benchmark 与有效性验证",
+        "summary": "很多人第一反应是要 benchmark：它到底有没有提升 problem solving，或者至少减少 errors。评论里反复质疑，复杂 harness 可能带来 emergent 和 confounding effects，JSON 约束、过度分工和额外编排反而可能拖累模型表现。还有人指出文章本身并没有证明在大多数场景有效，回复里更多是 jargon，像是在用术语回避验证问题。总体态度是，没有可复现指标，“advanced” 只是包装。",
+        "supportid": [
+          "49184325",
+          "49184618",
+          "49186812",
+          "49185920",
+          "49192688"
+        ]
+      },
+      {
+        "category": "动态 DAG 与多角色代理编排",
+        "summary": "最受关注的是动态 DAG 编排：代理会针对每个任务生成 workflow，把子任务按依赖关系拆开执行。有人分享自己的系统，使用 issue、plan、pull request 这类 artifact 作为阶段门，每一步都要 critic 审批后才能进入下一步。也有人把这种设计理解成一个负责 goals、hierarchy 和 subworkflows 的调度层，类似“AI Company”里的运营中枢。争议在于 DAG 很像组织结构，但并不等同于真正的 agent hierarchy。",
+        "supportid": [
+          "49186988",
+          "49187678",
+          "49186463",
+          "49185351"
+        ]
+      },
+      {
+        "category": "上下文管理、memory 与子代理隔离",
+        "summary": "另一条主线是 context management。很多人认为 harness 的核心不是“哪里用 LLM”，而是“哪里不用 LLM”，以及如何把 tools、state、memory 和 validation 分层，避免主上下文被细节塞满。subagents 被看作一种隔离局部上下文、减少 token 污染的方法，但通信链路越长也越容易出现 Chinese whispers 式失真。评论还批评文中的 memory model 说得太少，只有 vector DB 的影子，没有真正展开 working memory 或 procedural memory。",
+        "supportid": [
+          "49185351",
+          "49184151",
+          "49184084",
+          "49186805",
+          "49184005",
+          "49184618"
+        ]
+      },
+      {
+        "category": "轻量 REPL 与少工具方案",
+        "summary": "不少人更偏爱简单的 REPL loop：给模型一个可执行环境，把工具作为函数注入，让它可以循环、提前退出，甚至直接写代码完成任务。有人认为 graph 或 DAG 只是几次 async/await 调用的花哨包装，不值得把系统做得过于 rigid。另一些极简方案甚至只保留一个 shell 工具，不要 planning、todos 或多层 agent，理由是越少上下文噪音，越便宜、越快、越不容易乱。这个视角把 AI 看成夹在 deterministic processes 中间的薄 glue，而不是必须靠复杂 orchestration 才能工作的系统。",
+        "supportid": [
+          "49183569",
+          "49184526",
+          "49184160",
+          "49188744",
+          "49186805"
+        ]
+      },
+      {
+        "category": "AI 辅助数学证明的真实性争议",
+        "summary": "评论还把话题拉到 AI 辅助数学证明。怀疑者认为模型最多是把符号和逻辑片段串起来，真正的 proof 仍要靠人或 Lean 去验证，因此很多成果更像 AI 生成的 simulacra。支持者则反驳说，只要每一步都能从前一步推出，那就是 proof；还有论文明确声明，证明思路由 Codex 生成，但作者对最终 claim 和 proof 负责并逐一核验。争论核心是：AI 生成草稿、形式化验证，以及“真正证明”之间该怎么划线。",
+        "supportid": [
+          "49184666",
+          "49185268",
+          "49185903",
+          "49186511",
+          "49186210",
+          "49186530",
+          "49191643"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "harness",
+        "explanation": "LLM 与任务之间的外层编排/环境层，负责工具、状态、记忆和验证流程。"
+      },
+      {
+        "term": "DAG",
+        "explanation": "Directed Acyclic Graph，有向无环图，用来表示任务依赖、分支和并行流程。"
+      },
+      {
+        "term": "subagents",
+        "explanation": "分工处理局部任务的多个 agent，通常用来隔离上下文并降低主模型负担。"
+      },
+      {
+        "term": "context window",
+        "explanation": "模型一次能看到的 token 范围，决定它能容纳多少上下文。"
+      },
+      {
+        "term": "REPL",
+        "explanation": "Interactive loop，让模型像在 shell 里一样持续执行代码和调用工具。"
+      }
+    ],
+    "context": "这篇文章讨论的是如何搭建一个 agentic harness（连接 LLM、tools、state、memory 和验证流程的外层编排系统），而不只是单次 prompt。评论把它放到 Anthropic 的 Claude Code（代码代理工具）、OpenAI 的 Codex（代码代理）和 programmatic tool use 的实践里比较，核心问题是多 agent、workflow DAG 和 subagents 能不能真提升任务执行。另一条背景线来自 Terrence Tao 相关的 proof harness、Lean（形式化证明系统）和 AI 辅助证明：大家在争论 AI 产出的草稿、逻辑链与正式可验证 proof 之间的边界。讨论还牵涉到 MCP（Model Context Protocol，一种把外部工具接入模型的协议）和 open-source harness，反映出人们在复杂编排和极简 shell 式方案之间的分歧。",
+    "emoji": "🤔",
+    "sarcastic_question": "连 benchmark 都没有，就先喊 advanced harness 了？"
+  },
+  "articleSummary": "## 一句话总结\n\n这篇文章的核心是：把单次 LLM 调用包装成可靠 Agent，不靠“更强的 prompt”，而靠 DAG 计划、类型化工具、分层记忆、分级验证、预算控制和可观测性等一组可组合的工程原语。\n\n## 正文\n\n### 单个 Agent 会做事，但还算不上能打仗\n\n文章先用一个很贴切的比喻开场：基础 Agent loop 像一名飞行员，能完成一次飞行任务，但真正的空中作战还需要任务规划、编队协作、燃油管理、飞行记录和战后复盘。Claude Code、Devin、Cursor 这类生产级 Agent，做的正是同一件事。它们没有替换 LLM 这个“飞行员”，而是在外面加了一层让系统可控的结构。问题因此从“怎么调用一次模型”变成了“怎么让模型能规划、执行、恢复，并证明自己做对了”。作者的答案不是引入一个巨大的框架，而是拆出一批小而可测试的 primitives，再由一个刻意保持轻薄的 orchestrator 把它们串起来。因为每个 primitive 都对应一种常见失败模式，所以系统复杂度不是凭空增加，而是为了解决明确的问题。\n\n### 城市对比任务看似简单，却正好暴露串行 loop 的问题\n\n贯穿全文的例子是一个 city comparison agent：输入多个城市，输出人口、时区和简短叙述的对比报告。这个任务被选中并不是因为它复杂，而是因为它恰好同时具备并行、依赖、验证和成本控制几个特征。比如比较三个城市时，人口、时区和摘要一共是 9 个独立查询，它们本来就可以并发执行。可是最终报告又必须等全部查询完成后才能生成，因此任务不是一个平铺的步骤列表，而是一个有依赖关系的图。更重要的是，工具成本并不均匀：人口和时区查询只是内存字典读取，而城市摘要和最终聚合都要调用 LLM。作者还用本地 mock 的 `CITY_FACTS` 保证可复现性，并允许 LLM 部分在真实 Anthropic 模型和确定性 mock 之间切换。\n\n### 先抽象 LLM，再让工具拥有可验证的契约\n\n如果 Planner、Worker、Critic 都硬编码到某一家 LLM SDK，整个 harness 很快会陷入两个问题：既难测试，也被供应商锁死。因此作者先定义了 `LLMProvider` 抽象，统一暴露同步 `complete()` 和异步 `acomplete()` 接口。异步版本通过 `asyncio.to_thread` 包装同步调用，这意味着不同 SDK 不必都改写成 async 才能接入。配套的 `MockProvider` 会按角色返回确定性结果，例如固定计划、模板化摘要和规则化判定，从而把“编排逻辑错了”与“模型这次表现差”分开排查。接下来是 Typed Tool：每个工具用 Pydantic model 声明参数，自动得到运行时校验、JSON Schema、字段说明和成本提示。这样 LLM 不再靠猜测参数形状，错误也会在真正执行数据库查询或有副作用操作之前失败，而不是在深层逻辑中爆出一条模型无法纠正的字符串错误。\n\n### 真正的计划不是步骤列表，而是一张可并发执行的 DAG\n\n基础 harness 每轮只执行一个 action，这在严格串行任务中没有问题，但对城市对比这样的任务明显浪费。于是作者让 Planner 一次性生成完整的 Plan DAG，而不是每一步都重新问模型“接下来做什么”。在三城市示例中，Planner 生成 10 个节点：9 个没有依赖的查询节点，以及 1 个依赖这 9 个节点的 `aggregate_report` 节点。这里的关键不是“让 LLM 画图”，而是 LLM 给出的图必须先被验证，因为它同样可能虚构不存在的 node ID，或者生成无法完成的循环依赖。调度器的核心是 `ready_nodes()`：只返回仍处于 `PENDING` 状态、且所有依赖均已 `DONE` 的节点。说白了，DAG 把“什么能同时跑、什么必须等待”从隐含的 prompt 推理，变成了系统可以检查和执行的显式结构。\n\n### 并发执行的重点不是跑得猛，而是跑得受控\n\n执行器采用 level-synchronous 的方式工作：找出当前 ready 的节点，用 `asyncio.gather` 并发运行，更新成功或失败状态，再进入下一轮。同步工具通过 `asyncio.to_thread` 放进线程池，因此既能并发执行，也不强迫每个工具都写成 `async def`。但作者没有简单地对所有节点无限并发，而是加上 `MAX_CONCURRENT = 5` 的 semaphore。原因很现实：一个 50 节点计划如果瞬间发起 50 个 LLM 请求，通常先撞上的不是性能上限，而是 rate limit 和账单上限。对于单个 API 调用往往耗时数百毫秒到数秒的 Agent 工作负载，这种分层同步的并发模型已经能拿到大部分收益。串行时总耗时接近所有查询延迟之和，而并发后则接近最慢查询的延迟，再加上最后一次聚合调用。\n\n### Context 不该不断累积，而应该在预算内主动组装\n\n朴素 Agent 往往把完整对话、所有工具输出和所有历史任务一股脑塞回 prompt，但这会同时带来 token 浪费和上下文污染。作者因此把记忆分成三层：始终在上下文里的 Working Memory、保存相似历史任务结果的 Episodic Memory，以及保存背景事实的 Semantic Memory。每次构造 prompt 时，系统不会注入全部记忆，而是按当前 goal 检索 top-k，再受一个硬字符预算约束组装进去。这里有个细节很重要：Episodic Memory 的优先级高于 Semantic Memory，因为“以前在类似任务中犯过什么错”通常比一般知识更能指导当前行动。检索层支持免费的 Jaccard similarity，也优先使用 `all-MiniLM-L6-v2` 生成的 384 维 embedding，以处理“词不同但意思相近”的 paraphrase。预算耗尽时，系统会显式标记截断，而不是静默丢失信息；Context 的原则是主动 assembly，不是被动 accumulation。\n\n### 可靠性最终要靠验证，而且应该先便宜后昂贵\n\nAgent 最危险的输出往往不是明显报错，而是语言流畅、看起来合理、却悄悄漏掉了一个城市。作者把验证设计成分层结构：先运行几乎零成本的确定性结构检查，只有通过后才调用 LLM judge 判断主观质量。比如用户要求 Paris、Tokyo 和 New York，但报告只写了 Paris，系统会直接返回 `Missing cities: ['Tokyo', 'New York']`，无需为 LLM 裁判多花一个 token。这个错误信息也不是为了好看，它可以直接交给 replanner，或者帮助人工排查缺失的执行节点。文章借此强调，生产级 Agent 的关键不是让单次模型输出“更可信”，而是让错误尽量早暴露、以更低成本被定位和修复。再结合开篇提出的 Planner、Worker、Critic 角色拆分，以及多维预算、优雅降级和 tracer，最终得到的不是一个万能 prompt，而是一套可测量、可复盘、可扩展的 Agentic harness。"
+}

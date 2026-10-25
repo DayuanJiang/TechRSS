@@ -1,0 +1,97 @@
+{
+  "id": 47762641,
+  "by": "zagwdt",
+  "title": "Introspective Diffusion Language Models",
+  "url": "https://introspective-diffusion.github.io/",
+  "score": 232,
+  "createdAt": 1776154220,
+  "aiSummary": {
+    "chinese_title": "I-DLM：把 Qwen 改成扩散式模型，LoRA 版可保真提速约2倍",
+    "discussion_overview": [
+      {
+        "category": "AR 转 diffusion 的核心突破",
+        "summary": "评论普遍把这篇工作看成一个很激进的改造：把 Qwen 这种 autoregressive 模型变成 diffusion language model，而且效果不只是“能跑”，而是明显快于很多原生 diffusion 模型。有人特别提到，作者还用 LoRA 把扩散模型锚定回基座模型分布，使其在同 seed 下能做到字节级一致，同时速度大约翻倍。这个点被认为最有冲击力，因为它把“质量接近 base model”和“并行生成提速”同时拿到了手。",
+        "supportid": [
+          "47763374",
+          "47764302"
+        ]
+      },
+      {
+        "category": "训练蒸馏与推理并行验证的机制",
+        "summary": "一开始有人疑惑：既然要对照 base model 输出，为什么不直接用 base model 生成？后面的解释指出，这类对齐主要发生在训练阶段，推理时只需跑训练好的 diffusion 模型。关键在于 transformer 对已知 token 的处理可以并行完成，prompt processing / prefill 本来就不是逐 token 采样，因此可以一次 forward pass 验证一批候选 token。讨论里也把这和 speculative decoding、distillation 联系起来：目标不是改变输出分布，而是用更少的目标模型前向次数换到同样的结果。",
+        "supportid": [
+          "47763919",
+          "47765412",
+          "47764342",
+          "47764903",
+          "47764230",
+          "47764378"
+        ]
+      },
+      {
+        "category": "真实体验：快，但质量和工具调用仍有代价",
+        "summary": "不少人把 Inception Labs 的 Mercury 2 当作现实中的对照案例，认为它在 latency 和 pricing 上很有吸引力，尤其适合自动标签、互链、autocomplete/T9 这类输出短、交互连续的场景。有人亲测后指出，前半段回答很顺，但长输出里会逐渐出现字符污染、语法崩坏甚至代码片段失真，说明质量稳定性还不够。另一些评论进一步补充，tool calling 可靠性不如一些更成熟的模型，做 coding 时也往往不如 Haiku 4.5、Kimi 或 GLM 系列省心，所以它更像是“特定低延迟任务的利器”，而不是通用替代品。",
+        "supportid": [
+          "47762765",
+          "47762877",
+          "47763085",
+          "47763326",
+          "47764313",
+          "47764535",
+          "47764852",
+          "47765586"
+        ]
+      },
+      {
+        "category": "local-LLM 与 speculative decoding 落地",
+        "summary": "讨论没有停留在云端模型，还扩展到 local-LLM 场景，很多人把 diffusion 看成 speculative decoding 的潜在加速器。有人提到 DFlash 这类实现，并表示在 Mac 上已经能让 Qwen3.5 获得超过 2x 的速度提升；也有人在 Swift 里试做 WeDLM，但坦言当前性能还没达到可用水平。另一条线索是一些高 TPS 的演示和测速分享，说明当推理栈足够优化时，diffusion 路线确实可能把“速度感”推到一个很夸张的程度。",
+        "supportid": [
+          "47763220",
+          "47764205",
+          "47763382",
+          "47765480"
+        ]
+      },
+      {
+        "category": "把 diffusion 用成分段反思/推理模型",
+        "summary": "还有人顺着这个方向追问：diffusion 模型能不能像 reasoning model 那样，先生成一块内容，再 introspect，然后继续生成下一块，直到结果满意。回复里有人认为完全可以把第一轮输出再喂回模型，做多轮迭代，这和一些 AR reasoning 模型在推理阶段反复生成的思路很像。Mercury 2 也被直接提到是 reasoning model，说明社区已经开始把 diffusion 不仅看作“更快的生成器”，也看作可能承载更结构化思考流程的框架。",
+        "supportid": [
+          "47763659",
+          "47763802",
+          "47763883",
+          "47764400"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "扩散式语言模型（dLLM）",
+        "explanation": "用多轮去噪或补全来生成文本的语言模型，不是逐 token 左到右采样。"
+      },
+      {
+        "term": "autoregressive（AR）",
+        "explanation": "传统大模型的生成方式，每次只预测下一个 token。"
+      },
+      {
+        "term": "LoRA",
+        "explanation": "Low-Rank Adaptation，一种轻量微调/适配方法，常用于给大模型加小参数模块。"
+      },
+      {
+        "term": "speculative decoding",
+        "explanation": "先让快模型提案，再让目标模型并行验证，从而减少推理延迟。"
+      },
+      {
+        "term": "prefill",
+        "explanation": "把已知 prompt 一次性送入模型并行计算，建立 KV cache 的阶段。"
+      },
+      {
+        "term": "TTFT（time-to-first-token）",
+        "explanation": "从请求发出到返回第一个 token 的时间，衡量交互式延迟体验。"
+      }
+    ],
+    "context": "这场讨论围绕 Introspective Diffusion Language Models（I-DLM）展开：它把 Qwen（阿里巴巴的开源大模型系列）改造成 diffusion language model，并在 HuggingFace（模型托管平台）上发布了 I-DLM-8B、I-DLM-32B 和 I-DLM-8B-LoRA。评论之所以热烈，是因为 LoRA（Low-Rank Adaptation，一种轻量微调适配器）版本被认为能把扩散模型对齐回基座分布，同时显著提升推理速度。大家还拿它和 Inception Labs 的 Mercury 2（商用 diffusion LLM）、DFlash（面向 local-LLM 的 diffusion 加速方案）以及 WeDLM（Swift 实现的 diffusion language model）做对比，重点讨论 speculative decoding、prefill、KV cache 这些推理加速机制。整体背景其实是同一个问题：能否在不明显牺牲质量的前提下，把文本生成从逐 token 的 autoregressive 路线，推进到更并行、更低延迟的新范式。",
+    "emoji": "🤔",
+    "sarcastic_question": "先把Qwen改成扩散模型，再拿原模型验货吗？"
+  },
+  "articleSummary": "## 一句话总结\nI-DLM 通过引入“内省一致性”训练和跨步解码机制，首次让 Diffusion 语言模型在保持与同规模 AR 模型同等质量的前提下，实现了接近 3 倍的推理吞吐量，并且能无缝接入现有的 AR 推理基础设施。\n\n### Diffusion 模型一直输在“内省一致性”上\nDiffusion 语言模型（DLM）的愿景很性感：用并行生成打破自回归（AR）模型逐字生成的瓶颈。但现实很骨感，DLM 的质量一直被 AR 模型吊打。作者发现，问题的根源在于“内省一致性”的缺失。说白了，AR 模型生成一个字时，它自己也是信这个字的；但传统的 DLM 模型在去噪时，往往对自己生成的“半成品”缺乏验证，导致生成过程和模型自身的判断不统一。这种不一致性，就是 DLM 质量上不去的根本原因。\n\n### 现有方案不仅慢，还吃不到并行的红利\n为了解决这个问题，之前的方案比如 SDAR 或 TiDAR，虽然尝试了并行，但引入了巨大的计算开销。数据显示，TiDAR 的计算开销高达 7.8 倍，而 I-DLM 只有 2.5 倍。更糟糕的是基础设施的适配问题，传统的 DLM 并行策略很难利用现有的 KV Cache 和 Continuous Batching 技术，导致在高并发场景下吞吐量上不去。作者指出，只有解决了这三个瓶颈——低一致性、计算低效、基础设施不匹配，DLM 才有真正的实用价值。\n\n### 核心思路：把“生成”和“验证”塞进同一个 Forward Pass\nI-DLM 的核心设计叫“内省跨步解码”（ISD）。它的巧妙之处在于，在一次前向传播中，模型同时做两件事：在 MASK 位置提出新的 token，在 Clean 位置验证之前生成的 token。通过 p/q 接受准则，模型能确保输出的分布和原始 AR 模型完全一致。这种设计不仅保留了并行生成的速度优势，还通过实时验证保证了质量。因为使用了严格的因果注意力，I-DLM 可以直接像普通 AR 模型一样接入 SGLang 等推理框架，不需要重写底层基础设施。\n\n### 训练策略：从 AR 模型“无痛”转换\n怎么训练这种模型呢？作者没有从零开始，而是直接拿预训练好的 AR 模型（如 Qwen3）进行转换。通过因果注意力、logit 偏移和一个全掩码的目标函数，他们让模型学会了“内省”。训练数据只需要 4.5B tokens，在 8 张 H100 上跑两个 epoch 就能搞定。这种转换方式不仅保留了原模型的知识，还赋予了它并行生成的能力，是一个性价比极高的改造方案。\n\n### 效果炸裂：质量持平，速度翻倍\n结果非常能打。I-DLM-8B 是第一个在质量上追平同规模 AR 模型的 DLM。在 AIME-24 上，它拿到了 69.6 分，而参数量大一倍的 LLaDA-2.1-mini 只有 43.3 分；在 LiveCodeBench-v6 上也是 45.7 vs 30.4 的碾压优势。更厉害的是速度，在高并发（C=64）场景下，I-DLM 的吞吐量是 LLaDA-2.1-mini 的 2.9-4.1 倍。这意味着它不仅算得准，而且真正吃到了并行的红利。\n\n### 还有一个“无损加速”的杀手锏\n如果你对输出结果的确定性有极高要求，I-DLM 还提供了一个叫 R-ISD 的方案。它通过一个 Gated LoRA 适配器，只在 MASK 位置生效，验证位置则使用基础模型权重。这种设计保证了输出结果与基础 AR 模型 bit-for-bit 完全一致，实现了真正的无损加速。虽然 LoRA 带来了约 1.12 倍的计算开销，但换来的是确定性的结果，这对很多生产环境来说是值得的。\n\n### 这才是 Diffusion 语言模型的正确打开方式\nI-DLM 证明了 DLM 并不是方向错了，而是之前的实现方式没到位。通过解决内省一致性和基础设施兼容性，它让并行生成不再是一个“听起来很美”的概念，而是一个实实在在能提升吞吐量且不牺牲质量的工程方案。对于想要在现有 AR 基础设施上获得性能提升的开发者来说，I-DLM 提供了一个非常有吸引力的 Drop-in replacement。"
+}

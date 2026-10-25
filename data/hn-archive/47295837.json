@@ -1,0 +1,99 @@
+{
+  "id": 47295837,
+  "by": "vinhnx",
+  "title": "Notes on Writing WASM",
+  "url": "https://notes.brooklynzelenka.com/Blog/Notes-on-Writing-Wasm",
+  "score": 134,
+  "createdAt": 1772964622,
+  "aiSummary": {
+    "chinese_title": "写 WASM 的笔记：组件模型、绑定与工具痛点",
+    "discussion_overview": [
+      {
+        "category": "WASM Component Model：浏览器集成的争议",
+        "summary": "多位评论提到 Mozilla/Firefox 在推动将 Web APIs 直接暴露给 WASM 的早期提案（基于 WASM Component Model），目标是让 WebAssembly 在浏览器中成为一等公民并减少 JS shim。支持者认为这能降低唤醒 JS 引擎的开销、改善字符串编组性能并提升开发者体验，还能让不同语言通过高层接口互操作，避免把一切退回到 C 风格接口。反对者则指出 Component Model 会带来大量复杂性且收益有限：示例中的性能提升主要体现在字符串传输场景，并不能自动解决像 WebGPU 那类需要在 WGPUBuffer 与 JS ArrayBuffer 之间拷贝的大量数据通路问题。",
+        "supportid": [
+          "47297922",
+          "47298868",
+          "47298352",
+          "47298681"
+        ]
+      },
+      {
+        "category": "绑定工具与实践：自动绑定的成本",
+        "summary": "评论普遍批评自动绑定工具（如 Emscripten 的 embind 或 wasm-bindgen）容易引入体积膨胀、复杂的 glue code 和调优难题，建议不要盲目自动映射复杂语言的原生类型。实务经验是采用混合式工程：把非琐碎工作放在手写的 JS/宿主中、或通过设计良好的 C API 隧道进行互操作，而不是把 C++/Rust 的大语义表面直接暴露到 JS。评论还指出 wasm-bindgen 曾有维护停滞的问题（影响体验），相比之下像 PyO3 在 Python 生态的工具链体验被认为更好，且有报道 2025 年起社区与公司（如 Cloudflare）开始推动相关工具的活跃度回升。",
+        "supportid": [
+          "47296624",
+          "47296439",
+          "47296557",
+          "47296609",
+          "47297178"
+        ]
+      },
+      {
+        "category": "采纳与用途：是小众还是关键组件？",
+        "summary": "有人断言 WASM 使用者规模非常小、注定成为小众技术，但反方列举了多个现实落地的场景来反驳这一点。实用案例包括浏览器端将计算密集任务交给 WASM 的创意/生产力工具（如 Figma、Miro），以及后端/边缘把 WASM 当作沙箱或插件运行时（如 Istio、Helm、OPA）；另有团队用 WASM 在浏览器部署机器学习模型。讨论还指出，若能实现更直接的 DOM 访问或减少 JS glue，某些用例会更容易采用，但当前跨界的字符串编码、内存拷贝等互操作成本仍然是阻力。",
+        "supportid": [
+          "47296536",
+          "47297260",
+          "47296794",
+          "47297014"
+        ]
+      },
+      {
+        "category": "GC 支持与语言生态变化",
+        "summary": "评论中关于 WASM GC 的讨论来自正在尝试基于 WASM GC 写语言的人与使用者，他们报告了具体设计权衡：WASM 的 GC 把 ref/struct/array 等类型交由运行时管理，vtable 实现较直接但接口设计受限，fat pointer/接口需要对象来表达。浏览器方面的好处是 GC 可以跨 DOM、JS 与 WASM 协作实现统一回收，但缺点是跨边界的数据传输需要更多拷贝——例如 GCed 字节数组对外不透明，需要提供逐字节访问或先拷贝到 linear memory；字符串处理尤为麻烦且多线程支持尚不足，部分提案（如 stringref）已停滞，WASI 向 GC 类型的 lowering 也在讨论之中。",
+        "supportid": [
+          "47297912",
+          "47298636",
+          "47299002",
+          "47297957"
+        ]
+      },
+      {
+        "category": "实践经验与工具链现实",
+        "summary": "多名开发者分享了不同语言在 WASM 上的实战体验：在游戏 jam 中 C++ 遇到 Emscripten 的编译 bug，Zig 在生态与文档上不足，Rust 因借用检查和严格编译带来学习与开发摩擦，而 Odin 在短期项目中体验良好。很多人因为互操作开销与绑定复杂性最终回退到 JS/TS，或选择在后端以 WASM 作为轻量沙箱；同时工具链（如 wasm2c/wasm2go）展示了 WASM 本身可以是较小的运行目标。评论还回顾了 asm.js 到 WebAssembly 的演进，解释了为何现在既有针对性能的设计，也有为 POSIX 仿真带来的 bloat 和不同用途的工具链分歧。",
+        "supportid": [
+          "47297874",
+          "47297827",
+          "47296681",
+          "47296439",
+          "47297857"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "WASM Component Model",
+        "explanation": "一个旨在让 WebAssembly 能直接调用高层 Web API 的规范提案，目标是简化跨语言绑定、减少 JS shim 并改善类型与字符串互操作。"
+      },
+      {
+        "term": "wasm-bindgen",
+        "explanation": "Rust ↔ JavaScript 的绑定生成工具，用于把 Rust 类型与函数导出给 JS 使用；评论提到其维护活跃度直接影响开发体验。"
+      },
+      {
+        "term": "Emscripten",
+        "explanation": "把 C/C++ 编译到 JavaScript 或 Wasm 的工具链，包含 embind 自动绑定与 POSIX 仿真，经常被指出会引入体积膨胀与运行时边界。"
+      },
+      {
+        "term": "WASI（WebAssembly System Interface）",
+        "explanation": "为 WebAssembly 在非浏览器环境提供系统调用抽象的接口层，类似 POSIX，用于文件、内存与资源访问；讨论中涉及 WASI preview 0.2 与向 GC 类型的 lowering。"
+      },
+      {
+        "term": "linear memory（线性内存）",
+        "explanation": "WASM 的一块连续字节内存区域（linear memory），通常用于在 wasm 与宿主（JS/WASI）之间传输原始数据，并常作为跨界拷贝的桥梁。"
+      },
+      {
+        "term": "WASM GC（Garbage Collection）",
+        "explanation": "WebAssembly 新增的垃圾回收支持，提供 ref/struct/array 等受 GC 管理的类型，但当前跨边界访问、字符串处理与多线程支持仍存在限制。"
+      },
+      {
+        "term": "asm.js",
+        "explanation": "早期将 C/C++ 编译为高性能 JavaScript 子集的技术，是推动后来 WebAssembly 设计与演进的重要历史阶段。"
+      }
+    ],
+    "context": "本帖围绕一篇名为“Notes on Writing WASM”的文章及其评论展开，很多回复实际上是在讨论把 Rust/C++ 等语言编译到 WebAssembly 时的绑定、编码与工具链问题，而非手写原始 Wasm 二进制。讨论反复涉及历史与生态背景：asm.js 与 Emscripten（把 C/C++ 编译到 JS/WASM 的工具链）、wasm-bindgen/embind 这样的绑定工具的权衡，以及 Mozilla 倡导的 WASM Component Model（一个让 Wasm 直接调用高层 Web API 的提案）。技术前提包括字符串编码差异（JS 常用 UTF-16，Rust/Wasm 常用 UTF-8）、WASM 的 linear memory（线性内存）模型、WASI（WebAssembly System Interface）在服务端的角色，以及近期关于 WASM GC（垃圾回收）和跨界拷贝开销的争议。争论的核心是追求更原生的跨语言性能与更低的互操作复杂性之间的权衡：是继续依赖 JS glue，还是在浏览器/运行时层面增加复杂机制来简化绑定。",
+    "emoji": "🤔",
+    "sarcastic_question": "把字符串传输优化好，就能让WASM普及吗？"
+  },
+  "articleSummary": "## 一句话总结\n写高性能 Wasm 的核心不在于死磕指令层面的微优化，而在于理解线性内存模型，通过精心设计数据布局来最小化内存访问开销。\n\n### 线性内存模型是性能的基石，也是陷阱\nWasm 的内存模型非常独特，它是一个巨大的、连续的字节数组。这听起来简单，但意味着你在 C++ 或 Rust 里习以为常的指针操作，在 Wasm 里都会变成显式的内存偏移量计算。核心思路其实很简单：因为内存是线性的，CPU 缓存行的利用率直接决定了你的代码跑得快不快。如果你像在宿主机上那样随意分配对象，导致数据在内存里支离破碎，缓存命中率就会暴跌，性能自然上不去。\n\n### 数据布局比算法选择更能决定生死\n有意思的地方在于，很多时候我们优化算法，却忽略了数据在内存里是怎么摆的。文章里提到了一个关键点：把经常一起访问的数据紧紧挨着存放。这叫 \"Struct of Arrays\" (SoA) 或者类似的紧凑布局策略。这样做的好处是，当 CPU 读取一个数据时，它顺带把周围的数据也加载进缓存了，下一次访问就是命中。说白了就是，为了榨干性能，你可能得牺牲一点代码的可读性，去迁就硬件的喜好。\n\n### 指令宽度不是越大越好，够用就行\n很多开发者觉得 Wasm64 或者 128-bit SIMD 指令集是性能银弹，但这其实是个误区。文章指出，使用更大的指令宽度会增加代码体积，导致下载和解析时间变长，这在 Web 场景下是致命的。更糟糕的是，如果你的数据本身没有对齐，或者没法填满这些宽指令，CPU 的执行单元就会空转。所以，真正的技巧在于根据你的实际数据类型，选择最合适的指令宽度，而不是盲目求大。\n\n### 垃圾回收在 Wasm 里是个沉重的包袱\n如果你习惯于写 Go 或 Java，可能会期待 Wasm 的 GC (Garbage Collection) 能帮你自动管理内存。但问题是，目前的 Wasm GC 实现往往伴随着不可预测的暂停。对于需要 60fps 流畅度的图形渲染或高频交易场景，这种由 GC 引起的卡顿是没法接受的。作者的建议很直接：在性能关键的路径上，尽量手动管理内存，或者使用 Rust 这种没有 GC 的语言编译到 Wasm。\n\n### 边界检查是安全锁，也是性能瓶颈\nWasm 为了安全，默认会在每次内存访问前检查边界。这就像你每次进房间都要保安查证件，安全是安全，但太慢了。虽然现代编译器很聪明，能通过循环分析消除掉很多检查，但在复杂的逻辑里，漏网之鱼依然很多。这里有个巧妙的设计：如果你能保证访问是安全的（比如通过数学证明），可以使用 `unsafe` 块或者特定的编译器指令来绕过检查，但这需要你对代码逻辑有绝对的掌控力。\n\n### 跨语言调用的开销比你想象的大\n很多架构喜欢把核心逻辑用 C++ 写成 Wasm，然后用 JS 胶水代码粘合。但问题是，JS 和 Wasm 之间的数据传递是有成本的。每次调用都要经过 \"边界\" (boundary)，数据可能需要被复制或者序列化。核心思路其实很简单：尽量减少跨边界的调用次数。不要在 JS 里写个循环去调 Wasm 函数，而是把数据一次性传过去，让 Wasm 内部处理完再一次性吐回来。\n\n### 最终的瓶颈往往在 I/O，而不是计算\n做了这么多优化，最后你可能会发现，计算已经不是瓶颈了。真正的瓶颈在于把数据从硬盘搬到内存，或者从服务器下载到浏览器。文章提醒我们，不要为了优化计算速度，把数据结构搞得过于复杂，导致 I/O 时间暴增。有时候，一个稍微慢一点但数据布局更友好的算法，反而能让整体吞吐量更高，因为它让 I/O 和 CPU 配合得更默契。"
+}

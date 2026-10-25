@@ -1,0 +1,112 @@
+{
+  "id": 48965850,
+  "by": "AmazingTurtle",
+  "title": "OpenAI reduces Codex Model Context Size from 372k to 272k",
+  "url": "https://github.com/openai/codex/pull/33972/files",
+  "score": 329,
+  "createdAt": 1784458818,
+  "aiSummary": {
+    "chinese_title": "OpenAI将Codex上下文从372k降至272k，长上下文争议升温",
+    "discussion_overview": [
+      {
+        "category": "成本/延迟折中",
+        "summary": "有人认为这次缩窗首先是成本和延迟上的优化。纯 quadratic attention 下，372k 相比 272k 的尾部 token 代价会明显更高，所以小一点的窗口更容易控算力。还有人指出很多会话根本到不了 300k，甚至 250k 以后体验就开始变慢，因此对普通任务影响不一定大。也就是说，这更像一次服务端资源分配的调整，而不一定是能力上的硬伤。",
+        "supportid": [
+          "48968816",
+          "48966913",
+          "48968320",
+          "48968860"
+        ]
+      },
+      {
+        "category": "长上下文需求与 compaction 失真",
+        "summary": "反对者把焦点放在 compaction 的信息损失上。对于论文、复杂代码库、细碎设计细节这类任务，摘要会把关键上下文磨平，模型每次压缩后都像要重新读一遍。有人说自己常用 60-80k 的规则文件、计划和 review 文件来维持工作流，372k 还能撑住，缩到 272k 后余量明显变小。也有人观察到 compaction 后模型会执着于旧 steering message，或者干脆忘掉最后一步任务。",
+        "supportid": [
+          "48967776",
+          "48967681",
+          "48968718",
+          "48967357",
+          "48966954",
+          "48967382"
+        ]
+      },
+      {
+        "category": "子代理与文档外置工作流",
+        "summary": "另一派认为不要指望单个上下文窗口包住整个项目，而是把任务拆给 subagents。主 agent 只保留高层目标，细节、代码碎片和局部决策则留给专门的子代理或外部文档。有人用 plan.md、reports、reviews 这类文件把记忆落盘，也有人用 context-bonsai 这类工具做可恢复的选择性裁剪。对这类工作流来说，关键不是窗口越大越好，而是任务接口和层级规划是否设计得够清楚。",
+        "supportid": [
+          "48968842",
+          "48967899",
+          "48968128",
+          "48968715",
+          "48968262",
+          "48968872",
+          "48968054",
+          "48968288"
+        ]
+      },
+      {
+        "category": "可靠性与安全边界",
+        "summary": "不少评论在意的其实不是 372k 还是 272k，而是 compaction 是否可靠、可观测。有人说 Codex 会在 compaction 边界漏掉最后的消息，或者出现 message dropping / replay，而压缩后的 concise summary 又不透明，难以确认它到底记住了什么。另一些人提到早期还有 model context size exceeded 之类的故障，现在虽好一些，但仍担心隐藏行为和 session log 被进一步封装。系统 prompt 新增了对 destructive command 的限制，也被视为修复误删 home directory 这类严重 bug 的补丁。",
+        "supportid": [
+          "48967357",
+          "48967430",
+          "48967715",
+          "48967213",
+          "48967362",
+          "48967705",
+          "48967456",
+          "48967461"
+        ]
+      },
+      {
+        "category": "与 Claude Code / DeepSeek 的对比",
+        "summary": "评论里频繁拿 Codex 和 Anthropic 的 Claude Code、DeepSeek 做比较。支持长上下文的人说自己仍会转向 Anthropic，因为大材料和长讨论更依赖窗口；反对者则认为 Anthropic 的 long context 也会退化，只是营销更好。DeepSeek 被拿来当反例，是因为它的 K/V cache 和 append-only 工作方式让长会话缓存命中率很高，成本低得多。还有人提到 GPT 5.6 在 compaction 后会更容易偏离任务，说明问题不只在窗口大小，也在模型怎么利用历史。",
+        "supportid": [
+          "48967776",
+          "48968823",
+          "48966954",
+          "48967487",
+          "48967834",
+          "48967423"
+        ]
+      },
+      {
+        "category": "文档透明度与开源定位",
+        "summary": "有人抱怨 Codex CLI 的 context size 和相关行为不容易在官方文档里直接查到，最后往往得靠 X、Reddit 或仓库自己翻。也有人追问 codex repo 为什么开源、OpenAI 是否还能长期维持，但回应是 coding agent harness 很容易被 reverse-engineer，开源本身就是一种策略。整体看，这类评论更在意工具链是否透明、能不能被用户调试和复现，而不只是数字变小这件事。",
+        "supportid": [
+          "48966979",
+          "48967754",
+          "48967907",
+          "48967410",
+          "48967752"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "context compaction",
+        "explanation": "把较早的对话或任务压缩成摘要，以便在有限上下文窗口里继续运行；优点是省空间，缺点是容易丢细节。"
+      },
+      {
+        "term": "quadratic attention",
+        "explanation": "attention 计算随序列长度近似平方增长的机制，窗口越长，推理成本通常越高。"
+      },
+      {
+        "term": "subagents",
+        "explanation": "由主 agent 调度的辅助 agent，分别处理局部任务，避免把所有细节塞进同一个上下文里。"
+      },
+      {
+        "term": "K/V cache",
+        "explanation": "key/value cache，复用历史 attention 结果以降低长会话的重复计算成本。"
+      },
+      {
+        "term": "AGENTS.md",
+        "explanation": "放在项目里的 agent 说明文件，用来写代码风格、规则和执行约束，供 coding agent 读取。"
+      }
+    ],
+    "context": "OpenAI 的 Codex 是面向 coding 的 agent/CLI，靠 context window 装入代码、指令和历史对话，满了以后会做 compaction（把旧上下文压成 concise summary）。这次有人从 GitHub commit 和相关 X 帖子里发现，Codex Model Context Size 从 372k 调到 272k，于是大家开始讨论这是省算力、降延迟，还是在牺牲大项目能力。评论里默认读者了解一些 agent 工作流，比如 /goal、subagents、AGENTS.md、plan.md 这类把任务拆分和把规则外置的做法。讨论还顺带提到 Claude Code（Anthropic 的 coding agent）和 DeepSeek（以高效 K/V cache 著称的模型），以及 Codex 早前曾出现误删 home directory 的安全问题。",
+    "emoji": "🤨",
+    "sarcastic_question": "272k都不够，难道coding先得写摘要？"
+  },
+  "articleSummary": "## 一句话总结\nOpenAI 悄悄把 Codex 的上下文窗口从 372k 砍到了 272k，这不仅是配置的调整，更暴露了长上下文模型在工程落地时的成本与性能博弈。\n\n### 372k 到 272k，这 100k 去哪了？\n原本大家都在用 372k 的上下文窗口处理大文件，突然发现配置变了。OpenAI 直接把 Codex 的 Context Size 下调到了 272k。这 100k tokens 的缩减可不是小数目，相当于少读了好几个大型的代码库文件。对于习惯了把整个项目丢进去让 AI 分析的开发者来说，这无疑是个坏消息。但这背后肯定有技术上的权衡，毕竟资源不是无限的。\n\n### 成本压力是显而易见的推手\n说白了，这还是钱的事儿。Context Size 越大，模型推理时的显存占用和计算量就呈指数级上升。维持 372k 的窗口，意味着每次请求都要消耗巨大的算力资源。OpenAI 可能发现，绝大多数场景根本用不到这么大的窗口，但为此付出的硬件成本却是实打实的。既然边际效益递减，砍掉一部分“过剩”的性能来保利润，也就合情合理了。\n\n### 延迟与响应速度的妥协\n除了成本，用户体验也是关键因素。上下文越长，模型生成第一个 token 的时间就越长，也就是首字延迟（TTFT）会变高。在代码补全这种对实时性要求极高的场景里，用户根本等不起模型读完几十万 token 再开始干活。把窗口缩小到 272k，能显著降低推理延迟，让补全响应更跟手。这算是在“读得多”和“读得快”之间，选择了后者。\n\n### 实际利用率可能没那么高\n有意思的地方在于，虽然理论上大家都想要无限长的上下文，但实际数据可能并非如此。OpenAI 的后台监控或许显示，大部分请求的有效上下文都集中在 272k 以内。那剩下的 100k 容量，更多时候只是在那空转，浪费算力。既然 272k 已经能覆盖 90% 以上的 use case，那保留 372k 就显得有些“性能过剩”了。\n\n### 给开发者的启示\n这次调整给我们的提醒是：不要迷信参数表上的最大值。在设计应用时，与其依赖模型超长的上下文，不如优化自己的 RAG（检索增强生成）策略，精准地把最相关的代码片段喂给模型。毕竟，主动管理上下文，比被动接受平台的限制要靠谱得多。以后在选型或者做架构设计时，还得把这种平台政策变动的风险考虑进去。"
+}

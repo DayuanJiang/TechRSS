@@ -1,0 +1,104 @@
+{
+  "id": 48804014,
+  "by": "ilreb",
+  "title": "Workers Cache",
+  "url": "https://blog.cloudflare.com/workers-cache/",
+  "score": 171,
+  "createdAt": 1783344061,
+  "aiSummary": {
+    "chinese_title": "Cloudflare Workers Cache：支持 HTTP 缓存语义，但引发计费与 AI 文案争议",
+    "discussion_overview": [
+      {
+        "category": "功能价值与缓存语义",
+        "summary": "评论普遍认为这次最有价值的是让 Workers 直接遵循 HTTP 缓存语义：缓存命中时请求直接由 Cloudflare 返回，Worker 不启动，也不消耗 CPU 时间。大家特别提到 `Cache-Control`、`stale-while-revalidate` 和 cache tags，这让它不只是“再做一个 CDN 缓存”，而是能用于 Worker 渲染的页面缓存与失效控制。有人还注意到部署版本会进入 cache key，这对渐进式发布很有帮助。整体评价是产品终于像一个真正的 edge cache 方案了。",
+        "supportid": [
+          "48804649",
+          "48804957",
+          "48804359",
+          "48805815",
+          "48806644",
+          "48804748"
+        ]
+      },
+      {
+        "category": "为何拖到现在：架构演进",
+        "summary": "Cloudflare staff 的解释是，旧版 Cache API 是照着 Service Workers（浏览器端请求拦截 API）的标准实现的，天然更像本地浏览器缓存，而不是分布式 edge cache。Workers 又一直运行在 cache 前面，所以当时把它放前面最符合 Cloudflare 早期“先在应用前插一层逻辑”的定位，但对很多已经把整个应用都搬到 Workers 的场景并不理想。近年的多 entrypoint 设计、`ctx.props` / `ctx.exports` 以及 channel tokens 让“在同一个 Worker 的不同阶段之间插入 cache”变得可行，顺带也更容易支持 sandboxing 和 RPC。评论里也有人追问这会不会让 Worker-to-Worker 调用、静态资源请求变得更贵。",
+        "supportid": [
+          "48806343",
+          "48806590",
+          "48806412",
+          "48804902",
+          "48806821"
+        ]
+      },
+      {
+        "category": "计费与产品限制",
+        "summary": "最强烈的不满集中在计费上：启用 caching 后，原本免费的静态资源请求和通过 service bindings / `ctx.exports` 的 Worker-to-Worker 调用，会因为先查 cache 而按标准 request rate 计费。很多人担心这会让“开缓存”反而更贵，尤其当大多数流量本来就会命中 cache 时。于是有人建议 Cloudflare 直接把这些请求免费掉，至少让是否启用 caching 的决策更简单，也避免用户为了省钱把一个 Worker 人为拆成两个。也有人怀疑这更多是计量问题而非真实成本。",
+        "supportid": [
+          "48806253",
+          "48805815",
+          "48806821"
+        ]
+      },
+      {
+        "category": "AI文案与写作风格争议",
+        "summary": "评论区有大量对文章文风的吐槽，焦点不是功能而是“像 AI 写的”。有人把它归为 LLM slop，指出 em dash、过度连字符和套路化句式是明显信号，也有人直接抱怨现在很多技术公告都被机器写坏了。另一派则认为文章其实写得清楚、信息密度高，工程师本来也常常只是扫一眼后把链接丢给 Claude 去实现。争论最后变成：如果内容准确且可机器消费，是否还必须保留“人写出来的味道”。",
+        "supportid": [
+          "48805370",
+          "48804971",
+          "48804337",
+          "48805491",
+          "48804490",
+          "48804597",
+          "48804632",
+          "48805184"
+        ]
+      },
+      {
+        "category": "生态迁移与竞品对比",
+        "summary": "很多人把它当成迁移 Cloudflare Workers 的新理由，尤其是那些更新不频繁但仍需要 CMS 的网站。与 AWS Lambda 不同，评论里提到对应方案通常是 CloudFront（AWS 的边缘缓存/分发服务）放在前面；也有人提到 Cloudflare Snippets 以前就适合做“缓存前逻辑”，只是 Workers Cache 更完整。生态上，OpenNext 适配器、Vinext（支持 route-level ISR cache 的框架）都被点名需要跟进。还有人借机夸 Cloudflare 在低运维负担、账单可控和免费额度上的体验，比 GCP/AWS 更适合小团队。",
+        "supportid": [
+          "48804684",
+          "48805022",
+          "48804909",
+          "48804545",
+          "48804848",
+          "48805873",
+          "48805052",
+          "48805992",
+          "48805136"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Cache-Control",
+        "explanation": "HTTP 缓存控制头，用来指定响应是否可缓存、缓存多久以及如何复用。"
+      },
+      {
+        "term": "stale-while-revalidate",
+        "explanation": "一种缓存指令，允许先返回过期但仍可用的旧内容，同时在后台刷新新版本。"
+      },
+      {
+        "term": "cache tags",
+        "explanation": "给缓存内容打标签，便于按标签批量失效，而不是逐条删除。"
+      },
+      {
+        "term": "Service Workers",
+        "explanation": "浏览器中的 Web API，可拦截网络请求；旧版 Cache API 就是围绕它的使用模式设计的。"
+      },
+      {
+        "term": "ctx.props / ctx.exports",
+        "explanation": "Cloudflare Workers runtime 里的入口参数化与导出调用机制，用于把同一个 Worker 拆成可配置的多个入口。"
+      },
+      {
+        "term": "channel tokens",
+        "explanation": "一种把 Worker 的入口信息和序列化参数编码成 token 的机制，便于在 RPC 和缓存链路中传递。"
+      }
+    ],
+    "context": "Cloudflare Workers 是运行在边缘节点的 serverless 平台，过去它的 `Cache API` 更接近浏览器里的 Service Workers 缓存，而不是 Cloudflare 自己的分布式缓存，所以很多人一直觉得“Worker 先跑一遍再返回缓存”很浪费。新推出的 Workers Cache 让符合缓存条件的请求先查 Cloudflare cache，命中时直接返回，未命中才执行 Worker，并配合 `Cache-Control`、`stale-while-revalidate` 和 cache tags 做页面缓存与失效控制。评论里还补充了内部架构背景：Cloudflare 近年在做多 entrypoint、`ctx.props`、`ctx.exports` 和 channel tokens 等 runtime 改造，这些变化让在同一条请求链路里把 cache 放到更合适的位置成为可能。讨论同时扩展到计费模型、OpenNext / ISR 适配器、AWS CloudFront（AWS 的边缘缓存/分发服务）等替代方案，以及文章是否由 LLM 写成的争议。",
+    "emoji": "🤨",
+    "sarcastic_question": "既然 99% 命中缓存，先跑 Worker 不是白烧钱吗？"
+  },
+  "articleSummary": "## 一句话总结\nWorkers Cache 把 Cloudflare 的边缘缓存层搬到了 Worker 代码的前面，让服务端渲染应用只需一行配置和标准的 HTTP Header，就能获得静态网站的极致性能和零 CPU 成本。\n\n### 架构倒置：从“中间人”变成了“源头”\n早期的 Workers 设计是作为“中间人”存在的，它位于缓存和源站之前，负责修改请求头或做 A/B 测试。那时候 Worker 只是边缘逻辑，真正的数据在后面。但随着 Next.js、Remix 等框架的普及，Worker 本身变成了“源站”，负责渲染 HTML。问题来了：当 Worker 就是源站时，原来的架构里就没有缓存了，导致每次请求都要跑一遍代码，既费 CPU 又有延迟。Workers Cache 的核心思路就是翻转架构，把 Cloudflare 的缓存层直接放到 Worker 前面。缓存命中时，Worker 根本不运行，直接返回内容，CPU 计时为零。\n\n### 告别两难：不用全量构建，也不用实时渲染\n在 Workers Cache 出现前，做服务端渲染（SSR）只有两个糟糕的选择。要么是“静态站点生成”（SSG），速度快但每次改内容都要重新构建部署，几千页的文档站动不动就要等十分钟；要么是“实时渲染”，内容新鲜但每个请求都要付渲染费。Workers Cache 提供了第三条路：按需渲染并缓存。第一个请求触发渲染并缓存，后续请求直接走缓存，直到过期。这让你拥有了静态站的速度，却不需要忍受漫长的构建时间，同时也保留了服务端渲染的灵活性。\n\n### `stale-while-revalidate`：让过期缓存“永生”\n光有缓存还不够，真正让体验“起飞”的是对 `stale-while-revalidate` 的完美支持。这个指令告诉 Cloudflare：当缓存过期时，先把旧的（stale）内容立刻发给用户，然后在后台悄悄启动 Worker 去刷新缓存。这意味着，除了访问全新页面的那倒霉蛋，所有用户在任何时候看到的都是缓存级的速度。你可以设置 `max-age=300`（新鲜期 5 分钟）和 `stale-while-revalidate=3600`（后台刷新期 1 小时）。这样既保证了内容每 5 分钟更新一次，又确保了用户在长达 1 小时的时间窗口内永远不需要等待渲染。\n\n### 内容协商：`Vary` 头让缓存更聪明\n现实中的应用很复杂，同一个 URL 可能需要返回不同的内容：浏览器要 HTML，API 客户端要 JSON；支持 WebP 的要图片流，不支持的要 JPEG。很多缓存系统处理这种情况很笨，要么不缓存，要么存错版本。Workers Cache 完整支持标准的 HTTP `Vary` 头。你只需要在响应里加上 `Vary: Accept`，Cloudflare 就会根据请求头里的 `Accept` 值分别缓存不同的版本。不管你是根据语言、编码还是自定义头来做内容协商，缓存都能精准匹配，Worker 只需在第一次请求时生成各个变体，之后全靠缓存命中。\n\n### 属于 Worker 的缓存：不再受限于 Zone\n这是一个概念上的重大转变。以前 Cloudflare 的缓存是绑定在 Zone（域名）上的，配置复杂且和 Worker 耦合。Workers Cache 是“属于 Worker 的”，它跟随着 Worker 代码走，而不是跟随着域名走。这意味着无论你的 Worker 是绑在 `workers.dev`、自定义域名，还是跑在 Service Binding 后面，甚至是在 Workers for Platforms 的多租户环境里，它都共享同一套缓存配置。更重要的是，清除缓存（Purge）也是隔离的，你调用 `ctx.cache.purge` 只会清除当前 Worker 的缓存，完全不用担心误伤同域名下的其他服务。\n\n### 极简配置：代码即配置\n既然缓存属于 Worker，那配置方式自然也要“代码化”。你不需要去后台配复杂的规则引擎，也不需要去记那些针对 Zone 的设置。开启缓存只需要在 `wrangler.toml` 里加一行 `cache.enabled = true`。至于缓存策略，完全通过你在代码里返回的 HTTP Header 来控制——`Cache-Control` 决定存多久，`Vary` 决定怎么区分版本，`Cache-Tag` 帮你做精准清除。这种设计让缓存逻辑直接内嵌在业务代码中，维护起来直观且不易出错。"
+}

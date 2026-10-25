@@ -1,0 +1,110 @@
+{
+  "id": 47155597,
+  "by": "odvcencio",
+  "title": "Show HN: I ported Tree-sitter to Go",
+  "url": "https://github.com/odvcencio/gotreesitter",
+  "score": 153,
+  "createdAt": 1772046033,
+  "aiSummary": {
+    "chinese_title": "将 Tree-sitter 移植到 Go：纯 Go、无 CGO、性能与来源争议",
+    "discussion_overview": [
+      {
+        "category": "对 Go 生态的实用价值（去除 CGO）",
+        "summary": "多位评论指出这对 Bazel 社区和 Go 工具链非常有吸引力：以往为 Gazelle（Bazel 的 Go 语言扩展）等构建 Tree-sitter 支持需要依赖 CGO 和本地 C toolchain，限制了部署和跨平台。作者宣称实现了纯 Go 运行时、无 CGO、WASM 就绪，这对有严格 no-cgo 要求的项目（例如某些 forge 或 Git+JJ）尤其重要。用户还关心后端兼容性（如 gopackagesdriver）和按需加载语言的能力；作者提到的实现方案支持声明式语言注册以避免默认携带所有 grammar 二进制。关于体积，作者报告 206 个语法二进制 blob 总计约 15MB，若属实被认为对多语言 CLI 发布是可接受的规模。",
+        "supportid": [
+          "47156142",
+          "47158691",
+          "47156310",
+          "47157310",
+          "47157006",
+          "47157097",
+          "47157116",
+          "47157143"
+        ]
+      },
+      {
+        "category": "代码来源与质量争议（AI / Claude / vibe coding）",
+        "summary": "大量评论聚焦于项目是否大量依赖大型语言模型（例如 Claude）或通过 AI 生成代码，但 README 未充分披露这一点。评论者要求作者公开使用的模型/工具/提示，因为这直接影响能否信任代码用于生产：AI 生成可用于原型，但在未逐行人工审查前不应宣称可上生产。有人指出 README 风格像“vibecoded”，并认为仅凭好看的文档不足以证明实现质量；作者在评论中回应称为了解决特定痛点而构建并在 README 回答了问题，但透明性仍是争议核心。总体上，社区要求明确标注 AI 辅助的事实并强调测试与人工审查的重要性。",
+        "supportid": [
+          "47157231",
+          "47157301",
+          "47157412",
+          "47157329",
+          "47157828",
+          "47157798",
+          "47158175",
+          "47158663",
+          "47158845",
+          "47157490",
+          "47157493"
+        ]
+      },
+      {
+        "category": "性能基准与功能完整性的质疑",
+        "summary": "有人质疑 README 中的“90x 更快”宣称并询问是否有 TreeCursors 或 tree-sitter-generate 的等价功能，因为某些用例需要比简单查询或遍历更精细的 API。评论指出标注为 partial 并缺少某些 external scanner 时，部分语法（如 HTML）可能会产生不正确输出，因此在未达成语法兼容性的前提下以速度为主要衡量标准会误导用户。作者说明 90x 是针对 Go 源码、与通过 CGO 调用的原生 tree-sitter 做的“苹果对苹果”比较，但有评论分析表明基准可能主要测量了 CGO 调用开销而非解析算法的本质改进。结论是：在完整功能（外部扫描器、生成器、TreeCursors 等）得到验证之前，性能数字不能完全证明替代性的优势。",
+        "supportid": [
+          "47157366",
+          "47157419",
+          "47157763",
+          "47157049",
+          "47157127"
+        ]
+      },
+      {
+        "category": "got：基于语法树的结构化版本控制设想",
+        "summary": "讨论中出现的 got 项目被描述为一种结构化 VCS，利用 gotreesitter 和 gts-suite 抽象来实现实体级的变化跟踪与合并，而不是传统的逐行差异。作者列出的改进包括实体感知 diff（按函数/实体而非行）、结构化 blame、基于结构判断的 semver 建议，以及实体独立的历史（文件重命名不影响实体历史）。当 gotreesitter 无法解析语言时系统会退回到三路文本合并以保证兼容性；作者还声称 got 可与 git 互通，允许在本地使用 got 的语义功能并推送到传统 git 远端。这个设想引发了对与现有工具兼容性（如 jujutsu）以及实际可行性的进一步讨论。",
+        "supportid": [
+          "47156669",
+          "47156872",
+          "47156754",
+          "47156907",
+          "47156955"
+        ]
+      },
+      {
+        "category": "实现难点、命名与工程细节",
+        "summary": "多个评论强调移植工作量主要来自把原生 C 的外部 scanner（custom C lexers）迁移到 Go，并确保与原版 tree-sitter 行为一致；作者称约 70% 的工程工作用于此。社区也提出了命名冲突（例如与 OpenBSD 的 Got 重名）和仓库布局风格（Go 的测试放在实现目录等）引起的讨论与建议。关于语法二进制和总体体积，作者给出的数据（206 个二进制 blob 约 15MB）被一些用户认为对交付多语言支持的 CLI 可接受。总体看法是：工程复杂性、兼容性验证与文档/命名细节将决定该移植能否被更广泛采纳。",
+        "supportid": [
+          "47157049",
+          "47157127",
+          "47156934",
+          "47156238",
+          "47156289",
+          "47157097",
+          "47157116",
+          "47157143",
+          "47156647"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "CGO",
+        "explanation": "Go 与 C 的互操作机制，用于在 Go 中调用 C 库和函数，但会引入本地 C toolchain 依赖和额外的运行时/调用开销。"
+      },
+      {
+        "term": "external scanner",
+        "explanation": "Tree-sitter 的外部扫描器，用于实现复杂或语言特定的词法（如嵌入语言或自定义 token）；原生实现通常用 C 编写，移植时需重写以保证语法兼容。"
+      },
+      {
+        "term": "Tree-sitter grammar",
+        "explanation": "用于描述语言语法的解析器定义（grammar），通常以 JSON/代码形式发布并被 Tree-sitter 编译或加载，语法的一致性决定解析正确性。"
+      },
+      {
+        "term": "WASM",
+        "explanation": "WebAssembly，一种在浏览器与边缘环境运行的二进制字节码格式；纯 Go 实现更容易编译成 WASM 目标以在这些环境中运行解析器。"
+      },
+      {
+        "term": "structural merge / entity-aware diff",
+        "explanation": "基于 AST 或语言实体（如函数、类型）而非逐行文本的差异与合并方法，能够减少语义冲突并提供实体级别的 blame 和版本历史。"
+      },
+      {
+        "term": "got",
+        "explanation": "作者提出的结构化版本控制系统（项目名），基于 Tree-sitter 做实体追踪与结构化合并，目标与传统 git 互通但在语义层面增强合并能力。"
+      }
+    ],
+    "context": "这是一个 Show HN 帖子，作者宣称将 Tree-sitter（用于生成增量解析树的解析器库）移植到 Go，实现纯 Go 运行时、无 CGO（Go 与 C 的互操作机制）、并标注为 WASM 就绪。动机来源于现有生态痛点：在 Bazel（构建工具）+ Gazelle（Bazel 的 Go 语言扩展）等场景下用 Tree-sitter 往往需要 CGO，给分发与无 C toolchain 的环境带来麻烦。作者同时在构建一个名为 got 的结构化 VCS，利用 tree-sitter 做实体级合并；评论里还讨论了移植时大量工作集中在 external scanner（外部词法器）迁移，以及作者是否使用 Claude（Anthropic 的大型语言模型）生成代码和 README 的透明性问题。社区关注点集中在基准可靠性、功能（如 TreeCursors、外部 scanner）完整性、工程代价与是否适合生产环境。",
+    "emoji": "🤔",
+    "sarcastic_question": "这是手工移植还是 Claude 一键翻译生成？"
+  }
+}

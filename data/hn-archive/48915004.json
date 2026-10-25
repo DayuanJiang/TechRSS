@@ -1,0 +1,135 @@
+{
+  "id": 48915004,
+  "by": "jervant",
+  "title": "TS-2026-009: Insecure argument handling in Tailscale SSH permitted root access",
+  "url": "https://tailscale.com/security-bulletins",
+  "score": 145,
+  "createdAt": 1784079006,
+  "aiSummary": {
+    "chinese_title": "Tailscale SSH 参数注入致 root，修复与自建 WireGuard 争议",
+    "discussion_overview": [
+      {
+        "category": "经典命令行参数注入与修复方式",
+        "summary": "这类评论把问题归结为经典的命令行参数注入：用户名如果以 `-` 开头，会被 `getent(1)` 当成选项而不是数据。有人认为最稳妥的修复是完全不要把用户输入传给子进程，直接用 `getpwnam(3)` 之类的系统 API；如果非要查整张表，也应先跑 `getent passwd` 再解析输出。也有人指出 `--` 分隔参数并不总是跨版本可用，所以 Tailscale 采取拒绝 leading dashes、甚至 numeric-only usernames 的策略，虽然粗暴，但能把整类歧义直接封死。还有人补充，像这种认证路径最好补上奇怪用户名的测试，否则以后换实现也可能重新踩坑。",
+        "supportid": [
+          "48915128",
+          "48917778",
+          "48917097",
+          "48915307",
+          "48915494",
+          "48916411",
+          "48915509",
+          "48915328",
+          "48915828",
+          "48915611"
+        ]
+      },
+      {
+        "category": "高权限登录中继的设计约束",
+        "summary": "有评论惊讶于 Tailscale SSH 的登录中继居然在能直接给 root 登录的上下文里运行。随后有人解释，只要一个组件要把同一套凭据映射到不同用户并建立会话，它通常就必须有 root 权限；如果它只能登录当前用户，问题会简单很多。也有人把这看成把 OpenSSH 里一段长期稳定的能力重写成 Go 之后的新攻击面，指出做 reverse tunnel / SSH 代理时现实里很难找到足够成熟的库，所以很多实现最后还是得围着 OpenSSH 二进制、Bash、Paramiko、libssh / libssh2 这些工具打转。",
+        "supportid": [
+          "48915710",
+          "48915984",
+          "48917005",
+          "48917750",
+          "48915884",
+          "48916090",
+          "48916747",
+          "48916385"
+        ]
+      },
+      {
+        "category": "Tailscale SSH 值不值得替代 OpenSSH",
+        "summary": "另一组评论集中在 Tailscale SSH 值不值得用。有人觉得 OpenSSH 的安全记录太强，宁可继续用传统 ssh；也有人提醒这次漏洞只影响已经进入 tailnet / ACL 范围内的攻击者，不是互联网上任意人都能直接打到 root。支持者强调它的实际价值在于中心化管理、可撤销访问、浏览器临时登录，以及只在 Tailscale 接口上接管端口 22，而不是把公网 sshd 暴露出去。反对者则不喜欢它接管端口 22，或者干脆认为 Tailscale 应该只做 VPN，SSH 继续交给 OpenSSH。",
+        "supportid": [
+          "48915370",
+          "48917042",
+          "48917486",
+          "48917491",
+          "48915516",
+          "48915431",
+          "48916732",
+          "48915584",
+          "48915437",
+          "48915420",
+          "48917298",
+          "48915674",
+          "48915204",
+          "48915228",
+          "48915617",
+          "48916077",
+          "48917060"
+        ]
+      },
+      {
+        "category": "自建 WireGuard/Headscale 的取舍",
+        "summary": "不少评论顺势转向自建 WireGuard 和 Headscale（Tailscale 控制面的自托管实现）。支持自建的人认为 WireGuard 更简单、免费、没有中间商，而且长期运行稳定；Tailscale 的拥护者则强调它解决的是 NAT 穿透、firewall busting、always-on、mesh networking 这些纯 WireGuard 不擅长的事。也有人提到企业场景里还需要 2FA、过期 key、统一吊销和 exit node 管理，或者用 Headscale 自建控制面，但 mobile battery drain、iOS 续航和手工维护 peers 又会把人劝退。顺带还有人吐槽 `AllowedIPs`、缺少 DHCP 式自动分配以及把 Apple TV 之类设备接入网络的麻烦。",
+        "supportid": [
+          "48915824",
+          "48916221",
+          "48916660",
+          "48917909",
+          "48916850",
+          "48917325",
+          "48917267",
+          "48917657",
+          "48917345",
+          "48916692",
+          "48916383",
+          "48917933",
+          "48916888"
+        ]
+      },
+      {
+        "category": "漏洞披露、编号与发布节奏",
+        "summary": "披露方式也成了话题。有人问为什么不是 CVE，而是 Tailscale 自己的 TS-2026-009 编号；回应是自建编号能让厂商更好控制披露节奏和叙事，而 CVE（通用漏洞编号）分配有时慢得离谱，甚至拿不到。另一条批评是安全公告不该只发文，还要尽快把修复产物推到所有受影响平台，不然 Docker Hub 之类的镜像更新滞后，用户会根本不知道该装哪一个版本。也有人补一句，至少要给出 disable 或 mitigation 选项。",
+        "supportid": [
+          "48915246",
+          "48915291",
+          "48915622",
+          "48916424",
+          "48917448",
+          "48917776"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "tailnet",
+        "explanation": "Tailscale 里的私有设备网络，成员和访问关系都由控制面管理。"
+      },
+      {
+        "term": "ACL",
+        "explanation": "Access Control List，用来定义哪些用户或设备可以访问哪些资源。"
+      },
+      {
+        "term": "getent(1)",
+        "explanation": "查询系统账号、组等数据库的命令行工具，这里因接收用户输入而出问题。"
+      },
+      {
+        "term": "getpwnam(3)",
+        "explanation": "按用户名查询系统 passwd 条目的标准库/API，比 shell out 更安全。"
+      },
+      {
+        "term": "OpenSSH",
+        "explanation": "最常见的 SSH 实现，也是很多人拿来对比 Tailscale SSH 的基准。"
+      },
+      {
+        "term": "WireGuard",
+        "explanation": "一种现代 VPN 协议/实现，Tailscale 以它为底层。"
+      },
+      {
+        "term": "Headscale",
+        "explanation": "Tailscale 控制面的自托管实现，常用于自己部署类似能力。"
+      },
+      {
+        "term": "CVE/CNA",
+        "explanation": "CVE 是通用漏洞编号，CNA 是负责分配编号的机构。"
+      }
+    ],
+    "context": "Tailscale SSH（Tailscale 提供的 SSH 访问功能）建立在 Tailscale（一个基于 WireGuard 的 mesh VPN）之上，它用 tailnet（Tailscale 的私有设备网络）和 ACL（访问控制列表）来管理哪些用户能连到哪些主机。TS-2026-009 这份公告描述的是：某些用户名，尤其是前导 `-` 的名字，在内部被拼接到 `getent(1)` 调用中后会被当成选项解析，进而触发 root 级别登录风险。评论里反复拿 OpenSSH（最常见的 SSH 实现）和 self-hosted WireGuard / Headscale（Tailscale 控制面的自托管实现）做比较，讨论这种功能是否值得替换传统方案，以及厂商自编号和 CVE 分配的取舍。",
+    "emoji": "😬",
+    "sarcastic_question": "连用户名都能当参数，Tailscale 这也算安全设计吗？"
+  },
+  "articleSummary": "### 一句话总结\nTailscale 这次一口气修了 9 个漏洞，最核心的教训是：**只要涉及系统调用、权限校验或字符串拼接，任何微小的疏忽（比如没检查路径开头的 `-`）都会导致严重的权限绕过或拒绝服务。**\n\n### 一个字符引发的 DoS：死循环的代价\n先说个最\"低级\"但后果严重的 Bug。Tailscale Serve 和 Funnel 在处理 HTTP 请求时，会向上遍历路径来寻找对应的挂载点，直到根路径 `/` 停止。但问题是，如果请求路径不以 `/` 开头，这个遍历逻辑就永远找不到终点，导致 goroutine 死循环。更糟糕的是，服务端没设置请求超时，结果就是一个恶意请求就能把一个 CPU 核心锁死在 100%。修复逻辑很简单：一旦发现路径不是绝对路径，直接停止遍历并关闭请求。这提醒我们，处理外部输入时，\"永远信任\"是系统崩溃的根源。\n\n### SSH 参数注入：`-i` 变成了 `root`\nTailscale SSH 的这个漏洞堪称\"教科书级\"的参数注入。它允许用户名以 `-` 开头，而在 Linux 平台上，这个用户名会被直接传给 `getent(1)` 命令。如果用户名是 `-i`，`getent` 会把它解析成 `--no-idn` 标志，导致命令返回整个 `passwd` 文件内容——当然是从 `root` 用户开始。结果就是，攻击者只要用 `-i` 当用户名登录，就能骗过 ACL 检查，直接拿到 root shell。现在 Tailscale 直接拒绝所有以 `-` 开头的用户名，彻底堵死了这个命令行参数解析的后门。\n\n### UID 绕过 ACL：数字 `0` 的特权\n除了参数注入，Tailscale SSH 还有一个逻辑盲区。它之前允许通过 UID（数字 ID）来指定用户，比如 `0@host`。但在 ACL 校验阶段，代码只检查了字符串形式的用户名，完全忘了检查数字 UID。这意味着，虽然你在 ACL 里禁了 `root`，但攻击者依然可以用 UID `0` 登录，因为 `0` 就是 root。这其实是个典型的数据一致性漏洞：同一个实体（用户）在系统中有了两种表示法（名字和 ID），但安全策略只覆盖了一种。现在的修复方案很干脆：彻底禁止使用纯数字 UID 或纯数字用户名登录。\n\n### Unix Socket 的权限陷阱：软链接的欺骗\nUnix Socket 的权限控制也是重灾区。Tailscale Serve 和 SSH 都允许代理转发 Unix Socket，但之前的权限检查只做了\"词法匹配\"（Lexical matching），也就是只比对了字符串路径。这就有个漏洞：攻击者可以在自己有权限的目录下创建一个软链接，指向受保护的资源（比如 `/var/run/docker.sock`）。因为 Tailscale 是以 root 运行的，它顺着软链接就访问了本该禁止的特权 Socket。修复方案是增加了\"解引用\"检查：不仅要看路径字符串，还要解析它指向的真实目标，确保目标也在允许列表里。\n\n### Services 的过滤漏洞：回环接口的侧门\nTailscale Services 本来是用来虚拟化网络资源的，但在旧版本里，它的入站包过滤不够严。如果一个节点对外暴露了某个 Service IP，攻击者可以尝试连接那些**并没有**公开 advertised 的端口。这时候，Tailscale 会把这些包转发到节点本地回环接口上监听相同端口的进程。这相当于绕过了防火墙，直接摸到了本该只监听 `127.0.0.1` 的服务。现在的修复是严格过滤：只要 Service 没有显式声明该端口，就直接发 TCP RST 包拒绝连接，绝不转发。\n\n### Web API 的逻辑漏洞：空包体的破坏力\nTailscale 客户端的本地 Web UI 提供了一个 `/api/routes` 接口，用来修改 Exit Node 和子网路由。按理说，修改这些设置需要 ACL 里的 `exitNodes` 或 `subnets` 权限。但有个 Bug：如果请求体是空的，处理逻辑会重置这些设置，而且**忘记**检查权限了。这意味着，一个恶意节点只要能访问目标端口，就能发个空请求把对方的 Exit Node 给关了，或者清空路由表。这再次证明，API 的\"重置\"操作往往比\"修改\"操作更容易被忽视，从而成为漏洞的温床。\n\n### 敏感信息泄露：审计日志里的明文 Token\n最后这个漏洞跟权限无关，跟数据隐私有关。Tailscale 的协调服务器会记录审计日志，但在 2026 年 3 月到 5 月期间，它犯了个大忌：把 OAuth client access token 原封不动地记进去了。这意味着，任何能看审计日志的管理员，都能看到有效的 Token，并在一小时内用它冒充客户端调用 API。好在 Token 本身有效期只有一小时，现在历史 Token 都失效了，新日志也会自动脱敏。这提醒我们，日志系统往往是敏感数据泄露的\"重灾区\"，记录前务必脱敏。"
+}

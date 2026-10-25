@@ -1,0 +1,102 @@
+{
+  "id": 49418255,
+  "by": "snvzz",
+  "title": "SeL4 security proofs now complete on AArch64",
+  "url": "https://proofcraft.systems/news-2026/#2026-08-21",
+  "score": 135,
+  "createdAt": 1787574012,
+  "aiSummary": {
+    "chinese_title": "seL4 完成 AArch64 安全证明，但侧信道与配置范围仍受限",
+    "discussion_overview": [
+      {
+        "category": "证明有效，但只在模型内成立",
+        "summary": "不少评论认为，这类侧信道批评并不能推翻结果，因为 seL4 的文档把假设写得很清楚：保密性证明只覆盖模型里能看到的信息通道，功能正确性和完整性则不依赖这类假设。评论指出，证明实际覆盖的是内核内存储通道，不包括 timing channel，所以“没证明 timing channel”不等于“证明失效”。也有人强调，现实系统本来就只能做到有限威胁模型下的高可信，最佳实践和缓解手段依然有价值，只是“绝对无泄漏”通常不可证明。另有人补充 rowhammer-esque 攻击也属于更深层的硬件问题，不能简单算进这次证明的范围。",
+        "supportid": [
+          "49419444",
+          "49419037",
+          "49419395",
+          "49419220",
+          "49419022",
+          "49419230",
+          "49421774",
+          "49420972",
+          "49419464"
+        ]
+      },
+      {
+        "category": "侧信道要更彻底，得软硬件联证",
+        "summary": "另一组讨论转向“如果真要证明无侧信道，该怎么做”。有人认为要把软件和硬件一起证明，甚至要看具体 core、Verilog 设计和芯片实现是否一致，否则很难覆盖 timing channel、cache、memory access 这些泄漏源。也有人提出更现实的做法：证明算法本身没有数据依赖分支，限制 secret-dependent 指令，让分支和路径都用 padding 对齐周期，再依赖编译器保持指令时序。反方则提醒，cache 层级、共享缓存、超线程和功耗变化都会让这个问题变得更棘手，甚至影响频率的 HertzBleed 也会形成可利用通道。",
+        "supportid": [
+          "49419750",
+          "49420672",
+          "49420311",
+          "49421298",
+          "49421245",
+          "49421726",
+          "49420882"
+        ]
+      },
+      {
+        "category": "AArch64 证明有范围限制",
+        "summary": "标题里的“complete”也被提醒有范围限制：这次完成的是 AArch64 上的证明，但对应的配置是 non-MCS、unicore。也就是说，它证明的是一个更窄的 seL4 配置，而不是所有功能、所有部署形态都已覆盖。这个细节在技术上很关键，因为是否启用 MCS、是否多核，会直接影响内核行为和可验证性质。",
+        "supportid": [
+          "49418857"
+        ]
+      },
+      {
+        "category": "seL4 的真实部署与生态",
+        "summary": "有人顺手问起 seL4 到底被谁在用，评论里列出了 GenodeOS、LionsOS 以及一些未公开的工业/私人部署。还有人提到苹果 Secure Enclave（设备里的安全隔离区）上的 sepOS，据说是 UNSW/NICTA 的 L4 nano kernel 早期分支，说明这条技术路线早已进入真实硬件。再往下还有 seL4 Summit 和 Kry10 KOS 之类项目，显示生态虽小，但确实在安全嵌入式领域持续演化。",
+        "supportid": [
+          "49418726",
+          "49419386"
+        ]
+      },
+      {
+        "category": "seL4 与 Linux 不是简单拼接",
+        "summary": "围绕“native seL4/Linux” 的争论主要在于，Linux kernel 和 seL4 kernel 不能像拼模块一样直接合体，通常只能让 Linux 以 VM 或 guest 的形式跑在 seL4 上。评论认为，这种做法虽然能用，但并没有真正利用 seL4 的 capability model；如果想发挥它的设计优势，可能需要一个新的非 Unix 风格 userspace，或者重新设计成更贴合 seL4 的 OS。另一类观点更务实：对军工和嵌入式场景来说，价值往往是把原来分散在多颗芯片上的隔离功能收敛到一颗芯片上，从而降低成本、功耗和空间，并不是指望它立刻比现有方案“更安全很多”。",
+        "supportid": [
+          "49418872",
+          "49420355",
+          "49420888",
+          "49421325",
+          "49420856",
+          "49422821",
+          "49418984",
+          "49419063",
+          "49420539",
+          "49420290"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "seL4",
+        "explanation": "一个经过形式化验证的微内核，重点在于把功能正确性和部分安全属性做成可证明。"
+      },
+      {
+        "term": "capability model",
+        "explanation": "用不可伪造的 capability 表示权限的访问控制模型，常用于细粒度隔离。"
+      },
+      {
+        "term": "timing channel / side channel",
+        "explanation": "通过执行时间、cache 命中、功耗等非显式路径泄漏信息的通道。"
+      },
+      {
+        "term": "time protection",
+        "explanation": "seL4 中用于隔离时间资源、降低 timing channel 风险的机制和研究方向。"
+      },
+      {
+        "term": "MCS (Mixed Criticality Systems)",
+        "explanation": "面向混合关键级任务的 seL4 配置/扩展，支持不同安全等级或实时要求共存。"
+      },
+      {
+        "term": "L4Linux",
+        "explanation": "在 L4 系列微内核或相关 hypervisor 上运行 Linux 的兼容方案。"
+      }
+    ],
+    "context": "seL4（一个经过形式化验证的微内核）这次宣布在 AArch64（64位 ARM 架构）上的安全证明完成，引发的主要争议不是“是否正确”，而是证明到底覆盖到哪里。seL4 的验证通常区分功能正确性、完整性和保密性，而后者依赖于硬件模型，只能覆盖模型里可见的通道，通常不包含 timing channel（时序侧信道）和 power side channel（功耗侧信道）。评论里还提到该结果对应的配置是 non-MCS（非 Mixed Criticality Systems）且 unicore（单核），说明标题里的“complete”并不等于对所有 seL4 场景都适用。讨论也顺带延伸到 seL4 的真实用途：嵌入式/军工、Secure Enclave（苹果设备里的安全隔离区）以及把 Linux 作为 VM 跑在 L4-based hypervisor（L4 系列微内核虚拟化层）上等。",
+    "emoji": "🤨",
+    "sarcastic_question": "不测缓存、功耗和时序，也算安全证明完了？"
+  },
+  "articleSummary": "## 一句话总结\n\nProofcraft 在 2026 年集中推进 seL4 的形式化验证边界：AArch64 安全证明栈补齐、RISC-V 上 MCS 功能正确性完成，同时把静态安全机制改造成可验证的动态调度能力。\n\n## 正文\n\n### AArch64 终于补上 confidentiality，安全证明栈走向完整\n\n这篇更新里最重要的消息，是 seL4 在 AArch64 上的 confidentiality（机密性）证明完成了。此前，Proofcraft 已分别完成 AArch64 的 functional correctness 和 integrity 证明。现在再加上 confidentiality，意味着他们正式证明：运行在 seL4 上的应用，不能在未经授权的情况下获知信息。说白了，integrity 解决的是“你不能乱改别人的数据”，confidentiality 解决的则是“你不能偷看别人的数据”。\n\n这一步的意义不只是多了一条安全性质，而是 AArch64 上应用隔离的完整安全证明已经就位。证明当然仍依赖 seL4 列出的系统假设，但在这些前提下，内核实现代码被数学化地证明能够隔离上层应用。于是，攻击者即使攻破非关键应用，也不能顺着内核边界横向扩散，进而影响关键应用。这个成果由英国 NCSC 持续支持，也标志着 seL4 在 64-bit Arm 上的安全验证从“接近完成”进入“核心栈完成”的阶段。\n\n### 最难的不只是证明内核正确，还要证明它不泄密\n\n很多人提到 seL4 验证，首先想到的是 functional correctness。它要证明内核实现符合其规范，是验证栈中最大、也最核心的一层。但一个“行为符合规范”的内核，并不自动意味着信息流安全已经被证明。攻击者不能修改受保护数据，不代表他不能通过系统交互、权限关系或调度行为推断出敏感信息。\n\n因此，Proofcraft 的路线很清晰：先完成 functional correctness，再建立 integrity，最后补上 confidentiality。前两者分别约束内核是否按规范运行，以及非授权主体是否能篡改数据。最后这条 confidentiality，则约束非授权主体是否能学习到数据。三者组合起来，才构成了应用级安全隔离可以依赖的形式化基础，而不是只证明某个局部 API 或某类访问控制规则。\n\n### MCS 的验证落地 RISC-V，实时混合关键系统有了证明基础\n\n另一个耗时多年的里程碑，是 seL4 的 MCS（Mixed-Criticality Systems）配置首次完成 functional correctness 验证，目标架构是 RISC-V。MCS 是 seL4 最大的一项新功能之一，面向汽车等混合关键性实时场景。它不是给现有内核加一个小开关，而是同时改变了内核实现和 API，因此验证工作量很大。Proofcraft 也明确称其为 seL4 路线图中长期优先事项。\n\n混合关键系统的难点在于，同一个系统里既有安全或任务关键型组件，也有普通组件。它们对实时性、资源预算和故障影响范围的要求并不一样。MCS 正是为了支持这类场景而存在，但功能越深入内核，证明越不能只停留在设计文档层面。现在 RISC-V 版本的功能正确性已完成，接下来的工作是将证明移植到 Arm 64-bit，这也是 DARPA PROVERS 项目的一部分。\n\n### 静态 schedule 曾是信息流保护落地时的硬约束\n\n有意思的是，文章不只在补证明，也在修改那些“可证明、但不好用”的系统设计。过去，seL4 的信息流安全证明要求 domain schedule 完全静态，并且在编译内核时就固定下来。这意味着开发者必须提前为每个 domain 分配时间片，而且这个分配要覆盖系统整个生命周期。对于安全模型来说，这很干净，但对于真实系统来说往往太死板。\n\n例如，系统启动阶段可能需要给虚拟机更长的时间片，否则它还没启动完成，就耗尽了所属 domain 的时间预算。等系统进入正常运行阶段，又希望时间片更短，以便每个 domain 能及时响应外部事件。原先只有一份固定 schedule 时，这两个需求很难同时满足。它也让 Microkit 这类 SDK 风格的开发方式难以直接采用严格的信息流控制，因为开发者缺少在部署或启动阶段配置调度策略的空间。\n\n### 新 API 让调度可以分阶段变化，但仍停留在可验证范围内\n\nProofcraft 给出的解法不是开放任意动态调度，而是引入可在运行时加载的 semi-static domain schedules。这里的关键设计在于：系统可以在运行中切换不同阶段对应的静态调度表，而不是让调度策略完全失控。这样，启动阶段可以使用较长时间片，运行阶段再切换到更强调交互响应性的短时间片。安全性和工程灵活性之间，终于有了一个可操作的中间层。\n\n对 Microkit 这样的 SDK 化系统，这个 API 还允许在 boot time 设置 domain schedule。也就是说，开发者不再必须把唯一的时间分配策略编进内核。更重要的是，这不是一个“先上线、以后再证明”的功能：Proofcraft 表示该 API 已完成实现和形式化验证，并已进入 seL4 15.0.0。它展示了形式化方法的一个现实价值：验证不必意味着系统永远静态，而是可以帮助设计出受约束、可证明的动态能力。\n\n### 从内核证明延伸到多核、理论和工程生态\n\n这批更新还透露出 Proofcraft 的工作范围正在扩展。一方面，他们在德国 Cyberagentur 资助的 Dyvercon 项目中推进 static multikernel 配置。它让多个 CPU core 各自运行一个独立 seL4 实例，使应用能够利用多核性能，同时保留内核层面的隔离结构。另一方面，团队也在推进证明理论本身：论文《The Algebra of Iterative Constructions》在 LICS 2026 发表，讨论 fixed point 的迭代构造及其代数化推理。\n\n这篇理论工作最终会落到 Isabelle/HOL 的高自动化实现中，而 Isabelle/HOL 正是 seL4 验证使用的 proof assistant。换句话说，团队一边在证明真实内核、调度器和多核配置，一边也在改进证明这些系统所需的抽象和工具能力。文章最后还回顾了 Proofcraft 成立五周年，以及此前完成的“所有受支持 Arm 平台均可使用已验证代码库”等进展。把这些消息连起来看，核心方向很明确：seL4 的验证正在从单一内核正确性，走向更多架构、更多配置、更复杂实时需求，以及更可落地的系统开发路径。"
+}

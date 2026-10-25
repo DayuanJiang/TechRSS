@@ -1,0 +1,94 @@
+{
+  "id": 47420388,
+  "by": "y1n0",
+  "title": "A tale about fixing eBPF spinlock issues in the Linux kernel",
+  "url": "https://rovarma.com/articles/a-tale-about-fixing-ebpf-spinlock-issues-in-the-linux-kernel/",
+  "score": 129,
+  "createdAt": 1773802266,
+  "aiSummary": {
+    "chinese_title": "Linux kernel eBPF ringBuffer 递归锁与 verifier 修复记",
+    "discussion_overview": [
+      {
+        "category": "文章质量与技术深度",
+        "summary": "多位评论者首先在夸这篇文章写得扎实、好懂，认为这种深入 Linux kernel 的排障过程很有阅读价值。有人提到即使已经不再做 kernel 工作，这类 deep dive 仍然很吸引人，因为它把复杂问题拆得很清楚。也有人特别称赞文章把多个 kernel bugs 讲成了一个既简单又有趣的故事，并且还附带了许多链接和代码，方便继续追。",
+        "supportid": [
+          "47421268",
+          "47423913"
+        ]
+      },
+      {
+        "category": "ringBuffer 递归锁根因",
+        "summary": "评论里对核心 bug 的解释非常具体：context switch 和 sampling event 都会往同一个 ringBuffer eBPF map 写数据，而 sampling 路径需要在 NMI（不可屏蔽中断）中拿锁。这样一来，同一 CPU 上就可能在持锁时再次进入同一段写入逻辑，触发递归锁和 lock contention。有人提出把两类事件分到两个 ringBuffer 中可以绕开问题，但回复指出这会增加一倍内存占用，而且事件顺序也会更难保证。对于旧版或有 bug 的 kernel，作者还提到用 per-CPU 状态检测同 CPU 递归，并在检测到重入时直接丢弃事件作为 workaround。",
+        "supportid": [
+          "47422295",
+          "47423223"
+        ]
+      },
+      {
+        "category": "Linux 宏可读性差",
+        "summary": "另一类评论集中抱怨 Linux 源码里的 macro 风格太容易误导人。由于很多宏名字长得像函数调用，乍看之下会以为某个参数比如 `flags` 没有初始化，实际上它只是被宏当作临时保存变量使用。这样的写法让控制流和变量作用域都变得不直观，也放大了 kernel 调试的心理负担。",
+        "supportid": [
+          "47424391"
+        ]
+      },
+      {
+        "category": "为何没更早暴露",
+        "summary": "有评论注意到最小复现看起来像很多别的 eBPF 程序也会走到的模式，因此自然会问为什么这类内核问题没有更早暴露。另一个疑问是，这段代码是否依赖最近 kernel 才支持的新 eBPF 能力，如果是，那也许解释了为何旧测试覆盖不到。这个视角把问题看成可能影响面很广但以前没被充分验证的兼容性与回归风险。",
+        "supportid": [
+          "47425880"
+        ]
+      },
+      {
+        "category": "eBPF spinlock/verifier 约束",
+        "summary": "还有评论专门解释了 eBPF spinlock 为什么难搞：程序不能 sleep，也不能随便拿 mutex，只能在非常受限的上下文里工作。kernel verifier 必须在程序加载前静态证明每一条路径都正确加锁和解锁，这本质上是在做保守的静态分析，接近 halting problem 的一个子集。也正因为如此，误报可以接受，但任何可能导致 deadlock 的漏检都不能放过。",
+        "supportid": [
+          "47423192"
+        ]
+      },
+      {
+        "category": "术语化解释遭质疑",
+        "summary": "线程里也出现了对这种解释方式的不满，有人直接把长篇术语化描述称为 gobbledegook。反驳者并没有继续澄清，反而用更激烈的语气回怼，说明技术讨论在过度抽象或表达失焦时很容易失去耐心。这个小插曲反映出：即使是内核话题，读者也期待具体、可验证的解释，而不是只堆概念。",
+        "supportid": [
+          "47424072",
+          "47424838"
+        ]
+      },
+      {
+        "category": "k8s 与 observability 跑题",
+        "summary": "还有一组偏题评论把话题带到了运维栈和可观测性上：有人主张开发环境用 docker compose，生产环境用 k8s，并强调不要过度复杂化。随即有人吐槽 Kubernetes 让事情变得更复杂，还被追问这和当前讨论有什么关系，说明这条线本身就比较发散。另一条评论则强调 observability 很重要，因为看不见问题就无从修复，这和 kernel 排障的主题其实是相通的。",
+        "supportid": [
+          "47425195",
+          "47423384",
+          "47425784",
+          "47424841"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "eBPF",
+        "explanation": "Linux 内核中的可验证程序框架，允许把小程序安全地挂到内核事件上运行。"
+      },
+      {
+        "term": "spinlock",
+        "explanation": "一种忙等锁，适合不能睡眠的内核路径，用来保护共享数据。"
+      },
+      {
+        "term": "ringBuffer",
+        "explanation": "一种环形缓冲区形式的 eBPF map，用于在内核与用户态之间传递事件数据。"
+      },
+      {
+        "term": "verifier",
+        "explanation": "eBPF 程序加载前的静态检查器，负责验证安全性、路径约束和锁使用。"
+      },
+      {
+        "term": "NMI",
+        "explanation": "Non-Maskable Interrupt，不可屏蔽中断，优先级极高，常用于性能采样等场景。"
+      }
+    ],
+    "context": "这篇帖子讨论的是一篇关于 Linux kernel 中 eBPF spinlock bug 的排查与修复过程。问题出在两个不同的事件路径——context switch 和 sampling event——都向同一个 ringBuffer（环形缓冲区 map）写数据，而 sampling 路径还可能在 NMI（不可屏蔽中断）里触发，导致同一 CPU 上出现递归加锁。Linux 的 eBPF verifier（程序验证器）会在加载前检查锁的获取和释放是否全路径正确，因此这类 bug 既难复现也难静态推断。评论里还提到旧内核的 workaround、Linux 宏让代码阅读更困难，以及这类问题为什么没有更早被发现。",
+    "emoji": "🤯",
+    "sarcastic_question": "既然会递归锁死，为什么还硬共用 ringBuffer？"
+  },
+  "articleSummary": "# 一句话总结\nLinux 内核 eBPF Ring Buffer 的自旋锁实现存在致命缺陷：当 NMI 采样中断抢占持有锁的上下文切换代码时，会触发死循环，导致系统卡死 250 毫秒。\n\n### 系统卡死，线索却指向“忙碌的空闲”\n一切始于用户报告的周期性系统冻结，每次持续 250 毫秒以上。奇怪的是，查看性能分析捕获的数据，所有线程在这期间都显示为“忙碌”，但偏偏没有任何采样数据。结合 `dmesg` 中报出的 `NMI handler took too long` 警告，基本可以断定：内核里有个东西在疯狂跑，把 CPU 占满了，导致正常的采样都进不来。\n\n### 双机调试失效，只能靠“二分法”找真凶\n这种内核级的冻结，常规手段很难搞。作者尝试搭建双机调试，甚至专门买了 PCIe 串口卡来连接两台机器。但尴尬的是，一旦系统进入冻结状态，连调试器都失去响应了。既然外部调试走不通，只能靠“二分法”缩小范围：逐步关闭 eBPF 程序中的不同功能。最终发现，只有当“采样事件”和“上下文切换事件”同时开启时，问题才会出现。\n\n### 极简代码复现，锁是唯一的嫌疑\n经过层层剥离，作者写出了一个极简的复现用例。这段代码只做一件事：在 Ring Buffer 中预留空间然后立即丢弃。没有任何业务逻辑，唯一的“重活”就是调用 `bpf_ringbuf_reserve`。而这个函数内部，必然涉及到了自旋锁。既然逻辑都剥离干净了还能复现，那问题八成就出在这个锁的实现上。\n\n### NMI 的降维打击：关不掉的中断\n这里有个关键的技术细节：采样中断通常是 NMI（不可屏蔽中断）。普通的自旋锁在获取前会调用 `local_irq_save` 关掉中断，防止死锁。但 NMI 是关不掉的。这就形成了一个恐怖的并发场景：上下切换代码刚拿到锁，还没释放，NMI 突然来了；NMI 处理函数试图去拿同一把锁，结果发现锁被占用了，只能原地空转等待。\n\n### 250 毫秒的巧合，就是确凿的证据\n顺着这个思路看源码，发现自旋锁在等待锁释放时，确实有一个 `while(true)` 循环。为了防止死循环，代码里加了一个超时机制。而这个超时常量 `RES_DEF_TIMEOUT` 的定义，赫然写着 `NSEC_PER_SEC / 4`——也就是 0.25 秒，即 250 毫秒。这和最开始观察到的系统卡死时间完全吻合。至此，真凶落网：NMI 打破了锁的保护机制，导致 CPU 在高优先级中断里空转超时。"
+}

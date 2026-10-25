@@ -1,0 +1,117 @@
+{
+  "id": 49022038,
+  "by": "mpweiher",
+  "title": "Software rendering in 500 lines of bare C++",
+  "url": "https://haqr.eu/tinyrenderer/",
+  "score": 244,
+  "createdAt": 1784817613,
+  "aiSummary": {
+    "chinese_title": "500行裸 C++ 软件渲染：三角裁剪、窗口后端与老派图形学",
+    "discussion_overview": [
+      {
+        "category": "亲手实现软件渲染器的收获",
+        "summary": "不少人分享了自己从零写 software renderer 的经历，甚至是用 Rust 手写完整管线，再在上面加一个小游戏和像素化、chromatic aberration 这类特效。有人最大的感受不是某个具体公式，而是现代 CPU 的吞吐量：单线程的 CPU renderer 也足以支撑交互式 3D 游戏。也有人回忆在没有 LLM 的年代做这类项目，往往要花几个月去啃图形学数学并追 C segmentation fault。整体来看，这类教程被视为把抽象渲染流程变成可验证工程的训练场。",
+        "supportid": [
+          "49022842",
+          "49030057",
+          "49024721"
+        ]
+      },
+      {
+        "category": "CPU 渲染也离不开 GPU/窗口层",
+        "summary": "有人疑惑为什么一个 software renderer 还要引入 wgpu。回复解释说，wgpu 在这里并不是拿来加速 3D 计算，而是负责把 CPU 写进 RAM 的像素送到屏幕上的 surface。讨论随后延伸到平台原生接口：Windows 可以用 CreateDIBSection 和 BitBlt，macOS 可以用 CALayer 和 CATransaction，Wayland 可以用 wl_shm，但跨平台和事件集成会更麻烦。也有人澄清 softbuffer 和 winit 的职责边界，说明“纯软件渲染”在现代桌面上通常只停留在渲染算法层。",
+        "supportid": [
+          "49024466",
+          "49024686",
+          "49027210",
+          "49025237",
+          "49027826",
+          "49028086",
+          "49027923",
+          "49026615",
+          "49029421"
+        ]
+      },
+      {
+        "category": "三角裁剪、guard band 与齐次坐标",
+        "summary": "很多讨论都卡在 triangle clipping 这一步，有人直言这是写实用 software renderer 时最容易卡住的地方。解释里提到可以用 Sutherland-Hodgman 算法按 x=±w、y=±w、z=±w 这些平面逐层裁剪，最后得到一个凸多边形，再重新三角化。另一条线索则讲 guard band clipping：先在 tile 级别粗筛，超出范围的几何要么直接丢弃，要么生成新的 primitive，并重算 Z 和 1/Z。还有人专门解释为什么必须在 perspective divide 之前处理 near plane，因为在 projective space 里，w=0 附近的几何会出现“绕过无穷远”的怪象。",
+        "supportid": [
+          "49022763",
+          "49022994",
+          "49023128",
+          "49023342",
+          "49023932",
+          "49023667",
+          "49024254",
+          "49027373",
+          "49028131"
+        ]
+      },
+      {
+        "category": "经典教材与课程资源",
+        "summary": "评论区把这篇教程当成进入 computer graphics 的入口，顺手列出了一串经典学习资源。Foley/Van Dam 的图形学教材被称为老派标准参考，John Vince 的 Mathematics for Computer Graphics 则被认为对理解公式和实现细节很关键。还有人推荐 Gustavo Pezzi 的 Pikuma 课程，内容覆盖 triangle rasterization、PS1 programming 和 compiler 相关主题。这个分支说明读者不只是想看一个 demo，而是想找到系统学习 rendering 的路径。",
+        "supportid": [
+          "49023418",
+          "49029486",
+          "49028435",
+          "49030329",
+          "49029731"
+        ]
+      },
+      {
+        "category": "文章时效性、导航与可用性",
+        "summary": "有人指出这其实是 ssloy 的 tinyrenderer 旧教程，最好标注日期，免得老读者误以为是新内容。也有人反馈手机端导航不明显，隐藏的 hamburger menu 让长文很难浏览，最好补上 next 和 toc 链接。另一些小插曲包括第一张图片让人意外，以及评论区接口报 rate limit。总体上大家认可内容本身，但认为页面可发现性和阅读体验还能更好。",
+        "supportid": [
+          "49023976",
+          "49026215",
+          "49028645",
+          "49024561",
+          "49028310",
+          "49022517",
+          "49022749",
+          "49022908",
+          "49022978"
+        ]
+      },
+      {
+        "category": "与 ray tracing 的对比和老游戏怀旧",
+        "summary": "有人拿 POVRay 来对比，得到的回应是：POVRay 是声明式 raytracing 语言，而这篇文章讲的是程序化 rasterization。另有评论顺带回忆起 DOS/Unix 时代那些软件渲染的 3D 游戏，带出 Tomb Raider 风格的老式画面和 90 年代怀旧感。这个分支把文章放回到 software rendering 与 ray tracing 的历史分野里，也解释了为什么许多人看到标题会联想到复古 3D。",
+        "supportid": [
+          "49025289",
+          "49025828",
+          "49024188"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "wgpu",
+        "explanation": "Rust 生态里的跨平台 GPU/图形抽象层，这里主要被用来把 CPU 生成的像素送到屏幕。"
+      },
+      {
+        "term": "Sutherland-Hodgman 算法",
+        "explanation": "经典多边形裁剪算法，通过对每个裁剪平面逐步过滤顶点来完成 clipping。"
+      },
+      {
+        "term": "guard band clipping",
+        "explanation": "先允许一定范围的越界几何通过，再在较小 tile 上做粗裁剪或丢弃，以降低精确裁剪成本。"
+      },
+      {
+        "term": "barycentric coordinates（重心坐标）",
+        "explanation": "用三角形三个顶点的权重来插值颜色、深度、纹理坐标等属性。"
+      },
+      {
+        "term": "clip space（裁剪空间）",
+        "explanation": "透视除法前的坐标空间，常用 x/y/z 与 w 的关系判断顶点是否在视锥内。"
+      },
+      {
+        "term": "homogeneous coordinates（齐次坐标）",
+        "explanation": "用 (x, y, z, w) 表示空间点，便于做透视投影并处理无穷远点。"
+      }
+    ],
+    "context": "这篇文章对应的是 ssloy 的 tinyrenderer（一个用极少代码讲解 CPU 软件光栅化的经典教程），目标是用 bare C++ 从零搭出一个最小可运行的 3D 渲染器。教程通常会先把结果写成 TGA（简单的位图文件格式）来验证像素输出，再逐步扩展到真正显示到屏幕。评论区之所以会延伸到 wgpu（Rust 生态的跨平台图形抽象层）、CreateDIBSection/BitBlt（Windows 原生位图显示接口）和 wl_shm（Wayland 的共享内存缓冲），是因为现代桌面即使做 CPU 渲染，最终把像素送上屏幕仍常常要经过 GPU 或合成器。讨论里最核心的图形学难点是 triangle clipping、Sutherland-Hodgman 裁剪以及齐次坐标下的 near plane 处理，这些内容直接决定一个 software renderer 能不能从教学 demo 走向实用实现。与此同时，Foley/Van Dam、John Vince 和 Gustavo Pezzi 的课程被反复提起，说明这类项目仍是很多人重新进入 computer graphics 的入口。",
+    "emoji": "🧠",
+    "sarcastic_question": "500行就能省掉裁剪和窗口后端吗？"
+  },
+  "articleSummary": "## 一句话总结\n这篇文章通过手写一个仅 500 行 C++ 代码的软件渲染器，剥去了 OpenGL/Vulkan 的 API 外衣，展示了从零构建 3D 图形管线（光栅化）的核心原理。\n\n### 拒绝黑盒：手写渲染器是为了理解 GPU 的工作原理\n很多开发者在学习 OpenGL、Vulkan 或 Metal 时，往往被复杂的 API 搞得晕头转向，却不知道底层到底发生了什么。作者认为，要写出高效的 GPU 程序，必须先理解图形库是如何工作的。因此，他决定抛弃所有第三方图形库，用最原始的 C++ 从零开始写一个渲染器。这不仅仅是一个编程练习，更是一次对现代图形管线原理的深度剖析。虽然这是软件渲染（CPU 计算），不涉及 GPU 应用开发，但它能让你看清图形 API 背后的逻辑。\n\n### 极简起步：从操作单个像素开始构建世界\n为了把注意力集中在核心算法上，作者把外部依赖降到了最低。整个项目的基础只有一个处理 TGA 图片格式的类，因为它足够简单，支持 RGB 和 RGBA。除了加载和保存图片，这个类只提供了一个功能：设置某个像素的颜色。没有画线函数，没有画三角形函数，甚至连图形界面都没有。程序的目标很简单：读入一个 3D 模型（三角网格和纹理），然后在内存中算出一张图片，最后存成 TGA 文件。\n\n### 500 行代码的挑战：从点到面的逻辑跨越\n最终的代码量控制在 500 行左右，这听起来不多，但对学生来说通常需要 10 到 20 小时的编程时间。文章给出的初始代码非常基础，只是在 64x64 的画布上画了三个白点。这三个点其实就是三角形的顶点。接下来的任务，就是通过实现画线算法（如 Bresenham）和光栅化算法，把这三个孤立的点变成一个实心的三角形，再贴上纹理。这中间的每一步，都需要开发者手动去实现图形管线中那些被 GPU 封装好的细节。\n\n### 教学初衷：不要直接抄代码，要自己踩坑\n虽然作者把完整的源码都放在了 GitHub 上，但他并不建议大家直接拿来用。因为只有自己亲手去实现画线、填充三角形、处理深度缓冲这些功能，才能真正理解其中的坑和难点。文章展示的那些精美的渲染图——比如 Diablo 3 的模型——都是基于这套极简逻辑跑出来的结果。这种“从无到有”的构建过程，比直接调用现成的 API 更能让人建立扎实的图形学直觉。"
+}

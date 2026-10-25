@@ -1,0 +1,67 @@
+{
+  "id": 47828896,
+  "by": "shivampkumar",
+  "title": "Show HN: TRELLIS.2 image-to-3D running on Mac Silicon – no Nvidia GPU needed",
+  "url": "https://github.com/shivampkumar/trellis-mac",
+  "score": 130,
+  "createdAt": 1776647443,
+  "aiSummary": {
+    "chinese_title": "TRELLIS.2 上 Mac Silicon：免 Nvidia GPU，但效果、速度和内存门槛都受争议",
+    "discussion_overview": [
+      {
+        "category": "模型效果 vs 商业服务",
+        "summary": "有人认为这个 image-to-3D 模型的效果并不出色，和 Meshy.ai（一个商业 3D 生成服务）相比差距明显，甚至把它归到“useless”一类。也有人回应说，TRELLIS.2 在开源方案里对 geometry 和视觉保真度已经算不错，但 texturing 仍然是短板。关键差异不只在质量，还在使用方式：Meshy 是付费服务且免费额度有限，而 TRELLIS.2 是 MIT licensed（MIT 开源许可），可以本地无限制生成。讨论因此变成了“最佳效果”与“可离线、可控、无配额”的取舍。",
+        "supportid": [
+          "47829724",
+          "47829945"
+        ]
+      },
+      {
+        "category": "内存需求与机器选型",
+        "summary": "不少人直接关心这套模型到底要多少 RAM，因为这决定了 Mac 用户该买 24GB 还是 32GB，甚至 16GB 是否还有机会。回复给出的数字是生成峰值大约 15GB，而且 4B 模型会同时加载多个约 1.3B 的子模型，分别负责 shape 和 texture flow。按这个实现方式，8GB 明显不够，但 24GB 和 32GB 基本可用。有人进一步追问能否按顺序而不是并行加载子模型，试图把门槛压到 16GB。",
+        "supportid": [
+          "47830291",
+          "47830491",
+          "47830583"
+        ]
+      },
+      {
+        "category": "Mac Silicon 适配的真实难点",
+        "summary": "有观点认为 Apple Silicon 其实早就能靠 MPS backend（Apple 的 GPU 后端）支持，只是很多在线 demo 没法提供这种后端，所以才常被省略。反驳则指出，TRELLIS.2 依赖多个编译好的 CUDA-only extensions，包括稀疏卷积、attention、hashmap、mesh 处理和 differentiable rasterization，这不是普通 PyTorch op 可以自动回退的情况。上游安装脚本甚至会在没有 `nvidia-smi` 时直接退出，说明它原本就是硬绑定 NVIDIA GPU 的。尽管如此，作者还是把它移植到了 Mac 上，因为本地迭代不用排 cloud GPU 队列、也不必付云端成本，即便速度只有 24GB M4 Pro 上约 3.5 分钟、远慢于 H100 上的秒级结果。",
+        "supportid": [
+          "47829384",
+          "47830057",
+          "47829591",
+          "47829504",
+          "47830091",
+          "47830019",
+          "47830156",
+          "47830107"
+        ]
+      },
+      {
+        "category": "演示页与发布呈现",
+        "summary": "有人批评 landing page 上几乎没有示例图，认为这种 3D 生成演示如果看不到结果，很难让人快速理解价值。作者随后马上补了图片，并表示还会继续增加内容，甚至做一个 GIF。这个来回说明技术本身虽然吸引人，但最初的展示方式没有把成果讲清楚。",
+        "supportid": [
+          "47829794",
+          "47829963",
+          "47830255"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "MPS backend",
+        "explanation": "Apple Silicon 上的 GPU 加速后端，基于 Metal Performance Shaders，用于替代 CUDA 路径。"
+      },
+      {
+        "term": "CUDA-only extensions",
+        "explanation": "只能在 NVIDIA CUDA 环境下编译和运行的自定义扩展，不能直接靠通用 PyTorch 后端自动兼容。"
+      }
+    ],
+    "context": "TRELLIS.2 是一个 image-to-3D 生成模型，这次 Show HN 的重点不是模型本身，而是把它从原本依赖 NVIDIA CUDA 的环境移植到 Mac Silicon（苹果自研芯片平台）上，让用户可以在本地生成 3D 而不需要 Nvidia GPU。评论里提到的难点在于它不只是普通的 PyTorch 模型，而是依赖多个 CUDA-only extensions，以及上游安装脚本对 `nvidia-smi` 的检查，这使得 Apple Silicon 适配比“换个后端”复杂得多。讨论也把它放进了更大的背景里：Hugging Face Spaces（Hugging Face 的在线 demo 托管）常常缺少 MPS backend，而商业产品如 Meshy.ai（商业 3D 生成服务）在效果上可能更强，但开源本地方案更自由。最终，这个话题同时涉及模型质量、硬件内存门槛、云 GPU 成本、以及 Apple Silicon 用户长期缺少可用 3D 工作流的问题。",
+    "emoji": "🤔",
+    "sarcastic_question": "免 Nvidia GPU，顺手把速度也免了？"
+  },
+  "articleSummary": "# 一句话总结\n有人把微软的 TRELLIS.2 图生 3D 模型从 CUDA 环境硬搬到了 Mac Silicon 上，虽然牺牲了部分纹理处理和速度，但让你在 M4 Pro 上也能用纯 PyTorch 生成 40 万面的高精度 3D 网格。\n\n### 想在 Mac 上跑图生 3D，NVIDIA 显卡是道坎\nTRELLIS.2 是微软推出的 SOTA 级图生 3D 模型，效果惊艳，但它原本是 CUDA-only 的，这意味着你非得有一张 NVIDIA 显卡才行。对于用 Mac 开发的同学来说，这门槛直接把路堵死了。作者这次做的工作，就是通过 PyTorch MPS 后端，把这个模型原汁原味地移植到了 Apple Silicon 上。核心思路很简单：既然没有 CUDA，那就把所有依赖 CUDA 的算子，全部用纯 PyTorch 或纯 Python 重写一遍。\n\n### 拆掉 CUDA 依赖，用原生 Python 补位\n移植过程最大的难点在于 TRELLIS.2 强依赖几个 CUDA 专有库，比如 `flex_gemm`、`flash_attn` 和 `nvdiffrast`。作者没有选择搞复杂的交叉编译，而是直接找了替代品：用 PyTorch SDPA 替换了 `flash_attn`，用自定义的 Python 脚本替换了稀疏卷积和网格提取逻辑。特别是那个 `flex_gemm`，原本是做稀疏 3D 卷积的，作者在 `backends/conv_none.py` 里用 gather-scatter 操作和矩阵乘法手动实现了它。虽然听起来很暴力，但这样保证了代码能在 Mac 的统一内存架构上跑起来。\n\n### 稀疏卷纯 Python 实现，慢是肯定的但能用\n这里有个巧妙的设计：在处理稀疏 3D 卷积时，作者构建了一个空间哈希来定位活跃体素。通过缓存邻居映射，避免了重复计算，这在 Python 层面已经算是极致优化了。网格提取部分也没用 CUDA 的 hashmap，而是改用 Python 字典来建立坐标索引，再用启发式算法进行三角化。这种写法虽然不如 CUDA 内核高效，但逻辑清晰，而且把所有数据流都留在了 PyTorch 的 MPS 图里，减少了 CPU 和 GPU 之间的数据拷贝开销。\n\n### 性能实测：M4 Pro 跑完要 3 分半\n那实际效果到底咋样？在 M4 Pro（24GB 内存）上，生成一个包含 42.4 万顶点、85.8 万三角面的网格，大约需要 3.5 分钟。时间主要花在了 Shape SLat 采样上，占了 90 秒，其次是纹理采样。内存峰值占用在 18GB 左右，所以推荐 24GB 内存的机器。虽然比原生 CUDA 慢不少（作者提到纯 PyTorch 的稀疏卷积比 CUDA 慢约 10 倍），但对于没有 NVIDIA 显卡的开发者来说，这个速度完全在可接受范围内。\n\n### 代价是纹理烘焙和补洞功能的缺失\n当然，这种移植方案也不是没有代价。因为 `nvdiffrast` 是 CUDA-only 的可微光栅化库，作者只能把它 stub 掉，导致目前无法导出带纹理贴图的模型，只能导出顶点颜色。同样，依赖 CUDA 的 `cumesh` 也被跳过了，这意味着生成的网格可能会有一些小洞，没法自动修补。如果你需要完美的 PBR 材质和闭合网格，目前这个版本还满足不了，只能作为预览或基础网格使用。\n\n### 开箱即用，但别忘了 HuggingFace 鉴权\n上手体验非常丝滑，作者提供了 `setup.sh` 脚本，自动搞定虚拟环境和依赖补丁。不过要注意，因为用到了 DINOv3 和 RMBG-2.0 这两个模型，你得先去 HuggingFace 申请权限并登录。生成命令也很简单，一行 `python generate.py` 就能把图片变成 3D 模型。对于想在本地折腾 3D 生成流程的 Mac 用户来说，这绝对是个值得 Star 的项目。"
+}

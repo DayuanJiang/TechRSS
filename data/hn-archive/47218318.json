@@ -1,0 +1,136 @@
+{
+  "id": 47218318,
+  "by": "schipperai",
+  "title": "Parallel coding agents with tmux and Markdown specs",
+  "url": "https://schipper.ai/posts/parallel-coding-agents/",
+  "score": 124,
+  "createdAt": 1772470207,
+  "aiSummary": {
+    "chinese_title": "tmux + Markdown 驱动并行 agents：上下文漂移、Token 成本与验证难题",
+    "discussion_overview": [
+      {
+        "category": "实作与成功案例",
+        "summary": "多位评论者报告了可复现的实操成果：有人用 Claude Code Teams 在并行会话里几天完成小型项目（如 fluxland），也有人在 CI 中用平行 agents 自动化代码审查，把 500+ 条上下文敏感规则拆成任务队列并由 manager agent 验证建议，报告在 A/B 测试中 mean time to merge 降低约 20%。许多实例是个人或内部工具（现金流应用、Erlang 聊天服务器、运维脚本、内部面板等），这些项目多数不是直接面向市场，而是把长期积压的“后备”想法做出来。实践表明并行 agent 能把低优先级任务并行化推动落地，但也受限于 token/订阅与验证流程的现实约束。",
+        "supportid": [
+          "47221592",
+          "47223387",
+          "47222057",
+          "47222064",
+          "47221441",
+          "47224764",
+          "47222083"
+        ]
+      },
+      {
+        "category": "怀疑与长期质量担忧",
+        "summary": "有人强烈质疑社区里流传的数十倍生产力说法，问“如果这么高效，哪里是那些优秀的软件？”并指出短期产出与长期质量是不同维度。评论里举出了 agent 在大型重构、抽象设计和跨版本兼容等场景常犯的错误，需要人工不断纠正，测试往往也要重写，导致总成本无法简单折算成短期速度提升。验证被反复指出为瓶颈：用编排加速交付但验证不足会导致质量下降，也有人直接怀疑夸张的成本节省数据的可靠性。",
+        "supportid": [
+          "47220440",
+          "47226995",
+          "47226162",
+          "47224694",
+          "47222412",
+          "47226391",
+          "47226697"
+        ]
+      },
+      {
+        "category": "并行 agents 的上下文漂移与合并冲突",
+        "summary": "并行运行时最大的痛点是上下文漂移：每个 tmux 窗格会保持自己的会话状态，多个 agent 很快对“现实”有不同版本的理解，导致重复实现或互相不兼容。实务中有人采用短的共享“ground truth”快照、实体中心的共享文档（评论里提出的 NERDs 概念）、轻量 issue 跟踪（Beads）或像 agent-doc 那样每个 agent 拥有独立 Markdown 文档并在完成后抽取决策到 SPEC.md 的“own-not-sync”策略来缓解。另一种保守做法是用 git worktree 或多份仓库副本隔离文件系统，或坚持一 spec=一 agent，但这会牺牲并行度。",
+        "supportid": [
+          "47221673",
+          "47225857",
+          "47224345",
+          "47222919",
+          "47222357",
+          "47224495"
+        ]
+      },
+      {
+        "category": "工具链与编排模式",
+        "summary": "常见实践把 tmux 当作会话与路由层、把 Markdown 规格文件当作 agent 的单一事实来源：Claude Code Teams 可以在 tmux 中 spawn 多 agent 并由 manager/supervisor 做协调。工程上常结合 git worktree 或多份 checkout 来隔离修改，或引入 supervisor/planner/worker 的分工模式（有团队提到 CAS 的 factory mode）。为减少漂移与 token 消耗，大家把工作流显式分为 spec → plan → build 阶段，并用脚本化的 checkpoint（如 plannotator、/fd-explore、/fd-verify）来管理迭代。",
+        "supportid": [
+          "47223928",
+          "47224495",
+          "47222083",
+          "47222919",
+          "47220801",
+          "47223129"
+        ]
+      },
+      {
+        "category": "成本、配额與模型選擇",
+        "summary": "并行 agents 非常耗 token，多人反映即使有付费订阅（$100、$200）也会在数小时到数天内触顶，因此实际部署往往需要高配 plan 或多账号。对工作流的分析显示 token 消耗中有相当一部分用于“思考/不确定往返”（评论里有大约 40% 的拆分说法），另一部分用于上下文和代码文件（约 30%）。因此有人提出优化策略：用廉价的监督 agent 侦测不确定性、用“oracle” agent 保持关键代码上下文或把非关键任务下放给更便宜的模型来降低成本与提高并发可行性。",
+        "supportid": [
+          "47221725",
+          "47222550",
+          "47223928",
+          "47224276",
+          "47224504"
+        ]
+      },
+      {
+        "category": "验证与安全",
+        "summary": "简单的 deny-list 很容易被绕过（评论举了用 unlink 或 spawn subprocess 的变通），因此有人建议把策略反向化：在执行任何危险操作前要求 agent 提供可验证的安全证明，否则阻止执行。实务中会把 verify 设成独立步骤（/fd-verify），或者让 manager agent 在 CI 里运行脚本来验证建议；也有意见认为独立 reviewer 更可靠。对浏览器自动化等需要外部运行时状态的场景，还必须把 session、cookie、proxy 等运行时“ground truth”记录下来以便验证。",
+        "supportid": [
+          "47227086",
+          "47223125",
+          "47223044",
+          "47221673"
+        ]
+      },
+      {
+        "category": "规模化与未来演进",
+        "summary": "多位评论者把 agent 工具的成熟度与模型迭代联系起来，认为 Opus 4.5/4.6 等模型发布是一个拐点，使自循环 agent 在中等规模任务上变得更可靠。要把多 agent 编排推进到大规模、低错误率的企业级应用，仍需更强的模型、更系统的训练（如 agent-managing-agents 的数据）以及不同范式的工具链。部分人预测在未来 1–2 年（评论中提到 2026 年中后）会看到可靠性显著提升，但在那之前并行化更多是用来做绿地/个人或内部工具的快速试验。",
+        "supportid": [
+          "47222435",
+          "47222482",
+          "47221691",
+          "47223060",
+          "47226391"
+        ]
+      },
+      {
+        "category": "工作流与认知负担",
+        "summary": "并行 agents 提高并发能力的同时也增加了认知负担：不少人形容与多个并行会话打交道像‘整天当飞行员着陆’，难以保留深度思考时间。因此常见折衷是把并行用于短期、低优先级或高度可并行的任务，而把复杂设计与关键决策保留给单一 agent 或人工审查。工具化手段（tmux 路由、IDE 插件、hotkey、规范化的 spec/plan 阶段）能缓解来回切换的成本，但并不能完全消除认知负荷。",
+        "supportid": [
+          "47222472",
+          "47225676",
+          "47223656",
+          "47223387",
+          "47223129"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "tmux",
+        "explanation": "tmux（terminal multiplexer），允许在单一终端内创建多个会话和窗格，用于并行运行与路由多个 agent 会话。"
+      },
+      {
+        "term": "Claude Code",
+        "explanation": "Claude Code（Anthropic 的 coding/orchestration 产品），支持 Team Orchestration、agent teams、技能（skills）与接入 Opus 等模型，用于在 tmux/IDE 中并行管理 coding agents。"
+      },
+      {
+        "term": "git worktree",
+        "explanation": "git worktree（Git 的工作树机制），允许在同一仓库下创建多个并行的工作树或分支副本，用来在不同 agent/窗格间隔离文件更改以避免冲突。"
+      },
+      {
+        "term": "Opus（模型）",
+        "explanation": "Opus（文中指代的高性能语言模型版本，如 Opus 4.5/4.6），评论者认为这些版本显著提升了 agent 的自我循环与稳定性。"
+      },
+      {
+        "term": "Markdown 规格文件 / SPEC.md",
+        "explanation": "Markdown 规格文件（例如 SPEC.md），把需求、实现计划与验收准则写成 Markdown，作为 agent 的上下文接口、单一事实来源与决策记录。"
+      },
+      {
+        "term": "agent teams",
+        "explanation": "agent teams（多个 autonomous LLM-driven agents 的编排模式），包含 supervisor/manager/planner/worker 等角色分工，用于并行开发、审查或 CI 自动化任务。"
+      }
+    ],
+    "context": "帖子的核心是在用 tmux 和 Markdown 规格文件并行驱动多个 coding agents，把 spec→plan→build 的循环自动化并在多个 tmux 窗格中并行执行。讨论大量围绕 Claude Code（Anthropic 的 coding/orchestration 平台）与 Opus 模型的可用性、token 配额与成本、以及用 git worktree 或多份仓库隔离并行工作的实践细节展开。评论既有个人/内部成功案例（小型工具、CI 审查自动化），也有对并行化带来上下文漂移、合并冲突与验证短板的反思，社区提出了多种缓解方案（agent-doc、Beads、NERDs、verify 步骤等）。总体共识是这是“构建工具去构建工具”的早期领域：短期内对个人和绿地项目非常有用，但要在遗留大系统和大规模生产环境普遍落地，还需验证、成本优化与模型/工具链的进一步演进。",
+    "emoji": "🤔",
+    "sarcastic_question": "花钱跑八个agent能替代设计验收和人工审查吗？"
+  },
+  "articleSummary": "## 一句话总结\n用 Markdown 规范化 Feature Design 文件作为“单一事实来源”，配合 tmux 多窗口和定制 Slash Commands，构建了一套能让 4-8 个 AI Agent 并行协作且互不干扰的开发流。\n\n### Feature Design 才是并行协作的基石\n作者发现，要让多个 AI Agent 并行干活，光靠嘴说是不行的，必须有一个标准化的“任务卡片”。他把这个卡片叫 **Feature Design (FD)**，本质上就是一个 Markdown 文件。每个 FD 都包含问题描述、备选方案（含优劣分析）、最终方案、实施计划（具体改哪些文件）以及验证步骤。有了这个 FD，不管是 Planner（做设计的）、Worker（写代码的）还是 PM（管排期的），大家看的都是同一份“真理”。这解决了并行开发最大的痛点：信息不对称。作者在一个项目里手动跑了 300 多个这样的 FD，效果好了之后，才把它封装成了自动化工具。\n\n### 用 Slash Commands 把脏活累活自动化\n为了不让这套流程变成开发者的负担，作者写了 6 个 Slash Commands 来接管 FD 的全生命周期。比如 `/fd-new` 用来从零创建一个 FD，`/fd-status` 能展示所有功能的索引表（谁在做、谁做完了、谁在排队）。最核心的是 `/fd-explore`，它会在 Agent 开始干活前，自动把项目的架构文档、开发指南和 Git 日志喂给它，避免 Agent 两眼一抹黑。还有一个 `/fd-deep` 比较狠，遇到复杂难题时，它会启动 4 个 Opus Agent 并行探索不同角度（算法、架构、环境等），然后汇总建议。这些命令把繁琐的上下文加载和状态管理工作都封装起来了。\n\n### Planner 与 Worker 的职责分离\n在具体的开发循环里，作者把“想”和“做”彻底分开了。**Planner** 负责在 tmux 的一个窗口里，基于 `/fd-explore` 加载的上下文，把 FD 细化到可以直接执行的程度。如果 Planner 卡住了，作者还会用 Cursor 配合 GPT-5.3 这种最新模型做交叉验证。一旦 FD 状态变成 **Open**，他就会在另一个 tmux 窗口启动一个全新的 **Worker** Agent。Worker 不需要思考“为什么”，只需要拿着 FD 打开“plan mode”，生成行级别的实施计划，然后开启“accept edits”自动写代码。这种分离让每个 Agent 的上下文窗口都能专注于当前任务，效率极高。\n\n### 把“验证”变成代码的一部分\nAI 写代码有个通病：它很难发现自己生成的 Bug。作者没有选择人工 Review，而是把验证流程也写进了 FD 里。他封装了 `/fd-verify` 命令，让 Agent 在写完代码后，先提交代码，然后自我 Proofread（必须“airtight”），最后执行验证计划。在作者的原项目中，他甚至让 Agent 连接生产环境（或 Staging）跑真实查询，把结果写成带时间戳和诊断表的 Markdown 报告。如果验证通过，就用 `/fd-close` 把 FD 归档、更新索引和 Changelog。这种“谁开发、谁验证、谁归档”的闭环，保证了高速开发下的代码质量。\n\n### 用 Dev Guide 解决 AI 的“没品位”问题\nAI Agent 虽然聪明，但经常犯一些“没品位”的错误：比如重复造轮子、不敢报错留一堆 fallback、或者日志格式乱七八糟。作者发现光靠一个巨大的 `CLAUDE.md` 指导文件是不够的，因为上下文窗口太贵，塞太多无关信息会干扰 Agent。于是他搞了一个 `docs/dev_guide/`，里面全是硬性规定，比如“配置错误必须 Fail Loudly”、“禁止向后兼容”、“LLM 解析 JSON 必须用宽容模式”。Agent 在启动时会先读摘要，需要时再去查具体条目。这相当于给 Agent 立了规矩，让它们在并行干活时也能保持代码风格的一致性。\n\n### tmux 是驾驭多 Agent 的终极驾驶舱\n最后，这一切怎么在屏幕上呈现？作者用的是 tmux。他的布局通常是左边一个 Cursor IDE，右边两个终端跑 tmux。终端 1 放 PM 和 Planner（负责思考和设计），终端 2 放 Worker（负责执行）。每个 tmux 窗口都是一个独立的 Agent 会话，互不干扰。作者提到，超过 8 个 Agent 他就招架不住了，因为决策质量会下降。但在这个范围内，tmux 让他能像指挥乐队一样，一眼看到哪个 Planner 在设计，哪个 Worker 在跑测试，哪个在验证。这种物理上的隔离，配合逻辑上的 FD 流转，才是这套系统能落地的关键。"
+}

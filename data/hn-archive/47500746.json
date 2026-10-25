@@ -1,0 +1,120 @@
+{
+  "id": 47500746,
+  "by": "javierhonduco",
+  "title": "Debunking Zswap and Zram Myths",
+  "url": "https://chrisdown.name/2026/03/24/zswap-vs-zram-when-to-use-what.html",
+  "score": 134,
+  "createdAt": 1774353643,
+  "aiSummary": {
+    "chinese_title": "Linux zswap vs zram：SSD 取舍、OOM、发行版默认",
+    "discussion_overview": [
+      {
+        "category": "zswap 优势与 zram-only 问题",
+        "summary": "有人认为文章最有说服力的点，是 zswap 让 kernel 能在 anonymous pages 和 file cache 之间统一做回收，而不是把压力全压到 zram。若只用 zram，zram 满了以后匿名页无处可去，内核会被迫挤压 file cache，反而可能把本该留在内存里的缓存换掉，后续导致更多慢盘 I/O。评论里还提到，在某些真实环境中启用 zswap 后磁盘写入能下降约 25%，而 zram-only 可能出现很长的 OOM stall。也有人强调，这一切都依赖于合适的 swap device 和 userspace OOM killer 调参。",
+        "supportid": [
+          "47501678",
+          "47501782",
+          "47502410",
+          "47504338",
+          "47502372"
+        ]
+      },
+      {
+        "category": "consumer SSD 作为 swap 设备的争议",
+        "summary": "另一派反对把“只要有 SSD 就能拿来 swap”当成默认前提，尤其指出 DRAMless 和 QLC consumer SSD 在同步写入下可能出现极长的延迟尖峰。评论中提到过 10 秒级别的写入卡顿，且这种问题常在持续写入、pseudo-SLC buffer 耗尽或控制器后台整理时出现。对这类盘来说，zram 反而可能比磁盘 swap 更稳，因为它至少不会把卡顿直接暴露到存储层。有人建议通过 fio、O_DIRECT、持续写入基准和规格页来判断 SSD 是否适合做 swap，必要时宁可扩大 swap 或做 overprovisioning。",
+        "supportid": [
+          "47501678",
+          "47504539",
+          "47504062",
+          "47504943",
+          "47502949"
+        ]
+      },
+      {
+        "category": "zram 更易部署且常被默认启用",
+        "summary": "不少评论其实是在说可用性：zram 用 zram-generator 就能快速启用，还能方便地看实时压缩率和占用情况。相比之下，zswap 常被吐槽要靠 kernel arguments 或 sysfs 开关，配置和 backing device 的概念都不够直观。有人提到 Fedora、Pop!_OS 甚至 Archinstall 都倾向默认或建议 zram，这也是很多桌面用户直接选它的原因。也有评论指出，不同发行版的 swap 策略差异很大，说明这块并没有形成一致的最佳实践。",
+        "supportid": [
+          "47503120",
+          "47504046",
+          "47504335",
+          "47505170",
+          "47505846",
+          "47503340"
+        ]
+      },
+      {
+        "category": "需要可复现数据与三方对比",
+        "summary": "有评论直言，文章如果在性能争论上更有说服力，就该拿出 no-swap、zram、zswap 三者在同一硬件上的对比数据。现有数字虽然不少，比如写入减少 25%、压缩比约 5:1、以及 zram-only 下 20-30 分钟的 OOM stall，但仍不足以回答真实 workload 的差别。有人追问如何稳定复现 consumer SSD 的长尾延迟、是否需要并发或混合读写、以及怎样在购买前判断一块盘会不会中招。总体上，这一派并不否认结论，而是要求更细的基准和更可复现的实验。",
+        "supportid": [
+          "47502001",
+          "47502372",
+          "47503200",
+          "47504062"
+        ]
+      },
+      {
+        "category": "边界场景与未来统一方案",
+        "summary": "评论也讨论了更边缘但很关键的场景，比如 hibernation、加密 swap、以及 zswap 未来是否能完全摆脱 backing store。有人提到 zswap 可以关闭 writeback，只保留给 hibernation 用；也有人提到正在推进的 virtual swap space，目标是把 zswap 和具体磁盘后端解耦。zram 这边则有人分享了多级 compression 的玩法，例如先快压、隔一段时间再重压，但它没法像 zswap 那样方便地后续 offload 到磁盘。还有人强调 zram 的 device size 指的是未压缩容量，所以给到物理内存 100% 甚至更大并不奇怪。",
+        "supportid": [
+          "47502683",
+          "47502956",
+          "47503497",
+          "47504050",
+          "47506874",
+          "47506022",
+          "47501865",
+          "47506511"
+        ]
+      },
+      {
+        "category": "不同场景的适用性",
+        "summary": "讨论并不只局限于桌面和服务器，也延伸到了 embedded systems、桌面 Linux 和 Kubernetes。有人指出很多嵌入式系统资源本来就是按功能定制的，通常不用 swap，对 compression 也不热衷，因为压缩率和内存预算都不够可预测。相反，桌面场景尤其是浏览器和 Electron 重度使用时，memory compression 往往很有价值，所以 Fedora、Pop!_OS 这类发行版默认开 zram 并不意外。还有人提到 Kubernetes 现在支持 swap，使得 zswap 对某些工作负载的价值更明确了。",
+        "supportid": [
+          "47506891",
+          "47502669",
+          "47505170",
+          "47505846",
+          "47501697"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "zswap",
+        "explanation": "Linux 内核里的压缩 swap cache，先把换出的页压到 RAM 中，必要时再写到真正的 swap 设备。"
+      },
+      {
+        "term": "zram",
+        "explanation": "在 RAM 里创建的压缩块设备，常直接拿来当 swap 用。"
+      },
+      {
+        "term": "LRU inversion",
+        "explanation": "当 zram 满了以后，内核被迫优先回收 file cache，导致冷热页判断失真、I/O 反而变差的现象。"
+      },
+      {
+        "term": "DRAMless SSD",
+        "explanation": "没有独立 DRAM cache 的 SSD，常在同步写入下出现更明显的延迟尖峰。"
+      },
+      {
+        "term": "QLC",
+        "explanation": "一种 NAND flash 类型，持续写入性能和延迟表现通常比 TLC 更差，更容易在压力下卡顿。"
+      },
+      {
+        "term": "pseudo-SLC buffer",
+        "explanation": "SSD 用来伪装高速写入的临时缓存，写满后性能会明显下降。"
+      },
+      {
+        "term": "用户态 OOM killer",
+        "explanation": "如 earlyoom、systemd-oomd 这类在内存耗尽前主动杀进程的机制，用来避免系统长时间卡死。"
+      },
+      {
+        "term": "virtual swap space",
+        "explanation": "正在推进的内核方案，目标是把 zswap 和具体 backing store 解耦，统一成单一实现。"
+      }
+    ],
+    "context": "这场讨论围绕 Linux 内核里的两种内存压缩/交换方案：zswap（在真正的 swap 设备前做压缩缓存）和 zram（在 RAM 里创建压缩块设备当作 swap）。文章想纠正一些常见误解，核心争点是：只用 zram 会不会在 swap 满时把压力转嫁给 file cache，以及 zswap 是否真的能减少磁盘写入。评论把争论带到了更具体的现实约束上，比如 consumer SSD（尤其 DRAMless、QLC）在同步写入下可能出现长尾延迟，导致“有 SSD 就该用磁盘 swap”的前提并不总成立。另一个背景是发行版默认配置差异很大：Fedora、Pop!_OS、Archinstall（Arch Linux 安装器）更偏向 zram，而 zswap 仍常依赖 kernel 参数、单独 swap 分区，以及与 hibernation、加密 swap 的配合。Linux 内核社区还在推进 virtual swap space 之类的改造，试图把两套机制统一起来。",
+    "emoji": "🤔",
+    "sarcastic_question": "连SSD都撑不住，还谈什么swap神话？"
+  },
+  "articleSummary": "### 一句话总结\n除非你在无盘嵌入式设备上，否则默认首选 zswap，因为它能自动分层管理冷热数据；而 zram 的“伪分层”机制容易导致 LRU 反转，反而会把系统拖慢。\n\n### 别被表象骗了：它们根本不是一回事\n很多人把 zswap 和 zram 混为一谈，觉得都是“压缩内存 swap”，选谁都行。但作者强调，这两者在内核架构上的赌注完全不同：zram 是一个独立的块设备，而 zswap 是内存管理子系统的一层。选错了不仅没优化，反而可能比不用 swap 还惨。核心区别在于它们如何处理内存压力，以及如何向内核的其他部分“发信号”。\n\n### zram 的硬伤：把自己伪装成硬盘\nzram 的工作原理是创建一个压缩块设备，内核把它当成一个虚拟硬盘。你像配置普通分区一样 `mkswap` 然后 `swapon`，内核也确实通过块层来处理它。这对嵌入式系统很友好，因为不需要物理存储。但问题来了，内核对 zram 应用了很多针对机械硬盘的默认策略，比如 `vm.page-cluster` 预读。在硬盘上预读能摊销开销，但在 zram 上，压缩后的页面没有局部性，预读只会污染缓存，反而拖累性能。\n\n### zswap 的杀手锏：原生集成的自动分层\n相比之下，zswap 根本不创建块设备，它直接插在内存管理的回收路径上。当页面需要换出时，zswap 先拦截尝试压缩存储；只有当内存池满了，它才会触发 `shrink_worker` 把冷数据挤到磁盘 swap 上。这种设计让内核清楚地知道哪些数据是热的、哪些是冷的，从而实现了快速的压缩 RAM 和慢速磁盘之间的自动分层。说白了，zswap 是一个智能缓存，而 zram 只是个有上限的桶。\n\n### 致命的陷阱：zram 的 LRU 反转\n那能不能给 zram 设个高优先级，满了再自动去磁盘？作者警告这是个大坑。因为 zram 满了不会自动驱逐数据，一旦填满，最早换进去的“冷数据”就会永久占据高速 RAM。随着系统运行，新的“热数据”反而会被挤到低优先级的磁盘上。这就是所谓的 LRU 反转：你的快存里全是垃圾，而真正需要的数据却在慢速盘上，这比没有压缩 swap 还要糟糕。\n\n### 服务器环境下的额外风险\n除了性能倒挂，zram 在服务器上还有个隔离性问题。它的内存使用是完全独立的，不计入任何 cgroup。这意味着容器里的进程可以通过 zram 疯狂消耗物理内存，却绕过了 cgroup 的资源限制，破坏了隔离语义。而 zswap 作为内存管理的一部分，能更好地遵守这些资源限制机制。\n\n### 真的要上 zram？记得带个 OOM 保镖\n如果你非要用 zram（比如无盘环境），千万别裸奔。因为 zram 满了之后，内核的 OOM killer 往往要经过很多次无效的回收循环才会动作，这期间系统可能卡死几分钟。作者强烈建议搭配 `systemd-oomd` 或 `earlyoom` 这种用户态管理器，在内存吃紧时早点介入，别指望内核自己能反应过来。"
+}

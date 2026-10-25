@@ -1,0 +1,127 @@
+{
+  "id": 47950510,
+  "by": "agwa",
+  "title": "FastCGI: 30 Years Old and Still the Better Protocol for Reverse Proxies",
+  "url": "https://www.agwa.name/blog/post/fastcgi_is_the_better_protocol_for_reverse_proxies",
+  "score": 363,
+  "createdAt": 1777482066,
+  "aiSummary": {
+    "chinese_title": "FastCGI 反代后端仍优于 HTTP：安全边界与旧协议回潮",
+    "discussion_overview": [
+      {
+        "category": "FastCGI/WAS 适合作为后端通信协议",
+        "summary": "支持者认为，FastCGI 更适合做 reverse proxy 到后端应用的那一段通信，因为它把请求边界、取消语义和 header 约束都收得更紧。有人甚至介绍了自研的 WAS（Web Application Socket），用 control socket 加两条 pipe 分离元数据和 body，还能配合 splice() 做零拷贝，避免在主 socket 上做复杂 framing。评论里反复强调，很多 HTTP 方案的问题不是语法本身，而是它太容易把不该透传的 header 和状态一起带进后端。也有人补充说，FastCGI 的价值就在于让“server-to-application”这条链路更明确，而不是拿来和浏览器直连的 HTTP 混为一谈。",
+        "supportid": [
+          "47952605",
+          "47956586",
+          "47951858",
+          "47952574",
+          "47956632"
+        ]
+      },
+      {
+        "category": "HTTP 的优势在简单、通用和开发便利",
+        "summary": "另一派认为，HTTP 之所以在反向代理链路里胜出，核心是简单：网关本来就要处理 HTTP，再引入一套协议只会增加复杂度。这样一来，开发环境可以直接用浏览器连应用服务器，生产环境则可以在前面叠多层 reverse proxy、SSL termination、认证和 DDoS 过滤，拓扑非常灵活。有人还提到 nginx 比早年的 FastCGI/SCGI 模块更快、更稳，因此 HTTP 方案在实践里往往更省心。对这些人来说，ubiquity 和易用性比协议层面的“纯粹”更重要。",
+        "supportid": [
+          "47951539",
+          "47952094",
+          "47951364",
+          "47952912",
+          "47955927",
+          "47954138"
+        ]
+      },
+      {
+        "category": "E2E 原则 vs 最小权限的安全争论",
+        "summary": "评论区围绕 End-to-End Principle（E2E）展开了很激烈的争论：把安全关键逻辑放进 proxy 是否是在破坏端到端设计。支持严格过滤的人认为，数据中心里的内部流量同样不可信，应该采用 Principle of Least Privilege（PoLP），只白名单允许的 header，其余全部丢掉。反对者则指出，多级 proxy、连接复用和缓存本来就让“纯粹的 E2E”不成立，拿它来类比这里的链路并不严谨。最后大家基本都落到同一个现实结论：与其相信透明转发，不如在边界上明确清洗 header，或者直接用 WAF、Cloudflare Tunnel 这类前置层把风险挡住。",
+        "supportid": [
+          "47951760",
+          "47951967",
+          "47953097",
+          "47952457",
+          "47952659",
+          "47952967",
+          "47956632"
+        ]
+      },
+      {
+        "category": "老协议与内部协议重新被翻出来",
+        "summary": "不少人把讨论扩展到 CGI、SCGI、uWSGI、Stubby 这些“老协议”或内部协议，认为它们只是不同场景下的工程取舍。有人提到用 CGI 让用户通过 coding agent 自己生成页面，把旧技术重新用于高度定制的个人化页面；也有人提到 WAS、uWSGI 和 Google 的 Stubby 说明大规模系统往往会自己发明一套更合适的传输层。评论里还出现了 FastCGI 作为进程管理器的看法：它不只是协议，还会拉起、回收和重启 worker，像一个小型的单机 orchestration 层。与此同时，embedded HTTP server 被视为今天更常见的路线，很多场景干脆不再需要中间网关。",
+        "supportid": [
+          "47952838",
+          "47955704",
+          "47956649",
+          "47953695",
+          "47951939",
+          "47951910",
+          "47952243",
+          "47952757",
+          "47954046",
+          "47955210",
+          "47956426",
+          "47952846"
+        ]
+      },
+      {
+        "category": "FastCGI/CGI 的局限与运维痛点",
+        "summary": "反对把 FastCGI 或 CGI 当万能解法的人指出，它们并不总是更表达力强。FastCGI 仍然沿用 CGI/1.1 的一些语义，像 `PATH_INFO` 需要解码，因此对 `%2F` 这类编码斜杠并不友好；WebSockets 也不是它的强项，只能靠 SSE 或长连接 HTTP 变通。CGI 还被提到有 httpoxy 这类把 header 塞进环境变量的安全坑，而且 nginx、Apache 的配置和文档体验也让一些人长期不想回头。再加上 Perl、Windows、Apache 这类组合留下的历史创伤，很多人对它的态度更像“老而能用”，而不是“天生优越”。",
+        "supportid": [
+          "47956303",
+          "47952581",
+          "47953246",
+          "47952174",
+          "47951825",
+          "47951936",
+          "47954639",
+          "47953127"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "FastCGI",
+        "explanation": "CGI 的持久进程版本，用来让 web server 与后端应用进程长期通信，而不是每个请求都启动新进程。"
+      },
+      {
+        "term": "CGI",
+        "explanation": "Common Gateway Interface，早期把 HTTP 请求映射成进程执行的接口，常见于按请求启动脚本。"
+      },
+      {
+        "term": "reverse proxy",
+        "explanation": "前置代理服务器，接收外部请求后再转发给后端应用或服务。"
+      },
+      {
+        "term": "WAS（Web Application Socket）",
+        "explanation": "评论中提到的自定义协议，用 control socket 加两个 pipe 分离控制面与数据面。"
+      },
+      {
+        "term": "End-to-End Principle（E2E）",
+        "explanation": "一种网络设计原则，强调尽量把智能放在端点，网络中间层保持简单。"
+      },
+      {
+        "term": "Principle of Least Privilege（PoLP）",
+        "explanation": "最小权限原则，只允许系统完成任务所必需的最少能力或 header。"
+      },
+      {
+        "term": "HTTPoxy",
+        "explanation": "CGI 相关安全漏洞，源于把 HTTP 头映射到环境变量时可能被 `HTTP_PROXY` 等值污染。"
+      },
+      {
+        "term": "uWSGI",
+        "explanation": "一种应用服务器/协议栈，常被用作 web 后端通信层，能力范围远超 Python 框架本身。"
+      },
+      {
+        "term": "Stubby",
+        "explanation": "Google 内部使用的 RPC/传输协议，常被拿来类比自定义后端通信层。"
+      },
+      {
+        "term": "ProxyProtocol",
+        "explanation": "在代理转发时携带原始客户端信息的协议，常用于把真实 IP 等元数据传给后端。"
+      }
+    ],
+    "context": "这篇文章讨论的是 reverse proxy（如 nginx、Apache httpd）到后端应用之间到底该用 HTTP 还是 FastCGI。FastCGI 是 CGI 的持久进程版，常见于 PHP-FPM 和 `mod_proxy_fcgi` 这类部署；它在 2000 年代和 SCGI、HTTP 一起争论过很久。评论区又补充了自定义协议 WAS、Google 内部的 Stubby、uWSGI，以及今天常见的 embedded HTTP server、Cloudflare Tunnel、WAF 等现实替代方案。争论核心不是浏览器到网站的 HTTP，而是代理链内部该保留多少通用性、多少安全边界和多少开发便利。",
+    "emoji": "🤔",
+    "sarcastic_question": "HTTP 都能当万能胶，出事了怪谁还分层吗？"
+  },
+  "articleSummary": "## 一句话总结\n为了彻底解决 HTTP 反向代理中的请求走私和头部伪造漏洞，不如直接用 30 岁的 FastCGI 协议——它天生具备消息边界和受信数据隔离机制，比 HTTP 更适合做后端通信。\n\n### HTTP 反向代理其实是个雷区\n最近 Discord 的媒体代理被爆出了一个严重的 desync 漏洞，攻击者能借此窥探用户的私有附件。这并不是个例，类似的漏洞层出不穷。核心问题在于，我们普遍用 HTTP 来作为反向代理和后端服务之间的通信协议，但这其实是\"大材小用\"且\"水土不服\"的。既然 HTTP 这么不安全，为什么不换个思路？其实有个 30 岁高龄的协议——FastCGI，专门为这种场景设计，能完美避开 HTTP 的那些坑。\n\n### 别被名字骗了，它就是个长连接协议\n很多人一听到 FastCGI，就想到旧时代 Web 服务器动态生成 `.fcgi` 文件的那种 CGI 模式。但其实，FastCGI 本质上是一个线路协议，完全可以像 HTTP 一样用。你只需要在后端代码里把 `http.Serve` 换成 `fcgi.Serve`，监听 TCP 或 UNIX Socket，其他逻辑完全不用变。主流的代理软件像 Nginx、Apache、Caddy 和 HAProxy 都支持 FastCGI 后端，配置起来跟 HTTP 代理一样简单，只是换个指令的事。\n\n### HTTP 的致命伤：没有明确的\"消息边界\"\nHTTP/1.1 看起来简单（就是文本嘛），但解析起来简直是噩梦。因为它没有显式的消息帧边界，消息的结束位置是由消息内容自己描述的，而且描述方式还不止一种。这就导致不同的解析器对同一条 HTTP 消息的边界理解不一致，这就是所谓的 HTTP Desync 攻击（请求走私）的根源。虽然专家 James Kettle 一直在呼吁 \"HTTP/1.1 must die\"，但只要还在用 HTTP/1.1 做代理通信，这个风险就永远存在。\n\n### HTTP/2 虽好，但还有个\"信任\"难题\n有人会说，那就用 HTTP/2 呗，它有明确的帧边界。确实，如果代理和后端全程都用 HTTP/2，能解决 desync 问题。但 HTTP 还有个更隐蔽的坑：它没法区分\"受信信息\"和\"不受信信息\"。比如代理想告诉后端客户端的真实 IP，只能加个 `X-Real-IP` 头。但这和客户端自己发的头混在一起，如果代理没把所有变体（比如 `True-Client-IP`）都删干净，后端很容易把攻击者伪造的数据当成代理传来的受信数据。\n\n### FastCGI 的巧妙设计：结构化的数据隔离\nFastCGI 解决这个问题的方式非常优雅：它做了域隔离。虽然客户端的 HTTP 头和代理的参数都在同一个键值列表里传给后端，但 FastCGI 强制要求所有 HTTP 头名必须加上 `HTTP_` 前缀。这意味着客户端永远无法伪造一个看起来像代理系统参数的头部。比如，Go 的 `fcgi` 库会直接用 FastCGI 的 `REMOTE_ADDR` 参数填充 `http.Request` 的 `RemoteAddr` 字段，根本不需要中间件去清洗头部，完全从结构上杜绝了伪造风险。\n\n### 老古董的代价：没 WebSocket，工具链也旧\n既然 FastCGI 这么好，为啥没火？可能名字里带 \"CGI\" 让人觉得是上个世纪的产物。而且它确实有缺点：不支持 WebSocket，调试工具也不如 HTTP 丰富（比如 curl 就不支持直接连 FastCGI）。作者在压测时也发现，某些场景下 FastCGI 的吞吐量不如 HTTP/1.1 或 HTTP/2，但这主要是因为代码路径没经过像 HTTP 那样的深度优化，而不是协议本身的问题。\n\n### 宁可多买台服务器，也不想修 HTTP 的坑\n尽管有这些短板，作者依然在 SSLMate 的生产环境用了 10 年 FastCGI。对于不需要 WebSocket 的业务，它的性能完全够用。作者的态度很实在：如果真成了瓶颈，宁愿多买点硬件，也不愿意去面对 HTTP 反向代理那些层出不穷的安全噩梦。有时候，\"老\"技术反而比\"新\"标准更靠谱。"
+}

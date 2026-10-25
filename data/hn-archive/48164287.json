@@ -1,0 +1,112 @@
+{
+  "id": 48164287,
+  "by": "gidellav",
+  "title": "Zerostack – A Unix-inspired coding agent written in pure Rust",
+  "url": "https://crates.io/crates/zerostack/1.0.0",
+  "score": 396,
+  "createdAt": 1778971846,
+  "aiSummary": {
+    "chinese_title": "Zerostack：纯 Rust 轻量 coding agent，8MB 内存和权限模式成焦点",
+    "discussion_overview": [
+      {
+        "category": "超低内存占用与旧设备可用性",
+        "summary": "最吸引人的点是它的内存占用只有空会话约 8MB、工作时约 12MB，评论里有人直接拿 Claude Code（Anthropic 的 coding agent）动辄几 GB 的开销来对比，认为这会让低配笔记本和小实例终于能跑 coding agent。开发者进一步解释，128k context 只会把内存从 8MB 拉到 11MB，主要靠 Rust、按需加载、smallvec、compactstring、`opt-level=z` 和 LTO（Link Time Optimization，链接时优化）压缩体积，而不是靠牺牲功能。还有人分享 opencode（开源 coding agent）在大项目里会慢慢涨到 6GB，甚至触发 OOM killer，这让“轻量”不只是卖点，而是实际痛点的解决方案。也有人顺带追问它在并发或 CPU-intensive 场景下的表现，但当前讨论更集中在“够不够轻”而不是“极限性能有多高”。",
+        "supportid": [
+          "48164613",
+          "48164926",
+          "48164745",
+          "48164805",
+          "48164965",
+          "48165107",
+          "48165342",
+          "48164646"
+        ]
+      },
+      {
+        "category": "想看 benchmark、截图和对比",
+        "summary": "很多人希望先看到 benchmark、screenshots 和与 Claude Code（Anthropic 的 coding agent）、opencode（开源 coding agent）、Pi.dev（可配置 agent 工具）以及 Codex（OpenAI 的编码助手）的直接对比，因为在 coding agent 里，harness 设计往往比模型名字更影响体验。开发者表示工具集刻意向 opencode 靠齐，但没有引入 Skills 和 Subagents，而是用 prompt 文件和 TUI 里的配置来切换不同“agent”。评论里还提到希望能迁移其他工具的设置、甚至做成 IntelliJ plugin（JetBrains IDE 插件）接入搜索索引，说明用户关心的不只是命令行可用，而是能不能无缝进入现有工作流。另一些人则认为 coding agent 本质上是 TUI + tools + agent loop，真正难点在于兼容不同 provider 的奇怪行为。",
+        "supportid": [
+          "48164682",
+          "48164815",
+          "48165064",
+          "48165139",
+          "48164713",
+          "48164758",
+          "48164691",
+          "48165382",
+          "48165477"
+        ]
+      },
+      {
+        "category": "自定义、权限与脚本层取舍",
+        "summary": "这一组讨论围绕可定制性展开：有人自己在做类似项目，想保留 Pi.dev（可扩展 coding agent）的 self-mutate 和动态生成工具能力，但又不想让 agent 直接拿到任意 `bash` 执行权。开发者给出的替代方案是 prompt library（把 `.md` 当成系统提示）、编译期开关和 4 档 permission mode，从 Restrictive 到 YOLO，再加上对 `bash` 的 allow/ask/deny 正则规则。也有人尝试把 Deno（JavaScript/TypeScript 运行时）嵌进 Rust，让工具继续用 TypeScript 写；但反馈很快转向 Rhai（轻量嵌入式脚本语言）这类更容易 sandbox 的方案，因为它不会把 runtime 依赖拉得太重。还有人主张把长任务循环和 git worktrees 做成内置能力，理由是这类能力既难靠纯 prompt 实现，也不适合全丢给 MCP servers（模型上下文协议服务器）。",
+        "supportid": [
+          "48164909",
+          "48164948",
+          "48164972",
+          "48164991",
+          "48165004",
+          "48165484",
+          "48164912",
+          "48164870",
+          "48165044",
+          "48165063",
+          "48165525"
+        ]
+      },
+      {
+        "category": "安全审计、依赖和 panic 处理",
+        "summary": "因为代码量不大，有人直接把仓库交给 DeepSeek v4 Flash/Pro（DeepSeek 的模型变体）去审计是否有 hidden telemetry、异常依赖或其他风险。审计结果总体偏正面，但也提醒了两个现实问题：一是模型审代码并不等于能抵御 prompt injection（提示注入），二是 Rust 项目如果不强制用 `cargo add`，很容易被模型手动写进过时或奇怪的 crate。开发者回应说项目没有额外 HTTP 调用，除了 MCP 和 LLM connector 之外没有别的网络面，并承认曾为了省二进制体积把 panic handler 设成 `abort`，后来又改回默认。讨论也暴露了一个典型取舍：为了省几 KB/MB，可能会失去 stacktrace、调试信息和 async panic 的可恢复性。",
+        "supportid": [
+          "48164708",
+          "48164765",
+          "48164831",
+          "48164981",
+          "48165103",
+          "48165107",
+          "48164801"
+        ]
+      },
+      {
+        "category": "Rust、Unix 哲学与并发模型",
+        "summary": "有人把这类工具理解成对“脚本型 TUI”的反动，期待用更克制、更省资源的语言来写 agent harness；但也有人提醒 Rust 并不是真正的 low-level，而是靠 RAII、lifetimes 和无别名优化来换效率。评论里还出现了 Rust、Go、Zig（编译型系统语言）、C 和 Haskell（函数式语言）的对比：Rust 可能比纯 C 多一些标准库开销，但比很多带 GC 或重 runtime 的方案更容易做出小体积、资源可控的工具。开发者补充当前版本用 `tokio::main(flavor=\"current_thread\")` 单线程运行，主要是为了省内存而不是追求极限吞吐。于是大家最后把问题落回到一个很 Unix 的命题：到底要不要为了简洁和可组合，接受更少的并发抽象和更强的手动控制。",
+        "supportid": [
+          "48164643",
+          "48164848",
+          "48164880",
+          "48165191",
+          "48165107",
+          "48165342",
+          "48164691",
+          "48164713"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "TUI",
+        "explanation": "Terminal User Interface，终端界面；这里指在命令行里操作的交互式 agent 前端。"
+      },
+      {
+        "term": "MCP",
+        "explanation": "Model Context Protocol，模型上下文协议；用于让 agent 连接外部工具和数据源。"
+      },
+      {
+        "term": "Skills",
+        "explanation": "给 coding agent 预置的技能/任务模块或配置包，用来扩展能力。"
+      },
+      {
+        "term": "git worktrees",
+        "explanation": "Git 的工作树功能，可同时检出同一仓库的多个工作目录，便于并行处理任务。"
+      },
+      {
+        "term": "Rhai",
+        "explanation": "一种轻量级的嵌入式 scripting language，适合在 Rust 程序里做可控脚本层。"
+      }
+    ],
+    "context": "Zerostack 是一个受 Unix 哲学启发的 coding agent/TUI（terminal user interface，终端界面）工具，目标是在本地以很小的资源占用完成模型调用、工具执行和交互式编辑。评论把它和 Claude Code（Anthropic 的终端编码助手）、opencode（开源 coding agent）、Pi.dev（可配置 agent 工具）、Codex（OpenAI 的编码助手）以及 airun（一个可管道化的 agent 运行器）放在一起比较，焦点不在“哪个模型更聪明”，而在外层 harness 怎么设计。开发者补充说项目用 Rust crate smallvec（小容量优化容器）、compactstring（小字符串优化类型）、LTO（Link Time Optimization，链接时优化）和 `tokio::main(flavor=\"current_thread\")` 来压缩内存和二进制体积，并用 prompt library、MCP（Model Context Protocol，模型上下文协议）、权限模式和 git worktrees 等机制替代传统 Skills。讨论还延伸到脚本层该用 TypeScript/Deno（JavaScript/TypeScript 运行时）还是 Rhai（轻量嵌入式脚本语言），以及如何避免任意 `bash` 执行、prompt injection（提示注入）和 supply chain 风险。",
+    "emoji": "🤔",
+    "sarcastic_question": "写个 coding agent 先吃掉几 GB 才算合格？"
+  },
+  "articleSummary": "## 一句话总结\n这是一个用纯 Rust 编写的极简 AI 编程 Agent，它借鉴 Unix 哲学，通过极致的内存优化和模块化设计，试图解决现有 LLM 工具臃肿且难以集成的痛点。\n\n### 现有 AI 工具的通病：太重了\n现在的 AI 编程助手大多有个毛病，就是太“重”了。要么依赖庞大的 Python 运行时，要么内存占用动辄几百 MB，这对于只想在 CLI 里快速集成一个 AI 功能的开发者来说，简直是杀鸡用牛刀。作者显然受够了这种臃肿，他想做的不是又一个功能大杂烩，而是一个像 Unix 工具一样“干一件事并把它做好”的轻量级 Agent。这就是 Zerostack 的起点：用 Rust 重写，把性能和内存占用压到极致。\n\n### 为什么选择 Rust？为了极致的控制力\n选择 Rust 不仅仅是为了赶时髦，核心在于对资源的绝对控制。作者的目标是让这个 Agent 能在各种受限环境下运行，比如嵌入式设备或者资源紧张的服务器。Rust 的内存安全特性保证了长时间运行的稳定性，而零成本抽象则意味着不需要为了高级功能牺牲性能。说白了，就是要在不引入沉重垃圾回收（GC）机制的前提下，还能提供现代化的并发处理能力。\n\n### Unix 哲学的回归：做纯粹的管道\nZerostack 的设计思路非常“Unix”，它不试图自己搞定所有事情，而是专注于做一个好用的管道。这意味着它很容易被组合到现有的开发工作流中，你可以通过标准输入输出（stdin/stdout）与其他工具无缝对接。这种设计让 Agent 变成了一个可编程的组件，而不是一个封闭的黑盒。对于有经验的开发者来说，这种开放性比内置一堆花哨的编辑器插件要有价值得多。\n\n### 极简主义的架构取舍\n为了保持轻量，作者在架构上做了不少减法。它没有追求复杂的插件系统，而是通过清晰的模块划分来保证扩展性。这种取舍虽然牺牲了一定的灵活性，但换来了极低的启动开销和运行时成本。核心逻辑被拆解成独立的模块，每个模块只负责特定的任务，比如代码解析、LLM 交互或者文件操作。这种设计让代码库本身也变得易于维护和审计。\n\n### 面向未来的 Rust 生态集成\n虽然目前版本还比较早期（v1.0.0，下载量刚起步），但它的潜力在于对 Rust 生态的友好度。因为它本身就是用 Rust 写的，所以可以轻松编译成 WebAssembly 或者静态链接的二进制文件。这对于那些需要跨平台分发或者不想折腾依赖环境的场景来说，是个巨大的优势。作者显然是希望它能成为 Rust 社区里构建 AI 工具的底层基础设施，而不仅仅是一个好玩的玩具。\n\n### 现状与挑战：从 0 到 1 的第一步\n当然，作为一个刚发布的项目，它目前只有 10 次下载，生态还远未成熟。现在的它更像是一个概念验证，证明了“用 Rust 写高性能 AI Agent”这条路是走得通的。对于想要尝鲜或者有特定性能需求的开发者来说，这是一个值得关注的实验性项目。但如果需要开箱即用的企业级功能，可能还得再等等它的生态成长。"
+}

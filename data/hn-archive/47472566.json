@@ -1,0 +1,124 @@
+{
+  "id": 47472566,
+  "by": "ingve",
+  "title": "Looking at Unity made me understand the point of C++ coroutines",
+  "url": "https://mropert.github.io/2026/03/20/unity_cpp_coroutines/",
+  "score": 126,
+  "createdAt": 1774434652,
+  "aiSummary": {
+    "chinese_title": "Unity 协程让人看懂 C++ coroutines 的价值与坑",
+    "discussion_overview": [
+      {
+        "category": "跨帧游戏逻辑更顺手",
+        "summary": "很多人把 Unity 协程看成是把“等待 N 帧/秒、逐帧推进行为”的问题写得更直观的工具。评论里举了发射子弹、转向、按节拍推进 AI 或音乐序列的例子，认为用很短的 coroutine 就能把时间轴行为写成线性流程。有人指出单线程 scheduler 就够了，不一定非要 multithreaded event loop；关键是让逻辑和游戏主循环对齐。相比 callback hell，这种写法在局部场景里更容易读懂和复用。",
+        "supportid": [
+          "47515558",
+          "47517085",
+          "47515915",
+          "47520458",
+          "47517636",
+          "47519197",
+          "47516435"
+        ]
+      },
+      {
+        "category": "生命周期和调试是最大 footgun",
+        "summary": "反对者最在意的是 coroutine 把状态藏在 closure 或 coroutine frame 里，导致 Unity editor 里看不见，也难以手工编辑。对象销毁、换场景、引用失效后，协程可能继续运行并在很多帧后才抛出 null ref，排查时调用栈也很不透明。评论还提到没有明确的 ownership model：到底是 MonoBehaviour、caller 还是 scene 负责取消，都很容易模糊。还有人强调 hidden allocation、GC 和跨帧隐式状态会让它变成迟到的麻烦。",
+        "supportid": [
+          "47517094",
+          "47516597",
+          "47516917",
+          "47517168",
+          "47518858",
+          "47516360",
+          "47516884"
+        ]
+      },
+      {
+        "category": "C++20 coroutines 低层、可定制但难用",
+        "summary": "支持者认为 C++ coroutines 的设计目标不是替你做决定，而是把暂停点和恢复点交给 compiler，保持 zero-cost abstractions 和高度可定制性。评论里反复强调它本质上是 state machine，`std::future` 只能给你 building blocks，真正的异步流程还得自己拼；而 `co_await` 比 `.then()` 链更接近线性代码。批评者则觉得它比 Rust async-await 还复杂，模板、Promise、STL 依赖和 `Promise.all` 之类需求都让人想要更高层的 generators 或 structured concurrency。也有人纠正说 heap allocation 不是必然，但“低层到需要自己选分配策略”本身就说明它离易用还有距离。",
+        "supportid": [
+          "47522104",
+          "47519842",
+          "47521636",
+          "47522226",
+          "47522072",
+          "47520640",
+          "47516344",
+          "47519727",
+          "47520696",
+          "47516493"
+        ]
+      },
+      {
+        "category": "stackful coroutine / fibers 更像人想要的协程",
+        "summary": "另一派更喜欢 stackful coroutines，因为 suspend/resume 时可以把整个 call stack 当成轻量线程来用，写起来更像普通函数。评论里提到可以用 50 行 Assembly、`setjmp/longjmp`、`ucontext`、Windows fibers，甚至已有的库如 minicoro、libco、Boost 相关实现来做。争议点在于这类方案有 portability、ABI、FPU 寄存器和 signal mask 之类问题，而且标准化迟迟没有强有力的产业支持。还有人提醒，异常和 RAII 也会把“简单实现”变复杂，必须非常小心地处理栈展开和析构。",
+        "supportid": [
+          "47515896",
+          "47515946",
+          "47519669",
+          "47521249",
+          "47516643",
+          "47519329",
+          "47521313",
+          "47516894",
+          "47516990",
+          "47521359",
+          "47518860"
+        ]
+      },
+      {
+        "category": "Unity/C# 版本与运行时历史包袱",
+        "summary": "评论补充了 Unity 协程之所以长得怪，是因为它长期卡在旧版 C# 和 Mono 上，早期常用 `IEnumerable/IEnumerator` 充当 generator/协程接口。虽然 Unity 现在已经开始支持 `async`，也在规划迁移到 CoreCLR，但旧机制并没有立刻消失，IL2CPP 这条 AOT 路线甚至还在继续用 Boehm GC。有人还把 C++ coroutines 的历史拉回到 Microsoft、WinRT 和 .NET async/await，说明它的语法和语义本来就受这些平台的设计影响很深。",
+        "supportid": [
+          "47515667",
+          "47516329",
+          "47516620",
+          "47515842",
+          "47515762",
+          "47516514",
+          "47517029",
+          "47517638",
+          "47516160",
+          "47517008",
+          "47515822",
+          "47516164"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "stackless coroutine",
+        "explanation": "不保存整条调用栈，只保存必要状态与恢复点，通常由编译器生成状态机。"
+      },
+      {
+        "term": "stackful coroutine / green thread",
+        "explanation": "拥有独立栈，可像轻量线程一样在任意函数层级暂停恢复。"
+      },
+      {
+        "term": "structured concurrency",
+        "explanation": "把任务创建、等待和取消放进统一作用域，减少悬挂任务和泄漏。"
+      },
+      {
+        "term": "state machine",
+        "explanation": "用状态和转移表达流程，异步/跨帧逻辑常被编译或手写成这种形式。"
+      },
+      {
+        "term": "setjmp/longjmp",
+        "explanation": "C 里的非局部跳转机制，常被用来模拟协程切换或异常。"
+      },
+      {
+        "term": "RAII",
+        "explanation": "C++ 的资源管理模式，靠对象析构自动释放资源，和 coroutine 的暂停/恢复、异常传播强相关。"
+      },
+      {
+        "term": "zero-cost abstractions",
+        "explanation": "C++ 的设计原则：抽象不应带来多余运行时开销。"
+      }
+    ],
+    "context": "这篇讨论源自一篇把 Unity（游戏引擎）里的 `IEnumerator` 协程和 C++20 coroutines（C++20 标准新增的协程）对照起来的文章，核心是跨帧、跨时间的逻辑为什么很难写。评论里补充说，Unity 过去长期依赖 Mono（.NET 运行时）和较老的 C#，所以常见的协程写法看起来像用 `IEnumerable/IEnumerator` 充当 generator；而 Unity 正在向 CoreCLR（新的 .NET 运行时）迁移，旧的协程机制仍然广泛存在。另一方面，C++ coroutines 本质上是 compiler 生成的状态机，`co_await/co_yield` 只是把暂停点写得更像同步代码，但它们很低层，常要配合 ASIO（C++ 异步网络库）、Boost.ASIO 或自定义 `promise`/scheduler 使用。讨论还追溯到它们受 .NET async/await、WinRT 和 C++/CX 的历史影响，也延伸到 stackful coroutines、fibers 和 `setjmp/longjmp` 这些替代实现。",
+    "emoji": "🤔",
+    "sarcastic_question": "把状态机藏起来就算更简单？"
+  },
+  "articleSummary": "## 一句话总结\nC++ 协程在游戏开发中最实用的落地方式，不是去搞复杂的 `co_await` 异步框架，而是像 Unity 那样用 `co_yield` 把丑陋的手写状态机变成线性的生成器。\n\n### 协程落地难，是因为缺个好例子\nC++ 协程虽然已经出来六年了，但在生产代码里依然罕见。作者觉得这不仅仅是因为它太底层，更因为大家都在讲 Fibonacci 这种没用的例子，导致开发者不知道该往哪用。直到作者看了 Unity 的 C# 代码，才恍然大悟：原来协程在处理“分帧执行的特效”时是神器。Unity 用 `yield return null` 来让代码在每一帧暂停，这种写法虽然有点像历史遗留的 Hack，但它把复杂的逻辑变成了非常直观的线性代码。\n\n### 手写状态机，是维护噩梦\n为了说明白为什么协程好用，作者举了个 `TimeWarp` 特效的例子。这个特效包含先左跳、再右走几步、最后旋转等一系列动作。如果用传统的 C++ 函数对象来实现，你就得写一个巨大的 `switch-case` 状态机，还得手动维护 `_state` 和 `_i` 这种中间变量。这种代码不仅丑，而且一旦逻辑变复杂，维护起来简直是灾难。说白了，我们需要的不是计算斐波那契数列，而是把这种“带状态的多步操作”写得像普通函数一样简单。\n\n### 为什么 C++23 选择了 generator 而不是 await？\n很多人觉得 Unity 这种 `yield` 的写法不规范，觉得应该用 `co_await`。但作者指出，`co_await` 的门槛太高了：你需要回答“等谁”、“谁负责唤醒”、“放哪个线程池”等一系列复杂问题。相比之下，`co_yield` 就简单多了，控制权直接回到调用者，由调用者决定什么时候恢复。这也是为什么 C++23 标准库优先引入了 `<generator>`——因为它容易实现且足够通用。对于大多数项目来说，去适配复杂的 `co_await` 执行框架，不如直接用 `generator` 来得实在。\n\n### 一个小时写出的 Unity 风格协程调度器\n作者在 C++ 里复刻了 Unity 的思路，核心不到 100 行代码。他定义了一个 `effects_manager`，里面存了 `std::generator` 的 vector。每次游戏主循环调用 `run()` 时，就遍历所有协程并执行 `++iterator`，相当于推进一帧。如果协程执行完了，就把它从列表里移除。这种实现不需要懂复杂的协程底层机制，也不需要自定义 `promise_type`，只要利用 C++23 的 `std::generator` 就能搞定。它把“等待下一帧”这个语义，直接映射成了“生成一个空值并挂起”。\n\n### 从副作用到数据驱动，顺便还能并行优化\n更有意思的是，作者发现这个模式稍加修改就能变得更优雅。原本协程里直接修改对象位置（副作用），可以改成 `co_yield` 一个 `Draw` 结构体（数据）。这样 `effects_manager` 就变成了一个纯函数，负责收集这一帧所有的绘制指令。因为没有了副作用，你甚至可以用 TBB 的 `parallel_for` 来并行遍历这些协程生成绘制数据。这不仅让逻辑更清晰，还顺带解决了性能问题。这证明了“Unity 式 Hack”不仅能用，还能演化出非常高效的架构。"
+}

@@ -1,0 +1,92 @@
+{
+  "id": 47761997,
+  "by": "citguru",
+  "title": "Distributed DuckDB Instance",
+  "url": "https://github.com/citguru/openduck",
+  "score": 129,
+  "createdAt": 1776150032,
+  "aiSummary": {
+    "chinese_title": "OpenDuck 复刻 MotherDuck：分布式 DuckDB 与混合执行",
+    "discussion_overview": [
+      {
+        "category": "差分存储与列式/追加写的碎片问题",
+        "summary": "评论首先在讨论 differential storage 是否会像 B+tree 一样产生严重碎片化。有人担心层与层之间的页面会非常分散，导致一次查询要触发大量随机 IO，延迟受缓存影响很大。回应指出列式存储通常压缩得更好，单个 rowgroup 能容纳很多记录，写入也往往是整表替换或大块追加，而读取则更多依赖 full scan 和 predicate pushdown，而不是沿索引乱跳。另有人补充 ClickHouse 这类系统靠 append-only parts 避免了同一行分散在多层的问题。",
+        "supportid": [
+          "47764413",
+          "47765168",
+          "47767155",
+          "47763970",
+          "47761998"
+        ]
+      },
+      {
+        "category": "DuckDB 独占锁与并发读写",
+        "summary": "很多评论聚焦 DuckDB 文件模式下的并发限制：一个进程以 write mode 打开后，其他进程既不能写也不能读，CLI 或 DBeaver 之类工具都会被锁住。有人把这和 SQLite 的线程安全并发体验作对比，认为 DuckDB 在这一点上明显更不像传统数据库。回应里提到 DuckLake 可以通过共享 Postgres catalog 支持读写并发、schema evolution 和 versioning，但一旦回到 DuckDB 自己的 compute，exclusive locking 的问题又会出现。也有人给出最朴素的建议：如果只是偶尔分析或聚合日志，直接把数据写成 Parquet 放到 S3，再用 DuckDB 读就够了。",
+        "supportid": [
+          "47762437",
+          "47762638",
+          "47764262",
+          "47766644",
+          "47764825",
+          "47766152",
+          "47762709"
+        ]
+      },
+      {
+        "category": "DuckDB 的定位越来越像分析平台而不只是文件数据库",
+        "summary": "一条主线是担心 DuckDB 的生态越来越复杂：它既像 SQLite 一样是一个文件数据库，又像 Polars 一样承担分析引擎角色，还要支持 Parquet、JSON、HTTPFS、UI，外加 DuckLake、MotherDuck 等相邻产品。反驳意见认为核心 DuckDB 仍然保持轻量、可移植、无依赖，复杂功能主要被 extension 隔离在外部，官方甚至在推动更稳定的 C extension API 来控制边界。用户也指出 `SELECT * FROM my_df` 这类 Python 里的便利语法，以及直接查询远程 Parquet 文件的能力，会让 DuckDB 看起来更像数据帧 + SQL 的混合体，而不是传统意义上的单体数据库。",
+        "supportid": [
+          "47762217",
+          "47763588",
+          "47764241",
+          "47765437"
+        ]
+      },
+      {
+        "category": "分布式架构分歧：复制、联邦查询与替代引擎",
+        "summary": "另一组评论在比较不同的分布式实现路线。有人分享自己用 OpenRaft 把 DuckDB 做成全量复制集群：每个节点都有完整副本，写入经 Raft 共识，读取走本地，从而获得强一致和零网络读延迟。与此相比，OpenDuck 更像 query federation：gateway 把查询拆成 local/remote 两段，只让中间结果过网；因此它更适合跨机器数据集，而不是纯粹的强一致复制。也有人问这种东西会不会取代 Spark 或 ClickHouse，并建议关注 DataFusion / datafusion-federation 这类查询执行项目。",
+        "supportid": [
+          "47763145",
+          "47766189",
+          "47763616"
+        ]
+      },
+      {
+        "category": "对 AI/‘vibe coded’ 原型的怀疑",
+        "summary": "不少评论对项目本身持明显怀疑态度，认为代码像是一次性 AI 生成的 SaaS 复刻，不足以称为可投入生产的实现。有人直接说这类 Show HN 项目太多，已经变成了 `vibe coded cloud chasing slop`，看不到真实的数据面价值。甚至有评论把问题延伸到发言风格本身，批评 LLM 风格的复制粘贴内容破坏讨论质量。整体情绪不是技术争论，而是对演示型项目可信度的厌倦。",
+        "supportid": [
+          "47763224",
+          "47763859",
+          "47763847",
+          "47766939"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "differential storage",
+        "explanation": "把更新写成不可变的增量层，而不是原地修改同一份数据；便于并发、版本和回滚。"
+      },
+      {
+        "term": "hybrid query execution",
+        "explanation": "一条查询同时在本地和远程执行，执行计划被拆成多个局部段，只传输必要的中间结果。"
+      },
+      {
+        "term": "DuckLake",
+        "explanation": "面向 DuckDB 的 lakehouse 格式，用 shared catalog 管理 Parquet 数据、版本和并发访问。"
+      },
+      {
+        "term": "snapshot isolation",
+        "explanation": "读操作看到的是某个稳定快照，写入不会破坏已开始查询的一致性。"
+      },
+      {
+        "term": "Parquet",
+        "explanation": "一种列式文件格式，适合压缩、分区扫描和数据湖存储，DuckDB 和 DuckLake 都频繁围绕它讨论。"
+      }
+    ],
+    "context": "这场讨论围绕 OpenDuck（一个试图复刻 MotherDuck 的实验项目）展开，它把 DuckDB（嵌入式分析型数据库）原本的单文件引擎改造成支持 differential storage 和 hybrid query execution 的系统。DuckDB 本身更常见的是单写者文件模式，因此多进程并发、锁竞争和元数据协调都会成为焦点。评论里不断提到 DuckLake（面向 Parquet 数据湖的湖仓格式）、PostgreSQL catalog（用于协调元数据的关系数据库）和 Raft（分布式一致性协议），说明大家在比较“单机嵌入式数据库”和“分布式湖仓/复制集群”两条路线。另一条线则是用 ClickHouse（列式分析数据库）、Spark（分布式数据处理引擎）和 DataFusion（Apache 的查询执行引擎）来对比它在分析负载中的定位。",
+    "emoji": "🤨",
+    "sarcastic_question": "都叫分布式了，怎么还先卡独占锁？"
+  },
+  "articleSummary": "## 一句话总结\nOpenDuck 开源了 MotherDuck 的核心架构——通过差分存储、混合执行和原生 Catalog 接口，让 DuckDB 在保持本地体验的同时，拥有了透明、可扩展的云端分布式能力。\n\n### 把 MotherDuck 的架构搬回家，还得是开源的\nMotherDuck 证明了 DuckDB 上云的体验可以丝般顺滑，一句 `ATTACH` 就能让远程表像本地表一样参与查询，但这套架构是闭源的。OpenDuck 的目标很直接：把这套被验证过的先进架构——差分存储、混合执行和透明的远程数据库——完全开源。它不是简单的复制，而是用开放的协议、开放的后端和开放的扩展，把这些理念变成任何人都能跑、能改、能集成的通用方案。\n\n### 存储层：用“不可变层”解决并发读写难题\nDuckDB 习惯读写普通文件，但在云端这就成了瓶颈。OpenDuck 借鉴了差分存储的设计，把数据持久化为对象存储上不可变的密封层，元数据则放在 PostgreSQL 里。DuckDB 看到的依然是个普通文件，但底层实际上是“单写多读”的快照模式。这么做的好处是既保证了数据的一致性读取，又让存储层具备了云原生的扩展性，不用再担心本地文件锁的问题。\n\n### 混合执行：把查询拆成“本地”和“远程”两半\n最有意思的地方在于它的混合执行能力。一个 SQL 查询不需要全部发到远程跑，Gateway 会把执行计划拆开，给每个算子打上 `LOCAL` 或 `REMOTE` 的标签，并在边界处插入“桥梁”算子。比如 JOIN 大表时，本地扫小表，远程扫大表，只有中间结果会通过网络传输。这种设计既利用了远程的算力，又避免了海量数据搬家的开销，是性能优化的关键。\n\n### 协议极简：两个 RPC 搞定一切\n为了不把用户绑定在特定实现上，OpenDuck 的协议设计得非常克制。它在 `execution.proto` 里只定义了两个 RPC：一个执行查询，一个用 Arrow IPC 流式回传结果。因为协议足够简单，只要你的服务能讲 gRPC 并返回 Arrow，就能充当后端。你可以用项目自带的 Rust Gateway，也可以换成自己的实现，甚至接入完全不同的执行引擎，客户端完全无感。\n\n### 深度集成：远程表就是“一等公民”\n很多数据库做远程集成，顶多算是个外部数据包装器（FDW），但 OpenDuck 是直接实现了 DuckDB 的 `StorageExtension` 和 `Catalog` 接口。这意味着远程表在 DuckDB 优化器眼里和本地表没区别，能原生参与 JOIN、CTE 和各种优化规则。这种深度集成让开发者不用改 SQL 语法，也不用关心数据在哪，查询优化器会自动决定怎么跑最省事。\n\n### 架构分工明确：Gateway 负责调度，Worker 负责干活\n整个系统的架构逻辑很清晰：客户端 DuckDB 负责生成计划，Rust 写的 Gateway 负责鉴权、路由和拆分计划，底层的 Worker（也是嵌入式 DuckDB）负责真正干活。Gateway 还能处理背压，防止下游被压垮。这种拆分让系统既灵活又健壮，你想加 Worker 就加，想换路由逻辑也只需改 Gateway，互不干扰。\n\n### 不是 MotherDuck 的克隆，是理念的继承\n虽然 OpenDuck 借鉴了 MotherDuck 的思想，但它绝不是 wire-compatible 的克隆版。MotherDuck 是商业服务，协议私有；OpenDuck 是自托管方案，协议开放。对比 Arrow Flight SQL 这种通用协议，OpenDuck 范围更窄但更深：它不追求兼容所有数据库，而是专门为 DuckDB 优化，让优化器能感知远程表的存在，从而实现更深层的查询下推和性能提升。"
+}

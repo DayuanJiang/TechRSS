@@ -1,0 +1,131 @@
+{
+  "id": 48019163,
+  "by": "pjmlp",
+  "title": "Async Rust never left the MVP state",
+  "url": "https://tweedegolf.nl/en/blog/237/async-rust-never-left-the-mvp-state",
+  "score": 389,
+  "createdAt": 1777966872,
+  "aiSummary": {
+    "chinese_title": "Rust Async 仍停在 MVP：编译优化、功能分裂与 Tokio 争议",
+    "discussion_overview": [
+      {
+        "category": "标题争议与作者辩护",
+        "summary": "很多人觉得标题太夸张，正文其实是在讲 Async Rust 的具体优化，而不是宣判整个语言失败。作者则坚持说这并不夸张，因为自 2019 年 async 落地后，核心 async machinery 基本没怎么变，新增的 async in traits / closures 主要还是 typesystem 层面的更新。评论里还提到社区当年围绕 `await foo()` vs `foo().await` 这种不可逆的设计争论非常剧烈，极端措辞和疲劳感可能让原本推进项目的人更快 burnout。也有人强调，这篇文章不是“hate on Rust”，而是想把 Rust 变得更好。",
+        "supportid": [
+          "48019317",
+          "48020127",
+          "48020623",
+          "48020826",
+          "48019742",
+          "48019839",
+          "48019511",
+          "48019810",
+          "48019565"
+        ]
+      },
+      {
+        "category": "编译器优化与嵌入式实际收益",
+        "summary": "一部分评论认为文章在抠很小的开销，比如 `Returned`、`Panicked` 这些状态字段，属于过度优化。另一部分则指出，async 函数往往层层嵌套，微小成本会快速累积成 future 体积、编译时间和 binary size 的压力，尤其在大型 Tokio 代码库和 embedded / no_std 场景里更明显。作者补充说，他快速实现的两个最简单优化已经在真实 embedded 代码里带来 2%-5% 的二进制体积节省，在桌面 synthetic benchmark 里也看到了约 3% 的性能提升。还有人提到很多 async trait method 在实际实现里其实是同步的，这会让不必要的样板和状态机膨胀变成长期负担。",
+        "supportid": [
+          "48019356",
+          "48019421",
+          "48019483",
+          "48019783",
+          "48020822",
+          "48019852",
+          "48019910",
+          "48020218",
+          "48019653"
+        ]
+      },
+      {
+        "category": "async、线程与 green threads 的模型之争",
+        "summary": "讨论里最激烈的一条线，是到底该把 async 看成更好的并发模型，还是仅仅把 callback hell 换了个壳。反对者认为线程才是更自然的编程模型，async 只是把控制流拆得更碎；还有人说 callbacks 反而更容易测试，因为调度是显式的、可控的。支持者则强调，kernel thread 和上下文切换在细粒度 IO 场景里太重，work stealing executor、user-space scheduling、green threads 都能给出更低的 latency 和更稳定的 P99。还有人把 Rust 的设计放到 Go、JS、Erlang、Céu、io_uring 这些方案旁边比较，认为 Rust 既想要 zero-cost abstraction，又想保留灵活性，结果就卡在两边都不彻底。",
+        "supportid": [
+          "48019420",
+          "48019614",
+          "48019664",
+          "48019718",
+          "48019767",
+          "48019538",
+          "48019578",
+          "48019643",
+          "48020085",
+          "48019470",
+          "48019497",
+          "48019556",
+          "48019598",
+          "48019887",
+          "48019754",
+          "48019777",
+          "48019514",
+          "48020056",
+          "48019968",
+          "48020432",
+          "48020541",
+          "48019543",
+          "48019781",
+          "48020580",
+          "48020333",
+          "48020582",
+          "48020298",
+          "48020824"
+        ]
+      },
+      {
+        "category": "Tokio 生态依赖与 runtime 选择",
+        "summary": "有人喜欢 Rust 允许项目保持 sync-first，只在 IO 边缘接入 runtime，这样可以避免把整个代码库都 async 化，也更适合把 IO-bound 和 CPU-bound 路径分开。问题在于，实际生态里很多库都默认绑到 Tokio，形成了类似“可选但人人都在用”的中心依赖。支持者认为 Tokio 维护得很好，而且还有 smol、async-std、glommio 等替代 executor，若把某个 runtime 直接塞进 std，反而会削弱可移植性和其他平台支持。批评者则担心 Tokio 默认多线程，这会让用户同时面对 async 复杂性和 multithreading bugs。",
+        "supportid": [
+          "48020260",
+          "48020849",
+          "48019893",
+          "48020147",
+          "48020541",
+          "48020668",
+          "48019978"
+        ]
+      },
+      {
+        "category": "sync/async 双 API、maybe-async 与 sans-io",
+        "summary": "另一条明显的痛点是 API 复制：很多人必须同时提供 blocking 和 async 两套函数，维护成本很高。现有 workaround 像 `maybe-async`、`bisync` 被提到，但它们都有硬限制，或者在复杂代码里很快变得难用。讨论里有人提到 `keyword generics` 这种方向，希望函数能对 `async`、`const` 之类关键字保持泛型；也有人推崇 `sans-io`，把核心逻辑与 I/O 分离，这样同一套代码既能复用又更容易测试。还有人说简单场景可以用 macro 抹掉差异，但这并没有解决 Rust 在“两个世界都要支持”上的根本问题。",
+        "supportid": [
+          "48019653",
+          "48020207",
+          "48019672",
+          "48019782",
+          "48020874"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "function coloring",
+        "explanation": "用类型把 sync 和 async 分成两类，导致 API 和调用链被迫分裂成两套。"
+      },
+      {
+        "term": "green threads",
+        "explanation": "运行在用户态的轻量线程/协程，通常比 OS thread 更便宜。"
+      },
+      {
+        "term": "Tokio",
+        "explanation": "Rust 最常用的 async runtime，负责任务调度、I/O 和多线程执行。"
+      },
+      {
+        "term": "sans-io",
+        "explanation": "把 I/O 从核心业务逻辑中剥离出来，让同一逻辑可在不同 runtime 或同步模式下复用。"
+      },
+      {
+        "term": "no_std",
+        "explanation": "不依赖 Rust 标准库的编译环境，常见于嵌入式和 MCU 场景。"
+      },
+      {
+        "term": "work stealing executor",
+        "explanation": "一种调度器设计，worker 线程会互相“偷”任务，以提升负载均衡和延迟表现。"
+      }
+    ],
+    "context": "这篇讨论围绕一篇批评性文章展开，文章认为 Rust 的 async/await 自 2019 年左右落地后，核心实现几乎没有完成预期中的打磨，因此“还停留在 MVP 状态”。评论者在讨论的不是 async 语法本身，而是它背后的 future 状态机、waker、executor 和编译器优化：Rust 的 async 依赖编译器生成状态机，再交给像 Tokio（Rust 最流行的 async runtime）这样的执行器调度。因为 Rust 追求 zero-cost abstraction，且要保留良好的 FFI 和嵌入式适配能力，所以它没有像 Go 那样内建统一的 green threads 模型，这让设计空间更难也更分裂。很多评论都把问题放到 embedded / no_std、Tokio 生态、function coloring、以及 sync/async 双 API 的维护成本上来理解。",
+    "emoji": "🤔",
+    "sarcastic_question": "还停在 MVP，怎么就敢叫成熟了？"
+  },
+  "articleSummary": "## 一句话总结\nAsync Rust 的状态机生成机制过于死板，导致二进制膨胀，作者提议通过移除不必要的 Panic 状态、优化 Future 内联以及合并重复状态来从编译器层面根治这个问题。\n\n### 状态机的“隐形”开销：为了安全，我们到底多付了多少钱？\n在微控制器开发中，Rust 标榜的“零成本抽象”经常失效，因为 Async 代码生成的二进制文件实在太大了。作者通过分析 MIR（Rust 的中间表示）发现，一个简单的 `bar` 函数竟然生成了 360 行 MIR 代码，而非异步版本仅需 23 行。核心问题在于状态机的设计：为了防止 UB（未定义行为），编译器强制为每个 Future 生成了 `Returned` 和 `Panicked` 状态。这意味着即便逻辑很简单，Future 也要携带额外的状态分支，以确保在完成后再次被 Poll 时 Panic，或者在 Panic 后被 Catch Unwind 捕获时不再执行。这种为了绝对安全而设计的机制，在资源受限的场景下显得过于昂贵。\n\n### 把 Panic 变成 Pending：一个大胆的编译器开关\n既然 `Returned` 状态下的 Panic 主要是为了防御性编程，那能不能在 Release 模式下把它去掉？作者尝试了一个巧妙的 Hack：不再让完成后的 Future Panic，而是让它简单地返回 `Pending`。这完全符合 `Future` trait 的契约，且不会引入 UB。实测结果显示，这种改动能让嵌入式固件的二进制体积减少 2%-5%。作者提议将其作为一个类似 `overflow-checks` 的编译器开关：Debug 模式保留 Panic 以便调试，Release 模式则优化掉这些开销。此外，如果项目配置了 `panic=abort`，`Panicked` 状态本身也可以被移除，进一步节省空间。\n\n### 最简单的 Future 也不简单：零状态的缺失\n再看一个最基础的例子：`async { 5 }`。理论上，这个 Future 不需要保存任何状态，每次被 Poll 时直接返回 `Ready(5)` 即可。但编译器生成的 MIR 依然包含了 `Unresumed`、`Returned` 和 `Panicked` 三个状态，并在 Poll 时进行 Switch 判断。这种冗余导致 LLVM 难以进行后续优化。作者在编译器层面尝试强制移除这些状态，虽然只节省了 0.2% 的体积，但这证明了编译器目前连最简单的 Case 都没处理好。这种优化虽然会改变非标准 Executor 的行为（即允许重复 Poll），但对于标准兼容的代码来说是完全安全的。\n\n### LLVM 救不了烂代码：MIR 层面的优化至关重要\n很多人寄希望于 LLVM 的后端优化能抹平这些差异，但现实很骨感。当 Future 变得复杂，或者为了优化体积开启 `opt-level=s` 时，LLVM 往往无能为力。作者在 Godbolt 上的演示表明，由于编译器生成的代码中包含潜在的 Panic 分支，LLVM 无法推断出 `foo` 只会被调用一次，因此不敢进行激进的优化（如内联或常量折叠）。只有当作者手动在 IR 层面移除 Panic 分支后，LLVM 才能正确地将结果优化为常量。这说明，单纯依赖后端优化是不够的，必须在 MIR 层面把“脏活累活”干完，给 LLVM 提供高质量的输入。\n\n### Future 无法内联的痛：状态机嵌套的浪费\nAsync Rust 中一个常见的性能杀手是 Future 无法被有效内联。比如 `bar` 函数只是简单调用了 `foo().await`，目前的编译器会为 `bar` 生成一个独立的状态机，去调用 `foo` 的状态机，这完全是浪费。理想情况下，`bar` 应该直接“变成” `foo`，或者至少在 `bar` 的状态机中直接内联 `foo` 的逻辑。虽然当存在 preamble（前导代码）和 postamble（后处理代码）时情况会复杂一些，但作者指出，如果编译器能够查询 Future 的属性（比如是否首次 Poll 必定 Ready），就能递归地折叠这些状态机。目前的架构中，每个 async 块独立转换，缺乏这种全局视角，导致大量冗余代码。\n\n### 合并重复状态：消除逻辑分支带来的膨胀\n最后，作者指出了一个容易被忽视的问题：逻辑分支导致的重复状态。在 `match` 分支中分别调用同一个异步函数，会导致编译器生成两个类型完全相同的 `Suspend` 状态（如 `Suspend0` 和 `Suspend1`），因为它们处于不同的代码路径。这不仅增加了状态机的体积，还导致 MIR 代码大量重复。如果开发者手动重构代码，将 match 提前，只保留一个 await 点，就能消除这些重复状态。作者认为，编译器理应具备这种“状态折叠”的能力，自动识别并合并这些同构的挂起状态，从而在不改变业务逻辑的前提下显著减小二进制体积。"
+}

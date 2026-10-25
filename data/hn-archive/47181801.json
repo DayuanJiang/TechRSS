@@ -1,0 +1,111 @@
+{
+  "id": 47181801,
+  "by": "shad42",
+  "title": "We gave terabytes of CI logs to an LLM",
+  "url": "https://www.mendral.com/blog/llms-are-good-at-sql",
+  "score": 121,
+  "createdAt": 1772208035,
+  "aiSummary": {
+    "chinese_title": "用 LLM 分析 TB 级 CI 日志：分层 agent + SQL、过滤与成本争议",
+    "discussion_overview": [
+      {
+        "category": "分层 agent + SQL 的可行性与实践",
+        "summary": "许多评论支持用主/子 agent 分层编排来处理海量日志：主 agent（文中提到 Opus 4.6）负责做大局判断并下发狭窄的“log research”任务给子 agent（如 Haiku 4.5），子 agent 在限定子集上用 SQL/ClickHouse 执行相当于 tail/grep 的查询并只返回相关片段。父 agent 对这些片段进行关联、决定是否扩展查询或生成后续任务，从而避免把大量原始日志直接塞入上下文窗口。作者与多位评论者都把这种流程比作人类排查时“开多个 tab、逐步缩小范围”的工作，把 LLM 当作协调与汇总的工具而非一次性吞下整堆日志。",
+        "supportid": [
+          "47183345",
+          "47183745",
+          "47184147",
+          "47182522",
+          "47184029",
+          "47182471"
+        ]
+      },
+      {
+        "category": "预过滤与压缩以减少噪声和 token 成本",
+        "summary": "另一类评论强调在送入 LLM 前做 ML 级别或压缩层面的预处理：有人开源了 log-mcp（用 TF-IDF 初筛加 GPU 上的 BERT 做二次分类，模型约 50MB，Rust 实现能达 >1M 行/秒，训练数据 ~90GB）来把“非有趣”行剔除。还有提议用 pattern-matcher 把语义相同但文本不同的多行折叠，或结合 CLP 类字典化压缩（先字典检索再解压命中项）来只对候选行解压并分析。评论普遍认为核心难点是怎样定义“interesting”——没有领域知识很难保证过滤不漏掉关键线索，因此过滤器与解压流程最好能与可审计的查询联动。",
+        "supportid": [
+          "47183152",
+          "47183385",
+          "47183445",
+          "47183768",
+          "47183517"
+        ]
+      },
+      {
+        "category": "把 SQL / Text2SQL 当作代理与数据的通用接口",
+        "summary": "许多评论主张将日志以结构化表或暴露 schema 的方式供 LLM/agent 用 SQL 查询，这样更易于人类审计与调试。相关工具示例包括 Logchef（针对 ClickHouse 的开源日志浏览器）、MCP server（让 AI 客户端发现日志源并运行查询）和 Codd Text2SQL 引擎（把自然语言或意图翻成针对 Prometheus、Loki、Splunk 的查询）。评论指出 LLM 在大量 SQL 语料上训练得较好，直接生成 SQL 并执行比把大量原始文本塞进 prompt 更可控，但也有人提醒生成的 SQL 质量参差不齐，分析类决策仍需人工输入与约束。",
+        "supportid": [
+          "47182489",
+          "47183375",
+          "47182823",
+          "47183550",
+          "47182484"
+        ]
+      },
+      {
+        "category": "对幻觉、准确率与成本的担忧",
+        "summary": "多人提醒 LLM 在日志分析中会产生幻觉或错误归因：日志中因果链条长且并发失败多，模型容易把表象当成根因。作者与支持者回应称新一代模型（提到 Sonnet 4.x、Opus 等）加上子 agent 编排后相关性明显提升，但仍需大量调优以区分可重试与不可重试错误。关于成本，有评论要求披露调查成功率和 token 成本，作者承认每次调查有费用且需要不断优化，当前宣称能盈利但并非无代价。",
+        "supportid": [
+          "47182125",
+          "47182522",
+          "47184330",
+          "47184889",
+          "47183615"
+        ]
+      },
+      {
+        "category": "日志本身的局限与把信号迁移到度量的建议",
+        "summary": "不少人把问题根源归到日志设计：日志常噪声大、可读性差且跨服务因果链难追，导致自动化分析受限。建议包括把关键字段提升为列式存储（或利用 ClickHouse 的 JSON 字段提升）、在送入模型前做统计学预处理（如滑窗 min/mean/max、波动率分数、collapse runs）以突出异常。结论是：若日志精确可读，人类也能更快更可靠地排查；若日志差，任何 LLM 驱动的自动化都只是局部改进。",
+        "supportid": [
+          "47182478",
+          "47183681",
+          "47183180",
+          "47182928"
+        ]
+      },
+      {
+        "category": "RLM / 代理式循环架构的命名与本质争论",
+        "summary": "有人把分层 agent + 工具调用的做法归为“Recursive Language Models（RLM）”或递归/代理式架构，认为它把长上下文问题转成可编程的子任务与工具调用，从而利用近年 agent 技术的进展。反对者则认为这只是用 LLM 的一种方式，术语不应被误解为改变了模型本身；评论进一步区分了“模型（LLM）”与“围绕模型的 agentic loop/REPL 环境”。讨论集中在该命名是否有助于理解新架构，以及这种分层策略能否稳定替代人工分析流程。",
+        "supportid": [
+          "47182194",
+          "47182264",
+          "47182722",
+          "47184325"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "ClickHouse",
+        "explanation": "列式 OLAP 数据库，擅长高吞吐的日志与指标查询，文中作为后端按 SQL 提供高效检索与聚合能力。"
+      },
+      {
+        "term": "CLP",
+        "explanation": "CLP（Compressed Log Processing）—一种字典化压缩日志方案（有开源实现与 Uber 经验分享），通过先在字典上搜索命中再只解压匹配日志来显著降低存储与 IO 成本。"
+      },
+      {
+        "term": "MCP",
+        "explanation": "MCP（文中指 MCP server/协议）—把日志源、schema 与查询能力暴露给 AI 助手的中间层，使不同 AI 客户端能发现数据源并直接执行结构化查询。"
+      },
+      {
+        "term": "RLM (Recursive Language Models)",
+        "explanation": "RLM 指一种架构范式：用层级/递归的 agent 将长上下文任务拆成子任务并结合工具调用与循环推理，而不是改变底层 LLM 的训练。"
+      },
+      {
+        "term": "Text2SQL / Intent2SQL",
+        "explanation": "将自然语言或高层意图翻译成 SQL 查询的引擎，便于 agent 用可审计的 SQL 对接 Prometheus、Loki、Splunk、ClickHouse 等观测后端。"
+      },
+      {
+        "term": "TF-IDF",
+        "explanation": "经典的信息检索特征衡量词在文档集中的重要性，常用于对日志行做轻量初筛以减少需要进一步处理的候选行数。"
+      },
+      {
+        "term": "BERT",
+        "explanation": "BERT（双向编码器表示 Transformer）—常用的预训练文本表示/分类模型，这里被用作对日志行做更精细的语义分类以判断是否“interesting”。"
+      }
+    ],
+    "context": "Mendral（一个用 LLM 与自动化 agent 解决 CI 故障排查的公司）把 TB 级 CI 日志放在列式存储（如 ClickHouse）并让分层 agent 用 SQL 在窄子集上检索、汇总后再由主 agent 做根因分析与建议修复。讨论建立在两个前提：LLM 的上下文窗口和 token 成本有限，因此需要通过预过滤（TF-IDF+BERT、模式折叠或 CLP 压缩）或把日志以结构化 schema 暴露给 SQL 查询来减少上下文。评论中提到的工具与项目包括 log-mcp（TF-IDF+BERT 的过滤器）、Logchef（ClickHouse 日志浏览器）、Codd Text2SQL（观测数据的 Text2SQL 引擎）以及模型/agent 名称如 Sonnet、Opus、Haiku 和 Claude Code。核心争论在于工程实用性：如何在不丢失线索的前提下节省 tokens、避免模型幻觉，并且衡量每次调查的准确率与成本。",
+    "emoji": "🔎",
+    "sarcastic_question": "把几TB CI 日志丢给LLM就能替代平台工程师吗？"
+  }
+}

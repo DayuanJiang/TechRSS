@@ -1,0 +1,168 @@
+{
+  "id": 49618087,
+  "by": "jenders",
+  "title": "Stop making swap partitions–use swap files instead",
+  "url": "https://gist.github.com/joshenders/c4960cec9c63a7b7d68ffa9543356c43",
+  "score": 122,
+  "createdAt": 1789116637,
+  "aiSummary": {
+    "chinese_title": "Linux 用 swapfile 替代 swap partition：ext4 可行，Btrfs/ZFS、zram/zswap、hibernation 有争议",
+    "discussion_overview": [
+      {
+        "category": "swapfile 实作与 filesystem 限制",
+        "summary": "不少评论认为，在 modern Linux 上，swapfile 和 swap partition 在 ext4 上几乎等价，真正要注意的是 filesystem 限制而不是“文件 vs 分区”本身。有人指出 `mkswap --size --file`（util-linux 2.40）比手动 `fallocate / chmod / mkswap` 更安全，会直接设置正确权限和 nocow 属性，还能避免 race。也有人提醒 ZFS、Btrfs 这类 CoW filesystem 并不总是适合直接放 swapfile，老旧 HDD 上碎片和磁盘位置仍可能影响性能。",
+        "supportid": [
+          "49664106",
+          "49664727",
+          "49666713",
+          "49669219",
+          "49664544",
+          "49667235",
+          "49654587",
+          "49663838",
+          "49654704"
+        ]
+      },
+      {
+        "category": "zram/zswap 替代磁盘 swap",
+        "summary": "很多人把焦点转向 zram 和 zswap，认为它们比传统磁盘 swap 更适合桌面和低内存机器。zram 把压缩后的页面留在 RAM 里，特别适合浏览器、Android 这类可压缩负载；zswap 则先压缩缓存，之后再落到块设备，且更容易配合 hibernation。评论里还有人用实际机器数据说明：在 SSD 较慢、内存带宽有限时，zswap/zram 能显著改善卡顿，但也有人认为 zram 对不可压缩数据帮助有限。",
+        "supportid": [
+          "49663484",
+          "49663708",
+          "49664808",
+          "49666089",
+          "49669307",
+          "49662599",
+          "49665597",
+          "49656849"
+        ]
+      },
+      {
+        "category": "swap 作为性能缓冲而非“备用 RAM”",
+        "summary": "另一派强调，swap 的价值不只是防 OOM，而是让 kernel 能把很少用到的脏页挪出去，把物理 RAM 留给 cache。有人分享在笔记本上把 swap 从 8GB 提到 64GB 后，长期存在的 thrashing 和系统抖动消失了，说明没有 swap 并不一定更稳。也有人反驳“2x RAM”的老规则已经过时，但普遍同意 swap 应该按 workload 评估，而不是简单当作性能黑洞。",
+        "supportid": [
+          "49663672",
+          "49665638",
+          "49664838",
+          "49665008",
+          "49665607",
+          "49664916",
+          "49665623",
+          "49666149",
+          "49666316",
+          "49668428",
+          "49665829"
+        ]
+      },
+      {
+        "category": "OOM / overcommit / systemd-oomd",
+        "summary": "当 RAM 紧张时，真正让人头疼的是 Linux 的 overcommit 和迟到的 OOM killer：系统往往先卡死、抖动，最后才随机杀进程。评论里提到 `systemd-oomd`、`earlyoom`、`cgroups` 和 `lru_gen/min_ttl_ms` 这些手段，试图更早更可控地终止高压 cgroup，而不是让整台机器先挂住。争议在于它常常杀错对象，比如把浏览器、sshd、甚至整个 user session 一起带走，因此有人觉得这比慢慢进入 swap 还糟。",
+        "supportid": [
+          "49655341",
+          "49655364",
+          "49655519",
+          "49655610",
+          "49655711",
+          "49655380",
+          "49655569",
+          "49663299",
+          "49664093",
+          "49664189",
+          "49664699",
+          "49666021",
+          "49663278",
+          "49655357",
+          "49655585"
+        ]
+      },
+      {
+        "category": "hibernation / FDE / 恢复路径",
+        "summary": "swapfile 的最大麻烦之一是 hibernation：文件通常要可定位、可能还要 contiguous，而且还得把 byte offset 告诉 bootloader。相比之下，swap partition 只要 `resume=UUID=...` 之类的参数就简单得多。评论也讨论了 full-disk encryption（FDE）和 TPM：有人说单一加密卷上放 swapfile 其实可行，另一些人则偏好 LVM-over-LUKS 或独立分区，因为 Windows、macOS 和 OpenBSD 在这类流程上通常更顺滑。",
+        "supportid": [
+          "49655349",
+          "49654601",
+          "49655146",
+          "49655432",
+          "49664696",
+          "49655652",
+          "49662944",
+          "49663547",
+          "49664392",
+          "49655735",
+          "49618265"
+        ]
+      },
+      {
+        "category": "LVM / ZFS / Btrfs 与存储布局",
+        "summary": "不少人把议题扩大到整体存储布局，主张用 LVM（逻辑卷管理）替代固定分区，因为它能在线 resize、迁移设备，减少“分区切错就重装”的痛苦。也有人提 ZFS（基于 pool/dataset 的文件系统）和 Btrfs（Copy-on-Write 文件系统）的特殊性：前者更像容量池，后者需要对 swapfile 做 CoW-disabled subvolume 之类的处理。支持保留分区的人则强调 failure domain、/var/log 防爆、双系统共享 swap、STIG 合规，以及把 swap 放到独立 NVMe/物理设备上的实用价值。",
+        "supportid": [
+          "49655007",
+          "49655855",
+          "49655887",
+          "49664805",
+          "49655629",
+          "49655676",
+          "49657458",
+          "49663763",
+          "49663880",
+          "49662583",
+          "49664596",
+          "49664629"
+        ]
+      },
+      {
+        "category": "老规则与历史包袱",
+        "summary": "评论多次提到这条建议带着很强的历史包袱，甚至源头被追溯到 2005 年关于 Linux 2.4/2.6 的邮件。以前数据库和高性能应用常用 raw partition、O_DIRECT 和特定磁盘位置来追求性能，因此“必须用分区”的直觉有其时代背景。现在很多人认为现代 kernel、filesystem 和工具链已经改变了前提，但发行版和社区口耳相传的旧建议仍然在延续。",
+        "supportid": [
+          "49654910",
+          "49667079",
+          "49669295",
+          "49662596",
+          "49662926",
+          "49666623",
+          "49665387",
+          "49666489",
+          "49663838"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "zram",
+        "explanation": "在 RAM 中创建压缩块设备作为 swap，速度快，但受压缩率和内存带宽影响。"
+      },
+      {
+        "term": "zswap",
+        "explanation": "位于内存页回收和真实 swap 之间的压缩缓存，先压缩再写入后端 swap。"
+      },
+      {
+        "term": "OOM killer",
+        "explanation": "Linux 内核在内存耗尽时终止进程以恢复系统的机制。"
+      },
+      {
+        "term": "overcommit",
+        "explanation": "Linux 允许进程申请超过物理内存的地址空间，实际使用时再分配，灵活但容易引发 OOM。"
+      },
+      {
+        "term": "LVM",
+        "explanation": "逻辑卷管理工具，可在线调整卷大小、快照和迁移，减少固定分区的限制。"
+      },
+      {
+        "term": "CoW filesystem / Btrfs",
+        "explanation": "Copy-on-Write 文件系统，写入时复制数据块；swapfile 往往需要额外限制才能安全使用。"
+      },
+      {
+        "term": "systemd-oomd",
+        "explanation": "systemd 的用户态 OOM 管理器，会在 cgroup 压力过高时提前杀进程。"
+      },
+      {
+        "term": "FDE",
+        "explanation": "Full Disk Encryption，全盘加密；会影响 swap、hibernation 和启动恢复配置。"
+      }
+    ],
+    "context": "这篇帖子围绕 Linux 上 swap partition 和 swapfile 的选择展开，原帖主张现代内核下两者在 ext4 上几乎等价，所以没必要再为 swap 单独切分分区。评论把讨论扩展到 Btrfs（Copy-on-Write 文件系统）、ZFS（以 pool/dataset 为核心的文件系统）和 LVM（逻辑卷管理）这些存储方案，还提到 util-linux 2.40 新增的 `mkswap --size --file`。很多人进一步把话题引到 zram（内存压缩交换）、zswap（先压缩再落盘的交换缓存）、OOM killer 和 overcommit 这些 Linux 内存管理机制上。另一些评论则强调 hibernation、full-disk encryption（FDE）和启动恢复参数会让 swapfile 比 swap partition 更麻烦或更容易出错。",
+    "emoji": "🤔",
+    "sarcastic_question": "还拿2005年的邮件当今天的铁律？"
+  },
+  "articleSummary": "## 一句话总结\n既然 Swap files 的性能早已追平 Swap partitions，且具备更灵活的管理优势，就没理由再固守老旧的分区方案了。\n\n## 正文\n\n### 二十年陈见该翻篇了\n很多开发者至今仍觉得 Swap partitions 比 Swap files 更快，这其实是个长达 20 年的误区。早在 2005 年，Linux 内核邮件列表就已经确认两者的性能特征完全一致。但有意思的是，许多 Linux 发行版在安装引导界面里，依然默认甚至推荐用户创建 Swap 分区。这种“历史惯性”导致大家忽略了 Swap files 在管理便利性上的巨大优势。\n\n### 分区的刚性痛点\nSwap partitions 最大的问题在于“刚”：一旦创建，调整大小就很麻烦，甚至需要动用分区表。如果你在安装时规划失误，或者后来内存需求变了，想扩容 Swap 简直是场灾难。相比之下，Swap files 就灵活得多。它本质上就是个文件，想加就加，想删就删，想扩容就扩容，完全不需要重启系统去调整分区布局。说白了，Swap files 在运维层面是全方位的降维打击。\n\n### 现代工具让部署极简\n既然优势明显，为什么大家还在犹豫？可能是觉得配置复杂。其实现在的工具链已经把这件事简化到了极致。核心思路其实很简单：创建文件、开启启用、写入配置。最新的 `util-linux 2.40` 甚至支持直接用 `mkswap --file` 参数一步到位。它不仅帮你创建文件，还顺手把权限设为 `0600`，并预分配磁盘块，避免了运行时分配的开销。\n\n### 文件系统的兼容性补丁\n这里有个巧妙的设计：从 `util-linux 2.41` 版本开始，工具会自动设置 `nocow` 属性。这意味着即使在 Btrfs 这种写时复制的文件系统上，Swap files 也能正常工作，避免了性能损耗。以前大家担心的 Btrfs 兼容性问题，现在通过工具链的更新已经解决了。你只需要一条 `swapon` 命令就能启用它。\n\n### 持久化只需一行配置\n最后一步是让配置在重启后生效。这不需要什么复杂的魔法，只需要把配置写入 `/etc/fstab`。现在的方案既保留了灵活性，又没有牺牲任何性能。对于有经验的开发者来说，放弃维护困难的 Swap partitions，转向管理成本极低的 Swap files，是时候做出改变了。"
+}

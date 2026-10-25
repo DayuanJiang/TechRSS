@@ -1,0 +1,66 @@
+{
+  "id": 48065511,
+  "by": "mufeedvh",
+  "title": "The React2Shell Story",
+  "url": "https://lachlan.nz/blog/the-react2shell-story/",
+  "score": 167,
+  "createdAt": 1778289614,
+  "aiSummary": {
+    "chinese_title": "React2Shell：RSC 协议失控、Meta 17小时响应与 React 争议",
+    "discussion_overview": [
+      {
+        "category": "安全披露与 Meta 快速响应",
+        "summary": "评论普遍肯定这次 responsible disclosure 的流程，尤其是研究者与 Meta 团队反复通话、一起验证修复的合作方式。有人强调周末也能在约 17 小时内完成 triage、复现和确认，说明 Meta 的安全响应速度很快。还有人提到提前与 Cloudflare 等 WAF 厂商协调规则，帮助在公开披露前降低攻击面。",
+        "supportid": [
+          "48070884",
+          "48071023",
+          "48072748"
+        ]
+      },
+      {
+        "category": "React/RSC 架构路线之争",
+        "summary": "这组评论把问题上升到 React 的架构路线：有人认为从 class components 走向 Hooks，再到 Next.js 和 React Server Components，都是在牺牲可理解性换取“酷”。批评者集中火力攻击 client/server boundary 被模糊、创建了面向 trusted/untrusted actors 的新 protocol、甚至允许序列化 code 而不只是 primitives，认为这本质上是在把开发者锁进 React 生态。也有人反驳说 Hooks 本身很成功，只是需要调整 mental model，不过反对者则拿 debugging 和 useXXX spaghetti 作为反证，说明复杂度确实在上升。",
+        "supportid": [
+          "48073921",
+          "48073953",
+          "48074840",
+          "48074427",
+          "48074858",
+          "48074525",
+          "48074870",
+          "48072844",
+          "48074641"
+        ]
+      },
+      {
+        "category": "bug bounty 的经济逻辑",
+        "summary": "评论指出这篇写作不仅讲技术细节，还展示了 white hat hacking 的经济面：前期侦察、选择目标、判断信任关系，以及尽可能把多个 bug bounty 一起拿下。有人特别提到一个实用筛选条件就是谁有 bug bounty program，因为没有奖励机制时，研究者未必会主动报告。评论也把这视为对企业的提醒：与其等到被 compromise 后才知道问题，不如先建立可被触达的奖励和披露通道。",
+        "supportid": [
+          "48074844"
+        ]
+      },
+      {
+        "category": "协议不透明与防守难度",
+        "summary": "有评论对这个漏洞的爆发感到意外，原因之一是背后的 protocol 几乎没有正式文档或规格说明。对防守方来说，这意味着很难快速构建 IoC、分析流量或用常规工具理解攻击链，因为协议本身就不是透明可审计的。评论还强调，正因为如此，提前联动 Cloudflare 之类的安全厂商部署 WAF 规则才显得关键。",
+        "supportid": [
+          "48072748",
+          "48072844"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "React Server Components (RSC)",
+        "explanation": "React 的服务端组件模型，允许组件在服务器运行并把结果传给客户端。"
+      },
+      {
+        "term": "bug bounty",
+        "explanation": "企业向外部研究者支付奖励，换取漏洞报告的计划。"
+      }
+    ],
+    "context": "React2Shell 指的是围绕 React Server Components（RSC，React 的服务端组件模型）的一次安全事件与利用链复盘。评论里反复提到该 protocol 几乎没有正式文档，这让排查 IoC（Indicators of Compromise，入侵迹象）和理解攻击链都变得更难。Meta（Facebook 母公司）在周末内快速完成 triage、复现和确认，并与 Cloudflare（提供 WAF 和边缘安全服务的公司）等厂商提前联动布防。讨论也顺带把 React、Next.js（基于 React 的全栈框架）和 Vercel（推动 React 应用托管与部署的平台）在架构复杂度和生态锁定上的长期争议重新点燃。",
+    "emoji": "😬",
+    "sarcastic_question": "把代码和协议都混成一锅，这也叫架构进步吗？"
+  },
+  "articleSummary": "## 一句话总结\n作者通过逆向 React 的 Flight 协议，利用其允许引用原型链属性的特性，配合 `thenable` 对象机制，成功绕过了类型安全假象，在 React Server Components 中实现了远程代码执行（RCE）。\n\n---\n\n### 从好奇到深渊：一个协议的逆向之旅\n故事的起因并不是为了挖洞，而是作者想彻底搞懂 Next.js 中那个看起来奇奇怪怪的请求格式——也就是 React 团队为了支持 Server Components 和 Server Actions 而发明的 \"Flight\" 协议。这玩意儿长得像 JSON，但又不是标准的 JSON，充满了 `$` 开头的特殊标记。当时业界对这个协议的攻击面普遍缺乏重视，大多把它当成普通的 JSON 处理。作者出于极客的本能，决定在没有官方文档的情况下，硬啃源码把这个协议的底层逻辑吃透。这一啃不要紧，直接发现了一个被 Guillermo Rauch（Next.js 作者）后来称为\"严重遗漏安全检查\"的特性。\n\n### 危险的引用：原型链成了后门\nFlight 协议的核心能力之一，是允许在数据块之间建立引用，甚至支持引用对象的属性。作者发现，这个引用机制并没有限制在对象自身的属性上，而是允许一路向上追溯到原型链。说白了，如果你发送一个精心构造的 Payload，完全可以让服务器把 `Number.prototype.toString` 这种原型上的方法，挂载到你控制的对象上。虽然这符合 JavaScript 的标准语义，但在一个本应处理数据的传输协议里，这无异于给攻击者递了一把打开函数库大门的钥匙。作者当时虽然觉得这设计\"过于宽松\"，但鉴于 React 的安全口碑，还没意识到这会是一个致命漏洞。\n\n### 类型安全的假象：TypeScript 掩护下的漏洞\n有了这把钥匙，接下来就是找锁。作者的目标很明确：利用开发者常犯的输入验证错误，配合 Flight 强大的对象构造能力来实施攻击。这里有个很典型的误区：很多开发者以为 TypeScript 的类型标注（比如 `name: string`）能在运行时兜底，但实际上它只是编译时的检查，运行时根本不管这一套。如果开发者在 Server Action 里直接把用户输入当字符串拼接或调用方法（比如 `str.replaceAll`），攻击者就可以通过 Flight 发送一个自定义对象，把 `toString` 或 `replaceAll` 替换成恶意函数。只要服务器一调用这个方法，恶意代码就有了执行的机会。\n\n### 攻击的僵局：如何调用两次函数？\n理论上，只要能拿到 `Function` 构造器，就能执行任意代码。但在实际操作中，作者遇到了一个巨大的逻辑死胡同：要执行代码，通常需要调用 `Function(\"code\")()`，这相当于要连续调用两次函数——第一次构造函数，第二次执行它。然而，Flight 协议的规则限制了攻击者只能触发一次函数调用（比如触发那个拼接操作）。作者和他的朋友 Sylvie 在这个逻辑里困了好几天，甚至一度陷入思维盲区，潜意识里觉得 React 内核不可能这么脆弱。他们原本的设想是：React 负责提供\"弹药\"（构造恶意对象），而应用程序负责\"扣动扳机\"（调用不安全的代码）。\n\n### 关键突破：Thenable 对象的魔力\n转机出现在周四晚上，作者在研究 `decodeReply` 的实现时，注意到了 JavaScript 异步处理的一个历史遗留细节：`thenable` 对象。在 JS 里，`await` 关键字不仅支持标准的 Promise，它极其宽容地接受任何带有 `.then` 方法的对象（即 thenable）。当 `await` 遇到 thenable 时，它会尝试调用这个对象的 `.then` 方法，并把 resolve 和 reject 回调作为参数传进去。这个机制意味着，如果攻击者能把一个恶意对象伪装成 thenable，当 React 内部用 `await` 处理这个数据时，就会自动调用对象的 `.then` 方法，并且把控制权（回调函数）直接交到了攻击者手里。这不再是被动等待应用层调用，而是直接 hook 了 React 内部的处理流程。\n\n### React2Shell 的诞生\n这个发现彻底改变了游戏规则。作者意识到，不需要依赖开发者写出烂代码来触发调用，React 自己在解析 Flight Payload 时就会使用 `await`。只要利用 Flight 的原型链引用能力，把某个对象的 `.then` 属性指向 `Function` 构造器，当 React 尝试解析这个对象时，就会把回调函数作为参数传给 `Function` 构造器，从而直接生成并执行恶意代码。这直接导致了 React2Shell（CVE-2025-55182）的诞生：一个无需用户交互、无需特定业务逻辑漏洞，仅凭 React 自身机制就能触发的 RCE 漏洞。Meta 在收到报告后迅速发布了修复，也再次提醒了大家：不要盲目信任运行时的类型假设。"
+}

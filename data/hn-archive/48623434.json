@@ -1,0 +1,99 @@
+{
+  "id": 48623434,
+  "by": "dev-experiments",
+  "title": "Good results fine tuning a local LLM like Qwen 3:0.6B to categorize questions",
+  "url": "https://www.teachmecoolstuff.com/viewarticle/fine-tuning-a-local-llm-to-categorize-questions",
+  "score": 123,
+  "createdAt": 1782092417,
+  "aiSummary": {
+    "chinese_title": "本地Qwen 0.6B问句分类：传统ML、ModernBERT与约束解码之争",
+    "discussion_overview": [
+      {
+        "category": "先用传统分类/encoder 基线",
+        "summary": "不少评论认为，这类问句分桶本质上还是经典文本分类，不必先微调小 LLM。有人直接建议用 Scikit Learn 的 SGDClassifier + 2-grams，训练快、模型小，还能跑在 embedded devices 上；也有人更倾向于 embeddings + logistic/SVM，或者 BERT/ModernBERT 加 classifier head。对比之下，decoder-only 的 Qwen/Gemma 被认为在纯分类上天然吃亏，因为只能向后看。只有当任务需要 in-context examples，或者分类问题更像多选 QA 这种复杂任务时，小 LLM 才更有优势。",
+        "supportid": [
+          "48624699",
+          "48625683",
+          "48625909",
+          "48626633",
+          "48625512",
+          "48625976",
+          "48627250",
+          "48626472",
+          "48627402"
+        ]
+      },
+      {
+        "category": "小模型的实用边界",
+        "summary": "也有人强调，Qwen 0.6B 这类模型的价值就在于体积小、速度快，fine-tune 之后可以有明确 niche，甚至适合作为 distillation 的学生模型。评论里有人提醒，没调过的 0.6B 在简单算术上也可能进入自我解释式循环，但结构化提示做得好时，又能稳定输出截图到 JSON 这类受控任务。另一个现实点是硬件：小模型通常可以在 CPU 和系统内存上跑，只是 GPU/VRAM 往往更快。整体上，是否值得用取决于你要的是低成本部署，还是纯粹的分类准确率。",
+        "supportid": [
+          "48624514",
+          "48625008",
+          "48626081",
+          "48626649",
+          "48625755",
+          "48626869"
+        ]
+      },
+      {
+        "category": "分类作为检索/路由层",
+        "summary": "有评论把这个问题看成检索架构的一部分，而不是单独的标签任务。先把问题映射到某个类别，再去查询 Index 数据库，可以把后续 retrieval strategy 分流到不同路径。还有人举了 UK Gov Incubator for AI 的 survey answer 分类管线，说明这种 LLM 驱动的分流在真实系统里已经有现成用法。",
+        "supportid": [
+          "48626000",
+          "48626048",
+          "48627324"
+        ]
+      },
+      {
+        "category": "输出约束与 grammar",
+        "summary": "当模型开始编造不在允许列表里的新类别时，大家转而讨论用 grammar 或 constrained decoding 来把输出锁死。重点是这种限制通常由推理 runtime 实现，而不是模型权重本身；llama.cpp 可以通过 grammar 接口把非法 token 屏蔽掉。有人补充说，如果开启 thinking mode，语法约束会变复杂，因为需要先自由生成推理，再在 </think> 之后切到受限输出。也有人直接追问运行时是否真的支持这种切换。",
+        "supportid": [
+          "48625484",
+          "48626566",
+          "48625501",
+          "48626175",
+          "48627179"
+        ]
+      },
+      {
+        "category": "合成数据与主动学习",
+        "summary": "另一条思路是先让更大的 LLM 生成训练样本，再用这些 synthetic examples 去训练小模型。评论里提到可以把 LLM 当作初筛标注员，再叠加 active learning，让更贵的模型或人工只处理最难的样本。还有人想到类似 Snorkel AI 的弱监督做法，先写一组低质量分类器或规则，再让训练流程自动融合。提醒也很明确：synthetic data 容易不够多样，所以最好先从真实语料里抽 seed text，再让模型扩写 hard examples。",
+        "supportid": [
+          "48625118",
+          "48625024",
+          "48627338"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "ModernBERT",
+        "explanation": "一种双向 encoder 模型，通常比 decoder-only 小 LLM 更适合分类和检索。"
+      },
+      {
+        "term": "constrained decoding",
+        "explanation": "解码时限制可输出的 token 或语法，避免模型生成非法标签。"
+      },
+      {
+        "term": "llama.cpp",
+        "explanation": "常用的本地 LLM 推理引擎，可配合 grammar 实现输出约束。"
+      },
+      {
+        "term": "embeddings",
+        "explanation": "把文本变成向量，用相似度来做分类、路由或检索。"
+      },
+      {
+        "term": "classifier head",
+        "explanation": "接在 encoder 或 embedding 上的分类层，把表示直接映射到标签。"
+      },
+      {
+        "term": "kNN",
+        "explanation": "最近邻方法，根据向量距离选择最相近的类别。"
+      }
+    ],
+    "context": "这篇帖子讨论的是把 Qwen 3:0.6B（约 6 亿参数的本地 decoder-only LLM）微调用来把问题分到预定义类别。评论区很快把它拉回到更传统的文本分类路线：Scikit Learn 的 SGDClassifier（随机梯度下降线性分类器）、embedding + kNN/分类头、以及 ModernBERT（双向编码器）都被拿来对比。另一条主线是工程约束：如果输出必须严格落在有限标签里，推理端可以用 llama.cpp（本地推理引擎）的 grammar 或 constrained decoding 来兜底。大家也在讨论这类分类究竟是单纯的标签任务，还是更像检索路由、表单/问答分流或合成数据训练流程的一部分。",
+    "emoji": "🤔",
+    "sarcastic_question": "800个样本也要先微调LLM吗？"
+  },
+  "articleSummary": "## 一句话总结\n用 600M 参数的 Qwen 3:0.6B 模型做分类器，通过将语义化的类别名替换为无语义的两位字母 Code，成功将准确率从 10% 提升至 92%。\n\n### 别被大模型带偏，小模型也能干重活\n作者想做一个家庭事务 Chatbot，核心思路是先用 RAG 检索知识库。为了提高检索精度，他设计了一个预处理步骤：先把用户问题归类（如 pool、hvac），再用这个类别去过滤向量数据库的搜索空间。这听起来很合理，但问题来了，谁来负责分类？作者没动用大参数模型，而是选了个只有 600M 参数的 Qwen 3:0.6B。他的假设很简单：只要微调得当，这种超小模型完全能胜任特定的分类任务，既省资源又够用。\n\n### 原生模型表现拉胯，Prompt 根本镇不住\n在动手微调前，作者先用原生 Qwen 0.6B 跑了个基准测试。他精心设计了一个 Prompt，要求模型从 19 个类别中选一个，并且强调“只返回类别名”。结果惨不忍睹：在 131 个测试用例中，准确率只有约 10%。模型要么喜欢滥用 electric 这种宽泛标签，要么干脆自创类别（比如把问题分到 apartments）。这说明对于这种小模型，光靠 Prompt Engineering 是没法让它理解特定领域规则的，必须得“教”。\n\n### 第一次微调：学会了方向，但没学会规矩\n作者用 Unsloth 框架配合 QLora 策略，准备了约 850 条家庭问答数据进行微调。数据按 70/15/15 分割，训练集和验证集用于调优，测试集完全隔离。这一轮下来，效果立竿见影，准确率直接飙到了 79%。但仔细看错误日志，问题很明显：模型虽然懂了语义，但输出不规范。比如它会把 hvac 缩写成 ac 或 air，或者在 water heater、pool、fountain 这些都带“水”的类别之间搞混。说白了，模型学会了“意思对”，但没学会“格式对”。\n\n### 核心突破：用无语义 Code 彻底解决幻觉\n面对模型输出缩写和语义混淆的问题，通常做法是加后处理规则或写更复杂的 Prompt。但作者觉得这会增加维护成本，他想了个更巧妙的招：既然模型容易被语义干扰，那就把类别名改成毫无意义的两位字母 Code（比如 AA=appliances, KK=hvac）。Prompt 也随之修改，强制要求只返回这两个字母。这个改动看似简单，实则切断了模型“自由发挥”的空间。结果非常惊艳：准确率从 79% 一下子涨到了 91.6%。\n\n### 剩下的 8% 错误，还得靠数据清洗\n虽然 92% 的准确率已经可以上线使用了，但剩下的 11 个错误案例依然有规律可循。最典型的是 water heater 依然经常被误判为 pool，显然是因为训练数据里关于“水”的上下文特征太强，掩盖了差异。作者也坦诚，这属于训练数据不够细致的问题，后续得通过增加更多样化的样本或引入用户反馈来修正。对于想搞本地小模型微调的开发者来说，这篇文章最大的价值在于展示了：有时候优化 Prompt 的数据结构，比死磕模型参数有效得多。"
+}

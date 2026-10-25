@@ -1,0 +1,147 @@
+{
+  "id": 49208535,
+  "by": "poly2it",
+  "title": "Making Postgres 300x faster for analytics: batching, operator fusion, and SIMD",
+  "url": "https://malisper.me/how-we-made-postgres-hundreds-of-times-faster-the-query-engine/",
+  "score": 242,
+  "createdAt": 1786110619,
+  "aiSummary": {
+    "chinese_title": "Rust 重写的 pgrust：靠 batching、operator fusion、SIMD 号称让 Postgres 快 300x",
+    "discussion_overview": [
+      {
+        "category": "正确性优先",
+        "summary": "作者把 correctness 放在第一位，表示已经对 1000+ 个面向用户的函数做了 formal verification，并在无法证明的地方用 C 与 Rust 实现做 differential fuzz testing，跑了数百万组输入比对结果。过程中既找到了约 100 个 pgrust bug，也发现了几十个 Postgres 自身的问题，说明这不是单纯追求性能的空中楼阁。评论里提到那个 quadtree 的浮点比较 bug 让人头皮发麻，但也有人指出 fuzzers 正擅长把这类离谱边界条件翻出来。整体讨论的底色是：先证明别错，再谈快多少。",
+        "supportid": [
+          "49212080",
+          "49212390",
+          "49212832",
+          "49213964"
+        ]
+      },
+      {
+        "category": "基准与缓存现实",
+        "summary": "围绕 300x 的真实性，大家集中质疑 benchmark 是否脱离真实工作负载。作者解释博客里的 toy example 是为了让数据集完全装进内存，Postgres 还要做 tuple 的 serialize/deserialize，而不是公平地比较纯算力。评论进一步指出生产环境常处于 mixed memory residency 和低级别资源竞争，CPU、OS、storage 多层 cache 会让测试机和线上差异巨大；有人甚至提到 tmpfs/ramfs 让 Postgres 飞起来，但那只是把问题换成内存足够大的特殊场景。另一个点是博客里为演示关闭了 parallelism，而 clickbench 那类数字才是开启并行后的结果。",
+        "supportid": [
+          "49213296",
+          "49213333",
+          "49213799",
+          "49213902",
+          "49214026",
+          "49214570",
+          "49214603",
+          "49216685",
+          "49217257"
+        ]
+      },
+      {
+        "category": "执行器与调度器优化",
+        "summary": "用户对 scheduler 和执行器优化很感兴趣，尤其是 noisy neighbor、work stealing、idle cores 利用这些问题。作者说 scheduler 基于论文设计，一方面可以 throttle 重查询，另一方面把空闲核心借给运行中的 query，以便在 over-provisioned 机器上吃掉额外算力。另有人期待 adaptive planning，认为这是多家生产数据库早已验证过的技巧；还有人拿 SQL Server 的 batch mode execution、AVX-512 和矢量化空间查询举例，说明 batching、operator fusion、SIMD 在数据库里确实能带来数量级收益。",
+        "supportid": [
+          "49212770",
+          "49212843",
+          "49213435",
+          "49215704",
+          "49217311"
+        ]
+      },
+      {
+        "category": "许可、版权与商业化",
+        "summary": "许可是讨论最激烈的部分之一。作者坚持数据库领域用 AGPL 或更强许可很常见，因为要防止 Amazon、Google 之类把 permissive 开源项目拿去再商业化，必要时还可以 commercial dual license。反对者则认为 AGPL 在企业里几乎是禁用项，尤其是面向云托管数据库客户的产品，会因为法务和 risk team 而失去广泛 adoption，还会阻断 upstreaming。围绕这次重写本身，另一条线在争论它是不是 derived work：有人认为 c2rust 加 LLM 改写仍应保留原版权，作者则回应 Postgres license 很 permissive，保留 NOTICE 就可以重许可。",
+        "supportid": [
+          "49210334",
+          "49211959",
+          "49212257",
+          "49214007",
+          "49212146",
+          "49212451",
+          "49212576",
+          "49213344",
+          "49214520",
+          "49213128",
+          "49216534",
+          "49214824",
+          "49216477",
+          "49217279",
+          "49215491"
+        ]
+      },
+      {
+        "category": "AI 重写的可信度与采用争议",
+        "summary": "除了技术，很多人讨论的是项目叙事和可信度。有人盯着“2 commits”“Claude”“vibe-coded”“bus factor 1”这些信号，觉得这更像 AI slop 或表演式工程，而不是严肃的数据库重写。也有人反驳说真正的 git history 藏在 v0.2 tag 里有近 6000 commits，而且项目已经通过测试找出了 Postgres 自身的 bug，说明工作量并不小。更大的分歧是：即便技术上真更快，用户会不会因为不是原 Postgres 团队、缺少长期连续性而迟迟不敢迁移。",
+        "supportid": [
+          "49213943",
+          "49214039",
+          "49210389",
+          "49210681",
+          "49214594",
+          "49216894",
+          "49217476",
+          "49213729",
+          "49213794",
+          "49215625",
+          "49217893",
+          "49212119"
+        ]
+      },
+      {
+        "category": "落地场景与产品化需求",
+        "summary": "评论里还不断冒出具体落地场景，而不只是抽象性能。有人问能否作为基于 WAL 的只读 analytics mirror，作者表示可以尝试，但只适合 non-critical 场景；也有人期待用它当 Rust binary 里的 embedded DB，甚至编译到 wasm 放进浏览器。另一些需求包括把 pgrcolumnar 做成默认存储、给测试环境提供 test mode 快速克隆模板库，以及加速 `SELECT COUNT(*) ... WHERE exact match` 这类在大表上的查询。整体看，大家想知道它究竟是实验性引擎、嵌入式数据库，还是能替代现有 Postgres/SQLite/Turso 的实用产品。",
+        "supportid": [
+          "49212523",
+          "49217991",
+          "49212557",
+          "49212612",
+          "49212641",
+          "49216210",
+          "49217221",
+          "49217875",
+          "49215583",
+          "49215798",
+          "49217914"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "batching / batch mode execution",
+        "explanation": "按批处理多行数据，减少逐行执行、函数调用和中间结果开销。"
+      },
+      {
+        "term": "operator fusion",
+        "explanation": "把多个算子合并到同一执行路径里，减少物化和内存访问。"
+      },
+      {
+        "term": "SIMD",
+        "explanation": "Single Instruction Multiple Data，CPU 用一条指令同时处理多组数值。"
+      },
+      {
+        "term": "columnar storage",
+        "explanation": "列式存储，把同一列的数据连续放置，更适合分析扫描和压缩。"
+      },
+      {
+        "term": "formal verification",
+        "explanation": "用数学证明代码满足规格，而不是只靠测试。"
+      },
+      {
+        "term": "differential fuzz testing",
+        "explanation": "对不同实现喂随机或畸形输入，比对输出找不一致。"
+      },
+      {
+        "term": "AGPL",
+        "explanation": "一种 copyleft 许可，网络提供服务时通常要公开修改后的源代码。"
+      },
+      {
+        "term": "ClickBench",
+        "explanation": "面向分析型数据库的基准测试，用来比较查询性能。"
+      },
+      {
+        "term": "WAL",
+        "explanation": "Write-Ahead Log，数据库用于恢复和复制的事务日志。"
+      }
+    ],
+    "context": "pgrust（一个用 Rust 重写/兼容 Postgres 的项目）试图把分析型查询的执行器、存储和调度器重新设计，而不只是照搬原实现。它把 batching、operator fusion 和 SIMD 这些技术放在一起，并在 ClickBench（分析型数据库基准）上对比 ClickHouse（开源 OLAP 数据库），声称在某些查询上能把 Postgres 拉开到 300x。评论补充说它还在探索 columnar storage（列式存储）、WAL（Write-Ahead Log，事务日志）回放、embedded binary 和 wasm（WebAssembly，一种可在浏览器中运行的字节码格式）等方向。作者则强调 correctness 优先，借助 formal verification（形式化验证）、differential fuzz testing（差分模糊测试）、Antithesis（做 Jepsen-style fault testing 的公司）和 Aretta（做形式化验证的公司）来建立信任，同时因为 AGPL 和 AI 辅助重写方式引发了额外争议。",
+    "emoji": "🤔",
+    "sarcastic_question": "300x 先别吹，法务、回滚、数据一致性谁负责？"
+  },
+  "articleSummary": "## 一句话总结\n\npgrust 把 Postgres 式逐行执行的 Volcano engine，改造成批处理、算子融合和 SIMD 驱动的执行路径，仅查询引擎就获得约 10 倍加速，并支撑其在 ClickBench 上做到比 Postgres 快 300 倍。\n\n## 正文\n\n### Postgres 慢的根源，不再只是磁盘\n\npgrust 0.2 的性能数字相当激进：相对上一版快了 10 倍，OLTP benchmark 比 Postgres 快 30%，而在 ClickBench 上，分析查询比 Postgres 快 300 倍，甚至超过了 ClickHouse。作者没有把功劳笼统归给“Rust 更快”，而是把镜头对准了数据库里最吃 CPU 的部分：query engine。仅仅是重写执行引擎，就贡献了这 300 倍总提升中的约 10 倍。\n\n为什么这里还有这么大的优化空间？因为 Postgres 的执行模型诞生于 1980 年代，当时数据库性能的头号敌人是磁盘 I/O。但今天的环境变了：很多数据集已经能完整放进 RAM；即便数据不在内存中，分析 workload 也是大规模扫描，瓶颈往往转向 CPU 吞吐和内存带宽；同时 NVMe 相比传统 HDD 快了数百倍。说白了，磁盘没那么拖后腿之后，CPU 每处理一行数据所付出的固定开销，就开始变得刺眼。\n\n作者用一个极端但直观的例子说明问题：对 5 亿个 `float8` 求和。Postgres 在禁用并行查询的情况下，需要约 20 秒；相同数据放进 Rust 的 `Vec<f64>`，再用一段普通 `for` 循环求和，只需 358ms，足足快约 55 倍。当然，这不是完全公平的对比。Postgres 还承担了锁、存储格式解析、tuple 提取等工作，但优化数据库本来就是不断剥离不必要开销的过程。\n\n### Volcano model 的优雅，恰好也是它的负担\n\n为了隔离非执行器开销，文章实现了一个微型 Postgres query engine。它遵循经典的 Volcano model：计划树中的每个节点都实现 `next()`，每次调用返回一行数据。`SeqScan.next()` 从表中拿出下一行，而 `SumAggregate.next()` 不断向子节点拉取数据，累加后返回唯一的一行聚合结果。\n\n这个模型的优点非常明显。每种 plan node 只需实现一个统一接口，节点可以任意组合，执行器只要不断调用根节点的 `next()` 即可。面对 join、sort、subquery 等复杂计划，这种组合性很有价值；而 Postgres 内部有超过 40 种不同的 plan node，也正是靠这种抽象组织起来。\n\n但问题也正出在这个抽象上：它把“每一行”都变成一次接口调用。示例中，`SeqScan.next()` 对 5 亿行各执行一次，而且调用目标在运行时才能确定。这样的动态调用不仅本身有成本，也会妨碍 CPU 做好 pipeline 等优化。最终，这个已经去掉大量 Postgres 外围开销的微型 Volcano engine，仍需 1.3 秒，比直接 `for` 循环慢得多。\n\n这里的关键不是说 Volcano model “错了”。它是在软件工程复杂度和运行时效率之间做了取舍。只是对现代分析型查询而言，逐 tuple 的解释执行，开始显得太奢侈了。\n\n### 第一刀：一次别拿一行，改成一次拿 1024 行\n\n既然逐行 `next()` 是主要问题，最直接的改法就是 batching。新的接口不再是 `next() -> Option<f64>`，而是 `next_batch(&mut out) -> usize`：扫描节点每次把最多 1024 个 `f64` 写入调用方提供的 buffer，并返回实际行数。这样，原本 5 亿次的节点调用，被压缩成约 48.8 万次。\n\n聚合节点则在循环中请求 batch，再遍历当前 batch 的元素累加。核心思路其实很简单：把跨节点交接的粒度从“一个 tuple”提高到“一批 tuple”。函数调用、动态分派和执行器控制流的固定成本，被分摊到更多行上，CPU 也更容易维持高吞吐。\n\n效果非常直接：执行时间从 1.3 秒降到约 480ms，单靠 batching 就获得 2.7 倍加速。这里还有一个很重要的实现细节：batch buffer 放在栈上。聚合节点运行期间不需要分配堆内存，避免了 allocation 带来的额外成本。对于这种内层循环会跑数亿次的代码，减少 allocation 往往不是锦上添花，而是基本纪律。\n\n不过，profile 很快暴露了下一处瓶颈：`copy_from_slice`。批处理减少了调用次数，但 scan node 仍要把数据从表复制到中间 buffer，再由 aggregate node 读出来。控制流成本少了，内存复制成本却浮上来了。\n\n### 第二刀：既然总是 scan 后 sum，不如把两个算子焊在一起\n\n这就引出了 operator fusion。既然 sequential scan 和 `SUM` 经常连续出现，那么不必让 scan 把数据搬到 buffer，再让 aggregate 重新读取；可以直接生成一个 `SumAggregateSequentialScan` 节点，同时持有表引用，并在一个循环里完成读取和累加。\n\n这样做消除了中间 batch buffer，也消除了 `copy_from_slice`。最终生成的核心循环，实际上就是前面那段原始 Rust `for` 循环，因此性能回到了 358ms。相比 Volcano 版本，这是 3.6 倍提升；相比 batch 版本，进一步去掉了数据在算子间搬运的代价。\n\n但作者也坦率地说，这种优化带有一点“作弊”性质。它是为一个已知算子组合硬编码的专用路径。对于最常见的查询模式，这很值得做；但数据库计划千变万化，不可能为每一种 scan、filter、join、aggregate 组合手写一个 fused node。\n\n那么怎么办？文章给出的方向是 JIT compilation。JIT 可以针对每条具体查询生成理想机器码，把算子融合推广到任意计划，而不是只覆盖预先写好的几个模板。pgrust 已经在使用这条路线，只是 JIT 的具体实现会留到后续文章展开。\n\n### 第三刀：让一条 CPU 指令同时处理多行\n\n即使算子已经融合，普通循环仍是一条条处理 `f64`。最后的优化是 SIMD：用单条向量指令同时对多个数据执行相同操作。在作者的 AArch64 实现中，代码把输入切成每组 8 个 `f64`，维护 4 个 SIMD accumulator；每个 accumulator 是一个包含两个 `f64` 的 NEON 向量。\n\n这种多 accumulator 的设计并非多余。它能降低同一个累加器上的数据依赖，让 CPU 有更多独立指令可并行推进。循环结束后，再把多个 accumulator 合并，并单独处理无法凑满一组的 tail 数据。\n\n结果是 135ms：比普通 `for` 循环的 358ms 快接近 3 倍，也比最初的 Volcano 实现快 9.6 倍。这个例子还特意避免让编译器自动完成 SIMD。因为浮点加法不满足结合律，改变加法顺序会造成微小的结果差异，编译器通常不会默认把浮点循环改写成可能改变数值结果的 SIMD 形式。\n\n所以，SIMD 并不是“编译器总会帮你做”的免费午餐。对于数据库聚合这类对吞吐极敏感的路径，若系统允许相应的浮点语义，显式向量化依然可以拿到很可观的收益。\n\n### 从 20 秒到 135ms，真正改变的是执行方式\n\n文章最后的对照表很能说明问题：完整 Postgres 跑这个求和需要约 20 秒；剥离外围开销后的 Volcano executor 是 1.3 秒；加 batching 后是 480ms；operator fusion 后是 358ms；再加 SIMD 后降至 135ms。也就是说，后三项优化把简化执行器从 1 倍推到 9.6 倍。\n\n测试环境是 AWS `c8g.4xlarge`，即 Graviton4、16 vCPU；PostgreSQL 18.4 设置 `max_parallel_workers_per_gather = 0`，数据已 warm in shared buffers，取 5 次运行的中位数。Rust 使用 `cargo build --release` 构建，各实现均在同一进程、同一机器上测量。这些条件很重要，因为它说明作者刻意排除了并行度和冷缓存等变量，关注的是单机单进程下执行路径本身的效率。\n\n整篇文章最值得带走的，不是“换成 Rust 就能快 300 倍”。真正的逻辑是：当分析查询的瓶颈从 I/O 转向 CPU 和内存带宽后，逐行解释执行会制造大量无效工作；batching 先摊薄控制流成本，operator fusion 再移除中间物化与复制，SIMD 最后榨干单核的数据并行能力。pgrust 的性能优势，正是把这条链路系统化地落实到了 query engine 中。"
+}

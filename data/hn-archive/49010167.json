@@ -1,0 +1,106 @@
+{
+  "id": 49010167,
+  "by": "syrusakbary",
+  "title": "GigaToken: ~1000x faster Language model tokenization",
+  "url": "https://github.com/marcelroed/gigatoken/",
+  "score": 336,
+  "createdAt": 1784742611,
+  "aiSummary": {
+    "chinese_title": "GigaToken：LLM 分词提速约1000倍，TTFT与数据管线争议不断",
+    "discussion_overview": [
+      {
+        "category": "实时推理与TTFT收益",
+        "summary": "不少评论认为，虽然 tokenization 只占总 inference 的很小一部分，但它会直接影响 time-to-first-token（TTFT，首 token 延迟）。作者补充的 benchmark 显示，在 8B Qwen3 和单张 B200 上，长输入时 TTFT 可下降约 5%~10%，这对小模型和更快的 GPU 场景尤其明显。有人还提到，AI 平台会在分词后尽早做 routing、rate limiting、token 预算判断和输入 token 计数，因此这一步的延迟会被放大成 10~100 毫秒级的 UX 差异。还有人举了 BERT 分类系统的例子，称 tokenization 甚至能占到 10% 以上的总运行时间。",
+        "supportid": [
+          "49011302",
+          "49015014",
+          "49012078",
+          "49012987",
+          "49014700",
+          "49012784",
+          "49013327",
+          "49014319",
+          "49010933"
+        ]
+      },
+      {
+        "category": "预训练与离线数据管线",
+        "summary": "另一类评论强调，这类优化对 pretraining 和数据预处理更有价值，而不只是在线推理。训练前通常要先把海量文本 token 化，很多项目会在大量 CPU 上跑好几天，用于数据混合、过滤、切分和样本长度控制。有人指出，按需分词会带来 padding、truncation 和 shuffle 难题，所以实际训练流水线里常常是单独做一遍离线 tokenization。也有人分享，自己曾因分词跑了十几分钟后才因小 bug 崩掉而浪费大量时间，或者在语义检索/embedding 管线里因为低效 tokenizer 让 CPU 时间几乎全被吃掉。",
+        "supportid": [
+          "49010791",
+          "49011028",
+          "49011648",
+          "49011390",
+          "49011143",
+          "49013384",
+          "49011483"
+        ]
+      },
+      {
+        "category": "Amdahl 定律与“值不值”之争",
+        "summary": "质疑者认为，把一个只占 0.1% runtime 的环节提速 1000 倍，整体也不过省下 0.1%，Amdahl's law 仍然成立。回应者则指出，这种算法太适合被误解：如果 tokenization 位于 latency-critical 的关键路径上，或者 CPU 在 GPU 集群里本来就闲着，它就不再只是“0.1% 的小头”。还有人从规模经济角度反驳，认为 inference spend 巨大时，哪怕只是在全局上省一点点，也可能对应真实的金钱和能源节省。另一些评论则说，推理系统里更大的优化空间当然存在，只是其他部分通常更难证明正确性，也更少“低垂果实”。",
+        "supportid": [
+          "49012873",
+          "49011784",
+          "49014356",
+          "49012179",
+          "49012456",
+          "49012841",
+          "49015039",
+          "49013498",
+          "49014710",
+          "49011796"
+        ]
+      },
+      {
+        "category": "实现细节：SIMD、缓存与 Python 互操作",
+        "summary": "作者说明，这次提速并不是只针对某个 CPU 或某个 tokenizer，而是对现代 x86 和 ARM、以及不同 tokenizer 组合都比较稳定。核心思路包括：把通常交给 regex engine 的 pretokenization 用 SIMD 做掉，减少 branching，以及对 pretoken mappings 做更激进的缓存，因为预分词分布很长尾、重复词很多。评论还特别关心 Python 交互开销，作者表示 compatibility mode 里即使还要创建 Python lists 和 bytes，也能做到约 200~300 倍加速，只是还想继续压缩 Python interop。有人补充说，对照的 tokenizers 和 tiktoken（常见 LLM 分词库）本身也是 Rust + Python bindings，因此最后那几倍的提升主要来自更细的低层优化。",
+        "supportid": [
+          "49010796",
+          "49011669",
+          "49011719",
+          "49011741",
+          "49012581"
+        ]
+      },
+      {
+        "category": "KV-cache / prefix cache 的分词顺序争议",
+        "summary": "一条技术讨论集中在：tokenization 是否真的必须先于 cache lookup。有人认为分词是确定性的，完全可以先用原始文本或其 hash 做命中判断，再在需要时推回 token 边界。反方解释说，像 vLLM 和 SGLang 这类开源 LLM 推理引擎通常把 KV-cache 组织成按 token chunk 切分的 prefix tree，所以必须知道 token 边界才能判断缓存命中的结束位置。还有人提出，也许可以按字符 chunk 做树形查找并与 tokenization 并行，只是这是否可行取决于具体系统实现。",
+        "supportid": [
+          "49012623",
+          "49013747",
+          "49014707",
+          "49011028",
+          "49011043",
+          "49011648"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "TTFT",
+        "explanation": "time-to-first-token，模型从接收完整输入到输出第一个 token 的延迟。"
+      },
+      {
+        "term": "KV-cache",
+        "explanation": "Key-Value cache，推理时缓存注意力层的 key/value，避免重复计算历史上下文。"
+      },
+      {
+        "term": "SIMD",
+        "explanation": "Single Instruction, Multiple Data，用一条指令并行处理多组数据的 CPU 优化方式。"
+      },
+      {
+        "term": "pretokenization",
+        "explanation": "正式分词前的文本预处理步骤，常由 regex、规范化和字符扫描组成。"
+      },
+      {
+        "term": "Amdahl's law",
+        "explanation": "Amdahl 定律，说明单个环节再快也会被整体串行比例限制，整体收益有上限。"
+      }
+    ],
+    "context": "GigaToken 是一个宣称把 LLM tokenization 提速约 1000 倍的项目，争论点不只是“快不快”，而是它究竟能不能影响真实工作流。作者后来补充的 benchmark 以单张 B200 上跑 8B Qwen3 为例，重点看 time-to-first-token（TTFT，首 token 延迟），说明在长输入和较快 GPU 下，分词延迟会更容易暴露出来。评论里还把分词放进更大的系统里讨论：训练前的数据预处理、路由和限流、token 计数，以及 KV-cache / prefix cache 命中判断都会依赖它。对照对象主要是 Hugging Face tokenizers 和 tiktoken（常见的 LLM 分词库，均有 Rust 实现和 Python bindings），而 vLLM 和 SGLang（开源 LLM 推理引擎）则被拿来说明开源推理系统为何常常必须先分词再做缓存查询。",
+    "emoji": "🤯",
+    "sarcastic_question": "把0.1%的环节提1000x，真能改写全链路？"
+  },
+  "articleSummary": "### 一句话总结\nGigaToken 通过用 SIMD 优化预分词、设计智能缓存层级以及绕过 Python 开销，将 BPE tokenization 的速度提升了近 1000 倍，达到了 GB/s 级别的处理吞吐量。\n\n### 现有工具的瓶颈不在计算，而在“胶水”开销\nHuggingFace 的 tokenizers 和 tiktoken 虽然底层已经是多线程 Rust 实现，但速度依然卡在 MB/s 级别。核心问题不在于算法本身，而在于 Python 和 Rust 之间的交互成本，以及预分词阶段对正则引擎的严重依赖。说白了，数据在 Python 和 Rust 之间来回拷贝，加上正则匹配的低效，吃掉了大部分 CPU 时间。GigaToken 的思路很直接：既然瓶颈在 I/O 和预处理，那就把这些全部重写，让 Rust 直接读取文件，彻底绕过 Python 这一层“胶水”。\n\n### 预分词的加速秘诀：用 SIMD 替代正则引擎\nTokenization 的第一步通常是预分词（Pretokenization），传统做法是调用 Regex 引擎来切分空格或标点，这非常慢。GigaToken 做了一个大胆的优化：直接用 SIMD 指令集（AVX512/AVX2/NEON）手写逻辑来处理切分。这不仅仅是微优化，而是架构级的替换，让 CPU 能一次性处理大量数据。配合减少分支预测和其他底层 Trick，预分词阶段不再是性能短板，反而变成了流水线上的高速路段。\n\n### 智能缓存：解决长尾分布的内存难题\n文本数据有个特点：词频分布极度不均，高频词反复出现，低频词五花八门。如果每次都重新计算，那是巨大的浪费。GigaToken 设计了一个多级缓存体系，专门用来存储已经见过的词及其对应的 token 结果。这里有个巧妙的设计：它不是简单粗暴地全缓存，而是针对长尾分布做了优化，既保证了命中率，又控制了内存爆炸的风险。对于训练数据这种重复度高的场景，缓存带来的收益是巨大的。\n\n### 兼容模式虽好，但原生 API 才能释放全部性能\n为了让你能无痛迁移，GigaToken 提供了兼容模式，你可以像用 HF tokenizer 一样调用它。但要注意，为了保证输出结果完全一致，兼容模式还是得走一些 Python 对象的转换逻辑，这会牺牲一部分性能。想要跑满 1000x 的加速，必须用它的原生 API。原生 API 允许 Rust 直接从文件源头读取数据，自动并行处理，把 Python 的介入降到最低，这才是真正的“暴力美学”。\n\n### 实测数据：在 EPYC 服务器上跑出 24 GB/s\n数据不会骗人。在 AMD EPYC 9565（144 核）上，GigaToken 处理 GPT-2 tokenizer 的吞吐量达到了 **24.53 GB/s**，而 HF tokenizers 只有 **24.8 MB/s**，提速 **989 倍**。即使在 Apple M4 Max 或 AMD Ryzen 7 9800X3D 这样的消费级硬件上，也能看到 **100 倍到 1200 倍**不等的提升。这意味着，处理像 Common Crawl 这样 130T token 的海量数据，以前可能要好几天，现在只需要 **6.5 小时**。\n\n### 还没覆盖全场景，SentencePiece 仍需等待\n当然，GigaToken 也不是万能的。目前的优化主要集中在 BPE 类型的 tokenizer 上，对于 SentencePiece（Google 模型常用）的支持还不够强，速度提升不明显。此外，WordPiece 尚未支持，Windows 平台也没怎么测试。但如果你用的是主流的 Llama、Qwen 或 GPT 系列，GigaToken 基本上就是目前的性能天花板，值得一试。"
+}

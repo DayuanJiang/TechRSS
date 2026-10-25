@@ -1,0 +1,97 @@
+{
+  "id": 49440410,
+  "by": "rbanffy",
+  "title": "When str.lower() is a security vulnerability in Python – Seth Larson",
+  "url": "https://sethmlarson.dev/when-str-lower-is-a-security-vulnerability",
+  "score": 123,
+  "createdAt": 1787694008,
+  "aiSummary": {
+    "chinese_title": "Python str.lower() 的 Unicode/IDNA 差异引发漏洞争议",
+    "discussion_overview": [
+      {
+        "category": "漏洞定义争议",
+        "summary": "不少人认为把这件事叫作 security vulnerability 有点过头，因为 `str.lower()` 只是和规范不一致，未必天然形成可利用的攻击面。质疑者强调，若没有证明能绕过某个具体安全边界，顶多是 bug、奇怪行为或错误数据，而不是漏洞。还有人担心安全团队会把所有 `str.lower` 调用都机械打标，导致漏洞阈值被拉得过低。与此相对，支持更强表述的人认为，复杂系统里 correctness 问题常常会在后续链路里被放大成真实风险。",
+        "supportid": [
+          "49441068",
+          "49443022",
+          "49443421",
+          "49442067",
+          "49444513",
+          "49445006"
+        ]
+      },
+      {
+        "category": "parser differential 可被利用",
+        "summary": "另一条主线是 parser differential：同一段 Unicode/域名输入，在不同组件里被解释成不同主机名，就可能让过滤器和真正执行动作的模块看到两份不同的现实。评论里给出不少典型链路，比如前置 WAF 或鉴权层按一种规则判断，后端 Python 或其他语言服务按另一种规则发起请求、重置密码，或命中 SSRF。也有人把它类比为域名品牌化、半白标平台、用户自定义子域名等场景，说明攻击者只要能注册那个“被误解”的域名，就可能接住本该被挡掉的流量。",
+        "supportid": [
+          "49441153",
+          "49441132",
+          "49441258",
+          "49441377",
+          "49441892",
+          "49441359",
+          "49441517",
+          "49442871",
+          "49444054",
+          "49445324"
+        ]
+      },
+      {
+        "category": "Unicode/IDNA 规范与修复细节",
+        "summary": "讨论还把焦点放到规范层面：问题不是简单的 `lower()`，而是 Python 跟随了更新的 Unicode 行为，而 IDNA 2003 之类的规则却冻结在 Unicode 3.2.0。有人指出 X.509 证书里的 SAN DNSName 不是“可读文本”，而是 DNS label，匹配时应当按 DNS 规则和字节比较，而不是先做 Unicode 解码。补丁之所以显得笨拙，是因为它通过异常表强行把特定 codepoint 的行为掰回旧版本，以维持兼容性。围绕 `ß`、`ẞ`、Kelvin sign 等例子，大家顺带讨论了 Unicode special casing 和大小写折叠为何总会惹出兼容坑。",
+        "supportid": [
+          "49441299",
+          "49445201",
+          "49442873",
+          "49444309",
+          "49441670",
+          "49442601",
+          "49443572",
+          "49444642",
+          "49444251"
+        ]
+      },
+      {
+        "category": "现实案例与安全经验教训",
+        "summary": "一些人用现实事故来说明这类差异并不只是理论问题。比如 Spotify 的创意用户名事故、Chromium 里浮点设置最后串成 heap corruption 的链条，都被拿来证明 correctness bug 往往只差一个系统环境就能变成 exploit。还有人提到 GitHubusercontent、Public Suffix List、cookie scope 这些细节，说明一旦系统要托管用户内容或多租户子域名，域名处理就会直接碰到安全边界。整体语气是在提醒：当输入要穿过多个解析器时，任何看似细小的编码差异都可能变成可利用的落差。",
+        "supportid": [
+          "49441716",
+          "49441517",
+          "49441540",
+          "49441631",
+          "49444058",
+          "49445976",
+          "49441344",
+          "49443013",
+          "49443574"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "IDNA 2003",
+        "explanation": "旧的国际化域名标准，很多实现要求按 Unicode 3.2.0 来做映射和匹配。"
+      },
+      {
+        "term": "Unicode 3.2.0",
+        "explanation": "被 IDNA 2003 冻结使用的 Unicode 版本，后续字符变化不应影响相关域名行为。"
+      },
+      {
+        "term": "parser differential",
+        "explanation": "不同解析器或组件对同一输入得出不同结果，常被用于绕过过滤、鉴权或路由。"
+      },
+      {
+        "term": "SSRF",
+        "explanation": "Server-Side Request Forgery，诱使服务器替攻击者向指定地址发请求。"
+      },
+      {
+        "term": "Public Suffix List",
+        "explanation": "公共后缀列表，用来判断域名注册边界和 cookie 可作用的范围。"
+      }
+    ],
+    "context": "这篇讨论围绕 Seth Larson 写的一篇 Python 安全文章：`str.lower()` 在某些 Unicode 字符上没有按照 IDNA 2003（域名国际化旧标准）要求的 Unicode 3.2.0 行为工作。争议点在于，这类差异本身不是“直接 exploitable”的漏洞，但如果系统里有校验层、过滤层和真正执行动作的层分别使用不同实现，就可能出现主机名绕过、SSRF、密码重置劫持等问题。评论还补充了 X.509 证书中的 SAN DNSName（Subject Alternative Name 里的 DNS 名称字段）应当按 DNS label 和字节规则比较，而不是当作自然语言去“解码”。整场讨论本质上是在谈：Unicode、IDN 和域名比较这类看似基础的字符串处理，一旦跨组件不一致，就会直接触碰安全边界。",
+    "emoji": "⚠️",
+    "sarcastic_question": "没 exploit 也先叫漏洞，方便报 bounty 吗？"
+  },
+  "articleSummary": "## 一句话总结\n\nPython 标准库的 IDNA 2003 实现曾因直接调用会随 Python 升级而变化的 `str.lower()`，违反了必须固定在 Unicode 3.2.0 的 StringPrep 规范，最终形成了 CVE-2026-17084。\n\n## 正文\n\n### 域名国际化，首先得把 Unicode 世界塞进 ASCII 规则\n\n很多互联网标准最初只认识 ASCII，但真实世界的域名显然不止拉丁字母。于是，IDNA（Internationalizing Domain Names in Applications）承担了一个转换任务：把 Unicode 域名映射为兼容 ASCII 的形式，也就是我们常见的 `xn--...` Punycode 域名。Python 里其实同时存在两套 IDNA 方案。标准库的 `str.encode(\"idna\")` 实现的是已废弃的 IDNA 2003，而 PyPI 上的 `idna` 包实现的是更新的 IDNA 2008。正常情况下，应优先使用 `idna` 包。可在一些兼容性场景中，旧的 IDNA 2003 仍然绕不开。\n\nIDNA 2003 的关键组件是 NamePrep。NamePrep 又建立在 RFC 3454 定义的 StringPrep 算法之上。这里最重要的一步叫 case folding，即把看起来具有大小写关系的字符归一化，从而允许字符串进行大小写无关的比较。问题恰恰出在这里：一个看起来再普通不过的“小写化”操作，并不总是无害的。\n\n### 看起来正确的 `str.lower()`，其实偷偷换了规则\n\nRFC 3454 的 StringPrep 在 Section 3.2 中定义了 case folding。它要求字符按照 B.2 和 B.3 两张映射表处理。B.2 基本对应 Unicode 的通用小写映射，B.3 则记录了特例。Python 中对应的实现逻辑非常直接：\n\n```python\ndef map_table_b3(code):\n    r = b3_exceptions.get(ord(code))\n    if r is not None:\n        return r\n    return code.lower()\n```\n\n这段代码的意思也很朴素：如果字符命中 B.3 特例表，就用特例映射；否则直接调用 `code.lower()`。如果只从代码表面看，它几乎无可挑剔。但问题是，`str.lower()` 并不是一个固定不变的函数。它依赖当前 Python 解释器内置的 Unicode 数据库，而这个数据库会随着 Python 版本和 Unicode 版本升级。\n\n### StringPrep 要求 Unicode 3.2.0，Python 却在使用“今天的 Unicode”\n\n可以通过 `unicodedata.unidata_version` 查看当前解释器使用的 Unicode 版本。例如，某个 Python 版本可能返回：\n\n```python\n>>> import unicodedata\n>>> unicodedata.unidata_version\n'17.0.0'\n```\n\n而 StringPrep 和 IDNA 2003 并不允许随 Unicode 演进而改变行为。RFC 3454 中的 B.2、B.3 表，本质上是把 Unicode 3.2.0 的 case-folding 规则固化了下来。换句话说，IDNA 2003 的正确行为必须永远以 Unicode 3.2.0 为准，而不是以运行时 Python 恰好携带的 Unicode 版本为准。\n\nPython 其实早就知道这件事。标准库在每个版本中都保留了 `unicodedata.ucd_3_2_0`，专门提供 Unicode 3.2.0 数据。`stringprep.py` 和 `encodings/idna.py` 也都显式导入了它：\n\n```python\nfrom unicodedata import ucd_3_2_0 as unicodedata\n```\n\n有意思的地方在于：实现做了大部分正确的事，检查和分类时使用的是 3.2.0 数据；但最终在 B.3 映射的默认分支上，却调用了普通字符串对象的 `code.lower()`。这一步又回到了当前解释器的 Unicode 数据库。\n\n### 一个 Unicode 新规则，就能让同一个域名编码结果变掉\n\n这种“数据源混用”带来的不是理论上的不一致，而是实际可观测的结果差异。以 Cherokee 字符 `Ꭰ`，即 U+13A0 为例，字符串 `\"ᎠᎠ\"` 在符合 RFC 3454 的 Unicode 3.2.0 规则下，应编码为：\n\n```python\n>>> \"ᎠᎠ\".encode(\"idna\")\n'xn--58da'\n```\n\n但如果 case folding 按 Unicode 17.0.0 的规则执行，结果会变成：\n\n```python\n'xn--kz9aa'\n```\n\n也就是说，同一段 Unicode 输入、同一套 IDNA 2003 算法，可能仅仅因为 Python 内置 Unicode 数据升级，就生成不同的 ASCII 域名。对于域名规范化和安全校验，这种不稳定性显然不能接受。IDNA 编码经常处于 URL 解析、证书校验、主机名比对和访问控制等边界上。规范要求的确定性一旦丢失，就可能让不同组件对“是不是同一个域名”得出不同结论。\n\n### 修复思路没有重写算法，而是补齐版本差异\n\n那怎么办？作者没有试图让 `str.lower()` 接受一个 Unicode 版本参数，因为 Python 的字符串 API 本身并不支持这种调用方式。核心思路其实很简单：既然 IDNA 2003 只需要模拟 Unicode 3.2.0 的行为，那就提前找出当前 `str.lower()` 与 Unicode 3.2.0 之间的所有差异。\n\n修复代码遍历每一个 Unicode code point，对比当前 Python Unicode 数据下的 `str.lower()` 结果，与 `unicodedata.ucd_3_2_0` 所定义的结果。凡是行为不同的字符，都被记录为新的异常项。这样一来，原有逻辑仍然可以在绝大多数字符上调用 `str.lower()`。只有那些会因 Unicode 版本变化而产生不同映射的字符，才通过额外的 exception table 强制返回 Unicode 3.2.0 的结果。\n\n说白了，这是一层兼容性补丁：不改变现代 Python 的全局 Unicode 行为，只让 StringPrep 的这一个局部步骤稳定地“活在 Unicode 3.2.0 年代”。修复后，Python 的 IDNA 2003 实现重新与 RFC 3454 一致，不再受解释器内置 Unicode 版本变化影响。\n\n### 这次漏洞提醒我们：规范版本也是安全边界\n\n这个问题被登记为 **CVE-2026-17084**，由 Bitshift 报告，Stan Ulbrych 共同参与修复，Marc-André Lemburg 与 Petr Viktorin 参与审查。它最值得开发者记住的地方，不是“不要调用 `str.lower()`”——在绝大多数业务代码里，`str.lower()` 完全正常。真正的教训是：当实现一个绑定历史标准的数据格式、协议或安全算法时，依赖的 Unicode 数据版本本身就是规范的一部分。\n\nIDNA 2003 是一个典型例子。它不是“按最新 Unicode 规则处理域名”，而是“严格复现 Unicode 3.2.0 时代写下的规则”。一旦在实现中混入了会随着运行环境升级的行为，即使 API 名字没变、代码看起来没变，协议语义也已经变了。对于这类兼容旧规范的代码，固定算法还不够，连算法背后的数据表版本也必须固定。"
+}

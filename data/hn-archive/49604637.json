@@ -1,0 +1,96 @@
+{
+  "id": 49604637,
+  "by": "ahlCVA",
+  "title": "I've factored the RSA keys of a Certificate Authority from the 90s",
+  "url": "https://mcpherrin.ca/2026/09/07/rsa.html",
+  "score": 392,
+  "createdAt": 1788831628,
+  "aiSummary": {
+    "chinese_title": "90年代CA的512位RSA被因数分解，Netscape 4需自写SSLv3",
+    "discussion_overview": [
+      {
+        "category": "旧浏览器兼容与自定义 SSLv3",
+        "summary": "为了让 Netscape Communicator 4.51 这种 90 年代客户端还能连上，作者不得不自己写一层很小的 SSLv3 server。Go 的 crypto/tls 早就不支持 SSLv3，也不接受 Netscape 发来的 SSLv2-compatible ClientHello，更没有 RC4-MD5 和 40-bit export suites，所以只能用 stdlib primitives 拼出一套兼容实现。作者还特意把 server key 设成 512-bit RSA，方便 export client 直接加密 premaster secret，不必走 ServerKeyExchange。评论里也指出，现代 OpenSSL 和 Debian 往往把这些古老 cipher 直接禁掉，想复现旧环境本身就得和现代部署隔离开。",
+        "supportid": [
+          "49604929",
+          "49604990",
+          "49605017",
+          "49605021",
+          "49604987"
+        ]
+      },
+      {
+        "category": "LLM 生成代码的可信度争议",
+        "summary": "有人对文章里大量 LLM 产物持怀疑态度，认为“看起来很合理”并不代表真的正确。尤其是这类脚本如果漏抓条目、误判证书 root 的 trust bits，结果就会在后续步骤里悄悄被污染。作者则回应说，LLM 代码只是帮自己跨过一个工具门槛，真正要的是找到 512-bit RSA key；最终能跑通并发出证书，已经说明前面的过程够用了。后续讨论还延伸成对“slop machine”和 anti-AI / pro-AI 阵营的互怼。",
+        "supportid": [
+          "49604923",
+          "49605047",
+          "49605366",
+          "49605119",
+          "49605181",
+          "49605192",
+          "49605622",
+          "49605639",
+          "49605676"
+        ]
+      },
+      {
+        "category": "512位 RSA 的现实可破解性与安全后果",
+        "summary": "评论里最震撼的一点是：512-bit RSA 已经可以在大约 2 天内靠消费级 GPU 打穿。有人继续外推到 1024-bit RSA，估算大约要 2000 GPU-years；而 2048-bit RSA 可能会变成几十万到上百万年，但这种外推并不线性，因为真正的成本取决于算法和可调动的算力。讨论中也强调 RSA 不是纯 brute force，像 CADO-NFS 这种因数分解框架会显著改变难度曲线。更大的担忧是历史通信很多根本没用 ephemeral key，甚至没加密，因此“先记录、以后再解密”仍然是现实威胁；即便 post-quantum TLS 逐渐普及，也只保护未来流量。",
+        "supportid": [
+          "49604867",
+          "49605338",
+          "49605409",
+          "49604862",
+          "49604910",
+          "49604951",
+          "49604961",
+          "49605014",
+          "49604841",
+          "49604883",
+          "49604908",
+          "49605386",
+          "49605534",
+          "49605542"
+        ]
+      },
+      {
+        "category": "逆向考古、怀旧与实际用途",
+        "summary": "不少人把这件事看成一种 reverse archaeology：小时候只觉得这些协议在后台神秘运行，现在终于能看懂它们如何工作、又如何被打穿。有人觉得这对做 hyper-compatible websites 很有价值，因为它逼近的是旧浏览器、旧游戏机和旧证书才能活下来的真实环境。也有人分享自己为了 Dreamcast 私服或老 SSL 服务去折腾 custom OpenSSL，说明这类工作并不只是“玩梗”，而是真有复古兼容需求。标题里那个 SSL report 出现四个自动 F 的结果也被当成很好笑的 punchline，还有人顺手调侃了 90 年代那批技术决策。",
+        "supportid": [
+          "49605294",
+          "49605491",
+          "49605020",
+          "49604918",
+          "49605260"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "RSA",
+        "explanation": "一种公钥密码算法；这里的 512-bit RSA 太短，已经能被现实算力因数分解出私钥。"
+      },
+      {
+        "term": "CADO-NFS",
+        "explanation": "一个用于整数分解的开源框架，常用来攻击大整数 RSA。"
+      },
+      {
+        "term": "SSLv3",
+        "explanation": "90 年代的旧版 SSL 协议，现代库通常已弃用或移除。"
+      },
+      {
+        "term": "RC4-MD5",
+        "explanation": "一种过时的 cipher suite，使用 RC4 和 MD5，安全性很差，常被现代实现禁用。"
+      },
+      {
+        "term": "export-grade cipher suites",
+        "explanation": "历史上为满足出口管制而故意削弱的加密套件，常见于 40-bit 弱加密时代。"
+      }
+    ],
+    "context": "这篇帖子讨论的是：作者从 90 年代某个 Certificate Authority（CA，证书颁发机构）的旧 RSA key 里成功恢复出私钥，并用它给一个复古客户端演示签发证书。为了让 Netscape Communicator 4.51（90 年代浏览器）真的能连上，作者不得不写一套自定义 SSLv3 服务端实现，因为现代 Go 的 crypto/tls（Go 语言的 TLS 库）不支持 SSLv3、SSLv2-compatible ClientHello，也不提供那些老旧的 RC4-MD5 和 40-bit export cipher。评论里还补充了现实背景：现代 OpenSSL（常见 TLS/SSL 库）和 Debian（Linux 发行版）往往默认禁用这些古代协议和弱 cipher，想复现必须自己编译和隔离环境。整件事之所以成立，是因为 512-bit RSA 已经太弱，而 CADO-NFS 这类因数分解工具配合现代硬件就足以把它打穿。",
+    "emoji": "🤯",
+    "sarcastic_question": "90年代CA密钥还敢叫安全？"
+  },
+  "articleSummary": "## 一句话总结\n作者成功破解了 90 年代 Netscape 浏览器内置的 512-bit RSA 根证书，并在现代环境中复现了当年的信任链条，亲手验证了这段“脆弱”的加密历史。\n\n## 正文\n\n### RSA 的安全边界在哪里？从好奇到寻宝\nRSA 的安全性依赖于大整数分解的难度，但“大”是个相对概念。Web PKI 早在十多年前就废弃了 1024-bit RSA，现在主流是 2048-bit 甚至更高。作者最近注意到，862-bit 的 RSA-260 刚被分解，这是目前的公开记录。这让他产生了一个有趣的念头：早期的 Web PKI 没有标准约束，那时候有没有弱到可以在家用电脑上破解的密钥？虽然没什么实际用途，但这听起来像是个有趣的“考古”探险。\n\n### 在浏览器古董堆里翻出了“软柿子”\n想破解密钥，首先得找到目标。好在当年的浏览器安装包里都自带根证书列表。作者从 Archive.org 扒下了 IE 和 Netscape 的历史版本，用 Claude Code 辅助提取了所有根证书。经过筛选，目标出现了：Netscape 4.51（1999 年 3 月发布）信任了一个名为 \"E-Certify RSA 512 Gold\" 的加拿大 CA。512-bit 的 RSA 密钥，即便在当年也属于极其脆弱的强度，甚至在 1999 年下半年就被认为是不安全的，但它确实曾堂而皇之地存在于浏览器的信任列表中。\n\n### 家用 CPU 也能跑完的破解马拉松\n破解过程比想象中顺利。作者使用 CADO-NFS 工具，在自己的 Ryzen 9 5950X 桌面处理器上开跑。结果令人唏嘘：分解 SSL Server 端密钥耗时 32 小时，S/MIME Client 端密钥耗时 29 小时。对于现代算力而言，这不过是几部电影的时间。一旦分解出两个质数，重构私钥就易如反掌。作者在文中直接放出了证书和对应的私钥，任何人都可以拿去“为所欲为”。\n\n### 让 25 年前的浏览器重新信任“假”证书\n拿到私钥能干什么？最硬核的验证莫过于签发一个假证书，看看老浏览器是否买账。作者为此搭建了一个复古环境：虚拟机里运行着 Netscape 4.51，系统时间还要回调到 2003 年 10 月之前（证书过期前）。但问题来了，现代 TLS 协议和 Netscape 4.51 使用的古老协议完全不兼容。作者不得不再次借助 Claude Code，用 Go 语言写了一个专门适配古老协议的 TLS 服务器，并部署在 e-certify.fly.dev 上。如果你用现代浏览器访问，连接会直接失败；但用那台虚拟机里的 Netscape，证书验证竟然通过了。\n\n### 还有更多“彩蛋”等待挖掘\n除了 E-Certify，作者还在 IE 3.02 的历史遗留文件中发现了一个名为 \"Test VeriSign Commercial Software Publisher CA\" 的 512-bit 代码签名证书。这把密钥甚至更脆弱，Steve Weis 使用 GPU 集群仅用一小时就将其破解。作者在 GitHub 上开源了所有工具和密钥，甚至还附赠了一个 SSL Labs 的扫描结果——因为使用了极弱的加密套件，这个测试站点毫无悬念地拿到了 F 级评分。这既是对历史的致敬，也是对现代加密标准必要性的最好注脚。"
+}

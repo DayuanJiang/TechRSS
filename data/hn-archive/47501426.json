@@ -1,0 +1,119 @@
+{
+  "id": 47501426,
+  "by": "dot_treo",
+  "title": "Tell HN: Litellm 1.82.7 and 1.82.8 on PyPI are compromised",
+  "url": "https://github.com/BerriAI/litellm/issues/24512",
+  "score": 718,
+  "createdAt": 1774378240,
+  "aiSummary": {
+    "chinese_title": "LiteLLM 1.82.7/1.82.8 被投毒：Trivy CI 泄密、账号接管",
+    "discussion_overview": [
+      {
+        "category": "官方确认与处置进展",
+        "summary": "维护者确认受影响的是 litellm==1.82.7 和 1.82.8，恶意版本已经从 PyPI 删除，并先进入 quarantine 再被阻断下载。当前公开的结论是，入侵源头来自 CI/CD 里使用的 Trivy 扫描链路，相关的 PYPI_PUBLISH token、GitHub PAT 和其他发布密钥都已轮换或删除。官方还说明，标准 LiteLLM Proxy Docker 镜像因为在 requirements.txt 里固定了版本，所以没有直接受影响；真正高风险的是直接从 PyPI 安装或未固定版本的环境。团队同时暂停了新版本发布，并引入 Mandiant 协助做更大范围的 supply-chain review。",
+        "supportid": [
+          "47502858",
+          "47504491",
+          "47510417",
+          "47504535",
+          "47506354",
+          "47504191"
+        ]
+      },
+      {
+        "category": "账号接管与 GitHub 垃圾评论",
+        "summary": "评论区很快出现了明显的账号被接管迹象：维护者个人仓库和公共仓库被改成“teampcp owns BerriAI”之类的说明，像是在公开认领入侵。与此同时，issue 线程被大量重复的“Thanks”式回复淹没，很多人判断这是被劫持账号在批量灌水，用来干扰真实讨论和 mitigation 传播。有人进一步指出这看起来不像正常互动，而是攻击者快速利用 stolen credentials 的后续动作。GitHub 的 spam 和讨论治理能力也因此被集中吐槽。",
+        "supportid": [
+          "47502034",
+          "47502109",
+          "47502237",
+          "47502493",
+          "47502769",
+          "47502920",
+          "47506165",
+          "47507593"
+        ]
+      },
+      {
+        "category": "下游依赖面很大，自动更新更危险",
+        "summary": "很多人担心的不是单个包，而是它的 blast radius：LiteLLM 不只是 gateway，还被 DSPy、CrewAI、browser-use、nanobot 等项目直接或间接依赖。由于不少环境靠 `uvx`、`uv run`、`pip install` 或自动更新容器在运行时拉包，哪怕只是一个 `import` 也可能触发恶意代码并扫走 token、`.git-credentials` 或 SSH key。有人专门写脚本去全盘扫描安装痕迹，也有人在查到底哪些项目还在用未固定版本。讨论里还出现了把 CrewAI 回退到 1.82.6、改用 OpenRouter/Portkey 或干脆自己写 shim 的做法。",
+        "supportid": [
+          "47502619",
+          "47502301",
+          "47502715",
+          "47509089",
+          "47503195",
+          "47510350",
+          "47505844",
+          "47501928",
+          "47502412",
+          "47508281"
+        ]
+      },
+      {
+        "category": "防护思路：沙箱、签名、OIDC 与发布隔离",
+        "summary": "最一致的建议是把不可信代码关进 sandbox，而不是继续依赖“默认会老实”的 package manager。评论里反复提到 Firejail、bwrap、seccomp、gVisor、Qubes OS、microVM、Guix/NixOS 这类隔离思路，核心都是把扫描、构建、发布、运行分成不同权限域。另一个高频建议是去掉长期存在的发布 token，改成 GitHub/PyPI 的 OIDC / Trusted Publishing，让只有 release job 能发包，Trivy 之类的扫描 job 就算被攻破也拿不到发布权限。还有人强调应该固定版本、校验 SHA256、镜像依赖、用 osv-scanner 做阻断扫描，甚至把发布和 public repo 明确隔离开。",
+        "supportid": [
+          "47502785",
+          "47510924",
+          "47504121",
+          "47506389",
+          "47508771",
+          "47504933",
+          "47510199",
+          "47503772",
+          "47504538",
+          "47505818"
+        ]
+      },
+      {
+        "category": "LiteLLM 价值争议与更大的生态焦虑",
+        "summary": "一部分评论为 LiteLLM 的存在价值辩护：它解决了多家 LLM provider API 不兼容、fallback、key 管理和 guardrails 等现实痛点，不是简单“多加一层 hat”。但另一派则认为它的代码和依赖树太重、文档和维护状态混乱，1000+ 依赖让安全边界几乎不可审计，甚至准备自己写更小的 shim 或直接删掉大部分依赖。这个事件也被拿来讨论更大的生态问题：Python/Node 这类 package manager 让依赖膨胀过于容易，而 LLM 工具链和 Copilot 又进一步鼓励把未固定的包直接塞进 requirements。更悲观的观点认为，随着 supply chain attack 常态化，软件发布可能需要更强的多方审批、版本延迟或 distro 级审核。",
+        "supportid": [
+          "47502338",
+          "47504213",
+          "47502955",
+          "47503343",
+          "47510246",
+          "47507089",
+          "47507695",
+          "47502586"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Trivy",
+        "explanation": "一个容器/镜像漏洞扫描器，这次其 CI/CD 使用链路被认为是入侵入口。"
+      },
+      {
+        "term": ".pth 文件",
+        "explanation": "Python `site` 机制会在启动时读取的文件，能在解释器启动或导入阶段执行代码。"
+      },
+      {
+        "term": "Trusted Publishing",
+        "explanation": "PyPI/NPM 等使用 OIDC 的无长期密钥发布方案，用发布工作流直接换取短期授权。"
+      },
+      {
+        "term": "sandbox/沙箱",
+        "explanation": "限制进程权限的隔离运行环境，用来降低恶意包或被攻破依赖的影响面。"
+      },
+      {
+        "term": "supply chain attack",
+        "explanation": "通过依赖、构建、发布链路传播恶意代码的攻击方式。"
+      },
+      {
+        "term": "TeamPCP",
+        "explanation": "评论里用来指代这次账号接管、投毒和灌水活动的攻击者代号。"
+      },
+      {
+        "term": "PyPI quarantine",
+        "explanation": "PyPI 对可疑包实施的临时隔离/阻断下载措施。"
+      }
+    ],
+    "context": "LiteLLM 是一个给不同 LLM provider 提供统一 API 的 Python 库，常被当作 gateway/router，用于在 OpenAI、Anthropic 等接口之间做适配和 fallback。此次讨论围绕 PyPI 上的 litellm 1.82.7 和 1.82.8 被植入恶意代码展开，评论里指出它与 CI/CD 中的 Trivy（容器漏洞扫描器）链路被攻破有关，随后 PyPI 对该包做了 quarantine 并移除了相关版本。恶意代码被描述为可在安装或导入时执行，借助 Python 的 `.pth` 机制或直接 import 运行，主要风险是窃取 `.git-credentials`、SSH key、token 等秘密。因为 LiteLLM 被 DSPy、CrewAI、browser-use 等多个项目直接或间接依赖，社区同时在讨论如何通过 sandbox、OIDC/Trusted Publishing、锁定版本、镜像仓库和发布隔离来缩小 blast radius。",
+    "emoji": "⚠️",
+    "sarcastic_question": "连 PyPI 都能投毒，你还敢说默认安全？"
+  },
+  "articleSummary": "## 一句话总结\nLitellm 的 1.82.8 版本在 PyPI 上被投毒，攻击者利用 `.pth` 文件让 Python 解释器启动时自动执行恶意脚本，窃取包括云密钥、SSH 私钥和环境变量在内的几乎所有敏感凭据。\n\n### 恶意代码的“免检”通道：.pth 文件\n这次攻击最狡猾的地方在于触发机制。通常我们以为只要不 import 某个包，它就是安全的，但攻击者在 wheel 包里塞了一个 `litellm_init.pth` 文件。根据 Python 的机制，只要这个文件存在于 `site-packages/` 目录下，解释器启动时就会无条件执行它。这意味着你甚至不需要在代码里写 `import litellm`，只要你的环境里装了这个包，恶意脚本就已经在后台跑起来了。\n\n### 做了什么：无差别的凭据大扫荡\n一旦脚本被触发，它就开始进行地毯式的信息收集。它不仅抓取所有的环境变量（这意味着你的 API Keys、Database URLs 全部暴露），还把黑手伸向了各种配置文件。从 SSH 私钥、Git 凭据，到 AWS、GCP、Azure 的云服务配置，再到 Docker、Kubernetes 的连接信息，甚至包括 `.bash_history` 和加密货币钱包文件。基本上，开发者机器和服务器上能用来证明身份或访问资源的文件，它一个都没放过。\n\n### 怎么偷走：双重加密与伪装\n为了躲避检测，攻击者并没有直接把明文代码写在文件里。Payload 经过了双重 Base64 编码，直接看文件内容根本看不出猫腻。数据被收集后，脚本会生成一个随机的 AES-256 密钥加密数据，再用一个硬编码的 4096 位 RSA 公钥加密这个 AES 密钥。最后，所有加密数据被打包成 `tpcp.tar.gz`，通过 `curl` 发送到攻击者控制的服务器 `https://models.litellm.cloud/`。注意这个域名，它看起来像官方的，但并不是官方的 `litellm.ai`。\n\n### 为什么这招很致命：供应链的“信任陷阱”\n这起事件是典型的供应链攻击。因为 Litellm 是一个热门的代理库，开发者往往对它抱有天然的信任，直接 `pip install` 到生产环境或 CI/CD 流水线中。一旦这个被污染的包进入了你的构建环境，所有的 CI Secrets 就会瞬间泄露。更糟糕的是，由于 `.pth` 文件的特性，即使你的代码只是把这个库作为依赖装着没用到，攻击依然会发生。\n\n### 现在该怎么办：紧急止损\n如果你不幸安装了 `litellm==1.82.8`，必须假设你的环境已经彻底沦陷。首先，去 `site-packages/` 目录下检查是否存在 `litellm_init.pth` 文件。更重要的是，你必须立刻轮换所有可能泄露的凭据——这包括 AWS/GCP/Azure 的密钥、SSH 密钥、数据库密码以及所有在环境变量中配置过的 Token。仅仅卸载包是不够的，因为数据已经被偷走了。"
+}

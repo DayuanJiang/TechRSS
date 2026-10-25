@@ -1,0 +1,112 @@
+{
+  "id": 47218288,
+  "by": "mystcb",
+  "title": "Anthropic Cowork feature creates 10GB VM bundle on macOS without warning",
+  "url": "https://github.com/anthropics/claude-code/issues/22543",
+  "score": 267,
+  "createdAt": 1772463607,
+  "aiSummary": {
+    "chinese_title": "Anthropic Cowork 在 macOS 无预警创建 10GB VM，引发磁盘与沙箱争议",
+    "discussion_overview": [
+      {
+        "category": "Anthropic 的立场：以 VM 提供更强隔离与对非技术用户的安全保障",
+        "summary": "Anthropic 解释 Cowork 在 macOS/Windows 上通过 Apple Virtualization framework 或 Microsoft Host Compute System 启动一个运行 Linux 的 VM 来承载 Claude Code 的 agent harness，以便给 AI 一个“不是用户主机”的独立计算环境。团队列出的三大理由包括：让 Claude 在隔离的计算机中即时编写和运行定制脚本、在边界处提供更为确定的安全/权限保证，以及为非技术用户减少需要人工批准的风险。公司承认这是一个权衡，会带来额外的性能和磁盘成本，并表示正在考虑增加设置，让不想使用 Cowork 或想要更多控制权的用户可以选择其他方案或禁用。评论中也有人肯定这种隔离确实提升了对非专业用户的安全性，但同时要求更透明的提示与可配置选项。",
+        "supportid": [
+          "47220118",
+          "47220466",
+          "47220282",
+          "47220605",
+          "47220193"
+        ]
+      },
+      {
+        "category": "用户抱怨：无提示的大文件与磁盘透明度问题",
+        "summary": "多个用户反映在不知情或误点情况下，Claude Desktop/ Cowork 会在本地创建大体积 VM 镜像（报告约 10GB），部分人是一周后偶然发现该文件占满磁盘。有人指出镜像位于类似 ~/Library/Application Support/Claude/vm_bundles 的目录，且初始镜像已预占 6–7 GiB，导致 Cowork 很快因磁盘满而无法继续工作。用户希望安装/首次使用前能弹出明确提示、允许将 VM 放到外置盘或通过 symlink 改变位置，并要求 Cowork 能访问主机以外的目录或提供更细粒度的权限提示。社区同时把这件事放到 macOS “System Data” 与应用无节制写磁盘的更大问题里，推荐工具（DaisyDisk、GrandPerspective、ncdu）来定位并清理占用。",
+        "supportid": [
+          "47220984",
+          "47218932",
+          "47221325",
+          "47220591",
+          "47220754",
+          "47219216",
+          "47219557"
+        ]
+      },
+      {
+        "category": "技术争论：VM vs Seatbelt vs 容器的沙箱权衡",
+        "summary": "讨论集中在为何选择完整 VM 作为沙箱：在 macOS 上没有像 Linux 那样成熟的容器/namespace 方案，所以 Anthropic 借助 Apple Virtualization framework 提供 OS 级边界，评论者认为 VM 在边界保证上更可靠但代价是性能、功耗与磁盘。有人建议使用 Apple 的 Seatbelt（进程沙箱/权限系统）或更轻量的机制，但 Seatbelt 被批评文档少且对复杂 agent 能力受限；另有开发者推荐 devcontainer、Lima、Vagrant 或在 VPS 上隔离开发以更轻量地复现环境。评论还讨论了嵌套虚拟化（nested virtualization）导致 Cowork 在 UTM 等虚拟环境中报错的问题，以及可以用 memory ballooning 或把文件系统暴露为网络文件系统来减轻宿主磁盘压力的传统 VM 技术。整体观点是：VM 能提供更强的“硬”边界，但应提供可选的、对技术用户更友好的替代配置与权限控制。",
+        "supportid": [
+          "47220118",
+          "47218762",
+          "47221147",
+          "47220655",
+          "47220754",
+          "47220839",
+          "47220231",
+          "47220221"
+        ]
+      },
+      {
+        "category": "对快速迭代与“vibe-coding”的不信任：模型写码质量与信任问题",
+        "summary": "不少评论质疑快速“vibe-coded”/AI 驱动的开发流程导致产品质量下降或不可预测的行为，甚至指出一些 GitHub 问题本身是由 AI 生成、未经验证的“AI slop”。用户抱怨除了 Claude Code CLI 外，其他桌面/扩展体验普遍存在 bug、崩溃与数据访问异常，有人讽刺公司在一周内“vibe”出新功能就直接推给所有用户。更广泛的担忧是：不能完全信任模型提供者去运行本地工具或管理文件系统，呼吁保留可审计、开源且由人控制的信任层来替代闭源或自动化生成的运维。该组观点把本次事件视为 AI 参与开发而引发的信任与治理样例。",
+        "supportid": [
+          "47218864",
+          "47220318",
+          "47219596",
+          "47220901",
+          "47219537",
+          "47220768",
+          "47220240"
+        ]
+      },
+      {
+        "category": "实用对策与建议：迁移目录、官方镜像与磁盘分析工具",
+        "summary": "用户和贡献者提出了多种可行修复与权宜之计，包括把 VM 文件放到外置磁盘或通过 symlink 改变位置，以及手动把 sparse 映像放大到例如 60 GiB 来避免 Cowork 运行时磁盘耗尽。有人建议 Anthropic 提供官方的 VM base image / devcontainer（devcontainer 文档与模板）以便开发者能基于统一镜像定制自己的 agent sandbox。社区还推荐使用 GrandPerspective、DaisyDisk、ncdu、Mole 等工具审查与清理占用，并建议应用在写入大量缓存或模型数据前先询问用户并支持配置缓存目录。总体是要求更透明的安装提示、可配置的存储位置和面向开发者的镜像选择。",
+        "supportid": [
+          "47220591",
+          "47221391",
+          "47218932",
+          "47220466",
+          "47221180",
+          "47221036",
+          "47219216",
+          "47219532"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Apple Virtualization framework",
+        "explanation": "Apple Virtualization framework（macOS 原生虚拟化 API），用于在 macOS 上运行完整的虚拟机（例如运行 Linux 的 VM），Anthropic 用它在本地托管 Cowork 的 agent harness 以实现 OS 级别隔离。"
+      },
+      {
+        "term": "Seatbelt",
+        "explanation": "Seatbelt（Apple 的进程沙箱/权限系统），macOS 的轻量级进程访问控制机制，能限制文件与系统资源访问，但文档有限且被部分评论者认为不足以满足复杂 AI agent 的隔离需求。"
+      },
+      {
+        "term": "sparse image",
+        "explanation": "sparse image（稀疏磁盘映像），macOS 的镜像格式：显示的“虚拟容量”可能很大但实际占用按需增长，Finder 可能展示完整大小而不等同于实际物理占用。"
+      },
+      {
+        "term": "nested virtualization",
+        "explanation": "nested virtualization（嵌套虚拟化），在一台虚拟机内部再运行另一台虚拟机的能力，某些 hypervisor（例如 UTM）不支持或会报错，导致在 VM 中再运行 Cowork 的虚拟机失败。"
+      },
+      {
+        "term": "devcontainer",
+        "explanation": "devcontainer（Dev Containers/VS Code devcontainer），一种用容器或镜像定义开发环境的配置，评论者建议提供官方 devcontainer/VM base image 以便复现和定制 agent 沙箱。"
+      },
+      {
+        "term": "Electron",
+        "explanation": "Electron（跨平台桌面应用框架），Claude Desktop 被指为 Electron 应用，用户抱怨其后台常驻、耗电与睡眠发热等问题。"
+      },
+      {
+        "term": "vm_bundles",
+        "explanation": "vm_bundles（示例路径 ~/Library/Application Support/Claude/vm_bundles），指 Claude 在 macOS 上存放 Cowork 创建的 VM 镜像的目录，用户在此发现了约 10GB 的镜像文件并可进行手动调整或移动。"
+      }
+    ],
+    "context": "这次争议源自用户发现 Anthropic 的 Cowork 功能在 macOS 本地无明显提示下创建了大约 10GB 的虚拟磁盘镜像，引发磁盘占用与隐私/权限的担忧。Anthropic 回应称 Cowork 在 Linux VM 中运行 Claude Code 的 agent harness（通过 Apple Virtualization framework 或 Microsoft Host Compute System），目的是为 AI 提供与宿主隔离的“电脑”并给出明确边界保证以保护非技术用户。社区讨论聚焦在沙箱实现方式的权衡（VM、Seatbelt、容器/ devcontainer）、嵌套虚拟化导致的问题、以及对快速“vibe-coded”迭代和本地闭源工具的信任问题。评论里也提供了具体的补救与临时解决方案，例如将 VM 放外置盘、用 symlink、手动扩大 sparse image、或采用 devcontainer/Lima/VPS 等替代环境，以及用 DaisyDisk/GrandPerspective/ncdu 类工具找出占用。",
+    "emoji": "🤦",
+    "sarcastic_question": "安装前能不能先提示一声要占用整整10GB硬盘？"
+  },
+  "articleSummary": "Anthropic Claude Desktop 的 Cowork 功能在 macOS 上会生成一个约 10GB 的虚拟机（VM）文件包，路径位于 `~/Library/Application Support/Claude/vm_bundles/claudevm.bundle/rootfs.img`。该文件在使用后不会被自动清理，且删除后会迅速重新生成。这一问题导致应用启动变慢、UI 延迟及响应迟缓，性能随时间推移严重下降。\n\n测试显示，删除 `vm_bundles`、Cache 和 Code Cache 目录后，存储空间从 11GB 降至 639MB，任务执行速度立即提升约 75%。然而，即使清理后，性能仍会在几分钟内再次恶化：重启后空闲 CPU 占用约 24%，使用数分钟后升至 55%（渲染进程 24%，主进程 21%，GPU 7%），Swap 活动增加，表明存在内存泄漏或工作负载累积。\n\n受影响环境为 macOS (Darwin 25.2.0) 和 8GB RAM 系统。目前的临时解决方案是定期退出应用并手动删除上述目录，但这只能提供暂时的性能改善。"
+}

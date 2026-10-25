@@ -1,0 +1,101 @@
+{
+  "id": 47410532,
+  "by": "ingve",
+  "title": "Building a Shell",
+  "url": "https://healeycodes.com/building-a-shell",
+  "score": 136,
+  "createdAt": 1773744060,
+  "aiSummary": {
+    "chinese_title": "写 Shell：parse 只是开始，job control 才是大坑",
+    "discussion_overview": [
+      {
+        "category": "写 shell 作为练手，但解析最劝退",
+        "summary": "很多人把写 shell 当成系统编程练习，但一碰到字符串解析和各种 corner cases，热情就会明显下降。有人干脆先不做完整 parser，只按空格和 `|` 切分，先把执行和管道跑通。也有人认为，这些边角问题恰恰会逼你理解 shell 的历史包袱和语言约束。",
+        "supportid": [
+          "47411219",
+          "47411255",
+          "47415696",
+          "47416021",
+          "47411418"
+        ]
+      },
+      {
+        "category": "shell 的解析模型和普通语言不同",
+        "summary": "有评论指出，很多学过编译原理的人会把 shell 套进普通 programming language 的解析模型，但 shell 并不完全符合这套直觉。更合适的做法是把尽可能多的复杂度放进 lexer，用 lexer modes 吃掉边界情况。还有人强调 shell 不是单一 parser，而是多个不同 parser 的组合，C 里常见的同质数据结构也会让实现显得笨重。",
+        "supportid": [
+          "47414723"
+        ]
+      },
+      {
+        "category": "管道容易，job control 才是大坑",
+        "summary": "大家最一致的共识是，管道本身还算直观，真正折磨人的是 job control。手动把 `dup2`、关闭管道端、进程组和 controlling terminal 理顺之后，`grep | sort | uniq` 怎么工作就清楚了。难点接着升级到 `SIGTSTP`、`tcsetpgrp`、session leader，以及 Bash 和 zsh 在最后一个 pipeline 进程是否 fork 上的语义差异。也因此，shell 的兼容性问题往往出现在最边缘但最致命的地方。",
+        "supportid": [
+          "47413149",
+          "47414629",
+          "47416825",
+          "47411297",
+          "47413273",
+          "47411520"
+        ]
+      },
+      {
+        "category": "终端行编辑和 UI 也很复杂",
+        "summary": "另一个反复出现的话题是终端输入和行编辑。有人问 shell 是否要自己实现文本编辑，答案里提到 `readline` 可以直接提供 history、tab completion 和基础编辑能力。还有人补充说，就算不用 `readline`，kernel 的 tty subsystem 也会提供一些基础行编辑。更激进的想法是干脆摆脱控制字符，改用 Qt 做一个带可点击 URL 的新终端。",
+        "supportid": [
+          "47411795",
+          "47412143",
+          "47416627",
+          "47412947"
+        ]
+      },
+      {
+        "category": "shell 不是 REPL，也不是全部系统",
+        "summary": "一些评论纠正了一个常见误解：传统 Unix shell 不是 REPL，输出结果通常是外部命令的副作用，而不是 shell 自己在“打印求值结果”。也有人强调，shell 只是整个系统里的一层，真正的行为来自 shell、kernel 和各种程序共同作用。基于这个视角，Unix shell 被看作历史形成的抽象，不一定是最好的接口；PowerShell 则被拿来当作更现代的对照。",
+        "supportid": [
+          "47411141",
+          "47412040",
+          "47412306",
+          "47411304"
+        ]
+      },
+      {
+        "category": "实用资源与学习路径",
+        "summary": "评论区也给了不少实际可读的资源。有人推荐 Codecrafters 的 shell 练习、Destroy All Software 里用 Ruby 写 shell 的视频，以及 xv6 的 `sh.c` 作为短小而完整的实现参考。还有一个很实用的建议是对自己的 shell 跑 `strace`，逐条理解 syscall 输出，这被认为是学习 Unix 的高价值练习。",
+        "supportid": [
+          "47414949",
+          "47415784",
+          "47415955"
+        ]
+      },
+      {
+        "category": "为 AI 或新交互定制 shell",
+        "summary": "有一条比较偏应用场景的评论提到，想让 AI 通过 `toast | bash` 之类的方式操控电脑时，传统 bash 的 `$` 展开和特殊字符反而成了障碍。于是最后改成自己写一个 custom shell，同时兼顾 AI 和人类使用。这个观点的核心不是复刻 Unix 传统，而是根据交互对象重新设计工具。",
+        "supportid": [
+          "47413368"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "job control",
+        "explanation": "Shell 中管理前台/后台任务、暂停和恢复进程组的机制，涉及 SIGTSTP、tcsetpgrp 和 controlling terminal。"
+      },
+      {
+        "term": "readline",
+        "explanation": "常用的行编辑库，提供光标移动、历史记录和补全等交互能力。"
+      },
+      {
+        "term": "dup2",
+        "explanation": "Unix/Linux 系统调用，用于重定向文件描述符，构建管道时经常用到。"
+      },
+      {
+        "term": "tty subsystem",
+        "explanation": "终端子系统，负责命令行输入输出、基础行编辑以及与作业控制相关的终端行为。"
+      }
+    ],
+    "context": "这篇帖子讨论的是从零实现 Unix shell（Unix 命令解释器）这件事。表面上它只是接收命令、分词、执行，但实际会碰到 fork/execve（创建并执行进程）、pipe（管道）、dup2（文件描述符重定向）、tty/PTY（终端与伪终端）和 job control（前后台作业管理）等整套系统机制。评论里还拿 Bash、zsh、PowerShell，以及 Oils 项目里的 OSH/YSH 这些 shell 实现作对比，说明 shell 的行为很大程度上是历史演化出来的妥协，而不是一套干净统一的规范。很多人把写 shell 当作学习系统编程的练习，但讨论里反复指出，真正的大坑往往不是最初的 parser，而是终端交互和 job control。",
+    "emoji": "🤯",
+    "sarcastic_question": "写个 shell 就以为只要解析字符串？"
+  },
+  "articleSummary": "## 一句话总结\n这篇文章通过手写一个名为 `andsh` 的玩具 Shell，展示了从构建 REPL 循环、解析命令、处理进程管道到集成 readline 库实现自动补全的完整 Unix Shell 核心原理。\n\n---\n\n### 从 REPL 骨架开始：Shell 本质上是一个死循环\nShell 的交互体验始于一个经典的 Read-Eval-Print Loop（REPL）。作者首先定义了一个 `Shell` 结构体来维护状态（比如上一次命令的退出状态 `last_status`），然后进入主循环。这个循环的逻辑很简单：打印提示符，读取一行输入，然后执行。这里有个关键细节是 `read_line` 需要处理三种情况：成功读取一行、遇到 EOF（用户按下 Ctrl+D）、或者发生真正的错误。在这个阶段，`eval_line` 的功能还非常简陋，只能处理空行和内置的 `exit` 命令，其他所有输入都被视为外部命令。\n\n### 从字符串到 argv：为了执行，先得拆分\n要想运行像 `ls -l` 这样的命令，光有一整行字符串是不行的，必须把它拆成 `argv`（参数向量），因为 `execvp` 这类系统调用需要这种格式。作者实现了一个 `tokenize_line` 函数，按空格和制表符分割输入。这里有个巧妙的设计：虽然此时还不支持复杂的引号或重定向，但作者特意把管道符 `|` 单独拆分出来。这样做是为了给后续支持管道（Pipeline）预留接口，因为 `|` 是 Shell 的语法结构，而不是普通参数。拆分完成后，Shell 就能识别出命令名和它的参数了。\n\n### 运行命令的核心：Fork、Exec 与 Wait\nShell 不能直接把自己替换成用户要执行的命令（否则 Shell 进程就没了），所以必须创建子进程。这里用到了 Unix 程序员的看家本领：`fork` 创建子进程，在子进程里调用 `execvp` 替换内存镜像并执行新程序，父进程则调用 `waitpid` 等待子进程结束。代码里有个值得注意的细节：子进程出错时使用的是 `_exit` 而不是 `exit`。这是为了避免 `exit` 触发父进程继承来的缓冲区刷新逻辑，防止输出重复。此外，`waitpid` 的循环处理了 `EINTR`（被信号中断）的情况，确保 Shell 不会因为终端发来的信号而跟丢子进程。\n\n### 为什么 cd 必须是内置命令？\n有些命令如果放在子进程里跑就完全没意义了，最典型的就是 `cd`。如果在子进程里调用 `chdir`，改变的只是子进程的当前目录，等它一退出，父进程（也就是 Shell 本身）还在老地方待着。因此，`cd` 必须作为 Shell 的内置命令（Builtin），直接在父进程的上下文中执行。作者还补充了一个冷知识：如果用户只输入 `cd` 而不带参数，按照约定俗成的规则，Shell 应该将其重定向到环境变量 `HOME` 指定的目录。\n\n### 变量展开：在执行前重写输入\n在真正执行命令前，Shell 还有一项重要工作：变量展开。比如 `echo $HOME` 不应该打印字面量 `$HOME`，而是要打印 `/Users/andrew`。作者选择在 Tokenization 之后、Execution 之前进行这一步。实现逻辑是遍历所有 token，如果遇到 `$` 开头的词，就去环境变量里查找对应的值并替换。这里还特意处理了 `$?`，它代表上一条命令的退出状态，这个细节让 Shell 的感觉更像那么回事。当然，为了保持玩具项目的简洁，作者只实现了最基础的 `$NAME` 展开，没搞 `${NAME}` 这种复杂语法。\n\n### 管道的奥秘：利用内核缓冲做进程间通信\n管道是 Shell 最强大的功能之一。`cmd1 | cmd2` 的本质是把左边命令的标准输出（stdout）接到右边命令的标准输入（stdin）。这通过系统调用 `pipe()` 实现，它返回两个文件描述符：一个用于读，一个用于写。在处理 N 个命令的管道时，需要 N-1 个管道。作者在 `fork` 子进程后，利用 `dup2` 系统调用将管道的读写端分别重定向到子进程的 `STDIN_FILENO` 和 `STDOUT_FILENO`。这样，子进程以为自己在读写标准的终端，实际上是在和兄弟进程通信。Unix 的设计之美在于，如果读进程快，写进程会阻塞等待；如果写进程快，管道缓冲区满了写进程也会暂停，这一切同步都是内核自动完成的。\n\n### 让 REPL 更好用：引入 readline 库\n虽然核心功能都有了，但如果不支持方向键移动光标、历史记录回滚和 Tab 补全，这个 Shell 用起来会非常痛苦。作者引入了 GNU readline 库来解决这个问题。通过 `readline(\"andsh$ \")` 替换原来的 `getline`，不仅自动处理了复杂的终端转义序列，还顺带获得了历史记录功能（`add_history`）。对于 Tab 补全，作者实现了一个 `completion_generator`，它的工作原理是扫描当前目录和 `$PATH` 下的所有可执行文件，找出与当前输入前缀匹配的项。这也揭示了 Shell 的一个性能痛点：每次敲击 Tab 触发补全时，Shell 可能要在后台发起数百次系统调用来扫描文件系统。"
+}

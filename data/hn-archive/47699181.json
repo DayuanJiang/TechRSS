@@ -1,0 +1,106 @@
+{
+  "id": 47699181,
+  "by": "vinhnx",
+  "title": "Open Source Security at Astral",
+  "url": "https://astral.sh/blog/open-source-security-at-astral",
+  "score": 275,
+  "createdAt": 1775709649,
+  "aiSummary": {
+    "chinese_title": "Astral开源供应链安全：GitHub信任边界与attestation争议",
+    "discussion_overview": [
+      {
+        "category": "安全指南被视为实用且紧迫",
+        "summary": "不少评论认为这篇关于发布流程安全的指南很有价值，尤其是在 Trivy 和 litellm 等近期 incident 之后，能把抽象的 supply-chain security 变成可执行的步骤。讨论里反复强调一个现实：只要依赖链和平台默认设置不安全，整体安全性就会被拉低。有人把它概括为“生态已经很强韧，但第三方代码的隔离工具和实践还远远不够”。这类观点把文章看作给开源项目补课的实用资源，而不是纯理论讨论。",
+        "supportid": [
+          "47699656",
+          "47700420"
+        ]
+      },
+      {
+        "category": "对 GitHub CI/平台信任边界的怀疑",
+        "summary": "另一组评论集中质疑 GitHub 的 CI 和后端基础设施是否适合承载 supply-chain security。有人直接认为，如果按文中描述才能安全使用，那这个系统本身就不满足最基本的 privilege 和 isolation 原则。也有人追问，当安全流程深度依赖 GitHub、上游协作关系和 PyPA 时，一旦 GitHub 出现 bug、被入侵，或者改变某个设置的语义，整个方案会不会一起失效。这个视角的核心是：把信任链建立在一个大型平台的默认行为之上，本身就是巨大风险。",
+        "supportid": [
+          "47701043",
+          "47700304"
+        ]
+      },
+      {
+        "category": "attestation 与多签替代方案",
+        "summary": "有评论提出一个名为 Asfaload 的开源方案，强调它是 auditable、accountless、可自托管的 multi-sig 文件认证系统，目标是验证下载内容确实来自预期作者。对比之下，GitHub 的 release attestation / sigstore 被认为是另一条路线，但 Asfaload 强调用“key 即身份”、公开的 git 后端和多签来降低单点账号被盗的风险。反对者则指出，问题不只是有没有 attestation，而是“没人检查”——即便 axios 的被攻陷版本之外的发布都有 attestation，npm 仍然照装不误。于是也有人主张，真正需要的是能自动审计每一行代码的工具，而不是继续信任作者身份。",
+        "supportid": [
+          "47699851",
+          "47699900",
+          "47699990",
+          "47699996",
+          "47700028",
+          "47700789",
+          "47699934"
+        ]
+      },
+      {
+        "category": "开源志愿者在补大厂没做的安全功课",
+        "summary": "还有人对供应链安全投入的失衡表示不满，举 stagex 这个项目为例：它把 uv 的构建做到从 signed package commits、signed reviews 到 multi-signed deterministic artifacts，但项目几乎靠志愿者和极少捐助维持。评论的情绪很直接：为什么一群几乎不拿钱的 hacker 要比 OpenAI 这种大公司在 supply chain security 上投入更多。回复则从开源许可角度解释，很多公司可以免费使用志愿者劳动，因此缺乏主动投入安全的动力。这个分歧反映出开源安全的现实困境：技术上可行，经济激励却常常缺席。",
+        "supportid": [
+          "47700689",
+          "47701128"
+        ]
+      },
+      {
+        "category": "uv 的使用方式与 sandboxing 风险",
+        "summary": "围绕 uv 的讨论则落在日常开发实践上。有人注意到，uv 常被当作在宿主机上切换 Python 版本、避免依赖冲突的工具，这让人担心大家在没有 sandboxing 的情况下直接跑大量第三方工具。也有人回应说自己把 uv 放在 Docker 里用，主要是为了更顺手的 project 管理和比 raw Python container + requirements.txt 更好的 DX。另一些人补充说他们仍会再加一层 sandbox 或 VM，并用 cooldown period 之类的机制控制更新频率，甚至提到 pip 近期也开始支持相对时间设置。",
+        "supportid": [
+          "47700257",
+          "47700347",
+          "47700387",
+          "47700935",
+          "47700426",
+          "47700489"
+        ]
+      },
+      {
+        "category": "Nix/Guix 与可复现构建被反复“重新发明”",
+        "summary": "对 hash pinning、lockfile 和“map lookup”式依赖管理的吐槽也很集中，很多人觉得这像是在重新发明一个更差版本的 nixpkgs 和 flakes。支持者认为 Nix/Guix 这类系统能提供 declarative、reproducible builds，很多供应链问题在设计层面就能少掉。反对者则指出，Nix 虽然强，但必须按 Nix 的方式做事，学习成本高、命名混乱、文档难懂，而且它的“reproducible”并不自动等于讨论中所需的那种可验证一致性。整体上，这组评论表达的是一种疲惫感：每次供应链攻击爆出来，业界都像是从头再学一遍老问题。",
+        "supportid": [
+          "47700952",
+          "47700068",
+          "47700179",
+          "47700267",
+          "47700419",
+          "47700764",
+          "47700975",
+          "47701181"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Trusted Publishing",
+        "explanation": "PyPI 的发布机制之一，使用短期身份凭证（通常基于 OIDC）让维护者发布包，尽量避免长期密钥泄露风险。"
+      },
+      {
+        "term": "release attestation / artifact attestation",
+        "explanation": "对发布包或构建产物做签名和 provenance 证明，用来验证它确实由预期的源码和 workflow 生成。"
+      },
+      {
+        "term": "sigstore",
+        "explanation": "一个开源的软件签名与验证体系，通常结合 OIDC、签名服务和透明日志来验证软件供应链。"
+      },
+      {
+        "term": "multisig",
+        "explanation": "多重签名机制，需要多个独立密钥或维护者共同签署，能降低单个账号或密钥被攻破后的风险。"
+      },
+      {
+        "term": "sandboxing",
+        "explanation": "把第三方代码或工具隔离在受限环境中运行，减少它对宿主机和敏感资源的影响。"
+      },
+      {
+        "term": "Nix/Guix",
+        "explanation": "强调 declarative、reproducible builds 的包管理/构建系统，常被用来讨论可复现构建和供应链安全。"
+      }
+    ],
+    "context": "Astral 是 Python 工具 uv 背后的公司，这场讨论围绕它们总结的开源发布安全流程展开，重点是如何减少 supply-chain attack。评论把焦点拉到 GitHub Actions（GitHub 的持续集成服务）、PyPI（Python Package Index）上的 Trusted Publishing（用短期身份凭证发布包）以及 release attestation / artifact attestation（给构建产物做签名证明）上。有人补充说，Trail of Bits（安全研究公司）曾协助 PyPI 实现 Trusted Publishing；也有人拿 sigstore（基于 OIDC 的签名与验证体系）和 Asfaload（一个可自托管的多签文件认证方案）作对比。另一些评论把讨论延伸到 Nix/Guix（强调可复现构建的包管理系统）、sandboxing（隔离第三方代码）以及 uv 在 Docker 或宿主机上的使用方式，争论这些方案在真实开发流程里是否真的会被执行。",
+    "emoji": "⚠️",
+    "sarcastic_question": "把信任链全压在GitHub上也叫安全？"
+  },
+  "articleSummary": "## 一句话总结\nAstral 通过激进地禁用 GitHub Actions 危险触发器、强制全链路 Commit Hash 固化、引入 GitHub App 隔离高风险操作，以及利用 Sigstore 和 Trusted Publishing 等技术，构建了一套\"默认不信任\"的供应链安全体系。\n\n### 供应链安全不能只靠\"信任\"，得靠\"零信任\"\nAstral 维护着 Ruff、uv 等百万级开发者依赖的工具，这种体量意味着一旦供应链被攻破，破坏力是惊人的。现在的开发者越来越焦虑，毕竟像 Trivy 和 LiteLLM 这种知名项目都曾遭遇过供应链攻击。Astral 的思路很明确：不能指望用户的盲目信任，必须把安全机制做到极致。他们不仅是为了保护自己，更是为了给整个开源社区提供一个可参考的安全范式。\n\n### GitHub Actions 的默认配置其实是个\"坑\"\nGitHub Actions 虽然方便，但它的安全默认值其实很糟糕。像 Ultralytics 和 Nx 这些项目的被黑，往往都是从 `pull_request_target` 或 `workflow_run` 这些危险触发器开始的。Astral 的做法非常激进：直接在整个组织层面禁用了这些触发器。很多项目以为自己需要这些权限来给 PR 留评论，但 Astral 发现，绝大多数情况下，用 Job Summary 或者查看日志就够了。如果真的必须给第三方 PR 留言，那就别用 Actions，改用 GitHub App。\n\n### 依赖管理不能只看 Tag，必须死磕 Commit Hash\n为了防止依赖被篡改，Astral 要求所有 Actions 必须固定到具体的 Commit SHA，而不是 Tag 或分支。这听起来不难，但执行起来很硬核：他们不仅用 zizmor 做静态分析检查，还开启了 GitHub 的\"必须使用完整 Commit SHA\"的硬性策略。这意味着连间接依赖的 Actions 也必须 Hash-pinned。为此，他们甚至专门去协调下游项目修改配置。但这还不够，因为 Hash 固定只能保证代码不变，不能保证代码里下载的二进制文件不变。所以，他们还得手动审查依赖，确保下载 URL 对应的是 cryptographic hash，把这种\"可变指针\"彻底锁死。\n\n### 权限最小化不是说说而已，是层层设防\n在权限管理上，Astral 贯彻了\"最小权限原则\"。他们在组织级别默认只给只读权限，每个 Workflow 开头显式写 `permissions: {}`，然后按需开启。Secrets 也不存在仓库级别了，全部塞进 Deployment Environments 里。这样，即使一个跑 lint 的任务被攻破了，它也拿不到发布 Release 的 Token。这种隔离机制极大地限制了攻击爆炸半径。\n\n### 有些活儿 GitHub Actions 干不了，得交给专门的 Bot\n有些功能 GitHub Actions 能做，但做不安全，比如给第三方 Issue 留言。这时候，Astral 会用自家的 `astral-sh-bot`（基于 GitHub App）来处理。GitHub App 虽然也要处理敏感信息，但它不像 Actions 那样容易受到模板注入攻击。不过，这并不意味着有了 App 就能随便跑不可信代码，该有的安全意识一点不能少。虽然开发和维护一个 App 比写 Workflow 麻烦，但为了安全，这个代价是值得的。\n\n### 发布流程是重灾区，必须物理隔离\n发布环节是攻击者的最爱，Astral 在这里布下了重重防线。首先，他们全面启用 Trusted Publishing（OIDC），彻底抛弃长期有效的 Token，防止凭证泄露导致包被劫持。其次，他们用 Sigstore 生成签名证明，让用户能验证下载的二进制文件确实来自 Astral 的 CI 流程。此外，发布时严禁使用缓存，以防缓存投毒攻击。最后，结合 GitHub 的 Immutable Releases 功能，确保一旦发布，谁也没法偷偷替换包。\n\n### 仓库层面的管理，要把\"人\"的因素也管起来\n除了技术手段，管理流程也得跟上。Astral 严格限制 Admin 角色的数量，全员强制开启强 2FA（至少是 TOTP 级别）。分支保护规则在组织层面强制执行，Admin 也无权绕过。特别是发布 Tag，必须通过手动审批，且只能从 `main` 分支打出来。他们甚至禁止创建 `advisory-*` 这种特定模式的分支，防止安全工作提前泄露。这些规则虽然繁琐，但有效防止了内部账号被黑后的连锁反应。"
+}

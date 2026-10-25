@@ -1,0 +1,75 @@
+{
+  "id": 47215602,
+  "by": "todsacerdoti",
+  "title": "Hardware hotplug events on Linux, the gory details",
+  "url": "https://arcanenibble.github.io/hardware-hotplug-events-on-linux-the-gory-details.html",
+  "score": 145,
+  "createdAt": 1772739016,
+  "aiSummary": {
+    "chinese_title": "Linux 硬件热插拔事件详解：udev、netlink、权限与固件时序坑",
+    "discussion_overview": [
+      {
+        "category": "设备固件与热插拔时序问题",
+        "summary": "有评论举例一个廉价外设（DDR 控制器）在 coldplug 能工作但在 hotplug 无法正常枚举。原因是设备固件在刚插入时尚未准备好被轮询以返回 USB descriptors，用户空间/内核马上去读会得到不完整或错误信息。实际变通是用 udev hack 暂停设备再让其重连，或者按厂商“慢速插入”的建议人为延迟，以等待固件就绪。这个实例说明很多热插拔问题源于固件时序与探测流程不匹配，而非内核本身逻辑简单错误。",
+        "supportid": [
+          "47268226"
+        ]
+      },
+      {
+        "category": "udev 规则复杂性与设备访问权限的痛点",
+        "summary": "多位评论者抱怨 udev 规则细节和子系统差异会带来大量纸上补丁和不可预期的权限问题。一个常见案例是 FPGA 板同时暴露 JTAG（CMSIS-DAP）与串口，JTAG 通过 hidraw/接口标识需要一条规则让普通用户访问，而串口则可能被 ModemManager 探测并占用，导致设备表现为 /dev/ttyACM0 或 /dev/ttyUSBn 的差异。工具实现的改变也会触发新问题：旧版使用 rawhid、新版改用 libusb，会要求不同的 udev 匹配条件，因此升级后访问可能失效。评论列举了解决方式与示例规则（需同时包含 SUBSYSTEM=\"hidraw\", ATTRS{interface}==\"CMSIS-DAP\", MODE=\"0660\", GROUP=\"plugdev\" 和 SUBSYSTEM=\"usb\", ATTR{idVendor}==\"1d50\", ATTRS{idProduct}==\"602b\", MODE=\"0660\", GROUP=\"plugdev\"），并建议通过在规则中设置 ENV{ID_MM_PORT_IGNORE}=\"1\" 来让 ModemManager 忽略特定端口。",
+        "supportid": [
+          "47267903",
+          "47270057",
+          "47270116",
+          "47271015",
+          "47272469",
+          "47271855"
+        ]
+      },
+      {
+        "category": "内核到用户空间的热插拔事件流（技术细节）",
+        "summary": "有评论用 mermaid 时序图把从物理插入到用户态应用收到事件的完整链路画了出来：内核检测到设备并通过 kobject_add/device_add 生成 uevent（kobject_uevent_env），将原始 uevent 用 netlink 多播到内核监听组；systemd-udevd 接收后解析、按规则加载固件、运行 usb_modeswitch、设置权限并创建 /dev 节点与符号链接，必要时触发 systemd 的 .device 单元。udevd 会构建增强的 udev 包（包含 libudev header，例如字符串 libudev 后跟 NUL 终止符、magic 0xfeedcafe、MurmurHash2 摘要和 64-bit Bloom filter），然后通过另一组 netlink 广播给用户态程序；应用程序通过 libudev_monitor 或原始 netlink socket 接收并解析这些二进制属性后才开始打开设备或查询 sysfs。该图和说明被认为对理解事件时序、数据结构与处理责任划分非常有帮助，评论者还讨论了 mermaid.live 的使用细节。",
+        "supportid": [
+          "47268410",
+          "47268630",
+          "47269039"
+        ]
+      },
+      {
+        "category": "命名与实现细节的轻松吐槽",
+        "summary": "部分评论以幽默口吻吐槽实现细节和文件命名，例如拿 linux_netink.c 的名字开玩笑并认为 netink 比 blog 更酷，同时抱怨在 udev 包格式中混淆不同 endianness 是“diabolical”的设计。还有人戏称存在名为 netten 的网络接口，随意谈到时间反转等花腔，这反映出讨论中既有技术批评也有轻松调侃。总体语气在认真拆解实现细节与吐槽命名可读性之间摇摆。",
+        "supportid": [
+          "47271001",
+          "47271351"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "udev",
+        "explanation": "udev（Linux 的设备管理守护进程），接收内核发出的 uevent，按规则（/lib/udev/rules.d、/etc/udev/rules.d）处理事件、加载固件、创建 /dev 节点并广播处理后的信息。"
+      },
+      {
+        "term": "netlink",
+        "explanation": "netlink（Linux 内核与用户空间的 IPC 机制），用于多播内核 uevent 到监听组并在 udevd 处理后再次广播用户态事件，应用可通过 raw netlink 或 libudev_monitor 接收。"
+      },
+      {
+        "term": "ModemManager",
+        "explanation": "ModemManager（管理移动/串口调制解调器的守护进程），默认会扫描串口设备并发送 AT 命令以识别调制解调器，可能误触占用端口；可通过 udev 规则设置 ENV{ID_MM_PORT_IGNORE}=\"1\" 让其忽略特定端口。"
+      },
+      {
+        "term": "libudev",
+        "explanation": "libudev（与 udev 交互的用户空间库），提供监视、接收与解析 udevd 广播的二进制事件包的 API，常用于用户态程序感知设备变化。"
+      },
+      {
+        "term": "ttyACM / ttyUSB",
+        "explanation": "ttyACM 与 ttyUSB 是 Linux 下的两类串口设备节点：ttyACM 对应遵循 CDC-ACM 规范的 USB 设备（常见于虚拟串口/调制解调器），ttyUSB 通常对应基于芯片（如 FTDI）的 USB-串口适配器；两者会被不同机制或守护进程以不同方式处理。"
+      }
+    ],
+    "context": "原文深入剖析 Linux 中硬件热插拔（hotplug）事件的底层实现，重点在内核如何发出 uevent、netlink（Linux 内核与用户空间的 IPC 机制）如何传递事件，以及 systemd-udevd（udev 的守护进程）如何解析规则、加载固件并创建 /dev 节点。评论里补充了实战问题：某些 USB 设备热插拔瞬间固件未就绪导致 USB descriptors 读不到，需要用 udev hack 暂停再重连或采用厂商建议的“慢速插拔”；另有 ModemManager（管理调制解调器的守护进程）会探测并占用串口，影响 ttyACM/ttyUSB 的行为和权限。文章及评论中的 mermaid 时序图还揭示了 udev 广播包的内部格式（如 libudev header、magic 0xfeedcafe、MurmurHash2、64-bit Bloom filter）以及 systemd 对 .device 单元的触发链。讨论建立在读者对 Linux 内核设备模型、USB 描述符、udev 规则语法与常见用户态库（如 libusb、rawhid、libudev）的基础知识之上。",
+    "emoji": "🔌",
+    "sarcastic_question": "你就指望设备固件随插即用、免写udev规则？"
+  },
+  "articleSummary": "## 一句话总结\nLinux 硬件热插拔事件本质上是通过 Netlink Socket 传输的，内核发送原始字符串，而 udev 负责封装并广播经过哈希过滤的结构化数据。\n\n### libusb 的后端选择：udev 还是 Netlink？\n一切始于作者想探究如何在 Linux 下检测 USB 设备插拔。通常大家会直接用 libusb，但翻看源码会发现它有两个后端：`linux_udev.c` 和 `linux_netlink.c`。官方文档强烈推荐使用 udev，原因很现实：为了避坑。如果直接监听内核，你可能会在 udev 正在修改权限、上传固件或者切换 USB 模式时就读取到了设备状态，从而引发竞态条件。所以，libusb 默认把 udev 作为首选，只有显式配置时才会退回到 Netlink。\n\n### udev 的角色：内核事件的“二传手”\n既然 udev 这么重要，它到底在干什么？说白了，它就是个事件中转站。内核通过 Netlink 协议把设备变动告诉 udev，udev 处理完（比如加载驱动、设置权限）后，再把事件广播给其他监听者。有意思的地方在于，udev 和 libudev 早就被并入了 systemd 代码库。这意味着，如果你想绕过 libudev 直接监听这些广播，就得去啃 systemd 的源码，搞清楚它到底用了什么 IPC 机制。\n\n### Netlink：内核与用户态的专用通道\n在深入代码前，得先理解 Netlink 是什么。它是 Linux 特有的一种基于 Socket 的通信协议，专门用于内核和用户空间交换数据。和普通的 TCP/UDP 不同，Netlink 特别适合内核主动向用户态发通知（毕竟系统调用只能由用户态发起）。它像 UDP 一样传数据报，也支持多播，这就允许多个程序同时监听同一个内核事件源。\n\n### 监听内核：最原始的热插拔数据\n如果你想绕过 udev，直接听内核的“心里话”，其实很简单。创建一个 `AF_NETLINK` 类型的 Socket，协议指定为 `NETLINK_KOBJECT_UEVENT`，然后绑定到多播组 `MONITOR_GROUP_KERNEL`（值为 1）。这样，你就能用 `recv` 系统调用直接收到内核发来的消息了。这些消息非常原始，就是一连串以 null 结尾的字符串，包含了 `ACTION=add`、`DEVPATH`、`SUBSYSTEM=usb` 等键值对，没有任何花哨的封装。\n\n### udev 的广播：加了“料”的数据包\n那如果监听 udev 广播出来的事件呢？这就复杂多了。你需要绑定到另一个多播组 `MONITOR_GROUP_UDEV`（值为 2）。收到的数据包不再是纯文本，而是一个带 Header 的二进制结构。Header 里有个魔数 `0xfeedcafe` 和 \"libudev\" 标识，紧接着是属性数据的偏移量和长度。这里有个巧妙的设计：为了提高效率，udev 在 Header 里预计算了 `SUBSYSTEM` 和 `DEVTYPE` 的 MurmurHash2 哈希值，甚至还放了一个关于 TAGS 的 Bloom Filter（布隆过滤器）。这样，用户态程序在处理数据包前，可以先比对哈希，快速过滤掉不感兴趣的事件，省去了解析字符串的开销。"
+}

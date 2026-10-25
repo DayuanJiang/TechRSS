@@ -1,0 +1,83 @@
+{
+  "id": 47874647,
+  "by": "russellthehippo",
+  "title": "Show HN: Honker – Postgres NOTIFY/LISTEN Semantics for SQLite",
+  "url": "https://github.com/russellromney/honker",
+  "score": 238,
+  "createdAt": 1776946223,
+  "aiSummary": {
+    "chinese_title": "Honker：给 SQLite 加 Postgres 式 NOTIFY/LISTEN、队列和事件流",
+    "discussion_overview": [
+      {
+        "category": "SQLite 小应用的消息/队列层",
+        "summary": "作者介绍 Honker 给 SQLite 增加跨进程 NOTIFY/LISTEN，基于 WAL 文件的 stat(2) 轮询实现毫秒级推送，不需要 daemon 或 broker。它还把 ephemeral pub/sub、durable work queue、event stream 都做成直接写进现有 .db 的行，并且能和业务写入一起原子提交。评论里有人说自己正好有很多 SQLite 小应用，长期缺 queue 和 scheduler，这类本地替代 SQS/Lambda 的需求很强。也有人对轻量 Kafka 式的持久消息流感兴趣，说明大家把它看成 SQLite 生态里的消息层而不只是通知接口。",
+        "supportid": [
+          "47874837",
+          "47876567",
+          "47877449",
+          "47877384"
+        ]
+      },
+      {
+        "category": "与 Postgres / 后端解耦的对照",
+        "summary": "一些评论者把它和 Postgres 的 LISTEN/NOTIFY 对比，表示自己在 Postgraphile（基于 PostgreSQL 的 GraphQL 工具）上依赖这个模式，希望未来能换成可插拔后端而不被某个数据库服务锁死。另有评论直接提到 PostgreSQL 19 会通过 selective signaling 优化 LISTEN/NOTIFY，在大量监听者分布在不同 channel 时更能扩展。还有人指出 Litestream（SQLite 复制工具）的只读 replica 可能分布在不同地点，这让跨进程通知更有现实意义。整体上，这组讨论说明 Honker 的吸引力不仅是“给 SQLite 加消息”，也是把应用从特定 server 架构里解耦出来。",
+        "supportid": [
+          "47875808",
+          "47877712",
+          "47875422"
+        ]
+      },
+      {
+        "category": "实现方式：WAL 监视、系统调用与替代 API",
+        "summary": "很多人追问为何用 stat(2) 轮询 WAL，而不是 inotify（Linux 文件事件接口）、kqueue/FSEvents（BSD/macOS 文件事件接口），或者 SQLite 自带的 `PRAGMA data_version` / `SQLITE_FCNTL_DATA_VERSION`。作者回应说 Darwin（macOS 的内核平台）在同一进程里会丢通知，所以文件事件方案不够稳，stat polling 虽然看起来粗糙，却是跨平台最可靠的办法。评论里有人测到每 1ms 调一次 stat 的成本非常低，也有人补充 syscalls（系统调用）通常比想象中快，但 filesystem/VFS、cache 争用和其他隐性开销仍然存在。另一条评论则担心 WAL checkpoint 后文件回缩时会不会漏 wakeup，说明实现细节是大家最关注的风险点。",
+        "supportid": [
+          "47875217",
+          "47876858",
+          "47876887",
+          "47875062",
+          "47875270",
+          "47875976",
+          "47876343",
+          "47876645",
+          "47876675"
+        ]
+      },
+      {
+        "category": "原子一致性、回放与 checkpoint 风险",
+        "summary": "支持者认为这类方案最关键的卖点，是通知和业务写入共享同一个 SQLite transaction，因此可以避免外部 IPC 常见的“消息发出但事务回滚”问题。作者还把 durable queue with retries/dead-letter、per-consumer offsets 的 event stream 放进同一个 .db 文件里，等于把消息系统直接嵌进数据库。有人进一步追问它能否像轻量 Kafka 一样支持从某个 timestamp 回放历史加实时消息，说明大家不仅想要即时通知，还想要可恢复的流语义。与此同时，WAL checkpoint/truncation 会不会造成事件丢失，是这套设计必须回答的可靠性问题。",
+        "supportid": [
+          "47876399",
+          "47877384",
+          "47874837",
+          "47875062"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "WAL（Write-Ahead Log）",
+        "explanation": "SQLite 的预写日志；这里用来检测数据库变更并驱动通知。"
+      },
+      {
+        "term": "LISTEN/NOTIFY",
+        "explanation": "Postgres 的异步通知机制，客户端订阅 channel 后接收事件。"
+      },
+      {
+        "term": "stat(2)",
+        "explanation": "POSIX 文件元数据系统调用；这里用来轮询 WAL 文件是否变化。"
+      },
+      {
+        "term": "checkpoint",
+        "explanation": "SQLite 将 WAL 合并回主数据库并可能截断 WAL 的过程。"
+      },
+      {
+        "term": "Litestream",
+        "explanation": "用于持续复制 SQLite 数据库到远端存储或副本的工具。"
+      }
+    ],
+    "context": "Honker 是一个给 SQLite（嵌入式数据库）加跨进程通知语义的实验项目，目标是把 Postgres 的 LISTEN/NOTIFY、队列和事件流能力带到“只用一个 .db 文件”的应用里。它依赖 SQLite 的 WAL（Write-Ahead Log，预写日志）和 `stat(2)` 来发现变更，所以可以在没有独立 server、daemon 或 broker 的情况下工作。评论里很多人把它放进现实场景：Python/JS/TS/Ruby 这类更偏进程隔离的语言、使用 Litestream（SQLite 复制工具）的只读副本、以及需要 queue/scheduler 的小型 Web 应用。讨论还反复围绕 WAL checkpoint、同进程文件事件丢失，以及和 PostgreSQL 19 的 LISTEN/NOTIFY 优化相比各自的取舍展开。",
+    "emoji": "🪿",
+    "sarcastic_question": "连 WAL 都兼职消息总线了，还要 broker 干嘛？"
+  },
+  "articleSummary": "## 一句话总结\nHonker 通过监听 SQLite 的 WAL 文件变化，把轮询变成了毫秒级的推送通知，让你在不引入 Redis 的情况下，直接在同一个数据库文件里实现原子性的任务队列和 Pub/Sub。\n\n### 为什么不用 Redis？因为 SQLite 其实够用\n现在的趋势是 SQLite 越来越多地作为 shipped projects 的主力数据库。一旦涉及到异步任务或消息通知，大家惯性的解决方案是“上 Redis + Celery”。这招虽稳，但代价不小：你得维护两套存储系统，还得处理业务表和队列之间的“双写一致性问题”。Honker 的思路很直接：既然 SQLite 是你的主库，那队列和消息流就该住在同一个文件里。这样 `INSERT INTO orders` 和 `queue.enqueue(...)` 就能在同一个事务里提交，要么一起成功，要么一起回滚，彻底消灭了数据不一致的隐患。\n\n### 核心魔法：把 WAL 文件当成信号灯\n要实现 Pub/Sub，最大的难点是怎么让 Worker 知道“有活干了”而不去疯狂轮询数据库。Honker 的解决方案非常巧妙：它利用了 SQLite 的 WAL（Write-Ahead Logging）机制。每次事务提交，WAL 文件的大小或修改时间必然变化。Honker 起了一个后台线程，每 1 毫秒用 `stat(2)` 检查一下 `.db-wal` 文件。一旦发现变化，就立刻唤醒所有订阅者去执行 `SELECT`。这把传统的“定时轮询 DB”变成了“文件变化触发推送”，实现了个位数毫秒的延迟，而且空闲时几乎不消耗 CPU。\n\n### 为什么必须死磕 WAL 模式？\n正因为依赖文件变化作为信号，Honker 强制要求开启 `journal_mode = WAL`。这不仅仅是为了监听，更是为了并发性能。在默认的 DELETE 模式下，写操作会拿排他锁，会把所有读操作堵死；而在 WAL 模式下，读写可以并发。虽然作者也承认 `stat(2)` 比 Linux 的 `inotify` 这种内核级通知慢大概 0.5 毫秒，但为了跨平台兼容性（特别是 macOS 上 FSEvents 对同进程写入支持不好），这点延迟牺牲是值得的。\n\n### 不是简单的 Notify，而是三种原语组合\nHonker 并没有简单照搬 Postgres 的 `NOTIFY/LISTEN`，而是提供了三层语义：最底层是 `notify()`，即发即忘，不保存历史；中间层是 `stream()`，持久化的 Pub/Sub，每个消费者有自己的 offset，支持回放；最上层是 `queue()`，也就是完整的任务队列，支持重试、优先级、延迟任务和死信队列。这三者本质上都是数据库里的 INSERT 操作，通过事务绑定在一起，保证了业务逻辑和消息发送的原子性。\n\n### 架构设计：Rust 写核心，各语言做薄壳\n为了保证性能和一致性，Honker 的核心逻辑（包括磁盘布局定义）是用 Rust 写的，编译成一个 SQLite 的 Loadable Extension。Python、Node、Go 等语言的 binding 只是很薄的包装层。这意味着不管你用什么语言写业务，只要连的是同一个 `.db` 文件，Python 进程入队的任务，Node.js 进程也能取出来消费。这种设计让跨语言的协作变得极其简单，不需要额外的 Broker 进程。\n\n### 性能与取舍：单机场景的极致优化\n在架构上，Honker 是典型的单机优化方案。它利用了 SQLite 单写多读的特性，Claim 任务通过一个带条件的 Partial Index 来实现高效的 `UPDATE ... RETURNING`。虽然它不支持多主复制或复杂的 DAG 编排，但对于绝大多数单体应用或边缘计算场景来说，这已经足够了。说白了，它就是用极低的运维成本，换取了接近 Redis 的队列性能，同时还附赠了 ACID 事务的安全感。"
+}

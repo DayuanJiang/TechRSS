@@ -1,0 +1,102 @@
+{
+  "id": 49272549,
+  "by": "gutechh",
+  "title": "Why Tiny JPEGs Look Different in Chrome",
+  "url": "https://guillaumetech.github.io/posts/jpg-scaling-chrome/",
+  "score": 254,
+  "createdAt": 1786544440,
+  "aiSummary": {
+    "chinese_title": "Chrome 小 JPEG 变样：Firefox 下采样与图标格式争议",
+    "discussion_overview": [
+      {
+        "category": "Chrome 的小图优化会改变观感",
+        "summary": "有人指出 Chrome 新引入的图像优化会让极小的 JPEG 结果和其他浏览器或编辑器不一样，而且这个变化还真实影响过 Electron 升级，导致产品里的图标出现明显变形。评论里提到，这类问题在照片上不太容易察觉，但在某些 icon 上会很刺眼，所以很难靠普通回归测试覆盖。也有人认为 Chrome 虽然很吃 RAM，但省下的那点内存未必值得冒视觉风险，不过在特定场景里它确实能工作得很好。",
+        "supportid": [
+          "49274051",
+          "49273558",
+          "49273369"
+        ]
+      },
+      {
+        "category": "Firefox 也在解码时做下采样",
+        "summary": "另一组评论在纠正 Firefox 的做法：它并不是先把图片完整解码成全分辨率 buffer 再缩小，而是采用 streaming decode，并在解码过程中直接做 downscale-during-decode。有人还贴出 Mozilla 的 Bugzilla 链接，说明 Firefox 也在持续推进“低分辨率解码”的优化。这样一来，Chrome 和 Firefox 的差别就不只是“有没有优化”，而是优化路径和实现细节不同。",
+        "supportid": [
+          "49273222",
+          "49273314",
+          "49273463",
+          "49273852",
+          "49273497"
+        ]
+      },
+      {
+        "category": "差异主要来自缩放算法与图像内容",
+        "summary": "很多人认为，真正拉开差距的是缩放算法本身：Chrome 往往更 blur，Firefox 更 sharp，但会带来一些 ringing artifacts。评论里拿 Lanczos 和 Bilinear 做类比，指出没有唯一“正确”的算法，哪种更好取决于图像类型和人眼偏好。也有人提到 LPIPS、PSNR、gamma correction、JPEG 的非线性 YCbCr，以及 moiré patterns 等因素，说明这个问题往往是多因素叠加，而不是单一根因。",
+        "supportid": [
+          "49273283",
+          "49273520",
+          "49273669",
+          "49273455",
+          "49274848",
+          "49273994",
+          "49276058"
+        ]
+      },
+      {
+        "category": "图标格式选择：JPEG 不适合",
+        "summary": "不少评论直接质疑：把小图标存成 JPEG 本身就不合适，因为 JPEG 更适合照片而不是图标。大家更倾向于用 SVG（可缩放矢量图）做 icon，或者用 PNG/WebP 这类位图格式；SVG 还能适配 light/dark mode，但也会带来样式冲突、shadow DOM 隔离之类的工程麻烦。对 PNG 的讨论则集中在它是 lossless、支持 alpha，但不能像 JPEG 那样做同类的部分解码，因此格式选择会直接影响浏览器管线。",
+        "supportid": [
+          "49274227",
+          "49274561",
+          "49274903",
+          "49274051",
+          "49275419",
+          "49274747",
+          "49275670"
+        ]
+      },
+      {
+        "category": "JPEG 的历史与性能背景",
+        "summary": "还有一条线索从历史和性能角度解释这种优化：JPEG 诞生于 CPU 很贵、显示器还是模拟时代，所以它的编码方式和现代数字屏幕并不完全匹配。评论提到 MozJPEG（Mozilla 优化过的 JPEG 实现）、8x8 block、powers of two，以及把大图缩成小缩略图时会经历多步处理，细节很容易变成灰糊。也有人补充，现代所谓 retina 屏和不同 DPI 让素材尺寸更难统一，设计师常会准备比最终展示更大的位图以兼顾多种显示场景。",
+        "supportid": [
+          "49274567",
+          "49274382",
+          "49274487"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "IDCT scaling",
+        "explanation": "JPEG 解码时直接按逆离散余弦变换（IDCT）输出较低分辨率，避免先完整解码再缩放。"
+      },
+      {
+        "term": "downscale-during-decode",
+        "explanation": "在解码过程中同步做下采样的策略，能减少内存和 CPU 开销。"
+      },
+      {
+        "term": "Lanczos",
+        "explanation": "一种较锐利的重采样算法，细节保留好，但容易出现 ringing。"
+      },
+      {
+        "term": "Bilinear",
+        "explanation": "一种更简单的插值算法，结果更平滑，但通常更模糊。"
+      },
+      {
+        "term": "LPIPS",
+        "explanation": "一种更贴近人类主观感受的图像质量指标。"
+      },
+      {
+        "term": "PSNR",
+        "explanation": "传统的峰值信噪比指标，易计算，但不一定符合人眼偏好。"
+      },
+      {
+        "term": "moiré patterns",
+        "explanation": "规则重复纹理在缩放或采样时产生的干涉状条纹。"
+      }
+    ],
+    "context": "这条讨论围绕 Chrome（Chromium 系浏览器）在处理特别小的 JPEG 时，为什么会和别的工具显示不同展开。核心背景是 JPEG 采用 8x8 DCT（离散余弦变换）块编码，浏览器在缩放时可能选择“解码时下采样”或先部分解码再缩放，因此 tiny thumbnail 的观感会受实现细节影响。Firefox 相关的 Bugzilla（Mozilla 的 bug tracker）里也有人在做 downscale-during-decode（解码过程中直接缩小），所以这不是单一浏览器的问题，而是图像管线和重采样算法差异的体现。评论还把话题扩展到实际工程取舍：Electron（基于 Chromium 的桌面应用框架）里图标被放大/缩小时会暴露问题，SVG、PNG、WebP 往往比 JPG 更适合非照片类素材。",
+    "emoji": "🤔",
+    "sarcastic_question": "谁会拿 JPEG 存图标还怪 Chrome 呢？"
+  },
+  "articleSummary": "## 一句话总结\n\nChrome 显示极小 JPEG 时会通过 partial IDCT scaling 跳过高频解码，这本是省内存、提速度的优化，却可能让图标丢掉边缘渐变并显得更粗、更厚。\n\n## 正文\n\n### 一个 15px 图标，为什么在 Chrome 和 Firefox 里不一样\n\n事情从一个很小的视觉差异开始。作者在同事电脑上看到同一个 logo，和自己机器上的效果不一样。它最终只渲染成 15px，但 Chrome 里的图标看起来更厚。对比图中，Firefox 的版本更纤细，也更接近原始图像。把图片换成 SVG 后，问题立刻消失了。可这并不是普通的浏览器渲染 bug，而是 Chrome 针对小尺寸 JPEG 做的一项解码优化。\n\n### 先完整解 JPEG，再缩小，实在太浪费\n\n直觉上的做法，是先把 JPEG 完整解压成位图，再把位图缩放到目标尺寸。这个流程没有错，但在“原图巨大、显示尺寸极小”的场景里很浪费。文章举了一个 2000 × 2000 JPEG 渲染为 20 × 20 的例子。完整解压后的位图大约要占用 12 MB，而最终的 20 × 20 结果只需要约 1.2 KB。也就是说，绝大部分被解出来的数据，随后都会在缩小时被丢掉。那既然注定要丢，能不能在解码阶段就不去生成它们？\n\n### 被缩小丢掉的，主要是高频细节\n\n这里的关键在于，缩小图像时损失的信息并不是随机的。消失最多的是高频信息，也就是像素之间变化很快的细节。树叶、树皮的纹理、细窄的边缘和细微渐变，都属于这类信息。把一棵细节丰富的树缩成 20 × 10 后，树冠基本只剩一团绿色，树干则变成一根棕色的线。低频信息，也就是大块颜色和整体轮廓，还会保留下来。高频细节虽然有时会通过混合留下些痕迹，但已经不再是缩略图的主要内容。\n\n### JPEG 恰好把图像拆成了“高频和低频”\n\nJPEG 的编码方式，刚好给这种优化留出了入口。它会把图像切成 8 × 8 的块，并通过 DCT（Discrete Cosine Transform）把每个块转换到频域。频域中的左上角是 constant component，也就是完全不变化的平坦颜色。右下角则对应最高频率，视觉上类似黑白棋盘格。中间的各种 basis functions，则代表不同程度的像素变化模式。JPEG 会记录每种模式在这个 8 × 8 块里占多少，这些数值就是 coefficients。\n\n### 缩到 1/8 时，根本不必把所有系数还原出来\n\n当图像需要缩小到原来的 1/8 时，一个原始的 8 × 8 JPEG block 刚好可以对应目标图上的一个像素。此时，目标图主要需要低频信息，因为高频纹理本来就会在后续缩放中被抹掉。于是解码器可以跳过高频 coefficients，只利用生成粗略图像所需的低频部分。这样得到的并不是“先完整解码，再缩小”的结果，而是直接从 JPEG 的频域信息中生成一个低分辨率版本。解出来的图像占用更少内存，解码速度也更快。这个技术叫 partial IDCT scaling，也能应用于分母为 8 的分数缩放比例。\n\n### Chrome 的巧妙之处，也正是图标变粗的原因\n\nChrome 把图像解码和渲染交给 Skia，而 Skia 解 JPEG 时使用 libjpeg-turbo。libjpeg-turbo 实现了 partial IDCT scaling，因此可以在目标尺寸足够小时只解出低频内容。Skia 会计算最接近的、分母为 8 的缩放比例，先按这个比例解码 JPEG。之后，它再用传统的 downsampling 算法，把这个中间结果缩到最终尺寸。问题就在于，作者的图标小到触发了 1/8 解码。此时保留下来的几乎只有 constant component，原图中本可柔化边缘的渐变和高频信息没有被用于解码，于是图标在 Chrome 中看起来更厚。\n\n### JPEG 的优化目标是照片，不是小图标\n\n这件事最有意思的地方在于，Chrome 并没有“错误地”渲染图片。它是在利用 JPEG 的频域结构，避免为一个极小的显示结果浪费解码成本。只是这种优化符合照片缩略图的感知需求，却不一定符合 icon 对边缘、线条和轮廓的要求。对于照片来说，舍弃一部分高频细节通常无伤大雅。对于 15px 的 logo 来说，少掉一点抗锯齿和边缘渐变，视觉重心就可能完全变了。说白了，JPEG 不适合承担小图标这类任务。格式名称里的 “Photographic”，其实已经点明了它最初的设计对象。"
+}

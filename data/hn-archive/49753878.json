@@ -1,0 +1,100 @@
+{
+  "id": 49753878,
+  "by": "wek",
+  "title": "An Empirical Study of Harness Design for Coding Agents",
+  "url": "https://arxiv.org/abs/2609.20804",
+  "score": 178,
+  "createdAt": 1789738257,
+  "aiSummary": {
+    "chinese_title": "编码代理 Harness 实证：bash-only、规划与上下文管理需按模型选配",
+    "discussion_overview": [
+      {
+        "category": "实证结论虽直观，但值得 formalize",
+        "summary": "这组评论普遍认可论文的核心结论：弱模型更需要规划和预定义工具，强模型更适合 bash-only，而且 context management 在上下文紧张时收益更大。有人觉得这些发现“很直观”，但也强调把直觉变成可复现的实验很重要，因为这能减少对 harness、model、prompt 可互换性的误判。也有人希望建立一份更系统的“LLM recipe book”，明确不同模型擅长什么，再决定该用哪种 harness。",
+        "supportid": [
+          "49754507",
+          "49754993",
+          "49754983"
+        ]
+      },
+      {
+        "category": "极简 agent 与简化 harness",
+        "summary": "不少评论支持“越简单越好”的思路，认为 minimal agent 和简单 harness 往往足够强，甚至在一些 benchmark 上比复杂方案更稳。有人举出 mini-swe-agent 和 Stirrup 作为例子，说明小而清晰的核心逻辑可以留出空间给更专门的 add-on 工具。围绕“100 行”宣传的争议，也反映出大家更关心核心 agent 代码的简洁性，而不是外围 glue code 的包装。",
+        "supportid": [
+          "49755993",
+          "49757034",
+          "49756710"
+        ]
+      },
+      {
+        "category": "上下文管理与会话续航",
+        "summary": "论文与个人经验都指向同一个方向：context management 在上下文窗口较小的时候最有价值，因为它能显著延长有效执行轨迹。有人分享自己会在窗口用到 25% 到 30% 时把状态写进 PROGRESS.md 和 JSON，然后重新开新会话，以避免 bloated session 带来的持续损耗。另一种观点则认为，在 400k 到 600k+ token 的长窗口里，频繁 handoff 的“接力传话”反而更容易出错，因此有时让同一 session 继续跑更省事。",
+        "supportid": [
+          "49757146",
+          "49757631"
+        ]
+      },
+      {
+        "category": "bash-only、structured tools 与 MCP 争论",
+        "summary": "评论里不断追问“bash-capable”到底是什么意思，最后大致被理解为模型是否已经足够会用 shell，不必再靠专用工具兜底。论文结论被概括为：对 bash-capable 模型，bash-only 往往优于 predefined tools；而对 shell 能力弱的模型，structured tools 仍然能明显提高成功率。这个结果也引发了对 MCP（Model Context Protocol，一种让 AI 通过标准化接口调用外部系统的协议）的争论：批评者认为它在模型学会 bash 后可能显得多余，支持者则强调企业级安全、审计、撤销权限和远程执行环境才是它的主要价值。",
+        "supportid": [
+          "49755940",
+          "49756696",
+          "49756638",
+          "49755463",
+          "49756945",
+          "49755934",
+          "49756755",
+          "49756494"
+        ]
+      },
+      {
+        "category": "模型选择、可迁移性与 frontier 争议",
+        "summary": "有人质疑研究只用了 Nemotron-3 和 Mistral-Medium，不够代表 Claude、GPT、Qwen、DeepSeek 等当前 frontier models；也有人回应说，论文关注的是 harness 设计如何随模型规模和能力变化，而不是某个具体模型的排名。讨论进一步分化为两派：一派认为不同模型确实有各自风格和适配性，另一派则要求长期、重复、固定 prompts 的测量来证明这些“感觉”不是偏见。还有人指出，Claude Code（Anthropic 的代码代理工具）和 Codex（OpenAI 的代码代理）等产品可能已经进入训练数据，这会让某些 harness 看起来更“顺手”。",
+        "supportid": [
+          "49754869",
+          "49755101",
+          "49755375",
+          "49756322",
+          "49757478",
+          "49755180",
+          "49755258",
+          "49755996",
+          "49756515",
+          "49757639",
+          "49755330"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "harness",
+        "explanation": "包裹 LLM 的执行层，负责工具调用、规划循环、状态管理和任务编排。"
+      },
+      {
+        "term": "ReAct-loop",
+        "explanation": "Reasoning + Acting 的交替循环，让模型边思考边执行外部动作。"
+      },
+      {
+        "term": "RAG",
+        "explanation": "Retrieval-Augmented Generation，先检索外部资料再生成答案的方法。"
+      },
+      {
+        "term": "MCP",
+        "explanation": "Model Context Protocol，用标准化接口让 AI 调用外部系统、工具和数据源。"
+      },
+      {
+        "term": "context window",
+        "explanation": "模型一次能处理的上下文长度上限，直接影响长任务表现。"
+      },
+      {
+        "term": "bash-capable",
+        "explanation": "指模型是否足够会用 shell/bash 完成任务，通常意味着不太需要专用工具。"
+      }
+    ],
+    "context": "这篇论文研究 coding agents 的 harness design，也就是在 LLM 外面那层负责规划、工具调用、上下文管理和执行控制的系统设计。作者用 Nemotron-3 和 Mistral-Medium 等模型测试了 planning、predefined tools、bash-only、context management 等组合，比较不同模型能力、任务类型和预算下的成功率与成本。评论区把它和 Claude Code（Anthropic 的代码代理工具）、mini-swe-agent（一个极简 agent）以及 Stirrup 等项目放在一起讨论，争论复杂 harness 是否真的优于简单方案。还有人提到 Anthropic 对 agents.md、TodoWrite 等工具的调整，说明业界正在根据模型能力重新收缩或扩展 agent 的工具层。",
+    "emoji": "🧪",
+    "sarcastic_question": "既然Harness都这么显然，还要实验干嘛？"
+  },
+  "articleSummary": "## 一句话总结\n这篇论文通过拆解 Coding Agent 的“线束”设计，发现上下文管理是防崩盘的底线，规划模块是省钱的手段，而行动空间的选择则取决于模型本身的 Bash 能力强弱。\n\n## 正文\n\n### Agent 表现好不好，不能只看模型，还得看“线束”\n现在的 Coding Agent 评测往往把整个系统当成黑盒，模型强则 Agent 强。但这就忽略了一个关键变量——Harness（线束）。Harness 指的是 Agent 的执行框架，决定了模型能力如何转化为实际的工程表现。这篇论文没有盲目堆砌新架构，而是做了一个很扎实的实证研究：固定执行循环，单独调节规划、行动空间和上下文管理这三个组件。他们在 SWE-Bench Verified 和 Terminal-Bench 2.1 上跑了 176 组对照实验，涉及四个模型，就是为了搞清楚：到底是哪个组件在起作用，以及它是怎么起作用的。\n\n### 上下文管理：核心价值在于防止“爆内存”\n实验结果很有意思。随着 Context Window 预算变紧，上下文管理的价值反而越来越高。说白了，它的核心作用不是让模型变聪明，而是防止 Agent 因为上下文溢出直接挂掉。在策略选择上，研究者发现了一个性价比最高的组合：先用规则进行 Elision（删减），再用 LLM 进行 Summarization（总结）。这个“先规则后模型”的流水线效率最高。相比之下，那些设计了复杂机制试图恢复被删减内容的方案，看起来很美，实际上模型根本不用，准确率也没提升，纯属过度设计。\n\n### 规划模块：弱模型的“拐杖”，强模型的“省钱工具”\nPlanning（规划）模块的角色也随模型能力而变。对于能力较弱的模型，规划能显著提升准确率，相当于给模型配了个“拐杖”。但对于 GPT-4o 这种级别的强模型，规划并不能显著提高准确率，却能大幅降低成本。有意思的地方在于，它改变的是轨迹停止的位置，让模型更早地找到正确答案，而不是像弱模型那样通过规划来修正错误。所以，如果你在用强模型，加规划主要是为了省钱，而不是为了救命。\n\n### 行动空间：Bash 玩得溜，就别用复杂工具\n在行动空间的设计上，论文给出了一个反直觉的结论。对于不擅长 Bash 操作的模型，提供预定义的工具确实能提升表现。但对于那些 Bash 能力很强的模型，直接给一个 Bash-only 接口反而更好。不仅表现不差，成本还更低，尤其是在那些命令行密集的任务上。Trajectory 分析揭示了背后的原因：行动空间的改变，本质上是改变了代码生成的粒度。Bash 强的模型直接在命令行层面操作，粒度更粗，效率自然更高。\n\n### 设计 Harness 要看人下菜碟\n总结一下，这篇论文给我们的最大启示是：Harness 设计不能一刀切，必须“看人下菜碟”。如果你的 Context Window 紧张，上下文管理就是重中之重，且最好用“规则删减+模型总结”的组合拳。如果你的模型够强，规划模块主要用来降成本，行动空间则可以大胆简化，直接用 Bash 接口往往比复杂的工具集更高效。这些发现不仅解释了现有 Agent 的行为模式，也为我们未来设计更高效、更低成本的 Coding Agent 提供了清晰的模块化思路。"
+}

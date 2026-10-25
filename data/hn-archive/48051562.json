@@ -1,0 +1,151 @@
+{
+  "id": 48051562,
+  "by": "bsuh",
+  "title": "Agents need control flow, not more prompts",
+  "url": "https://bsuh.bearblog.dev/agents-need-control-flow/",
+  "score": 371,
+  "createdAt": 1778173829,
+  "aiSummary": {
+    "chinese_title": "Agent 需要控制流，不是更多 prompt",
+    "discussion_overview": [
+      {
+        "category": "prompt 到达上限，必须写 harness",
+        "summary": "有人拿一个要在浏览器里处理约 200 个 markdown requirements 文件的 QA agent 做例子：一旦把高层控制流全交给 prompt，跑到三十来个文件就开始漏文件、重复测试、无端回头重跑，耗时从 3 分钟膨胀到 10 分钟。大家的结论很直接：prompt 不能替代 testing suite，应该把遍历、记录结果、写文件、重试边界这些步骤放进 deterministic harness 里。有人提到短 context 加 todo list 只能部分缓解，但真正稳定的是让每个 test case 都由代码驱动，再把 LLM 放在局部决策位置。也有人把全大写的 MANDATORY / DO NOT SKIP 当成信号：该写 wrapper 了，不该继续修辞。",
+        "supportid": [
+          "48054606",
+          "48056410",
+          "48055235",
+          "48055617",
+          "48053092",
+          "48052899",
+          "48052935",
+          "48054480",
+          "48055074",
+          "48055230",
+          "48056176",
+          "48053047",
+          "48051978",
+          "48054291",
+          "48054749"
+        ]
+      },
+      {
+        "category": "LLM 更适合写代码，而不是直接跑流程",
+        "summary": "另一条主线是把 LLM 当成写代码的工具，而不是直接执行任务的主体。有人分享了把规格文档转成 TSV/JSON、让 Claude 写 parser 和 code generator、在 GitHub Actions 里只在 validator 失败时再调用模型的做法，整条链路成本很低而且更可靠。也有人把 agent 退化成自然语言到命令和参数的 translation layer，复杂 bookkeeping 则放进 symbolic layer 或普通脚本里。这个方向的核心收益是：更小、更便宜的模型也能做出接近甚至更好的结果，因为关键的不确定部分被 deterministic code 吃掉了。",
+        "supportid": [
+          "48052760",
+          "48053282",
+          "48053565",
+          "48054340",
+          "48051916",
+          "48053682",
+          "48053800",
+          "48054081",
+          "48052826",
+          "48054291",
+          "48052610",
+          "48053148",
+          "48053572",
+          "48056054"
+        ]
+      },
+      {
+        "category": "分层 agent 架构与多 agent 编排",
+        "summary": "不少人认为真正可用的 agent 系统应该是分层的：root agent 负责监督，orchestrator 负责分派，workers 或 subagents 负责收集上下文、规划、实现和 review。有人把这种模式做成 flowchart、YAML flow、task graph、state machine，甚至让 agent 在必要时自行生成脚本或子流程。讨论里反复出现的观点是，根 agent 不该一口气做完所有事情，否则很快就被 context window 和控制复杂度拖垮。相反，把控制逻辑拆成可组合的 steps，才能让多轮任务、长任务和回滚都更可控。",
+        "supportid": [
+          "48055638",
+          "48055619",
+          "48054652",
+          "48055716",
+          "48052699",
+          "48053484",
+          "48053587",
+          "48054051",
+          "48055364",
+          "48055538",
+          "48055940",
+          "48054764",
+          "48055259",
+          "48056340"
+        ]
+      },
+      {
+        "category": "对未来模型叙事与 token 激励的怀疑",
+        "summary": "很多评论对为未来模型而设计这类叙事持怀疑态度，认为它是在要求现在先烧 tokens、先忍受不可靠，再赌几年后模型会突然补齐缺口。有人直接拿 benchmark、长链路任务失败、context 规模限制和多数据点跟踪退化来反驳，认为当前模型离真正可靠的 agentic task 还很远。另一些人把问题归结为商业激励：平台更想卖更多 token，而不是鼓励开发者用更少的模型配合 harness。也有评论指出，agent 也许能显著提高效率，但离替代整个流程或整个人仍有明显距离。",
+        "supportid": [
+          "48054917",
+          "48055921",
+          "48051895",
+          "48052331",
+          "48054922",
+          "48056317",
+          "48054317",
+          "48052811",
+          "48053664",
+          "48052695",
+          "48054484",
+          "48054486",
+          "48053937"
+        ]
+      },
+      {
+        "category": "控制层之外还要验证层",
+        "summary": "还有一派把问题拆成权限和验证两层：control flow 只能告诉 agent 允许做什么，却不能证明它真的按要求做了什么。于是大家转向 TDD enforcer、hooks、policy engine、session history 检查、human review 和结构化 JSON 回传，把不确定动作卡在边界上。有人批评现有工具把控制、聊天和 UI 混在一起，slash commands、context 查看和付费状态都缠在同一个聊天循环里。更谨慎的观点认为，只要结果有实际风险，就不能把最终裁决完全交给模型。",
+        "supportid": [
+          "48052992",
+          "48053853",
+          "48055164",
+          "48054764",
+          "48056383",
+          "48055142",
+          "48053205",
+          "48053484",
+          "48054051",
+          "48053535",
+          "48054937"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "harness",
+        "explanation": "围绕 agent 的确定性执行骨架，负责循环、调度、记录和校验。"
+      },
+      {
+        "term": "control flow",
+        "explanation": "任务步骤、分支和执行顺序的显式逻辑。"
+      },
+      {
+        "term": "deterministic workflow",
+        "explanation": "输入相同就尽量得到相同结果的工作流，便于复现与测试。"
+      },
+      {
+        "term": "guardrails",
+        "explanation": "对 agent 的权限、输出和动作加限制的安全边界。"
+      },
+      {
+        "term": "context window",
+        "explanation": "模型一次可处理的上下文长度，长任务会受限。"
+      },
+      {
+        "term": "subagent",
+        "explanation": "由主 agent 分派、专门处理某个子任务的代理。"
+      },
+      {
+        "term": "hooks",
+        "explanation": "在 agent 动作前后拦截、检查或阻止行为的接入点。"
+      },
+      {
+        "term": "TDD",
+        "explanation": "Test-Driven Development，先写测试再写实现，用测试约束代码行为的方法。"
+      },
+      {
+        "term": "state machine",
+        "explanation": "把系统状态和允许的转移关系明确写出来的控制模型。"
+      }
+    ],
+    "context": "这条讨论围绕一篇主张 Agent 应该依赖 control flow，而不是继续堆 prompt 的文章展开。评论者多以 Claude Code（Anthropic 的编程 agent 工具）、Codex（OpenAI 的编程工具）和 Cursor Cloud Agents（云端 agent 平台）为例，说明仅靠提示词很难稳定完成长链路任务。很多人提到要把遍历文件、运行测试、写文件、状态检查这些确定性步骤放进 harness（执行骨架）或 workflow（工作流）里，再让 LLM 只负责解释、规划或补全难处理的部分。讨论还延伸到 hooks、policy engine、state machine、Temporal（工作流引擎）和 PydanticAI（带类型约束的 LLM 编排库）等方案，目标都是把验证和权限控制从聊天循环中拆出来。也有人认为厂商口中的“等未来模型更强”更多是在鼓励烧 tokens，而不是解决当前 agent 在长任务、上下文管理和错误恢复上的不稳定。",
+    "emoji": "🛠",
+    "sarcastic_question": "多堆几个 prompt，LLM 就会自己长出测试套件和纪律？"
+  }
+}

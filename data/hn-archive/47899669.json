@@ -1,0 +1,74 @@
+{
+  "id": 47899669,
+  "by": "luu",
+  "title": "Pgrx: Build Postgres Extensions with Rust",
+  "url": "https://github.com/pgcentralfoundation/pgrx",
+  "score": 161,
+  "createdAt": 1777353624,
+  "aiSummary": {
+    "chinese_title": "pgrx：Rust 写 Postgres 扩展，已进生产但云端常限装",
+    "discussion_overview": [
+      {
+        "category": "生产可用性与可靠性",
+        "summary": "评论里有真实生产案例，说明 pgrx 不只是实验项目，而是已经能承载关键扩展。PlanetScale 的内部扩展都基于它构建，并且在一年的生产使用里没有遇到 memory unsafety 或 race conditions。另有开发者分享自己用 pgrx 写扩展体验很好，虽然为了更稳妥地控制复杂度，减少了一些“魔法”式能力，但整体支持依然很强。",
+        "supportid": [
+          "47934762",
+          "47931321"
+        ]
+      },
+      {
+        "category": "维护活跃且社区友好",
+        "summary": "有人起初以为这个项目已经停更，但很快被纠正：最近两周就有新 release，说明它仍在积极维护。评论还反复提到维护者非常友善、专业，遇到问题时在 Discord 里也很愿意帮忙。这个分支的重点不是功能本身，而是项目是否还在持续演进、以及社区支持是否可靠。",
+        "supportid": [
+          "47933095",
+          "47934768",
+          "47934635"
+        ]
+      },
+      {
+        "category": "生态扩散与项目兴衰",
+        "summary": "有评论把 pgrx 形容成一个已经“长出公司”的底层工具，很多 Postgres 扩展都建立在它之上。PostgresML 曾经基于它做产品，但后来公司关闭、域名也失效，这让部分人一度误以为相关生态已经不行了。随后又有人澄清 pgrx 本身仍在前进，说明真正持续活跃的是基础框架，而不是某个具体应用。",
+        "supportid": [
+          "47930786",
+          "47934948",
+          "47935150",
+          "47931117"
+        ]
+      },
+      {
+        "category": "托管 Postgres 的扩展限制",
+        "summary": "讨论的另一个核心问题，是很多托管 Postgres 平台并不允许随意装自定义扩展，AWS RDS 是最典型的例子。评论解释说，这是因为扩展会把本地机器码加载进数据库进程，在共享环境里会碰到安全和运维边界，所以云厂商通常只放行经过审核、不会触及受管组件的 curated extensions。Supabase 被拿来作为折中方案：它提供 pg_cron、pgvector、unaccent、PostGIS 等常用扩展，能覆盖不少实际需求，但仍然不能替代完全自定义扩展。",
+        "supportid": [
+          "47931321",
+          "47931980",
+          "47936365",
+          "47933014",
+          "47934403",
+          "47934604"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "pgrx",
+        "explanation": "一个用 Rust 编写 PostgreSQL extension 的框架/工具链，帮助把扩展代码编进数据库进程里。"
+      },
+      {
+        "term": "AWS RDS",
+        "explanation": "AWS 的托管 PostgreSQL 服务，通常只允许安装审核过的扩展，不支持任意自定义扩展。"
+      },
+      {
+        "term": "GIN index",
+        "explanation": "PostgreSQL 的 Generalized Inverted Index，常用于全文检索、标签匹配和模糊搜索。"
+      },
+      {
+        "term": "PostgreSQL extension",
+        "explanation": "直接在 PostgreSQL 进程内加载的扩展模块，能增强数据库能力，但也带来安全和运维限制。"
+      }
+    ],
+    "context": "pgrx 是一个用 Rust 开发 PostgreSQL 扩展的框架，适合把自定义逻辑直接编进数据库进程里。评论之所以反复提到它，是因为 PostgreSQL extension 本质上会加载本地机器码，既能带来高性能，也会带来安全和运维风险。托管版 PostgreSQL（例如 AWS RDS）通常只允许安装审核过的扩展，而 Supabase 这类服务会提供一组 curated extensions（例如 pg_cron、pgvector、unaccent、PostGIS）作为折中方案。讨论里还提到 PostgresML 曾基于 pgrx 构建，但该项目后来关闭；相对地，pgrx 本身仍在积极维护，并且已经被一些团队用于生产。",
+    "emoji": "🚀",
+    "sarcastic_question": "都能用 Rust 写扩展了，RDS 还在怕什么？"
+  },
+  "articleSummary": "## 一句话总结\nPgrx 是一个让开发者能用 Rust 的安全性和现代工具链，全权接管 PostgreSQL 扩展开发的框架，它自动处理从多版本兼容到类型映射的底层脏活累活。\n\n### 扩展开发的痛点：C 语言的脆弱与繁琐\n一直以来，PostgreSQL 扩展开发都是 C 语言的天下。但这事儿做起来并不轻松，你不仅要手动处理复杂的内存管理，还得小心翼翼地避免 C 指针带来的内存安全问题。更麻烦的是，如果你想支持多个 PG 版本，代码里很快就会充斥着各种 `#ifdef` 宏，维护起来简直是噩梦。Pgrx 的出现就是为了解决这些问题，它试图用 Rust 的类型安全和零成本抽象，来重构整个扩展开发流程。\n\n### 把 Rust 变成 PG 的原生开发语言\nPgrx 的核心思路其实很简单：让 Rust 代码看起来就像是为 PostgreSQL 原生写的一样。它提供了一个强大的宏系统，比如你只需要在函数上加一个 `#[pg_extern]`，这个函数就能自动变成 PG 的 UDF（用户自定义函数）。不仅如此，它还能自动生成 SQL schema，这意味着你不需要再手写繁琐的 `.sql` 文件来定义函数签名，Rust 的类型定义就是唯一的真实数据源。\n\n### 安全第一：把 Panic 关进笼子里\n用 Rust 写扩展，大家最担心的就是 \"panic\" 会把整个数据库进程搞崩。Pgrx 在这里有个巧妙的设计：它通过 `#[pg_guard]` 宏和特定的内存管理机制，把 Rust 的 `panic!` 转化成了 PostgreSQL 的 `ERROR`。这样一来，当错误发生时，只会回滚当前事务，而不会让数据库进程崩溃。这种设计既保留了 Rust 的错误处理优势，又遵守了数据库系统的稳定性要求。\n\n### 类型映射：无缝衔接两个世界\n在数据类型转换上，Pgrx 做到了极致的自动化。它内置了从基础的 `i32`、`Vec<u8>` 到复杂的 `JsonB`、`Numeric` 的完整映射表。Postgres 的 `NULL` 值被安全地映射为 Rust 的 `Option::None`，避免了空指针异常。如果你想定义自定义类型，只需使用 `#[derive(PostgresType)]`，你的 Rust struct 就能摇身一变成为 PG 中的复合类型，甚至支持二进制协议传输。\n\n### 开发体验：像写普通 Rust 项目一样顺滑\n对于开发者来说，Pgrx 最大的亮点在于它把开发环境完全托管起来了。通过 `cargo-pgrx` 这个子命令，你可以像管理普通 Cargo 项目一样管理扩展。`cargo pgrx new` 能快速脚手架出一个新项目，`cargo pgrx run` 则能自动编译、加载扩展，并直接丢给你一个 `psql` 交互窗口。它甚至能自动下载并编译从 PG 13 到 PG 18 的多个版本，让你在同一个代码库里轻松测试跨版本兼容性。\n\n### 深入底层：安全地触碰 PG 内核\n虽然 Pgrx 提供了高级抽象，但它并没有限制你触碰 PostgreSQL 的底层能力。当你需要高性能操作时，可以通过 `pgrx::pg_sys` 模块直接访问 PG 的内部 C 函数，当然这是 `unsafe` 的。同时，它也提供了对 SPI（Server Programming Interface）、内存上下文以及 Hooks（触发器、事务钩子）的安全封装。这意味着你既能享受 Rust 的安全，也能在需要时像 C 语言专家一样深入内核。"
+}

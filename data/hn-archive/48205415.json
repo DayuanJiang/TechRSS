@@ -1,0 +1,156 @@
+{
+  "id": 48205415,
+  "by": "pramodbiligiri",
+  "title": "Learnings from 100K lines of Rust with AI (2025)",
+  "url": "https://zfhuang99.github.io/rust/claude%20code/codex/contracts/spec-driven%20development/2025/12/01/rust-with-ai.html",
+  "score": 134,
+  "createdAt": 1779272460,
+  "aiSummary": {
+    "chinese_title": "AI辅助10万行Rust：测试、契约与slop争议",
+    "discussion_overview": [
+      {
+        "category": "分层审查与 guardrails 工作流",
+        "summary": "评论里最受欢迎的做法不是让一个模型一把梭，而是把工作拆成 spec、review、实现、再 review 的闭环。有人让 Claude 和 Codex 先互相挑刺，再分别在 worktree 里实现同一 spec，最后把两边的设计拼起来；也有人把它进一步自动化成 GuardRails、Rust Bucket 之类的流程，配合 `cargo fmt`、`cargo clippy`、`cargo test`、`cargo audit`、pre-commit hooks 和任务门槛（gates）来压住跑偏。大家普遍认为，LLM 的价值更多在于把大任务切成上下文更小的 ticket，并让每一步都能被静态检查和测试验证。没有这种约束，agent 很容易把仓库搞成 hairball。",
+        "supportid": [
+          "48206308",
+          "48207143",
+          "48207659",
+          "48205757",
+          "48205961",
+          "48206089",
+          "48206794",
+          "48207440",
+          "48218583",
+          "48206202",
+          "48206553",
+          "48207068",
+          "48211156"
+        ]
+      },
+      {
+        "category": "测试数量≠质量",
+        "summary": "很多人对 1300+ tests / 10 万行代码这个比例不买账，尤其这是一个分布式一致性系统，tiny bug 也可能把协议搞坏。有人指出非测试代码其实只有四五万行，但即便如此，单靠数量仍然无法证明测试覆盖了关键不变量。还有人质疑这些测试是不是 AI 生成的，因为生成出来的测试很容易看起来在测，却没有真正断言到位。更进一步的怀疑是：如果这套 Azure RSL 风格的实现没有真实上线或长期维护，行数和测试数都只是表面成绩。",
+        "supportid": [
+          "48205609",
+          "48206159",
+          "48205657",
+          "48205655",
+          "48205924",
+          "48206589",
+          "48206374",
+          "48207142",
+          "48205576",
+          "48205794",
+          "48205997",
+          "48206416",
+          "48206078",
+          "48205881"
+        ]
+      },
+      {
+        "category": "Rust 与 AI 的适配性",
+        "summary": "争论集中在 Rust 对 agent 到底是助力还是负担。支持者认为 Rust 的 borrow checker、ownership 和编译期错误正适合 LLM：模型可以靠 `cargo check`/`cargo test` 自己循环修正，很多运行时 bug 会在编译阶段被拦住。反对者则不断提到 lifetime、named lifetimes、`.clone()`、`Rc`、`Arc<Mutex<...>>` 这些逃生路径，认为模型常把 idiomatic Rust 写成性能和可读性都变差的 slop。讨论还延伸到 Go、Kotlin、Python、Ruby、Haskell、JS 等语言：有人觉得高层语言更适合 agent，也有人坚持正因为 Rust 严格，才更适合做高可靠系统。",
+        "supportid": [
+          "48205743",
+          "48205920",
+          "48206319",
+          "48206516",
+          "48206092",
+          "48207905",
+          "48206164",
+          "48206234",
+          "48207205",
+          "48205949",
+          "48210573",
+          "48205755",
+          "48207131",
+          "48217967",
+          "48206063",
+          "48206087",
+          "48207451",
+          "48210997",
+          "48218546",
+          "48218566"
+        ]
+      },
+      {
+        "category": "LLM 是否真的在推理",
+        "summary": "另一条主线是 LLM 到底是不是在 reasoning。有人把它看成只是 token predictor，强调 temperature、随机采样和同 prompt 多次输出会出现分歧；也有人反击说，人类在同样信息下也会给出不同而且自信的方案，所以稳定性并不是判定 reasoning 的唯一标准。评论里还出现了“合理人”标准、认知与决策的区别、以及把 LLM 比作只会生成下一步动作的黑箱这种类比。整体上这部分争论已经不只是技术问题，而是在争模型像不像人、能不能负责、该不该信。",
+        "supportid": [
+          "48206512",
+          "48206635",
+          "48206696",
+          "48206999",
+          "48211364",
+          "48218390",
+          "48214332",
+          "48214612",
+          "48215524",
+          "48216255",
+          "48210214",
+          "48208619",
+          "48214701",
+          "48211957",
+          "48212459",
+          "48213735",
+          "48214625",
+          "48206769",
+          "48207008",
+          "48208922",
+          "48211132",
+          "48212652",
+          "48216387",
+          "48212795",
+          "48206708"
+        ]
+      },
+      {
+        "category": "代码契约与需求澄清",
+        "summary": "文章里的 code contracts 被解释为 preconditions、postconditions 和 invariants 的组合，测试时会转成 runtime asserts，生产环境则可以关闭以换性能。评论者把这和 Dijkstra 式的正确性思路联系起来：先把需求、设计和任务边界写清楚，再让 agent 去实现，否则它只会靠猜。也有人强调 human 必须掌握 inflection points，也就是哪些决策会决定结果范围，而不是把意义全交给模型。甚至有人问怎么同步 requirement、design、tasks 文档，说明大家关心的是整个工程信息流，而不只是单个代码文件。",
+        "supportid": [
+          "48205615",
+          "48205698",
+          "48206117",
+          "48206749",
+          "48205994",
+          "48206291"
+        ]
+      },
+      {
+        "category": "编排工具是否弱化语言本身",
+        "summary": "还有一派认为，当自然语言编译器和 agent orchestration tools 成熟后，具体编程语言的重要性会下降，真正重要的是 skills、流程和约束。反方马上提醒：agent 仍然很 stochastic，所以必须有 deterministic 的边界、形式化规则和静态检查去兜底。有人把这类东西类比成 SOA 时代的 BPEL，意思是语言可能退居后台，但控制面和形式化层会越来越关键。",
+        "supportid": [
+          "48213190",
+          "48213213",
+          "48213488"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "multi-Paxos",
+        "explanation": "一种分布式一致性协议，用来让多个副本就操作顺序达成一致，是复制状态机常用底层方案。"
+      },
+      {
+        "term": "RSL",
+        "explanation": "Azure 的 Replicated State Library，一套复制状态库/一致性引擎，原文实现被拿来与 Rust 版本对比。"
+      },
+      {
+        "term": "code contracts",
+        "explanation": "把函数的前置条件、后置条件和不变量写成可检查约束，测试时可转成 runtime asserts。"
+      },
+      {
+        "term": "borrow checker",
+        "explanation": "Rust 编译器的所有权/借用检查机制，用来在编译期阻止悬垂引用和数据竞争。"
+      },
+      {
+        "term": "lifetime / named lifetime",
+        "explanation": "Rust 中描述引用有效范围的机制；named lifetime 用显式标注来表达引用关系。"
+      }
+    ],
+    "context": "这篇文章讲的是用 Claude、Codex 之类的 LLM，在 Rust 里搭建一个约 10 万行规模的系统，目标接近 Azure 的 Replicated State Library（RSL，一个复制状态库/一致性引擎）和 multi-Paxos（分布式一致性协议）实现。作者强调先写 spec，再让另一个模型反复 review，并用 code contracts（代码契约）、测试、`cargo clippy`、`cargo test`、`cargo audit` 和 GuardRails（一个把任务拆成 tickets 并加 gates 的工作流工具）把 agent 限制在可验证边界内。评论区围绕三件事展开：AI 生成的 Rust 会不会被 borrow checker（Rust 的借用检查器）和 lifetime（生命周期）搞崩、测试数量能不能证明质量、以及 LLM 到底是在推理还是只是在做随机采样。还有人讨论如果未来 natural language compiler 和 agent orchestration tools 成熟，编程语言本身是否会退居次要位置，但硬约束和形式化仍然不可或缺。",
+    "emoji": "🤔",
+    "sarcastic_question": "1300个测试，真能掩盖AI slop吗？"
+  },
+  "articleSummary": "# 一句话总结\n作者利用 AI 编码助手在 3 个月内用 Rust 重写了 Azure 的核心共识库 RSL，通过“代码契约”保证正确性，将性能从 23K ops/sec 猛提至 300K ops/sec，证明了 AI 在构建复杂分布式系统时不仅是加速器，更是质量把控者。\n\n### 现代化 RSL：十年前的架构跑不动今天的硬件\nAzure 的 RSL（Replicated State Library）虽然稳健，但毕竟是十年前的产物，架构上已经明显落后。它不支持流水线，导致请求必须串行等待；不支持非易失性内存（NVM），无法利用现代硬件降低提交延迟；也没法利用 RDMA 这种数据中心的高性能网络。作者的目标很明确：用 Rust 从零造一个轮子，补齐这些短板。这不仅是技术升级，更是为了验证 AI 在构建这种生产级分布式系统时到底能走多远。\n\n### 生产力爆发：把 AI 用成“强迫症”工具\n项目最终产出了 13 万行 Rust 代码，其中核心的 10 万行只用了 4 周。作者试了一圈工具，最后发现 **Claude Code** 和 **Codex CLI** 配合命令行操作效率最高。这里有个很有意思的心理技巧：作者为了不浪费每月 100 美金的订阅费，逼自己每天睡前必须给 AI 派活儿。这种“沉没成本”反而成了生产力引擎，加上为了绕过 Rate Limit 买了两份 ChatGPT Plus 轮换用，这投入产出比简直惊人。\n\n### 代码契约：AI 写 Paxos 不靠猜，靠“合同”\n大家最担心的是 AI 写复杂的 Paxos 算法会不会出错。作者发现，光靠 1300 多个测试还不够，真正的杀手锏是 **Code Contracts（代码契约）**。作者让 AI 为关键函数定义前置条件、后置条件和不变量，比如 `process_2a` 方法就定义了 16 个契约。这不仅是文档，AI 还能根据这些契约自动生成测试用例，甚至转化为 Property-based Tests（属性测试）。有一次，一个契约直接抓住了深藏的 Paxos 安全性违规，这种在开发早期就拦截严重 Bug 的能力，是传统测试很难做到的。\n\n### 轻量级 Spec 驱动：别让文档变成累赘\n作者一开始也试过严格的 Spec-Driven Development，从需求文档到设计文档再到任务列表，结果发现改起来太痛苦，文档一致性很难维护。后来他转向了“轻量级”模式：用 **Spec Kit** 生成简单的 User Story 和验收标准。他大部分时间花在 `/clarify` 指令上，让 AI 自我审查、补充遗漏的场景。一旦确认无误，就进入 Plan Mode 针对单个 Story 生成计划。这种“小步快跑”的方式，既保证了方向正确，又避免了过度设计的文档负担。\n\n### 疯狂性能调优：从 23K 到 300K 的三级跳\n在保证正确性后，作者花了 3 周专门搞性能，把吞吐量从 23K ops/sec 卷到了 300K ops/sec。这背后的逻辑链很清晰：先让 AI 插桩埋点收集 Latency 数据，再写 Python 脚本分析瓶颈，最后由 AI 提出优化方案并实施。这个过程是循环迭代的。Rust 的内存安全特性给了作者很大的信心去激进的优化，比如减少分配、零拷贝、去锁和移除不必要的 Async 开销。每一层优化都像剥洋葱，AI 帮忙精准定位了锁竞争和冗余拷贝这些隐蔽的性能杀手。\n\n### 未来的愿望：从“副驾驶”变成“机长”\n虽然现在的 AI 已经很强，但作者觉得还有提升空间。首先是希望 AI 能端到端地执行 User Story，减少中途的人工干预；其次是希望契约工作流能自动化，AI 能自动根据契约生成测试、修复 trivial 的失败，只在遇到真正的逻辑问题时才叫醒人类；最后是性能调优的自动化，类似于 AlphaEvolve 那种，让 AI 自己跑实验、改代码、测结果。现在的 AI 还是个高效的副驾驶，未来完全可以期待它成为能独立飞行的机长。"
+}

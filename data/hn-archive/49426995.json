@@ -1,0 +1,98 @@
+{
+  "id": 49426995,
+  "by": "lioeters",
+  "title": "SQLite as a Document Database (2020)",
+  "url": "https://dgl.cx/2020/06/sqlite-json-support",
+  "score": 229,
+  "createdAt": 1788018011,
+  "aiSummary": {
+    "chinese_title": "SQLite 做文档库：JSONB、generated columns、离线同步与关系型争议",
+    "discussion_overview": [
+      {
+        "category": "离线单文件文档存储",
+        "summary": "很多人把 SQLite 当成单文件的 document backend，尤其适合离线或弱网场景。有人回忆 2009 年给偏远地区医生做系统时，把表单和数据直接按字符串存进 SQLite，联网后再同步回后端，因为医生更习惯像纸质表单那样看到整张表单。还有人把游戏存档、基因组数据元信息、`kindstore` 之类的项目都做成 JSON/Blob+SQLite 的组合，觉得把文档和数据放在一起非常自然。评论也提到自定义 ORM、分离 blob 列、甚至在进程内处理备份与恢复，说明这不是纯理论讨论。",
+        "supportid": [
+          "49493219",
+          "49493139",
+          "49493174",
+          "49491110",
+          "49492122",
+          "49491283"
+        ]
+      },
+      {
+        "category": "document 与 relational 的边界",
+        "summary": "评论区大量篇幅在争论 document database 到底是什么意思。一个常见说法是，它原本强调 self-contained documents，比如 invoice、form 这类天然成块的数据，但 MongoDB 语境下这个词后来逐渐漂移成 JSON blob。另一派则坚持大多数数据本质上还是 relational，拆成多表更适合分析、约束和查询，而关系型数据库本身也完全可以当成 document store 来用。也有人直接表示默认先用 PostgreSQL，除非有充分理由不用。",
+        "supportid": [
+          "49492096",
+          "49493209",
+          "49492185",
+          "49492896",
+          "49493131",
+          "49492440",
+          "49493222",
+          "49492134",
+          "49492179"
+        ]
+      },
+      {
+        "category": "JSONB 与 generated/virtual columns",
+        "summary": "讨论的核心技术点是先把整块 JSON 存进一列，再把需要查询的字段逐步提升为 generated columns 或 virtual columns，并给它们建索引。这样既保留原始文档，又能在不重构数据的前提下获得结构化查询能力，评论里把这和把字段直接放进应用代码做筛选相比，认为前者更利于事后演进。有人拿 MariaDB 的 virtual column + index 以及 PostgreSQL 的 JSONB expression index 作对比，认为 SQLite 的思路并不弱。还有人补充 SQLite 的 JSONB 与 JSON 函数几乎同等可用，结构化成本较低。",
+        "supportid": [
+          "49493031",
+          "49492230",
+          "49492407",
+          "49492311",
+          "49492864",
+          "49491005"
+        ]
+      },
+      {
+        "category": "混合存储、全文检索与备份",
+        "summary": "有些评论强调，SQLite 真正好用的地方是把多种数据形态拼成一个本地工作流。比如把邮件和 Office 文档以 gzip blob 存起来，再把抽取出的纯文本送进 FTS5 做全文检索；也有人用 indexed key + JSONB 保存游戏状态，让可变属性和固定键同时可查。另一个人提到通过写入时间戳、删除时间戳和定时 NDJSON 备份来做 CDC，再由家里另一台服务器做回灌恢复，表现出 SQLite 可以承担一部分基础设施职责。",
+        "supportid": [
+          "49492613",
+          "49491005",
+          "49491110"
+        ]
+      },
+      {
+        "category": "老话题重提与社区玩梗",
+        "summary": "不少人觉得这篇内容并不新，类似话题在 HN 上已经多次出现。有人把它和 Simon Willison 的 `baked data`、SQLite 教程联系起来，但也马上有人提醒时间线并不对应。评论里还出现了 `Why don't you use MongoDB?`、`MongoDB is web scale` 之类的老梗，以及对 document database 争论“已经过时”的调侃。整体语气偏玩笑，说明社区对这类选型之争已经非常熟悉。",
+        "supportid": [
+          "49491672",
+          "49491709",
+          "49492622",
+          "49492443",
+          "49492474",
+          "49491851",
+          "49492128",
+          "49492318",
+          "49491396"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "document database",
+        "explanation": "以自包含“文档”为单位存储数据的数据库模型，通常围绕 JSON 或类似结构组织数据。"
+      },
+      {
+        "term": "JSONB",
+        "explanation": "SQLite 的二进制 JSON 存储格式，可保留 JSON 结构并支持较高效的查询函数。"
+      },
+      {
+        "term": "generated columns",
+        "explanation": "由表达式自动计算的列，常用于从 JSON 中抽取字段并建立索引。"
+      },
+      {
+        "term": "virtual columns",
+        "explanation": "不直接物理存储、查询时计算的生成列，适合按需结构化 JSON 字段。"
+      }
+    ],
+    "context": "这篇 2020 年的文章讨论如何把 SQLite（一个嵌入式关系型数据库）当成 document database 来用：把整块 JSON 先存起来，再用 generated columns（生成列）和 virtual columns（虚拟列）为常查字段建立索引。评论里补充了很多实际场景，包括离线医疗表单、游戏存档、邮件/Office 文档、基因组数据元信息，以及把对象存储、备份和同步流程和 SQLite 绑在一起。争论的背景是 document database、JSON database 和 relational database 的边界本来就很模糊，CouchDB（一个以文档为核心的 NoSQL 数据库）、MongoDB（流行的文档数据库）、PostgreSQL（广泛使用的开源关系型数据库）和 MariaDB（MySQL 分支数据库）都被拿来对比。随着 SQLite 的 JSONB、FTS5（SQLite 的全文检索扩展）和索引能力增强，很多人认为它已经足够承担不少过去会交给专门 document DB 的任务。",
+    "emoji": "🤔",
+    "sarcastic_question": "既然全是 JSON，何必还要关系型数据库？"
+  },
+  "articleSummary": "## 一句话总结\n\nSQLite 3.31.0 的 generated columns 让 JSON 文档可以直接入库、按字段校验并建立索引，从而以极低成本承担轻量级 document database 的角色。\n\n## 正文\n\n### SQLite 缺的不是 JSON 函数，而是把 JSON 变成可查询字段的能力\n\nSQLite 其实早就支持 JSON 相关函数了，但过去它更像是“能存 JSON 字符串，也能临时解析”。真正改变玩法的是 SQLite 3.31.0 引入的 generated columns。这个版本发布于 2020 年 1 月 22 日，文章示例使用的是 3.31.1。generated column 可以由另一个字段的表达式自动计算出来，于是 JSON 里的某个路径可以被映射成普通列。说白了，应用只需要插入一份 JSON，SQLite 会负责从中提取字段，后续查询则像查关系表一样查这些字段。PostgreSQL 和 Elasticsearch 早已能做类似的事，但把这种能力带到 embedded database，意义在于轻量部署和零额外服务依赖。\n\n### 一份 JSON 入库，字段自动从 `json_extract` 中长出来\n\n文章给出的最小示例只有两列：`body` 保存原始 JSON 文本，`d` 则是一个 `VIRTUAL` generated column。`d` 的定义是 `GENERATED ALWAYS AS (json_extract(body, '$.d'))`，意思是它永远从 `body` 的 `$.d` 路径计算得来。插入 `json('{\"d\":\"42\"}')` 后，再执行 `SELECT * FROM t WHERE d = 42`，SQLite 能返回原文和提取后的值。这里的关键不在于 JSON 被拆成了实体字段存储，而在于 SQLite 把表达式结果暴露成了可查询列。对调用方来说，这已经具备 document database 最核心的体验：写入文档，按文档属性过滤。唯一现实门槛是版本，当时 macOS 的 Homebrew 已提供新版本，其他环境可能需要使用 `nixpkgs-unstable` 一类较新的发行源。\n\n### `GENERATED ALWAYS` 顺手把 JSON 校验和字段约束也带来了\n\nSQLite 没有原生 JSON type，因此直接往 `TEXT` 列里写任何字符串都不会被拒绝。通常建议在写入时调用 `json()`，让 SQLite 对 JSON 做压缩和验证，但这只是约定，开发者完全可能忘记这么做。generated column 改变了这一点：只要列定义中使用了 `json_extract(body, ...)`，SQLite 在插入时就必须解析 JSON。于是插入空字符串会直接报 `Error: malformed JSON`，而不是把垃圾数据静默存进去。更进一步，作者给从 `$.id` 提取出的 `id` 列加上 `VIRTUAL NOT NULL`。这样 `{}` 虽然是合法 JSON，但由于缺少 `id`，会触发 `NOT NULL constraint failed: x.id`。这意味着 JSON 文档的结构要求不必只靠应用代码维护，还可以复用 SQLite 的 `NOT NULL`、约束等机制落到数据库层。\n\n### 虚拟列不占缓存空间，却仍然可以走索引\n\n示例选择的是 `VIRTUAL` generated column，它会在读取时计算表达式结果。SQLite 还提供 `STORED` 选项，可以把计算结果物化保存，相当于缓存这些 JSON 字段。可 `STORED` 有一个限制：不能通过 `ALTER TABLE` 给已有表新增这种列。`VIRTUAL` 则更适合渐进演化，而且它并不妨碍索引。给 `id` 建立 `CREATE INDEX xid ON x(id)` 后，`EXPLAIN QUERY PLAN SELECT * FROM x WHERE id='foo'` 显示查询会使用 `xid` 索引。也就是说，JSON 字段虽然按需计算，但筛选时依然能够获得普通索引查询的执行计划。\n\n### 真正实用的地方，是先收文档，再按需要演化 schema\n\n文章最后的重点不是“把所有 JSON 字段都预先建好”，恰恰相反，是可以从只有一个 `body` JSON 列的表开始。等发现某个字段变得重要，再通过 `ALTER TABLE` 增加对应的 `VIRTUAL` generated column，例如从 `$.text` 提取 `text`。随后为这个新列创建 `xtext` 索引，历史数据和新数据就都能按该字段查询。这个模式特别适合 webhook 一类输入：先把外部系统推来的完整 payload 原样写入，避免过早设计 schema。等业务确认哪些属性真正需要筛选、聚合或关联时，再把它们“提升”为 generated columns 和索引。核心思路其实很简单：JSON 保留灵活性，generated columns 提供约束和查询入口，SQLite 索引补上性能。"
+}

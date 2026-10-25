@@ -1,0 +1,93 @@
+{
+  "id": 49715318,
+  "by": "egberts1",
+  "title": "Comparison of Malloc() Algorithms",
+  "url": "https://egbert.net/blog/articles/comparison-of-arena-architecture-in-malloc.html",
+  "score": 129,
+  "createdAt": 1789624856,
+  "aiSummary": {
+    "chinese_title": "malloc 分配器比较：jemalloc/tcmalloc、TLSF 与历史争议",
+    "discussion_overview": [
+      {
+        "category": "资料汇编价值",
+        "summary": "不少评论认为这篇文章最大的价值在于把各类 allocator 的信息整理成了覆盖面很广的对照表，适合直接当参考书签。作者说明自己是把 whitepapers 和其他资料手工编译出来的，而不是依赖 AI 生成，这也解释了文章的资料感很强。有人承认这种整理工作很难做到 100% 准确，因此愿意把它当作“For Reference Only”的长期索引。",
+        "supportid": [
+          "49738094",
+          "49739254",
+          "49739267"
+        ]
+      },
+      {
+        "category": "历史叙述与术语纠错",
+        "summary": "另一部分评论集中指出文章对内存分配史的描述过于简化，甚至有明显错误。有人强调 dynamic memory、garbage collector、stack、reference counts 这些方法都早于 C 时代，不能被写成后来才出现的演化路径；PL/I 的 ALLOCATE/FREE 也只是较早的显式 malloc 形式之一。还有人纠正了 arena 不是 jemalloc 独有发明、“affinity” 被误写成 “infinity” 等细节，并质疑文章开头对现有 allocator 的绝对化表述。",
+        "supportid": [
+          "49738030",
+          "49740108",
+          "49743678",
+          "49743072"
+        ]
+      },
+      {
+        "category": "强调真实 workload 与基准",
+        "summary": "评论里反复出现一个观点：allocator 不能只靠分类和表格判断，必须在真实 workload 上 profile。有人建议如果能构造代表性负载，就直接试几种 allocator，再看自己关心的是吞吐、延迟还是空间效率。实际案例里，ClickHouse（一个分析型数据库）测试过 jemalloc、mimalloc、tcmalloc 等后仍选了 jemalloc；也有人在大型 Rust 应用里最终选择了 new tcmalloc，并提到它的 runtime 和空间表现都不错。",
+        "supportid": [
+          "49738827",
+          "49739757",
+          "49740480",
+          "49740448",
+          "49739329",
+          "49740461",
+          "49739494"
+        ]
+      },
+      {
+        "category": "嵌入式与 Wasm 场景偏好 TLSF",
+        "summary": "在 embedded、single-threaded 和 minimal runtime 场景里，TLSF 被多次提到是更合适的方案。有人说自己在 minimal Wasm libc 里实现了 TLSF，碎片控制和常见方案一样好，但性能更稳定、平均也更快，同时代码体积还更小。另一个实现者也表示 TLSF 很适合自己的编程语言，并通过对小块做预分配进一步优化，说明这类场景更看重确定性和 compact code size，而不是通用性。",
+        "supportid": [
+          "49738001",
+          "49742579",
+          "49739302"
+        ]
+      },
+      {
+        "category": "网站 TLS 配置引发访问问题",
+        "summary": "还有一串评论完全围绕网页为什么打不开展开。页面似乎只允许 ChaCha20-Poly1305（TLS 1.3 cipher），因此 Chromium、Edge、Android Chrome 和部分 curl 环境报 ERR_SSL_VERSION_OR_CIPHER_MISMATCH，而某些 Firefox 版本却能正常连接。有人认为这是作者故意设置的展示效果，也有人吐槽这会挡住抓取器和透明代理，顺带催更“怎么配 SSL”的文章。",
+        "supportid": [
+          "49737438",
+          "49740191",
+          "49737399",
+          "49738331",
+          "49737675",
+          "49737852",
+          "49738080",
+          "49739480"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "TLSF",
+        "explanation": "Two-Level Segregated Fit，一种分配时间和碎片表现都较稳定的 allocator，常用于嵌入式或实时场景。"
+      },
+      {
+        "term": "jemalloc",
+        "explanation": "常见的通用 memory allocator，以多 arena 和并发性能著称，常被服务器软件采用。"
+      },
+      {
+        "term": "tcmalloc",
+        "explanation": "Google 的线程缓存 allocator，强调多线程下的吞吐和锁竞争优化。"
+      },
+      {
+        "term": "arena",
+        "explanation": "内存分配器中的区域/线程池概念，用来减少竞争并提高并发分配效率。"
+      },
+      {
+        "term": "Buddy allocator",
+        "explanation": "按 2 的幂拆分和合并空闲块的经典分配算法，便于快速分配和回收。"
+      }
+    ],
+    "context": "这篇文章围绕 malloc（内存分配器）算法做横向比较，覆盖通用 allocator、线程缓存方案和面向嵌入式的实现，作者把 whitepapers 和旧资料整理成了大量对照表。评论区补充了许多历史背景：动态内存管理并不是从 C 时代才开始，PL/I 的 ALLOCATE/FREE、garbage collector（垃圾回收）、stack 和 reference counts 都更早出现。讨论还延伸到现代实现里的 arena（按区域或线程组织的内存池）、jemalloc（常见高并发分配器）、tcmalloc（Google 的线程缓存分配器）以及 TLSF（Two-Level Segregated Fit，一种面向嵌入式和实时场景的算法）。此外，文章站点的 TLS/SSL 配置似乎刻意只允许某些 cipher，导致 Chromium/Android 等浏览器报错，也让不少人没能顺利读到正文。",
+    "emoji": "🤨",
+    "sarcastic_question": "没有方法论就敢给 malloc 排名和结论吗？"
+  }
+}

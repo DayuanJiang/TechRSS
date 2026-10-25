@@ -1,0 +1,138 @@
+{
+  "id": 47582220,
+  "by": "mtud",
+  "title": "Axios Compromised on NPM – Malicious Versions Drop Remote Access Trojan",
+  "url": "https://www.stepsecurity.io/blog/axios-compromised-on-npm-malicious-versions-drop-remote-access-trojan",
+  "score": 1666,
+  "createdAt": 1774927261,
+  "aiSummary": {
+    "chinese_title": "Axios 被投毒：npm RAT、postinstall 与 min-release-age 防护",
+    "discussion_overview": [
+      {
+        "category": "立即可用的安装防护",
+        "summary": "很多人把这次事件当成“默认安装策略该改了”的信号，直接推荐开启 minimum release age/min-release-age 和 `ignore-scripts=true`。评论里列出了 npm、pnpm、bun、uv、Yarn Berry 各自对应的配置方式，并指出 pnpm 和 bun 默认就不会执行 lifecycle scripts。也有人提醒 npm 直到较新的版本才支持这个功能，而且不同工具居然用了不同时间单位，配置体验非常割裂。还有人补充说，如果你在用 LLM agents，还得在 AGENTS.md/CLAUDE.md 里写清楚这种失败模式，否则 agent 可能会反复重试卡住。",
+        "supportid": [
+          "47582632",
+          "47583219",
+          "47582785",
+          "47583359",
+          "47582927",
+          "47583087",
+          "47583130"
+        ]
+      },
+      {
+        "category": "Axios 影响面大与 fetch 争议",
+        "summary": "讨论普遍认为 Axios 的影响面非常大，因为它在大量项目里是默认选择，周下载量极高。有人强调这次恶意版本并没有改 axios 主体代码，而是塞进了一个伪造依赖 plain-crypto-js，唯一目的就是在 postinstall script 里下发跨平台 RAT；所以真正危险的是依赖树和安装钩子，而不只是主包源码。pnpm/bun 用户之所以相对安全，是因为它们会要求手动批准 postinstall，从而更容易在看到陌生依赖时起疑。话题随后转到为什么大家还在用 Axios：Node 里的 fetch 很晚才成为核心并稳定，Axios 又长期被教程、框架、interceptors、proxy 和测试工具生态绑定住了。",
+        "supportid": [
+          "47582484",
+          "47582518",
+          "47582554",
+          "47583113",
+          "47582617",
+          "47582645",
+          "47582938",
+          "47582909",
+          "47582790"
+        ]
+      },
+      {
+        "category": "transitive dependency 与包管理模型被质疑",
+        "summary": "一部分评论把问题上升到 package manager 本身，认为真正的攻击面是 transitive dependency，而不是你直接写进代码库的那个库。有人主张把依赖直接 vendor 到项目里，或者像 SQLite、OpenSSL、libcurl 那样用更“自包含”的 C 库，减少中间层和安装时执行代码的机会。也有人提出更激进的分层模型，比如把依赖分成 ring 0、ring 1，只允许低层依赖低层，避免整个生态随便串联。反对者则指出 web 开发的更新压力太大，完全 vendoring 不现实，迟迟不更新又会被已知漏洞反噬。",
+        "supportid": [
+          "47583251",
+          "47583362",
+          "47583395",
+          "47582865",
+          "47582834",
+          "47583040",
+          "47583155",
+          "47582448"
+        ]
+      },
+      {
+        "category": "延迟、审批、扫描与沙箱防线",
+        "summary": "另一条主线是把“装包”变成一个更慢、更可审计的过程，比如给依赖更新加冷却期、让人类审批、或者做 release escrow。支持者认为 7 天左右的延迟能给安全扫描器和研究者留出时间，至少能挡住刚发布就投毒的包；反对者则担心这会拖慢真正的安全修复，尤其是面向公网的系统。除了延迟，还有人强调用 bwrap（Bubblewrap，一种 Linux 沙箱工具）、rootless container、CI/CD hardening 来缩小 blast radius，让 postinstall 和 build scripts 只能碰到项目目录。也有人建议 registry 层做多扫描器聚合、attestation 或只放行通过检查的包，把安全门槛前移到发布侧。",
+        "supportid": [
+          "47582667",
+          "47582731",
+          "47582872",
+          "47582454",
+          "47582582",
+          "47582588",
+          "47582695",
+          "47582823",
+          "47583010",
+          "47582652",
+          "47583328",
+          "47582488",
+          "47582772",
+          "47582704",
+          "47582951",
+          "47583330"
+        ]
+      },
+      {
+        "category": "生态信任危机与迁移焦虑",
+        "summary": "不少人已经把这类事件看成对 Node.js / Python 生态信任度的持续侵蚀，甚至开始考虑 Qubes、禁网开发机，或者干脆不碰 NPM。也有人认为公司如果真重视安全，就不该让开发机直接“安装互联网”，而是把依赖和联网权限都收紧。另一种焦虑是攻击会随着 agentic coding 变得更快、更难拦，依赖树可能会继续膨胀成无法人工跟上的风险面。即便有人夸 Cargo 更稳，也立刻有人提醒别的生态同样出过 supply chain attack，只是规模和频率没 NPM 这么吓人。",
+        "supportid": [
+          "47582455",
+          "47582519",
+          "47582672",
+          "47582448",
+          "47583176",
+          "47582778",
+          "47582781",
+          "47583086",
+          "47583220",
+          "47582834",
+          "47582653",
+          "47583384"
+        ]
+      },
+      {
+        "category": "发布链路、2FA 与 trusted publishing",
+        "summary": "有人追问 npm 不是早就要求 2FA 了吗，为什么还能被绕过；回复指出用于 CI/CD 发布的 access token 可能绕开 2FA。于是评论开始讨论更严格的发布流程：强制 2FA、每次发布都要人工点击、或者像 GitHub/GitLab/CircleCI 的 trusted publishing 那样尽量不用长期 token。支持者认为这类措施至少能增加攻击成本；反对者则担心发布流程会被做成瓶颈，最后又被团队自己删掉。整体上，这一支讨论是在问：既然发布权这么敏感，为什么还要把它自动化到几乎没有阻力。",
+        "supportid": [
+          "47582423",
+          "47582475",
+          "47582604",
+          "47582900",
+          "47582759",
+          "47582667",
+          "47582731"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "minimum release age / min-release-age",
+        "explanation": "设置新发布包必须经过的冷却时间，避免刚上传的包立刻被安装。"
+      },
+      {
+        "term": "postinstall script",
+        "explanation": "包安装后自动执行的脚本；一旦被投毒，可能直接运行任意代码。"
+      },
+      {
+        "term": "transitive dependency",
+        "explanation": "依赖的依赖，常是供应链攻击最隐蔽的入口。"
+      },
+      {
+        "term": "trusted publishing",
+        "explanation": "通过 CI 平台身份直接发布包、尽量不使用长期 token 的发布方式。"
+      },
+      {
+        "term": "RAT (Remote Access Trojan)",
+        "explanation": "远程控制木马，能让攻击者远程操控受害机器。"
+      },
+      {
+        "term": "semver",
+        "explanation": "语义化版本，用版本号表达兼容性，常用于控制升级范围。"
+      }
+    ],
+    "context": "Axios 是一个流行的 HTTP client，这次事件不是它的源码本身被改坏，而是维护者的 npm 凭证疑似被盗后发布了恶意版本。恶意包通过伪造依赖 plain-crypto-js@4.2.1 触发 postinstall script，再投放跨平台 RAT，同时绕过了原本的 GitHub Actions（GitHub 的 CI/CD 服务）发布流程。评论区围绕 npm、pnpm（一个 JS 包管理器）、bun（一个 JS 运行时/包管理器）、uv（一个 Python 包管理器）和 Yarn Berry（Yarn 2+ 的新分支）展开，重点讨论如何用 min-release-age、禁用脚本、2FA 和 trusted publishing 降低供应链风险。争论也延伸到 Node.js 里的 fetch 何时才足够成熟、Axios 为什么还能靠 interceptors、proxy 和测试工具继续占据大量项目。",
+    "emoji": "😱",
+    "sarcastic_question": "难道装个包还得先祈祷七天才算安全吗？"
+  },
+  "articleSummary": "## 一句话总结\n攻击者盗取了 axios 维护者的 npm 账号，绕过 CI/CD 手动发布恶意版本，通过注入一个从未被代码引用的依赖包，利用 `postinstall` 脚本静默安装跨平台远控木马，并实现了完美的证据销毁。\n\n### 这不是一次简单的账号被盗，而是精心策划的供应链投毒\n事情发生在 2026 年 3 月 31 日，`axios@1.14.1` 和 `axios@0.30.4` 两个版本突然出现在 npm 上。乍一看，发布者是核心维护者 `jasonsaayman`，似乎一切正常。但有意思的地方在于，这两个版本完全绕过了项目原本的 GitHub Actions CI/CD 流水线。正常情况下，axios 的发布都通过 npm 的 OIDC Trusted Publisher 机制，会有明确的 GitHub Actions 标识。而这次攻击者直接使用了盗取的长期 Token 手动发布，连对应的 Git Commit 或 Tag 都没有。这种“绕过正规军，走后门”的操作，是识别恶意版本的关键信号。\n\n### 攻击者提前 18 小时布下“诱饵”包\n为了躲避安全扫描器对“全新发布包”的警觉，攻击者玩了一手时间差。他们在攻击前 18 小时就发布了一个名为 `plain-crypto-js` 的包。先发了一个干净的 `4.2.0` 版本刷存在感，伪装成合法的加密库 `crypto-js`。随后才发布带有恶意代码的 `4.2.1` 版本。这个包被注入到了 axios 的依赖树中。核心思路其实很简单：axios 的源代码里根本不需要这个库，它唯一的作用就是触发 `postinstall` 脚本。如果你在 `node_modules` 里看到一个依赖既没被 `import` 也没被 `require`，那基本就是挂马了。\n\n### 隐蔽的跨平台木马加载器\n一旦你运行 `npm install`，`plain-crypto-js` 的 `setup.js` 就会自动执行。这个脚本经过了多层混淆，把 C2 地址、系统命令都藏在数组里。解密后发现，它会根据操作系统类型分发不同的载荷：macOS 会被写入一个伪装成系统缓存的脚本，Windows 会通过 VBScript 静默调用 PowerShell，Linux 则直接下载 Python 脚本。为了掩人耳目，攻击者在网络请求里用了 `packages.npm.org` 这样的前缀，让流量在日志里看起来像是在访问 npm 官方源。\n\n### 完美的“自杀式”清理机制\n最让人后背发凉的设计在于它的清理逻辑。木马落地后，`setup.js` 会删除自己，并用一个干净的 `package.json` 覆盖原来的恶意版本。这意味着，等你事后去检查 `node_modules` 时，会发现那个依赖包看起来人畜无害，没有任何 `postinstall` 脚本，源码也干干净净。这种“作案后打扫现场”的手法，让传统的静态分析和事后取证变得极其困难。虽然这两个版本只存活了不到 3 小时就被 npm 官方下架，但如果你不幸在这个时间窗口安装了 axios，只能默认假设系统已经沦陷。"
+}

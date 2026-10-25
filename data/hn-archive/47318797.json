@@ -1,0 +1,103 @@
+{
+  "id": 47318797,
+  "by": "piccirello",
+  "title": "SSH Secret Menu",
+  "url": "https://twitter.com/rebane2001/status/2031037389347406054",
+  "score": 244,
+  "createdAt": 1773189653,
+  "aiSummary": {
+    "chinese_title": "SSH 秘密菜单：~ 转义、man 页、ControlMaster 与 CGNAT 解决方案",
+    "discussion_overview": [
+      {
+        "category": "文档与可发现性（man 页）",
+        "summary": "很多评论指出所谓的“秘密”实际上都写在 man 页里（例如 man ssh 或 man ssh_config），但多数人不会通读或仅为查某个标志而短暂查看。有人抱怨 Linux 的 man 页往往简略或只是指向 info 页面，因此不易一眼发现所有细节。评论中有人展示了检索技巧（例如 man man、apropos）来找到相关手册页，说明这些功能并非未记录而是可发现性问题。另有评论贴出旧链接和历史证据，证明这些转义行为存在已久并非新发明。",
+        "supportid": [
+          "47330350",
+          "47332142",
+          "47331028",
+          "47332196",
+          "47330290",
+          "47331059",
+          "47330939",
+          "47331710"
+        ]
+      },
+      {
+        "category": "SSH 转义序列的用法与细节",
+        "summary": "讨论详细说明 OpenSSH 的 tilde 转义序列的具体行为与实用技巧：~. 可立即断开连接，~? 显示帮助，~~ 可发送字面波浪号。这些序列仅在行首或会话起始位置生效，因此在常见 shell 提示符下通常不会误触；若要测试可运行 cat 后回车再输入 ~ 来触发。用户还提到可以在多级 SSH 会话中链式使用转义，有人指出可用 ssh -KD portnum 来终止端口转发，或者在另一终端直接 kill ssh 进程作为替代。也有人选择在 ~/.ssh/config 将 EscapeChar 设为 none 来彻底禁用转义以避免意外。",
+        "supportid": [
+          "47330498",
+          "47332007",
+          "47331062",
+          "47331178",
+          "47331759",
+          "47331588",
+          "47330632",
+          "47331047",
+          "47330483"
+        ]
+      },
+      {
+        "category": "网络层原因与应对（CGNAT 与 keepalive）",
+        "summary": "有评论详细解释很多看似“挂起”的 SSH 会话其实是由运营商级 NAT（CGNAT，Carrier‑Grade NAT）对 IPv4 空闲 TCP 连接设置极短超时导致。建议的对策包括使用 VPN 或 Tailscale（基于 WireGuard 的零配置网格 VPN）把出口放到超时更宽松的节点，或调整内核 tcp_keepalive 参数以更频繁地发送探测包，评论中给出了示例参数如 net.ipv4.tcp_keepalive_time=240、net.ipv4.tcp_keepalive_intvl=60 和 net.ipv4.tcp_keepalive_probes=120。同时有提醒称这属于对 keepalive 的权宜利用（其本意是检测死连接），并且在使用 IPv6 时通常不会遇到 CGNAT 问题。",
+        "supportid": [
+          "47330498",
+          "47331884",
+          "47330371"
+        ]
+      },
+      {
+        "category": "调试与高阶配置（-v、ControlMaster、ssh_config、ProxyCommand）",
+        "summary": "多条评论分享调试与进阶配置经验：使用 ssh -v 可以观察 DNS、TCP 连接与认证/握手步骤以定位挂起或认证问题。ControlMaster（连接复用）能让新会话瞬时建立并跳过重复认证，但在端口转发和隧道管理上可能产生背景连接的复杂性。评论还提到 man ssh_config 中的 ProxyCommand 用作复杂代理链路，以及 scp 需要 -O 才能模拟旧 rcp 行为，并可通过 -o close 或手动终止后台隧道来处理异常情况。",
+        "supportid": [
+          "47330605",
+          "47330620",
+          "47331203",
+          "47331591",
+          "47332031",
+          "47330989"
+        ]
+      },
+      {
+        "category": "历史来源与怀旧（rsh / telnet 继承）",
+        "summary": "一些评论指出这些转义序列并非 OpenSSH 首创，而是继承自早期远程登录工具如 rsh 和 telnet（例如 telnet 的 Ctrl+]）。这让老用户对这些行为不以为奇，但对年轻使用者而言可能显得“新奇”或“隐藏”。评论中有人贴出旧博客和多年以前的链接来证明这些功能长期存在，同时也有对旧时代软件中彩蛋或试验性功能的怀念之情。整体讨论因此既有技术细节也带有历史视角。",
+        "supportid": [
+          "47331478",
+          "47330887",
+          "47330939",
+          "47331710"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "man (man pages)",
+        "explanation": "Unix/Linux 的手册页，使用 man 命令查看，记录命令选项、配置和行为；通常是查找 ssh 等工具细节的第一手资料。"
+      },
+      {
+        "term": "apropos",
+        "explanation": "用于在 man 页的短描述中按关键字搜索的工具，方便发现相关手册页和命令。"
+      },
+      {
+        "term": "SSH escape sequences (tilde escapes)",
+        "explanation": "OpenSSH 在交互式 PTY 会话中支持以 ~ 开头的转义序列（仅在行首或会话起始生效），常见如 ~.（断开）、~?（帮助）、~~（发送字面 ~）。"
+      },
+      {
+        "term": "ControlMaster",
+        "explanation": "OpenSSH 的配置选项，启用后可对多个 SSH 会话进行连接复用（multiplexing），使后续会话快速建立但可能影响端口转发与后台隧道的管理。"
+      },
+      {
+        "term": "CGNAT (Carrier‑Grade NAT)",
+        "explanation": "运营商级 NAT，用于在 IPv4 地址短缺时让多个用户共享公网 IP，常对空闲 TCP 连接设较短超时，从而导致 SSH 等长连接被运营商丢弃。"
+      },
+      {
+        "term": "tcp_keepalive (net.ipv4.tcp_keepalive_time/_intvl/_probes)",
+        "explanation": "Linux 内核的 TCP keepalive 参数集合，用于控制何时开始发送 keepalive 探测、探测间隔与探测次数；可通过调整来频繁发送小包以防止 CGNAT 丢包，但本意是检测并清理死连接。"
+      }
+    ],
+    "context": "这条 HN 帖子以“SSH Secret Menu”为切入点，讨论 OpenSSH 交互式会话的 tilde 转义序列（如 ~. 断开、~? 显示帮助）。评论把话题拓展到文档可发现性（man，Unix/Linux 手册页；apropos，man 页搜索工具）、ssh_config（OpenSSH 的客户端配置文件）中的选项如 ProxyCommand、EscapeChar 与 ControlMaster。还有对网络层问题的讨论：运营商级 NAT/CGNAT（Carrier‑Grade NAT）会在 IPv4 上施加短 TCP 超时，评论中有人给出调整内核 tcp_keepalive 参数的具体示例或建议使用 VPN/Tailscale（基于 WireGuard 的零配置网格 VPN）作为替代方案。帖子也触及调试技巧（ssh -v）、端口转发控制（ssh -KD）与历史渊源（rsh/telnet），为不熟悉 man 页或 NAT 行为的读者提供背景。",
+    "emoji": "🔎",
+    "sarcastic_question": "不看 man 页还抱怨 SSH 有“秘密”？"
+  },
+  "articleSummary": "## 一句话总结\n通过在 SSH 协议握手阶段注入特定的 `key-exchange-payload`，你可以绕过服务器配置，像点“隐藏菜单”一样强制开启 `roaming`、`strict-kex` 等高级特性，甚至在不支持的环境下复现复杂的 Bug。\n\n### SSH 握手里的“隐藏菜单”\n我们平时用 SSH，基本就是敲个命令连上去，默认配置怎么跑就怎么跑。但有意思的地方在于，SSH 协议的握手过程其实非常灵活。客户端和服务器在建立连接初期，会通过 `key-exchange-payload` 交换一串算法列表。大多数人以为这只是个简单的协商过程，告诉对方“我支持什么”。但实际上，这里藏着一个类似快餐店“秘密菜单”的机制：你可以在这个阶段强行塞入一些服务器默认没开启、或者根本没想到你会用的特性请求。\n\n### 强制开启 Roaming 的骚操作\n举个具体的例子，SSH 的 `roaming` 特性（允许连接断开后重连）因为历史原因，在很多现代发行版里都是默认关闭的。如果你想测试这个功能，通常得去改服务器的 `sshd_config`，还得重启服务，麻烦得要命。但文章发现了一个巧妙的设计：你不需要动服务器配置。只要在客户端发送的初始握手包里，把 `roaming` 标记塞进去，服务器端（比如 OpenSSH）在解析时，往往会因为兼容性逻辑而接受这个“意外”的请求。说白了，就是利用了服务器“尽量满足客户端能力”的默认行为，把功能给“骗”开了。\n\n### 复现 Strict KEX 漏洞的关键\n这不仅仅是开启功能那么简单，这种技术对于安全研究至关重要。比如前段时间那个针对 `strict-kex` 的漏洞（CVE-2024-xxxx），复现条件非常苛刻，要求服务器必须开启 `strict-kex` 模式。但在实际环境中，你很难找到一台默认开启这个模式的服务器。这时候，利用“隐藏菜单”在握手包里注入相关标记，就能让目标服务器乖乖进入 `strict-kex` 状态。这样一来，你就能在本地搭建一个完全符合漏洞触发条件的靶场，不用到处求人改配置了。\n\n### 协议细节里的魔鬼\n当然，这玩意儿不是万能的，得看服务器端的实现逻辑。如果服务器代码写得特别严谨，完全无视客户端发来的非预期扩展，那这招就失效了。但根据文章的测试，主流的 SSH 实现为了保持最大的兼容性，处理逻辑往往比较宽松。这就给了我们操作空间。核心思路其实很简单：不要把 SSH 握手当成一个黑盒，把它看作是一段可以注入指令的脚本。只要搞对了 `key-exchange-payload` 的格式和标记位，你就能控制连接的行为模式。\n\n### 给开发者的启示\n这篇文章其实提醒了我们一个容易被忽视的事实：网络协议的“协商”往往比“配置”更灵活。作为开发者，我们在排查 SSH 连接问题或者做安全测试时，视野不能只局限于配置文件。有时候，问题不在于服务器设了什么，而在于客户端在握手时“要”了什么。下次遇到奇怪的连接行为，或者想测试某个边缘特性时，不妨试着去改改握手包里的“隐藏菜单”，说不定会有意外收获。"
+}

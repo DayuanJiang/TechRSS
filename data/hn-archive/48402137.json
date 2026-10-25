@@ -1,0 +1,74 @@
+{
+  "id": 48402137,
+  "by": "andrewstetsenko",
+  "title": "OCaml Onboarding: Introduction to the Dune build system",
+  "url": "https://ocamlpro.com/blog/2025_07_29_ocaml_onboarding_introduction_to_dune/",
+  "score": 138,
+  "createdAt": 1780936811,
+  "aiSummary": {
+    "chinese_title": "OCaml 入门：Dune 构建系统与 opam/Make 之争",
+    "discussion_overview": [
+      {
+        "category": "新手更需要“常用命令”而非完整原理",
+        "summary": "有人认为这类 OCaml 入门内容最有价值的地方，不是把 Dune 的内部机制讲透，而是直接告诉新手日常会用哪些命令。对比 Elixir 的 mix，这种“少量高频命令”的体验被认为更顺手：先学会 compile、deps.get、test，就能开始干活。还有人提到自己学 OCaml 时，很多教程前半段都停在 opam（OCaml 的包管理器），直到最后才切到 Dune，导致工具链的过渡不够自然。",
+        "supportid": [
+          "48448348"
+        ]
+      },
+      {
+        "category": "Dune 太重，怀念 ocamlbuild 的零配置",
+        "summary": "也有评论直言 Dune 虽然强大、稳定，但对初学者来说太繁琐，甚至简单项目也要写多个文件才能真正用起来。相比之下，ocamlbuild 被怀念为更接近“写完就能跑”的工具，几乎不需要额外配置，至少在小项目上体验更轻。反驳者则指出，OCaml 生态曾经试过依赖 Make 的路线，但维护 makefile 复杂且规则晦涩，Dune 正是为了解决这些痛点才成为事实标准。",
+        "supportid": [
+          "48448876",
+          "48450612",
+          "48452744"
+        ]
+      },
+      {
+        "category": "关于为什么总要重造 build/packaging 轮子",
+        "summary": "另一条讨论线把矛头指向“为什么每种语言都要重新发明 packaging、building 这一套”。质疑者认为 Make 已经够通用，没必要再造语言专用工具，甚至把这类工作看成开发者在重写开发栈。回应者则强调，Make 虽然图灵完备，但语法不直观、设计不一致，而且它既不是 package manager，也不是 dependency resolver，更不是适合复杂项目的现代 build system。",
+        "supportid": [
+          "48448713",
+          "48449290",
+          "48449996",
+          "48450411",
+          "48449089",
+          "48450025",
+          "48451527",
+          "48451520"
+        ]
+      },
+      {
+        "category": "Dune、opam、uv 的类比，以及平台兼容问题",
+        "summary": "有人问 Python 的 uv 是否相当于 OCaml 的 Dune，得到的回答是否定的：uv 更像 opam，因为它主要是包和依赖管理；Dune 才负责预处理、链接、编译、测试等构建流程。这个比较也顺带说明，Python 纯代码项目通常不需要像 OCaml 这样强的构建层，因此两者角色并不对等。另一个现实问题是 Windows 上的 OCaml 体验，有人提到在 OCaml 5.x 上安装 utop 时，许多包还要降级回 4.x，说明跨平台和包兼容性仍有摩擦。",
+        "supportid": [
+          "48451108",
+          "48452103",
+          "48453010"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Dune",
+        "explanation": "OCaml 的主流构建系统，负责编译、链接、测试和规则生成。"
+      },
+      {
+        "term": "opam",
+        "explanation": "OCaml 的包管理器和依赖管理工具。"
+      },
+      {
+        "term": "ocamlbuild",
+        "explanation": "较早期的 OCaml 构建工具，常被拿来与 Dune 对比。"
+      },
+      {
+        "term": "GNU Make",
+        "explanation": "通用构建工具/任务执行器，表达力强但语法和维护体验常被诟病。"
+      }
+    ],
+    "context": "这篇文章是在介绍 Dune（OCaml 的声明式构建系统）的入门内容，围绕它如何帮助新手完成编译、测试和项目组织。OCaml 生态里常见的另一层工具是 opam（包管理器），而更早期的 ocamlbuild 则常被拿来和 Dune 比较，因为它曾经以“少配置”著称。评论区把这个话题扩展到 Elixir 的 mix（项目与依赖管理工具）和 Python 的 uv（新一代包/环境工具），核心是在比较不同语言生态里“日常命令是否足够简单”。同时也能看出 OCaml 社区对 Dune 的态度分裂：一边觉得它是解决复杂构建现实的必要工具，另一边则觉得它把简单项目也拖进了过重的配置体系。Windows 上 OCaml 5.x 与 utop 的兼容问题，则说明这个生态在跨平台支持和包版本迁移上仍不够顺滑。",
+    "emoji": "🤨",
+    "sarcastic_question": "Make 既然万能，谁还愿意维护它？"
+  },
+  "articleSummary": "## 一句话总结\nDune 之所以成为 OCaml 生态的标配，是因为它通过极简的 `dune-project` 和 `dune` 文件配置，把编译、测试、文档生成甚至 CLI 测试全部自动化了，让你不用操心底层依赖就能快速上手项目。\n\n### 为什么 Dune 是 OCaml 开发的必选项\n很多刚接触 OCaml 的开发者会觉得上手门槛高，其实很多时候是被工具链劝退的。在之前的 `opam` 深度解析文章中，作者发现大家默认已经熟悉了构建系统，但这恰恰是新手的盲区。说白了，Dune 就是 OCaml 版的“万能胶水”，它负责把你的代码、依赖和测试粘合在一起。这篇文章的核心目的，就是带你从零开始，搞清楚 Dune 到底是怎么管理项目结构的，以及它和 `opam` 是如何配合工作的。\n\n### 两个文件搞定项目元数据和构建逻辑\nDune 的设计哲学是“约定优于配置”，你只需要在项目根目录放两个关键文件。`dune-project` 是项目的“身份证”，它定义了 Dune 版本、包名、依赖库以及自动生成 opam 文件的配置，是整个构建的入口点。而 `dune` 文件则是具体的“施工图纸”，通常放在代码目录下，告诉 Dune 这里要编译成库、可执行文件还是测试。这种把元数据和构建逻辑分离的做法，让项目结构一目了然，维护起来也特别清爽。\n\n### 用 Stanza 声明式定义构建目标\n在 `dune` 文件里，一切皆由 Stanza（配置块）定义，这比写复杂的 Makefile 要直观得多。比如 `library` stanza 告诉 Dune 把哪些 `.ml` 文件编译成可复用的库；`executable` stanza 则负责把代码打包成二进制文件，这里你可以指定 `public_name`，这样安装后就能直接作为命令行工具调用；而 `test` stanza 专门用来标记测试代码。这种声明式的写法，让你不需要关心具体的编译命令，只要描述“我要什么”，Dune 就会帮你搞定“怎么做”。\n\n### 一条命令搞定构建、文档和运行\n项目配置好后，工作流就变得非常机械化。`dune build @all` 会一次性构建所有目标，生成的产物会整齐地码放在 `_build` 目录下。如果你想看文档，只要装好 `odoc`，运行 `dune build @doc` 就能自动生成 HTML 文档。最常用的是 `dune exec --`，它不仅能帮你找到并运行构建好的二进制文件，还能透传参数给程序。这比手动去 `_build` 目录里翻找 `.exe` 文件要优雅得多，也避免了环境不一致的问题。\n\n### 不写代码也能测 CLI：Cram Tests 的妙用\n测试库函数通常用 `alcotest`，但测试命令行工具（CLI）往往很麻烦，Dune 提供了一个很酷的解决方案叫 Cram tests。你只需要写一个 `.t` 文件，把你在终端里敲的命令和期望的输出写进去，Dune 就会自动执行命令并比对结果。如果输出变了（比如你改了打印格式），直接用 `dune promote` 就能把新输出更新到测试文件里。这种“所见即所得”的测试方式，对于维护 CLI 工具来说简直是神器，既直观又省力。\n\n### 别急着用脚手架，先理解底层逻辑\n虽然 Dune 提供了 `dune init` 这种像 `create-react-app` 一样的脚手架工具，能一键生成项目模板，但作者特意建议新手先手写一遍配置文件。这就像学车要先开手动挡一样，只有搞懂了 `dune-project` 和 `dune` 文件里的每一行配置是干嘛的，你才能在遇到复杂构建问题时，知道该去哪里改、怎么改。掌握了这些基础，再用脚手架提速，才是正解。"
+}

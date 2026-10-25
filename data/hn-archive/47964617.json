@@ -1,0 +1,143 @@
+{
+  "id": 47964617,
+  "by": "j12y",
+  "title": "Shai-Hulud Themed Malware Found in the PyTorch Lightning AI Training Library",
+  "url": "https://semgrep.dev/blog/2026/malicious-dependency-in-pytorch-lightning-used-for-ai-training/",
+  "score": 330,
+  "createdAt": 1777568416,
+  "aiSummary": {
+    "chinese_title": "Shai-Hulud 恶意包通过 PyPI 入侵 Lightning AI 的 PyTorch Lightning",
+    "discussion_overview": [
+      {
+        "category": "供应链攻击已成常态",
+        "summary": "不少评论认为这不是错觉，而是软件供应链攻击确实在快速增加。有人直接引用数据，称过去 12 个月发生的严重案例已经超过此前很多年的总和。讨论里反复出现的原因包括“先发布再修补”的文化、对依赖包几乎不审查，以及项目从业余代码变成下游关键依赖后，攻击收益被放大。另一些人指出，攻击者如今更常盯着云凭证和勒索收益，这让成功攻击的价值比十年前高得多。",
+        "supportid": [
+          "47966396",
+          "47970365",
+          "47966447",
+          "47966558",
+          "47970016",
+          "47967336",
+          "47967673",
+          "47967094",
+          "47967728"
+        ]
+      },
+      {
+        "category": "Python/ML 生态的脆弱性",
+        "summary": "评论把问题很大一部分归咎于 Python 和 ML 生态长期存在的安装即执行风险。`setup.py`、`pip install`、`requirements.txt` 这些老问题并没有随着时间自动消失，很多人仍然在生产环境里直接装源包。有人用自己维护 Python 包的经历说明，PyPA 的变动经常打断构建，而 wheel 和 RECORD 校验出错也常常没人发现。ML 生态还被批评得更“野”，历史上常用 Python pickle 这类可执行对象分发模型，本身就把安全边界做得很弱。",
+        "supportid": [
+          "47967584",
+          "47970293",
+          "47968517",
+          "47967274",
+          "47968990",
+          "47966732"
+        ]
+      },
+      {
+        "category": "减少依赖 vs 维护成本",
+        "summary": "有一部分人借机表达对“依赖海洋”的厌倦，转而追求更少依赖或直接 vendoring。有人说自己给孩子做交互教育项目时，已经尽量只用 plain JS 和 HTML，不再堆几百个包。也有人主张 Go 的 stdlib 足够强，或者用 Nix、Docker、单一 lockfile 把构建和版本锁住。反方则提醒，零依赖并不等于零维护，浏览器 API、时区规则和平台变化最终还是会把责任全部压回开发者。",
+        "supportid": [
+          "47966126",
+          "47966522",
+          "47967033",
+          "47966901",
+          "47966875",
+          "47967751",
+          "47967764",
+          "47970515",
+          "47968906"
+        ]
+      },
+      {
+        "category": "本次事件的入侵路径",
+        "summary": "评论不断澄清，这次并不是 GitHub 主仓库被直接合并了恶意代码。维护者说明，问题来自 PyPI 凭证泄露，恶意版本 2.6.2 和 2.6.3 是直接发布到 PyPI 上的，而 GitHub 源码本身据称没有被污染。另一条线索是大量新建的 GitHub 仓库，仓库名带着 Dune 词汇和 “A Mini Shai-Hulud has Appeared” 之类的文本，看起来像是被盗账号或 token 被用来批量投递、泄露凭证或制造噪音。还有人贴出了 `router_runtime.js` 的 hash，方便用户本地排查是否感染。",
+        "supportid": [
+          "47966455",
+          "47969022",
+          "47966375",
+          "47966377",
+          "47965646",
+          "47965754",
+          "47965753",
+          "47965818",
+          "47966127",
+          "47965702",
+          "47967635",
+          "47969039",
+          "47965809",
+          "47966546"
+        ]
+      },
+      {
+        "category": "LLM/AI 放大了安装风险",
+        "summary": "不少人担心 AI/LLM 正在把老问题放大。有人说现在很多 `pip install` 都是 Claude Code 建议后直接回车，而模型训练数据再新，也不知道这一周哪个包已经被投毒。另一些人强调，真正的问题不是模型“懂不懂安全”，而是它不会在安装前检查包里会执行什么代码，尤其是 `setup.py` 和各类 hook。更远一点的猜测是，未来可能出现专门污染训练数据或 agent 链路的供应链攻击，但也有人怀疑这类攻击的迭代周期太长、成本太高。",
+        "supportid": [
+          "47967352",
+          "47967954",
+          "47968206",
+          "47969591",
+          "47969678",
+          "47967010",
+          "47967699",
+          "47969993",
+          "47966879",
+          "47967702",
+          "47966638",
+          "47967446"
+        ]
+      },
+      {
+        "category": "应急防护与版本控制",
+        "summary": "在恐慌之外，讨论也落到了能立刻做的防护措施上。有人建议锁版本、使用 pip 的上传时间冷却、uv 的 `exclude-newer`，或者用 SBOM 辅助识别和回滚依赖。AWS 侧则建议启用 CloudTrail、限制密钥权限，因为被盗凭证最常见的滥用方式往往是悄悄起一堆昂贵的 EC2 实例。维护者也明确建议先停留在 2.6.1，等 2.6.4 发布再升级，而 PyPI 侧更严格的 2FA 也被点名要求。",
+        "supportid": [
+          "47966117",
+          "47966521",
+          "47970509",
+          "47967432",
+          "47968117",
+          "47969510",
+          "47966649",
+          "47965997",
+          "47967635",
+          "47969039"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Shai-Hulud",
+        "explanation": "《Dune》里的沙虫名，这里被用作这轮恶意活动的主题代号。"
+      },
+      {
+        "term": "PyPI",
+        "explanation": "Python Package Index，Python 的官方第三方包仓库，恶意版本常直接在这里发布。"
+      },
+      {
+        "term": "setup.py",
+        "explanation": "传统 Python 打包脚本，安装时可能执行代码，是供应链攻击的常见入口。"
+      },
+      {
+        "term": "requirements.txt",
+        "explanation": "Python 依赖清单文件，很多项目只写版本范围而没有真正锁死依赖。"
+      },
+      {
+        "term": "版本锁定（lockfile）",
+        "explanation": "把依赖固定到具体版本，减少自动升级到受污染版本的风险。"
+      },
+      {
+        "term": "SBOM",
+        "explanation": "Software Bill of Materials，软件物料清单，用于追踪组件和受影响版本。"
+      },
+      {
+        "term": "uv",
+        "explanation": "Astral 出的 Python 包/环境管理工具，评论中常被拿来和 asdf、pip 对比。"
+      }
+    ],
+    "context": "这条讨论围绕 Lightning AI 的 PyTorch Lightning（一个开源训练库）被名为 Shai-Hulud（《Dune》里的沙虫名，被借来当作恶意活动代号）的恶意包污染展开。维护者澄清，问题不是 GitHub 主仓库被合并了恶意代码，而是 PyPI（Python 官方第三方包仓库）上的发布凭证泄露后，2.6.2 和 2.6.3 被直接投毒，建议暂时回退到 2.6.1。评论里还提到大量带有 Dune 词汇的新 GitHub 仓库和 “A Mini Shai-Hulud has Appeared” 字样，像是被盗 GitHub token/账号被用来批量泄露凭证或制造噪音。整场讨论因此延伸到 Python/ML 生态的依赖管理、uv（Astral 出的 Python 包/版本管理工具）、Nix（强调可复现构建的包管理系统）以及 LLM 辅助开发会不会放大供应链风险。",
+    "emoji": "⚠️",
+    "sarcastic_question": "难道现在生产环境的依赖管理就是开盲盒吗？"
+  },
+  "articleSummary": "## 一句话总结\nPyPI 上的 `lightning` 库遭遇供应链投毒，攻击者利用 JavaScript 蠕虫不仅窃取全平台凭证，还能通过污染 npm 包和开发者工具实现跨生态的持久化传播。\n\n### 深度学习核心库竟成了木马特洛伊\n这次出事的是 PyPI 上大名鼎鼎的 `lightning` 包（PyTorch Lightning），4 月 30 日发布的 2.6.2 和 2.6.3 版本被恶意篡改。对于正在跑图像分类、微调 LLM 或者搞扩散模型的团队来说，这简直是“精准打击”，因为这东西通常深埋在依赖树的最底层。你只需要运行 `pip install lightning`，恶意代码就会在模块导入时自动执行，根本不需要任何额外操作。\n\n### 沙丘主题的 JavaScript 蠕虫 payload\n有意思的地方在于，虽然这是一个 Python 包，但核心 payload 却是一段混淆过的 JavaScript。攻击者在包里塞了个隐藏的 `_runtime` 目录，里面装着 14.8 MB 的恶意脚本。这波攻击被命名为 \"Shai-Hulud\"（沙丘里的沙虫），特征非常明显：它会创建名为 \"EveryBoiWeBuildIsaWormBoi\" 的公开仓库。安全人员认为，这和之前的 \"mini Shai-Hulud\" 行动是同一伙人所为，连 commit message 的命名风格都保持一致。\n\n### 从 PyPI 到 npm 的跨生态“越狱”\n这不仅仅是个偷数据的脚本，它还是个能自我复制的蠕虫。一旦恶意代码运行起来，它会检查环境里有没有 npm 的发布凭证。如果有的话，它就会向该 token 有权限的所有 npm 包里注入 `setup.mjs` 和 `router_runtime.js`，修改版本号并重新发布。这下就麻烦了：任何下游开发者安装这些被污染的 npm 包时，也会中招，从而形成从 PyPI 到 npm 的跨生态传播链。\n\n### 四重通道确保数据必定外泄\n为了防止数据被拦截，攻击者设计了四条并行的外泄通道，相当“稳健”。除了直接 HTTPS POST 到 C2 服务器，它还利用 GitHub commit search API 作为“死信箱”，通过特定前缀的 commit message 传递 double-base64 编码的 token。此外，它会在 GitHub 上新建公开仓库存偷来的数据，或者如果能拿到 `ghs_` token，就直接把数据推到受害者的仓库里。这招“东边不亮西边亮”的设计，让阻断变得非常困难。\n\n### 无死角的凭证收割行动\n这波攻击的目标是“全盘通吃”，从本地环境到云端一概不放过。在本地，它扫描 80 多个常见路径找 token，抓取环境变量；在 CI/CD 环境里，它甚至通过嵌入 Python 脚本去 dump Linux runner 的内存，提取 GitHub Actions 的 secrets。云服务方面，AWS、Azure、GCP 三大厂商全中招，它会尝试通过 IMDSv2、Secrets Manager 等各种接口把能拿的密钥全拿走。\n\n### 针对开发工具的持久化陷阱\n最阴毒的设计在于它对开发者工具的劫持，这可能是首个利用 Claude Code 钩子进行实战的案例。它会在受害仓库里修改 `.claude/settings.json` 和 `.vscode/tasks.json`。只要你用 VS Code 打开项目，或者启动 Claude Code，恶意脚本就会自动运行。为了确保能跑起来，它甚至自带一个 Bun 运行时的下载器，如果系统里没装 Bun，它会静默下载并执行那个 14.8 MB 的大 payload。\n\n### 供应链安全必须“冷处理”\n如果你不幸中招，现在的首要任务是假设环境已完全沦陷。不仅要检查是否安装了恶意版本的 `lightning`，还要全盘审计 GitHub 仓库里是否多出了奇怪的 `.claude/` 或 `.vscode/` 配置文件。所有暴露在环境中的 GitHub token、云凭证必须立刻轮换。对于这种供应链攻击，Semgrep 的建议依然是建立“冷却期”，不要盲目信任刚发布的包版本，尤其是在没有人工审查的情况下。"
+}

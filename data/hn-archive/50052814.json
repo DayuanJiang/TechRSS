@@ -1,0 +1,84 @@
+{
+  "id": 50052814,
+  "by": "luggage_bazooka",
+  "title": "Zod 4.6.6 malware infection",
+  "url": "https://github.com/colinhacks/zod/commit/d821685ea6732436fcdf786a81d076958471e467",
+  "score": 154,
+  "createdAt": 1791793860,
+  "aiSummary": {
+    "chinese_title": "Zod Git 仓库遭恶意提交：未发布到 npm，但污染提交仍留在标签历史",
+    "discussion_overview": [
+      {
+        "category": "影响范围：仓库失陷但 npm 用户未受波及",
+        "summary": "评论者梳理称，攻击者在 9 月 21 日利用维护者的 Git 推送凭据，将恶意代码直接推入 Zod 的 main 分支；维护者当天即回滚。10 月 11 日发布的 Zod 4.6.6 不含该代码，恶意版本没有提交或发布到 npm，因此现有 npm 安装用户无需按“Code Red”处理。攻击也波及 standard-schema 和 nub；其中 nub 一度到达 npm，但被 npm 的恶意软件扫描拦截。争论点在于，尽管未形成 npm 发布物，仓库和预发布流程本身是否已应被视为“compromised release”。",
+        "supportid": [
+          "50053402",
+          "50053516",
+          "50053536",
+          "50053445",
+          "50055521",
+          "50053490"
+        ]
+      },
+      {
+        "category": "恶意代码特征：借 Ethereum 作为远程载荷定位渠道",
+        "summary": "被指出的提交含有明显的 Ethereum RPC URL，代码疑似会从 Ethereum mainnet 上的 smart contract 获取下一阶段载荷或其下载地址。评论者将其定性为恶意 remote-code loader：安装时尝试注入 JavaScript，再从链上可更新的位置拉取并执行更多代码。将 command-and-control 地址放在区块链上，意味着攻击者可远程更换指向，且地址较难通过传统域名或服务器下线手段清除。多位评论者认为代码没有刻意隐藏，明文出现“ethereum”已是显著告警信号。",
+        "supportid": [
+          "50052815",
+          "50053202",
+          "50053237",
+          "50053226",
+          "50053220",
+          "50053178"
+        ]
+      },
+      {
+        "category": "绕过审查与发布防线的评估",
+        "summary": "维护者的说明称，泄露的是 Git push credential，而非 npm 或 GitHub token；攻击者因此能绕过 PR review，直接向 main 推送带标签的恶意提交。评论者认为这解释了为何如此显眼的小改动仍能进入主分支，而非审查人员忽略了 Ethereum URL。与此同时，Zod 的 trusted publishing 与独立 GitHub deployment environment 阻止了仓库污染进一步变成 npm 发布，维护者随后改用只能由 workflow_dispatch 触发、要求 2FA 的 environment-scoped staged publishing。有人指出该防线的实际功劳不应被“npm malware scanning 拦截”这一说法混淆。",
+        "supportid": [
+          "50053277",
+          "50053398",
+          "50055482",
+          "50054177"
+        ]
+      },
+      {
+        "category": "Git 历史、标签与安装脚本的残余风险",
+        "summary": "评论者不满恶意 commit 仍可在 GitHub 的 v4.6.6 标签和 release 页面看到，认为应重写 Git history，而非仅做回滚。保留该提交会让 git bisect 命中恶意版本，也损害外界对项目安全响应的信任；另有人认为仍有机会移除。关于执行条件，有人发现 `preinstall` 被置于 package.json 根部而非 `scripts` 下，按 npm 约定可能根本不会运行。评论还提醒不要假定所有 Node 环境默认禁用安装脚本：该默认行为需要 npm 12，而许多 Node 安装仍默认携带 npm 11。",
+        "supportid": [
+          "50053372",
+          "50053467",
+          "50054339",
+          "50054346",
+          "50053239",
+          "50053366",
+          "50055387",
+          "50055579",
+          "50055569"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "trusted publishing（可信发布）",
+        "explanation": "将包发布权限绑定到受控 CI 身份和部署环境的发布机制，避免仅凭泄露的长期 token 直接向 npm 发包。"
+      },
+      {
+        "term": "preinstall / install scripts",
+        "explanation": "npm 包安装生命周期中的脚本钩子；若被执行，可在依赖安装阶段运行任意命令，因此常被供应链攻击滥用。"
+      },
+      {
+        "term": "Ethereum RPC 与 smart contract",
+        "explanation": "RPC 是访问 Ethereum 区块链节点的接口；恶意程序可读取 smart contract 中的数据，把链上内容当作可变的载荷地址或 C2 指引。"
+      },
+      {
+        "term": "git bisect",
+        "explanation": "Git 用二分法定位引入问题提交的工具；历史中保留恶意提交，会使排查过程仍可能检出该版本。"
+      }
+    ],
+    "context": "Zod（JavaScript/TypeScript 的运行时 schema validation 库）被大量 Node 项目作为基础依赖，因此其仓库出现恶意提交会被视为典型软件供应链攻击风险。事件中攻击者疑似取得了可直接向仓库推送的 Git 凭据，把伪装成“修复 bug、提升性能”的代码推入 main 并打上标签；代码包含 Ethereum RPC 地址，疑似通过 Ethereum smart contract（区块链上的可执行/存储合约）定位后续恶意载荷。评论所依据的关键区别是 GitHub 仓库历史或 release 标签曾被污染，但 npm（JavaScript 包注册表）实际分发的 4.6.6 tarball 不含恶意代码。争议因而集中在：现有依赖用户是否安全、发布 CI 是否成功阻断攻击，以及是否应彻底删除公开 Git 历史和标签中的恶意对象。",
+    "emoji": "😬",
+    "sarcastic_question": "代码里明写 Ethereum，直推 main 的审查去哪了？"
+  },
+  "articleSummary": "## 一句话总结\n这是一次针对 Zod 生态的供应链攻击分析，攻击者通过篡改 CI 配置自动发布携带恶意后门的 4.6.6 版本，利用以太坊区块链动态拉取并执行任意代码。\n\n## 正文\n\n### 攻击的起点：CI 配置的致命篡改\n故事的开端并不在代码逻辑里，而在发布流程的配置文件中。原本的 `release.yml` 相当克制，需要维护者手动触发 `workflow_dispatch`。但攻击者修改了触发条件，变成了监听 `main` 分支的 push 事件，且特别指定了路径为 `package.json`。这意味着，只要版本号发生变更，CI 就会自动运行。这为后续的自动发布敞开了大门，绕过了原本的人工审批流程。\n\n### 潜伏的载荷：混淆的恶意脚本\n紧接着，代码中凭空出现了一个 `meta.test.mjs` 文件。这文件看着就不像正经代码，全是混淆后的变量名。核心逻辑定义了一个以太坊地址 `C` 和一个函数签名 `S`，还准备了一组公开的 Ethereum RPC 节点列表。说白了，这不是业务代码，这是一段精心构造的下载器。它被同时注入到了 `@zod/mini` 和 `zod` 两个包中。\n\n### 攻击链的巧妙设计：利用区块链做 C2\n有意思的地方在于它的 C2（命令与控制）机制。脚本并没有硬编码一个域名，而是向 Ethereum RPC 节点发起 `eth_call` 请求。它去查询链上地址 `0xe236...` 的存储数据。这是一种非常隐蔽的“动态配置”手段：攻击者只需要修改链上合约的状态，就能实时更新恶意载荷的下载地址，完全不需要触碰受害者的本地文件，也避免了域名被封锁的风险。\n\n### 解密与注入：从链上数据到本地执行\n拿到链上返回的 Hex 数据后，脚本调用了一个 `dec` 函数进行解码。这个函数的逻辑其实就是在解析 ABI 编码的数据，从中提取出字符串数组。提取出来的字符串就是后续的攻击载荷下载域名。脚本会尝试访问这些域名下的 `/loader` 接口，获取 Base64 编码的 `setupB64` 和 `payloadB64`。一旦下载成功，它会在系统临时目录创建文件夹，写入载荷并执行。\n\n### 伪装与触发：preinstall 钩子的陷阱\n怎么让这段代码跑起来？攻击者在 `package.json` 里加了一行 `\"preinstall\": \"node meta.test.mjs\"`。这招非常狠，`preinstall` 是 npm 生命周期钩子，用户在执行 `npm install` 时，这个脚本会在依赖安装完成之前就被强制执行。配合之前修改的 CI 自动发布逻辑，只要版本号从 4.6.5 变成 4.6.6，这一整套攻击流程就会在所有安装了该版本依赖的开发者机器上自动运转。\n\n### 最终的收尾：清理现场与持久化\n脚本在执行完载荷后，做了一个 `f.rmSync` 操作，把刚才下载的临时文件删得干干净净。这种“用完即焚”的手法，极大地增加了取证溯源的难度。虽然代码里有一句 `await globalThis.__SETUP_DONE__` 看起来像是等待某个全局标记，但核心的恶意逻辑已经执行完毕。这是一次典型的、具备反侦查能力的供应链攻击，利用了区块链的不可篡改性来做恶意配置的分发，手法相当老练。"
+}

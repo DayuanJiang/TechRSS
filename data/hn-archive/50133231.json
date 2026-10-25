@@ -1,0 +1,103 @@
+{
+  "id": 50133231,
+  "by": "AIorNot",
+  "title": "Codex Desktop continuously generates Crashpad pending dumps",
+  "url": "https://github.com/openai/codex/issues/25921",
+  "score": 141,
+  "createdAt": 1792277440,
+  "aiSummary": {
+    "chinese_title": "Codex Desktop 崩溃转储与代理工作流吞噬数百 GB 磁盘",
+    "discussion_overview": [
+      {
+        "category": "Codex 的日志、转储与遗留文件未清理",
+        "summary": "多名用户认为这不只是偶发 Crashpad pending dump，而是 Codex 长期在正常使用路径中持续生成大量日志、截图、测试结果和旧构建目录。有人在 Windows VM 上运行后积累了 90GB 验证测试，另有人发现 .staging/marketplace 内有 14GB 小文件，并有报告称磁盘被占用 330GB。评论者指出问题已持续数月，认为 OpenAI 不应把手动删除文件当作产品设计的一部分。也有人承认删除文件是眼前有效的 workaround，但不等于厂商已尽责修复根因。",
+        "supportid": [
+          "50133232",
+          "50135701",
+          "50140091",
+          "50135035",
+          "50139558",
+          "50139884"
+        ]
+      },
+      {
+        "category": "并发 agent、worktree 与构建产物放大资源消耗",
+        "summary": "将任务拆给 8 或 16 个 subagent 时，每个 Git worktree 往往各自生成依赖、编译缓存和测试产物，磁盘占用会迅速膨胀到数百 GB。Copy-on-write worktree 只能降低初始源码复制成本，无法消除彼此不同或被写入后的 build artifacts；反复改回同一字节还可能产生重复块，因而有人认为还需 deduplication。Rust 项目的构建尤其被点名为产物庞大，部分人尝试共享构建目录、使用 lane 一类共享数据工具，或仅在一个 worktree 构建后再 cherry-pick。另一种实践是把 agent 的构建和测试迁往远程 VM、WSL 或 Docker container，避免本机会议、视频通话受资源争抢影响。",
+        "supportid": [
+          "50135380",
+          "50136935",
+          "50135491",
+          "50138484",
+          "50138185",
+          "50139556",
+          "50137976",
+          "50136961",
+          "50135308"
+        ]
+      },
+      {
+        "category": "内存耗尽、swap 与失控子进程",
+        "summary": "一些使用者发现看似磁盘问题的背后是 agent 触发 benchmark 或并行任务后耗尽 RAM，使 macOS 大量 swap 到磁盘；系统初期仍可用，随后突然卡死。有人认为 macOS 在 swap 写入后难以主动回收，只能重启，因此夜间反复 thrash 会持续挤占磁盘。Linux 用户则选择在高内存任务前关闭 swap，让 OOM killer 直接杀掉失控进程，或用 systemd-oomd 仅限制 claude-cli 后代进程。其他排查发现 /tmp 可能是 RAM-backed tmpfs，且旧 agent 会遗留子进程，因此建议定期清理无句柄临时文件，并把每次任务置入完成后统一杀死的 cgroup。",
+        "supportid": [
+          "50135380",
+          "50136354",
+          "50136836",
+          "50137130",
+          "50138092"
+        ]
+      },
+      {
+        "category": "工具化清理与文件系统缓解方案",
+        "summary": "用户普遍开始依靠磁盘分析和清理工具自救：DaisyDisk 用于定位大目录，Mole、QDirStat 等工具用于发现或删除缓存、Claude 和 Codex 残留，个案中 Mole 首次释放了 80GB。有人建议直接让 Codex 写 Bash cleanup script 并按分钟调度，也有人在 ChatGPT app 的 storage 页面检查本地占用。文件系统层面，ZFS compression 被视作可减少日志和重复数据的权宜措施；一名用户因并发 Rust build 时 Btrfs contention 较大而选 ZFS。还有人提醒检查 ~/.bun/install/cache/@openai，其中可能并存多个约 300MB 的 Codex 与 codex-code-mode-host binary。",
+        "supportid": [
+          "50135424",
+          "50135799",
+          "50137877",
+          "50138667",
+          "50135633",
+          "50135701",
+          "50135909"
+        ]
+      },
+      {
+        "category": "对 AI 产品质量与宣传落差的讽刺",
+        "summary": "评论整体对“强大 agent”叙事与基础工程质量之间的反差感到不满：能宣传解决 Navier-Stokes 的公司，却长期未修复一个吞噬用户磁盘的核心客户端问题。批评者把这视为 AI slop 或 SLOP coding 的例子，担心 vibe-coding 若把同类膨胀和不稳定扩散到软件栈底层，空间与时间复杂度都会失控。反方则认为历史上 Windows 崩溃和病毒更常见，普通用户通常会接受便利与可靠性之间的取舍；不过也有人限定这种宽容不适用于系统底层。还有评论质疑 AI CEO 或单人公司依靠 agent swarm 创造巨大价值的愿景，因为系统的实际资源成本和人工维护需求恰好削弱了该承诺。",
+        "supportid": [
+          "50140233",
+          "50135503",
+          "50136752",
+          "50139544",
+          "50135653",
+          "50135479",
+          "50135676"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Git worktree",
+        "explanation": "Git 的多工作目录机制，可在同一仓库同时检出多个分支；agent 并行工作时常为每个任务建立一个目录。"
+      },
+      {
+        "term": "Copy-on-write（CoW）/ reflink",
+        "explanation": "文件系统先共享文件数据、仅在修改时复制数据块的机制，可减少初始副本空间，但不能天然解决独立构建产物膨胀。"
+      },
+      {
+        "term": "swap 与 OOM killer",
+        "explanation": "swap 是将内存页临时写入磁盘的虚拟内存；OOM killer 在内存耗尽时终止进程，避免系统长期失去响应。"
+      },
+      {
+        "term": "Crashpad pending dumps",
+        "explanation": "Crashpad 是 Chromium 系软件常用的崩溃报告组件；pending dumps 指尚未上传或处理的本地崩溃转储文件。"
+      },
+      {
+        "term": "ZFS / Btrfs deduplication",
+        "explanation": "ZFS 和 Btrfs 是支持 CoW 的文件系统；deduplication 可合并相同数据块，但会带来额外内存或并发性能成本。"
+      }
+    ],
+    "context": "Codex Desktop 是 OpenAI 的本地桌面编码 agent；原帖指其不断生成 Crashpad（崩溃报告组件）的 pending dump，导致用户磁盘被异常占用。讨论显示，问题还叠加了 agent 自动创建 Git worktree（同一仓库的多工作目录）、运行验证测试、保存截图和构建依赖却不清理的行为。对 Rust 等编译产物庞大的项目而言，多 agent 并行会同时放大磁盘、RAM 和 swap 压力，故有人改用 ZFS（支持压缩与去重的文件系统）、远程 WSL（Windows 上的 Linux 环境）VM 或 Docker container（容器化隔离环境）。争议核心不是用户能否清理文件，而是 AI 编码工具是否应默认具备资源限额、进程回收与产物生命周期管理。",
+    "emoji": "🗑️",
+    "sarcastic_question": "连崩溃文件都管不住，何谈超级智能？"
+  },
+  "articleSummary": "## 一句话总结\nOpenAI 的 Codex Desktop 客户端因 Crashpad 处理程序陷入死循环，在用户无感知的情况下生成了数百万个崩溃转储文件，静默吞噬了超过 300GB 的磁盘空间。\n\n## 正文\n\n### 崩溃处理程序自己崩了，后果很严重\n这事的起因很讽刺：本该用来上报崩溃信息的 Crashpad handler 进程，自己出了问题。根据之前的关联 Issue #36982，这个 handler 启动仅 2 毫秒就会触发 SIGTRAP 信号退出。macOS 的 launchd 守护进程尽职尽责地尝试重启它，结果就陷入了“崩溃-重启-再崩溃”的死循环。每一次崩溃，系统都会往 `pending` 目录写一个 dump 文件。因为主进程还在正常运行，用户完全感觉不到后台正在发生一场“数据风暴”。\n\n### 300GB 的“隐形炸弹”\n有意思的地方在于，这个问题在最新的构建版本中不仅没修复，反而变本加厉了。该用户在 2026 年 10 月中旬的测量数据显示，短短两天内，两个主要的 Crashpad 目录累积了惊人的数据。一个是 `com.openai.codex` 路径下的 180GB，另一个是 `Codex` 路径下的 143GB。加起来总共约 **323GB**，文件数量高达 **404 万个**。这占了用户 926GB 磁盘容量的 35%，直接把可用空间逼到了红线边缘。\n\n### 直到磁盘满了才发现“凶手”\n最让人后背发凉的是，整个过程中 Codex 应用依然“运行良好”。用户没有任何卡顿或报错的感知，直到磁盘剩余空间仅剩 1.4GB 时才察觉不对劲。用户在排查 `~/Library` 目录时才揪出了真凶：全是那些微小的 dump 文件。这说明应用缺乏基本的自我监控机制，任由后台错误无限堆积，没有任何容量上限的约束。\n\n### 清理过程本身就是一场噩梦\n发现问题后，清理工作也并不轻松。由于文件数量高达数百万，简单的删除操作都变得极其耗时。用户不得不采取“曲线救国”的策略：在应用运行时，先重命名 Crashpad 文件夹，然后删除重命名后的副本。这样做虽然让可用空间迅速回升到 50GB 以上，但后台的删除进程还在持续运转，处理这堆小文件显然是个大工程。\n\n### 核心诉求：加个限流阀吧\n说白了，用户的要求并不过分，核心就是三点。第一，给 Crashpad 目录加个上限，无论是按大小还是按文件数量，超过阈值自动清理，别让 `pending` 目录变成无底洞。第二，彻底修掉 handler 的崩溃循环，这是问题的根源。第三，应用内部得有个“熔断机制”，当自身数据目录超过几个 GB 时，应该在界面上弹窗警告，而不是等到把磁盘写满才让用户发现。目前相关的 Issue 已经挂了一堆，希望能尽快解决这个“磁盘杀手”。"
+}

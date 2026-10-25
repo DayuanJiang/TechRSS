@@ -1,0 +1,101 @@
+{
+  "id": 50165953,
+  "by": "hnisjafx40",
+  "title": "Tsrs: A Port of TypeScript to Rust",
+  "url": "https://blog.cloudflare.com/typescript-rust-port/",
+  "score": 384,
+  "createdAt": 1792507240,
+  "aiSummary": {
+    "chinese_title": "tsrs：为 Cloudflare WASM 场景打造的 Rust TypeScript 移植，提速却引发安全与维护争议",
+    "discussion_overview": [
+      {
+        "category": "性能提升是否真正改变日常开发",
+        "summary": "基准声称 tsrs 相比 TypeScript 7.0 最多快 8 倍、内存少约 70%，但具体项目差异很大。以 VSCode 为例，TypeScript 7.1 nightly 为 5.28 秒、tsrs dev 为 1.73 秒，约为 3 倍而非 8 倍，仍被认为相当可观。大型 monorepo 的实测反馈称，tsrs 多线程下内存效率很好，并支持 Bun 缺少的 incremental checks。反方认为 TSGO 对绝大多数项目已经够快，10ms 降至 1ms 通常不会改善交互或 CI，网络延迟等因素可能更关键。",
+        "supportid": [
+          "50166870",
+          "50167878",
+          "50168200",
+          "50168322",
+          "50169264",
+          "50169697"
+        ]
+      },
+      {
+        "category": "核心动机是 WASM 沙箱与云端成本",
+        "summary": "评论者指出，项目的主要目标并非单纯击败官方编译器，而是在 Cloudflare Workers 的 WASM-only sandbox 中运行完整 TypeScript 工具链。将 Go 版 tsc 编译到 WASM 虽可行，却会携带 Go runtime 和 GC，造成更大的包体、内存和性能负担。Rust 更贴合 WASM 的运行模型，因此适合在大量隔离环境中反复执行构建与部署；这种 CPU、内存节省在数百万次执行时会直接转化为运营成本优势。另一个实际用途是为 oxlint 提供 type-aware linting，而普通 Web 开发者未必需要立即迁移。",
+        "supportid": [
+          "50167635",
+          "50167199",
+          "50167558",
+          "50167606",
+          "50167621",
+          "50167452",
+          "50167720",
+          "50167924"
+        ]
+      },
+      {
+        "category": "Rust 内存模型的 soundness 受到质疑",
+        "summary": "tsrs 为了降低从 GC 语言迁移到 Rust 时重构数据结构的成本，对长生命周期对象采用 arena，并在对象被证明死亡前不释放。批评者认为其接口将对象暴露为 &'static T，再依靠显式 recycling site 回收；死亡判定由人或 LLM 保证，等于把 unsafe 隐藏在抽象后而非消除。有人主张直接让 arena 生命周期约束引用即可获得安全性，或干脆在编译任务结束前完全不释放内存。支持这种策略的一方则指出，编译器常累积对象到任务结束再整体释放，逐个 delete 可能纯属额外开销，但这不自动回答提前回收是否安全。",
+        "supportid": [
+          "50167990",
+          "50168234",
+          "50168590",
+          "50168655",
+          "50169825"
+        ]
+      },
+      {
+        "category": "AI 大规模移植：测试可验证，但设计与审查难题仍在",
+        "summary": "项目宣称借助 frontier AI models 在数天内完成移植，且作者没有亲自写代码，这让一些长期维护工具链的人担忧人工设计和代码审查的价值被压缩。支持者认为这只是对已有语言规范、成熟代码库及庞大测试套件的移植，并非从零设计一门被数百万开发者使用的语言；黑盒实现至少可由 integration testing 检验行为兼容性。质疑者则强调，agent 常会写出人类不会采用的架构，测试无法覆盖未知的失效路径，也难排除编译器携带 trojan horse 等非功能性风险。另有激进看法称人工 review 很快将不值得投入，讨论因而延伸到维护者的技能、责任和职业动力。",
+        "supportid": [
+          "50167341",
+          "50167503",
+          "50167611",
+          "50167562",
+          "50167641",
+          "50169394"
+        ]
+      },
+      {
+        "category": "官方 TSGO 与 Rust 分支应如何共存",
+        "summary": "Microsoft 的 TypeScript 团队表示正在与 tsrs 维护者合作，并已将其中发现的优化带入 TypeScript 7.1，例如更惰性或最小化的工作量、调整 allocation patterns 和 struct layouts。这使部分人认为速度优势并不主要来自 Rust 无 GC，而来自可移植的算法和数据布局改进；类似 Rust 编写的 uv 也被用来说明语言并非唯一因素。另一派认为既然 Rust 更适合 WASM、性能更好，官方继续投资 TSGO 的理由变弱，尤其在 AI 降低迁移成本之后。回应则是 TSGO 具有稳定性和兼容性优势，且官方团队未来仍需以自己愿意阅读、推理和维护的语言持续演进；社区同时面对 bun check、tsc-rs、tsrs 等多个实现带来的碎片化。",
+        "supportid": [
+          "50167925",
+          "50168904",
+          "50168179",
+          "50169738",
+          "50168437",
+          "50167001",
+          "50167413"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "WASM（WebAssembly）",
+        "explanation": "一种可在浏览器、边缘运行时和沙箱中执行的低级字节码格式；此处用于在 Cloudflare Workers 内运行工具链。"
+      },
+      {
+        "term": "GC（Garbage Collection）",
+        "explanation": "垃圾回收机制，自动管理不再使用的内存；Go runtime 的 GC 被认为会增加 WASM 包体和运行开销。"
+      },
+      {
+        "term": "arena allocator（区域分配器）",
+        "explanation": "将许多对象集中分配在一块内存区域、随后整体释放的内存管理方式，适合生命周期接近一次编译任务的数据。"
+      },
+      {
+        "term": "TSGO / TypeScript 7",
+        "explanation": "Microsoft 正在推进的官方 TypeScript 编译器现代化实现，讨论中作为 tsrs 的性能和兼容性对照。"
+      },
+      {
+        "term": "vibe coding",
+        "explanation": "主要由 AI 编程代理生成代码、人类以提示和结果验证为主的开发方式；本项目的 AI 驱动移植方式引发了质量与维护争论。"
+      }
+    ],
+    "context": "tsrs 是 Oxc/voidzero 工具链生态中将 TypeScript 编译器移植到 Rust 的项目，目标是在保持 TypeScript 行为兼容的同时降低执行成本。它的重要部署场景是 Cloudflare Workers（Cloudflare 的边缘函数平台）的 WASM 沙箱：云端若高频运行完整构建和部署流程，小幅内存与 CPU 差异会累积为显著成本。Microsoft 此前选择 Go 推进官方 TypeScript 编译器演进，部分原因是从原有 GC 代码迁移较容易；如今官方团队称 tsrs 的算法和内存布局发现也正反馈到 TypeScript 7.1。争议还来自该移植据称大量依赖 AI 生成，以及其为模拟长生命周期对象而采用的 arena 回收策略是否保持 Rust 的内存安全保证。",
+    "emoji": "🤖",
+    "sarcastic_question": "零行代码的编译器，出错时谁来推理？"
+  },
+  "articleSummary": "## 一句话总结\nCloudflare 联合 VoidZero 推出了 TypeScript 的 Rust 移植版 `tsrs`，利用 Rust 在 Wasm 上的内存优势实现高性能类型检查，并借助 AI Agent 解决了大型编译器移植后的同步维护难题。\n\n## 正文\n\n### 不是分叉，而是紧跟官方步伐的“影子副本”\nCloudflare 和 VoidZero 联手启动了 `tsrs` 项目，这是一个用 Rust 移植 TypeScript 编译器的尝试。但首先要明确一点：这**不是**分叉。团队非常尊重 TypeScript 官方对语言设计和方向的控制权，毕竟官方在权衡特性时往往需要数年的探索。`tsrs` 的策略是做一个忠实的追随者，严格基于原始实现，确保不因语言移植而产生兼容性偏差。\n\n### 性能数据亮眼：提速 8 倍，内存节省 70%\n既然重写，效果得拿数据说话。早期的 Benchmark 显示，在相同数量的 type check workers 配置下，`tsrs` 相比 TypeScript 7.0 速度提升了 8 倍，内存占用降低了约 70%。有意思的地方在于，TypeScript 7.1 beta 本身也变快了（相比 7.0 提升 2.5 倍），其中部分优化正是从 `tsrs` 项目回流的。为了公平起见，这次测试特意与官方团队核对，排除了机器配置差异带来的干扰。\n\n### 为什么有了 Go 移植版还要搞 Rust 版？\n你可能会问，TypeScript 官方已经在用 Go 移植了，速度提升了 10 倍，为什么还要用 Rust 再搞一套？说白了，核心诉求不只是速度，还有 WebAssembly（Wasm）。Go 编译成 Wasm 时必须带上垃圾回收器（GC），这很重；而 Rust 的内存管理模型能让 Wasm 的 guest 和 host 之间进行轻量级的内存交互。这意味着 `tsrs` 可以高效地跑在浏览器、IoT 设备或 Cloudflare Workers 的沙箱环境里。\n\n### AI 加持下的同步维护策略\n移植编译器最难的不是写出来，而是怎么跟上官方的更新节奏。过去这类项目很难维护，但现在有了 AI。团队借鉴了维护 Vinext（Next.js 的 Vite 移植版）的经验：每天早上 Agent 自动拉取上游差异、生成兼容性矩阵，发现问题后自动构建复现、移植测试并提议修复。这套自动化流程，让 `tsrs` 在保持与上游同步这件事上变得可行，甚至还能反向贡献性能优化给官方。\n\n### 融入 Oxc 生态，补齐工具链最后一块拼图\nCloudflare 手里已经握有 Vite、Rolldown、Oxlint 等 Rust 工具链，`tsrs` 的加入让这套生态更完整了。目前 `tsrs` 正在与 Theo Browne 的 `tsc-crs` 合并，目标是支持包括 LSP 在内的所有特性。虽然现在还有一些小瑕疵（比如诊断信息的输出顺序），但团队计划在稳定版发布前将其抹平。开发者现在就可以通过 `npm install tsrs` 尝鲜，体验一下在浏览器端跑完整类型检查的感觉。"
+}

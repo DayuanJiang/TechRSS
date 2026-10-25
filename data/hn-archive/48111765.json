@@ -1,0 +1,105 @@
+{
+  "id": 48111765,
+  "by": "aduffy",
+  "title": "Quack: The DuckDB Client-Server Protocol",
+  "url": "https://duckdb.org/2026/05/12/quack-remote-protocol",
+  "score": 356,
+  "createdAt": 1778615462,
+  "aiSummary": {
+    "chinese_title": "DuckDB Quack 协议：client-server、DuckLake 远程接入与定位争议",
+    "discussion_overview": [
+      {
+        "category": "横向扩展与内部应用落地",
+        "summary": "很多人把 Quack 看成 DuckDB 终于补上的网络入口，尤其适合内部应用框架和自建服务。有人直接把它和横向扩展联系起来，认为以前难处理的远程执行和多机访问现在可以更自然地解决。也有人设想用 ssh 包一层自复制 wrapper，或者把它做成一个 Docker 服务，让远端客户端直接连上。另一些评论把它放在 homelab、共享团队服务器和高内存缓存的场景里，强调它能把多 TB 数据的查询能力开放给更多人。",
+        "supportid": [
+          "48114946",
+          "48115693",
+          "48113833",
+          "48114435",
+          "48114031",
+          "48115233"
+        ]
+      },
+      {
+        "category": "DuckDB 定位：嵌入式组件还是传统数据库",
+        "summary": "有评论者直言自己很喜欢 DuckDB，但一直不确定它到底想成为什么。另一派认为这次的方向其实很清晰：DuckDB 本来就既是 standalone engine，也是可嵌入组件，Quack 只是把它带回传统 client-server RDBMS 的使用模型。有人拿 SQLite 类比，指出 SQLite 也被嵌到手机、浏览器、桌面软件和 IoT 设备里，只不过 DuckDB 的这次扩展是 first-party 的。还有人强调，真正麻烦的并不是 SQL 引擎本身，而是围绕数据库的文件、凭证、导出、验证和重试逻辑。",
+        "supportid": [
+          "48113396",
+          "48115160",
+          "48114963"
+        ]
+      },
+      {
+        "category": "DuckLake 远程 catalog 与计算下沉",
+        "summary": "不少讨论聚焦 DuckLake 的远程 catalog 和存储访问问题。用户希望客户端不再需要直接接触底层存储，而是通过远端 DuckDB 实例去读写数据并充当 catalog。开发者说明 Quack 正在补上这块能力，而且相关工作已经有 PR，意味着 DuckDB 作为 DuckLake catalog 的方案很快就能试用。支持者还认为，DuckDB 原生读 DuckDB 会更快，能减少类型映射、扫描器开销和重试时的网络往返。",
+        "supportid": [
+          "48114417",
+          "48114454",
+          "48114742",
+          "48115018",
+          "48114693",
+          "48113859",
+          "48114352"
+        ]
+      },
+      {
+        "category": "并发与通用数据库边界",
+        "summary": "也有人把问题拉回更传统的数据库选择：如果只是一个几个人同时读写的 C++ 应用，DuckDB+Quack 是否合适。回复普遍认为 DuckDB 更偏 analytics，不是为通用多用户事务系统设计的，直接拿它替代并发数据库并不自然。对于这类轻量并发需求，大家更倾向于把 Postgres 或 SQLite 放在 server-side，保持标准做法。SQLite 不是 client-server 这一点也被再次提醒。",
+        "supportid": [
+          "48115246",
+          "48115509",
+          "48115636"
+        ]
+      },
+      {
+        "category": "HTTP/2、流式传输与基准争议",
+        "summary": "围绕协议本身，争论主要集中在 HTTP 选型和基准测试。批评者认为 HTTP 在大体量传输和 streaming 上有 timeout、大小限制和反向代理依赖等问题，并且更希望看到 PostgreSQL protocol 加 columnar format 的方案。反驳意见指出 Quack 实际用的是 HTTP/2，而且支持 streaming；同时基准运行在最高 15 Gbps 的网络环境里，结果已经接近链路上限。还有人提醒，CSV 体积不能直接当作协议负载大小，最好同时给出压缩后数据规模。",
+        "supportid": [
+          "48113996",
+          "48115712",
+          "48114478",
+          "48114385"
+        ]
+      },
+      {
+        "category": "duckdb-wasm 浏览器直连",
+        "summary": "还有一条很具体的问题是它是否能和 duckdb-wasm 配合。维护者确认可以，文章也说明 WebAssembly 版 DuckDB 可以通过 HTTP 直接说 Quack。这样浏览器里的 DuckDB 就能直接连到远端实例，比如跑在 EC2 上的服务器。这个点让 Quack 不只是服务器间协议，也成了浏览器到数据库的直连通道。",
+        "supportid": [
+          "48114612",
+          "48114889",
+          "48114654"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "DuckDB",
+        "explanation": "一个高性能、可嵌入的分析型 SQL 引擎，擅长本地文件、Parquet 和 OLAP 查询。"
+      },
+      {
+        "term": "Quack",
+        "explanation": "DuckDB 的 client-server protocol，用于远程连接、流式传输和浏览器直连。"
+      },
+      {
+        "term": "DuckLake",
+        "explanation": "DuckDB 生态里的 lakehouse 方案，负责把对象存储、catalog 和元数据管理串起来。"
+      },
+      {
+        "term": "duckdb-wasm",
+        "explanation": "DuckDB 的 WebAssembly 版本，可在浏览器中运行 SQL 并连接远端实例。"
+      },
+      {
+        "term": "HTTP/2",
+        "explanation": "HTTP 的第二版，支持多路复用和更适合流式传输的连接方式。"
+      },
+      {
+        "term": "catalog",
+        "explanation": "数据库的元数据目录，保存表、schema、分区等结构信息。"
+      }
+    ],
+    "context": "DuckDB（一个可嵌入的分析型 SQL 引擎）原本更偏本地文件、Parquet 和 S3 上的 OLAP 查询，这次的 Quack 是它新增的 client-server protocol，目的是让远程连接和流式传输更自然。评论里还牵涉到 DuckLake（DuckDB 生态里的 lakehouse/metadata 方案）和 MotherDuck（DuckDB 的托管服务），说明这套生态正在把 DuckDB 从单机工具推向可共享的网络计算层。争论焦点不只是协议本身，而是 DuckDB 会不会更像传统 RDBMS，还是继续作为更大的工作流里的执行引擎，用来处理 catalog、权限、重试和文件/对象存储。另一个相关话题是 duckdb-wasm（运行在浏览器里的 DuckDB 版本）能否通过 HTTP/2（HTTP 的第二版）直接连接远端实例，以及 Arrow Flight（Arrow 生态里的数据传输协议）这类替代方案是否更合适。",
+    "emoji": "🦆",
+    "sarcastic_question": "既要本地嵌入又要 client-server，DuckDB 还想要什么？"
+  },
+  "articleSummary": "## 一句话总结\nDuckDB 推出了基于 HTTP 的 Quack 协议，让多个实例能以极低开销进行 Client-Server 通信，在保留进程内架构优势的同时，完美解决了多进程并发写入和海量数据传输的性能痛点。\n\n### 从“单打独斗”到“被迫联网”的架构演变\nDuckDB 一直以 In-process（进程内）架构著称，这种设计让数据库像库一样跑在应用里，没有网络协议的开销，特别适合数据分析场景。但问题也随之而来：当多个进程需要同时修改同一个数据库文件时，这种架构就束手无策了。因为 DuckDB 依赖主内存状态，多进程并发修改会引发复杂的数据同步问题。虽然社区里出现了各种基于 Arrow Flight SQL 的补丁方案，或者干脆切到 PostgreSQL（甚至搞出“EleDucken”这种套娃架构），但 DuckDB 团队意识到，用户对 Client-Server 模式的需求是真实且迫切的。与其让用户到处打补丁，不如官方提供一个原生方案。\n\n### Quack：专为 DuckDB 量身定制的通信协议\n于是，Quack 协议诞生了。它的核心思路非常简单：让两个 DuckDB 实例通过一套标准协议直接对话。你不需要额外部署一个中间件，DuckDB 本身既可以作为 Server，也可以作为 Client。使用起来也很直观，Server 端调用 `quack_serve` 启动服务并设置 Token，Client 端通过 `ATTACH` 命令配合 Secret 就能像操作本地表一样查询远程数据。这种设计不仅支持基本的查询，还能通过 `remote.query` 函数将复杂逻辑下推到服务端执行，甚至支持双向的数据读写，完全打通了实例间的隔阂。\n\n### 站在 HTTP 巨人的肩膀上做减法\n有意思的地方在于 Quack 的技术选型。在 2026 年设计新协议，他们没有重新发明轮子，而是直接基于 HTTP 构建。这么做的好处显而易见：整个互联网生态都在为 HTTP 优化，无论是负载均衡、防火墙还是加密传输，现有的基础设施都能直接复用。为了追求极致性能，Quack 定义了新的 MIME 类型 `application/duckdb`，复用了 DuckDB WAL（Write-Ahead Log）中久经考验的高效序列化原语。这种设计既保证了通用性，又确保了数据打包解包的速度，甚至连 DuckDB-Wasm 都能原生支持该协议，让浏览器端的数据库直接连上服务器。\n\n### 安全与扩展性的平衡艺术\n既然要联网，安全就不能含糊。Quack 默认生成随机 Token 进行认证，并且默认只绑定 localhost，防止直接暴露在公网。虽然协议本身不强制 SSL，但官方强烈建议用 Nginx 等反向代理来处理加密，这样既避免了本地通信的额外开销，又保证了公网安全。更巧妙的设计在于它的扩展性：认证和授权逻辑完全通过回调函数暴露给用户。默认情况下是“全开放”，但你可以通过配置换成 LDAP 验证，甚至直接写个 SQL 宏来做权限控制。这种“不预设用户场景”的设计哲学，完美继承了 DuckDB 灵活扩展的基因。\n\n### 性能碾压：专为吞吐量优化的 Round-Trip\n对于数据库协议来说，性能是硬道理。Quack 在设计上极力减少 Round-Trips（往返次数），一旦连接建立，单次查询请求就能拿到响应，这对延迟敏感的场景至关重要。而在大数据量传输时，Quack 展现了惊人的吞吐量。官方在 AWS m8g.2xlarge 实例上做的基准测试显示，在传输 6000 万行数据（约 76GB CSV）时，Quack 仅需 4.94 秒。相比之下，Arrow Flight SQL 需要 17.4 秒，而传统的 PostgreSQL 协议更是慢到了 158 秒。这得益于 Quack 对多线程并行传输的深度优化，证明了它不仅是能用，而且是当前最快的数据传输方案之一。\n\n### 小写入场景的优化与未来\n除了大吞吐量的 Bulk Transfer，文章还提到了 Small Writes（小写入）场景，比如集中式的日志监控数据写入。这种场景下，频繁的握手和多次往返会拖累性能。虽然原文在具体数据表格处截断，但根据上下文逻辑，Quack 显然针对这种高并发、小数据包的场景做了针对性优化，试图在事务完整性和低延迟之间找到最佳平衡点。总的来说，Quack 协议的推出，标志着 DuckDB 正式从一个单机分析工具，进化为一个既能单机飞驰、又能联网协作的通用数据处理引擎。"
+}

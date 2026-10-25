@@ -1,0 +1,124 @@
+{
+  "id": 48765639,
+  "by": "KraftyOne",
+  "title": "Postgres transactions are a distributed systems superpower",
+  "url": "https://www.dbos.dev/blog/co-locating-workflow-state-with-your-data",
+  "score": 134,
+  "createdAt": 1783022445,
+  "aiSummary": {
+    "chinese_title": "Postgres 事务撑起分布式工作流：outbox 与幂等争议",
+    "discussion_overview": [
+      {
+        "category": "outbox：把原子性改成幂等性",
+        "summary": "大家最常讨论的是 outbox pattern：先把业务状态和待发送消息写进同一个 Postgres 事务，再由后台 worker 把 outbox 表里的记录投递到队列。这样做并不是让数据库和消息队列真正原子联动，而是把“不能丢消息”变成“允许重复但可重试”的问题。多条评论强调，消费者必须幂等，或至少能按 message id 去重，否则重复投递会破坏系统不变量。有人直接指出，这种方案本质上是把原子性问题改写成 at-least-once 语义问题。",
+        "supportid": [
+          "48767444",
+          "48768469",
+          "48769519",
+          "48769847",
+          "48770101",
+          "48769867",
+          "48770294",
+          "48767773",
+          "48767814",
+          "48767794",
+          "48768250",
+          "48766850",
+          "48768098",
+          "48768578"
+        ]
+      },
+      {
+        "category": "中心数据库：协调点还是 distributed monolith",
+        "summary": "另一组评论质疑这到底算不算 distributed system。反对者认为，只要有一个中心数据库做协调点，本质上就像 mutex 或 distributed monolith，不是跨系统的真正分布式事务。支持者则反驳说，分布式并不等于去中心化，很多系统都会把强一致的控制面缩到很小，比如用 Postgres 管元数据、用 S3 放大对象，像 Ducklake 这类架构就是这个思路。讨论里还提到 Zookeeper、Kafka、HBase 等例子，说明大家其实是在争“中央协调点该放多大”。",
+        "supportid": [
+          "48766587",
+          "48766725",
+          "48766815",
+          "48766924",
+          "48767196",
+          "48768183",
+          "48768641",
+          "48769416",
+          "48769980",
+          "48767756",
+          "48766974",
+          "48768033"
+        ]
+      },
+      {
+        "category": "durable workflows：把工作流推进放进 Postgres",
+        "summary": "还有一派把它理解成用 Postgres 搭 durable workflows。这里的核心不是消息队列，而是把每个 workflow step 和数据库 commit 对齐，让工作流状态本身可恢复、可重放。有人提到 worker 通过 SELECT FOR UPDATE 领任务，数据库能同时承载业务数据和任务队列，从而得到对数据库操作的 exactly-once 语义。外部副作用仍然要靠幂等和重试，但对复杂业务状态来说，这种设计比单独再引入 orchestration service 更省心。",
+        "supportid": [
+          "48767080",
+          "48767205",
+          "48767681",
+          "48767722",
+          "48769191",
+          "48769229",
+          "48768578",
+          "48767281"
+        ]
+      },
+      {
+        "category": "规模与运维：数据库队列够用，但不是免费",
+        "summary": "实际落地时，很多人表示自己已经在主数据库里放了 pubsub 或 job queue，并且觉得 atomicity 带来的简化非常值钱。也有人提醒，Postgres 队列在高吞吐下会碰到 dead tuples、vacuum 和大量旧行的问题，所以到了一定规模，单独的 broker 还是有意义。评论里还提到 OrioleDB（一个基于 undo 的 Postgres 存储引擎）可能缓解这类痛点。总体上大家的共识是：大多数场景先用数据库更简单，但它不是免费午餐。",
+        "supportid": [
+          "48767425",
+          "48767661",
+          "48767587",
+          "48767281",
+          "48767342",
+          "48769838"
+        ]
+      },
+      {
+        "category": "理论边界：CAP、2PC 与端到端语义",
+        "summary": "不少人认为标题有夸张成分，因为 Postgres 事务本身只是局部原子性，跨系统后 CAP theorem 和 Two Generals problem 仍然存在。评论里反复强调，如果下游系统的失败不是纯粹的 transient failure，outbox 只能保证重试机会，不能保证端到端 exactly-once。有人因此提到 2PC 或 saga 这类更重的方案，但也承认在工程实践里，幂等、重放和可恢复性通常比理论上的完美原子性更重要。换句话说，这套方法很实用，但不该被包装成已经消灭了分布式一致性问题。",
+        "supportid": [
+          "48768465",
+          "48768772",
+          "48768546",
+          "48767560",
+          "48766674",
+          "48768025",
+          "48770294"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "outbox pattern",
+        "explanation": "在同一事务里写业务变更和待发送消息，随后异步投递到消息队列，用重试和去重换取可靠性。"
+      },
+      {
+        "term": "幂等性",
+        "explanation": "重复执行同一操作不会改变最终结果，常用于抵消重试、超时和重复消息。"
+      },
+      {
+        "term": "at-least-once semantics",
+        "explanation": "保证至少处理一次，但可能重复；它避免丢失，但把去重责任交给系统设计。"
+      },
+      {
+        "term": "exactly-once semantics",
+        "explanation": "理想中的恰好执行一次语义，在分布式系统里很难端到端保证，通常只能局部近似。"
+      },
+      {
+        "term": "durable workflows",
+        "explanation": "把工作流状态持久化到数据库，崩溃后可以恢复、重放和继续推进。"
+      },
+      {
+        "term": "CAP theorem",
+        "explanation": "分布式系统在一致性、可用性和分区容错之间必须权衡的经典定理。"
+      },
+      {
+        "term": "eventual consistency",
+        "explanation": "系统最终会收敛到一致状态，但中间可能短暂不一致，也不保证严格顺序。"
+      }
+    ],
+    "context": "这篇文章出自 DBOS（一个把 Postgres 当作工作流执行层的项目），主张把业务状态、任务队列和工作流推进都放进同一个数据库事务里。基本思路是先在 Postgres（关系型数据库）里写入状态和 outbox（待发送消息表），再由后台 worker 把消息投递到 message queue（消息队列）或继续推进后续步骤。这样可以把很多分布式协调问题收敛到数据库的 ACID（原子性、一致性、隔离性、持久性）能力上，但外部副作用仍然逃不开重试和幂等。评论因此围绕 outbox pattern、durable workflows（可持久化工作流）、以及 Postgres 到底是协调核心还是“分布式假象”展开。",
+    "emoji": "🤔",
+    "sarcastic_question": "把队列塞进Postgres就算超能力了？"
+  },
+  "articleSummary": "## 一句话总结\n把 Workflow 引擎搬进 Postgres 进程内，利用数据库事务同时处理业务状态和 Workflow 状态，能以极低的成本实现 Exactly-Once 语义和原子性，彻底解决幂等性和 Outbox 模式的复杂度。\n\n### Workflow 不该是“外人”，而该住进数据库里\n之前我们提倡“Just use Postgres”做持久化工作流，但这常被误解为“用 Postgres 存存状态就行”。其实核心观点更激进：Workflow 系统本身就应该和应用数据住在同一个 Postgres 数据库里。这听起来违反了“关注点分离”的直觉，但在分布式系统里，Co-location（共置）是种超能力。当 Workflow 元数据和业务数据在同一库时，它们能在同一个事务里更新，彻底消除了部分失败的可能性，让处理边缘情况变得异常简单。\n\n### 传统 Workflow 的痛点：Checkpoint 和业务更新总有时差\n分布式系统里有个大难题叫“幂等性”。通常 Workflow 引擎靠 Checkpoint（检查点）来做容错，但这有个天然的缝隙：步骤做完了、数据库更新了，但 Checkpoint 还没写完，这时候挂了怎么办？恢复后 Workflow 会重跑，导致业务逻辑（比如给账户加钱）被执行两次。为了防这个，大家通常得在应用层加一堆“记账表”来防重，代码写起来很繁琐，维护成本也高。\n\n### 把 Checkpoint 写进事务，就能天然实现 Exactly-Once\n如果 Workflow 引擎就在 Postgres 里，玩法就变了。我们不需要在步骤做完后再去写 Checkpoint，而是把“业务更新”和“写 Checkpoint”塞进同一个数据库事务里。Workflow 引擎提供一个事务上下文，步骤在里面做更新，引擎顺手把 Checkpoint 也写了，然后一起 Commit。这样要么全成功（业务生效且步骤永久记录，绝不重跑），要么全回滚（就像没发生过）。这直接提供了 Exactly-Once 语义，你再也不用写那些繁琐的幂等逻辑和防重表了。\n\n### 跨系统原子性：传统 Outbox 模式太重\n另一个经典难题是“原子性”，比如“更新数据库”和“发通知”必须同时成功或失败。业界标准解法是 Transactional Outbox 模式：在事务里把业务更新和一条消息写到 Outbox 表，再起个后台进程轮询发消息。这确实能保证原子性，但运维成本很高。你得管轮询进程、管重试、管监控，一旦消息发丢了还得做对账，Workflow 引擎如果是独立的，还容易和数据库状态不一致。\n\n### 用 Postgres UDF 替代 Outbox，架构瞬间变简单\n既然 Workflow 状态就在库里，我们可以直接用 Postgres 的用户自定义函数（UDF）来替代 Outbox 表。在更新业务数据的事务里，直接调用 `enqueue_workflow` 函数，把 Workflow 任务当作一条数据插进去。因为是在同一个事务里，所以“业务更新”和“任务入队”天然是原子的。之后由 Worker 异步拉取执行即可。这既保留了 Outbox 的原子性优势，又省去了维护独立轮询基础设施和对账逻辑的麻烦，本质上是用数据库的能力简化了分布式系统的复杂度。"
+}

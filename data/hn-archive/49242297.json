@@ -1,0 +1,141 @@
+{
+  "id": 49242297,
+  "by": "prakashqwerty",
+  "title": "Tail-call optimization in C is relatively recent",
+  "url": "https://lwn.net/Articles/1034703/",
+  "score": 126,
+  "createdAt": 1786363239,
+  "aiSummary": {
+    "chinese_title": "C 的 TCO 近年才真正可依赖",
+    "discussion_overview": [
+      {
+        "category": "C 的 ABI 和 varargs 限制",
+        "summary": "讨论最初聚焦于 C 为什么难以把尾调用做成可依赖能力，而不只是一次普通优化。传统 C calling convention 往往由调用者清理栈，遇到 variadic function（可变参数函数）时尤其麻烦，因为只有调用者知道实际参数个数；尾调用会把返回帧换成另一个函数的帧，不能随便复用。有人补充说，K&R C、C89、C23 对 `int f();` 和参数不匹配行为的定义不同，非 variadic 函数在现代标准下更多时候已经因为 UB 而为尾调用让路。GCC 早年确实有 TCO，但限制很多，直到后来才逐步扩展到更广的场景和调用形式。",
+        "supportid": [
+          "49251302",
+          "49251275",
+          "49242702",
+          "49246316",
+          "49250207",
+          "49243440"
+        ]
+      },
+      {
+        "category": "TCO 是语义还是优化",
+        "summary": "争论的核心是：如果尾递归代码一旦没做 TCO 就会 stack overflow，那它是不是已经改变了程序的可观察行为。支持“它不只是优化”的一方认为，在具备 guaranteed TCO 的语言里，尾递归就是 loop 的语义，空间使用被保证为常数，因此编译器不能悄悄退化。反方则强调 formal semantics 通常不把时间和空间复杂度算进程序语义，栈溢出属于实现限制，不应等同于语言语义变化。围绕这个分歧，大家反复提到 Scheme 把 proper tail calls 写进标准，所以才有资格把 TCO 当成可依赖能力。",
+        "supportid": [
+          "49244555",
+          "49245074",
+          "49248277",
+          "49245424",
+          "49245760",
+          "49250881",
+          "49252017",
+          "49248948",
+          "49252085",
+          "49248149"
+        ]
+      },
+      {
+        "category": "解释器、状态机与 CPS",
+        "summary": "不少评论认为 TCO 在 C 里最有价值的地方不是把阶乘写成递归，而是解释器、threaded VM、状态机和 CPS（Continuation-Passing Style，续延传递风格）。当每个状态都写成一个函数时，最后一步直接尾调用下一个状态，可以把控制流写得很清楚，也更接近 `jmp` 的执行模型。问题在于 CPS 常常还需要 closures（闭包）来携带环境，而 C 天然缺这一层，因此才会出现 GCC nested functions、static chain、手写寄存器传参等一堆笨办法。有人甚至手写了“递归改 goto”的示例，说明这种改写虽然可行，但可读性和正确性都更差。",
+        "supportid": [
+          "49250746",
+          "49247278",
+          "49248287",
+          "49249487",
+          "49249361",
+          "49248153",
+          "49246809"
+        ]
+      },
+      {
+        "category": "跨模块与函数指针的 calling convention 问题",
+        "summary": "有一条分歧线在于：如果编译器同时掌握调用方和被调方，为什么还要管 calling convention。反对者指出，单独编译、导出符号和 function pointers 都要求 ABI 兼容，编译器不能随便假设自己能改写所有相关代码。特别是在 caller-cleanup 约定下，尾调用前需要重新摆放参数和栈帧；参数个数、返回地址、跨模块调用都可能让一个看似简单的 `CALL` 变成复杂的栈重排。也因此，老版 GCC 对 indirect call 和跨模块 tail call 的支持一直是主要瓶颈之一。",
+        "supportid": [
+          "49248018",
+          "49248168",
+          "49251910",
+          "49248709",
+          "49248787",
+          "49249133",
+          "49249428",
+          "49249851",
+          "49250690",
+          "49250965",
+          "49251579",
+          "49252232",
+          "49248503",
+          "49248553",
+          "49251921",
+          "49247072"
+        ]
+      },
+      {
+        "category": "musttail / become / @tailrec 这类显式保证",
+        "summary": "为了解决“希望有 TCO，但又不能接受编译器赌运气”的问题，评论频繁提到 `[[gnu::musttail]]`、`[[clang::musttail]]`、`[[msvc::musttail]]` 以及类似的 `musttail` 机制。它们的共同点是：如果编译器无法真正做 proper tail call，就直接报错，而不是让代码静默退化成深递归。Rust 社区讨论中的 `become` 方案还试图先处理掉会阻止 tail position 的析构、Drop 和借用问题，再决定是否能安全尾调用；Scala 的 `@tailrec` 则更像局部检查，只覆盖自递归，能力有限。大家普遍喜欢这种“要么保证，要么失败”的模式，因为它比“也许优化、也许不是”更适合写可靠程序。",
+        "supportid": [
+          "49251909",
+          "49250254",
+          "49244775",
+          "49245822",
+          "49242841",
+          "49242897",
+          "49243462",
+          "49244593",
+          "49247072",
+          "49249192",
+          "49246282",
+          "49244558",
+          "49245452",
+          "49245525",
+          "49246816"
+        ]
+      },
+      {
+        "category": "各语言对 TCO 的支持差异",
+        "summary": "讨论顺带对比了多种语言的现实情况。Scheme 把 proper tail calls 写进标准，是少数真正要求实现者保证 TCO 的语言之一；Common Lisp 里虽然很多实现能做，但调试级别等设置会把它关掉。JavaScript 曾在规范里讨论过 Proper Tail Calls，但 TC39 迟迟没形成统一落地，Safari 的 JavaScriptCore 反而成了少数真正实现者；C# / F# 则展示了同一 CLR（公共语言运行时）下，不同前端编译器和 JIT（即时编译器）会给出完全不同的结果。",
+        "supportid": [
+          "49242661",
+          "49242668",
+          "49242910",
+          "49242988",
+          "49243085",
+          "49243324",
+          "49246954",
+          "49247782",
+          "49247617",
+          "49247837",
+          "49243002",
+          "49244973"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "TCO / proper tail call",
+        "explanation": "尾调用优化或“正确尾调用”：函数最后一步调用另一个函数时，不额外增长栈。"
+      },
+      {
+        "term": "calling convention",
+        "explanation": "函数调用约定，规定参数如何传递、谁负责清理栈以及返回地址如何处理。"
+      },
+      {
+        "term": "musttail",
+        "explanation": "编译器属性/注解，要求尾调用必须成立，否则直接报错。"
+      },
+      {
+        "term": "CPS（Continuation-Passing Style）",
+        "explanation": "把“接下来做什么”显式作为参数传递的编码风格，常用于解释器和编译器。"
+      },
+      {
+        "term": "variadic function",
+        "explanation": "可变参数函数，如 printf，调用时参数个数不固定，因此栈清理更复杂。"
+      }
+    ],
+    "context": "这篇讨论围绕一篇回顾 2001 年 Mark Probst 在 GCC（GNU Compiler Collection，一套开源 C/C++ 编译器工具链）里实现 tail-call optimization 的文章展开。争议点在于 C 的传统 calling convention（函数调用约定）和 varargs（可变参数函数）使 proper tail calls 不像在 Scheme（把 proper tail calls 写进标准的函数式语言）那样天然可承诺，因为调用者往往负责栈清理，而尾调用会改变返回帧的归属。评论还把话题扩展到 `musttail`、`@tailrec`、`become` 这类显式保证机制，以及 JavaScriptCore（Safari 的 JS 引擎）、RyuJIT（.NET 的 JIT 编译器）、SBCL（Common Lisp 实现）和 F# 等运行时/编译器对 TCO 的不同支持程度。整体上，这场讨论把“尾调用是不是优化”与“语言标准是否该保证栈不增长”这两个问题绑在了一起。",
+    "emoji": "🤔",
+    "sarcastic_question": "不保证 TCO，谁来替爆栈背锅呢？"
+  },
+  "articleSummary": "## 一句话总结\n\nC 的 tail-call optimization 并非“天然就有”，它是 GCC 和 Clang 近年才逐步能可靠支持的能力，而这件事可能让 Gforth 一类 VM 生成海量代码片段成为现实。\n\n## 正文\n\n### C 的传统调用约定，曾经让尾调用很难成立\n\n很多人会把 tail-call optimization 当成编译器理所当然的优化，但在 C 里，事情并没有这么简单。传统 C 调用约定的关键是：callee 不负责清理 caller 压入栈中的参数。原因在于，调用点看到的声明可能只是 `int f();`。实际调用时却可能传入 `n > 0` 个参数，而函数定义只接收 `m ≤ n` 个参数。既然 callee 不一定知道 caller 到底传了多少参数，它就不能安全地替 caller 清理参数栈。于是 caller 必须在 `call` 之后、`return` 之前自行完成清理，这就把本应紧挨着 `return` 的调用打断了。说白了，调用序列本身不是尾位置，编译器也就很难直接把它改写成跳转。\n\n### 1990 年代的 C 编译器，确实做不到这件事\n\n作者在 1994 年检查过当时的 C 编译器，结论是：它们无法对相关文章展示的那类调用执行 tail-call optimization。这里的重点不只是“优化器不够聪明”，而是当时的 ABI 和调用约定直接限制了优化空间。到了 2001 年，Mark Probst 为 GCC 实现了 tail-call optimization。值得注意的是，他采用的是一套单独的 calling convention，而不是简单修补原有调用方式。Probst 在论文第 6.4 节还列出了当时 GCC 既有 tail-call optimization 的限制。比如，它“不能处理 indirect calls”，而解释器分发中的尾调用恰恰往往需要间接调用。\n\n### `goto *` 曾经够用，但它限制了代码规模\n\n由于 GCC 的 `goto *` 已经“够用，至少大多数时候够用”，作者后来没有继续追踪 GCC 对尾调用的支持进展。`goto *` 可以用于 threaded code 或解释器 dispatch，因此它曾是实现高效 VM 控制流的实用手段。但这种方案有一个隐含限制：当要生成的代码片段数量变得非常大时，维护和组合会变得困难。作者以 Gforth 为例，目前他们把 VM instructions、stack caching 的不同变体，以及 static superinstructions 等代码片段控制在不足 2000 个。这个数量适合 `goto *` 驱动的实现。可一旦想使用依赖大量不同 snippet 的技术，几千个片段就不够了。\n\n### Copy-and-Patch 让作者重新测试了现代编译器\n\n转折来自 Xu 和 Kjolstad 的论文《Copy-and-Patch Compilation》。这篇论文使用了 tail-call optimization，因此作者重新验证了 GCC 和 Clang 是否已经能处理文章所示的尾调用形式。测试结果很直接：现在可以工作了。也就是说，现代 GCC 和 Clang 已经能够在这类场景中把尾调用优化成不增长调用栈的控制转移。这个变化的重要性不只是递归函数更优雅，而是它改变了 JIT、解释器和 VM 代码生成策略的可行边界。原来必须依赖 `goto *` 的地方，现在可能可以借助普通的 C 函数加尾调用优化来表达。\n\n### 从 2000 到 100,000 个 snippet，设计空间突然变大了\n\nCopy-and-Patch Compilation 使用了大约 100,000 个代码片段。相比之下，Gforth 当前限制在少于 2000 个，这个差距不是小幅扩容，而是两个数量级。能承载 100,000 个 snippet，意味着许多此前因组合爆炸而不可用的 specialization 技术开始变得可行。比如，不同 VM 指令、栈缓存状态和静态 superinstruction 的组合，可以更激进地预生成或拼接。作者还没有把这套思路真正接入 Gforth。于是他在结尾给 Python 社区送上了一句带点遗憾的祝贺：Python 已经先一步利用上了这项如今终于成熟的编译器能力。"
+}

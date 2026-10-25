@@ -1,0 +1,105 @@
+{
+  "id": 47359712,
+  "by": "antics",
+  "title": "Lies I was told about collaborative editing, Part 2: Why we don't use Yjs",
+  "url": "https://www.moment.dev/blog/lies-i-was-told-pt-2",
+  "score": 232,
+  "createdAt": 1773640881,
+  "aiSummary": {
+    "chinese_title": "协作编辑谬言 II：为何不选 Yjs（y‑prosemirror 绑定争议）",
+    "discussion_overview": [
+      {
+        "category": "y‑prosemirror 绑定问题与 CRDT 通病争议",
+        "summary": "核心争论集中在 y‑prosemirror（Yjs 与 ProseMirror 的绑定）如何将远端变更应用到编辑器：作者指出早期 binding 在每次协作 keystroke 时以“删除并重建整份文档”的方式更新，结果破坏了 ProseMirror 的插件、光标映射与 undo 行为，对编辑器体验造成明显问题。反对者强调这更像是绑定实现的捷径或设计选择，而非 CRDT 理论本身的必然属性；PowerSync 等也承认他们因直接替换最终状态而遇到相同痛点，表明问题常来自“如何把 CRDT 状态映射成编辑器 Transaction”的工程决定。讨论同时注意到 Y.js 14 与新一代 y‑prosemirror 绑定正在修补这些实现问题，因此争论多在于“实现细节 vs 算法本质”而非简单否定整个 CRDT 范式。",
+        "supportid": [
+          "47400641",
+          "47395971",
+          "47395826",
+          "47399426",
+          "47398491"
+        ]
+      },
+      {
+        "category": "OT 倡导与 rebase vs transform 争论",
+        "summary": "一部分评论者强烈主张使用 OT（Operational Transformation），理由包括无 tombstones、存储和压缩更可控，以及在中心化/权威服务器架构下已有可借鉴实现。作者与其他回复则认为 OT 在准确实现上不见得更简单，尤其是在分布式场景或要与现代编辑器内存结构（Transaction/EditorState、插件位置映射、undo）对接时仍需大量工程工作。讨论细化到 prosemirror-collab 被视为“OT 的简化变体（不做完全 transform）”，而 prosemirror-collab-commit 通过在服务器端执行 rebasing 来缓解客户端重试问题；同时也有评论指出 rebasing 在很多层面上仍是对变换（transformation）的实际执行，牵涉到 OT 的理论属性（如 TP1）和实现权衡。",
+        "supportid": [
+          "47395549",
+          "47395904",
+          "47396499",
+          "47398818",
+          "47396337",
+          "47397689"
+        ]
+      },
+      {
+        "category": "替代实现与本地优先（DocNode/DocSync、PowerSync、librdx 等）",
+        "summary": "许多评论推荐或展示替代方案：DocNode/DocSync 提供面向中心化或本地优先的同步引擎，声称无需 tombstones、支持 move 操作并以中心服务器或本地-first 流程保证顺序一致性；Val 使用 RFC 6902 JSON patch 作为基础格式；PowerSync 提出既用 per‑character ID 又采服务器权威顺序的混合做法，走的是既保留并发信息又由服务器裁决的路线。还有项目如 librdx（RDX/BASON 内部格式）和 diamond‑types 试图通过不同的数据布局与 run‑length 编码减少因果历史的存储与重放成本。整体讨论提示工程师可以在多种同步模型之间权衡（本地优先、中心化、混合），并非只有单一“CRDT 或 OT”的选项。",
+        "supportid": [
+          "47385819",
+          "47397159",
+          "47395782",
+          "47399426",
+          "47397641",
+          "47398059"
+        ]
+      },
+      {
+        "category": "工程现实：映射、不匹配、调试与形式证明质疑",
+        "summary": "多条评论强调真正困难在于把同步层的操作映射回编辑器的内部状态：如何保持位置映射、注释/光标位置、插件数据和 undo 栈一致是反复出问题的地方，单看几行示例代码无法覆盖这些角落情况。实际工程还涉及 schema 版本不匹配、多标签页与 BroadcastChannel 的竞态，以及演示中出现的 undo/撤销冲突等细节，需要在服务器和同步层做额外处理。理论层面亦有争议：有人指责 Yjs 的官方论文在证明上存在循环定义问题，提醒社区不仅要看算法直觉，还需关注因果历史的存储、可重放日志与调试能力，这些都会影响可维护性和线上错误复现。",
+        "supportid": [
+          "47395904",
+          "47396268",
+          "47396610",
+          "47396501",
+          "47397454",
+          "47396154",
+          "47398481",
+          "47385819"
+        ]
+      },
+      {
+        "category": "对文章立场、公信力和利益冲突的质疑",
+        "summary": "有人怀疑文章在批评 Yjs 时可能带有立场或与自家产品定位相关的偏见，质疑作者是否在以工程批评为掩护推进自家替代方案或市场话语权。作者在评论区反复澄清他们并非在与 Yjs 竞争，并表示愿意为开源项目付费，强调写这篇文章是为了分享工程经验而非全面否定 CRDT。此类质疑反映社区对技术批评希望更高透明度的期待：区分实现细节、工程选择与学术/算法本身的差别很重要。",
+        "supportid": [
+          "47395677",
+          "47395710",
+          "47400641"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "CRDT",
+        "explanation": "CRDT（Conflict‑free Replicated Data Type）是一类允许并发副本独立修改并保证最终一致的数据结构，常用于离线/分叉场景；优点是自动合并和无需中心仲裁，但通常携带元数据（如 tombstones）、增加存储和合并复杂度。"
+      },
+      {
+        "term": "Operational Transformation (OT)",
+        "explanation": "OT（Operational Transformation）是一种靠变换（transform）来在中心化或权威服务器架构下保持并发编辑一致性的算法族，优点是避免某些 CRDT 的元数据开销，但正确实现需要满足变换属性（如 TP1/TP2），分布式扩展难度较大。"
+      },
+      {
+        "term": "ProseMirror",
+        "explanation": "ProseMirror（一个可扩展的富文本编辑器框架）以 Transaction/EditorState 为核心，插件系统和位置映射对协作绑定非常敏感，因此同步层必须把变更翻译成合法的 ProseMirror Transaction 才能保持插件与 undo 正常工作。"
+      },
+      {
+        "term": "y-prosemirror",
+        "explanation": "y‑prosemirror 是将 Yjs（CRDT 库）与 ProseMirror 连接的绑定实现；早期绑定用整体替换或简单回滚‑重放策略来应用远端变更，造成插件/撤销等兼容性问题，社区与 Yjs 在新版绑定上已有修复工作。"
+      },
+      {
+        "term": "prosemirror-collab-commit",
+        "explanation": "prosemirror‑collab‑commit 是对 ProseMirror 协作支持的扩展，特点是在服务器端执行 rebasing（把客户端提交重写到最新版本）以减少客户端反复重试和编辑饿死问题，属于“带权威服务器的伪 OT”类方案。"
+      },
+      {
+        "term": "tombstones",
+        "explanation": "tombstones 是某些 CRDT 为保留已删除元素因果信息而保留的占位元数据，能保证并发删除/插入的因果关系但会带来长期存储、遍历和压缩的开销，需要垃圾回收或压缩机制。"
+      },
+      {
+        "term": "RGA",
+        "explanation": "RGA（Replicated Growable Array）是一种常见的序列 CRDT，基于对元素的唯一标识和邻接关系来实现并发插入/删除，常被用作文本字符序列的底层模型。"
+      }
+    ],
+    "context": "本文源自 Moment 团队对其“基于 ProseMirror 的本地优先 Markdown 编辑器”架构选择的阐述：作者解释为何在工程实现上没有选择 Yjs（一个流行的 CRDT 库）并指出 y‑prosemirror 绑定带来的实际痛点。评论区围绕两类主流协作策略（CRDT 与 OT）展开技术与工程辩论，进一步延伸到绑定实现、undo/映射、schema 兼容、因果历史与可重放日志等现实问题。社区成员同时提出多种替代思路和项目供参考，例如 prosemirror‑collab / prosemirror‑collab‑commit（ProseMirror 的协作支持）、DocNode/DocSync（本地优先或中心化同步库）、PowerSync 的混合方案，以及 diamond‑types 和 librdx 等在存储/压缩上做优化的尝试。争论的焦点不是纯粹学术，而是“编辑器内部状态（如 ProseMirror 的 Transaction/EditorState、插件、撤销栈）如何与同步层良好绑定”以及在真实网络/离线场景下的性能与可调试性取舍。",
+    "emoji": "🤨",
+    "sarcastic_question": "把 y‑prosemirror 的实现缺陷当作 CRDT 通病？"
+  },
+  "articleSummary": "## 一句话总结\n除非你真的需要无主节点的 P2P 架构，否则不要用 Yjs 这种 CRDT 方案，基于 `prosemirror-collab` 的中心化权威方案仅需 40 行代码就能搞定实时协作，且性能更好、坑更少。\n\n### 40 行代码就能搞定协作，别被 CRDT 的复杂度吓唬了\n很多人觉得必须上 CRDT 才能支持乐观更新、网络断开编辑或者细粒度的溯源，但这其实是个误区。作者展示了一个基于 `prosemirror-collab` 的 Demo，核心逻辑只要 40 行代码（算上 React 脚手架也就 291 行）。它支持暂停模拟断网、离线编辑和恢复同步，功能和 CRDT 一模一样。说白了，除了真正的“无主节点 P2P”，我们日常需要的那些协作特性，用最简单的中心化权威模型就能轻松实现，根本不需要引入 CRDT 那套复杂的数学理论。\n\n### 核心思路其实很简单：有个权威说了算\n这个简单方案的核心在于“权威”。每个文档都有一个单一的权威源，保存着文档状态、操作步骤和版本号。客户端提交操作时带上版本号，如果版本不匹配，就必须拉取最新变更，把自己的操作“变基”上去再提交。虽然这多了一次网络往返，但你可以用 `prosemirror-collab-commit` 让权威服务端来做变基。注意，“权威”不代表必须是 AWS 上的中心服务器，你的笔记本只要作为权威，也能支持 P2P，只是它不是“无主”的而已。\n\n### Yjs 的致命伤：每次击键都在“毁灭”文档\n作者原本以为大家都在用 Yjs，肯定是自己想错了，直到他看到了 `y-prosemirror` 的 Issue #113。这个 bug 揭露了一个令人震惊的事实：Yjs 在每次击键时，会完全销毁并重建整个文档。这并非意外，而是 Yjs 作者 Kevin 确认的“设计选择”。这会导致严重的性能问题，因为每个 `NodeView`、装饰器和 DOM 元素都要被反复重建。更糟糕的是，这破坏了所有依赖位置映射的插件，比如评论、协同光标、撤销重做，甚至连节点身份都变得不稳定。\n\n### 60 FPS 的性能目标，在 Yjs 下很难达成\n做编辑器性能是硬指标，作者的目标是无论文档多复杂、多少人协作，都要稳在 60 FPS（每帧只有 16ms）。在他们的方案里，ProseMirror 的 `Transaction` 应用极快，且支持增量更新；服务器还能把操作打包成 20 个一批，确保主线程不卡顿。但在 Yjs 下，由于它每次都要重建文档，增量更新成了奢望。虽然 Yjs 维护者正在尝试做细粒度更新，但目前的架构让性能优化变得异常艰难，光是那个复杂的转换 pipeline 就让人看着焦虑。\n\n### 文档 Schema 校验在 Yjs 里是个雷\n大多数编辑器都需要 Schema 来约束文档结构，比如代码块里不能嵌套引用块。在中心化架构下，服务器可以直接拒绝非法的 `Transaction`。但 Yjs 是为无主 P2P 设计的，它默认没有绝对的权威来判断什么是“非法”。作者测试发现，当 `y-prosemirror` 遇到 Schema 校验异常时，节点会被永久删除并同步给所有用户。这意味着，如果你离线期间产品升级了 Schema，重连后你可能会默默删掉别人的新数据。虽然 Tiptap 做了检测并强制刷新，但默认行为实在太危险。\n\n### 权限管理在 Yjs 中变得异常痛苦\n现实中的编辑器通常有复杂的权限系统，比如只读、评论者、建议者等。在传统方案里，你只需要检查 `Transaction` 修改了什么，结合用户权限决定放行还是拒绝。但在 Yjs 里，因为它把 `Transaction` 转换成了 XML 更新，你很难预测这个更新对文档的最终影响。想要在 XML 转换的间隙精准判断权限，不仅逻辑绕弯，而且极易出错。这再次说明，为了一个你可能根本用不到的无主 P2P 特性，引入 Yjs 会让周边系统的开发成本成倍增加。"
+}

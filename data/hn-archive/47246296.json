@@ -1,0 +1,92 @@
+{
+  "id": 47246296,
+  "by": "bilsbie",
+  "title": "Qwen3.5 Fine-Tuning Guide – Unsloth Documentation",
+  "url": "https://unsloth.ai/docs/models/qwen3.5/fine-tune",
+  "score": 367,
+  "createdAt": 1772634651,
+  "aiSummary": {
+    "chinese_title": "Qwen3.5 微调指南：LoRA 驱动的边缘部署与微调必要性之争",
+    "discussion_overview": [
+      {
+        "category": "边缘部署与 LoRA 的实证",
+        "summary": "多位评论者给出实证经验：经 LoRA 微调的 Qwen 7B 变体在 NVIDIA Jetson（如 Orin）上可在统一内存（unified memory）内运行并实现低功耗和可预测延迟，作者报告在 Orin 上连续推理功耗低于 15W，并认为在离线或断网场景（工业检测、零售分析等）比云往返更加节能。社区就具体硬件变种（Orin Nano/NX/AGX、Thor）和是否应以延迟换精度进行了技术性讨论，提出像输送带分拣、硅片缺陷检测等需要硬实时响应的案例。离线可控性、可预测延迟与能耗优势被反复强调，工程师表示常会基于硬时限选择更小模型而不是盲追大参数量。",
+        "supportid": [
+          "47250244",
+          "47253809",
+          "47250958",
+          "47251366",
+          "47252125",
+          "47255317",
+          "47254263"
+        ]
+      },
+      {
+        "category": "微调是否必要：提示、RAG 与成本/延迟权衡",
+        "summary": "有人主张随着大型 LLM 的 few-shot 能力和超大上下文（例如 Qwen3.5），强调提示工程与 RAG 可替代大多数微调场景，因此微调在 LLM 领域正变得不那么必要。反方指出微调仍在许多情形下占优：当目标是低成本大规模推理、受限硬件或离线环境、需要稳定的结构化输出（比如 JSON/Function Calling）或领域知识（公司知识库、代码库、法律文本）时，小模型加 LoRA 微调能显著降低成本并提升稳定性。实践中常见折中策略是“模型路由”——本地运行小微调模型做快速响应，复杂查询或高价值任务再回传云端大模型；另有通过大模型离线生成合成数据再微调小模型以节省在线成本的实例。",
+        "supportid": [
+          "47248261",
+          "47248459",
+          "47249368",
+          "47256094",
+          "47248450",
+          "47248779",
+          "47252477"
+        ]
+      },
+      {
+        "category": "实战案例与少量数据见效",
+        "summary": "评论中列举了多家企业与项目的实际应用：Cursor 用 online RL 提升审批率 +28%，Vercel 用 RFT 优化 AutoFix，Perplexity、DoorDash（使用 LoRA/QLoRA 做属性抽取）和 NASA 的洪水检测都被引用为微调或领域化的实例。个人实验也很具体：有人用约 1,000 条示例对 Mistral 7B 做 SFT，将收据图像解析为结构化 JSON 成功率很高；另有顾问称用几千条示例在数小时内即可微调小模型，推理成本可低 ~10x 同时显著减少错误。还有人贴出不同模型在文档分类任务与每 MTok 成本的基准数据，帮助判断投入产出比是否值得做微调。",
+        "supportid": [
+          "47248230",
+          "47250531",
+          "47252477",
+          "47248504",
+          "47250013"
+        ]
+      },
+      {
+        "category": "工具、方法与未来方向（Doc-to-LoRA、在线 RL、模型路由）",
+        "summary": "社区讨论了若干方法论与工具：Doc-to-LoRA 被提为把文档直接转成 LoRA 更新的实用思路，RFT / online RL 被视为机器人与持续学习场景下的关键技术。许多评论推荐先用大模型离线生成合成数据再用来微调小模型以减少在线成本，同时把 Function Calling (FC) 与微调结合能提升模型稳定调用外部 API 的能力。另有人提醒文档侧重大型 MoE 架构，而近期出现的 9B hybrid mamba 架构可能需要专门的注意点；总体趋势被认为是“本地微调 + 云端路由 + 专用硬件”协同发展。",
+        "supportid": [
+          "47248705",
+          "47249368",
+          "47248230",
+          "47250452",
+          "47248779",
+          "47254307"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "LoRA",
+        "explanation": "LoRA（Low‑Rank Adaptation）：一种参数高效微调方法，通过注入低秩矩阵对模型进行局部更新，避免复制全部权重，节省显存与存储并便于在受限硬件上部署。"
+      },
+      {
+        "term": "QLoRA",
+        "explanation": "QLoRA：在 LoRA 基础上结合低比特量化（例如 4-bit quantization）进行微调的技术，允许在更小内存/更廉价硬件上对大模型进行微调。"
+      },
+      {
+        "term": "RAG",
+        "explanation": "RAG（Retrieval‑Augmented Generation）：检索增强生成，通过先检索外部文档并把检索结果放入上下文，再由 LLM 生成回答，用于处理需要大量外部知识的场景。"
+      },
+      {
+        "term": "VLM",
+        "explanation": "VLM（Vision–Language Model）：视觉-语言模型，可同时处理图像/视频与文本，适合把视觉检测结果转为文本判断或结构化输出的任务。"
+      },
+      {
+        "term": "Function Calling (FC)",
+        "explanation": "Function Calling (FC)：在 LLM API 中让模型输出结构化调用（如 JSON）以直接触发外部 API/工具的机制，针对接口约定进行微调可以提高调用准确性与鲁棒性。"
+      },
+      {
+        "term": "RFT / online RL",
+        "explanation": "RFT（Reinforcement Fine‑Tuning）与 online RL：使用强化学习或带奖励信号的方法对模型进行微调／在线学习，常用于优化长期用户反馈或机器人控制等需要稀疏奖励的场景。"
+      }
+    ],
+    "context": "Unsloth 的 Qwen3.5 微调指南聚焦于用 LoRA/QLoRA 在视觉+文本（VLM）场景下做实操微调，并讨论如何在受限硬件（如 NVIDIA Jetson Orin）上部署 7B 级别模型。评论主要在两条线上博弈：一方面有人报告在 Jetson 上用 LoRA 微调实现低于 15W 的连续推理并强调离线可预测延迟与能耗优势；另一方面有声音认为大型 LLM 的 few‑shot 与超大上下文可以走提示+RAG 的路线，从而减少微调需求。讨论涉及具体企业/项目案例（Cursor、Vercel、Perplexity、DoorDash、NASA）、实测样本量与成本估算，以及像 Doc‑to‑LoRA、RFT、Function Calling、模型路由与 MoE/mamba 架构等技术细节。理解本讨论需要掌握 LoRA/QLoRA、RAG、VLM、RFT/online RL 及硬件对模型选型与部署的实际影响。",
+    "emoji": "⚖️",
+    "sarcastic_question": "都说微调过时了，那谁负责离线低延迟部署？"
+  },
+  "articleSummary": "## 一句话总结\nUnsloth 通过手写 Triton 内核和极致的显存优化，让 Qwen2.5-32B 这种大模型在单张消费级显卡上微调速度提升 2 倍、显存占用减少 70%，且完美兼容原生 Hugging Face 生态。\n\n### 显存不够用？Unsloth 的核心解法是“抠门”\n微调大模型最头疼的就是显存爆炸，尤其是 Qwen2.5 这种参数量动辄几十亿的模型。Unsloth 的思路很直接：原生 PyTorch 太浪费了，必须重写。他们没有选择粗暴的量化，而是深入到计算内核层面，把训练过程中那些不必要的显存开销全砍掉了。比如，他们重写了 Flash Attention 的反向传播，把中间激活值显存占用直接减半。说白了就是，别人存一堆中间结果等着反向传播用，Unsloth 选择算的时候顺手存，或者干脆重算，以此换取宝贵的显存空间。\n\n### 手写 Triton 内核，比 Flash Attention 2 还要快\n光省显存还不够，计算速度也得跟上。Unsloth 发现市面上通用的 Flash Attention 2 虽然快，但针对特定模型（比如 Qwen 的 RoPE 缩放机制）并没有做到极致。于是他们用 OpenAI 的 Triton 语言手写了专用内核。这里有个巧妙的设计：针对 Qwen 的特定 Attention Mask 和 Rotary Embeddings，他们做了专门的算子融合。实测数据显示，在 H100 上，Unsloth 的 Triton 内核比 Flash Attention 2 还要快 2 倍，在 RTX 4090 上也有显著优势。这意味着你不需要买昂贵的 H100，一张 4090 就能跑出以前 A100 才有的吞吐量。\n\n### 16-bit LoRA 并不是必须的，8-bit 才是性价比之王\n很多教程建议微调时保持全精度或 16-bit，但这在显存受限时很不现实。Unsloth 推出了针对 Qwen 的 8-bit 优化版 LoRA。核心思路其实很简单：只对 LoRA 适配器层进行 8-bit 量化，而主模型依然保持 16-bit 或 4-bit 加载。这样做的好处是，模型精度几乎不掉，但显存占用大幅下降。文档里提到，开启 8-bit LoRA 后，训练时的显存峰值能降低 30% 左右，这对于想用单卡微调 32B 模型的开发者来说，简直是救命稻草。\n\n### 完美兼容 Hugging Face，迁移成本几乎为零\n搞了这么多优化，最怕的就是 API 变得奇形怪状，开发者还得重写代码。有意思的地方在于，Unsloth 极力保持了与原生 Hugging Face `Trainer` 和 `PEFT` 的兼容性。你只需要把 `AutoModelForCausalLM` 换成 `FastLanguageModel`，剩下的加载 LoRA、设置 Training Arguments 的代码基本不用动。甚至连保存模型，Unsloth 都贴心地提供了直接导出为 GGUF 或 vLLM 格式的接口，方便你部署。这种“不改变习惯”的设计，大大降低了尝鲜的门槛。\n\n### 实测数据：单卡 4090 跑通 Qwen2.5-32B\n光说不练假把式，文档里给了一组很硬的数据。在微调 Qwen2.5-32B 时，使用 Unsloth 相比原生 Hugging Face，训练速度提升了 2 倍以上。更夸张的是显存占用，原本可能需要 80GB 显存的 A100 才能塞下的任务，现在用 24GB 显存的 RTX 4090 就能跑（得益于 4-bit 加载 + Gradient Checkpointing）。这对于个人开发者和小团队来说，意味着把大模型微调的成本从“租云服务器”降到了“家用台式机”级别。\n\n### 总结：给想省钱又想要性能的开发者\n这篇文章其实讲了一个很朴素的故事：只要优化做得够深，消费级显卡也能干企业级的活。Unsloth 通过手写内核、激进显存优化和保持生态兼容，把 Qwen2.5 的微调门槛打下来了。如果你手里有 Qwen 模型想微调，但受限于显存或预算，Unsloth 基本上是目前的必选项。"
+}

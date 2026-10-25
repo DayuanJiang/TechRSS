@@ -1,0 +1,150 @@
+{
+  "id": 48045012,
+  "by": "stereo-highway",
+  "title": "Diskless Linux boot using ZFS, iSCSI and PXE",
+  "url": "https://aniket.foo/posts/20260505-netboot/",
+  "score": 129,
+  "createdAt": 1778129442,
+  "aiSummary": {
+    "chinese_title": "PXE+iSCSI+ZFS 无盘 Linux：GRUB、UEFI、NFS/NBD 争论",
+    "discussion_overview": [
+      {
+        "category": "引导器之争：GRUB vs rEFInd/systemd-boot",
+        "summary": "评论很快转到 bootloader 选型上。支持 rEFInd 和 systemd-boot 的人认为它们只有一个 EFI entry、一个简单配置文件，配合 BLS 后几乎不用在 kernel 更新时手工改配置；有人还强调它们更容易搭配 Secure Boot 和 measured boot。反对者则指出它们基本锁定在 UEFI，而 GRUB 虽然“又大又难受”，却能同时覆盖 BIOS、UEFI、x86、Arm 乃至更多启动场景。另有讨论提到 encrypted /boot、UEFI 条目维护，以及 Windows 双启动时 boot entry 被清掉的问题。",
+        "supportid": [
+          "48047183",
+          "48047728",
+          "48048353",
+          "48048303",
+          "48048449",
+          "48048450",
+          "48047213",
+          "48045924",
+          "48045942",
+          "48046072",
+          "48046856",
+          "48047188",
+          "48048822",
+          "48047871",
+          "48048844",
+          "48046746",
+          "48046782",
+          "48046627",
+          "48046938",
+          "48048569",
+          "48046798"
+        ]
+      },
+      {
+        "category": "网络根文件系统：iSCSI、NBD 与 NFS",
+        "summary": "另一个核心分歧是远端根文件系统该用哪种协议。iSCSI 被反复描述为更“像一块真正的磁盘”，因为它是 block device，能让操作系统在其上继续做 volume management、加密或任意 filesystem，而且它是标准协议，跨 Linux、Windows 等系统的兼容性更好。NFS diskless 则更常见、配置更直观，但有人提到它常把人推向 read-only root、ramdisk 和 overlayfs 一类额外复杂度。NBD 的支持者喜欢它更简洁的 URI 风格，但也有人担心网络中断、超时和恢复能力不如 iSCSI。",
+        "supportid": [
+          "48045756",
+          "48046683",
+          "48046160",
+          "48047074",
+          "48048137",
+          "48045551",
+          "48046035",
+          "48045689",
+          "48046366",
+          "48046474",
+          "48048081",
+          "48048260",
+          "48046990",
+          "48048703",
+          "48047447"
+        ]
+      },
+      {
+        "category": "性能与网络：10GbE、QoS、RDMA、NVMe-oF",
+        "summary": "性能讨论基本集中在网络和存储链路的上限。有人说在 gigabit Ethernet 上跑 iSCSI 很痛苦，升级到 10GbE 会明显改善，但和本地 NVMe 相比仍然慢很多。为缓解瓶颈，评论里提到专用存储网络、QoS / priority VLAN、带缓存的交换机、Chelsio iSCSI offload、Mellanox + RDMA，甚至直接换成 NVMe-oF 或 NVMe over TCP。还有人想把远端块设备配合本地小容量 NVMe 做 bcache 写回/写透缓存，试图把“无盘”与可接受的延迟折中起来。",
+        "supportid": [
+          "48045839",
+          "48046827",
+          "48045797",
+          "48045840",
+          "48045758",
+          "48045860",
+          "48046105",
+          "48048527"
+        ]
+      },
+      {
+        "category": "现成方案与实际用途",
+        "summary": "不少人指出，这类思路并不新，只是换了个打包方式。类似做法早就出现在 Xen、KVM 的 diskless VM、iPXE 的 bare metal 启动，以及一些机器人集群里：所有节点先从同一镜像起步，再交给 Kubernetes 或其他编排系统接管。也有人把它看成很适合 NAS（如 Synology、QNAP）或只有 SD 卡的板子，因为网络块设备比廉价闪存更稳定。还有一个变体是先用 PXE 启一个临时 initrd，再用 kexec 直接切到新 kernel，避免整机重启。",
+        "supportid": [
+          "48048479",
+          "48045816",
+          "48046366",
+          "48045725",
+          "48047555",
+          "48047858",
+          "48047099",
+          "48047952"
+        ]
+      },
+      {
+        "category": "ZFS 自愈与服务器端存储",
+        "summary": "ZFS 相关讨论集中在“它到底是只会发现坏块，还是能真正修复”。回复解释说，ZFS 依赖 checksum 发现损坏后，可以在有冗余副本时自动自愈；scrub 则是主动扫描整池、提前发现问题的维护动作。有人还强调 metadata 默认就会保留两份，所以单盘场景也能获得一定保护。正因为 client 端不必原生支持 ZFS，先把镜像放在服务器上的 ZFS 再通过 iSCSI/NFS 提供给无盘机器，才会被认为是一个很实用的组合。",
+        "supportid": [
+          "48047029",
+          "48047104",
+          "48047887",
+          "48045756",
+          "48046683"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "GRUB",
+        "explanation": "兼容 BIOS/UEFI 的传统 Linux 引导器，功能强但配置复杂。"
+      },
+      {
+        "term": "rEFInd",
+        "explanation": "UEFI 下的启动管理器，通常以简单配置和较友好的菜单著称。"
+      },
+      {
+        "term": "systemd-boot",
+        "explanation": "systemd 生态里的简化 UEFI 引导器，常配合 BLS 使用。"
+      },
+      {
+        "term": "BLS",
+        "explanation": "Boot Loader Specification，引导项文件标准，减少手工维护。"
+      },
+      {
+        "term": "PXE",
+        "explanation": "Preboot Execution Environment，先从网络加载启动文件的机制。"
+      },
+      {
+        "term": "iSCSI",
+        "explanation": "通过 TCP/IP 暴露 block device 的网络存储协议。"
+      },
+      {
+        "term": "NBD",
+        "explanation": "Network Block Device，提供远程 block device 的协议，语法更简洁。"
+      },
+      {
+        "term": "ZFS",
+        "explanation": "带 checksum、snapshot 和自愈能力的文件系统。"
+      },
+      {
+        "term": "UEFI",
+        "explanation": "现代固件接口，替代传统 BIOS，管理启动更标准化。"
+      },
+      {
+        "term": "initramfs",
+        "explanation": "启动早期加载到内存的临时根文件系统。"
+      },
+      {
+        "term": "NVMe-oF",
+        "explanation": "在网络上访问 NVMe 存储的协议家族，目标是低延迟。"
+      }
+    ],
+    "context": "原帖介绍一种无盘 Linux 方案：客户端先通过 PXE（Preboot Execution Environment，网络启动机制）加载 kernel 和 initramfs（初始 RAM 文件系统），再用 iSCSI（网络块存储协议）把服务器上的 ZFS（带校验和与自愈能力的文件系统）镜像挂成根盘。这样本地机器不需要物理磁盘，维护、重装和多机统一部署都更像管理一台“空壳”主机。评论区因此把讨论扩展到 bootloader（启动引导器）选型、UEFI（统一可扩展固件接口）兼容性、Secure Boot、以及 NFS/NBD 等替代网络根方案。另一些人则从 10GbE、RDMA 和 NVMe-oF（网络化 NVMe 存储）的角度讨论：真正决定体验的往往不是“能不能启动”，而是网络和存储延迟是否足够低。",
+    "emoji": "🤔",
+    "sarcastic_question": "只想无盘启动，先和GRUB打一架吗？"
+  },
+  "articleSummary": "### 一句话总结\n这篇文章展示了如何利用 ZFS、iSCSI 和 PXE 技术组合，把一台游戏机配置成无盘 Linux 工作站，既能在 Windows 下打游戏，又能无缝切换到 Linux 进行开发，完全不用动本地硬盘分区。\n\n### 不想动分区，那就把系统扔到 NAS 上\n作者想测试新的 `llama.cpp` 模型，但 Windows 环境太乱，装各种工具链容易把系统搞崩。直接装 Linux 双系统又很麻烦，不仅容易破坏 Windows 的启动项，还得重新规划 NVMe 硬盘分区。虽然可以用 USB 启动，但作者经常弄丢 U 盘。既然家里有 NAS，干脆就把 Linux 系统装在远程存储上，通过网络启动。虽然网络启动的 IO 性能不如本地 NVMe，但作者打算把模型文件存在本地内存盘里，只要系统跑起来就行，这点性能损失可以接受。\n\n### 用 Netboot.xyz 打造统一的启动入口\n为了实现远程启动，作者选用了 `Netboot.xyz`，这是一个基于 iPXE 的强大工具。他没有直接用现成的包，而是把源码 clone 下来编译，这样可以预加载所有资源，避免运行时下载。配置的关键在于修改 `user_overrides.yml`，把 `site_name` 指向服务器 IP。接着，他修改了 boot 模板，增加了一个自定义菜单项 `debian13-iscsi.ipxe`。这个脚本设计得很巧妙：先尝试从 iSCSI 磁盘启动，如果失败（比如还没装系统），就自动回退到 Debian 安装程序。这样就把“装系统”和“启动系统”两个动作整合在了一个菜单里。\n\n### DHCP 的层层递进：从 PXE 到 iPXE\n要让机器从网络启动，DHCP 服务器必须配合。作者在刷了 Merlin 固件的华硕路由器上配置 `DNSMasq`。这里有个技术细节：传统的 PXE 只能加载简单的二进制文件，而 iPXE 支持 HTTP 协议，功能更强大。作者的配置逻辑是：先判断客户端类型，如果是 BIOS 或 UEFI，就引导加载 `undionly.kpxe` 或 `snp.efi`；一旦加载了 iPXE，它会发送特定的标识（Option 175），DHCP 服务器检测到后，就会把引导文件指向 HTTP 上的 `menu.ipxe`。这种“链式引导”确保了无论是老机器还是新 UEFI 设备，都能最终进入图形化的启动菜单。\n\n### ZFS 和 iSCSI 的完美搭档\n后端存储方面，作者使用了 ZFS 的 ZVol 功能创建了一个 32G 的块设备 `tank/debian-disk-12700k`。然后通过 `targetcli` 将其导出为 iSCSI Target。这是整个配置最繁琐的一步，涉及到 LUN 映射和 ACL 权限设置。为了安全，作者开启了双向认证（CHAP），不仅服务器要验证客户端，客户端也要验证服务器。配置完成后，这个远程块设备在客户端看来，就像是一块插在本地机器上的物理硬盘，完全可以直接用来安装操作系统。\n\n### 安装过程中的“隐形”硬盘\n一切准备就绪后，开始安装 Debian 13。安装程序启动后，最初会检测不到任何硬盘，这是正常的，因为硬盘还在网络上。作者选择“Configure iSCSI volumes”，并在 TTY2 终端里手动输入之前配置的账号密码进行连接。一旦连接成功，iSCSI 目标盘就会被识别为普通磁盘 `/dev/sda`。接下来的分区、挂载、安装步骤就和本地安装一模一样了。GRUB 也会被安装到这块远程盘上，以后开机只要选这个菜单项，就能直接进入 Linux，完全不影响 Windows 的 EFI 启动项。"
+}

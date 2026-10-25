@@ -1,0 +1,100 @@
+{
+  "id": 49801329,
+  "by": "mixedbit",
+  "title": "Show HN: Drop – a rootless Linux sandbox with gVisor support",
+  "url": "https://droprun.sh/",
+  "score": 124,
+  "createdAt": 1790087439,
+  "aiSummary": {
+    "chinese_title": "Drop：保留宿主环境的 rootless/gVisor AI agent 沙箱，安全边界仍待验证",
+    "discussion_overview": [
+      {
+        "category": "高便利性的宿主环境沙箱",
+        "summary": "Drop试图在隔离与日常开发便利之间取平衡：沙箱可复用宿主机的/usr和已安装程序，同时保持用户名、hostname、路径及环境变量，避免维护精简容器镜像。它把环境作为可枚举、可删除的对象管理，减少用户追踪各个工作目录下XDG_HOME残留文件的负担。已有使用者认为其比其他方案更易上手，且适合逐步成为默认开发环境。其目标并非模拟一台全新系统，而是让用户在熟悉的发行版环境中限制写入和可见范围。",
+        "supportid": [
+          "49803146",
+          "49803947",
+          "49804699",
+          "49802747"
+        ]
+      },
+      {
+        "category": "安全威胁模型：防误操作不等于防恶意代码",
+        "summary": "多位评论者区分了“只允许写当前目录”与“可安全运行恶意代码”两种目标：前者能避免agent误执行rm -rf等破坏性命令，却仍可能让prompt injection或恶意npm包读取并外传SSH key。Drop的rootless设计会拒绝以root启动，旨在排除一部分高权限攻击路径；可选gVisor则以用户态内核隔开应用syscall与宿主内核。评论者仍认为容器逃逸和文件替换等TOCTOU风险很难彻底处理，并期待network allowlist、credential masking及更强的VM隔离。由于Drop主动挂载部分宿主文件系统，它不能像不支持宿主挂载的Firecracker microVM那样提供极端封闭的保证。",
+        "supportid": [
+          "49802567",
+          "49803460",
+          "49804267",
+          "49804373",
+          "49803890",
+          "49805480",
+          "49806390"
+        ]
+      },
+      {
+        "category": "为何不直接使用runc、bwrap或Docker",
+        "summary": "质疑者指出Drop依赖的底层原语与nsjail、runc和bubblewrap相近，担心它是在重复实现已有组件。项目方解释，早期曾尝试为runc/crun生成OCI config.json，但Drop并非OCI容器，且成熟runtime的单体JSON接口过于粗粒度，争取非主流功能也较困难。直接调用细粒度Linux API虽然增加实现责任，却能按自身需求塑造沙箱；bubblewrap同样被视作低层building block，而非面向日常工作的完整产品。也有人指出Docker和现有runsc早已能组合cgroups、namespace与gVisor，因此Drop的差异主要是高层用户体验和统一配置，而不是发明新的隔离原语。",
+        "supportid": [
+          "49802414",
+          "49803062",
+          "49802078",
+          "49802324",
+          "49803186",
+          "49805221",
+          "49802775"
+        ]
+      },
+      {
+        "category": "兼容性与功能缺口",
+        "summary": "Drop目前是Linux专用，无法在macOS运行，也不能在容器内部运行或从沙箱中再启动容器，限制了Docker/Podman Compose式开发。GUI应用、Wayland/PipeWire权限和游戏等硬件加速工作负载仍在路线图上。gVisor会重实现部分Linux内核语义，因而可能有兼容性问题；其代价是syscall经用户态处理，不过评论中引用的基准认为单次syscall开销未必显著拖慢整体程序。项目方正考虑加入轻量VM作为第三种runtime，以改善宿主内核隔离和嵌套容器问题，但如何快速复用现有发行版及受限的/etc配置仍未解决。",
+        "supportid": [
+          "49803553",
+          "49802828",
+          "49805496",
+          "49803146",
+          "49805316",
+          "49803109",
+          "49804039",
+          "49803594",
+          "49805740"
+        ]
+      },
+      {
+        "category": "AI agent隔离的行业实践尚不透明",
+        "summary": "评论者普遍将此类工具视为AI coding agent执行命令和修改代码时的必要外层边界，而不愿只相信agent harness内部不可见的规则。对于Anthropic、OpenAI、Google、Amazon等机构具体采用Kubernetes、加固容器、裁剪VM还是其他内部系统，讨论中没有可靠答案。有人提出可在K3s上复现企业级方案的疑问，反映出个人开发者缺少可审计、可部署的参考架构。现有替代实验包括以Docker运行agent并通过ACP代理连接宿主GUI编辑器，以及用libkrun microsandbox启动微型VM的方案。",
+        "supportid": [
+          "49806109",
+          "49802499",
+          "49803397",
+          "49804373"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Linux namespaces（Linux命名空间）",
+        "explanation": "Linux内核的隔离机制，可让进程拥有独立的用户、挂载、进程和网络视图，是许多容器与rootless沙箱的基础。"
+      },
+      {
+        "term": "gVisor / runsc",
+        "explanation": "Google开发的容器沙箱runtime；runsc通过用户态Go实现的内核层处理大量syscall，以降低应用直接攻击宿主内核的机会。"
+      },
+      {
+        "term": "bubblewrap / bwrap",
+        "explanation": "基于Linux namespaces的低层沙箱构建工具，常被Flatpak等上层系统用于组装文件系统和权限边界。"
+      },
+      {
+        "term": "microVM",
+        "explanation": "面向快速启动和低资源占用的轻量虚拟机，以独立guest kernel提供通常强于共享宿主内核容器的隔离。"
+      },
+      {
+        "term": "OCI runtime",
+        "explanation": "遵循Open Container Initiative规范、根据标准容器配置启动容器的运行时接口；runc、crun和runsc均可用于该生态。"
+      }
+    ],
+    "context": "Drop是一个面向Linux的rootless沙箱工具：它把子进程放入Linux namespaces（内核提供的进程、文件系统、网络等视图隔离机制），并可选用gVisor（以用户态内核增强容器隔离的runtime）。它刻意复用宿主发行版、/usr中的软件及部分路径，而非要求用户构建完整容器镜像，因此特别面向需要让AI coding agent访问现有开发环境、但不应随意改动主机的场景。讨论的关键前提是，agent的幻觉命令、prompt injection和恶意依赖属于不同风险等级：限制写入足以防误删，却无法自动阻止读取SSH key后经网络泄露。现有选择横跨bubblewrap（低层Linux沙箱工具）、Docker/Podman容器、LXC（Linux系统容器）与Firecracker等microVM（轻量虚拟机），它们在便利性、内核隔离、GUI支持和嵌套容器能力上各有取舍。",
+    "emoji": "🔒",
+    "sarcastic_question": "既要读取整台主机，SSH密钥又凭什么不外泄？"
+  },
+  "articleSummary": "## 一句话总结\nDrop 是一个基于 Linux User Namespace 的 Rootless 沙箱工具，它复用宿主机环境，通过 gVisor 集成和文件系统隔离，让开发者在无需 Root 权限和繁琐配置的前提下，安全地隔离第三方程序和 AI Coding Agent。\n\n## 正文\n\n### AI Agent 越来越能干，也越来越危险\n现在的 Coding Agent 越来越强，我们经常需要给它 `--dangerously-skip-permissions` 这种最高权限让它放手去干。但问题来了，万一它产生幻觉执行了 `rm -rf ~` 怎么办？或者被提示词注入攻击，偷偷把你的 `~/.ssh` 密钥打包带走？传统的隔离方案要么太重，要么权限要求太高，对于这种“不仅要隔离，还得让它能干活”的场景，总是差点意思。\n\n### 想要隔离环境，又不想抛弃现有环境\n这就是 Drop 想要解决的问题。它的设计理念很讨巧，有点像 Python 的 virtualenv：你可以随手创建一个一次性的隔离环境，用完即弃。最有意思的地方在于，它不像 Docker 或 Podman 那样需要你从头构建一个容器镜像。Drop 直接复用你现有的 Linux 发行版，你宿主机上装好的工具，沙箱里都能直接用，没有“容器 setup”的心智负担。\n\n### 默认就是“最小权限”，专治各种不服\nDrop 的核心逻辑是“隐藏而非挂载”。当你进入沙箱，它会给你一个新的 home 目录，原本真实的 home 目录被隐藏了。这意味着，那些针对 `~/.ssh` 或个人配置文件的恶意扫描，在沙箱里根本找不到目标。同时，它默认拒绝访问 localhost 上运行的服务。想连接本地数据库？没门。这种“默认拒绝”的策略，把安全边界划得清清楚楚。\n\n### 不用 Root，全靠 Linux Namespace 撑腰\n很多开发者不想用容器，就是因为不想给 Root 权限。Drop 这一点做得非常干净：它完全 Rootless。底层原理是利用 Linux User Namespace，在这个 Namespace 里，Drop 拥有自己的 Process、Mount、Network、IPC 和 Cgroup 隔离。更硬核的是，Drop 在执行沙箱程序前，会主动抛弃 User Namespace 的 Capabilities。说白了，就算程序进了 Namespace，也没法利用 Namespace 里的特权干坏事，比如执行 bind mount。\n\n### 觉得内核隔离不够？还有 gVisor 护体\n如果你觉得 Namespace 隔离还不够，担心宿主机内核有漏洞被利用，Drop 还提供了一个大招：集成 gVisor。这是一个用户态内核，程序的系统调用不再直接打给宿主机内核，而是经过 gVisor 这一层的拦截和处理。这相当于在程序和宿主机内核之间又加了一道防线，显著降低了内核漏洞逃逸的风险。\n\n### 配置灵活，一次设置处处生效\n对于复杂的隔离需求，Drop 用 TOML 这种高层配置语言来描述权限。你可以精确指定哪些文件、目录或本地网络服务可以暴露给沙箱。而且它设计得很人性化：所有 Drop 环境默认共享一份基础配置。你只需要配置一次，以后创建新环境时就不需要再折腾一遍权限细节了。这对于需要频繁创建临时环境来跑第三方脚本或 PyPI/npm 包的场景来说，体验非常丝滑。"
+}

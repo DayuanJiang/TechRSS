@@ -1,0 +1,85 @@
+{
+  "id": 50181136,
+  "by": "nnx",
+  "title": "DuckDB 2.0.0 LTS \"Cinnamon Teal\"",
+  "url": "https://duckdb.org/2026/10/21/announcing-duckdb-200",
+  "score": 342,
+  "createdAt": 1792593048,
+  "aiSummary": {
+    "chinese_title": "DuckDB 2.0 LTS：Async I/O、128核扩展与轻量数据仓库愿景",
+    "discussion_overview": [
+      {
+        "category": "高核数性能提升与并行上限",
+        "summary": "实际用户称 DuckDB 2.0 在 EC2 高核实例上不仅 S3 读取更快，计算阶段也能将 CPU 利用率稳定推至约 128–192 vCPU；此前通常约在 64 vCPU 就停止获得有效扩展。这使 Splink（开源 record linkage 工具）能够在 10 分钟内处理 10 亿条记录和 100 亿次比对。评论也指出，Async I/O 会减少 worker thread 等待数据的时间，使扫描速度上升并为后续算子持续供料。CPU 满载不等于无限线性加速：超过某个核心数后，任务协调、内存带宽和并行开销可能反而拉长 wall time，这是经典 HPC 同样面对的限制。",
+        "supportid": [
+          "50181617",
+          "50184094",
+          "50184587",
+          "50185181"
+        ]
+      },
+      {
+        "category": "用 DuckDB 替代复杂 Spark 栈",
+        "summary": "有人认为可置于 HTTP service 或 load balancer 后横向扩展、甚至通过 Cloud Run scale to zero 的 in-process DuckDB，会替换大量由多台高配服务器组成的数据栈。Splink 的维护者认为，用户继续采用 Spark 往往源于 Databricks 等既有平台限制或团队熟悉度，而非 Spark 性能更优。Splink 5 已支持把任务切成 n 个 chunk，因而即使采用 DuckDB 也能分发至多机；DuckDB 2.0 对大型单机的并行改进又扩大了“直接上超大机器”的可行性。该观点并非否认真正超大数据的分布式需求，而是认为多数工作负载不值得承担 Spark 的调优和运维复杂度。",
+        "supportid": [
+          "50181654",
+          "50182406",
+          "50182637",
+          "50182776"
+        ]
+      },
+      {
+        "category": "适合中小规模数据的本地、浏览器与分析用途",
+        "summary": "评论者将 DuckDB 用于 CSV、JSON 的即时查看和格式转换，也用于读取 Rust profiler 写出的 Parquet 文件，对多次运行结果做 SQL 汇总和 join。对于多数仅有 GB、MB 乃至数 TB 数据的团队，有人主张从系统事实源抽取并转换为 Parquet，再把完整的、按个人或小组划分的数据直接交给 DuckDB 查询，可减少 row-based security、报表建模和错误 join 带来的长期成本。浏览器场景中，duckdb-wasm 可将约 200–300 万行数据压缩至 16–20 MB 执行本地查询，并借助 HTTP range request 和缓存扩至约 1 GB，让数千用户各自消耗本机 CPU。另有实践将其作为小组织的集中式 analytics server，查询 Iceberg 数据，并通过扩展提供 Postgres wire protocol 或 Arrow Flight 连接。",
+        "supportid": [
+          "50183371",
+          "50184409",
+          "50183601",
+          "50183578",
+          "50183662",
+          "50183000"
+        ]
+      },
+      {
+        "category": "Async I/O 与生态接口仍有边界",
+        "summary": "Async I/O 的核心收益是把发起读取与处理解耦，避免线程在数据到达前阻塞，从而提高带宽和计算资源利用率。它在通过 S3、HTTP 等网络访问大量 Parquet 文件时最显著，因为网络延迟远高于本地存储；冷本地读取也可能受益但幅度较小。关于格式覆盖范围，讨论中同时出现了文档引文称 JSON 与 DuckDB-native format 尚为 synchronous I/O，以及实现者称 DuckDB format 已支持 Async I/O 的说法，显示版本、文档或实现状态可能存在差异。浏览器端使用 HTTP range query 还需禁用 builtin_httpfs，否则可能意外下载大量数据；客户端协议方面，Quack 支持较少，Postgres wire protocol、ADBC 和 Arrow Flight 目前更易接入现有工具。",
+        "supportid": [
+          "50182745",
+          "50185157",
+          "50182839",
+          "50182899",
+          "50183699",
+          "50183107",
+          "50184777",
+          "50183000"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Async I/O（异步 I/O）",
+        "explanation": "将数据读取请求与计算线程解耦，使线程无需同步等待 I/O 完成，尤其能隐藏远程对象存储和 HTTP 的访问延迟。"
+      },
+      {
+        "term": "Parquet",
+        "explanation": "面向分析工作负载的列式文件格式，可只读取查询所需列，常存于 S3 等对象存储并由 DuckDB 直接查询。"
+      },
+      {
+        "term": "S3",
+        "explanation": "Amazon 的对象存储服务；远程读取其上大量文件时，网络延迟和并发请求能力会显著影响查询性能。"
+      },
+      {
+        "term": "duckdb-wasm",
+        "explanation": "将 DuckDB 编译为 WebAssembly、在浏览器本地执行 SQL 的版本，可让终端用户分担查询计算。"
+      },
+      {
+        "term": "Arrow Flight",
+        "explanation": "Apache Arrow 的高性能数据传输 RPC 协议，常与 ADBC 配合，让分析工具以列式数据接口连接服务端。"
+      }
+    ],
+    "context": "DuckDB 是一个嵌入式、列式 OLAP 数据库，通常以进程内库的方式运行，擅长直接查询 Parquet、CSV、JSON 和对象存储中的分析数据。2.0.0 LTS“Cinnamon Teal”引发关注的重点是针对 Parquet、CSV 的 Async I/O 与高核心数并行能力，这被视为提升远程文件扫描和大单机分析性能的关键。讨论将其与 Spark（面向分布式大数据处理的计算框架）对比：前者试图以更轻量的单机或服务化部署覆盖许多中等规模场景，后者仍受既有平台和超大规模需求支撑。Iceberg（用于数据湖表管理的开放表格式）、duckdb-wasm（浏览器版 DuckDB）及 Postgres wire protocol 等实践，说明它正从本地分析引擎扩展为可嵌入服务、浏览器和现有数据工具链的组件。",
+    "emoji": "🚀",
+    "sarcastic_question": "几TB数据也要为Spark供奉一整座集群吗？"
+  },
+  "articleSummary": "## 一句话总结\nDuckDB 2.0 从进程内数据库进化为支持 Client-Server 架构的分析引擎，引入异步 I/O、成熟的 VARIANT 类型和全新的 SQL 解析器，在保持高性能的同时补齐了服务化和扩展性的短板。\n\n## 正文\n\n### 从进程内走向服务端：Quack 协议正式登场\nDuckDB 从诞生起就一直是个 \"in-process\" 数据库，说白了就是它得跑在你的应用程序进程里。这在很多场景下很方便，但当你需要多客户端共享同一个数据库实例时，这就成了短板。其实在 1.5.3 版本，团队就试水了 Quack 协议，到了 2.0，这个协议终于打磨成熟，可以投入生产环境了。现在的 Quack 协议在性能和稳定性上都有大幅提升，配合新的 `CONNECT` 语句，连接远程数据库变得前所未有的顺滑。更有意思的是，`CONNECT` 不仅仅支持 DuckDB 自己的协议，还能连接 PostgreSQL 和 MySQL，而且新的 remote pushdown optimizer 会把查询直接推到远端服务器执行，而不是傻傻地把数据拉回来再算。\n\n### 异步 I/O：对象存储访问的杀手锏\n如果你经常查询 S3 上的 Parquet 或 CSV 文件，这个功能会让你眼前一亮。DuckDB 2.0 引入了异步 I/O 层，把 I/O 操作和查询处理层解耦了。核心思路很简单：在后台预读数据，同时保持多个 I/O 请求并行飞行。这在读取远程对象存储时效果立竿见影，网络吞吐量的利用率大幅提升，查询时间显著缩短。官方给出的网络吞吐量对比图非常直观：相比之前那种锯齿状的吞吐量曲线，异步 I/O 能把带宽吃得饱饱的，整体运行时间也短得多。\n\n### VARIANT 类型：JSON 的列式存储解法\n处理半结构化数据一直是个痛点，要么忍受 JSON 字符串的低效解析，要么费劲去拆表。DuckDB 1.5 引入了 `VARIANT` 类型，到了 2.0，它已经是一等公民了。这个类型的巧妙之处在于，它能在存储每一行结构都不一样的数据的同时，保持列式执行的高性能。原理是 DuckDB 会自动检测数据中的公共结构，然后进行 \"shredding\"（切碎），让数据既能高效压缩，又能快速执行。这套管道从存储层到计算层是端到端打通的，Parquet 的读写也原生支持。配合 `variant_type()`、`variant_keys()` 等函数，分析 JSON 数据终于不用再写一堆复杂的解析逻辑了。\n\n### 为 AI Agent 设计的 CLI 模式\n这是一个很有前瞻性的设计。现在的 Coding Agent（比如 Claude Code、Cursor）越来越频繁地操作 DuckDB CLI，但传统的表格输出对大模型来说并不友好——太占 Token，而且容易截断。2.0 的 CLI 现在能自动检测是否被 Agent 驱动，并切换到 \"Agent Mode\"。在这个模式下，输出会变成紧凑的 Markdown 表格，错误信息会以 JSON 格式返回，甚至会在运行大查询前先报告预估成本，让 Agent 决定要不要跑。实测在 TPC-H 基准测试中，这种模式能让模型需要阅读的输出量减少 59%。\n\n### 换掉心脏：全新的 PEG SQL 解析器\nDuckDB 以前的 SQL 解析器是从 PostgreSQL 那里继承来的，用的是 YACC/Bison 生成的 LALR(1) 解析器。这东西有个老毛病：随着语法越来越复杂，加新语法很容易引发 shift/reduce 冲突。Python 3.9 就因为类似的原因换成了 PEG 解析器，DuckDB 2.0 也做了同样的选择。新的 PEG 解析器不仅更现代、更易扩展，还允许扩展插件直接介入语法解析——这意味着以后我们能看到支持全新 SQL 语法的第三方扩展了。如果你发现新解析器有问题，可以通过 `legacy_parser` 扩展切回旧版，但理论上你根本不应该察觉到这次\"心脏移植\"。\n\n### 扩展生态：自建仓库与 C API 升级\n以前写 DuckDB 扩展有点像在黑盒子里折腾，现在 2.0 带来了全新的 C API v2，暴露了文件系统、表函数等更多底层组件。更实用的是，现在你可以搭建自己的扩展仓库了。企业内部可以自建仓库、用 RSA 密钥签名，然后像安装官方扩展一样 `INSTALL AND LOAD`。仓库的 URL 前缀可以是本地路径，也可以是 https 或 s3，灵活性很高。虽然这个功能的语法未来可能还会微调，但对于想要私有化部署扩展的企业来说，这绝对是刚需。\n\n### 补齐 SQL 拼图：触发器与 DuckLake\n作为一个分析型数据库，DuckDB 以前是没有触发器的，这在某些场景下确实不方便。2.0 终于补上了这块拼图，支持 `BEFORE/AFTER` 触发器，支持行级和语句级触发，还支持通过 `REFERENCING OLD/NEW TABLE` 访问变更数据。除了经典的审计表场景，官方还展示了一个很有意思的用法：用触发器来增量维护物化视图，比如实时维护某个维度的统计表。此外，核心扩展也迎来了一波更新，DuckLake 发布了 1.1 版本，Iceberg 扩展正朝着功能完整的方向狂奔，Delta 扩展也支持建表和时间旅行了。\n\n### 版本策略与迁移建议\nDuckDB 现在的版本线有点多，需要理一理。2.0 是新的 LTS（长期支持）版本，支持周期一直持续到 2027 年 10 月。之前的 1.4 LTS 会支持到 2026 年 11 月，而 1.5 版本为了平滑过渡，支持期延长到了 2027 年 3 月，实际上也变成了一个 LTS 版本。虽然这是一个大版本更新，但团队在向后兼容性上做得相当克制，主要的 Breaking Changes 都有明确的迁移路径。如果你在用旧版，建议先看看官方的迁移指南，特别是涉及新解析器和扩展仓库的部分。"
+}

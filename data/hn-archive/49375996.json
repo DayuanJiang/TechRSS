@@ -1,0 +1,141 @@
+{
+  "id": 49375996,
+  "by": "Bluestein",
+  "title": "Clean up Claude 5's token vomit with a separate LLM",
+  "url": "https://github.com/zachahn/vomit",
+  "score": 244,
+  "createdAt": 1787240442,
+  "aiSummary": {
+    "chinese_title": "Claude 5 token vomit：另一个 LLM 洗稿",
+    "discussion_overview": [
+      {
+        "category": "Claude 文风退化与可读性灾难",
+        "summary": "大量评论都在抱怨 Claude 5/Opus 5 的输出越来越像“token vomit”：冗长、堆满 jargon、爱用僵硬比喻，还常把本该直说的内容绕成一圈。很多人提到 AGENTS.md、简短提示或“keep it simple”只能稍微缓解，随着会话变长就会明显漂移。具体症状包括总爱加“这不是 X 而是 Y”式铺垫、代码注释过度解释、PR review 变成空话连篇，导致阅读成本比写代码还高。对不少人来说，这已经不是审美问题，而是直接影响工作效率和心智负担。",
+        "supportid": [
+          "49376834",
+          "49379051",
+          "49377949",
+          "49378150",
+          "49380495",
+          "49376677",
+          "49377529",
+          "49380593",
+          "49377079",
+          "49376566",
+          "49376806",
+          "49376629",
+          "49377158"
+        ]
+      },
+      {
+        "category": "用另一个 LLM / 规则工具做二次清洗",
+        "summary": "一条很实用的路线是先让 Claude 干活，再把输出交给另一个 LLM 重写成清晰英文。有人用 output styles、hooks、严格字数预算、ELI5 指令、甚至把 caveat 强制放进正文来压住它的发散。也有人改用 deterministic 工具，比如 vale、regex 过滤，或用更“干净”的模型做改写和交叉审校。总体评价是“能用但很烦”：有效性有限，而且会额外吞掉 token、compute 和维护成本。",
+        "supportid": [
+          "49378124",
+          "49378491",
+          "49378577",
+          "49379604",
+          "49377637",
+          "49377546",
+          "49377697",
+          "49380185",
+          "49376257",
+          "49379163",
+          "49378833",
+          "49377008",
+          "49376452"
+        ]
+      },
+      {
+        "category": "原因归因：训练目标、RLVR 与反馈回路",
+        "summary": "评论里最常见的解释是训练目标变了：模型越来越偏向在 coding/agentic benchmarks 上拿分，于是把那些能提升成功率的“load-bearing”词、反复自证和结构化铺垫学得越来越重。也有人把它归因于反馈回路：模型生成的文本又被拿去做 SFT 或评估，结果把自己的口癖越训越强，最后人类看到的是层层筛过的 pseudo-English。另一条线索是上下文漂移：提示词只是在 context 里起作用，并不能改 weights，所以会话越长，最初的风格约束越容易失效。还有人把它和 prompt-injection 类比，认为模型没法真正分开“和人聊天”与“在生成代码/注释”的上下文。",
+        "supportid": [
+          "49377185",
+          "49378761",
+          "49377726",
+          "49377996",
+          "49378225",
+          "49379363",
+          "49378439",
+          "49377934",
+          "49380190",
+          "49378298"
+        ]
+      },
+      {
+        "category": "是否该继续用 Anthropic / 多模型串联",
+        "summary": "有评论直接质疑：如果还得再用一个 vendor 的模型给 Claude 洗稿，那为什么不把那个模型直接拿来做全部工作。另一派则认为多模型串联本来就合理，因为 reasoning、style transfer 和最终 prose 可能各自擅长不同环节，交叉 review 反而更稳。现实阻力主要来自订阅、企业账号、迁移成本和 FOMO，不是技术上不能换，而是组织上不好换。也有人已经转向 Codex、local model 或 Open-weight model，把 Anthropic spend 迁出去。",
+        "supportid": [
+          "49376688",
+          "49376796",
+          "49377008",
+          "49377207",
+          "49376765",
+          "49376984",
+          "49377106",
+          "49376503",
+          "49376629",
+          "49376792",
+          "49377079",
+          "49377943",
+          "49376590"
+        ]
+      },
+      {
+        "category": "争论核心：读不懂，还是模型真在变差",
+        "summary": "一部分人觉得这只是“适应一种 dialect”，读久了就能把那些奇怪句式当成 Claudish 或 Opus-ese，甚至在多 agent 协作里会更顺滑。反对者则说问题不在于能不能勉强看懂，而在于它会用 jargon 和绕句掩盖错误，让人每次都要额外做 deobfuscation，极其耗神。还有人担心人类会反过来学会这套话术，在会议、代码注释和日常沟通里污染表达，形成新的“load-bearing”黑话。争论背后其实是一个更基本的问题：工具到底该优先产出什么，给人快速校验的清晰信息，还是看起来更“聪明”的文本。",
+        "supportid": [
+          "49377752",
+          "49378161",
+          "49378234",
+          "49377583",
+          "49377681",
+          "49378653",
+          "49377756",
+          "49378374",
+          "49378578",
+          "49378512",
+          "49379667",
+          "49379066",
+          "49377758",
+          "49376811",
+          "49378189"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "AGENTS.md",
+        "explanation": "仓库里的 agent 指令文件，用来给编程代理写行为规范和偏好。"
+      },
+      {
+        "term": "output styles",
+        "explanation": "Claude Code 的输出风格配置，用来约束回复的语气、长度和格式。"
+      },
+      {
+        "term": "hooks",
+        "explanation": "在 agent harness 里自动注入或处理每一轮对话的机制。"
+      },
+      {
+        "term": "RLHF",
+        "explanation": "Reinforcement Learning from Human Feedback，用人类反馈来对齐模型行为和风格。"
+      },
+      {
+        "term": "RLVR",
+        "explanation": "Reinforcement Learning with Verifiable Rewards，按可验证结果来优化模型，常见于 coding/agent 场景。"
+      },
+      {
+        "term": "Claudish",
+        "explanation": "评论里用来指 Claude 那种冗长、拗口、jargon-heavy 的特有文风。"
+      },
+      {
+        "term": "load-bearing phrase",
+        "explanation": "看似多余、其实可能对模型推理或结果很关键的词句。"
+      }
+    ],
+    "context": "这篇讨论围绕一篇博客和配套的 GitHub 工具展开：作者试图把 Claude 5/Opus 5 生成的冗长、带 jargon 的输出，先用一个额外的 LLM 或规则工具重写成更清晰的人类可读文本。背景是 Anthropic 的 Claude Code（一个编程代理/CLI 工具）生态，用户会通过 AGENTS.md（仓库级指令文件）、output styles（输出风格配置）和 hooks（自动注入的钩子）去约束模型行为，但很多人觉得这些约束会在长会话里逐渐失效。评论里把这种现象叫作 Claudish，意思是它像一种固定方言，既能在 agent-to-agent 场景里显得“高效”，也会在代码注释、PR review 和普通解释里变成难读的 token vomit。讨论进一步扩展到 RLHF（基于人类反馈的强化学习）、RLVR（基于可验证奖励的强化学习）以及多模型串联是否合理：到底是模型在朝着任务优化而牺牲可读性，还是人类在被迫适应 AI 的话术。",
+    "emoji": "🤢",
+    "sarcastic_question": "既然得再用一个 LLM 洗稿，Claude 还算工具吗？"
+  },
+  "articleSummary": "## 一句话总结\n\nVomit 是一个把 Claude 输出的“token vomit”转交给本地 LLM 重写成可读英文的小工具，它不碰 Claude 的执行过程，却用速度、准确性和可能漏消息的代价换来更干净的阅读体验。\n\n## 正文\n\n### Claude 的问题不在于不会做事，而在于有时不会好好说话\n\n这个项目瞄准的是一个很具体、也很熟悉的痛点：Claude 在运行过程中可能输出大量难以直接阅读的 token 流。作者把这种现象直接称为 “token vomit”。说白了，Claude 试图表达信息，但最终呈现出来的内容可能不够像正常英文。Vomit 的目标不是改进 Claude 的推理，也不是接管它的工具调用。它只负责站在输出端，把 Claude 已经产生的文本送进另一个 LLM。后者再将这些内容整理成更可读的英文。于是，原本难以追踪的输出，变成了一个由本地模型充当“翻译器”的管道。\n\n### 关键设计是旁路处理，而不是侵入 Claude 的运行时\n\n有意思的地方在于，Vomit 并不试图修改 Claude 本身的行为。作者明确说明，它在运行时不会触碰任何东西。严格来说，唯一的副作用是往 `TMPDIR` 写文件。这个边界很重要，因为它意味着 Vomit 看不到 Claude 的 actions，也访问不到 Claude 操作的文件。它能拿到的，只有 Claude 尝试传达出来的消息文本。代价也很直接：本地 LLM 缺少上下文，因此会出现一定程度的 hallucination。换句话说，它能把乱码般的表达润色成英文，但不能保证自己真正理解了 Claude 正在做的全部事情。\n\n### 默认用 hooks 替换输出，也可以只在旁边“盯着看”\n\nVomit 提供了两种接入方式。第一种是通过 `vomit scrub -claude` 配置 hooks，让处理后的文本替换 Claude 的输出。安装流程也很短：先用 `go install github.com/zachahn/vomit@latest` 安装二进制，再执行 `vomit init` 配置本地 LLM 的连接信息。第二种模式更保守，也更适合不想动现有输出链路的人。`vomit list` 用来列出 Claude session identifier，`vomit tail [<session_identifier>]` 则翻译指定会话，或持续跟随最新会话。也就是说，Vomit 可以直接介入展示层，也可以只是作为一个旁路观察器运行。\n\n### 它的实用性取决于你是否接受“慢且可能漏”的翻译层\n\n作者对项目的局限没有遮掩。首先，它“pretty slow”，因为每段 Claude 输出都要再经过一次本地 LLM 推理。其次，项目完全是 vibe-coded，目前只在 Mac 上测试过。更值得注意的是，使用者有可能完全错过 Claude 的原始消息。特别是在用 hooks 替换输出时，Vomit 的翻译结果并不一定可靠地覆盖原文。作者因此建议搭配 AgentsView 这类工具保留原始消息视图。这个建议其实揭示了 Vomit 的正确定位：它不是可信日志系统，而是一个改善阅读体验的实验性 UI 层。\n\n### 本地优先是它最明确的取舍，也是它的吸引力所在\n\nVomit 强调 fully local、无 telemetry、无外部依赖。它支持 Llama.app、Ollama，以及理论上任何兼容 OpenAI API 的服务。如果开发者还没有本地 LLM 环境，作者推荐使用 Llama.app，并通过它下载 GPT-OSS 20B。之后再执行 `vomit init`，让工具连接到本地模型即可。这个选择意味着用户不必把 Claude 的输出再次发送给第三方云服务。对于处理敏感代码、内部提示词或私有工作流的开发者，这一点可能比翻译质量更重要。项目以 GNU GPLv3 发布，整体也保持了一个小型本地工具应有的直接性。"
+}

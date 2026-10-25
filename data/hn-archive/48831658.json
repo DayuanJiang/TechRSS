@@ -1,0 +1,133 @@
+{
+  "id": 48831658,
+  "by": "linggen",
+  "title": "OpenBSD has a use-after-free allowing local privilege escalation to root",
+  "url": "https://nvd.nist.gov/vuln/detail/cve-2026-57589",
+  "score": 248,
+  "createdAt": 1783522214,
+  "aiSummary": {
+    "chinese_title": "OpenBSD SysV semaphore UAF 致 root 本地提权，AI 扫洞发现",
+    "discussion_overview": [
+      {
+        "category": "AI 扫洞与开源安全审计",
+        "summary": "这条漏洞被追溯到 Patch The Planet（OpenAI 给模型访问权限、由 Trail of Bits 负责实战审计）的输出，评论把它视作模型真的能在 OSS 里扫出问题的例子。有人补充说，相关帖子里 dnsmasq（轻量级 DNS/DHCP 服务）一次就被独立识别出多个后续修复的 CVE，于是对这套方法更有信心。也有人借机吐槽，与其继续砸钱做所谓的 synthetic text extruders，不如把预算直接给长期缺人手的专业安全研究团队。整体上，这组评论把漏洞新闻放进了 AI 辅助审计和开源安全资助的讨论里。",
+        "supportid": [
+          "48832826",
+          "48833018",
+          "48834612",
+          "48835092",
+          "48834995"
+        ]
+      },
+      {
+        "category": "OpenBSD 安全声誉的肯定与质疑",
+        "summary": "一派评论把只找到一个漏洞看成 OpenBSD 安全文化和工程纪律的证明，尤其考虑到它用很少资源维持了很强的默认安全姿态。另一派则泼冷水，认为“传奇安全”更多来自营销和历史印象，而不是绝对更少的漏洞；有人明确说 OpenBSD 并不比别的系统神奇。支持者会举 pf、OpenSSH、W^X、pledge、ASLR、arc4random 等例子，认为这些确实是重要安全改进，但批评者强调其中不少是已有技术的实现或长期积累。争论的核心是：OpenBSD 的声誉究竟来自真实工程结果，还是被后来的叙事不断放大。",
+        "supportid": [
+          "48834138",
+          "48835150",
+          "48833653",
+          "48834134",
+          "48833485",
+          "48835182",
+          "48833337"
+        ]
+      },
+      {
+        "category": "这是本地提权，不是远程洞",
+        "summary": "大家反复提醒，这次是 local privilege escalation to root，不是 remote hole，所以不能直接等同于网络远程入侵。有人追问是否可从 sandboxed process 触发，得到的答复是否定的，并顺带提到 OpenBSD 大部分 base system 已经使用 pledge(2) 来收窄权限。评论也强调 LPE 在和 RCE、供应链攻击或已有 foothold 叠加时仍然很危险，只是单独看时威胁模型没那么夸张。",
+        "supportid": [
+          "48832877",
+          "48832918",
+          "48834749",
+          "48835004",
+          "48834866",
+          "48835170"
+        ]
+      },
+      {
+        "category": "漏洞数量横向对比并不可靠",
+        "summary": "关于 Patch The Planet 给出的数字，评论里有人把 Linux、FreeBSD 和 OpenBSD 的 LPE 数量直接摆在一起比较，但很快就有人指出这种平面统计几乎不能说明谁更安全。Linux 代码规模和 churn 都更大，驱动、模块和附加功能也更多，因此更容易暴露 bug，也更容易吸引攻击者和审计者的注意。另一些人补充说，bug 数往往和改动行数、系统复杂度、实际攻击面有关，甚至一个未启用的协议或文件系统都可能让某些漏洞对普通用户几乎无感。这个主题的共识是：没有上下文的总数对比很容易误导。",
+        "supportid": [
+          "48832942",
+          "48833026",
+          "48833374",
+          "48833411",
+          "48833864",
+          "48833474",
+          "48833718",
+          "48833428",
+          "48834026",
+          "48835068",
+          "48834342",
+          "48834601",
+          "48833491",
+          "48833568"
+        ]
+      },
+      {
+        "category": "Rust 能否从根本上阻止 UAF",
+        "summary": "Rust 支持者认为 ownership model 会让典型 use-after-free 在编译期就过不了，或者至少把风险显式推到 `unsafe` 边界之外。反对者指出，kernel 里大量依赖 `unsafe`、中断、DMA 和 OS primitives，很多生命周期根本无法被静态完整表达，所以这类 bug 可能只是换个地方出现。更稳妥的说法是，Rust 能把危险代码块缩小、标出来并让审查更容易，但它不能替代内核设计、并发控制和对底层语义的理解。评论里还提到，如果性能或表达能力有要求，最后仍可能选择 refcount 或 `unsafe`。",
+        "supportid": [
+          "48833029",
+          "48833867",
+          "48833305",
+          "48834087",
+          "48833588",
+          "48833269",
+          "48833465",
+          "48833446",
+          "48833397",
+          "48834135",
+          "48833963",
+          "48835075",
+          "48833660",
+          "48833297",
+          "48833672"
+        ]
+      },
+      {
+        "category": "安全公告、邮件列表与静态分析",
+        "summary": "有人疑惑为什么在 OpenBSD 的 security 页面上看不到这个漏洞，推测它最初可能只是按普通 bug 修掉，后来才被外部工具回溯成安全问题。也有人说 OpenBSD 对安全公告向来很谨慎，更看重技术上是否严格成立，而不是抢先把每个 bug 都包装成漏洞。还有人翻公开 mailing list 和之前的 use-after-free 线程，并问为什么编译器没抓住它，暗示这类问题通常要靠审计、工具和人工复盘一起发现。",
+        "supportid": [
+          "48832951",
+          "48833223",
+          "48833275",
+          "48833524",
+          "48833315",
+          "48833003",
+          "48834811"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "use-after-free（UAF）",
+        "explanation": "对象已释放后仍被访问，可能导致崩溃、信息泄露或提权。"
+      },
+      {
+        "term": "LPE（local privilege escalation）",
+        "explanation": "本地用户利用漏洞把权限升到更高等级，常见目标是 root。"
+      },
+      {
+        "term": "SysV semaphores（System V 信号量）",
+        "explanation": "Unix 传统的进程间通信机制，这次漏洞位于 OpenBSD 的内核实现里。"
+      },
+      {
+        "term": "pledge(2)",
+        "explanation": "OpenBSD 的进程约束机制，用来限制程序可调用的系统功能和资源。"
+      },
+      {
+        "term": "Rust ownership model",
+        "explanation": "Rust 通过所有权和借用规则在编译期约束生命周期，减少 UAF 一类错误。"
+      },
+      {
+        "term": "defense in depth（纵深防御）",
+        "explanation": "用多层机制叠加来降低单点失效的总体风险。"
+      }
+    ],
+    "context": "OpenBSD（一个强调默认安全的 BSD 操作系统）长期以 pf、OpenSSH、W^X、ASLR、arc4random 和 pledge(2)（进程能力限制机制）著称。这里的漏洞位于内核 sys/kern/sysv_sem.c 的 System V semaphore（SysV 信号量）实现，具体是 sys_semget() 里在 tsleep 之后发生的 use-after-free，可让本地用户提权到 root。评论把它和 OpenAI（AI 公司）与 Trail of Bits（知名安全研究公司）的 Patch The Planet（用模型辅助审计开源项目的计划）联系起来，因为该计划最近也在 dnsmasq（轻量级 DNS/DHCP 服务）上找出过多个 CVE。围绕这个标题，讨论集中在 AI 辅助审计的价值、OpenBSD 的安全神话是否被夸大、LPE（local privilege escalation，本地权限提升）与 remote hole 的区别，以及 Rust（系统编程语言）能否从根本上消除这类内存错误。",
+    "emoji": "🧐",
+    "sarcastic_question": "不是号称最安全吗，怎么还得靠AI找root洞？"
+  },
+  "articleSummary": "## 一句话总结\nOpenBSD 内核在 System V 信号量处理逻辑中存在一个经典的上下文切换 Use-After-Free 漏洞，攻击者可利用 `tsleep` 期间的竞态条件实现本地提权。\n\n### 漏洞的根源藏在 System V 信号量里\n这次出问题的是 OpenBSD 内核源码里的 `sys/kern/sysv_sem.c` 文件，影响版本一直到最新的 7.9。简单来说，这是一个典型的 Use-After-Free（UAF）漏洞，而且发生在内核态，这意味着一旦利用成功，普通用户就能直接拿到 root 权限。虽然 System V 信号量是个比较古老的 IPC 机制，但在内核里它依然是一等公民，权限极高。\n\n### 关键的“时间差”出现在 tsleep\n有意思的地方在于这个漏洞的触发机制。问题出在 `sys_semget()` 这个系统调用里，代码中使用了 `tsleep` 让进程进入睡眠状态。`tsleep` 本身很常见，用于等待资源或锁，但它有一个副作用：会触发上下文切换。就在内核进程“打盹”的这段时间里，它原本持有的某些资源状态发生了变化，而醒来后的代码并没有意识到这一点。\n\n### 上下文切换引发的内存陷阱\n核心思路其实很简单：内核在 `tsleep` 之前引用了一个对象，但在睡眠期间，这个对象被另一个线程释放掉了。当 `sys_semget()` 从 `tsleep` 恢复执行时，它继续使用那个已经被释放的指针。这就是所谓的“上下文切换 Use-After-Free”。因为是在内核层面，这种悬垂指针指向的内存可能已经被恶意数据覆盖，或者被重新分配用于更敏感的内核结构。\n\n### 利用难度与潜在风险\n虽然 CVSS 评分显示攻击复杂度（AC）为“高”（High），但这更多是因为内核利用需要精确控制内存布局和时序。对于有经验的攻击者来说，这种竞态条件并不是不可逾越的鸿沟。一旦控制了执行流或篡改了内核数据结构，从本地普通用户提升到 root 权限就是顺水推舟的事。\n\n### 官方已经出手修补\n好在 OpenBSD 团队反应很快，对应的 commit 已经在 GitHub 上公开（commit hash: 1957873d）。修复的核心逻辑无非是加强对对象生命周期的管理，确保在 `tsleep` 期间增加引用计数，或者在重新访问前检查对象有效性。对于维护 OpenBSD 系统的同学来说，尽快升级内核版本是唯一的解法，毕竟这种内核级的提权漏洞，一旦被公开利用，后果不堪设想。"
+}

@@ -1,0 +1,100 @@
+{
+  "id": 49977177,
+  "by": "simicd",
+  "title": "Release of Polars 2.0",
+  "url": "https://pola.rs/posts/release-polars-2/",
+  "score": 336,
+  "createdAt": 1791291048,
+  "aiSummary": {
+    "chinese_title": "Polars 2.0 以 SQL、out-of-core 和性能挑战 Pandas、DuckDB",
+    "discussion_overview": [
+      {
+        "category": "Polars 能否替代 Pandas",
+        "summary": "许多用户认为 Polars 对绝大多数 DataFrame 数据处理已是 Pandas 的实用替代，尤其是 pipeline、CPU/GPU 图查询和大规模计算场景；有人将 GFQL 从 Pandas 完整迁移后获得显著加速。支持者特别赞赏其 Rust 实现、可扩展性及更符合直觉的 API，并认为 Pandas 的历史包袱和零散操作难以记忆。反方或保留意见指出，Pandas 仍有最大的既有用户群、丰富的零碎 recipe，以及 SciPy 等科学计算库普遍预期 NumPy array 或 Pandas DataFrame 的互操作优势。对于数据量不大、速度不关键的实验室工作流，迁移收益未必足以抵消兼容成本。",
+        "supportid": [
+          "49978330",
+          "49979036",
+          "49978078",
+          "49978579",
+          "49980224",
+          "49980628"
+        ]
+      },
+      {
+        "category": "生态缺口与迁移陷阱",
+        "summary": "地理空间数据被认为是 Polars 当前最明确的功能短板：GeoPandas 及其 Shapely、GEOS 生态已相当成熟，而 GeoPolars 仍在开发中，功能和稳定性尚不能比肩。GeoPolars 的潜在优势是纯 Rust 核心，未来会更容易用于 WebAssembly，但这并不等于目前可以直接替换生产级 GeoPandas。还有用户指出，纳秒级 timestamp 导入 Polars 后无法以同等纳秒精度导出。另一个长期使用者关心 eager 与 lazy 混用造成的“footgun”，例如循环中误放 collect() 会破坏整体 query plan。",
+        "supportid": [
+          "49978330",
+          "49978765",
+          "49979164",
+          "49979508",
+          "49977773"
+        ]
+      },
+      {
+        "category": "性能跑分需看数据规模与线程开销",
+        "summary": "讨论者普遍将性能视为 Polars 的核心卖点，但对“谁最快”的结论保持谨慎：有引用称某个 10 亿行挑战中 Polars、DuckDB 与 Pandas 的时间结果接近，而 DuckDB 内存消耗更低。实际工作负载中，也有人反映 DataFusion 常与 Polars 交替领先，DuckDB 则显著更慢，说明基准不能直接外推。Polars 开发者解释，小数据规模 SF=10 在 192 核机器上暴露了固定开销问题：join 会按线程数 T 创建 T² 个分区，几十百万行不足以摊薄成本。因此把 Polars 限制在 32 线程反而能胜过 192 线程，团队计划优化该路径。",
+        "supportid": [
+          "49978431",
+          "49979432",
+          "49979697"
+        ]
+      },
+      {
+        "category": "SQL 化与 DuckDB/DataFusion 的竞争边界",
+        "summary": "Polars 2.0 的 SQL 支持令部分用户感到它正接近“内存数据库”，也被看作直接进军本地数据 SQL 领域、与 DuckDB 竞争的信号。有人主张将筛选、聚合和转换交给 DuckDB 的 SQL 完成，再把 Pandas DataFrame 仅当作结果容器；另有人认为一条 SQL 可以替代数十行 DataFrame 操作，并推荐带 semantic model 的 Malloy 提升分析查询可读性。版本发布恰逢 DuckDB 预计推出 2.0，引发竞逐猜测；回应称 Polars 的 2.0 分支早在 6 月已有提交，发布时间并非临时跟随。尽管两者常被并列比较，Polars 并不建立在 Apache DataFusion 之上。",
+        "supportid": [
+          "49977798",
+          "49979834",
+          "49980483",
+          "49979455",
+          "49977671",
+          "49977791",
+          "49978291",
+          "49978782"
+        ]
+      },
+      {
+        "category": "实际采用与 out-of-core 需求",
+        "summary": "多位用户已将 Polars 用于实际生产或个人项目，包括预计算数十亿条天气评分、量化交易 bot，以及团队同时迁移到 Polars 和 DuckDB。此类反馈强调的并非抽象跑分，而是升级后能承受原先难以处理的数据规模。out-of-core 能力尤其受到欢迎，因为有用户过去正是由于 Pandas/Polars 难以处理超出内存的数据而被迫转向其他方案。整体情绪是长期等待 2.0 后的积极升级意愿，但也伴随对 API 行为和资源管理细节的关注。",
+        "supportid": [
+          "49978590",
+          "49980471",
+          "49978291",
+          "49977902",
+          "49978486"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Polars",
+        "explanation": "以 Rust 为核心的列式 DataFrame 查询与数据处理引擎，提供 Python 等接口，并同时支持 eager 与 lazy 执行。"
+      },
+      {
+        "term": "Pandas",
+        "explanation": "Python 最主流的 DataFrame 数据分析库，生态和第三方兼容性深厚，但在大规模处理和部分 API 设计上常被拿来与 Polars 比较。"
+      },
+      {
+        "term": "DuckDB",
+        "explanation": "面向本地分析的嵌入式列式 SQL 数据库，可直接对文件和内存数据执行 SQL，常与 Polars 比较或搭配使用。"
+      },
+      {
+        "term": "DataFusion",
+        "explanation": "Apache Arrow 生态中的 Rust 查询引擎与 SQL 执行框架，是 Polars、DuckDB 性能比较中常出现的另一套分析执行系统。"
+      },
+      {
+        "term": "GeoPandas / GeoPolars",
+        "explanation": "前者是成熟的 Python 地理空间 DataFrame 库；后者是 Polars 生态中仍在开发的地理空间扩展，目标是提供类似能力。"
+      },
+      {
+        "term": "DataFrame",
+        "explanation": "带行列标签或 schema 的表格数据结构，是 Python 数据分析、查询转换和科学计算库之间常见的数据交换对象。"
+      }
+    ],
+    "context": "Polars 是一个以 Rust 实现为核心的列式 DataFrame 引擎，主打并行执行、lazy query optimization 和 Python 友好的数据处理接口；2.0 发布被视为其从 Pandas 替代品进一步走向通用本地分析引擎的节点。评论所依据的发布特性包括更强的 SQL 支持、out-of-core（可处理超出内存的数据）能力，以及对 TPC-H、TPC-DS（分析型 SQL 基准）中 DataFusion（Apache Arrow 的 Rust 查询引擎）和 DuckDB（嵌入式分析型 SQL 数据库）的性能比较。争论的核心不只是速度，还包括 Pandas 与 SciPy（Python 科学计算库）的既有互操作性、GeoPandas（Python 地理空间分析库）的成熟功能，以及 Polars lazy 执行中 collect() 触发物化的规划风险。DuckDB 同样接近 2.0，使本地列式分析、SQL 与 DataFrame API 究竟应如何分工成为关注点。",
+    "emoji": "🚀",
+    "sarcastic_question": "跑分赢了就让 Pandas 灭绝，兼容性谁管？"
+  },
+  "articleSummary": "## 一句话总结\nPolars 2.0 不仅把 SQL 提升为“一等公民”并在 TPC-H/TPC-DS 测试中跑赢了 DuckDB 和 DataFusion，还默认开启了 Streaming 引擎和磁盘溢出机制，让大数据处理更稳、更快。\n\n## 正文\n\n### SQL 晋升“一等公民”，性能跑赢 DuckDB\nPolars 2.0 最引人注目的变化，就是 SQL 终于成了“一等公民”。过去几年团队一直在打磨底层引擎，现在他们决定把这些能力释放给 SQL 工作负载。为了提升性能，优化器做了不少硬核改进，比如 Join 重排序、公共子计划消除以及动态谓词/Bloom Filter。那效果到底怎么样？作者直接拿 TPC-H 和 TPC-DS 数据集跑了基准测试，对手是 DuckDB（1.5.6 和 2.0 alpha）和 DataFusion（54.0.0）。结果很有意思：在 c7a.4xlarge 机器上，Polars 几乎全胜；在 192 核的 c7a.metal 上，Polars 限制在 32 核时甚至比默认 192 核表现还好。作者发现 Polars 在小数据量、高并发线程下存在固定开销，导致扩展性受限，这是他们接下来的重点优化方向。但无论如何，Polars 在 SQL 性能上已经坐稳了头把交椅。\n\n### Streaming 引擎转正，内存压力骤降\n这次版本升级对用户代码影响最大的，其实是执行引擎的默认行为变更。现在，对 `LazyFrame` 调用 `collect` 会默认使用 Streaming 引擎。这意味着什么？意味着大部分查询的内存占用会大幅降低，性能也会提升。但天下没有免费的午餐，Streaming 引擎在执行 `join`、`group_by` 等操作时，默认不再保证行序。如果你依赖行序，必须显式设置 `maintain_order=True`。这也是为什么这次升级必须把版本号跳到 2.0——默认行为变了，老代码可能会受影响。\n\n### 内存不够？磁盘来凑\n既然谈到了内存，就不得不提另一个重磅功能：Out-of-core（OOC）支持现在默认开启了。简单说，就是当内存占用达到阈值（目前设定在 RAM 的 80% 左右）时，Polars 会自动把数据“溢出”写到磁盘上。目前 `sort`、窗口函数等操作已经支持 OOC，默认的磁盘预算是 64GB。虽然 `join` 和 `group_by` 的 OOC 支持还在路上，但这一步已经让 Polars 在处理大数据时“硬气”了不少，不再轻易因为 OOM（Out of Memory）崩溃。\n\n### 新增 Map 类型，告别繁琐的 Struct 嵌套\n数据类型方面，Polars 2.0 原生支持了 Arrow 的 `MapType`。以前读入这种数据，Polars 只能把它解析成 `List(Struct({\"key\": ..., \"value\": ...}))`，处理起来相当麻烦。现在有了原生的 `Map` 类型，你可以像操作 Python 字典一样，直接用 `pl.col(\"scores\").map.get(\"math\")` 这种表达式来取值，甚至支持从另一列获取键名。对于处理半结构化数据的开发者来说，这绝对是个提升幸福感的更新。\n\n### 更严格的类型检查，为了更快的 AI 迭代\n最后，Polars 变得更“严苛”了。作者坚持一个理念：错误应该尽早暴露，而不是跑了一个小时才报错，或者更糟——静默地产生错误结果。在 AI 辅助编程越来越流行的今天，这种设计变得尤为关键。AI Agent 可以通过调用 `collect_schema()` 快速验证查询结构，无需实际跑数据就能发现类型不匹配的问题。这种“Fail Fast”的机制，能大幅减少无效等待，让人和 AI 都能更快地迭代。"
+}
