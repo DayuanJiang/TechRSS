@@ -1,0 +1,100 @@
+{
+  "id": 50242870,
+  "by": "coffeemug",
+  "title": "Fixing Tool-Call Accuracy in vLLM",
+  "url": "https://www.ubicloud.com/blog/fixing-tool-call-accuracy-in-vllm",
+  "score": 132,
+  "createdAt": 1793020868,
+  "aiSummary": {
+    "chinese_title": "vLLM 严格约束解码提升 Kimi 工具调用准确率，但质量代价待测",
+    "discussion_overview": [
+      {
+        "category": "问题既是配置演进，也是上游缺陷",
+        "summary": "评论认为标题容易让人误以为 vLLM 一直缺少 constrained decoding，实际上该能力和受约束的 tool call 已存在较久，关键是配置方式曾多次变化并改变行为。Kimi 的特定问题起初不能只靠配置解决，确实需要代码修改，后来 vLLM 上游已修复。最新版可通过 `--tool-strict-level parameter` 获得所需行为，但这也凸显 vLLM 配置复杂、脆弱，达到好效果需要大量调试。持续基准测试被认为很关键，因为它能发现 serving 配置或版本升级造成的回归。",
+        "supportid": [
+          "50245479",
+          "50245660",
+          "50245521"
+        ]
+      },
+      {
+        "category": "多步 Agent 对工具调用准确率近乎零容忍",
+        "summary": "92% 的单次 schema 成功率看似不低，却会在串行 Agent 中迅速累积为失败：若 50 次调用都必须成功，按 95% 成功率计算，整轮无错概率仅约 8%。错误反馈和重试可恢复一部分失败，但模型若持续选择错误工具或参数，系统仍会失效。有使用者每个 prompt 需约 300 次工具调用，因此长期只能依赖 OpenAI、Anthropic 等较早提供高准确率 tool calling 与 prompt caching 的服务。评论将这种可靠的 serving 细节视为闭源 API 提供商的重要壁垒，而非单纯模型能力差异。",
+        "supportid": [
+          "50246237",
+          "50245346",
+          "50245479"
+        ]
+      },
+      {
+        "category": "约束解码保证语法，却可能扭曲模型分布",
+        "summary": "Schema-constrained decoding 会在每一步屏蔽不合法 token，本质上等价于 token-level retry，但不等价于整段 tool call 失败后重新采样。批评者要求比较整体质量、成本和重试策略，因为长 JSON 字符串等生成一旦早期进入坏状态，约束只能强迫模型继续输出某个合法但低质量的收尾。示例指出，若原始模型对合法序列的偏好并不均匀，屏蔽非法结果后会重新归一化概率，从而改变正确工具或参数组合的相对频率。Kimi 的开发方建议默认开启约束，OpenAI 的 Responses API 也默认采用类似策略，但评论普遍认为仍应以实测比较其与整段重试的 Pareto 前沿。",
+        "supportid": [
+          "50245187",
+          "50246079",
+          "50245714",
+          "50246770",
+          "50245480"
+        ]
+      },
+      {
+        "category": "工具协议、上下文缓存与执行边界",
+        "summary": "模型并不直接执行工具：它输出工具名和参数，由 client 或 harness 执行后，再把结果作为下一轮上下文返回。为避免巨大 prefix cache miss，系统有时会在运行中新增工具；由于 context 本质是一串 token，这在技术上可行，但业界尚未统一工具更新的消息格式。失败的工具调用及报错会污染上下文，有实践会过滤冗余内容、保留精简错误，或在少见情况下重建 KV cache 以修改上下文。约束只能限定可调用的工具和输出结构，不能保证参数语义正确；若不可信 inference provider 或执行环境本身失守，它仍可直接伪造危险响应。",
+        "supportid": [
+          "50244823",
+          "50248664",
+          "50246805",
+          "50245873",
+          "50246063"
+        ]
+      },
+      {
+        "category": "Grammar 约束可泛化，但无法替代语义与回溯",
+        "summary": "同一机制可借助 formal grammar 生成语法正确的 C、SQL 或固定格式计划，浏览器端的 transformers.js 也已用于 structured output 和 tool calling。其工程难点主要在把 grammar 约束与 inference engine、speculative decoding 等优化正确整合，而非 grammar 本身。评论提醒，autoregressive LLM 无法回头修正早期代码错误；当约束在结尾才发现括号或结构矛盾时，剩余合法 token 可能反而失去语义。工具调用比任意代码更适合强约束，是因为工具名、参数名和调用格式等关键结构错误通常在输出早期即可暴露。",
+        "supportid": [
+          "50244787",
+          "50246423",
+          "50245398",
+          "50245573"
+        ]
+      },
+      {
+        "category": "特殊 token 并非 prompt injection 的护符",
+        "summary": "`<|...|>` 形式通常只是 special token 的可读渲染，模型内部将其视为单个 token ID，而普通用户输入的相同字符会被分成多个普通 token。该记法源自 GPT-2 的 `<|endoftext|>` 等分隔符，选择罕见样式是为了不与 XML 或正常文本混淆。special token 可在训练或 RL 的工具使用样本中被赋予语义，并不需要从网页语料中原样抓取。它能降低文本混淆，却不能神奇消除 prompt injection：若不可信输入在模板、解析或 token 流转换处被错误处理，仍可能出现类似 SQL injection 的漏洞。",
+        "supportid": [
+          "50244024",
+          "50244854",
+          "50245567",
+          "50247479",
+          "50247023"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "constrained decoding（约束解码）",
+        "explanation": "推理时按 grammar 或 schema 屏蔽不合法的下一个 token，使输出始终符合指定结构。"
+      },
+      {
+        "term": "schema-constrained decoding",
+        "explanation": "以 JSON Schema 等结构定义约束的解码方式，可确保工具名、字段和数据格式合法，但不保证调用意图或参数语义正确。"
+      },
+      {
+        "term": "KV cache",
+        "explanation": "Transformer 推理缓存此前 token 的 key/value 注意力状态；修改已有上下文通常需要重建它，造成额外延迟。"
+      },
+      {
+        "term": "prefix cache miss",
+        "explanation": "请求前缀与已缓存上下文不一致，无法复用此前计算，导致长 prompt 或动态工具列表的推理成本上升。"
+      },
+      {
+        "term": "special token（特殊 token）",
+        "explanation": "tokenizer 保留的单独 token ID，常用于消息边界、工具调用或结束标记；其文本显示形式不等同于普通字符输入。"
+      }
+    ],
+    "context": "该文讨论撰写该文的云服务团队如何用 vLLM（开源 LLM 推理与服务引擎）部署 Kimi K2.6（Moonshot AI 开发的语言模型）时，修复工具调用输出不符合预期 schema 的问题。在 vLLM 0.28 上，他们观察到约 92% 的工具调用符合预期；最新版通过上游修复及 `--tool-strict-level parameter` 可施加更严格的参数级约束。Tool calling 是 Agent 让模型输出结构化请求、再由外部程序执行搜索、读写或其他函数的机制，因此格式错误会随多步任务累积。争议核心不在于是否需要合法 JSON，而在于 grammar 约束改变采样分布后，能否在端到端任务质量、延迟和重试成本上优于失败后重试。",
+    "emoji": "⚙️",
+    "sarcastic_question": "三百次调用靠九成成功率，是在祈祷还是做工程？"
+  },
+  "articleSummary": "## 一句话总结\n通过启用 vLLM 的 constrained decoding 功能，可以将开源模型的 Tool-call Schema Accuracy 从 92% 提升至 100%，彻底解决 Agent 场景下的工具调用格式错误问题。\n\n## 正文\n\n### 开源模型的“卖家秀”与“买家秀”\n\n很多开发者在用开源模型时都有过这种困惑：明明 benchmark 看着不错，一跑实际业务却翻车了。这背后的一个隐形杀手就是 Tool-call 的 Schema Accuracy。在 Agent 场景下，多轮对话是常态，一旦模型生成的工具调用格式不对，不仅调用失败，还会污染上下文窗口，导致后续对话质量雪崩。\n\nUbicloud 团队在用 vLLM v0.28 部署 Kimi K2.6 时就撞上了这堵墙。他们跑了一下 Moonshot AI 发布的 K2VV ToolCall benchmark，结果发现 Schema Accuracy 只有 92%。这意味着每 25 次工具调用尝试中，就有 2 次是失败的。对于追求生产级稳定性的团队来说，这个数字显然没法交差。\n\n### 为什么模型总爱“胡言乱语”？\n\n问题的根源在于 LLM 的本质——它是概率模型，不是编译器。传统的 Tool calling 流程很简单：把工具的 JSON Schema 喂给模型，然后祈祷模型按规矩办事。现代模型确实很聪明，大部分时间都能生成正确的 JSON，但“大部分时间”在工程上是不够的。\n\n文章举了个很典型的例子：模型可能因为训练数据的影响，生成了一个 `search_web` 的函数名，而实际上你的 Schema 里定义的是 `web_search`；或者它传了个 `city_name` 字段，而你期待的是 `location`。这种“幻觉”在概率模型中很难完全避免，哪怕你的 Prompt 写得再清楚。\n\n### 用“紧箍咒”强制规范输出\n\n既然靠模型自觉行不通，那就得靠推理引擎硬性干预。这就引出了本文的主角：Constrained Decoding（约束解码）。核心思路其实很简单：与其等模型生成完再检查格式，不如在生成每一步就限制它的选择范围。\n\nvLLM 利用 XGrammar 库的 structural tags 实现了这一机制。它把工具调用的生成过程拆解成一条严格的路径：开始调用 → 函数名 → 调用索引 → 参数开始 → 符合 Schema 的 JSON → 结束调用。在每一步，推理引擎都会计算出一个 token mask，把不符合语法的 token 概率直接置零。比如到了“调用索引”阶段，模型只能采样数字 token，其他所有 token 都会被屏蔽。这就把 Schema Accuracy 从“尽力而为”变成了“运行时保证”。\n\n### vLLM 的默认策略为何“翻车”？\n\n看到这里，你可能会问：既然这功能这么好，vLLM 为什么不默认开启？有意思的地方在于，Ubicloud 团队发现升级到 vLLM v0.25 后，准确率反而跌回了 91%。这不是 vLLM 的实现有 bug，而是因为它的默认行为变了。\n\nvLLM 作为一个通用的推理引擎，需要适配各种模型。Constrained Decoding 在某些模型上反而会引发问题：有些模型的非约束输出与 Schema 差异较大，强制约束会导致模型“不知所措”；有些是 vLLM 在转换 Schema 时存在 Bug；还有些是与 Speculative Decoding 等特性冲突。为了求稳，vLLM 维护者选择默认关闭该功能，并增加了一个 `--tool-strict-level` 参数让用户自己控制。\n\n### 目标一致，策略不同\n\nUbicloud 的目标和 vLLM 维护者不太一样。他们专注于提供 Kimi 和 DeepSeek 模型的高质量服务，目标是复刻官方 API 的体验。既然 Moonshot AI 官方推荐开启 Constrained Decoding，那这就是必须走的路。\n\n最终，Ubicloud 在 vLLM v0.31 中显式开启了服务端的约束解码 flag。结果立竿见影：K2VV ToolCall benchmark 的 Schema Accuracy 直接拉满到 100%。这个案例给我们的启示很明确：模型的质量不仅仅取决于权重，推理引擎的配置同样关键。对于特定模型，只有深入理解其特性并正确配置推理引擎，才能拿到生产级的输出质量。"
+}
