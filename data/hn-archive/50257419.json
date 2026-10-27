@@ -1,0 +1,131 @@
+{
+  "id": 50257419,
+  "by": "f311a",
+  "title": "Python's experimental JIT to be removed",
+  "url": "https://lwn.net/SubscriberLink/1102102/0c00e4d550f25f8c/",
+  "score": 200,
+  "createdAt": 1793103057,
+  "aiSummary": {
+    "chinese_title": "CPython撤下实验 JIT：有限提速难抵维护与兼容成本",
+    "discussion_overview": [
+      {
+        "category": "治理要求是必要护栏还是扼杀实验",
+        "summary": "支持撤除者认为，Steering Council 要求明确 scope、success criteria、兼容性与长期 support plan，并非形式主义，而是维护全球关键基础设施的责任。JIT 会触及整个 runtime，调试器、profiling 和 instrumentation 工具也可能受影响；开放式实验可以存在，但不应无限期留在 main branch。反对者则认为 JIT 优化必须靠持续 benchmark、发现 regression、调整 heuristic，预先精确定义收益和边界会妨碍这类工作。双方都承认该项目最初进入主干时，重大架构问题和维护责任没有被充分厘清。",
+        "supportid": [
+          "50257972",
+          "50258213",
+          "50258604",
+          "50259434",
+          "50259825",
+          "50260277",
+          "50260610",
+          "50260390"
+        ]
+      },
+      {
+        "category": "收益偏小，JIT 技术复杂度持续上升",
+        "summary": "评论者指出，现有 JIT 虽已有自动消除部分 refcount 操作、基于类型的 specialization 和 inplace math 等优化，但 macrobenchmark 的收益并不令人振奋，有估计约为 10%。要继续提升，可能需要 unboxing int 等更激进的优化，同时增加 JIT 专有路径与解释器语义不一致的风险。有人认为动态语言 JIT 的核心价值在于把属性访问从 hashtable lookup 变为 guard 加 offset 的快速路径；但 CPython 自 3.11 起已通过 LOAD_ATTR_INSTANCE_VALUE、LOAD_ATTR_SLOT 等 opcode specialization 和 inline cache 实现了部分此类优化。争论因此集中于：有限增益是否值得引入一个影响全局架构、需要长期调参的编译器。",
+        "supportid": [
+          "50258115",
+          "50258573",
+          "50258052",
+          "50258263",
+          "50259080",
+          "50259328",
+          "50260512",
+          "50260359"
+        ]
+      },
+      {
+        "category": "替代方案很多，但各有适用边界",
+        "summary": "Cython、C extensions 和 Rust/PyO3 能将明确的 hot path 编译为原生代码，但会带来 build step、不同的开发与 profiling 方式，以及潜在 segfault；把它们嵌入应用也无法自动加速第三方库。Numba 的 @jit 路线已接近“显式装饰器编译”，但代码必须接近 C 风格、主要操作 NumPy array，不能依赖 dict、object、string 等 Python interpreter 数据结构。PyPy 可为纯 Python 提供 JIT 加速，GraalPy 则基于 JVM 和 Truffle，提供 Java 等语言互操作与原生扩展兼容性，但均面临 warmup、生态兼容或上游采用度问题。CinderX 的大幅收益主要依赖 Static Python 或类型标注，意味着程序写法不再等同于普通动态 Python。",
+        "supportid": [
+          "50259144",
+          "50260025",
+          "50260388",
+          "50258054",
+          "50260441",
+          "50258601",
+          "50259216",
+          "50260043",
+          "50260552",
+          "50259363"
+        ]
+      },
+      {
+        "category": "资金与持续投入比一次性实现更关键",
+        "summary": "Faster CPython 项目曾获 Microsoft 支持，但评论称 Microsoft 后来停止资助并裁撤了大部分团队，JIT 工作因而从全职项目变成个人业余投入。项目原负责人转至 ARM 后仍在加速 Python，但当前重点似乎是 GC 和 free threading，而不是继续推动该 JIT。以 Ruby 为例，能在 Rails 等真实负载中胜过非 JIT 版本经历了多个 release cycle、多个 JIT 尝试以及长期资源投入，近期又从 YJIT 演进到 ZJIT。评论者由此认为，缺少稳定维护者和上游承诺时，即使技术原型存在，也难以安全地成为 CPython 核心能力。",
+        "supportid": [
+          "50258370",
+          "50258633",
+          "50258638",
+          "50258331",
+          "50259254",
+          "50260013",
+          "50258188"
+        ]
+      },
+      {
+        "category": "安全、工具链与兼容性风险的权衡",
+        "summary": "担忧者将 V8 等 JavaScript engine 的 JIT 漏洞视为警示，认为生成机器码会扩大攻击面，并担心 RWX memory page 和 type confusion 一类问题。反驳意见指出，浏览器运行不可信 JavaScript 并把 JS engine 作为 sandbox，而 CPython 通常并不把不可信 Python 当作同类安全边界；而且 copy-and-patch JIT 可采取先写入、再以 mprotect 切换为 W^X 的方式，而非长期保留 RWX 页。更现实的风险被认为是生态工具：若 debugger、profiler 或 instrumentation 无法工作，JIT 团队不可能无限期为每个外部工具提供适配。因而安全论证不能简单照搬浏览器威胁模型，但兼容与维护负担仍是核心阻力。",
+        "supportid": [
+          "50258125",
+          "50259238",
+          "50259767",
+          "50259886",
+          "50259629",
+          "50258282"
+        ]
+      },
+      {
+        "category": "Python 的定位与性能路线之争",
+        "summary": "一派认为 Python 已从连接 C、C++ 等语言的“glue language”变成 AI 与大型服务的重要基础，应让纯 Python 本身更快，避免反复将瓶颈重写为 Cython 或 Rust。另一派认为数十年的多次 JIT 尝试已说明 Python 的动态对象模型、缺乏运行时强类型及生态约束使其难以获得数量级跃升；网络 I/O 主导的程序也不会因解释器优化显著变快。有人主张将类型标注变成可渐进利用的运行时性能契约，或改用 Julia、Mojo、Go、Rust 等更接近 machine code 的语言。free threading 已可用但会变慢，也加剧了对性能补偿的期待，却并未成为撤回 JIT 的直接替代品。",
+        "supportid": [
+          "50258348",
+          "50258961",
+          "50259263",
+          "50258520",
+          "50259420",
+          "50260549",
+          "50260078",
+          "50258366",
+          "50260394"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "JIT（Just-In-Time compilation）",
+        "explanation": "运行时根据实际执行热点把代码编译为机器码的技术；通常可加速长时间运行程序，但有 warmup、复杂度和兼容性成本。"
+      },
+      {
+        "term": "PEP（Python Enhancement Proposal）",
+        "explanation": "Python 用于记录和评审语言、标准库及重大实现变更的提案机制；此处争议在于 JIT 是否应满足明确范围、指标和维护计划。"
+      },
+      {
+        "term": "free threading / GIL",
+        "explanation": "free threading 指减少或移除 GIL（Global Interpreter Lock，全局解释器锁）以支持多线程并行执行；当前实现会带来一定性能损失。"
+      },
+      {
+        "term": "opcode specialization 与 inline cache",
+        "explanation": "解释器把常见 bytecode 替换为针对特定类型或访问模式的快速版本，并在指令旁缓存类型、slot 等信息，以减少动态查找开销。"
+      },
+      {
+        "term": "Cython",
+        "explanation": "将带有可选类型标注的 Python-like 代码编译为 C 扩展的工具，可提速热点，但引入编译、部署和调试差异。"
+      },
+      {
+        "term": "Numba",
+        "explanation": "面向数值计算的 Python JIT 编译器，常以 @jit 装饰器加速 NumPy array 上的 C 风格代码，但不适合大量通用 Python 对象操作。"
+      },
+      {
+        "term": "PyPy / GraalPy",
+        "explanation": "两种替代 Python 实现：PyPy 自带 JIT；GraalPy 建立在 GraalVM 的 JVM/Truffle 体系上，强调 JIT 与多语言互操作。"
+      }
+    ],
+    "context": "CPython（最主流的 Python 参考实现）曾在主干中试验一个以 copy-and-patch 为核心的 JIT，并通过 PEP 836 寻求明确其长期路线；Steering Council（Python 的技术治理委员会）最终因维护能力、工具兼容性、稳定性和可验证收益不足而促成撤除。该项目原本也被寄望于抵消 free threading（移除或弱化 GIL 以实现多线程并行）带来的性能损失，但真实工作负载中的提速被认为有限。Python 生态大量依赖 C extension（以 C 实现并供 Python 调用的原生扩展）和 NumPy（科学计算数组库）等，因此替代解释器即使更快，也必须解决扩展兼容、启动 warmup 与上游支持问题。争议的本质不是 Python 能否有 JIT，而是成熟且兼容性负担极重的 CPython 是否有足够资源长期承载它。",
+    "emoji": "⚖️",
+    "sarcastic_question": "十个百分点提速，真值得全生态替JIT买单吗？"
+  },
+  "articleSummary": "## 一句话总结\nPython 官方实验性 JIT 编译器因维护成本、兼容性风险及核心开发者精力不足，未通过指导委员会的严格审查，最终提案撤回，代码面临移除。\n\n## 正文\n\n### 仓促上线的实验品与迟来的“准生证”\nPython 3.13 在 2024 年引入了一个备受瞩目的实验性 JIT 编译器，这本该是提升性能的重磅武器。但有意思的是，这么大的功能当初竟然是“先上车后补票”——开发者 Brandt Bucher 直接将其合并到了主分支，却跳过了正式的 Standards-track PEP 审批流程。直到 2024 年 6 月，Python 指导委员会才终于下定决心“踩刹车”，要求 JIT 团队必须补交一份正式的 PEP，明确维护承诺、兼容性影响以及成功指标，否则就得从主分支移除。\n\n### 指导委员会的担忧不无道理\n委员会之所以突然发难，并不是针对某个人，而是因为 JIT 牵一发而动全身。他们担心 JIT 会干扰现有的调试、性能分析工具，还得考虑它和 CinderX、Numba 等外部生态的兼容问题。说白了，委员会不想让一个未经验证的实验性特性长期占据主分支，给核心开发者和打包者带来不确定性。他们给出了六个月的最后通牒：要么拿出令人信服的方案，要么代码下线。\n\n### PEP 836 试图力挽狂澜\nBucher 和团队成员 Savannah Ostrowski、Ken Jin 迅速起草了 PEP 836（标题很有意思，叫 \"JIT Go Brrr\"），试图回应委员会的质疑。但社区对此争议很大，核心开发者 Mark Shannon 等人指出，这份 PEP 把“目标”和“实现细节”混在一起谈，逻辑不够清晰。作者们辩解说，光谈目标不谈计划是空谈，但显然这份文档没能完全平息质疑声。\n\n### 主分支不是实验田\n9 月 21 日，指导委员会给出了最终反馈，态度相当坚决。他们指出，主分支不应该成为实验场，核心开发者、维护者和用户都承受不起“行为和 API 随实验变动”的风险。委员会列出了整整 10 点待澄清的问题，从内存占用、安全性到跨平台适配，刀刀见血。比如，他们批评 PEP 对用户可见的差异过于乐观，很多代码依赖解释器的特定实现细节，JIT 一旦改变这些行为，算 Bug 还是特性？此外，安全审查缺失、兼容性测试计划拖到 2028 年才启动，这些都被认为是不可接受的硬伤。\n\n### 精力耗尽，无奈撤回\n面对这 10 点严苛的要求，JIT 团队最终选择了放弃。10 月 19 日，Ostrowski 宣布撤回 PEP，理由很现实：指导委员会设定的门槛很高，而团队已经没有足够的个人精力去推动它。他们依然相信 JIT 的技术方向，包括对 free-threaded 的支持和方法前端的架构，但只能将参考实现链接留在撤回的 PEP 中，供后人参考。\n\n### JIT 代码即将从主分支移除\n随着 PEP 的撤回，JIT 代码从 CPython 主分支移除已成定局。核心开发者 Brett Cannon 指出，由于原本推动该项目的核心人员都已退出，想在截止日期前拿出替代方案几乎不可能。为了不影响 Python 3.16 的开发周期，这段代码大概率会在近期被清理掉。这个项目虽然技术前景一度光明，但最终倒在了工程治理和资源投入的现实门槛前。"
+}
