@@ -1,0 +1,100 @@
+{
+  "id": 50271640,
+  "by": "galadran",
+  "title": "Ten days later, Git on macOS still trusts the compromised eMudhra certificates",
+  "url": "https://emudhra.we-have-a-problem.com/apple.html",
+  "score": 452,
+  "createdAt": 1793188257,
+  "aiSummary": {
+    "chinese_title": "eMudhra 证书失陷十日后，macOS CLI 仍信任旧 CA 包",
+    "discussion_overview": [
+      {
+        "category": "责任在 macOS 信任库，而非 Git",
+        "summary": "多数评论认为标题虽在事实上成立，却错误地把问题塑造成 Git 的缺陷。Git、curl、openssl、python3、ruby、perl 等命令行工具只是读取 Apple 提供的 /etc/ssl/cert.pem，因此真正未及时撤销信任的是 macOS 的证书包。让应用统一依赖 OS 信任库本来是合理设计；若每个应用各带一套根证书，更新频率和一致性会更糟。问题在于 macOS 同时存在 Keychain/Security.framework 与平面 cert.pem 两套信任路径，导致 Safari 等 GUI 应用已获保护，而部分 CLI 仍暴露。",
+        "supportid": [
+          "50273818",
+          "50272739",
+          "50272149",
+          "50272502",
+          "50272089"
+        ]
+      },
+      {
+        "category": "平面证书包无法精确撤销中间 CA",
+        "summary": "评论指出，/etc/ssl/cert.pem 主要保存根 CA，不能表达“仅拒绝某个中间 CA”的撤销规则。受影响的可能是 eMudhra 的中间证书，而移除其上级根 CA 会连带阻断同一根签发、但未被认定失陷的其他证书。macOS 的 Security.framework/trustd 已能通过 OCSP 等机制处理此类拦截，Safari 所走的路径很快获得更新，但传统 CLI 没有统一接入该机制。有人因此主张 Apple 应将 curl 等工具以 SecTrust 支持方式构建，而不是继续依赖静态 PEM 文件。",
+        "supportid": [
+          "50273254",
+          "50272394",
+          "50272587",
+          "50272616",
+          "50273411",
+          "50273297"
+        ]
+      },
+      {
+        "category": "Apple 要求手动修复且更新会回滚，引发不满",
+        "summary": "Apple 的公告建议用户手动从 /etc/ssl/cert.pem 删除相关根证书，并说明未来 macOS 更新才会更新该文件。评论者质疑，为何在问题公开十天、且 macOS 27.2 刚发布后，Apple 仍未推送只做证书撤销的紧急补丁。更严重的是，有报告称安装 27.2 会覆盖用户对 cert.pem 的手动修改，把相关 CA 再次写回去。少数人推测延迟或许与保留其他有效证书、兼容用户自定义证书包有关，但普遍认为这不足以替代 hotfix。",
+        "supportid": [
+          "50272181",
+          "50272453",
+          "50272549",
+          "50273855",
+          "50273088",
+          "50272948"
+        ]
+      },
+      {
+        "category": "MITM 风险规模：条件受限但不应淡化",
+        "summary": "一派认为攻击者还需要控制 DNS、公共 Wi‑Fi、路由器或网络链路，且浏览器和 app bundle 已迅速通过 CRL 或更新拒绝相关证书，因此并非“所有 HTTPS 流量”都能被窃取。另一派反驳说，伪造同名热点、恶意 DHCP/DNS、ARP spoofing 或受控 ISP 已足以把目标 CLI 流量导向伪站，TLS 信任链失效正是 MITM 防护被绕过。对开发者而言，攻击者可针对 HTTPS Git remote 投送恶意对象或利用自动化 API 调用窃取凭据，尤其适合与其他漏洞串联。争论的共识是实际利用有环境和目标限制，但不能据此把仍被信任的失陷证书视为无害。",
+        "supportid": [
+          "50272382",
+          "50272511",
+          "50272505",
+          "50272895",
+          "50272424",
+          "50273726"
+        ]
+      },
+      {
+        "category": "短期替代方案与更广泛的供应链问题",
+        "summary": "Homebrew 维护者说明，Homebrew 自带 CA bundle，所以其 curl、Git 等通常不受 macOS 系统 cert.pem 影响；用户应先用 which curl 或显式执行 /usr/bin/curl 确认实际二进制。有人建议将系统 cert.pem 换为 MacPorts 的证书包，或按 Apple 官方步骤修改，但也有人警告不要从第三方网页复制带 sudo 的修复命令。使用 SSH 访问 Git remote 可避开 Web PKI 的失陷 CA，不过 SSH 首次连接的 host key 信任同样可能遭 MITM，不能盲目确认。讨论还延伸到容器、Python certifi、Java keystore 和内嵌根证书的依赖：分散的 trust store 会使撤销补丁难以覆盖所有旧系统。",
+        "supportid": [
+          "50274493",
+          "50272137",
+          "50272917",
+          "50273207",
+          "50274265",
+          "50272996",
+          "50273217",
+          "50272827"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "CA / Root CA / Intermediate CA",
+        "explanation": "CA 是签发 TLS 证书的认证机构；Root CA 是信任链锚点，Intermediate CA 由根证书授权并实际签发网站证书。只撤销中间 CA 更精确，删除 Root CA 则可能误伤其下其他证书。"
+      },
+      {
+        "term": "cert.pem / trust store（信任库）",
+        "explanation": "cert.pem 是 PEM 格式的 CA 证书集合，CLI 常以它验证 HTTPS 服务器；trust store 是系统或应用保存受信任证书及撤销策略的整体机制。"
+      },
+      {
+        "term": "OCSP 与 CRL",
+        "explanation": "OCSP 是在线查询某张证书是否已撤销的协议，CRL 是 CA 发布的撤销证书列表；两者用于在证书尚未到期前撤销其信任。"
+      },
+      {
+        "term": "MITM（Man-in-the-Middle）",
+        "explanation": "中间人攻击：攻击者控制或伪造网络路径、DNS 或 Wi‑Fi 热点，冒充目标服务器读取或篡改通信；失陷但仍被信任的 CA 可让伪造证书通过验证。"
+      },
+      {
+        "term": "SecTrust / Security.framework",
+        "explanation": "SecTrust 是 Apple Security.framework 中的证书信任评估机制，可结合系统撤销和阻止策略；macOS GUI 网络栈通常使用它，而部分 Unix CLI 使用静态 PEM 包。"
+      }
+    ],
+    "context": "此次事件围绕 eMudhra（印度的证书认证机构）相关证书链发生安全失陷后，各平台如何撤销其信任展开。macOS 的 Safari 等图形应用通常经由 Security.framework（Apple 的系统安全与证书验证框架）和 trustd 服务处理证书撤销，但部分系统或 Xcode Command Line Tools（Apple 的开发者命令行工具）仍直接读取 /etc/ssl/cert.pem。因而 Git、curl 与 OpenSSL 等 CLI 在特定 HTTPS 连接中可能继续接受本应拒绝的链，而 Homebrew（macOS 常用第三方包管理器）所安装工具因自带 CA bundle 往往不受影响。讨论也反映了 PKI（公钥基础设施）的一项长期难题：静态、分散且嵌入依赖或容器的信任库，使紧急撤销难以及时覆盖所有软件。",
+    "emoji": "🚨",
+    "sarcastic_question": "安全更新一来，为何还得开发者手搓撤销？"
+  },
+  "articleSummary": "## 一句话总结\nApple 在得知 eMudhra 证书泄露事件 10 天后，仍未修复 macOS 自带工具的信任链，甚至新系统版本还撤销了用户的临时修复，导致开发者面临严重的供应链攻击风险。\n\n## 正文\n\n### 核心工具依然“裸奔”，新系统更新帮倒忙\n事情发生在 10 月 17 日，Apple 接到了关于 eMudhra 证书泄露的通知。按理说，这种级别的安全事故，涉及根证书信任链，修复速度应该以小时计。但直到 10 月 28 日，整整十天过去了，macOS 自带的开发工具——包括 `git`、`curl` 和 `python3`——依然信任这些已被泄露的证书。更让人无语的是，Apple 在 10 月 26 日推送了 macOS 27.2，这次更新不仅没修漏洞，还把用户手动应用的临时修复方案给覆盖了。这意味着，那些已经做了防护的开发者，在升级系统后瞬间回到了“裸奔”状态。与此同时，社区里几十个由志愿者维护的项目早就发了补丁，作为巨头的 Apple 反应却慢得离谱。\n\n### 攻击者能做什么？篡改代码、窃取凭证\n这可不是什么理论风险，攻击面非常直接。因为 `git` 信任这些泄露的证书，任何基于 HTTPS 的 `clone`、`pull` 操作都可能被中间人劫持。攻击者可以在传输过程中把你的代码替换成恶意的，或者在你推送代码时窃取你的 GitHub Token。文章提供了一个验证命令，如果你能成功 `clone` 下来一个以 \"INTERCEPTED\" 开头的 README 文件，说明你的 Git 环境已经中招了。攻击者甚至不需要你做额外的配置，只要他在你的网络路径上（比如公共 WiFi），就能通过 DNS 劫持把你的流量导向恶意服务器，而你的 Git 会因为信任那个假证书而毫无察觉。\n\n### Safari 安全了，但命令行工具被遗忘\n有意思的地方在于，Apple 并非没有动作。Safari 和基于 Apple 网络框架构建的应用其实已经受到了保护，问题只出在开发者常用的命令行工具上。这说明 Apple 有能力修复，但似乎把开发者的安全工具链遗忘了。文章呼吁 Apple 必须尽快修复，最直接的办法就是从 `/etc/ssl/cert.pem` 里移除那些受影响的根证书。\n\n### 开发者自救：手动移除证书，还得防着系统更新\n在 Apple 官方修复之前，开发者只能自救。你可以按照文章提供的 macOS workaround，手动移除受影响的根证书。但这里有个坑：Apple 官方文档明确说了，系统更新可能会重置这些修改。所以，开发者现在不仅要手动修，还得在每次系统更新后重复检查和修复，直到 Apple 彻底解决这个问题。安全团队也得留个心眼，检查你们的 CI/CD 流程里是不是用了 macOS Runner，这可是供应链攻击的绝佳入口。"
+}
