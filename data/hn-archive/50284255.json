@@ -1,0 +1,104 @@
+{
+  "id": 50284255,
+  "by": "NikZaal",
+  "title": "Claude Code burns ~15–20% of your tokens on a 3-word status line",
+  "url": "https://gist.github.com/flamerix-ai/c3905705cc4205e5de3011fa2e74efce",
+  "score": 374,
+  "createdAt": 1793247014,
+  "aiSummary": {
+    "chinese_title": "Claude Code 后台摘要耗 token，兼涉缓存、臃肿与隐私争议",
+    "discussion_overview": [
+      {
+        "category": "实际开销范围与官方修复",
+        "summary": "测量报告称，Claude Code 会约每 30 秒对活跃的 background agents 发起一次 agent_summary 请求，用于生成简短状态摘要；某团队一周估算其占总成本 16.4%，甚至略高于主对话。另有 Max 20x 用户按 API 价估算，一周约 1,970 美元等价用量中，隐藏状态调用约 380 美元，即约 16%。Claude Code 团队回应称，该机制只作用于正在工作的 background agent，不影响 idle agent；遥测中的全体用户平均约占 API 标价成本 2%，终端场景约 6%，因此 16%并非典型值。团队称 2.1.311+ 已修复最昂贵的 prompt-cache miss 情形，并计划改为向更小模型发送短笔记而非完整 transcript。",
+        "supportid": [
+          "50284256",
+          "50286504",
+          "50284699",
+          "50284683",
+          "50284811"
+        ]
+      },
+      {
+        "category": "Prompt cache 并未让重复摘要免费",
+        "summary": "支持者认为这些摘要多为 prompt-cache hit，因此单位成本远低于重新预填充整个上下文；还有观点认为其成本大致相当于对话里多一次 tool call。反驳者指出，cache hit 仍须为读取大量 input tokens 付费，若按输入成本约十分之一反复读取，十次摘要就可接近一次完整 prefill 的成本。缓存命中还要求此前 prompt 完全一致，连 MCP 和 tool definitions 都会影响命中，因此独立 summarizer 未必能够复用缓存。关于 TTL 的说法也不一致：Claude Code 常见为一小时，而 subagent 默认可仅五分钟；长上下文、并发 agent 和缓存失效都会放大成本。",
+        "supportid": [
+          "50284621",
+          "50285526",
+          "50286689",
+          "50284660",
+          "50286018",
+          "50285120"
+        ]
+      },
+      {
+        "category": "缺乏开关、功能膨胀与自建 harness",
+        "summary": "评论者普遍不满该摘要无法被单独关闭：关闭 background agents 或 forks 虽能停止调用，却同时牺牲原本需要的工作流功能。有人指出官方文档称 terminal status line 在本地运行且不消耗 API tokens，这与实际会触发模型调用的 agent 状态摘要容易混淆，也使机制显得不透明。现有 workaround 是利用 Bun preload 按源码特征拦截 setTimeout 回调，能保留 agent 和 fork、仅停止摘要刷新，但依赖内部实现，更新后可能失效。许多人因此认为 Claude Code 已从早期简洁工具变成 bloatware，转向 Pi、Hermes 或更精简的自建 harness，并希望 provider 不要同时控制 inference 与 harness。",
+        "supportid": [
+          "50285327",
+          "50285189",
+          "50285830",
+          "50284256",
+          "50286355",
+          "50286720",
+          "50284964",
+          "50285687"
+        ]
+      },
+      {
+        "category": "逐 token 收费是否扭曲激励",
+        "summary": "批评者怀疑，向 Enterprise/API 客户按 token 收费时，更多输入和输出会直接抬高账单，因此 provider 自己维护 harness 存在利益冲突；IPO、融资需求和提高用量也被用来解释这种设计。反方指出，订阅用户的额外 token 同样消耗供应商算力并压缩配额，不能简单等同于利润，具体收入又分散于 API、订阅和集成产品，公开数据不足。另一种较温和的解释是，团队先为内部用户开发了无需顾虑 token 的便利功能，产品化后才暴露出成本问题。尽管动机无定论，评论者认为让用户知情、可关闭并自行选择模型和 harness，才是化解冲突的最低要求。",
+        "supportid": [
+          "50285008",
+          "50285308",
+          "50285245",
+          "50286407",
+          "50285334",
+          "50284844"
+        ]
+      },
+      {
+        "category": "邮箱随请求外发的 PII 风险",
+        "summary": "另一个安全担忧是，系统 prompt 中含有用户邮箱，而 Opus 据称会把它放进部分请求 headers；已有 plugin 试图移除该信息。有人解释，SEC 查询、Wikimedia bot policy 和 Crossref 的 polite pool 确实可能要求自动化客户端提供联系地址，以便服务方在滥用时联络操作者。反驳者认为，agent 不应在未确认的情况下向第三方泄露用户联系方式，尤其网页内容可借助伪造的“法律要求”诱导 agent 提交姓名、邮箱和位置，形成 prompt injection 攻击面。还有人称日志中发现邮箱被发往非 SEC、非 Wikimedia 的工作相关站点，说明单靠自然语言指令并不是可靠 guardrail。",
+        "supportid": [
+          "50285046",
+          "50285390",
+          "50286320",
+          "50285512",
+          "50285525",
+          "50286115"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "agent_summary",
+        "explanation": "Claude Code 为活跃 background agent 定期发起的模型调用，用简短文字概括 agent 当前工作状态。"
+      },
+      {
+        "term": "Prompt cache / cache hit",
+        "explanation": "复用此前相同 prompt 前缀的推理缓存，通常降低重复输入成本，但读取缓存仍收费且必须满足严格匹配条件。"
+      },
+      {
+        "term": "cache TTL",
+        "explanation": "缓存条目可复用的有效期；超时或上下文前缀变化会导致 cache miss，并重新产生较高的输入处理成本。"
+      },
+      {
+        "term": "harness",
+        "explanation": "围绕模型 API 的代理运行层，负责工具调用、上下文、subagent、界面与工作流等行为；Claude Code、Pi 都属于这类工具。"
+      },
+      {
+        "term": "subagent / background agent",
+        "explanation": "由主 agent 派生、可在后台并行执行子任务的代理；本争议中的定时摘要主要针对活跃的此类代理。"
+      },
+      {
+        "term": "MCP",
+        "explanation": "Model Context Protocol，让模型代理连接外部工具和数据源的协议；其工具定义会影响 prompt cache 是否命中。"
+      }
+    ],
+    "context": "Claude Code 是 Anthropic 推出的命令行 coding agent 与 harness，可调用 Claude 模型、工具和并发的 background agents。报告者通过 DRIM（用于分析 LLM 调用的追踪系统）检查 OTEL（OpenTelemetry，可观测性追踪标准）记录，发现按 query_source 分类后的 agent_summary 调用频繁重读会话上下文。争议核心不只是终端底部的本地 status line，而是 agents 面板中由模型生成的进度摘要；它在长上下文或多 subagent 场景下即使命中 prompt cache 也会累计费用。用户同时质疑 Claude Code 默认启用的 compaction、skills、connectors 等功能不断扩大 prompt，并将 Pi（轻量级开源 agent harness）等替代方案视为更可控的选择。",
+    "emoji": "⚠️",
+    "sarcastic_question": "状态栏三句话，凭什么悄悄吃掉五分之一额度？"
+  },
+  "articleSummary": "## 一句话总结\nClaude Code 默认开启的 Agent 状态摘要功能会消耗 15-20% 的 Token，作者通过一个 Bun preload 脚本 hook 定时器，精准“掐断”了这个无法通过配置关闭的隐藏开销。\n\n## 正文\n\n### 隐藏在眼皮底下的 Token 消耗大户\n你可能以为 Claude Code 的后台 Agent 只是在默默干活，但实际上它们每隔 30 秒就在干一件“大事”。每个后台 Agent 会把自己的**完整对话记录**发给模型（通常是 Opus），只为了让模型用 3-5 个词描述一下“刚才干了啥”。这个回答仅仅用来更新 Agent 面板上的状态行，对你的实际任务毫无帮助。更离谱的是，这个功能从 2026 年 8 月的版本开始就默认开启了，而且没有任何设置开关能关掉它。\n\n### 数据不会说谎：五分之一的请求都在做无用功\n作者通过 OpenTelemetry 导出数据发现了这个异常：按 `query_source` 分组统计后，名为 `agent_summary` 的请求竟然占据了总开销的 16.4%，比主对话本身（15.7%）还要高。这意味着接近五分之一（19.7%）的 API 请求都在干这件事。对于订阅用户来说，这直接吞噬了你的 rate-limit 配额。更有意思的是，这些请求 96% 都在用昂贵的 Opus 模型，输入输出 Token 比例高达 9000:1——典型的“大炮打蚊子”。\n\n### 为什么不能直接关掉它？\n你可能会想，找个配置项关掉不就行了？但现实很骨感。SDK 里的 `agentProgressSummaries` 选项默认是 `false`，但在代码里它只是个 OR 条件的一部分，所有代码路径实际上都强制设为 `true`。环境变量 `CLAUDE_CODE_AGENT_PROGRESS_SUMMARIES` 也只能开启，不能关闭。虽然 `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1` 能阻止它，但这会把后台任务也一起禁用，属于“因噎废食”。\n\n### 另辟蹊径：Hook 定时器来“偷梁换柱”\n既然配置走不通，作者选择了更硬核的方案：直接干预运行时。Claude Code 的二进制文件里预编译了 Bun 字节码，直接修改 JS 代码行不通，API 客户端也没走被包装过的 `fetch`。但 `Function.prototype.toString` 依然能返回回调函数的源码文本，哪怕它是从字节码运行的。作者的脚本 `no-agent-summary.js` 包装了 `setTimeout` 和 `setInterval`，一旦检测到回调源码里包含特定的锚点（比如 `[AgentSummary] Timer fired` 日志），就返回一个“哑巴”定时器，让原定时器永不触发。\n\n### 巧妙的“无限延迟”设计\n这个“哑巴”定时器的设计也很讲究。作者设置了 2³¹−1 毫秒（约 24.8 天）的延迟。为什么不用更大的值？因为 Node 和 Bun 会把超过这个值的延迟当成 1 毫秒处理，那样定时器反而会立刻触发。这个接近最大值的延迟，足以让它在任何实际使用场景中都相当于“永久禁用”。脚本加载时开销也很小，只是对每个不同的定时器回调做一次 `Function.prototype.toString` 检查，结果还用 `WeakMap` 缓存了起来。\n\n### 安装后的真实效果\n安装后，OpenTelemetry 数据里 `query_source = agent_summary` 的请求直接归零。后台 Agent、forked skills 都运行正常，唯一的副作用就是 Agent 面板的状态不再实时更新了——但这本来就是个没人会在意的功能。作者在 2.1.301 版本上实测，每天使用下来零 `agent_summary` 请求，也没有任何副作用或其他查询来填补这个空缺。\n\n### 必须注意的坑：守护进程重启\n这个方案有个关键点：`BUN_OPTIONS` 环境变量必须在 Claude Code 进程启动前设置好。守护进程、pty host 和预热的 `bg-spare` 会话都继承自启动它们的客户端环境。如果你在设置环境变量之前就启动了守护进程，它生成的所有会话都不会被 hook。所以安装后务必执行 `claude daemon stop --any`，确保所有进程都重新加载带 hook 的环境。\n\n### Fail-open 机制与版本更新风险\n这个方案是“失效开放”的：如果 Claude Code 更新后修改了日志文本、把回调包了一层 `fn.bind`、或者把字符串移到了回调外的常量里，字符串匹配就会失败，hook 会静默失效，摘要请求会卷土重来。作者在文章里列出了详细的验证步骤，建议每次更新后都跑一遍，检查日志里是否有 `summary timer #1 suppressed` 的记录，或者直接看 OpenTelemetry 数据里 `agent_summary` 是否依然为零。这是一个需要维护的 workaround，但为了省下那 15-20% 的 Token，这点麻烦完全值得。"
+}

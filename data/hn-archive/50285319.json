@@ -1,0 +1,68 @@
+{
+  "id": 50285319,
+  "by": "austinallegro",
+  "title": "Forging a Microsoft Edge Full Chain with Logic Bugs Only",
+  "url": "https://blog.orange.tw/posts/2026-10-the-last-proof-of-human-craft-browser-full-chain/",
+  "score": 135,
+  "createdAt": 1793262014,
+  "aiSummary": {
+    "chinese_title": "纯逻辑漏洞串起 Edge 全链利用，自动登录暴露浏览器整合风险",
+    "discussion_overview": [
+      {
+        "category": "纯逻辑漏洞链的技术水准与报告质量",
+        "summary": "评论者高度赞赏这条利用链完全不依赖 memory corruption、heap manipulation 等传统内存破坏手法，而是通过多个逻辑缺陷完成攻击。有人特别肯定研究者将复杂链条写得清晰易懂，并提供了从 calc 反向攻破 Edge 的演示视频。讨论普遍认为这类工作体现了罕见的人工安全研究技艺，也认为文章在保留关键推理过程的同时避免了无关的浏览器导航细节。",
+        "supportid": [
+          "50286550",
+          "50288036",
+          "50288379",
+          "50286698",
+          "50286605",
+          "50287129"
+        ]
+      },
+      {
+        "category": "浏览器与站点账号整合扩大隐私和攻击面",
+        "summary": "最强烈的担忧并不只针对 RCE，而是 Edge 与 Microsoft 网站的账号、Profile 联动本身。评论指出，即使用户从未创建浏览器 User Profile，仅访问 www.microsoft.com 也可能触发 Edge 自动建档并登录，这被认为是不可接受的默认行为。有人回忆自己曾莫名登录 Edge，并发现 Chrome 也存在类似跨 Google 服务登录的机制，只是其设置被明确设为不登录。评论者认为营销驱动的跨站、跨浏览器“便利功能”会引入大量边界模糊的逻辑漏洞。",
+        "supportid": [
+          "50287278",
+          "50288375",
+          "50286124",
+          "50287739",
+          "50286773"
+        ]
+      },
+      {
+        "category": "AI、LLM 与技术写作的误读争论",
+        "summary": "一名读者因文章开头提到让 agents 补充细节而停止阅读，质疑作者是否回避了推理过程。其他人澄清，该句只是建议读者自行查阅 Chrome/Edge navigation 的官方介绍，整项研究并未使用 AI，正文实际上详细解释了漏洞链的构造过程。围绕“human craft 是否稀缺”也出现分歧：一方认为 LLM 更擅长发现漏洞会降低人类发现占比，另一方担心 LLM 提供“够用即可”的捷径，从而削弱人的独立思考。",
+        "supportid": [
+          "50286323",
+          "50286749",
+          "50286761",
+          "50286930",
+          "50286142",
+          "50286935",
+          "50288039",
+          "50288102"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "logic bug（逻辑漏洞）",
+        "explanation": "程序按设计流程执行，却因权限边界、状态转换或组件协作逻辑错误而可被利用的漏洞；不同于缓冲区溢出等内存破坏。"
+      },
+      {
+        "term": "exploit chain（利用链）",
+        "explanation": "将多个单独影响有限的漏洞或行为依次组合，最终达成登录劫持、权限提升或代码执行等更高影响目标的攻击路径。"
+      },
+      {
+        "term": "LLM",
+        "explanation": "Large Language Model（大语言模型），可生成和分析文本或代码；讨论中既被视为漏洞研究辅助工具，也被批评可能诱发浅层思考。"
+      }
+    ],
+    "context": "该帖讨论一篇由 Orange Tsai（安全研究员）撰写的 Microsoft Edge（微软基于 Chromium 的浏览器）漏洞研究报告，核心是仅靠 logic bug（逻辑漏洞）拼出完整利用链，而非依赖传统 memory corruption（内存破坏）。评论所依据的关键前提是，浏览器会将访问特定厂商网站、创建本地 User Profile（浏览器用户配置）和登录厂商账号等动作深度整合；报告称访问 www.microsoft.com 即可能让 Edge 自动创建 Profile 并登录。类似的 Chrome（Google 的 Chromium 浏览器）账号联动机制也被提及，因而争议延伸到默认设置、用户同意和跨服务身份状态的安全边界。研究还附有“从 calc（Windows 计算器）反向攻破 Edge”的演示，说明完整攻击链可在不同起点和组件之间组合。",
+    "emoji": "🧨",
+    "sarcastic_question": "访问官网就替我建档登录，这叫便利还是越权？"
+  },
+  "articleSummary": "## 一句话总结\n作者利用 4 个逻辑漏洞链式组合，在无需内存破坏漏洞的情况下，成功实现了 Microsoft Edge 的全链沙箱逃逸。\n\n## 正文\n\n### 被遗忘的攻击面：Navigation Throttles\n想构造一个纯逻辑漏洞的浏览器全链利用，切入点在哪里？作者把目光投向了 Chromium 的 Navigation Throttles 机制。这个机制驻留在 Browser Process，负责拦截所有导航请求。有意思的是，过去五年 Chrome 修复的 3000 多个 CVE 中，涉及 Throttles 的不到 20 个。这说明这是一个容易被忽视的角落。作者在审计 Microsoft Edge 的实现时，发现了一个名为 `EdgeCAGuidanceNavigationThrottle` 的组件。它的功能是在检测到用户用工作账号登录微软网站时，引导用户切换到正确的 User Profile。这个 Throttle 的触发条件是从 `login.live.com` 这样的微软域名发起导航，并跳转到特定的内部 URL 格式。如果条件满足，Edge 会取消原始导航，并从 Query String 中提取 URL 发起一个新的导航。关键点在于，这个新导航是由 Browser Process 发起的。这意味着理论上可以跳转到 `edge://settings` 或 `javascript:` 这种通常被禁止的伪协议。\n\n### 从 Open Redirect 到 UXSS 的关键跨越\n虽然发现了可以跳转到 `javascript:` 的能力，但这看起来像个鸡肋漏洞。因为你必须先在 `login.live.com` 上执行 JS 才能触发 Throttle，这充其量就是个 Self-XSS。但作者敏锐地发现了一个逻辑断层：Throttle 在 Browser Process 处理，而触发页面 `login.live.com` 在 Renderer Process，代码中没有任何机制将两者强绑定。那么，代码里的 `CURRENT_TAB` 到底指代哪个 Tab？作者通过延时测试发现，如果在触发 Throttle 后、执行新导航前，用户手动切换到了新 Tab，新导航竟然会在新 Tab 中执行！这就是第一个漏洞：一个通用的 UXSS（Universal Cross-Site Scripting）。根源在于 Chromium 的 `Navigate()` 函数在没有指定 `source_contents` 时，会默认取当前活跃的 Tab 作为源。这导致攻击者可以在任意域名下执行 JavaScript。\n\n### 绕过限制：从 Origin Check 到 Popup Blocker\n有了 UXSS 原语，实战中却面临四个挑战。第一个挑战是 Throttle 必须从受信任的微软源站触发。代码使用 `GetLastCommittedURL()` 检查来源，这看起来没问题。但微软似乎忘了导航请求可以来自另一个窗口。通过 `window.open` 打开微软站点，再通过跨窗口修改 `location`，就能绕过 Origin Check。但这引出了第二个挑战：现代浏览器默认会拦截 `window.open`。不过，作者发现微软为了内部使用，硬编码了一个 Popup 白名单。利用 `about:blank#quickAuthPopup` 这个白名单 URL 打开窗口，再重定向回恶意站点，就能完美绕过 Popup Blocker。\n\n### 自动登录与邮箱窃取：利用系统特性补齐拼图\n接下来的挑战是，攻击需要用户已经登录了 Profile。虽然不能假设目标环境有登录账号，但作者发现了一个 Windows 25H2 引入的新特性：OOBE（开箱即用设置）强制要求登录 MSA（微软账号）。配合 Edge 的 OneAuth 功能，只要用户访问过微软网站，Edge 就会自动创建 Profile 并登录。最后一个挑战是如何获取受害者的邮箱地址来构造攻击载荷。作者在 `assets.msn.com` 上发现了一个 CORS 配置错误。这个嵌入在 Edge 新标签页的域名会返回当前登录用户的邮箱，且响应头允许任意 Origin 读取。通过一个简单的 `fetch` 请求，就能在任意网站窃取到用户的微软账号邮箱。\n\n### 完美的逻辑闭环\n至此，攻击链的所有拼图都已就位。攻击者先通过 CORS 泄露获取用户邮箱，利用白名单绕过 Popup Blocker，通过跨窗口操作绕过 Origin Check，触发 Throttle 后诱导用户切换 Tab 触发 UXSS，最终在 `google.com` 等任意域名执行任意代码。这套组合拳完全基于逻辑漏洞，没有使用任何内存破坏技术，最终在 Pwn2Own Berlin 2026 上成功攻破 Edge，斩获 $175,000 美金，并赢得了 Pwnie Awards 的 Epic Achievement 奖项。这不仅是技术的胜利，更是对\"手工造洞\"这种工匠精神的致敬。"
+}
