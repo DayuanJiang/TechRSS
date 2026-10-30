@@ -1,9 +1,9 @@
 {
   "date": "2026-10-30",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2566,
-  "filtered_articles": 12,
+  "success_feeds": 84,
+  "total_articles": 2536,
+  "filtered_articles": 15,
   "articles": [
     {
       "title": "Building a multiplayer game world with autonomous Fable-class models",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "Signing and Attestations Across Package Registries",
+      "title_zh": "主流语言包注册表的签名与来源证明全景",
+      "link": "https://nesbitt.io/2026/10/30/signing-and-attestations-across-package-registries.html",
+      "pub_date": "2026-10-30T10:00:00.000Z",
+      "summary": "## 一句话总结\n各大编程语言包管理器正在从传统的“上传者身份验证”转向“构建过程溯源”，通过 Sigstore 和 Trusted Publishing 将 CI/CD 身份绑定到制品上，但客户端默认验证的缺失成了安全闭环的最后一公里难题。\n\n## 正文\n\n### 签名只能证明“谁发的”，不能证明“怎么来的”\n包管理器的安全机制长期以来面临一个核心矛盾：传统的签名（PGP 或 Registry Key）只能证明制品在传输过程中未被篡改，或者证明上传者的身份。但这对现代供应链攻击防御乏力。攻击者窃取了一个 API Token 后发布的恶意包，依然能拥有完美的合法签名。真正的解决方案是“证明（Attestations）”，特别是 SLSA Build Provenance——它不只是一把锁，而是一份带签名的“出生证明”，记录了制品的源码仓库、Commit Hash 和构建流程。比如 2024 年 12 月 Ultralytics 被攻击事件中，调查人员正是通过 Attestations 的有无，成功区分了合法的 CI 构建和窃取 Token 后上传的恶意版本。\n\n### Trusted Publishing：消灭长期 Token 的安全尝试\n要生成可信的证明，首先要解决“谁在发布”的问题。Trusted Publishing 机制应运而生，它用 OIDC 把 CI/CD 流水线的身份直接映射为发布凭证，彻底抛弃了容易泄露的长期 API Token。PyPI 在 2023 年率先引入，npm 紧随其后并在 2025 年 7 月将其 GA。核心逻辑很简单：既然构建发生在 CI 里，那就让 Registry 直接信任 CI 的身份。这带来了一个巨大的红利：Registry 能自动验证构建来源，从而轻松生成 Provenance。但这也引入了新的攻击面——如果 CI Workflow 被攻陷，恶意代码就能带着“合法”的证明发布。因此，npm 在 2026 年针对配置漏洞（如 SlugFest 攻击）加强了限制，未验证的配置 48 小时后过期，并拒绝 `issue_comment` 等高风险触发器。\n\n### npm 和 PyPI：殊途同归的 Sigstore 实践\n具体实现上，各大 Registry 虽然都拥抱了 Sigstore，但细节各异。npm 的设计最为激进，使用 Trusted Publishing 时默认开启 Provenance，每个版本生成两个 Bundle：一个 SLSA v1 证明，一个 npm 自己的 Publish Attestation。PyPI 则走了另一条路，它在 2023 年果断废弃了 PGP 签名，转而全力推进 PEP 740 Attestations。PyPI 甚至没有直接使用 SLSA 格式，而是定义了自己的 Publish Predicate，通过 `/integrity/` API 按文件提供服务。有意思的是，PyPI 允许事后追加 Attestation，这意味着消费者必须重新拉取已处理过的文件，以防遗漏。RubyGems 则处于过渡期，一方面保留了老旧的 X.509 签名（`gem cert`），另一方面在 2026 年 4 月合并了自动生成 Sigstore Attestation 的功能，试图在兼容性与安全性之间寻找平衡。\n\n### 生态位的差异：从 Maven Central 到 conda-forge\n并不是所有生态都步调一致。Maven Central 依然强制要求 PGP 签名，虽然 2025 年初开始支持 `.sigstore.json`，但 PGP 仍是硬性要求，且目前没有 Trusted Publishing 支持，这意味着 Java 生态的溯源能力相对滞后。conda-forge 的情况更复杂，它目前既不签名也不用 Trusted Publishing，而是依赖“暂存通道 + 人工检查”的古老流程。虽然 prefix.dev 已经实现了 CEP 27 标准，但 conda-forge 的核心会议记录显示，推进签名机制的进展缓慢。相比之下，NuGet 和 Terraform Registry 虽然有签名，但更多是传统的仓库签名或作者签名，缺乏对构建来源的深度证明。\n\n### 验证的缺失：安全闭环的“最后一公里”\n最让人担忧的不是生成端，而是消费端。文章指出，几乎所有主流客户端（npm, pip, conda）在安装时默认都不验证 Attestations。npm 把验证扔给了 `npm audit signatures` 这个独立命令；pip 和 uv 的安装时验证功能还躺在 GitHub Issue 里；conda 更是只做 SHA-256 校验。这就形成了一个尴尬的局面：我们费尽心力生成了可信的证明，却在最后一步没人去查。验证需要两步：先验证 Sigstore 签名有效，再验证证书里的身份（Repository URL）是否匹配预期。`gh attestation verify` 和 `pypi-attestations` 都强制用户传入 `--owner` 或 `--repo` 参数，就是为了解决身份绑定问题。PEP 751 锁文件试图通过 `attestation-identities` 字段固化这个预期，但只要客户端默认行为不改，安全链条就始终是断开的。\n\n### 结语：基础设施已备齐，等待默认行为改变\n纵观全局，Sigstore 和 Trusted Publishing 已经成功搭建了现代供应链安全的基础设施。从 npm 的默认生成，到 PyPI 的废弃 PGP，再到 Hex 在 2026 年加入 Workload Identity，趋势已经不可逆转。正如 Sivana Hamer 的研究所指出的，SLSA 推广的最大障碍是复杂的实现和模糊的沟通。现在的工具链已经大大降低了门槛，但真正的安全还需要客户端默认行为的跟进。毕竟，安全机制如果需要用户手动执行命令才能生效，那它就永远只是个摆设。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 9,
+      "novelty": 8,
+      "category": "security",
+      "keywords": [
+        "Sigstore",
+        "provenance",
+        "trusted publishing",
+        "supply chain"
+      ],
+      "rank": 4
+    },
+    {
       "title": "A Health Update From Craig Hockenberry",
       "title_zh": "化疗病床上的 PHP 紧急修复",
       "link": "https://furbo.org/2026/10/28/a-health-update/",
@@ -79,7 +98,7 @@
         "server maintenance",
         "personal recovery"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "What I learned about power from LBJ and Robert Moses",
@@ -98,7 +117,7 @@
         "Robert Moses",
         "Lyndon Johnson"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "Making agents fast - what I've learnt over the last 12 months",
@@ -117,7 +136,26 @@
         "performance",
         "TTFT"
       ],
-      "rank": 6
+      "rank": 7
+    },
+    {
+      "title": "Elegance and intelligence are anticorrelated",
+      "title_zh": "智力与优雅的负相关：为何聪明人写出烂代码",
+      "link": "https://seangoedecke.com/elegance-and-intelligence-are-anticorrelated/",
+      "pub_date": "2026-10-30T00:00:00.000Z",
+      "summary": "## 一句话总结\n高智商有时反而会导致解决方案缺乏优雅性，因为强大的大脑能暴力破解复杂度，从而丧失了追求抽象和简洁的动力。\n\n## 正文\n\n### 智商太高，反而懒得取巧\n\"优雅\"和\"智力\"这两个词，我们通常认为是正相关的，但作者开篇抛出了一个反直觉的观点：它们其实是负相关的。原因很简单，聪明人有时候完全不需要设计精妙的方案，因为他们的大脑算力足以支撑他们去\"暴力破解\"问题。\n\n文章举了一个冯·诺依曼的经典轶事。有人问冯·诺依曼，两只自行车相向而行，中间有一只苍蝇飞来飞去，问苍蝇一共飞了多远。这题有个巧妙的\"捷径\"：算出两人相遇的时间，再乘以苍蝇的速度即可。但冯·诺依曼瞬间给出了答案，提问者以为他知道这个窍门，结果冯·诺依曼说：\"我就是把那个无穷级数加起来了。\" 如果你能瞬间在脑子里算出无穷级数，为什么还要费劲去找那个\"巧妙\"的捷径呢？\n\n### 工作记忆越强，代码容忍度越高\n把这个逻辑放到软件工程领域，道理是一样的。对于工程师来说，最核心的\"原生智力\"往往体现为工作记忆的大小——也就是你脑子里能同时装下多少个变量而不乱。\n\n软件设计的核心目标通常是降低认知负担，通过抽象把复杂度藏到接口后面。但这对于那些拥有超大工作记忆的工程师来说，反而是多余的。他们不需要优雅的解耦就能看清整个流程。这也解释了为什么有些非常优秀的工程师对\"屎山代码\"有着惊人的容忍度：因为不管代码多乱，他们都能在脑子里清晰地构建出十步以上的执行流程，既然不会迷路，他们自然也就缺乏重构的动力。\n\n### AI 的证明：暴力美学的极致\n这种现象在当下的 AI 领域表现得尤为明显。现在的 LLM 生成的数学证明，在人类数学家眼里往往显得冗长、啰嗦，甚至缺乏重点。但对于模型来说，几百步的逻辑推导和十步并没有本质区别，它们完全不需要像人类那样去寻找\"优雅\"的捷径，只要\"坐下来算\"就行了。\n\n作者在这里埋了一个隐忧：人类数学的发展往往依赖于发现优雅的抽象，这是产生新猜想的燃料。如果 AI 只是机械地堆砌步骤而不去寻找抽象，虽然能解决问题，但可能会切断新知识产生的源头。\n\n### 人类的劣势，反而是优势\n回过头看，人类之所以痴迷于发明各种巧妙的\"把戏\"，其实是因为我们不够理性，算力也不够强。我们的逻辑思维是搭建在一堆非理性的冲动、灵感和瞎猜之上的。但恰恰是因为这种生理局限，逼着人类发明出了理解宇宙的强大抽象工具。\n\n那么，LLM 会不会因为太聪明而不再需要真正的创造性洞察？作者认为这可能只是我们的一厢情愿。冯·诺依曼本人虽然爱算，但也发明了大量新数学。不过，文章最后留下了一个耐人寻味的思考：在 2020 年代末大家都在思考人类优势的时候，也许我们的\"笨\"，恰恰是我们最大的护城河。",
+      "source_name": "seangoedecke.com",
+      "score": 15,
+      "depth": 7,
+      "novelty": 8,
+      "category": "opinion",
+      "keywords": [
+        "working memory",
+        "abstraction",
+        "AI proofs",
+        "von Neumann"
+      ],
+      "rank": 8
     },
     {
       "title": "Avoid Public Functions Calling Other Public Functions",
@@ -136,7 +174,7 @@
         "refactoring",
         "Zig"
       ],
-      "rank": 7
+      "rank": 9
     },
     {
       "title": "The support case of a customer who said that all they could see was a black screen",
@@ -155,7 +193,26 @@
         "LPBH",
         "black screen"
       ],
-      "rank": 8
+      "rank": 10
+    },
+    {
+      "title": "When Federico Faggin left Intel",
+      "title_zh": "Faggin 离开 Intel 与 Z-80 的诞生",
+      "link": "https://dfarq.homeip.net/when-federico-faggin-left-intel/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=when-federico-faggin-left-intel",
+      "pub_date": "2026-10-30T11:00:05.000Z",
+      "summary": "Federico Faggin 于 1974 年 10 月 31 日离开 Intel，此前他主导设计了 4004、4040、8008 和 8080 四款早期 CPU。Intel 当时对微处理器市场前景存疑，多次推迟他的 CPU 项目，甚至将他调去做自动售货机零件，最终因迟到问题被训斥而决定离职。Faggin 随后创立 Zilog，推出与 8080 完全兼容但功能更强的 Z-80 CPU。Z-80 被 TRS-80、Sinclair、Amstrad、MSX、ColecoVision、Sega Master System 等大量家用电脑和游戏机采用，Sega Genesis 甚至将其作为协处理器。Datapoint 公司最初委托 Intel 开发 8008 却未采用，几年后首款产品使用的微处理器正是 Z-80。Z-80 直至 2024 年 6 月 14 日才停产，生命周期长达近 50 年。",
+      "source_name": "dfarq.homeip.net",
+      "score": 9,
+      "depth": 4,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "Z-80",
+        "Intel",
+        "Federico Faggin",
+        "microprocessor"
+      ],
+      "rank": 11
     },
     {
       "title": "The Space Shuttle Discovery’s Starboard Side ‘s’ Is Upside Down",
@@ -174,7 +231,7 @@
         "Discovery",
         "Helvetica"
       ],
-      "rank": 9
+      "rank": 12
     },
     {
       "title": "API credits benefit for eligible ChatGPT subscriptions",
@@ -193,7 +250,7 @@
         "API credits",
         "subscription"
       ],
-      "rank": 10
+      "rank": 13
     },
     {
       "title": "Rolfe Winkler at The WSJ: ‘The Beleaguered Chip Sellers Getting Their Revenge on Apple’",
@@ -212,7 +269,7 @@
         "supply chain",
         "AI"
       ],
-      "rank": 11
+      "rank": 14
     },
     {
       "title": "Celebrating SIM Cards",
@@ -230,7 +287,7 @@
         "usability",
         "user experience"
       ],
-      "rank": 12
+      "rank": 15
     },
     {
       "title": "Apple Drops App Store Commission by a Whopping 4 Percentage Points in Taiwan",
@@ -248,7 +305,25 @@
         "commission",
         "Taiwan"
       ],
-      "rank": 13
+      "rank": 16
+    },
+    {
+      "title": "Book Review: The God of Small Things by Arundhati Roy ★★☆☆☆",
+      "title_zh": "《微物之神》书评：华丽辞藻下的空洞叙事",
+      "link": "https://shkspr.mobi/blog/2026/10/book-review-the-god-of-small-things-by-arundhati-roy/",
+      "pub_date": "2026-10-30T12:34:22.000Z",
+      "summary": "",
+      "source_name": "shkspr.mobi",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "opinion",
+      "keywords": [
+        "book review",
+        "literature",
+        "Arundhati Roy"
+      ],
+      "rank": 17
     }
   ]
 }
