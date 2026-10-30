@@ -1,0 +1,80 @@
+{
+  "id": 50290912,
+  "by": "wondersky",
+  "title": "Grace Blackwell needs a new scheduler: 27% more usable GPUs from the same racks",
+  "url": "https://skypilot.ai/blog/grace-blackwell-needs-a-new-scheduler",
+  "score": 129,
+  "createdAt": 1793291412,
+  "aiSummary": {
+    "chinese_title": "所谓新调度器：NVL72靠拓扑与帮派调度多用27% GPU",
+    "discussion_overview": [
+      {
+        "category": "技术细节不足，像营销预告",
+        "summary": "批评者认为文章花了大量篇幅解释为何需要 gang scheduling，却几乎没有说明调度器如何做拓扑选择、碎片整理或故障迁移。对于已经使用 NVL72 的团队而言，这些基本前提早已显而易见，因此两段概述式描述难以构成技术博客。回应称文章目标是让外部读者了解生产环境中的 GPU 故障问题，更详细的 topology-aware scheduling、defragmentation 和 hot swapping 内容会在后续发布。也有人直接要求开源调度器，认为这比宣传性叙述更能证明其价值。",
+        "supportid": [
+          "50291965",
+          "50292327",
+          "50292775",
+          "50295316",
+          "50295355"
+        ]
+      },
+      {
+        "category": "“新”技术的说法遭质疑",
+        "summary": "多位评论者指出，gang scheduling、rack-aware scheduling 和拓扑感知调度在 HPC 领域早已有之，HTCondor 等系统时代便已存在类似思想。大型 GPU 集群通常也早已把网络与硬件拓扑纳入资源放置决策，因此将其包装成新发现显得 click-baity。另一方面，有人补充 Kubernetes SIG Batch 的 Kueue 项目已提供 topology-aware scheduling，构成直接的既有方案。回应则称 SkyPilot Platform 建在 Kueue 之上，但 Kueue 的 TAS 不支持 Elastic job，因而无法满足 NVL72 大作业的热替换需求。",
+        "supportid": [
+          "50294669",
+          "50293062",
+          "50294678",
+          "50294949"
+        ]
+      },
+      {
+        "category": "故障冗余与机架原子调度的取舍",
+        "summary": "系统方案被简述为将作业拆成 16-node slice，并原子地放入单一机架，以维持 NVL72 内部高速互连所需的拓扑连续性。每个机架保留两台备用节点，用于硬件故障后的 hot swap；这解释了为何可用 GPU 数量会因碎片和故障预留而下降。质疑者认为约 11% 的硬件作为备用容量对昂贵集群可能过于慷慨，建议跨任务或跨区域共享冗余容量。另一种替代是让低优先级任务使用备用机、故障时驱逐，但这类任务在组织中往往会形成事实上的“影子优先级”。",
+        "supportid": [
+          "50292775",
+          "50293464",
+          "50294949"
+        ]
+      },
+      {
+        "category": "百万 GPU 与毫秒级调度的表述争议",
+        "summary": "有人把“O(millions) of GPUs”理解为 Big-O 复杂度记号，认为把规模描述写成 O(百万)容易与算法复杂度混淆。发言者澄清其意是“数量级为数百万”，而非声称复杂度；随后也承认更准确的写法应是“order of millions”。其所说的毫秒级周期，是在作业提交后数毫秒内确定满足拓扑约束的物理节点，并开始 preemption 或启动进程，而非在毫秒内完成所有节点上的优雅终止。讨论还追问这种速度是否服务于 elastic sandbox 等细粒度任务，而不只是大规模训练作业。",
+        "supportid": [
+          "50294375",
+          "50294413",
+          "50294514",
+          "50294519",
+          "50294615"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Gang scheduling（帮派调度）",
+        "explanation": "要求同一并行作业所需的一组节点或 GPU 同时获得资源并启动，避免分布式训练只拿到部分资源而无法运行。"
+      },
+      {
+        "term": "Topology-Aware Scheduling / TAS（拓扑感知调度）",
+        "explanation": "调度时考虑 GPU、节点、机架及高速互连的物理布局，把相互通信密集的任务放在连接更近、带宽更高的位置。"
+      },
+      {
+        "term": "NVL72",
+        "explanation": "NVIDIA Grace Blackwell 系统中的大规模 GPU 机架级互连配置，通常以 72 块 GPU 构成紧密互联域，跨机架放置会影响通信性能。"
+      },
+      {
+        "term": "Hot swapping（热替换）",
+        "explanation": "在节点或 GPU 故障时，用预留备用节点替换失效节点，尽量让大型运行中作业继续执行。"
+      },
+      {
+        "term": "Kueue",
+        "explanation": "Kubernetes SIG Batch 推动的批处理作业排队与资源管理项目，包含 topology-aware scheduling 等能力。"
+      }
+    ],
+    "context": "讨论源于一篇关于 Grace Blackwell（NVIDIA 面向 AI 数据中心的 CPU/GPU 平台）NVL72 集群调度的文章；文章宣称通过新的调度策略，可在相同机架中获得多 27% 的可用 GPU。NVL72（72 GPU 的机架级高速互连系统）上的大规模训练任务依赖紧密的物理拓扑，单个 GPU 或节点故障、以及资源碎片都会使整组 GPU 难以被有效使用。文章披露的核心做法是按 16 节点切片在单机架内原子放置作业，并每机架预留两台节点用于 hot swapping（故障热替换）。争论焦点在于，这些方法是否只是 HPC 和 Kubernetes 批处理系统中早有的 gang scheduling（帮派调度）与 TAS（拓扑感知调度），以及现有 Kueue（Kubernetes 批处理队列项目）对 Elastic job 的限制是否确实需要新实现。",
+    "emoji": "🤨",
+    "sarcastic_question": "把老牌帮派调度改名，就能多造27%GPU吗？"
+  },
+  "articleSummary": "## 一句话总结\n在 NVL72 这种新一代机架级架构下，通过拓扑感知调度、预留备用节点和自动碎片整理，可以把集群的“可用算力”提升 27%。\n\n## 正文\n\n### 通信互联的选错代价极高\n不是所有高速互联都生而平等，选错了代价惨重。在分布式训练中，如果把本该走 NVLink 的流量强行压到 InfiniBand 上，性能可能会下降 43%。过去，NVLink 只能用于单节点内部的 GPU 通信，跨节点通信只能依赖 InfiniBand 或云厂商的等效网络（如 AWS 的 EFA）。但 NVIDIA 的 NVL72 系统打破了这个限制，它把机架内全部 72 个 GPU 通过统一的 NVLink Fabric 连接起来，跨节点的带宽直接提升了一个数量级。\n\n### 并行策略里的通信瓶颈\n大规模训练通常结合 Tensor Parallelism (TP)、Expert Parallelism (EP) 和 Pipeline Parallelism (PP)。其中，TP 和 EP 对网络延迟最敏感，是真正的瓶颈。TP 需要在每层 Transformer 做两次 all-reduce，这直接挡在关键路径上；而 EP 在 MoE 模型中需要做 all-to-all 通信，随着专家数量增加，通信量暴涨。如果在普通 8 卡服务器上跑 64 路 EP，all-to-all 流量就会被挤出 NVLink，挤到窄得多的 InfiniBand 上，通信可能吃掉 60% 的训练时间。\n\n### NVL72 把机架变成一块“超级显卡”\nNVL72 的核心改进在于把 NVLink 域从单节点扩展到了整个机架。在这个系统里，每个 GPU 有 18 个 NVLink 端口，单向带宽 100 GB/s，总和达 1.8 TB/s。这些端口连接到机架内的 18 个 NVSwitch 芯片，形成全连接的非阻塞网络。这意味着机架内任意两个 GPU 之间都能以最大带宽通信，延迟一致。对于 DeepSeek-R1 这类大模型推理，GB200 NVL72 相比普通 8 卡 B200 服务器，吞吐量能提升 4.4 倍。\n\n### 硬件故障让整柜调度风险倍增\n既然 NVL72 这么强，直觉上似乎应该把整个 18 节点（72 GPU）的机架完整分配给任务，以最大化利用资源。但现实很残酷：GPU 并不可靠。Meta 的数据显示，4 GPU 节点的平均无故障时间（MTBI）约为 490 天。如果以 72 GPU 的机架为原子单位调度，故障半径扩大了 18 倍，机架的 MTBI 会骤降到约 27 天。在一个 128 机架的集群里，平均每 5 小时就会有一个机架因单点故障而整体“趴窝”，这在生产环境是不可接受的。\n\n### 预留备用节点反而更划算\n那怎么办？解决方案很反直觉：不要把机架塞满，预留两个节点做“热备”。当某个节点挂掉时，同机架的备用节点直接顶上，这样单点故障不会导致整个机架不可用。虽然这会让两个节点在健康时处于闲置状态，但换来的是极高的稳定性。根据 NVIDIA 的模型测算，在约 2% 的节点故障率下，采用 16 节点切片（预留 2 节点）比 18 节点切片能多提供 27% 的可用算力。\n\n### 16 节点切片是最佳甜点\n有意思的是，16 节点（64 GPU）不仅解决了容错问题，还完美契合了并行计算的工程习惯。64 是 2 的幂次，正好对应常见的并行组大小。相比之下，如果用 9 节点切片，虽然也能塞满机架，但单次故障就会损失“半个机架”的算力，可用性反而不及 16 节点方案。简单说，16 节点切片在最大化 NVLink 域和容忍硬件故障之间找到了最佳平衡点。\n\n### 调度器必须跟上架构的步伐\n硬件架构变了，软件调度策略也得跟着变。SkyPilot 平台的做法是：通过拓扑感知调度，确保多节点任务严格限制在单机架 NVLink 域内，避免跨机架的 InfiniBand 瓶颈；利用原地恢复机制，当节点故障时快速切换到同机架备用节点；并通过自动碎片整理，解决任务结束时间不一导致的资源碎片化问题。这些策略把硬件层面的理论优势，转化成了生产环境里实打实的算力提升。"
+}
