@@ -1,0 +1,86 @@
+{
+  "id": 50310398,
+  "by": "wh33zle",
+  "title": "Sanstun: A sans-IO, parallel-friendly WireGuard implementation in Rust",
+  "url": "https://www.firezone.dev/blog/introducing-sanstun",
+  "score": 136,
+  "createdAt": 1793400015,
+  "aiSummary": {
+    "chinese_title": "Sanstun：Rust 的 sans-IO WireGuard 实现引发 async、审计与营销可信度之争",
+    "discussion_overview": [
+      {
+        "category": "sans-IO 与 async 状态机的取舍",
+        "summary": "一方认为 async 并不等于 I/O：它本质上是保留顺序控制流的确定性状态机；若手工拆成显式转换，多步骤流程会更碎，function coloring 也不会消失。Sanstun 的设计者则认为 Rust async 最终主要由 `poll` 驱动，在两个 `await` 之间插入外部状态变化时，往往需要 channel 或 Mutex，多个并发输入会迅速纠缠。其 sans-IO 核心把入站 IP/UDP、WebSocket 控制消息、TURN 分配、定时器和用户命令都交给同一个可变状态对象处理，以换取可组合性和可测试性。也有人指出，sans-IO 并未消除上层 runtime 的接口着色，只是把可复用协议核心置于这些带颜色接口之下。",
+        "supportid": [
+          "50312268",
+          "50312375",
+          "50313803",
+          "50314188"
+        ]
+      },
+      {
+        "category": "并发模型：顺序线程、协作调度与消息传递",
+        "summary": "有评论认为阻塞线程更贴近人的直觉：每项现实并发活动对应一个顺序执行的程序线程，能缩小问题与代码之间的概念落差。这一观点援引 Erlang 创建者 Joe Armstrong 的论述，批评把多个独立活动塞进同一执行流会带来难以复现的干扰错误。另一方则指出并发实践已在协作式与抢占式多任务之间反复摇摆，协作调度常为性能、单线程免锁简化或扩展性服务。消息传递虽能改善隔离，但缓存及跨网络、内存和磁盘的数据传输优化又会重新增加推理难度；JVM virtual threads 则被举为可让消息传递承载数百万线程的替代路径。",
+        "supportid": [
+          "50313929",
+          "50314346",
+          "50314719"
+        ]
+      },
+      {
+        "category": "sans-IO 的复用、测试与嵌入式价值",
+        "summary": "支持者赞赏将协议逻辑与实际 I/O 解耦：同一核心既可由阻塞 `Read::read` 循环驱动，也可由 async I/O 驱动，输入到达时推进状态机后立即让出控制权。这样协议主体更容易测试，可在 async 与 blocking I/O 间共享，并有助于限制依赖中的 `unsafe` 使用。对于 `no_std` 和 ESP32 等 MCU 环境，sans-IO 的独立核心尤其有吸引力，因为不必携带特定 runtime 或操作系统网络栈。代价是无法像普通直线函数那样表达完整流程，且在缺乏 Rust 泛型 coroutine 支持时，调用方仍需自行维护事件循环和状态推进。",
+        "supportid": [
+          "50311406",
+          "50314188",
+          "50312270",
+          "50312282"
+        ]
+      },
+      {
+        "category": "WireGuard 多实现的必要性与安全疑虑",
+        "summary": "批评者强调 WireGuard 协议和参考实现代码量很小，安全关键的软件不应不断衍生新版本，而应集中审计既有实现。回应指出 Linux 内核实现不具备跨平台可用性，官方 userspace Go 实现又不便直接供 Rust FFI 使用；项目此前采用 Cloudflare 的 boringtun，但最终受制于编译期安全与性能需求。Mullvad 已从 boringtun 衍生 gotatun，说明不同产品对部署环境和工程约束确有差异。另有评论称 WireGuard 的单调递增序号不同于 DTLS 的递增方式，能简化高效并发乃至分布式状态处理，但也有人要求提供性能曲线、连接抖动和安全实现的实测证据。",
+        "supportid": [
+          "50311704",
+          "50311944",
+          "50310928",
+          "50312315",
+          "50313672"
+        ]
+      },
+      {
+        "category": "硬件卸载宣传文案损害信任",
+        "summary": "产品页面“操作系统和网卡接管重复工作、CPU 获得喘息且电池更耐用”的表述被批评为含混的 AI 营销文案；在 VPN 这类安全关键产品上，这会让人怀疑开发过程是否也草率。开发者解释其技术含义是尽可能使用硬件卸载，例如加密的 vectorized instructions，以及内核或网卡驱动提供的 checksum offloading 和 packet segmentation；每包处理更高效，移动设备传输同量数据便会耗电更少。反对者并不只质疑措辞能否作善意解读，还指出安全软件应清晰说明技术事实，而且将更多功能移出 kernel、缩小高权限可信代码，本就是降低系统风险的常见方向。",
+        "supportid": [
+          "50311433",
+          "50312469",
+          "50312223",
+          "50312379",
+          "50312402"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "sans-IO",
+        "explanation": "将协议状态机与 socket、线程和 async runtime 分离的设计；外部驱动负责提供字节、事件和定时器，核心只处理状态转换。"
+      },
+      {
+        "term": "function coloring",
+        "explanation": "同步、async、不同 runtime 或线程模型的函数接口不能无缝互相调用，调用链被迫携带相应“颜色”的问题。"
+      },
+      {
+        "term": "状态机（state machine）",
+        "explanation": "以状态及输入触发的转换描述协议流程；Rust 的 `async` 函数通常会被编译为这种形式。"
+      },
+      {
+        "term": "硬件卸载（hardware offloading）",
+        "explanation": "把 checksum、packet segmentation 等重复网络工作交给 kernel、网卡驱动或 NIC 硬件执行，以降低 CPU 和能耗。"
+      }
+    ],
+    "context": "Sanstun 是面向 WireGuard（轻量级现代 VPN 隧道协议）的 Rust 实现，采用 sans-IO 架构：核心不直接读写网络，而由外部的阻塞循环、async runtime 或嵌入式事件循环喂入数据和事件。该项目与 Firezone（基于 WireGuard 的远程访问平台）的需求相关，需同时处理 UDP/IP 流量、WebSocket 控制面、TURN（用于 NAT 穿透的中继协议）分配、定时器和用户命令。讨论也涉及 boringtun（Cloudflare 的 Rust WireGuard 实现）与 gotatun（Mullvad 衍生的实现），以及 Linux 内核实现、官方 Go userspace 实现对跨平台和 Rust 集成造成的限制。由于 VPN 会处理敏感网络流量，除架构取舍外，性能、实现审计范围、`unsafe` 依赖和宣传文案是否准确都直接影响采用信心。",
+    "emoji": "🧐",
+    "sarcastic_question": "VPN文案都像AI，密钥实现还能放心审计吗？"
+  },
+  "articleSummary": "## 一句话总结\nFirezone 基于 sans-IO 理念重写了 WireGuard 实现，通过将状态管理与加密计算分离，实现了无需锁的并行处理，彻底解决了旧架构中内部缓冲和 API 设计的顽疾。\n\n## 正文\n\n### 两年修补之路，终于决定推倒重来\n故事始于 Firezone 最初选择 `boringtun` 作为 WireGuard 实现。起初它还能满足需求，但随着产品演进，维护变得越来越痛苦。为了保持上游兼容性，团队在两年内提交了 70 多个 PR，不仅要修复各种边缘情况的 Bug，还得强行给原本不支持 sans-IO 的代码打补丁。比如，为了模拟系统时间，他们不得不给所有 API 加上 `_at` 后缀来接收 `Instant` 参数。这种\"补丁摞补丁\"的开发体验让他们意识到：与其在旧代码上缝缝补补，不如基于真实的业务需求，重新设计一个原生的 sans-IO 库。\n\n### 内部缓冲：看似方便，实则是个坑\n旧架构里有个设计让开发者非常头疼：`boringtun` 会在库内部进行缓冲。如果此时没有建立会话，它会自动缓存数据包并尝试握手。这听起来很智能，但实际操作中却带来了三个问题：一是缓冲区总得清空，调用者被迫传入一个空数据包来触发 `decapsulate`，API 极其反直觉；二是带来了不必要的内存分配；三是缓冲区大小难以调优。解决方案其实很简单：库干脆别缓冲。`sanstun` 的设计哲学是，如果没有会话，`begin_encapsulate` 就直接把问题抛给调用者，让你自己决定是丢弃还是缓存。这不仅简化了实现，也让接口职责更加清晰。\n\n### 用类型系统把协议不变量焊死\nWireGuard 协议里有个关键点：为了防 DoS，所有入站数据包必须经过限速检查。如果因为疏忽忘了检查，这种 Bug 在平时根本测不出来，只有被攻击时才会暴露。`sanstun` 的做法很\"Rust\"：它把构造函数藏起来，强制所有入站包必须先经过 `Interface::receive`。这是唯一的公开入口，它会自动帮你解析头部、验证 MAC、应用限速策略。只有通过了这些检查，你才能拿到 `HandshakeInitiation` 这样的具体类型，进而调用 `Tunnel` 上的处理方法。这种设计利用了 Rust 的所有权系统，在编译期就堵死了\"忘记限速\"这种低级错误的可能。\n\n### 并行加密的秘诀：把记账和算数分开\n对于单隧道内的数据流，WireGuard 要求包计数器必须单调递增，这通常意味着多线程处理时需要加锁同步。`sanstun` 用了一个巧妙的设计来规避这个问题：它把处理流程拆成了两半。调用 `begin_encapsulate` 时，它只做\"记账\"——预留计数器、更新定时器状态，耗时极短；然后返回一个 `PendingEncapsulate` 对象。这个对象实现了 `Send`，意味着你可以把它扔到另一个线程去执行真正耗时的 `encrypt` 加密操作。Benchmark 数据很惊人：对于 1280 字节的大包，\"记账\"部分只占 2% 的时间（约 20ns），而加密则占剩下的 98%（约 934ns）。这意味着理论上你可以把繁重的加密任务卸载到工作线程，主线程只管状态，吞吐量有望提升数十倍。\n\n### 单线程状态，多线程算力\n这种设计带来了一个巨大的红利：`Interface` 和 `Tunnel` 的状态管理可以保持单线程，完全不需要锁或原子操作来同步计数器，既利用了 Rust 的借用检查优势，又避免了并发竞争。与此同时，繁重的 ChaCha20-Poly1305 加密计算则可以充分利用多核 CPU 并行处理。作为一个 sans-IO 库，`sanstun` 并不强制你如何并行，如果你不想折腾，直接在当前线程调用 `encrypt` 也没问题。但如果你追求极致性能，这种\"状态管理与 IO 分离\"的设计为你预留了巨大的优化空间。现在，`sanstun` 已经发布在 crates.io 上，Firezone 也正式废弃了那个维护了两年的 `boringtun` 分支。"
+}
