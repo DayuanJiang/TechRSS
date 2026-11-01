@@ -1,0 +1,118 @@
+{
+  "id": 50319143,
+  "by": "oger",
+  "title": "TCP Use-After-Free: CVE-2026-98432 / CVSS 9.8",
+  "url": "https://atlasum.net/blog/cve-2026-98432-linux-ipv4-tcp-uaf",
+  "score": 323,
+  "createdAt": 1793476213,
+  "aiSummary": {
+    "chinese_title": "Linux TCP Use-After-Free漏洞：IPv4选项触发、MPTCP PoC与发行版补丁滞后",
+    "discussion_overview": [
+      {
+        "category": "影响范围与实际可利用条件",
+        "summary": "讨论认为，漏洞本体是 Linux IPv4/TCP 路径中的通用 Use-After-Free，并非只有 MPTCP 才会触发；但公开的远程 root PoC 针对的是启用 MPTCP 的监听端。Go 程序可能默认创建 MPTCP socket，Caddy、Tailscale 等服务也被观察到使用它，因此“很罕见”的判断受到质疑。攻击还依赖多核并行处理数据包以及竞态获胜，单核或将收包固定在单核的系统被认为不受该竞态影响。实验性 PoC 可反复重试，报告称约 48 分钟泄漏 kernel pointer，再约 5 分钟实现 shell command execution。",
+        "supportid": [
+          "50319726",
+          "50321759",
+          "50319519",
+          "50319701",
+          "50320551"
+        ]
+      },
+      {
+        "category": "网络过滤与临时缓解并不等于修复",
+        "summary": "不少观点指出，攻击流量涉及 IPv4 的 IP options，而不是常被混淆的 TCP options；许多 ISP 会丢弃这类旧式报文头，从而降低互联网攻击面。直接禁用 MPTCP 或仅过滤 SYN 并不能覆盖通用漏洞路径，因此被认为不是完整修复。有人建议在防火墙或 XDP 中丢弃带 IPv4 扩展选项的 TCP 包，并报告正常业务未受影响，但也有人提醒这种规则可能误伤流量。最终共识是应安装 kernel patch，网络过滤只能为暴露在公网的系统争取时间。",
+        "supportid": [
+          "50319853",
+          "50321615",
+          "50320242",
+          "50320043",
+          "50321801"
+        ]
+      },
+      {
+        "category": "Ubuntu、RHEL等发行版的补丁速度争议",
+        "summary": "Ubuntu 和 RHEL 在披露后尚未将修复推送到常规 security/updates 渠道，引发对企业发行版响应能力的强烈不满。Ubuntu 的修复 kernel 已进入 proposed 仓库，可在 canary 环境手动安装测试；相比之下，Debian 已较早发布修复，Proxmox 也表示其修复包已依次通过 QA、测试库、非订阅库和企业库。另一方认为 kernel 更新不能“YOLO”式发布，因为硬件或特定配置回归同样会造成严重生产事故。讨论还质疑为何可导致远程 root 的问题在 Ubuntu 被标为 High 而非 Critical，并指出 RHEL 默认关闭 MP-TCP 可能影响其最初定级。",
+        "supportid": [
+          "50319570",
+          "50320392",
+          "50320015",
+          "50319834",
+          "50320393",
+          "50321419"
+        ]
+      },
+      {
+        "category": "路由器、IoT与边缘设备的长期风险",
+        "summary": "担忧从服务器扩展到家用路由器、OpenWrt、MikroTik 和 IoT 设备，因为这些设备通常缺乏持续的 firmware 更新。廉价路由器未必是单核，双核或四核 ARM SoC 很常见；更常见的问题是它们停留在旧 kernel 或过时补丁级别。OpenWrt 和家用网关若默认不在 WAN 开监听端口，CGNAT、nftables 或关闭公网服务可降低暴露面，但不能替代更新。有人因此主张面向公网的设备应被要求提供至少十年的 LTS 或 rolling-release 支持，并让 IoT 放在独立 VLAN 以缩小失陷后的 blast radius。",
+        "supportid": [
+          "50319761",
+          "50319518",
+          "50320782",
+          "50319886",
+          "50321109",
+          "50320086"
+        ]
+      },
+      {
+        "category": "Use-After-Free为何能走向代码执行",
+        "summary": "Use-After-Free 发生后，被释放的内存可被重新分配给不同对象，旧指针与新对象因而会把同一片内存解释成不兼容的数据结构。攻击者通常要靠 heap feng shui 让合适对象占据目标地址，再结合信息泄漏、读写 primitive 或逻辑缺陷绕过 ASLR，而不是仅凭一个 UAF 就直接获得 RCE。可能的后果包括读取残留数据、混淆权限上下文，或覆写并调用 function pointer；但实际稳定利用远比触发 crash 困难。针对嵌入式 firmware 的经验也表明，静态分析发现的漏洞常因不可达而失效，借助 QEMU 模拟真实 daemon 和输入路径可先验证可达性。",
+        "supportid": [
+          "50320454",
+          "50320183",
+          "50321060",
+          "50320464",
+          "50320662",
+          "50320559"
+        ]
+      },
+      {
+        "category": "C、Rust与AI辅助漏洞研究之争",
+        "summary": "漏洞位于 C 编写的 Linux 网络代码，加上披露方宣称 Claude 生成了可用 exploit，使“应否迁移到 Rust”等话题升温。支持迁移的一方认为关键漏洞大量来自 memory safety 问题，至少应逐步将新组件、driver 或独立 subsystem 用更安全的 toolchain 重写。反对者则指出完整重写会引入大量非内存类新 bug，成熟 C 代码已有多年行为修复，Fil-C 等兼容性路线或局部迁移可能更务实。也有人认为 AI 主要加速发现原本长期潜伏的缺陷，而不是凭空制造这些 CVE，因此防守方必须预期漏洞发现节奏加快。",
+        "supportid": [
+          "50320477",
+          "50321652",
+          "50320918",
+          "50321175",
+          "50321515",
+          "50319657"
+        ]
+      },
+      {
+        "category": "运维疲劳、自动更新与暴露面管理",
+        "summary": "多名运维者感到 CVE 通报和紧急更新已形成难以跟上的浪潮，并希望用 RSS、服务清单匹配和通知自动化筛选真正相关的问题。有人主张将更新频率从每周提升到每天甚至更快，但也提醒盲目自动更新会扩大 supply-chain attack 或回归风险。云负载均衡、WAF 和 TLS termination 可让实例不直接接收不受信任 TCP，从而暂时降低风险，不过并非所有 Network Load Balancer 都会终止 TCP。讨论由此回到基本防御原则：默认假定系统终会被攻破，限制服务暴露、分段网络，并准备好快速验证和回滚更新。",
+        "supportid": [
+          "50320580",
+          "50321081",
+          "50321255",
+          "50321360",
+          "50321500",
+          "50319571",
+          "50320631"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Use-After-Free（UAF）",
+        "explanation": "对象释放后仍继续通过旧指针访问其内存的 memory safety 缺陷；若该内存被新对象复用，可能造成信息泄漏、权限混淆或控制流劫持。"
+      },
+      {
+        "term": "MPTCP（Multipath TCP）",
+        "explanation": "TCP 的扩展机制，可让一条逻辑连接通过多个地址、端口或网络接口建立多个子流，以改善 Wi‑Fi、蜂窝网络等多链路环境的连续性。"
+      },
+      {
+        "term": "IP options（IPv4选项）",
+        "explanation": "IPv4 报文头中的可选扩展字段，与 TCP options 不同；因处理成本、兼容性和历史攻击面，许多网络设备会过滤携带它们的报文。"
+      },
+      {
+        "term": "LTS（Long-Term Support）",
+        "explanation": "长期支持分支，通常承诺较长时间的安全补丁和稳定 ABI/API；本讨论质疑其 backport 安全修复的速度是否足以应对高危漏洞。"
+      }
+    ],
+    "context": "CVE-2026-98432 是 Linux IPv4 TCP 栈中的竞态型 Use-After-Free，讨论称受影响范围覆盖自 Linux 4.4 起、直至各维护分支纳入修复的版本；FreeBSD、macOS 和 Windows 不在该 Linux 漏洞范围内。研究机构 Anthropic（开发 Claude 模型的 AI 公司）称其研究人员借助 Claude 制作了针对 MPTCP listener 的 PoC，可在无需凭据的情况下取得 root，而该路径会在应用程序接收连接前进入 kernel。MPTCP（允许单一 TCP 连接跨多条网络路径传输的 TCP 扩展）是 PoC 的便利目标，Go 与部分服务可能默认或主动启用它，但评论认为底层缺陷的影响并不严格限于 MPTCP。争论的现实背景是 Linux 发行版的 backport、QA 和发布节奏不同，公网暴露的服务器、旧路由器和缺乏更新承诺的 IoT 设备面临截然不同的风险与处置能力。",
+    "emoji": "🚨",
+    "sarcastic_question": "补丁还在测试，攻击者会等到下个LTS吗？"
+  },
+  "articleSummary": "## 一句话总结\nLinux 内核 TCP 握手期间存在一个严重的 Use-After-Free 漏洞，攻击者无需认证即可远程触发，导致内核内存泄露、崩溃甚至提权，且主流发行版目前尚未完全修复。\n\n## 正文\n\n### 潜伏十年的内核级\"幽灵\"\n这绝对不是一个小修补。2026年10月中旬，Linux 稳定版内核发布了一系列更新，修复了编号为 CVE-2026-98432 的漏洞。这是一个存在于 IPv4 TCP 握手过程中的 Use-After-Free 漏洞。问题的严重性在于其 CVSS 评分高达 9.8（Critical），且影响范围极广——从 Linux 4.4 版本开始，几乎所有运行 Linux 的服务器都在受影响之列。更糟糕的是，漏洞触发发生在应用层介入之前，这意味着任何开放 IPv4 TCP 端口的服务（Web、SSH、数据库等）都是潜在的攻击目标。\n\n### 握手瞬间的致命疏忽\n漏洞的根因在于内核对 IPv4 选项（IP Options）的处理逻辑。当服务端收到一个带有选项的 SYN 包时，内核会将其保存在轻量级的 \"request socket\" 中，以便在后续握手回复中回显这些选项。问题出在握手完成、连接建立的那一刻：内核直接把这些保存的选项指针移交给了新的全连接 socket，却没有进行数据拷贝。一旦连接断开，内核立即释放了这块内存。但此时，另一个 CPU 可能正在读取这块内存来构建握手回复。这就是典型的 Use-After-Free：内存已释放，指针仍有效，读写操作仍在继续。\n\n### AI 写出的 PoC 让人心惊\n漏洞本身的危害已经足够大：远程、无认证、可导致内核堆内存泄露或崩溃。但真正让安全社区警铃大作的是 Anthropic 披露的细节——他们的研究员报告了这个漏洞，而 Anthropic 的 Claude 模型甚至写出了一个可用的 PoC。这个 PoC 能够在开启了 Multipath TCP (MPTCP) 监听的服务器上直接获取 root 权限。有意思的是，Go 语言从 1.24 版本开始默认启用 MPTCP，这意味着大量用 Go 编写的现代服务可能无意中成为了\"完美靶子\"。\n\n### 修复只需四行，等待却漫长\n上游的修复方案出奇地简单：将两处普通的 `kfree()` 调用改为 `kfree_rcu()`。核心思路是利用 RCU（Read-Copy-Update）机制，等待所有读者退出临界区后再释放内存，从而避免竞争条件。虽然上游补丁只有四行代码，但下游发行版的跟进速度令人担忧。截至 10 月 31 日，Debian、Amazon Linux 和 Oracle Linux 已经发布了修复补丁；但 Ubuntu 的所有版本仍显示 \"Vulnerable\"，Red Hat 的 RHEL 8、9、10 也尚未提供修复。对于运维人员来说，这意味着补丁管理的窗口期被拉长了。\n\n### 无法立即修补时的临时防线\n如果你暂时无法重启内核，Red Hat 和 AlmaLinux 提供了一个基于 nftables 的临时缓解方案。核心逻辑很简单：丢弃所有携带 IPv4 选项的 TCP SYN 包。因为在绝大多数正常业务场景中，TCP 流量根本不需要 IPv4 选项。规则匹配条件是 `ip hdrlength gt 5`（IPv4 头长大于 5，即大于 20 字节），这能有效拦截攻击向量。但这只是权宜之计，Red Hat 明确指出这不能完全阻断攻击，且对于同主机容器间的流量可能存在绕过风险。\n\n### 关闭 MPTCP：切断攻击面\n另一个针对性的缓解措施是关闭 Multipath TCP。既然已知的 PoC 依赖 MPTCP 监听器，那么禁用它就能暂时消除这一攻击路径。可以通过 `sysctl net.mptcp.enabled=0` 在宿主机上全局关闭，或者在启动 Docker 容器时加上 `--sysctl net.mptcp.enabled=0`。对于 Go 程序，也可以通过设置环境变量 `GODEBUG=multipathtcp=0` 来回退到普通 TCP。当然，这只能封堵已知的利用路径，并不能修复内核底层的 UAF 漏洞，彻底的修复依然依赖于升级内核并重启。"
+}
