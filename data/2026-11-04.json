@@ -1,9 +1,9 @@
 {
   "date": "2026-11-04",
   "total_feeds": 92,
-  "success_feeds": 85,
-  "total_articles": 2578,
-  "filtered_articles": 19,
+  "success_feeds": 84,
+  "total_articles": 2553,
+  "filtered_articles": 15,
   "articles": [
     {
       "title": "Running Dry",
@@ -63,6 +63,25 @@
       "rank": 3
     },
     {
+      "title": "This Week in Source Control: 4 November 2026",
+      "title_zh": "OpenAI 公开 Pando 架构，push 延迟降 80%",
+      "link": "https://nesbitt.io/2026/11/04/this-week-in-source-control.html",
+      "pub_date": "2026-11-04T10:00:00.000Z",
+      "summary": "## 一句话总结\nOpenAI 用 Rust 重写了 Git 后端，把推送延迟降低了近 80%，而 GitHub 和 Gitea 则忙着修补安全漏洞和升级认证机制。\n\n## 正文\n\n### OpenAI 把 Git 变成了对象存储，换来 80% 的延迟下降\nOpenAI 公开了他们名为 Pando 的 Git 后端，这是一个用 Rust 写成的系统，专门用来支撑他们内部的 Monorepo。核心思路其实很简单：把 Git 的存储后端换成 Blob Storage。每次 push 不再是传统的增量同步，而是直接生成一个不可变的 packfile 存进对象存储，分支更新则记录在元数据存储中。这种设计把锁的粒度降到了 ref 级别——只有当多个提交指向同一个 ref 时才会冲突。\n\n但这是一种有意的权衡。系统选择了 \"causal consistency\"，这意味着客户端读取不同分支时，可能会看到不同时间点的状态。有意思的地方在于它的传输优化：新分支推送时只通告 trunk，这样生成的 packfile 中位数大小只有 20 KiB 不到；拉取时，服务端返回一个空 pack，让客户端通过 packfile-uri 链接直接从区域缓存下载数据，命中率高达 99%。配合后台的分层压缩机制，OpenAI 最终把推送延迟降低了近 80%，每天处理近 1PB 的 Git 数据。\n\n### Monorepo 的另一种声音：Anthropic 的方案真的好吗？\n就在 OpenAI 分享经验的同时，Databricks 的工程师对 Anthropic 之前发布的 Scion 系统提出了质疑。Databricks 的 Monorepo 主分支历史已经有 20-50GB，他们的观点很直接：Scion 里的很多设计，比如目录级 ACL、服务端历史查询，在 Mononoke、Perforce 或 Piper 里早就有了。\n\n争议的焦点在于镜像数量。Anthropic 曾提到高峰期运行了数百个镜像，而 Databricks 表示，他们只需要不到 10 个 Git 镜像和参考仓库，每两小时刷新一次，就能支撑 CI 运行。这暗示了架构选择上的巨大差异：也许并不需要那么多镜像来解决问题。\n\n### 为 AI Agent 设计的版本控制：DeltaDB 登场\nZed 编辑器团队带来了 DeltaDB，这是一个为 AI Agent 设计的细粒度版本控制系统。它的设计理念很独特：每个 Agent 线程都是一个基于 CRDT 的 DAG，存储在客户端的 SQLite 中，并同步到 Cloudflare Durable Object。\n\nWorktree 构建在 Git 之上，从某个 commit 开始，将编辑记录为 deltas。创建 commit 时，会添加一个 delta 将 DAG 链回 Git 历史。这样一来，子 Agent 可以在同一个 DAG 的不同时间线上工作，合并回来即可，完全不需要生成 Git commit。这解决了 Agent 频繁操作带来的提交噪音问题。\n\n### GitHub 的数据与安全：74 亿提交背后的隐忧\nGitHub 在 Universe 大会上公布了一组惊人数据：9 月份处理了 74 亿次提交，相比 4 月份的 14 亿和 8 月份的 29 亿，增长速度惊人。今年他们已经增加了 400 万个 CPU 核心和 160 PB 存储。但与此同时，安全领域却并不平静。\n\nGitea 修复了 21 个 CVE，其中多个涉及 Public-only Token 越权访问私有数据或执行管理员操作。最严重的是，攻击者可以通过 OAuth2 登录漏洞绑定到任意现有账户。Alpine Linux 也因为 GitLab 的 Ruby 正则引擎漏洞（CVE-2026-97229）重建了整个实例。攻击者曾尝试利用该漏洞导致 Worker 进程崩溃，好在未发现代码执行迹象。\n\n### 工具链的进化：从语法感知 Diff 到语义化 CLI\n工具生态也在快速迭代。OmniDiff 0.3.0 发布，这个 Rust 写的 Diff 工具不仅能按语法对比代码，还能识别字符串中嵌入的语言（比如 YAML 里的 shell 脚本）。Gitea 的官方 CLI 工具 gt 发布了 1.0.0 正式版，取代了旧版 tea，并引入了语义化版本控制。\n\nGitButler 和 difftastic 也有更新。值得注意的是 difftastic 0.72.0 移除了 Verilog、F# 和 Smali 的支持，理由是解析器体积过大或无人维护。这反映了工具维护中的取舍：有时候做减法比做加法更难。\n\n### GitHub 的安全新防线：AI 检测密钥泄露\nGitHub 在安全方面引入了一个新功能：Push protection 现在可以阻断 AI 检测到的密钥泄露。这不再依赖预定义的模式匹配，而是使用分类器分析代码上下文。根据 GitHub 的数据，这项功能让检测到密钥泄露的推送数量翻了一倍多。\n\n此外，GitHub Desktop 现在支持短生命周期 Token，能自动刷新用于 API 请求和 Git 操作。Pull Request 的限制规则也变得更灵活，可以根据账户年龄或合并 PR 数量豁免贡献者。这些改进都在向更细粒度的安全控制迈进。\n\n### 去中心化与联邦化的尝试：Tangled 重启\nTangled 重新发布了一个基于 AT Protocol 的联邦代码托管平台。它的 Knot2 服务器用 Rust 重写，将 Issue、PR 和评论作为 \"collaborative objects\" 存在仓库中，通过 AT Protocol firehose 同步。每次编辑都会在作者的 PDS 上记录证明。\n\n不过，新 UI 的无障碍访问遭到了批评。界面强制使用 12px 字体，在 200% 缩放时会截断文本，不符合 WCAG 2.2 标准。这提醒我们，在追求技术架构创新的同时，基础的用户体验标准不能丢。\n\n### Git 核心的小修补与大讨论\n最后，Git Rev News 报道了一个关于 `git push --force-if-includes` 的修复。当远程跟踪 ref 没有 reflog 时，该命令曾错误拒绝有效的强制推送。Aleksei Sviridkin 提交了一个一行补丁，将截断时间戳初始化为 0。\n\n有意思的是，这个补丁的第一版带有一个 `Assisted-by: LLM` 的尾注。维护者 Junio Hamano 引用了 Git 的提交规范中关于 AI 的部分后，第三版补丁移除了这个标记。这反映了社区对 AI 辅助编程的态度：代码可以接受，但标记需要符合社区规范。",
+      "source_name": "nesbitt.io",
+      "score": 17,
+      "depth": 8,
+      "novelty": 9,
+      "category": "engineering",
+      "keywords": [
+        "Pando",
+        "Git",
+        "monorepo",
+        "version control"
+      ],
+      "rank": 4
+    },
+    {
       "title": "Pluralistic: Separable (03 Nov 2026)",
       "title_zh": "AI 时代的认知幻觉与数学的\"去人化\"危机",
       "link": "https://pluralistic.net/2026/11/03/nobody-is-home/",
@@ -79,7 +98,7 @@
         "centaur",
         "AI cognition"
       ],
-      "rank": 4
+      "rank": 5
     },
     {
       "title": "How do you implement a random-access database when you don’t have random-access external storage?",
@@ -98,7 +117,7 @@
         "BASIC",
         "cassette storage"
       ],
-      "rank": 5
+      "rank": 6
     },
     {
       "title": "New Article, Annual LFP Charity Discount",
@@ -117,7 +136,7 @@
         "Antithesis",
         "verification"
       ],
-      "rank": 6
+      "rank": 7
     },
     {
       "title": "The New York Times (et al.) Sues Brave for Copyright Infringement, Selling Scraped Content to AI Companies for Model Training",
@@ -136,7 +155,7 @@
         "AI training",
         "web scraping"
       ],
-      "rank": 7
+      "rank": 8
     },
     {
       "title": "Fraction comparison trick revisited",
@@ -155,7 +174,7 @@
         "cross-product",
         "mathematical-analysis"
       ],
-      "rank": 8
+      "rank": 9
     },
     {
       "title": "Euclidean, Spherical, and Projective Geometry",
@@ -174,7 +193,45 @@
         "spherical geometry",
         "parallel postulate"
       ],
-      "rank": 9
+      "rank": 10
+    },
+    {
+      "title": "Pluralistic: The AI fatfinger economy has come for my receipts app (04 Nov 2026)",
+      "title_zh": "AI 强制植入：当删除键变成 AI 广告",
+      "link": "https://pluralistic.net/2026/11/04/genius-scan-is-neither/",
+      "pub_date": "2026-11-04T11:45:02.000Z",
+      "summary": "## 一句话总结\n所谓的“AI 用户增长”，很多时候只是产品团队为了完成 KPI，把用户最常用的按钮偷换成 AI 广告，通过制造“误触”来骗取投资人信任。\n\n### 所谓的“AI 强制推广”，本质是 KPI 导向的“奖励黑客”行为\n“AI 被强行塞进喉咙”这件事，我们见得不少了。可能是老板为了赶时髦强制要求员工在工作中使用 AI，也可能是像 Elon Musk 这样的大佬把 AI 项目塞进普通人的退休金投资组合里。但最让人心烦的，其实是 UI 界面上的“暗算”。这股歪风其实早有预兆：十多年前 Google 强推 Google Plus 时，就把产品团队的奖金和 G+ 的使用率挂钩。结果呢？工程师们为了拿奖金，把用户最常用的按钮直接换成了 G+ 按钮。这就是典型的“奖励黑客”（Reward Hacking）——当考核指标变成了目标，这个指标就失去了意义。\n\n### 流媒体平台的“胖手指经济”：为了数据好看，不惜把用户体验当儿戏\n这种逻辑在流媒体平台上表现得淋漓尽致。你有没有发现，看视频时手稍微抖一下，就会被强行跳到另一个完全不相关的视频？更离谱的是，你想点“返回”都没门，因为“返回键”早在 1981 年就有了，但现在的 App 偏偏不给你。原因很简单：平台要考核“成功推荐率”。最简单的作弊方式，就是把 UI 设计成“陷阱”，让用户误触就能算作一次“成功推荐”。为了防止你立刻退出，他们干脆拿掉返回键，逼着你多看几秒。这就是所谓的“胖手指经济”——利用用户的误操作来刷数据。\n\n### 遥测数据成了帮凶：厂商现在能精准定位“哪个按钮最好用”\n现在的 App 厂商手里有件大杀器，就是“遥测数据”。他们打开后台仪表盘，一眼就能看到用户最常点哪个按钮、最常用哪个功能。这本该是用来优化体验的，但在 AI 时代，它变成了作恶的导航图。厂商会找出那个点击率最高的按钮，把它偷换成召唤 AI 助手的按钮。这样一来，用户每次想用常用功能，都会误触 AI 功能。厂商转头就能跟投资人吹嘘：“看，我们的 AI 功能调用量暴涨，用户非常喜欢！”\n\n### Genius Scan 的真实案例：把核心功能的“删除键”换成 AI 广告\n作者最近就碰到了一个活生生的例子。他常用的收据扫描 App “Genius Scan” 突然更新了。以前，他扫描完收据，点一下标题栏旁边的“x”就能清空默认日期，输入新标题，流程很顺畅。但现在的更新里，那个至关重要的“x”键不见了，取而代之的是一个 AI 功能的广告按钮。这意味着什么？原来点一下就能完成的动作，现在用户得手动按 16 次退格键才能清空文本。这不仅仅是增加操作成本，这是把核心工作流直接打断，强行插播广告。\n\n### 数据是上去了，但信任也没了\nGenius Scan 为什么要这么做？因为他们需要向投资人证明“用户对 AI 功能有强烈兴趣”。那个“x”键是用户点击率最高的地方，把它换成 AI 按钮，数据自然暴涨。至于用户是不是真的想用 AI？没人关心。作者早在 2023 年就买了终身会员，钱已经付过了，现在即便被坑也没法用脚投票去惩罚厂商。这完美诠释了那句老话：“就算你付了钱，你依然是产品”。\n\n### 这是一场没有赢家的数字游戏\n这种做法不仅恶心，而且短视。厂商通过“胖手指”战术强行拉高了 AI 的使用数据，但这并不代表真实的用户需求。每一个被滥用的指标都变得毫无意义，每一次误触都在消耗用户对产品的信任。当所有的增长数据都建立在欺骗和误操作之上，我们看到的所谓“AI 繁荣”，不过是一场精心设计的 KPI 游戏罢了。",
+      "source_name": "pluralistic.net",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "enshittification",
+        "KPI",
+        "Goodhart's law",
+        "UI dark patterns"
+      ],
+      "rank": 11
+    },
+    {
+      "title": "Goodhart's Law, but We Already Spent All Our Money",
+      "title_zh": "AI 的古德哈克定律：钱花光了，所以它必须重要",
+      "link": "https://idiallo.com/blog/we-spent-all-our-money-goodharts-law",
+      "pub_date": "2026-11-04T08:00:00.000Z",
+      "summary": "生成式 AI 已投入数千亿美元，却仍未产生相应的实际回报，整个行业陷入用估值证明价值的循环。企业对 AI 的态度在短短几年内经历了从抵制、鼓励使用、强制推广到预算紧缩的完整周期，员工从被要求",
+      "source_name": "idiallo.com",
+      "score": 10,
+      "depth": 4,
+      "novelty": 6,
+      "category": "opinion",
+      "keywords": [
+        "Goodhart's Law",
+        "AI valuation",
+        "enterprise AI",
+        "hype cycle"
+      ],
+      "rank": 12
     },
     {
       "title": "Just a little AI resistance, as a treat",
@@ -193,7 +250,7 @@
         "human response",
         "feedback"
       ],
-      "rank": 10
+      "rank": 13
     },
     {
       "title": "Apple Begins Opening Siri AI to Developers",
@@ -212,7 +269,26 @@
         "Apple Intelligence",
         "iOS 27.3"
       ],
-      "rank": 11
+      "rank": 14
+    },
+    {
+      "title": "The first Compaq computer",
+      "title_zh": "Compaq Portable：首款合法 IBM PC 兼容便携机",
+      "link": "https://dfarq.homeip.net/first-compaq-computer/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=first-compaq-computer",
+      "pub_date": "2026-11-04T12:00:56.000Z",
+      "summary": "Compaq Portable 于 1982 年 11 月发布，是首款合法的 IBM PC 兼容便携机。重 28 磅、采用 Intel 8088 CPU（4.77 MHz）、运行 MS-DOS，单驱版售价 2995 美元。创始人 Rod Canion 从 IBM PC 获得灵感，要求产品具备便携性、100% IBM 兼容性，且外观优于 Osborne。Compaq 通过黑盒逆向工程克隆 IBM BIOS，并大量测试软件兼容性，最终实现比 IBM 后续产品更高的兼容度。1983 年售出 53,000 台，公司前三年连续创下行业盈利纪录。1986 年 Deskpro 386 标志着 IBM PC 市场领导地位的终结。Compaq 的成功源于填补 IBM 未覆盖的便携机市场空白，而非价格战或混合系统策略。文章还提及 NEC V20 CPU 升级方案和 XT-IDE、PicoMEM 等现代改造方式，可让这台 40 年前的机器获得 WiFi 和现代存储能力。",
+      "source_name": "dfarq.homeip.net",
+      "score": 9,
+      "depth": 5,
+      "novelty": 4,
+      "category": "engineering",
+      "keywords": [
+        "Compaq",
+        "IBM PC",
+        "portable computer",
+        "BIOS cloning"
+      ],
+      "rank": 15
     },
     {
       "title": "Safari 27.3 Beta Adds Vertical Tabs and Adaptive Dark Mode",
@@ -231,7 +307,7 @@
         "dark mode",
         "Siri"
       ],
-      "rank": 12
+      "rank": 16
     },
     {
       "title": "Chance Miller Reviews the New A20 Pro iPad Mini",
@@ -250,7 +326,7 @@
         "A20 Pro",
         "Acoustic Display"
       ],
-      "rank": 13
+      "rank": 17
     },
     {
       "title": "Charles Tandy, the mastermind behind Radio Shack",
@@ -269,7 +345,7 @@
         "Charles Tandy",
         "business biography"
       ],
-      "rank": 14
+      "rank": 18
     },
     {
       "title": "Apple’s Analyst Calls Have Been Scripted for Decades",
@@ -288,7 +364,7 @@
         "John Ternus",
         "investor relations"
       ],
-      "rank": 15
+      "rank": 19
     },
     {
       "title": "Apple’s New iPhone Release Schedule Seems to Pay Off",
@@ -306,7 +382,25 @@
         "iPhone",
         "release strategy"
       ],
-      "rank": 16
+      "rank": 20
+    },
+    {
+      "title": "Book Review: Practice by Rosalind Brown ★★★★☆",
+      "title_zh": "书评：Practice",
+      "link": "https://shkspr.mobi/blog/2026/11/book-review-practice-by-rosalind-brown/",
+      "pub_date": "2026-11-04T12:34:07.000Z",
+      "summary": "",
+      "source_name": "shkspr.mobi",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "opinion",
+      "keywords": [
+        "book review",
+        "literature",
+        "university"
+      ],
+      "rank": 21
     },
     {
       "title": "iPad Mini (A20 Pro) Review Roundup",
@@ -324,7 +418,43 @@
         "A20 Pro",
         "review"
       ],
-      "rank": 17
+      "rank": 22
+    },
+    {
+      "title": "‘Political Reckoning Shatters Trump’s Grip on Washington’",
+      "title_zh": "‘Political Reckoning Shatters Trump’s Grip on Washington’",
+      "link": "https://www.wsj.com/politics/elections/a-political-reckoning-shatters-trumps-grip-on-washington-bd3c7705?st=xABDit",
+      "pub_date": "2026-11-04T14:56:47.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "other",
+      "keywords": [
+        "politics",
+        "trump",
+        "election"
+      ],
+      "rank": 23
+    },
+    {
+      "title": "MKBHD on the New A20 Pro iPad Mini",
+      "title_zh": "MKBHD 评测新款 iPad Mini A20 Pro",
+      "link": "https://www.youtube.com/watch?v=g6Die8gVFn0",
+      "pub_date": "2026-11-03T23:25:25.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "other",
+      "keywords": [
+        "iPad",
+        "MKBHD",
+        "review"
+      ],
+      "rank": 24
     }
   ]
 }
