@@ -1,0 +1,65 @@
+{
+  "id": 50358702,
+  "by": "ibobev",
+  "title": "The Internals of PostgreSQL",
+  "url": "https://www.interdb.jp/pg/index.html",
+  "score": 213,
+  "createdAt": 1793744430,
+  "aiSummary": {
+    "chinese_title": "PostgreSQL 内核：HOT 调优、SSI 旧 Bug 与替代 MVCC 之争",
+    "discussion_overview": [
+      {
+        "category": "HOT 更新的实际调优价值",
+        "summary": "多位评论认为，最值得直接用于运维实践的是 HOT（Heap-Only Tuple）更新机制。HOT 只有在未修改任何被索引列、且新版本元组仍能放入原数据页时才会生效；因此给频繁变更的 status、updated_at 等列建索引，会让该表的大量更新失去 HOT 优势。对更新密集表降低 fillfactor 至约 80–90，可为同页新元组预留空间，并可通过 pg_stat_user_tables 中 n_tup_hot_upd 与 n_tup_upd 的比例判断效果；但对于宽行或不同修改频率，降低 fillfactor 未必划算。",
+        "supportid": [
+          "50359266",
+          "50360879",
+          "50361225"
+        ]
+      },
+      {
+        "category": "SSI 的正确性与历史缺陷",
+        "summary": "Jepsen（分布式系统一致性测试项目）对 particledb 的最新报告，使评论者重新关注 PostgreSQL 的 SSI 实现。有人指出，Jepsen 在 2020 年针对 PostgreSQL 的测试曾发现一个长期存在的 SSI Bug。讨论还特意澄清 SSI 在此指 Serializable Snapshot Isolation，即试图在 Snapshot Isolation 基础上提供可串行化事务语义的并发控制方案，而非字面上的“超级智能”。",
+        "supportid": [
+          "50359266",
+          "50359845",
+          "50360706"
+        ]
+      },
+      {
+        "category": "原生 MVCC 与 OrioleDB 替代方案",
+        "summary": "有人认为文档没有覆盖“新 MVCC”，并引出 OrioleDB（兼容 PostgreSQL 的存储引擎扩展）这一替代实现。反方指出，上游 PostgreSQL 尚未采纳它，核心开发者 Tom Lane 也认为 PostgreSQL 不太可能放弃 dead tuples 与 VACUUM 这一既有设计。支持者则强调，生产用户不必完全跟随上游路线：OrioleDB 对 SSD 更友好，尽管仍属 beta，已有使用者将它视为 PostgreSQL 生态中另一种 MVCC 选择，尤其在意大规模 SSD 写入寿命时。",
+        "supportid": [
+          "50361046",
+          "50361423",
+          "50361655"
+        ]
+      },
+      {
+        "category": "PostgreSQL 18 的全文检索与排序规则变化",
+        "summary": "评论补充说，书中全文检索章节已被 PostgreSQL 18 的行为变化部分改写。FTS 读取词典和配置时不再总是使用 libc，而是跟随集群默认 collation provider；采用 ICU 或 PG_UNICODE_FAST 的集群，FTS 与 pg_trgm 的结果可能因此改变。发布说明要求在 pg_upgrade 后重建相关索引；同时，非确定性 collation 下的 LIKE 不再报错，降低了在可搜索列使用大小写不敏感 ICU collation 的阻力。",
+        "supportid": [
+          "50361076"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "HOT（Heap-Only Tuple）更新",
+        "explanation": "PostgreSQL 在同一数据页内保存行的新版本且无需更新索引的优化，可减少索引写入和膨胀。"
+      },
+      {
+        "term": "MVCC（Multi-Version Concurrency Control）",
+        "explanation": "多版本并发控制：保留行的多个版本，使读写事务可并发进行；PostgreSQL 通过 dead tuples 和 VACUUM 回收旧版本。"
+      },
+      {
+        "term": "SSI（Serializable Snapshot Isolation）",
+        "explanation": "可串行化快照隔离，通过检测事务依赖冲突，在快照隔离性能与可串行化正确性之间折中。"
+      }
+    ],
+    "context": "《The Internals of PostgreSQL》是讲解 PostgreSQL（开源关系型数据库）存储、并发控制、索引和查询等内部机制的资料，已多次在 Hacker News 被重新提交讨论。讨论的重点落在 PostgreSQL 的 MVCC（多版本并发控制）：更新会留下旧行版本（dead tuples），再由 VACUUM 清理，而 HOT 更新可在满足条件时避免额外索引维护。Jepsen（专门检验数据库一致性保证的测试项目）曾发现 PostgreSQL 的 SSI（可串行化快照隔离）实现存在长期 Bug，说明理解实现细节不仅是性能问题，也关联事务正确性。PostgreSQL 18 又调整了 FTS（全文检索）与 collation（字符串排序和比较规则）的交互，使用 ICU 或 PG_UNICODE_FAST 的集群升级后需要关注索引重建和搜索语义变化。",
+    "emoji": "🧹",
+    "sarcastic_question": "给每列都建索引后，还指望 HOT 替你省写入？"
+  },
+  "articleSummary": "## 一句话总结\n这是一份详尽的 PostgreSQL 内部机制文档，系统性地拆解了从进程架构、查询处理到并发控制、WAL 机制等核心子系统，旨在帮助开发者建立对数据库底层运作机制的宏观认知。\n\n## 正文\n\n### 为什么你需要搞懂 PostgreSQL 的“五脏六腑”\nPostgreSQL 是一个设计精良的开源关系型数据库，但这并不意味着它简单。恰恰相反，它是一个由多个复杂子系统协同工作的庞大系统。对于有经验的开发者来说，仅仅会写 SQL、会做索引优化往往是不够的。无论是进行深度的数据库运维，还是基于 PG 做二次开发，如果不理解其内部机制，就像是在黑盒上走钢丝。这份文档的核心目的，就是要把这个黑盒拆开，讲清楚各个子系统是如何协作的。\n\n### 内容覆盖面：从基础架构到前沿特性\n这份文档的覆盖面非常广，而且一直在持续更新。它不仅涵盖了 Database Cluster、Query Processing、Concurrency Control 这些经典话题，还深入到了 Heap Only Tuple (HOT)、Buffer Manager、WAL 以及 Streaming Replication 等关键机制。有意思的是，作者还专门开辟了章节讲解 Foreign Data Wrappers (FDW) 和 Logical Replication。文档目前覆盖到 PostgreSQL 19-beta 版本，这意味着你不仅能看到成熟稳定的核心逻辑，还能了解到最新的异步 I/O 等特性。\n\n### 作者的野心：提供一张“全景地图”\n市面上讲 PostgreSQL 的资料很多，但往往容易陷入两个极端：要么太浅，只讲怎么用；要么太深，直接扎进源码出不来。作者 Hironobu SUZUKI 作为日本 PostgreSQL 用户组的前董事，显然不想走这两条路。他的写法很有章法，试图在微观机制和宏观架构之间找到平衡点。他不想只告诉你 VACUUM 是干嘛的，而是想让你看到 VACUUM 在整个并发控制和存储管理体系中的位置。说白了，他是想给读者提供一张 PG 内部的“全景地图”。\n\n### 持续演进的知识库\n这篇文档并不是一篇静态的“死文章”，而是一个持续演进的知识库。自 2015 年 9 月首发以来，作者已经坚持维护了超过十年。最近的一次更新记录显示，就在几天前（2026 年 6 月 28 日），作者还发布了关于“Asynchronous I/O in PostgreSQL”的新章节。这种持续迭代的态度，保证了文档内容能跟上 PostgreSQL 迭代的步伐，对于关注新版本特性的开发者来说，这一点尤为关键。\n\n### 如何使用这份资源\n虽然文档内容详实，但作者在 FAQ 中也表达了一些有趣的坚持。比如，他明确表示不会提供 PDF 或手机版，因为内容已经针对 HTML 阅读进行了深度优化。对于想要商业使用的朋友，作者甚至半开玩笑地开出了 500 万欧元的“买断价”，当然，对于教育用途和非商业技术分享，作者是完全开放的。如果你正在寻找一份能帮你打通 PostgreSQL 任督二脉的硬核资料，这篇文档绝对值得加入书签。"
+}
