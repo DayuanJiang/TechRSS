@@ -1,0 +1,99 @@
+{
+  "id": 50363378,
+  "by": "kevcampb",
+  "title": "Incident with Pull Requests, Git Operations and Issues",
+  "url": "https://www.githubstatus.com/incidents/smtdswd1h2w4",
+  "score": 184,
+  "createdAt": 1793792430,
+  "aiSummary": {
+    "chinese_title": "GitHub Git/PR/Issues 故障，SSH 密钥淘汰疑成诱因",
+    "discussion_overview": [
+      {
+        "category": "状态页滞后使故障排查失真",
+        "summary": "评论者认为，GitHub status page 显示绿色并不能证明服务正常，反而会让团队先怀疑自身网络、密钥或配置，再投入时间做无效排查。对依赖 GitOps 的团队而言，GitHub 的 Git、PR、Issues 与 Actions 都是交付链路的一环，状态信息不可信会放大停机成本。也有人指出 GitHub 的状态更新已经比 Amazon 等大型云厂商快，但这被理解为行业普遍倾向先规避 SLA 风险、后披露问题。另有务实建议称，刚出现异常时可先等待约 30 分钟，再决定是否深入调查。",
+        "supportid": [
+          "50366293",
+          "50367045",
+          "50367011"
+        ]
+      },
+      {
+        "category": "SSH 算法弃用可能触发访问异常",
+        "summary": "故障当天恰逢 GitHub 计划对 ssh-rsa（使用 SHA-1 的 RSA 签名）及 diffie-hellman-group-exchange-sha256 进行 brownout，即阶段性停用测试，因此有人推测变更可能与事故有关，但也明确承认这尚未得到证实。多名用户报告两台机器同时出现 invalid key、Permission denied (publickey)、新生成密钥也无法使用等现象，一度担心密钥泄露或账户被入侵。评论提醒标准的 Git 权限错误信息并不能精确说明是 GitHub 端密钥策略还是其他问题。临时可将 git@github.com 地址重写为 HTTPS，或直接用 HTTPS remote 绕过 SSH 路径。",
+        "supportid": [
+          "50363936",
+          "50364112",
+          "50365495",
+          "50363491",
+          "50363595",
+          "50363710",
+          "50363750",
+          "50364083"
+        ]
+      },
+      {
+        "category": "CI/CD 对 GitHub 单点依赖促使去耦",
+        "summary": "不少团队的部署绑定 GitHub Actions、Container Registry 或从 GitHub checkout 源码；因此即使用 CircleCI，也会因无法拉取仓库而失败。有人主张从 self-hosted Jenkins 迁往 GitHub Actions，是把可控系统换成外部单点故障，但也有人讽刺 Jenkins 未必天然“高韧性”。替代方案包括 GitLab、Buildkite 配合 self-hosted runners，以及 Forgejo/Gitea 搭配 Woodpecker CI；对不愿自行运维者，也有人提出使用商业 runner 服务。更系统的建议是把部署逻辑写入版本库中的 shell scripts，在独立且严格加固的 deploy host 上执行，并以 immutable commit SHA 作为输入，使 GitHub 停摆时仍能直接 push 和部署。",
+        "supportid": [
+          "50363553",
+          "50365962",
+          "50366006",
+          "50364810",
+          "50363712",
+          "50364707",
+          "50364655",
+          "50363970"
+        ]
+      },
+      {
+        "category": "容量、AI 流量与付费可靠性争议",
+        "summary": "部分评论将频繁故障归因于需求爆发、容量扩展跟不上或缺少 rate limiting，并猜测大量 AI 相关自动化请求加重了平台负载。企业用户反驳“GitHub 免费所以难免不稳”的说法：许多公司为核心开发流程付费，开发人员因 Issues、PR 或 Actions 中断而切换任务，会产生直接经济损失。其诉求不是简单接受宕机，而是限制 AI 流量，或至少将付费客户与高负载流量隔离。也有人称日常 push/pull 失败率高达约 30%，但另一位用户认为这可能是特定网络路径或数据中心路由问题，并非普遍体验。",
+        "supportid": [
+          "50363556",
+          "50363729",
+          "50363811",
+          "50363849",
+          "50363909"
+        ]
+      },
+      {
+        "category": "频繁事故引发迁移与讽刺情绪",
+        "summary": "评论普遍把这次事件视为又一次 GitHub 不稳定，而非孤立事故；有人指出上一次事故仅在五天前，并建议考虑 self-hosted 替代品。也有用户称半小时便搭好 Gitea、推送代码并切换部署脚本，借此说明小规模迁移门槛未必很高。Rails 恰好发布安全更新，使无法拉取代码的影响更具紧迫性。围绕“AI agent 修复 bug”“用 AI 重写 forge”“GitHub 只在以 day 结尾的日子宕机”等玩笑，反映的是对平台可靠性和 AI 炒作的疲惫与不信任。",
+        "supportid": [
+          "50363862",
+          "50363970",
+          "50363863",
+          "50363720",
+          "50363829",
+          "50363638"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "SSH / ssh-rsa",
+        "explanation": "SSH 是用于安全远程登录和 Git 传输的协议；ssh-rsa 通常指采用 SHA-1 签名的旧 RSA SSH 算法，因安全性过时而被逐步停用。"
+      },
+      {
+        "term": "GitOps",
+        "explanation": "以 Git 仓库中的声明式配置作为基础设施和应用部署唯一事实来源的运维模式，Git 服务不可用会直接阻断变更交付。"
+      },
+      {
+        "term": "GitHub Actions",
+        "explanation": "GitHub 提供的托管 CI/CD 自动化服务，可在代码提交、PR 等事件触发测试、构建和部署。"
+      },
+      {
+        "term": "CI/CD",
+        "explanation": "Continuous Integration/Continuous Delivery，指持续集成与持续交付流水线，用自动化检查、构建和部署缩短软件发布流程。"
+      },
+      {
+        "term": "self-hosted runners",
+        "explanation": "由用户自己部署和维护的 CI 执行节点；可保留计算与网络控制权，但仍可能依赖外部代码托管平台。"
+      }
+    ],
+    "context": "该事件涉及 GitHub（微软旗下代码托管与协作平台）的 Pull Requests、Git 操作和 Issues 异常，用户报告 clone、fetch、push 及 SSH 认证间歇性失败。当天 GitHub 原定对旧 SSH 算法进行 brownout，其中包括使用 SHA-1 签名的 ssh-rsa，因此部分用户将密钥报错与这项安全迁移联系起来，但评论中没有确认它就是根因。现代团队常把 GitHub Actions（托管 CI/CD 自动化服务）、Container Registry（容器镜像仓库）和 GitOps（以 Git 提交驱动部署的运维方式）串成同一交付链，代码托管故障会进一步阻断测试与生产部署。讨论也延续了集中式开发平台的韧性争论：可选择 GitLab、Forgejo 或 Gitea 等代码托管方案，或将部署执行迁至独立 deploy host，以减少单一 SaaS 平台失效的影响。",
+    "emoji": "😤",
+    "sarcastic_question": "付费 CI 连拉代码都靠祈祷，托管的价值呢？"
+  },
+  "articleSummary": "## 一句话总结\n这是一份 GitHub 官方关于 2026 年 11 月 4 日发生的大规模服务中断事故的状态日志，记录了从发现 Git Operations 异常到全线恢复的完整时间线。\n\n## 正文\n\n### 从 Git 操作卡顿开始的风暴\n故事的起点在 2026 年 11 月 4 日的 09:49 UTC。GitHub 的监控系统首先捕捉到了异常信号：Git Operations、Issues 和 Pull Requests 出现了性能退化。这通常意味着核心服务层出现了瓶颈，工程师们立刻介入调查。仅仅一分钟后，Actions 服务也宣告沦陷，出现性能退化。此时，问题已经从核心代码仓库操作蔓延到了自动化构建流程。\n\n### 核心功能接连失守\n问题蔓延的速度比预想的要快。到了 09:53 UTC，Pull Requests 的状态从“性能退化”升级为“可用性下降”。这已经不是单纯的“慢”了，而是部分请求直接失败。对于开发者来说，这意味着代码无法合并，Review 流程中断。此时，受影响的服务范围已经涵盖了 Git Operations、Issues、Pull Requests 和 Actions 四大核心业务。\n\n### API 层的连锁反应\n随着排查的深入，10:38 UTC，情况变得更加复杂。工程师们发现这不仅仅是底层操作的问题，错误率和间歇性故障开始波及整个 GitHub 平台。紧接着在 11:11 UTC，API Requests 也确认出现性能退化。这解释了为什么上层服务会接连崩溃——API 层作为所有客户端交互的咽喉，一旦拥堵，Pull Requests 和 Issues 自然无法幸免。\n\n### 紧急止血与恢复\n关键时刻在于如何快速止损。工程师们在 11:17 UTC 宣布正在努力缓解高错误率问题。仅仅 13 分钟后，也就是 11:30 UTC，局势发生了转折：API Requests、Git Operations、Issues 和 Pull Requests 的退化问题得到缓解，系统进入监控状态。随后在 11:43 UTC，Actions 服务也完成了修复并进入监控期。\n\n### 事故落幕，等待复盘\n最终在 11:50 UTC，官方宣布事故已解决，并感谢用户的耐心等待。虽然服务已经恢复，但故事还没讲完。官方承诺后续将发布详细的根因分析（Root Cause Analysis）。这次事故虽然只持续了约两个小时，但波及面极广，几乎覆盖了开发者日常使用的高频功能，是一次典型的核心服务级联故障。"
+}
