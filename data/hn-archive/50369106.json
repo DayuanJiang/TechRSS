@@ -1,0 +1,105 @@
+{
+  "id": 50369106,
+  "by": "olexsmir",
+  "title": "A New Go API for JSON",
+  "url": "https://go.dev/blog/jsonv2",
+  "score": 266,
+  "createdAt": 1793817605,
+  "aiSummary": {
+    "chinese_title": "Go 新 JSON API：默认值改良、类型安全与 AI 编程之争",
+    "discussion_overview": [
+      {
+        "category": "新 API 的实用改进与兼容性顾虑",
+        "summary": "不少人认可 encoding/json/v2 改善了旧 Marshal API 的别扭之处，尤其欢迎更清晰的接口与 jsontext 提供的低层解析能力。有开发者已用 jsontext 为苛刻客户端生成逐类错误信息，同时保持很高性能，认为它适合非简单的 JSON 输入。关于格式化输出，担心 MarshalIndent 被移除的人被指出可用 jsontext.Value.Indent 或 jsontext.WithIndent 实现。nil slice 和 map 默认编码为空数组或对象也引发分歧：支持者认为这避免了未初始化的 Go 容器意外泄漏成 null，反对者则担心这会成为未来必须修正的破坏性默认值。",
+        "supportid": [
+          "50369853",
+          "50370004",
+          "50370310",
+          "50372538",
+          "50371745",
+          "50371845",
+          "50375100"
+        ]
+      },
+      {
+        "category": "JSON 并不简单：规范、数值和 Schema 的边界",
+        "summary": "评论者质疑 JSON 被称为“简单数据交换格式”，因为真正实现时必须处理超出 IEEE 754 double 范围的 1e1000、重复键、嵌套深度、字符串限制和扩展语法等问题。RFC 8259 对实现可接受的大小、深度及数值精度留有余地，因此不同库即使都声称支持 JSON，行为也可能不一致。另一派讨论希望按 JSON Schema 专化解析器，以 staged parsing 和 SIMD 获得静态类型模型及 simdjson 级吞吐；反对意见认为 JSON 的核心价值恰是宽松、通用、人类可读和跨语言互操作，强类型协议更适合交给 gRPC 一类方案。",
+        "supportid": [
+          "50371995",
+          "50372575",
+          "50372863",
+          "50370463",
+          "50370605",
+          "50370783",
+          "50371997"
+        ]
+      },
+      {
+        "category": "Go 演进太慢，还是稳定优先",
+        "summary": "新 JSON API 历时六年才落地，使一些人质疑 Go 团队的交付速度，并联想到 generics 和 Go modules 的长期等待。支持慢节奏者认为旧 encoding/json 对约 99% 的后端场景已经足够，性能瓶颈通常在 I/O 而非数十纳秒的序列化开销；稳定的标准库也比频繁变动、两年就难以编译的生态更易掌握。批评者则认为 JSON 在 Go 中素有性能和接口问题，六年仍显得过长；辩护者补充，generics 涉及编译器重大改动，设计还借助了 Featherweight Go 等类型系统研究。",
+        "supportid": [
+          "50370631",
+          "50370767",
+          "50370883",
+          "50372702",
+          "50371060",
+          "50374686"
+        ]
+      },
+      {
+        "category": "AI 辅助编程下 Go 的位置与手写技能",
+        "summary": "多位开发者把 Go 看作适合 LLM 或 agentic coding 的目标语言：语法结构小、控制流较直接、缺少复杂重载，并且编译速度远快于 Rust，可缩短生成—编译—验证循环。也有人认为 Go 是性能、GC 内存安全和可维护性的折中，而 Rust、Kotlin、C#、OCaml、Crystal 分别在速度、表达力或易用性上构成竞争选择；Go 的 WASM 产物体积则被视为弱点。对是否仍应手写代码，争论集中于技能退化：一方认为未来重点是业务逻辑、架构和测试，模型让设计反馈更快；另一方认为设计判断源于亲手处理实现细节，且当前模型仍会产出需反复审查和重写的低质量代码。",
+        "supportid": [
+          "50370500",
+          "50370517",
+          "50371342",
+          "50371017",
+          "50371672",
+          "50371362",
+          "50372431",
+          "50374796",
+          "50374799"
+        ]
+      },
+      {
+        "category": "Marshal 的错误返回与编译期类型安全",
+        "summary": "有人认为 json.Marshal 对不可序列化值返回 error 很烦，因为这通常像程序员错误，宁可 panic 或在编译期拒绝。反驳者指出序列化失败并非只由静态类型决定：any 内可在运行时装入未知值，自定义 MarshalJSON 可以失败，NaN 和 Infinity 又不符合 JSON，懒加载对象也可能在编码时出错。争论进一步落到 Go 的反射式通用接口与 Rust、Haskell、Scala 的派生序列化机制之别：后者可在类型不支持序列化时给出编译期错误，但仍无法静态证明所有运行时数据值有效。",
+        "supportid": [
+          "50369779",
+          "50370539",
+          "50370457",
+          "50370940",
+          "50370319",
+          "50371540",
+          "50375214"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "encoding/json/v2",
+        "explanation": "Go 标准库 JSON 编解码 API 的第二代接口，意在改进旧版的语义、选项和可组合性。"
+      },
+      {
+        "term": "jsontext",
+        "explanation": "配合 encoding/json/v2 的低层 JSON 语法处理包，可直接处理 JSON 文本、缩进和更细致的解析错误。"
+      },
+      {
+        "term": "Marshal / Unmarshal",
+        "explanation": "将 Go 值编码为 JSON、以及将 JSON 解码到 Go 值的过程；失败原因可能来自类型、运行时数值或自定义编码逻辑。"
+      },
+      {
+        "term": "staged parsing",
+        "explanation": "根据已知 Schema 或类型信息生成专门解析器的技术，以减少通用解析开销并提升类型保证和性能。"
+      },
+      {
+        "term": "SIMD / simdjson",
+        "explanation": "SIMD 是单指令多数据并行计算；simdjson 是利用它进行高速 JSON 解析的实现与性能标杆。"
+      }
+    ],
+    "context": "讨论围绕 Go 标准库 JSON 功能的新版 encoding/json/v2 及其配套 jsontext（低层 JSON 文本处理包）展开，目标是在保留 Go 简洁使用方式的同时修正旧接口的语义和可扩展性问题。重点变化包括将 nil slice、map 更倾向编码为 JSON 空容器，以及用 Options 和 jsontext 承担缩进等控制；这些选择会直接影响 API 合约中的 null 与 []、{} 区分。JSON 虽是跨语言常用文本格式，却在数值范围、重复键、解析限制、Schema 和高吞吐解析上存在大量实现取舍。评论还将此事放入 AI 辅助编码背景：Go 的快速编译和较小语言表面被认为适合 LLM 反复生成验证，而人类是否仍需保持手写与审查能力成为更大的职业焦虑。",
+    "emoji": "🤔",
+    "sarcastic_question": "六年重写 JSON，下一版要等错误处理吗？"
+  },
+  "articleSummary": "## 一句话总结\nGo 1.27 正式引入 `encoding/json/v2`，通过将语法处理与语义映射解耦、引入流式接口和 Caller-specified 定制化，彻底解决了 v1 遗留的行为缺陷、API 限制和性能瓶颈。\n\n## 正文\n\n### 老牌标准库的“历史包袱”\n`encoding/json` 作为 Go 元老级标准库，虽然“能用”，但在过去十几年里攒下了不少“陈年旧疾”。最让人头疼的是行为缺陷：它对 JSON 语法的处理不够严谨，比如接受无效的 UTF-8 编码、允许对象中出现重复的键名。前者可能导致静默数据损坏，后者更是潜在的安全漏洞（想想 CVE-2017-12635）。此外，它默认将 nil slice 编码为 `null` 而非空数组，以及那令人费解的大小写不敏感匹配，都让开发者在跨语言交互时踩过不少坑。\n\n### 想修却修不动的 API 设计\n除了行为问题，API 的设计限制也让人束手束脚。想要从 `io.Reader` 解码 JSON？常用的 `json.NewDecoder(r).Decode(v)` 居然不拒绝输入末尾的垃圾数据，这在处理网络流时简直是噩梦。更麻烦的是，`MarshalJSON` 接口强制方法返回 `[]byte`，这不仅带来了额外的内存分配，还迫使库校验和重新格式化数据。由于 Go 1 兼容性承诺，这些深植于 API 设计中的问题，靠修修补补已经无济于事，必须推倒重来。\n\n### 另起炉灶：语法与语义的彻底解耦\n既然旧 API 动不得，Go 团队决定引入 `encoding/json/v2`，并带来了核心架构变革：将 JSON 处理明确划分为“语法层”和“语义层”。底层的新包 `encoding/json/jsontext` 专注于纯粹的 JSON 语法处理，也就是所谓的“编码”和“解码”。它提供了 `Encoder` 和 `Decoder`，能够以流的方式高效读写 JSON Token 和 Value。这种设计完全剥离了对 Go 反射的依赖，为上层的高性能实现打下了基础。\n\n### v2 API：让选项成为一等公民\n在 `jsontext` 的地基之上，`json/v2` 构建了新的语义层 API。乍一看，`Marshal` 和 `Unmarshal` 的签名似乎没变，但关键在于它们现在接受 `...Options` 参数。这意味着配置选项不再是 `Encoder/Decoder` 的专属，而是可以在任何调用链中传递。新增的 `MarshalWrite` 和 `UnmarshalRead` 直接对接 `io.Writer/Reader`，省去了手动构造 Encoder 的繁琐，整个 API 变得更加一致和灵活。\n\n### 告别二次解析：流式接口的胜利\n为了彻底解决 v1 中自定义方法导致的性能损耗（如二次解析、强制分配），v2 引入了 `MarshalJSONTo` 和 `UnmarshalJSONFrom` 接口。这设计非常巧妙：自定义方法不再处理原始字节，而是直接操作 `jsontext.Encoder` 或 `jsontext.Decoder`。这样一来，实现者可以直接流式写入或读取 Token，既避免了额外的内存分配，也甩掉了校验 JSON 边界的负担，性能瓶颈迎刃而解。\n\n### 调用者说了算：控制权的反转\nv2 还带来了一个极具杀伤力的特性：Caller-specified customization（调用者指定定制化）。以前，如果你无法修改某个类型的源码，就很难控制它的 JSON 序列化行为。现在，调用者可以通过 `WithMarshalers` 选项，为任意类型注入自定义的序列化逻辑，且优先级高于类型自身的方法。这相当于给了开发者一把“上帝钥匙”，在不改动第三方库代码的情况下，也能完美掌控 JSON 的输入输出。"
+}

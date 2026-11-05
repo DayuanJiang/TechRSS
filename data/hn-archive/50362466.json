@@ -1,0 +1,84 @@
+{
+  "id": 50362466,
+  "by": "matt_d",
+  "title": "The lost malloc()",
+  "url": "https://napcakes.nekoweb.org/posts/malloc/",
+  "score": 129,
+  "createdAt": 1793779829,
+  "aiSummary": {
+    "chinese_title": "被遗忘的 malloc：free 要不要传大小之争与分配器史",
+    "discussion_overview": [
+      {
+        "category": "带大小的释放接口可减少分配器负担",
+        "summary": "一方认为，调用方通常本就知道对象大小：单个对象可用 sizeof(T)，数组有 count × sizeof(T)，动态数组还必须保存容量以便扩容和边界检查。让 free 只接收指针，迫使分配器重新保存或推导调用方已有的信息，形成重复记账，并限制了无元数据小块分配等实现。传入大小还能快速选择 small-size allocator 或 large-block allocator，并让大块分配使用 footer，避免前置 header 干扰对齐。Zig、Rust 及 C++ Allocator 等现代接口也被举为带大小 deallocate 已可行且常见的例证。",
+        "supportid": [
+          "50363752",
+          "50369293",
+          "50369323",
+          "50366815",
+          "50368437"
+        ]
+      },
+      {
+        "category": "无大小 free 保持安全性与实现自由",
+        "summary": "反对者指出，分配器所需的不只是请求大小，还可能要知道实际占用大小、size class、对齐方式及页或 span 的归属，因此仅由调用方传大小并不能替代内部元数据。许多现代 malloc 通过 size class 将同类对象紧密放置，只在 page/span 层保存信息，未必会为每个对象单独放置 size_t。把大小作为正确性前提还会扩大误用空间：void*、可替换 allocator 和跨边界调用都可能让大小不可靠，已有 Rust 与 mimalloc 的兼容性故障被用作警示。C++ 经由基类指针 delete 派生对象时也展示了真实大小并非总在调用点可见，尽管 ABI 可借由 deleting destructor 传递该信息。",
+        "supportid": [
+          "50366210",
+          "50368752",
+          "50364882",
+          "50365497",
+          "50363943",
+          "50364784",
+          "50365870",
+          "50367620",
+          "50368285"
+        ]
+      },
+      {
+        "category": "Arena/Bump allocator 并非 malloc 的普适替代",
+        "summary": "有人主张，若真要降低通用 malloc 的开销，应在初始化时向 OS 批量取得页面，再以 arena 管理，而不是纠结每次分配的一点元数据。但反方认为 arena 或 linear allocator 容易增加常驻内存和碎片；通用 malloc/free 的简单灵活接口正是长期演化的结果。Arena 在实时系统中仍很有价值，因为可一次 reset，并减少与 kernel 的交互。讨论还提到 Linux 的 sbrk 仍可用于简化版 malloc，但 mmap 等机制已使现代堆管理不再只是单向增长的线性模型。",
+        "supportid": [
+          "50365566",
+          "50363704",
+          "50366437",
+          "50364253"
+        ]
+      },
+      {
+        "category": "早期语言与思想并不“现代”",
+        "summary": "关于 SIMULA 67 的来源，有人补充其 class、new、NULL pointer、构造与析构等设计，大量可追溯到 C.A.R. Hoare 1965 年为 ALGOL 后继语言提出的 Record Handling；继承与 virtual procedures 才是 SIMULA 67 的关键原创。Pascal、PL/I 和 ALGOL 68 也陆续实现了该论文中的部分构想，而 Wirth 曾赋予 new 不同含义，之后才改采更接近 Hoare 的用法。Bump Allocator 等看似新潮的技术也被视为早期资源约束下的自然发明：当时系统较简单、程序员更贴近硬件，并且较少依赖快速试错。围绕纸上编程的回忆进一步认为，漫长编译时间迫使开发者预先推演设计，而脱离语法高亮阅读代码仍有助于发现 race condition 和 heisenbug。",
+        "supportid": [
+          "50365930",
+          "50362879",
+          "50363092",
+          "50363251",
+          "50363585",
+          "50366185",
+          "50363434"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "sized deallocation（带大小释放）",
+        "explanation": "释放内存时同时传入指针和原始请求大小的接口设计，可帮助 allocator 选择回收路径，但大小是否应作为正确性前提存在争议。"
+      },
+      {
+        "term": "Arena / Linear / Bump Allocator",
+        "explanation": "从一块预留内存按顺序递增分配、通常整体 reset 回收的分配器；速度高，但不适合任意对象独立释放。"
+      },
+      {
+        "term": "size class（尺寸类别）",
+        "explanation": "将请求大小向上取整并归入若干固定档位的分配策略，同类小对象可共享 page/span 元数据并快速复用。"
+      },
+      {
+        "term": "virtual destructor / deleting destructor",
+        "explanation": "C++ 多态销毁机制；后者通常把析构与释放结合，使经由基类指针 delete 时仍能按派生类的真实布局处理。"
+      }
+    ],
+    "context": "这篇文章借“失落的 malloc”回顾动态内存分配的早期设计，并将传统 C 的 malloc/free 接口与带大小的释放接口相比较。C 的 free 只接收指针，allocator（内存分配器）通常借助 size class（尺寸类别）、header 或页级元数据判断如何回收；Zig（系统编程语言）、Rust（系统编程语言）和部分 C++ allocator 接口则会传递大小或 layout。讨论也回溯到 SIMULA 67（一门奠定面向对象思想的早期语言）和 C.A.R. Hoare 的《Record Handling》（1965 年提出记录类型与动态对象机制的论文），说明许多“现代”语言特性早已有历史原型。Arena allocator（整块分配并批量回收的内存池）与 Bump Allocator（指针顺序递增的线性分配器）因实时性和速度仍有用途，但无法无代价取代适用于复杂生命周期的通用堆分配器。",
+    "emoji": "🤔",
+    "sarcastic_question": "明明知道大小，为何还让malloc替你记账？"
+  },
+  "articleSummary": "## 一句话总结\n通过考古 Unix V4 到 V8 的源码，我们发现现代 C++ `new` 关键字和 Arena 内存管理的雏形，早在半个世纪前就已经被 Ken Thompson 和 Dennis Ritchie 等人玩明白了。\n\n## 正文\n\n### 编译器不需要 free，线性分配就够了\n故事要从 1973 年的 Unix V4 说起。作者在翻阅当年的 C 编译器源码（具体是 C 语言优化器 `/usr/c/c20.c`）时，发现了一个非常原始但实用的 `alloc()` 函数。这个函数的逻辑简单到令人发指：它本质上是一个线性分配器。申请内存时，它只做两件事——对齐地址，然后检查剩余空间够不够。如果不够，就调用 `sbrk()` 向系统申请更多内存。\n\n有意思的地方在于，它根本不处理内存释放。这并不是设计疏忽，而是基于特定场景的最优解：编译器是一次性运行的程序，处理完就退出。既然进程结束操作系统会回收所有资源，为什么还要费劲去写 `free()` 的逻辑？这种\"只借不还\"的设计，让调用者完全不需要检查 `NULL`，代码逻辑极其清爽。\n\n### dmr 目录下的\"失落\" malloc\n更有趣的发现藏在 Dennis Ritchie 的目录（`dmr`）下。那里有一个名为 `malloc.c` 的文件，里面定义了 `malloc()` 和 `mfree()` 两个函数。如果你习惯了现代 C 标准库的接口，看到它们的函数签名会觉得很陌生：这里的 `malloc` 需要传入一个额外的参数 `mp`（map 指针），`mfree` 甚至还需要你显式传入释放的大小。\n\n这其实是现代 Arena 内存管理的鼻祖。当时的系统通过 `coremap` 和 `swapmap` 两个静态数组来管理物理内存和磁盘交换区。这意味着内存分配是分区域的，你可以针对不同的资源池进行操作。这种设计有巨大的优势：你可以通过丢弃整个区域来瞬间释放所有相关内存，也能有效限制第三方代码的内存使用上限。这种接口设计比现代通用的 `malloc`/`free` 更安全，也更符合特定场景的需求。\n\n### 硬件限制催生的优雅架构\n为什么 Dennis Ritchie 要这样设计？答案藏在 John Lions 那本著名的《Lions' Commentary on the Sixth Edition UNIX Operating System》里。当时的硬件资源极度匮乏，内核需要管理两种截然不同的资源：以 32 字（64 字节）为单位的主存和以 256 字（512 字节）为单位的磁盘交换区。\n\n`malloc` 和 `mfree` 通过接收 `map` 指针，实现了对这两种资源的统一管理，而函数内部甚至不需要知道它操作的是内存还是磁盘。这种基于资源图的 First-Fit 算法加上邻居块合并策略，在 V6 版本中依然沿用。甚至 \"arena\"（内存池）这个术语，也是首次出现在 V6 的汇编代码中。\n\n### 指针回滚：早期的 Arena 重置\n到了 V6，作者在初版 `diff` 工具的源码里发现了一个更精妙的技巧。它的 `alloc()` 依然是线性分配，但在 `unsort()` 函数中，出现了一行看似\"违规\"的操作：`area = a;`。\n\n这行代码的作用是把当前的分配指针直接\"回滚\"到之前的位置。说白了，这就是现代 Arena Allocator 中 Reset 操作的雏形。虽然代码后续似乎只是做了一次内存拷贝，导致这个回滚看起来有些多余，但这证明了当时的开发者已经掌握了\"批量申请、批量释放\"的内存管理精髓。\n\n### 宏定义里的现代编程思想\n随着 Unix 版本演进，开发者开始厌倦了手动计算 `sizeof`。在 V7（1979年）中，作者发现了 `#define ALLOC(x) (struct x *) ckalloc(sizeof(struct x))` 这样的宏。这比现代 C++ 的 `new` 早了整整六年，已经具备了类型安全的雏形。\n\n更有意思的是，到了 V8（1985年），代码中出现了大量类似 `#define new(type) ((type *) alloc (sizeof (type)))` 的宏定义。这些宏不仅名字叫 `new`，用法也和后来的 C++ 几乎一模一样。有些宏甚至包含了错误处理和零初始化的逻辑，比如 `tryalloc` 宏，在分配失败时会尝试调用 `emergency()` 清理内存，甚至自动把新内存清零。\n\n### Simula 才是 new 的真正祖先\n看到这里，你可能会想：C++ 的 `new` 是不是抄袭了 Unix V8 的宏？Bjarne Stroustrup 在历史回顾文档中给出了答案：并不是。他明确表示 `new` 操作符是借鉴自 Simula 语言。\n\nSimula 早在 1967 年就引入了对象、类和垃圾回收机制。虽然 Simula 最初引入 `new` 关键字只是为了解决语法解析的歧义，但 Stroustrup 敏锐地发现了它的价值——把内存分配和构造函数调用绑定在一起。他在文章中给出了一个强有力的对比：你是愿意写一行 `X* p = new X(2);`，还是愿意写那一堆 `malloc`、强制类型转换、判空和初始化的冗长代码？\n\n### 性能瓶颈倒逼语言进化\nStroustrup 的论述揭示了一个关键的历史转折点：虽然 `malloc` 足够底层，但它成为了性能瓶颈。他提到，当时的真实程序可能有 **50% 或更多的时间花在 `malloc()` 函数的调用上**。这直接推动了 C++ 将 `new` 纳入语言核心特性，而不是仅仅留给库去实现。\n\n从 Unix V4 的线性分配，到 V6 的资源图管理，再到 V8 的 `new` 宏，最后演化为 C++ 的语言特性，这段历史展示了编程语言和系统设计的进化逻辑：不是为了炫技，而是为了解决硬件限制、提高开发效率、消除性能瓶颈。这些半个世纪前的代码，至今读来依然让人拍案叫绝。"
+}
