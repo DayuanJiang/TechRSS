@@ -1,6 +1,1411 @@
 {
-  "updatedAt": "2026-11-05T16:19:08.837Z",
+  "updatedAt": "2026-11-05T17:48:46.873Z",
   "items": [
+    {
+      "id": 50379704,
+      "by": "pantalaimon",
+      "title": "Alpine Linux Security advisory: OpenSSH-server password authentication bypass",
+      "url": "https://alpinelinux.org/posts/2026-11-05-openssh-password-authentication-bypass/",
+      "score": 210,
+      "detailUpdatedAt": 1793898724,
+      "createdAt": 1793898606,
+      "aiSummaryUpdatedAt": 1793899761,
+      "aisummary": {
+        "chinese_title": "Alpine OpenSSH：超长密码使 musl crypt() 返回“*”，绕过无密码账户认证",
+        "emoji": "🔓",
+        "sarcastic_question": "把错误伪装成密码哈希，谁来替认证兜底？"
+      },
+      "classifications": {
+        "topics": [],
+        "facets": [],
+        "tags": []
+      },
+      "classificationsUpdatedAt": null,
+      "aiSummary": {
+        "chinese_title": "Alpine OpenSSH：超长密码使 musl crypt() 返回“*”，绕过无密码账户认证",
+        "emoji": "🔓",
+        "sarcastic_question": "把错误伪装成密码哈希，谁来替认证兜底？"
+      },
+      "detail": {
+        "id": 50379704,
+        "by": "pantalaimon",
+        "title": "Alpine Linux Security advisory: OpenSSH-server password authentication bypass",
+        "url": "https://alpinelinux.org/posts/2026-11-05-openssh-password-authentication-bypass/",
+        "score": 210,
+        "detailUpdatedAt": 1793898724,
+        "createdAt": 1793898606,
+        "aiSummaryUpdatedAt": 1793899761,
+        "aisummary": {
+          "chinese_title": "Alpine OpenSSH：超长密码使 musl crypt() 返回“*”，绕过无密码账户认证",
+          "discussion_overview": [
+            {
+              "category": "musl 偏离 POSIX 是直接根因",
+              "summary": "评论指出，musl 的 crypt() 在密码密钥超过 256 字节时返回字符串“*”作为错误标志，而不是 POSIX 规定的 NULL 加 errno。恰好没有密码的账户在密码字段中也常存放“*”，导致 OpenSSH 将错误返回值当作哈希结果比较并判定匹配。多位评论者认为这是危险的规范偏离，尤其 musl 一向以严格遵守标准、甚至拒绝兼容非标准程序而闻名。讨论还追问其他 libc 是否同样如此；已知 libxcrypt 似乎是在 musl 之后采用了类似行为。",
+              "supportid": [
+                "50380253",
+                "50380622",
+                "50381453",
+                "50380733"
+              ]
+            },
+            {
+              "category": "哨兵值有防崩溃与侧信道理由，但接口仍脆弱",
+              "summary": "一种解释称，改为返回“*”是为了避免调用者没有检查 NULL 时直接崩溃；从库实现角度看，这是为不健壮的 C 调用代码提供容错。也有评论补充，认证系统对不存在用户也应执行伪造的哈希校验，以免响应时间暴露账户是否存在，因此非 NULL 的哨兵结果并非完全没有安全动机。然而把错误编码成可与真实密码字段相等的普通字符串，会让调用方无法区分错误和成功，最终把容错变成认证绕过。评论还指出 crypt(3) 是带有 DES 遗留包袱的 1980 年代 C API，即便使用 constant-time 比较，也仍需审视禁用账户和短字符串长度造成的信息泄露。",
+              "supportid": [
+                "50380822",
+                "50381179",
+                "50380253"
+              ]
+            },
+            {
+              "category": "这是否证明应淘汰 C 的争论",
+              "summary": "一方把事件视为 C 的典型问题：缺少 Result<T,E> 一类显式错误类型，调用者容易漏检 NULL，库作者便倾向以哨兵值掩盖错误；因此主张转向 Rust 等更安全的语言。反方认为漏洞本质是语义和逻辑错误：无论用 Rust、Go、Python 或 JavaScript，只要设计者仍在超长输入时返回“*”，并与账户锁定标记冲突，认证照样可能被绕过。支持 Rust 的回应则强调，若函数签名返回 Result，错误路径不能伪装成成功的字符串值，促成该漏洞的调用链更难形成。争论的核心不只是内存安全，而是语言类型系统能否迫使 API 明确表达失败，以及旧有 C 生态对迁移的阻力。",
+              "supportid": [
+                "50381447",
+                "50381630",
+                "50381667",
+                "50381680",
+                "50381660",
+                "50381653",
+                "50381729"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "crypt() / crypt(3)",
+              "explanation": "Unix 的密码哈希 API：以密码和 salt 生成可比较的编码哈希；其老旧的字符串返回约定容易混淆成功结果与错误状态。"
+            },
+            {
+              "term": "musl libc",
+              "explanation": "面向轻量与静态链接场景的 C 标准库实现，Alpine Linux 常以它替代 glibc。"
+            },
+            {
+              "term": "哨兵值（sentinel value）",
+              "explanation": "用看似普通的返回值代表错误或特殊状态；本案中“*”既被用作错误标志，也被用作无密码账户的字段值。"
+            },
+            {
+              "term": "Result<T, E>",
+              "explanation": "Rust 等语言常用的显式成功/失败返回类型，要求调用方处理错误分支，避免把错误字符串当作正常结果。"
+            }
+          ],
+          "context": "Alpine Linux（采用 musl libc 的轻量级 Linux 发行版）发布的安全公告涉及 OpenSSH-server（SSH 远程登录服务）的密码认证路径。其底层 crypt() 密码哈希函数在输入超过 256 字节时返回“*”，而传统 Unix 账户数据库也会用“*”表示没有可用密码或被锁定的密码字段；两者相等便可能让认证比较错误地通过。POSIX（Unix 接口标准）规定 crypt() 失败应返回 NULL 并设置 errno，因此评论将问题聚焦于 musl 的非标准错误语义及调用端未分辨错误结果的组合。讨论还关联到 sshhole.com（追溯该缺陷长期演变的技术网站）、libxcrypt（独立的密码哈希库）以及 Rust 的 Result 类型能否降低此类 API 设计错误。",
+          "emoji": "🔓",
+          "sarcastic_question": "把错误伪装成密码哈希，谁来替认证兜底？"
+        },
+        "classifications": null,
+        "classificationsUpdatedAt": null,
+        "aiSummary": {
+          "chinese_title": "Alpine OpenSSH：超长密码使 musl crypt() 返回“*”，绕过无密码账户认证",
+          "discussion_overview": [
+            {
+              "category": "musl 偏离 POSIX 是直接根因",
+              "summary": "评论指出，musl 的 crypt() 在密码密钥超过 256 字节时返回字符串“*”作为错误标志，而不是 POSIX 规定的 NULL 加 errno。恰好没有密码的账户在密码字段中也常存放“*”，导致 OpenSSH 将错误返回值当作哈希结果比较并判定匹配。多位评论者认为这是危险的规范偏离，尤其 musl 一向以严格遵守标准、甚至拒绝兼容非标准程序而闻名。讨论还追问其他 libc 是否同样如此；已知 libxcrypt 似乎是在 musl 之后采用了类似行为。",
+              "supportid": [
+                "50380253",
+                "50380622",
+                "50381453",
+                "50380733"
+              ]
+            },
+            {
+              "category": "哨兵值有防崩溃与侧信道理由，但接口仍脆弱",
+              "summary": "一种解释称，改为返回“*”是为了避免调用者没有检查 NULL 时直接崩溃；从库实现角度看，这是为不健壮的 C 调用代码提供容错。也有评论补充，认证系统对不存在用户也应执行伪造的哈希校验，以免响应时间暴露账户是否存在，因此非 NULL 的哨兵结果并非完全没有安全动机。然而把错误编码成可与真实密码字段相等的普通字符串，会让调用方无法区分错误和成功，最终把容错变成认证绕过。评论还指出 crypt(3) 是带有 DES 遗留包袱的 1980 年代 C API，即便使用 constant-time 比较，也仍需审视禁用账户和短字符串长度造成的信息泄露。",
+              "supportid": [
+                "50380822",
+                "50381179",
+                "50380253"
+              ]
+            },
+            {
+              "category": "这是否证明应淘汰 C 的争论",
+              "summary": "一方把事件视为 C 的典型问题：缺少 Result<T,E> 一类显式错误类型，调用者容易漏检 NULL，库作者便倾向以哨兵值掩盖错误；因此主张转向 Rust 等更安全的语言。反方认为漏洞本质是语义和逻辑错误：无论用 Rust、Go、Python 或 JavaScript，只要设计者仍在超长输入时返回“*”，并与账户锁定标记冲突，认证照样可能被绕过。支持 Rust 的回应则强调，若函数签名返回 Result，错误路径不能伪装成成功的字符串值，促成该漏洞的调用链更难形成。争论的核心不只是内存安全，而是语言类型系统能否迫使 API 明确表达失败，以及旧有 C 生态对迁移的阻力。",
+              "supportid": [
+                "50381447",
+                "50381630",
+                "50381667",
+                "50381680",
+                "50381660",
+                "50381653",
+                "50381729"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "crypt() / crypt(3)",
+              "explanation": "Unix 的密码哈希 API：以密码和 salt 生成可比较的编码哈希；其老旧的字符串返回约定容易混淆成功结果与错误状态。"
+            },
+            {
+              "term": "musl libc",
+              "explanation": "面向轻量与静态链接场景的 C 标准库实现，Alpine Linux 常以它替代 glibc。"
+            },
+            {
+              "term": "哨兵值（sentinel value）",
+              "explanation": "用看似普通的返回值代表错误或特殊状态；本案中“*”既被用作错误标志，也被用作无密码账户的字段值。"
+            },
+            {
+              "term": "Result<T, E>",
+              "explanation": "Rust 等语言常用的显式成功/失败返回类型，要求调用方处理错误分支，避免把错误字符串当作正常结果。"
+            }
+          ],
+          "context": "Alpine Linux（采用 musl libc 的轻量级 Linux 发行版）发布的安全公告涉及 OpenSSH-server（SSH 远程登录服务）的密码认证路径。其底层 crypt() 密码哈希函数在输入超过 256 字节时返回“*”，而传统 Unix 账户数据库也会用“*”表示没有可用密码或被锁定的密码字段；两者相等便可能让认证比较错误地通过。POSIX（Unix 接口标准）规定 crypt() 失败应返回 NULL 并设置 errno，因此评论将问题聚焦于 musl 的非标准错误语义及调用端未分辨错误结果的组合。讨论还关联到 sshhole.com（追溯该缺陷长期演变的技术网站）、libxcrypt（独立的密码哈希库）以及 Rust 的 Result 类型能否降低此类 API 设计错误。",
+          "emoji": "🔓",
+          "sarcastic_question": "把错误伪装成密码哈希，谁来替认证兜底？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nAlpine Linux 的 `openssh-server` 曝出一个严重漏洞：攻击者利用 `musl libc` 的一个边界处理缺陷，配合系统内存在的其他密码哈希，可以绕过任何无密码账户（如 `root` 或 `alpine`）的认证直接登录。\n\n## 正文\n\n### 攻击者只需一次连接，就能以无密码账户身份登入\n如果你在 Alpine Linux 上运行 `sshd`，现在立刻去升级。这不是那种需要构造复杂攻击链的漏洞，问题非常直接：攻击者只要能访问你的 SSH 端口，不需要知道密码，就能登录系统。只要发一个超长密码，成功率是 100%，不需要重试。受影响范围极广，从 Alpine 3.16 到最新的 3.24 版本全部中招。\n\n### 漏洞触发的三个必要条件\n当然，漏洞触发也需要特定环境。首先，你得运行的是 Alpine 默认的 `openssh-server` 包（它默认不启用 PAM），或者虽然用了 `openssh-server-pam` 但把 `UsePAM` 设为了 `no`。其次，你的配置里 `PasswordAuthentication` 是开启状态（这是 OpenSSH 的默认配置）。最后，系统里必须至少有一个用户的密码哈希是 `$5$` 或 `$6$` 开头（SHA256 或 SHA512），同时存在一个密码字段为 `*` 的无密码账户（比如默认的 `root` 或 `alpine` 用户）。只要满足这三点，那个无密码账户就变成了后门。\n\n### 问题根源在于 `musl` 和 `sshd` 的交互逻辑\n有意思的地方在于漏洞的成因。当 `sshd` 不使用 PAM 时，它会调用 C 标准库的 `crypt()` 函数来校验密码。对于没有设置密码的账户，`/etc/shadow` 里的密码字段通常存的是 `*`。按理说这没法登录，但这里有个逻辑漏洞：如果存储字段太短（没法提取盐值），`sshd` 会借用系统里其他账户的盐值来计算哈希。攻击者发送一个 257 到 1024 字节的超长密码，`musl` 的 `crypt()` 函数处理这种超长密钥时会报错，直接返回一个 `*` 字符串。结果就是，计算出的哈希值 `*` 和存储的无密码字段 `*` 完美匹配——认证通过。\n\n### 官方云镜像反成重灾区\n特别要注意的是官方的 tiny-cloud 镜像（qcow2, VHD, AMI）。这些镜像在 3.18.11 到 3.24.3 版本中，默认存在一个 `alpine` 用户，密码字段是 `*`，而且配置了免密 `doas`。这意味着攻击者一旦利用漏洞以 `alpine` 身份登入，就能直接通过 `doas` 提权到 `root`。只要管理员给机器设过密码，或者 cloud-init 加过用户，系统里有了 `$6$` 哈希，这台机器就沦陷了。\n\n### 修复方案：升级包并重启守护进程\n修复方法很简单，但有个坑。你需要执行 `apk upgrade -U -a` 升级到修复版本（如 10.6_p2-r0 或对应分支的修复版）。关键点是：**升级包不会自动重启正在运行的 sshd 守护进程**。你必须手动执行 `rc-service sshd restart`，否则漏洞依然存在。如果你暂时没法重启，务必在配置里加上 `PasswordAuthentication no`，这是最有效的临时止血手段。\n\n### 如何排查是否已被攻击？\n怎么判断有没有被黑？去翻 `/var/log/messages`，看看有没有 `Accepted password for` 开头的日志，特别是针对那些本不该有密码的账户（如 `alpine` 或 `root`）。如果发现这种记录，说明有人已经进来了。这时候不仅要查登录记录，还要检查 `doas` 的使用记录、最近新增的用户和文件。如果无法排除入侵可能，建议直接把机器视为已失陷，进行彻底排查或重建。"
+    },
+    {
+      "id": 50378571,
+      "by": "surprisetalk",
+      "title": "Download your favourite YouTube videos",
+      "url": "https://criminallyvulgar.dev/you-should-absolutely-download-your-favourite-youtube-videos/",
+      "score": 112,
+      "detailUpdatedAt": 1793898723,
+      "createdAt": 1793898607,
+      "aiSummaryUpdatedAt": 1793899463,
+      "aisummary": {
+        "chinese_title": "趁下架前：用 yt-dlp 与 Jellyfin 归档 YouTube 收藏",
+        "emoji": "🗄️",
+        "sarcastic_question": "等版权清洗完毕，再对着失效链接怀旧吗？"
+      },
+      "classifications": {
+        "topics": [
+          7,
+          9
+        ],
+        "facets": [
+          9
+        ],
+        "tags": [
+          "YouTube",
+          "yt-dlp",
+          "Jellyfin",
+          "Internet Archive",
+          "Invidious",
+          "FreeTube",
+          "RSS"
+        ]
+      },
+      "classificationsUpdatedAt": 1793899507,
+      "aiSummary": {
+        "chinese_title": "趁下架前：用 yt-dlp 与 Jellyfin 归档 YouTube 收藏",
+        "emoji": "🗄️",
+        "sarcastic_question": "等版权清洗完毕，再对着失效链接怀旧吗？"
+      },
+      "detail": {
+        "id": 50378571,
+        "by": "surprisetalk",
+        "title": "Download your favourite YouTube videos",
+        "url": "https://criminallyvulgar.dev/you-should-absolutely-download-your-favourite-youtube-videos/",
+        "score": 112,
+        "detailUpdatedAt": 1793898723,
+        "createdAt": 1793898607,
+        "aiSummaryUpdatedAt": 1793899463,
+        "aisummary": {
+          "chinese_title": "趁下架前：用 yt-dlp 与 Jellyfin 归档 YouTube 收藏",
+          "discussion_overview": [
+            {
+              "category": "视频消失使本地归档成为刚需",
+              "summary": "不少人发现，存放多年的播放列表中约有 10% 的视频已变为“unavailable”，而被删除链接甚至不再显示标题，令追溯来源很困难。有人特别遗憾伪科学辟谣创作者 Myles Power 清空整个频道，原有内容如今大多成了失传媒体。评论者认为版权投诉、创作者主动删号和平台策略变化都会让视频突然消失，且一些疑似侵权的完整影片反而能存活多年，执法并不一致。可行的补救包括在“Liked videos”中显示失效项、按 video ID 搜索讨论痕迹、查 Internet Archive，或依据残存引文让 LLM 协助找回标题。",
+              "supportid": [
+                "50380526",
+                "50380710",
+                "50380800",
+                "50381395",
+                "50380443",
+                "50380848"
+              ]
+            },
+            {
+              "category": "自动化下载与本地媒体库工作流",
+              "summary": "实践者普遍将 yt-dlp 接入自动化任务，而非临时手动下载：可用参数把 playlist_index 写入 metadata，以保留播放列表顺序。有人每天扫描个人播放列表，将视频落盘，并在未观看视频下架时发邮件提醒，以便观看本地副本。另一套长期运行的方案用 tt-rss 拉取频道 RSS，再由脚本调用 yt-dlp 下载视频和字幕并写回数据库状态；难点主要是控制请求速度，避免触发“You must login”限制，并持续更新 yt-dlp 应对平台改动。文章本身被描述为用 Jellyfin 整理 YouTube 存档；若媒体库还接收其他来源，Tdarr 的独立转码任务比单用 yt-dlp 的 --recode-video 更通用。",
+              "supportid": [
+                "50381333",
+                "50380858",
+                "50380143",
+                "50381297",
+                "50379702",
+                "50379768",
+                "50380953"
+              ]
+            },
+            {
+              "category": "搜索、下载前端与 API 的脆弱性",
+              "summary": "用户希望有一个能搜索、筛选结果并一键交给 yt-dlp 的稳定前端，但现有抓取方案常因 YouTube 页面和接口变化而失效。YouTube Data API 是官方途径，却需要 API key 且有 rate limit；若要获得官方搜索未展示的结果，则必须自建规模巨大的“影子索引”，同样会撞上抓取限额。替代方案包括 FreeTube 搜索后导出播放列表、Invidious 自托管隐私前端、Podsync 把播放列表转换成 XML feed，以及在浏览器页面中提取链接。也有人用 Playwright 自动化浏览器解析搜索结果，并认为 coding agent 已把修复此类脆弱脚本的成本降到很低。",
+              "supportid": [
+                "50379740",
+                "50380158",
+                "50380537",
+                "50380298",
+                "50380713",
+                "50380127",
+                "50380087",
+                "50380230"
+              ]
+            },
+            {
+              "category": "保存不等于能合法传承，公开还带来隐私风险",
+              "summary": "评论者指出，个人囤积大量视频只能避免自己失去访问权，却没有清晰合法的渠道把文化资料传给他人，因此数据可能随收藏者离世而消失。有人主张通过 BitTorrent seeding、IPFS 或 Internet Archive 公开保存，认为未来的人或许能从中发现价值。反对或警惕的一面是，Internet Archive 上已出现旧 Jaz、Zip 备份镜像，其中含私人日记、离婚律师信件、账目和色情内容，说明“历史存档”可能直接泄露无辜者隐私。由此建议至少对静态数据加密，也有人担心公开讨论 RSS 和归档手段会促使平台封堵这些入口。",
+              "supportid": [
+                "50380793",
+                "50381404",
+                "50380997",
+                "50380952",
+                "50381281",
+                "50381246"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "yt-dlp",
+              "explanation": "开源命令行下载工具，可从 YouTube 等站点抓取音视频、字幕和 metadata，并可合并音视频流、保留播放列表信息。"
+            },
+            {
+              "term": "RSS",
+              "explanation": "内容订阅 feed 格式；可持续监测频道更新，并作为自动下载器的输入源。"
+            },
+            {
+              "term": "Jellyfin",
+              "explanation": "开源自托管媒体服务器，可为本地归档的视频提供分类、海报墙和播放界面。"
+            },
+            {
+              "term": "YouTube Data API",
+              "explanation": "Google 提供的 YouTube 官方开发接口，可查询视频和搜索结果，但需 API key 且受配额限制。"
+            },
+            {
+              "term": "Tdarr",
+              "explanation": "面向媒体库的自动化转码与文件处理工具，能统一处理来自多个来源的视频。"
+            }
+          ],
+          "context": "该文章讨论将喜欢的 YouTube 视频下载到本地，并以 Jellyfin（开源自托管媒体服务器）组织成可离线观看的个人媒体库。评论的前提是 YouTube 上的视频并非永久可得：版权下架、频道清空、付费墙和平台检索变化都会让旧链接失效。yt-dlp（开源命令行下载工具）通常负责抓取视频、音频、字幕和播放列表 metadata，RSS（内容订阅 feed）或定时任务则用于持续追踪频道更新。争议进一步延伸到平台搜索和 API 配额的控制权，以及个人保存内容能否在版权、隐私与长期文化保存之间被合法传承。",
+          "emoji": "🗄️",
+          "sarcastic_question": "等版权清洗完毕，再对着失效链接怀旧吗？"
+        },
+        "classifications": {
+          "topics": [
+            7,
+            9
+          ],
+          "facets": [
+            9
+          ],
+          "tags": [
+            "YouTube",
+            "yt-dlp",
+            "Jellyfin",
+            "Internet Archive",
+            "Invidious",
+            "FreeTube",
+            "RSS"
+          ]
+        },
+        "classificationsUpdatedAt": 1793899507,
+        "aiSummary": {
+          "chinese_title": "趁下架前：用 yt-dlp 与 Jellyfin 归档 YouTube 收藏",
+          "discussion_overview": [
+            {
+              "category": "视频消失使本地归档成为刚需",
+              "summary": "不少人发现，存放多年的播放列表中约有 10% 的视频已变为“unavailable”，而被删除链接甚至不再显示标题，令追溯来源很困难。有人特别遗憾伪科学辟谣创作者 Myles Power 清空整个频道，原有内容如今大多成了失传媒体。评论者认为版权投诉、创作者主动删号和平台策略变化都会让视频突然消失，且一些疑似侵权的完整影片反而能存活多年，执法并不一致。可行的补救包括在“Liked videos”中显示失效项、按 video ID 搜索讨论痕迹、查 Internet Archive，或依据残存引文让 LLM 协助找回标题。",
+              "supportid": [
+                "50380526",
+                "50380710",
+                "50380800",
+                "50381395",
+                "50380443",
+                "50380848"
+              ]
+            },
+            {
+              "category": "自动化下载与本地媒体库工作流",
+              "summary": "实践者普遍将 yt-dlp 接入自动化任务，而非临时手动下载：可用参数把 playlist_index 写入 metadata，以保留播放列表顺序。有人每天扫描个人播放列表，将视频落盘，并在未观看视频下架时发邮件提醒，以便观看本地副本。另一套长期运行的方案用 tt-rss 拉取频道 RSS，再由脚本调用 yt-dlp 下载视频和字幕并写回数据库状态；难点主要是控制请求速度，避免触发“You must login”限制，并持续更新 yt-dlp 应对平台改动。文章本身被描述为用 Jellyfin 整理 YouTube 存档；若媒体库还接收其他来源，Tdarr 的独立转码任务比单用 yt-dlp 的 --recode-video 更通用。",
+              "supportid": [
+                "50381333",
+                "50380858",
+                "50380143",
+                "50381297",
+                "50379702",
+                "50379768",
+                "50380953"
+              ]
+            },
+            {
+              "category": "搜索、下载前端与 API 的脆弱性",
+              "summary": "用户希望有一个能搜索、筛选结果并一键交给 yt-dlp 的稳定前端，但现有抓取方案常因 YouTube 页面和接口变化而失效。YouTube Data API 是官方途径，却需要 API key 且有 rate limit；若要获得官方搜索未展示的结果，则必须自建规模巨大的“影子索引”，同样会撞上抓取限额。替代方案包括 FreeTube 搜索后导出播放列表、Invidious 自托管隐私前端、Podsync 把播放列表转换成 XML feed，以及在浏览器页面中提取链接。也有人用 Playwright 自动化浏览器解析搜索结果，并认为 coding agent 已把修复此类脆弱脚本的成本降到很低。",
+              "supportid": [
+                "50379740",
+                "50380158",
+                "50380537",
+                "50380298",
+                "50380713",
+                "50380127",
+                "50380087",
+                "50380230"
+              ]
+            },
+            {
+              "category": "保存不等于能合法传承，公开还带来隐私风险",
+              "summary": "评论者指出，个人囤积大量视频只能避免自己失去访问权，却没有清晰合法的渠道把文化资料传给他人，因此数据可能随收藏者离世而消失。有人主张通过 BitTorrent seeding、IPFS 或 Internet Archive 公开保存，认为未来的人或许能从中发现价值。反对或警惕的一面是，Internet Archive 上已出现旧 Jaz、Zip 备份镜像，其中含私人日记、离婚律师信件、账目和色情内容，说明“历史存档”可能直接泄露无辜者隐私。由此建议至少对静态数据加密，也有人担心公开讨论 RSS 和归档手段会促使平台封堵这些入口。",
+              "supportid": [
+                "50380793",
+                "50381404",
+                "50380997",
+                "50380952",
+                "50381281",
+                "50381246"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "yt-dlp",
+              "explanation": "开源命令行下载工具，可从 YouTube 等站点抓取音视频、字幕和 metadata，并可合并音视频流、保留播放列表信息。"
+            },
+            {
+              "term": "RSS",
+              "explanation": "内容订阅 feed 格式；可持续监测频道更新，并作为自动下载器的输入源。"
+            },
+            {
+              "term": "Jellyfin",
+              "explanation": "开源自托管媒体服务器，可为本地归档的视频提供分类、海报墙和播放界面。"
+            },
+            {
+              "term": "YouTube Data API",
+              "explanation": "Google 提供的 YouTube 官方开发接口，可查询视频和搜索结果，但需 API key 且受配额限制。"
+            },
+            {
+              "term": "Tdarr",
+              "explanation": "面向媒体库的自动化转码与文件处理工具，能统一处理来自多个来源的视频。"
+            }
+          ],
+          "context": "该文章讨论将喜欢的 YouTube 视频下载到本地，并以 Jellyfin（开源自托管媒体服务器）组织成可离线观看的个人媒体库。评论的前提是 YouTube 上的视频并非永久可得：版权下架、频道清空、付费墙和平台检索变化都会让旧链接失效。yt-dlp（开源命令行下载工具）通常负责抓取视频、音频、字幕和播放列表 metadata，RSS（内容订阅 feed）或定时任务则用于持续追踪频道更新。争议进一步延伸到平台搜索和 API 配额的控制权，以及个人保存内容能否在版权、隐私与长期文化保存之间被合法传承。",
+          "emoji": "🗄️",
+          "sarcastic_question": "等版权清洗完毕，再对着失效链接怀旧吗？"
+        }
+      }
+    },
+    {
+      "id": 50379249,
+      "by": "rwilinski",
+      "title": "MCP Explained",
+      "url": "https://mcp-explained.com/",
+      "score": 134,
+      "detailUpdatedAt": 1793898723,
+      "createdAt": 1793898607,
+      "aiSummaryUpdatedAt": 1793899173,
+      "aisummary": {
+        "chinese_title": "MCP 教程被批花哨难懂：它究竟是 JSON-RPC、CLI 替代品还是安全工具层？",
+        "emoji": "🤔",
+        "sarcastic_question": "给 JSON-RPC 换个缩写，就能解决工具调用吗？"
+      },
+      "classifications": {
+        "topics": [],
+        "facets": [],
+        "tags": []
+      },
+      "classificationsUpdatedAt": null,
+      "aiSummary": {
+        "chinese_title": "MCP 教程被批花哨难懂：它究竟是 JSON-RPC、CLI 替代品还是安全工具层？",
+        "emoji": "🤔",
+        "sarcastic_question": "给 JSON-RPC 换个缩写，就能解决工具调用吗？"
+      },
+      "detail": {
+        "id": 50379249,
+        "by": "rwilinski",
+        "title": "MCP Explained",
+        "url": "https://mcp-explained.com/",
+        "score": 134,
+        "detailUpdatedAt": 1793898723,
+        "createdAt": 1793898607,
+        "aiSummaryUpdatedAt": 1793899173,
+        "aisummary": {
+          "chinese_title": "MCP 教程被批花哨难懂：它究竟是 JSON-RPC、CLI 替代品还是安全工具层？",
+          "discussion_overview": [
+            {
+              "category": "教程交互设计喧宾夺主，缺少新手路径",
+              "summary": "大量评论认为该教程虽文字不算冗长，但多面板、动画和同步变化的表格把简单概念包装得过于嘈杂。点击一步会同时改变多个区域，循环播放速度又快且难以回退，读者难以建立因果关系；批评者希望先给定义、一张图或带注释的 Python 示例。另一些人认为开头很短且直接写出了“Model Context Protocol”，真正问题是读者把它错误概括为 REST，或没有认真阅读。讨论也延伸到文档写作：熟悉系统的人常忘记自己当初的疑问，需按目标读者的前知识设计并接受外部审阅。",
+              "supportid": [
+                "50379528",
+                "50379584",
+                "50381461",
+                "50381141",
+                "50379551",
+                "50380966",
+                "50380932",
+                "50381123"
+              ]
+            },
+            {
+              "category": "MCP 不是 REST，但与 JSON-RPC 的边界被简化",
+              "summary": "有人将 MCP 概括为带发现机制的“REST API”，以便迅速传达它是结构化 JSON 请求/响应和标准化工具描述的接口。反对者指出 MCP 明确并非 REST，核心调用语义是 JSON-RPC；经由 stdio 的 JSON-RPC 也不能因为形式类似 HTTP 请求响应就被称作 REST。较折中的看法是，两者都可提供无状态方法和可读元数据，因此存在应用层重叠，但没有谁包含谁。争论反映出教学材料需要同时给出直觉类比和协议层面的准确界限，否则“只是 JSON-RPC”或“基本是 REST”都会遗漏 MCP 的实际约定。",
+              "supportid": [
+                "50380038",
+                "50380387",
+                "50380618",
+                "50381024",
+                "50379714",
+                "50380966"
+              ]
+            },
+            {
+              "category": "可组合性取决于 agent harness，CLI 仍有优势",
+              "summary": "批评者认为 shell 和 CLI 天生可用 pipe 串接、可 grep、可把大数据留在文件中处理，而 MCP 常把大量内容转成 tokens 往返，处理文档批量导入导出尤其低效。有人已把 MCP 再包一层脚本当 CLI 使用，并指出缺少 streaming output 和提前停止信号时，即使有运行框架也难以高效组合。另一方面，CodeMode、Pi harness 等 agent harness 可让模型写代码调用、串联多个 MCP，并将脚本保存成持久工作流；这说明组合能力并非 MCP server 单独决定。实际效果还受模型和工具定义影响：有案例称客户端只有面对专用工具时才能正确选出完成请求所需的工具组合。",
+              "supportid": [
+                "50379744",
+                "50379816",
+                "50379893",
+                "50379964",
+                "50380685",
+                "50381169",
+                "50381555",
+                "50381370"
+              ]
+            },
+            {
+              "category": "MCP 的价值在受控授权与面向非开发者的工具接入",
+              "summary": "支持者认为，给面向用户的 agent 直接开放 shell 会使 prompt injection 升级为系统接管风险；MCP 可将可调用能力限定为窄范围、目标明确的工具，并可配合 OAuth 授权。对于受监管企业，让 IT 启用某个 Connector 通常比在终端安装 CLI 更容易审批，远程服务也可避免本机执行第三方软件。具体使用案例包括管理员以自然语言查询生产数据、让 Claude 生成 Datadog 监控链接、连接 Blender，以及普通用户连接 Google Docs、Notion、Linear 等服务。也有人提醒，MCP 不能自动弥补糟糕的工具设计或错误选型，包装 API 时应收窄参数、提供合理默认值和速率限制，才能减少模型浪费 token 或误用接口。",
+              "supportid": [
+                "50379760",
+                "50381145",
+                "50379996",
+                "50381574",
+                "50381562",
+                "50380774",
+                "50381638",
+                "50380807"
+              ]
+            },
+            {
+              "category": "对新缩写热潮的厌倦与“够用即可”的工程观",
+              "summary": "部分评论者把 MCP 视为又一个管理层和市场部门要求勾选的流行缩写，与 NFT、Web3、AMP、SOAP、IoT 一并成为产品宣传清单，怀疑它是否解决了真实问题。对应的工程建议是先做可靠且文档完善的 HTTP API，再按需求提供 CLI，最后才增加 MCP，而不是为每项服务复制一套 connector。还有人认为如今可直接让 Claude 或 GPT 生成、改造单页教程或搭建 MCP，因此理解全部底层“plumbing”的边际收益正在下降。反方则认为这并不等于协议毫无价值：当 agent 不受完全信任、需要跨组织授权或服务非技术用户时，受控接口仍是不同于裸 API 和 shell 的架构选择。",
+              "supportid": [
+                "50381262",
+                "50380573",
+                "50381272",
+                "50380020",
+                "50380324",
+                "50379345",
+                "50379488",
+                "50381099"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "MCP（Model Context Protocol）",
+              "explanation": "让 AI 应用发现并调用外部数据源、服务和工具的开放协议；它规定了工具描述、调用与连接方式，而非单一业务 API。"
+            },
+            {
+              "term": "JSON-RPC",
+              "explanation": "以 JSON 编码远程过程调用请求和响应的协议；讨论中被视为 MCP 调用层的重要基础。"
+            },
+            {
+              "term": "CLI（Command-Line Interface）",
+              "explanation": "命令行工具接口，可借助 shell 的文件、管道和脚本机制组合任务。"
+            },
+            {
+              "term": "Agent harness",
+              "explanation": "承载并调度 AI agent 的运行框架，可决定工具调用能否被代码化、串联、保存为工作流。"
+            },
+            {
+              "term": "OAuth",
+              "explanation": "用于让用户授权应用访问资源、而不直接交出密码的授权框架；可为 MCP connector 提供受控访问。"
+            }
+          ],
+          "context": "MCP（Model Context Protocol，一种让 AI 应用连接外部工具和数据服务的开放协议）被用于让 Claude、Codex 等 agent 查询生产数据、操作应用功能或访问 SaaS 服务，而不是只在对话框内生成文本。其调用层通常采用 JSON-RPC（JSON 远程过程调用协议），可通过 stdio 等传输方式运行，因此它与 REST（围绕 HTTP 资源操作的架构风格）的关系成为准确性争议。支持者的前提是 agent 不应获得无限 shell 权限：MCP connector 配合 OAuth（授权框架）和有限工具集，可在企业、非开发者和第三方服务场景中缩小权限范围。反对者则以 CLI（命令行接口）的管道组合、脚本化和本地数据处理能力为基准，认为现有 MCP 客户端与工具定义尚常造成 token 开销、编排困难和不必要的基础设施。",
+          "emoji": "🤔",
+          "sarcastic_question": "给 JSON-RPC 换个缩写，就能解决工具调用吗？"
+        },
+        "classifications": null,
+        "classificationsUpdatedAt": null,
+        "aiSummary": {
+          "chinese_title": "MCP 教程被批花哨难懂：它究竟是 JSON-RPC、CLI 替代品还是安全工具层？",
+          "discussion_overview": [
+            {
+              "category": "教程交互设计喧宾夺主，缺少新手路径",
+              "summary": "大量评论认为该教程虽文字不算冗长，但多面板、动画和同步变化的表格把简单概念包装得过于嘈杂。点击一步会同时改变多个区域，循环播放速度又快且难以回退，读者难以建立因果关系；批评者希望先给定义、一张图或带注释的 Python 示例。另一些人认为开头很短且直接写出了“Model Context Protocol”，真正问题是读者把它错误概括为 REST，或没有认真阅读。讨论也延伸到文档写作：熟悉系统的人常忘记自己当初的疑问，需按目标读者的前知识设计并接受外部审阅。",
+              "supportid": [
+                "50379528",
+                "50379584",
+                "50381461",
+                "50381141",
+                "50379551",
+                "50380966",
+                "50380932",
+                "50381123"
+              ]
+            },
+            {
+              "category": "MCP 不是 REST，但与 JSON-RPC 的边界被简化",
+              "summary": "有人将 MCP 概括为带发现机制的“REST API”，以便迅速传达它是结构化 JSON 请求/响应和标准化工具描述的接口。反对者指出 MCP 明确并非 REST，核心调用语义是 JSON-RPC；经由 stdio 的 JSON-RPC 也不能因为形式类似 HTTP 请求响应就被称作 REST。较折中的看法是，两者都可提供无状态方法和可读元数据，因此存在应用层重叠，但没有谁包含谁。争论反映出教学材料需要同时给出直觉类比和协议层面的准确界限，否则“只是 JSON-RPC”或“基本是 REST”都会遗漏 MCP 的实际约定。",
+              "supportid": [
+                "50380038",
+                "50380387",
+                "50380618",
+                "50381024",
+                "50379714",
+                "50380966"
+              ]
+            },
+            {
+              "category": "可组合性取决于 agent harness，CLI 仍有优势",
+              "summary": "批评者认为 shell 和 CLI 天生可用 pipe 串接、可 grep、可把大数据留在文件中处理，而 MCP 常把大量内容转成 tokens 往返，处理文档批量导入导出尤其低效。有人已把 MCP 再包一层脚本当 CLI 使用，并指出缺少 streaming output 和提前停止信号时，即使有运行框架也难以高效组合。另一方面，CodeMode、Pi harness 等 agent harness 可让模型写代码调用、串联多个 MCP，并将脚本保存成持久工作流；这说明组合能力并非 MCP server 单独决定。实际效果还受模型和工具定义影响：有案例称客户端只有面对专用工具时才能正确选出完成请求所需的工具组合。",
+              "supportid": [
+                "50379744",
+                "50379816",
+                "50379893",
+                "50379964",
+                "50380685",
+                "50381169",
+                "50381555",
+                "50381370"
+              ]
+            },
+            {
+              "category": "MCP 的价值在受控授权与面向非开发者的工具接入",
+              "summary": "支持者认为，给面向用户的 agent 直接开放 shell 会使 prompt injection 升级为系统接管风险；MCP 可将可调用能力限定为窄范围、目标明确的工具，并可配合 OAuth 授权。对于受监管企业，让 IT 启用某个 Connector 通常比在终端安装 CLI 更容易审批，远程服务也可避免本机执行第三方软件。具体使用案例包括管理员以自然语言查询生产数据、让 Claude 生成 Datadog 监控链接、连接 Blender，以及普通用户连接 Google Docs、Notion、Linear 等服务。也有人提醒，MCP 不能自动弥补糟糕的工具设计或错误选型，包装 API 时应收窄参数、提供合理默认值和速率限制，才能减少模型浪费 token 或误用接口。",
+              "supportid": [
+                "50379760",
+                "50381145",
+                "50379996",
+                "50381574",
+                "50381562",
+                "50380774",
+                "50381638",
+                "50380807"
+              ]
+            },
+            {
+              "category": "对新缩写热潮的厌倦与“够用即可”的工程观",
+              "summary": "部分评论者把 MCP 视为又一个管理层和市场部门要求勾选的流行缩写，与 NFT、Web3、AMP、SOAP、IoT 一并成为产品宣传清单，怀疑它是否解决了真实问题。对应的工程建议是先做可靠且文档完善的 HTTP API，再按需求提供 CLI，最后才增加 MCP，而不是为每项服务复制一套 connector。还有人认为如今可直接让 Claude 或 GPT 生成、改造单页教程或搭建 MCP，因此理解全部底层“plumbing”的边际收益正在下降。反方则认为这并不等于协议毫无价值：当 agent 不受完全信任、需要跨组织授权或服务非技术用户时，受控接口仍是不同于裸 API 和 shell 的架构选择。",
+              "supportid": [
+                "50381262",
+                "50380573",
+                "50381272",
+                "50380020",
+                "50380324",
+                "50379345",
+                "50379488",
+                "50381099"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "MCP（Model Context Protocol）",
+              "explanation": "让 AI 应用发现并调用外部数据源、服务和工具的开放协议；它规定了工具描述、调用与连接方式，而非单一业务 API。"
+            },
+            {
+              "term": "JSON-RPC",
+              "explanation": "以 JSON 编码远程过程调用请求和响应的协议；讨论中被视为 MCP 调用层的重要基础。"
+            },
+            {
+              "term": "CLI（Command-Line Interface）",
+              "explanation": "命令行工具接口，可借助 shell 的文件、管道和脚本机制组合任务。"
+            },
+            {
+              "term": "Agent harness",
+              "explanation": "承载并调度 AI agent 的运行框架，可决定工具调用能否被代码化、串联、保存为工作流。"
+            },
+            {
+              "term": "OAuth",
+              "explanation": "用于让用户授权应用访问资源、而不直接交出密码的授权框架；可为 MCP connector 提供受控访问。"
+            }
+          ],
+          "context": "MCP（Model Context Protocol，一种让 AI 应用连接外部工具和数据服务的开放协议）被用于让 Claude、Codex 等 agent 查询生产数据、操作应用功能或访问 SaaS 服务，而不是只在对话框内生成文本。其调用层通常采用 JSON-RPC（JSON 远程过程调用协议），可通过 stdio 等传输方式运行，因此它与 REST（围绕 HTTP 资源操作的架构风格）的关系成为准确性争议。支持者的前提是 agent 不应获得无限 shell 权限：MCP connector 配合 OAuth（授权框架）和有限工具集，可在企业、非开发者和第三方服务场景中缩小权限范围。反对者则以 CLI（命令行接口）的管道组合、脚本化和本地数据处理能力为基准，认为现有 MCP 客户端与工具定义尚常造成 token 开销、编排困难和不必要的基础设施。",
+          "emoji": "🤔",
+          "sarcastic_question": "给 JSON-RPC 换个缩写，就能解决工具调用吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nMCP（Model Context Protocol）本质上是一套标准化的“菜单机制”，让 AI 应用能动态发现并调用外部工具，把原本复杂的集成问题变成了简单的“询问-执行”流程。\n\n## 正文\n\n### 重新定义连接：不是 API，是菜单\nMCP 到底是什么？说白了，它是一个连接 AI 应用与外部工具的开放标准。传统的集成往往是一堆乱七八糟的 API，但 MCP 的思路很清晰：Server 负责声明自己能干什么，App 把这个“菜单”展示给模型，模型点菜，App 负责下单并把结果端上来。在这个过程中，模型永远不直接和 Server 对话，它只负责决策，脏活累活全交给 App。\n\n### 别被协议表象迷惑，核心在于“信封”里的内容\n如果你看到 JSON-RPC 就觉得这只是个普通的 RPC 调用，那就看走眼了。MCP 虽然底层用的是 JSON-RPC，传输走的是 stdin/stdout 或者单个 HTTP 端点，但这只是“信封”。真正的核心在于 MCP 定义了信封里的内容：能力协商、传输方式和认证机制。这意味着开发者不需要去纠结具体的通信细节，只要按照标准填好内容就行。\n\n### 一切始于“能干什么”\n整个交互的第一步非常有意思：App 必须先问 Server 要一份“能力清单”。这很关键，因为 App 没法向模型推荐它自己都不知道的工具。所以，连接建立后的第一件事就是 `tools/list`，Server 会返回类似“我可以创建 GitHub Issue”这样的信息。这就像是服务员先把今日特供菜单背下来，随时准备给顾客（模型）介绍。\n\n### 模型只管“点菜”，不管“做菜”\n当用户发出指令，比如“在 Safari 上登录按钮坏了，提个 Bug”，App 会把用户的请求连同之前拿到的工具清单一起发给模型。模型这时候就像个精明的顾客，根据菜单决定点什么菜——它会返回一个 `tool_use` 指令。App 接到指令后，通过 `tools/call` 去找 Server 执行具体的操作，比如创建 Issue #482，最后把结果反馈给模型。整个过程，模型只管决策，不操心实现。"
+    },
+    {
+      "id": 50372945,
+      "by": "davidbarker",
+      "title": "Introducing Images 2.6",
+      "url": "https://openai.com/index/introducing-images-2-6/",
+      "score": 369,
+      "detailUpdatedAt": 1793896985,
+      "createdAt": 1793839205,
+      "aiSummaryUpdatedAt": 1793897367,
+      "aisummary": {
+        "chinese_title": "OpenAI Images 2.6：新增 GIF/SVG，却被批画质、控制与成本倒退",
+        "emoji": "🫠",
+        "sarcastic_question": "光源都能有三颗太阳，还叫可控设计？"
+      },
+      "classifications": {
+        "topics": [
+          1,
+          11,
+          3
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "OpenAI",
+          "Images 2.6",
+          "GPT Image",
+          "ChatGPT",
+          "SVG",
+          "SynthID",
+          "image generation"
+        ]
+      },
+      "classificationsUpdatedAt": 1793839808,
+      "aiSummary": {
+        "chinese_title": "OpenAI Images 2.6：新增 GIF/SVG，却被批画质、控制与成本倒退",
+        "emoji": "🫠",
+        "sarcastic_question": "光源都能有三颗太阳，还叫可控设计？"
+      },
+      "detail": {
+        "id": 50372945,
+        "by": "davidbarker",
+        "title": "Introducing Images 2.6",
+        "url": "https://openai.com/index/introducing-images-2-6/",
+        "score": 160,
+        "detailUpdatedAt": 1793850183,
+        "createdAt": 1793839205,
+        "aiSummaryUpdatedAt": 1793850569,
+        "aisummary": {
+          "chinese_title": "OpenAI Images 2.6 发布：GIF、SVG 与更快生成背后仍是瑕疵、涨价和审美争议",
+          "discussion_overview": [
+            {
+              "category": "画质与“AI look”仍令人反感",
+              "summary": "许多评论认为新模型的宣传图本身就暴露了问题：彩绘玻璃鲸的反射、投光方向和阴影关系混乱，即使题材是超现实的，也应能维持内部一致的光照逻辑。食物图、手指、镊子和复杂微距场景尤其容易出现令人不适的纹理、解剖与物理错误。有人把这种廉价感归因于用户偏好和 RLHF 收敛，也有人反驳说，人类对难看食物等案例有很高共识，真正问题是模型无法在具体任务和领域中正确映射这些偏好。",
+              "supportid": [
+                "50373441",
+                "50373778",
+                "50374385",
+                "50373586",
+                "50373693",
+                "50373686",
+                "50373733"
+              ]
+            },
+            {
+              "category": "进步是否停滞：2.6 与旧版表现参差",
+              "summary": "部分实际用户测试后认为 2.6-flare 比 2.5-flare 更简化，UI 和设计输出缺少细节，甚至出现结构性错误，因此回退到了旧模型；公开 arena 的排名也被援引为 2.5 更高。另一些测试则显示，模型能在单张图中较好地维持大量 Pokémon、序号条件和整体构图的一致性，说明复杂 prompt adherence 有所提升。争议还在于 ChatGPT 网页端并不披露具体调用的图像模型与推理强度，使得基于网页结果判断 2.6 本身并不可靠。评论普遍认为不存在绝对最佳模型：Nano Banana Pro、GPT Image、Midjourney 和 Seedream 各自在照片、海报、文字遵循、风格保真与速度上有不同取舍。",
+              "supportid": [
+                "50373420",
+                "50373861",
+                "50373536",
+                "50373197",
+                "50373260",
+                "50374803",
+                "50373501",
+                "50373425"
+              ]
+            },
+            {
+              "category": "标价不变但低中档实际成本大涨",
+              "summary": "OpenAI 虽称 Images 2.6 生成速度提高 50%，且 output token 单价与 2.5 相同，但评论者用官方计算器和实际工作流发现，低、中质量档每张图消耗的 token 大幅增加。1024×1024 的 low 从约 196 token 增至 823 至 824，成本从约 0.006 美元增至 0.025 美元；medium 从 439 增至 1,449，成本约从 0.013 至 0.043 美元。高质量档的 token 用量则基本未变，因此批评者认为“价格不变”的说法掩盖了低中档 3 至 4 倍的实际单图费用。有人承认 2.6 更快，但其测试的 medium 仍约需 7.9 秒，是否值得额外成本取决于具体工作流。",
+              "supportid": [
+                "50373444",
+                "50374754",
+                "50373535",
+                "50373156"
+              ]
+            },
+            {
+              "category": "GIF 与 SVG 功能：可用但更像拼接式工具链",
+              "summary": "原生 GIF 生成功能让一些人意外于模型能完成简单动画和把现有照片转成动画，但棋盘等简单案例的斑驳、闪烁与帧间不连续也被认为非常明显。评论指出，用 grid 或 sprites 生成多帧以保持角色一致性早已存在，而真正难点仍是跨帧一致性；First-Last-Frame 视频工具在效果上可能更好。SVG 并非扩散模型直接生成矢量图：文档显示系统先产生 raster reference image，再经 raster-to-vector 转换输出 SVG，且 API 还要求提供额外的 `svg.model`。GIF 当前仅支持二值透明度、不支持 animated WebP，SVG 也似乎仅限静态图形，因此尚未满足高质量动画 sprite 的需求。",
+              "supportid": [
+                "50373156",
+                "50374424",
+                "50373694",
+                "50373729",
+                "50373834",
+                "50373890",
+                "50374515"
+              ]
+            },
+            {
+              "category": "“AI slop”的市场接受度与传播机制",
+              "summary": "一方认为普通用户未必能区分人制与 AI 图，只要更便宜或让原本不会创作的人能产出内容，就会继续采用；每周 40 亿张图的说法也被视为这种低成本反复生成的信号。另一方观察到餐馆 AI 菜单和广告经常被公众直接骂作 AI slop，尤其拟真却有油腻纹理和怪异食物细节时，会落入 uncanny valley，反而降低食欲与品牌可信度。也有人认为，对于原本只会出现拼错手写招牌的低预算场所，可读的 AI 图已是改善，使用者本来也不会购买专业设计。移动端分享 GIF 时被导向 ChatGPT 静态链接，则被批评为把社交分享变成导流和数据变现，而非便利用户。",
+              "supportid": [
+                "50374095",
+                "50374115",
+                "50373876",
+                "50374414",
+                "50374320",
+                "50373148",
+                "50373711",
+                "50373769"
+              ]
+            },
+            {
+              "category": "创作价值与训练数据的伦理分歧",
+              "summary": "少数评论将完整生成的软件、文字、音乐和图像视为对人的价值与长期技艺的剥夺，尤其质疑将互联网和书籍数据大规模扫描进模型是否能让创作者受益。反驳意见则指出，模型并非数据自动组织而成，其背后有数十年研究、工程和人的劳动，因此也可被视为人类能力的产物。争论的核心不是功能是否存在，而是生成系统创造的价值如何与训练材料的贡献者、专业创作劳动及社会尊严相对应。",
+              "supportid": [
+                "50373901",
+                "50373911",
+                "50373942",
+                "50374030"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "AI slop",
+              "explanation": "指低成本批量生成、带有怪异纹理、光照或解剖错误的 AI 内容；常用于批评其廉价、同质化且令人不适的视觉风格。"
+            },
+            {
+              "term": "RLHF",
+              "explanation": "Reinforcement Learning from Human Feedback（基于人类反馈的强化学习）；通过人类偏好评价调整模型输出，但可能将跨领域的平均偏好错误套用到具体任务。"
+            },
+            {
+              "term": "prompt adherence",
+              "explanation": "提示词遵循度，指模型是否准确满足 prompt 中的对象、数量、关系、风格和条件约束。"
+            },
+            {
+              "term": "raster-to-vector",
+              "explanation": "栅格转矢量流程，先生成或取得像素图，再转换为 SVG 等由路径和形状构成的矢量文件。"
+            },
+            {
+              "term": "SynthID",
+              "explanation": "Google 的生成内容水印技术；评论者认为其或 GPT Image 可见水印会影响像素画等对画面纯净度要求高的输出。"
+            }
+          ],
+          "context": "OpenAI 发布的 Images 2.6 是 GPT Image 系列图像生成更新，宣称更快，并加入 GIF 动画与 SVG 输出，面向 ChatGPT、Codex 和 API 用户。评论所称的 2.5、Flare 与 Sunburst 是前代或不同输出配置；争议集中于模型虽按 token 标价未变，却在低、中质量档消耗更多 output token。GIF 功能并不等同于 Sora（OpenAI 的视频生成系统）：它更接近把多张生成帧组织为动画，因而容易暴露闪烁和帧间不一致。SVG 也不是纯粹的 text-to-vector 生成，官方文档所述流程会先生成参考位图再矢量化，这解释了其需要额外模型参数及可能的保真限制。",
+          "emoji": "🙄",
+          "sarcastic_question": "每张图贵四倍还满是瑕疵，升级在哪？"
+        },
+        "classifications": {
+          "topics": [
+            1,
+            11,
+            3
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "OpenAI",
+            "Images 2.6",
+            "GPT Image",
+            "ChatGPT",
+            "SVG",
+            "SynthID",
+            "image generation"
+          ]
+        },
+        "classificationsUpdatedAt": 1793839808,
+        "aiSummary": {
+          "chinese_title": "OpenAI Images 2.6 发布：GIF、SVG 与更快生成背后仍是瑕疵、涨价和审美争议",
+          "discussion_overview": [
+            {
+              "category": "画质与“AI look”仍令人反感",
+              "summary": "许多评论认为新模型的宣传图本身就暴露了问题：彩绘玻璃鲸的反射、投光方向和阴影关系混乱，即使题材是超现实的，也应能维持内部一致的光照逻辑。食物图、手指、镊子和复杂微距场景尤其容易出现令人不适的纹理、解剖与物理错误。有人把这种廉价感归因于用户偏好和 RLHF 收敛，也有人反驳说，人类对难看食物等案例有很高共识，真正问题是模型无法在具体任务和领域中正确映射这些偏好。",
+              "supportid": [
+                "50373441",
+                "50373778",
+                "50374385",
+                "50373586",
+                "50373693",
+                "50373686",
+                "50373733"
+              ]
+            },
+            {
+              "category": "进步是否停滞：2.6 与旧版表现参差",
+              "summary": "部分实际用户测试后认为 2.6-flare 比 2.5-flare 更简化，UI 和设计输出缺少细节，甚至出现结构性错误，因此回退到了旧模型；公开 arena 的排名也被援引为 2.5 更高。另一些测试则显示，模型能在单张图中较好地维持大量 Pokémon、序号条件和整体构图的一致性，说明复杂 prompt adherence 有所提升。争议还在于 ChatGPT 网页端并不披露具体调用的图像模型与推理强度，使得基于网页结果判断 2.6 本身并不可靠。评论普遍认为不存在绝对最佳模型：Nano Banana Pro、GPT Image、Midjourney 和 Seedream 各自在照片、海报、文字遵循、风格保真与速度上有不同取舍。",
+              "supportid": [
+                "50373420",
+                "50373861",
+                "50373536",
+                "50373197",
+                "50373260",
+                "50374803",
+                "50373501",
+                "50373425"
+              ]
+            },
+            {
+              "category": "标价不变但低中档实际成本大涨",
+              "summary": "OpenAI 虽称 Images 2.6 生成速度提高 50%，且 output token 单价与 2.5 相同，但评论者用官方计算器和实际工作流发现，低、中质量档每张图消耗的 token 大幅增加。1024×1024 的 low 从约 196 token 增至 823 至 824，成本从约 0.006 美元增至 0.025 美元；medium 从 439 增至 1,449，成本约从 0.013 至 0.043 美元。高质量档的 token 用量则基本未变，因此批评者认为“价格不变”的说法掩盖了低中档 3 至 4 倍的实际单图费用。有人承认 2.6 更快，但其测试的 medium 仍约需 7.9 秒，是否值得额外成本取决于具体工作流。",
+              "supportid": [
+                "50373444",
+                "50374754",
+                "50373535",
+                "50373156"
+              ]
+            },
+            {
+              "category": "GIF 与 SVG 功能：可用但更像拼接式工具链",
+              "summary": "原生 GIF 生成功能让一些人意外于模型能完成简单动画和把现有照片转成动画，但棋盘等简单案例的斑驳、闪烁与帧间不连续也被认为非常明显。评论指出，用 grid 或 sprites 生成多帧以保持角色一致性早已存在，而真正难点仍是跨帧一致性；First-Last-Frame 视频工具在效果上可能更好。SVG 并非扩散模型直接生成矢量图：文档显示系统先产生 raster reference image，再经 raster-to-vector 转换输出 SVG，且 API 还要求提供额外的 `svg.model`。GIF 当前仅支持二值透明度、不支持 animated WebP，SVG 也似乎仅限静态图形，因此尚未满足高质量动画 sprite 的需求。",
+              "supportid": [
+                "50373156",
+                "50374424",
+                "50373694",
+                "50373729",
+                "50373834",
+                "50373890",
+                "50374515"
+              ]
+            },
+            {
+              "category": "“AI slop”的市场接受度与传播机制",
+              "summary": "一方认为普通用户未必能区分人制与 AI 图，只要更便宜或让原本不会创作的人能产出内容，就会继续采用；每周 40 亿张图的说法也被视为这种低成本反复生成的信号。另一方观察到餐馆 AI 菜单和广告经常被公众直接骂作 AI slop，尤其拟真却有油腻纹理和怪异食物细节时，会落入 uncanny valley，反而降低食欲与品牌可信度。也有人认为，对于原本只会出现拼错手写招牌的低预算场所，可读的 AI 图已是改善，使用者本来也不会购买专业设计。移动端分享 GIF 时被导向 ChatGPT 静态链接，则被批评为把社交分享变成导流和数据变现，而非便利用户。",
+              "supportid": [
+                "50374095",
+                "50374115",
+                "50373876",
+                "50374414",
+                "50374320",
+                "50373148",
+                "50373711",
+                "50373769"
+              ]
+            },
+            {
+              "category": "创作价值与训练数据的伦理分歧",
+              "summary": "少数评论将完整生成的软件、文字、音乐和图像视为对人的价值与长期技艺的剥夺，尤其质疑将互联网和书籍数据大规模扫描进模型是否能让创作者受益。反驳意见则指出，模型并非数据自动组织而成，其背后有数十年研究、工程和人的劳动，因此也可被视为人类能力的产物。争论的核心不是功能是否存在，而是生成系统创造的价值如何与训练材料的贡献者、专业创作劳动及社会尊严相对应。",
+              "supportid": [
+                "50373901",
+                "50373911",
+                "50373942",
+                "50374030"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "AI slop",
+              "explanation": "指低成本批量生成、带有怪异纹理、光照或解剖错误的 AI 内容；常用于批评其廉价、同质化且令人不适的视觉风格。"
+            },
+            {
+              "term": "RLHF",
+              "explanation": "Reinforcement Learning from Human Feedback（基于人类反馈的强化学习）；通过人类偏好评价调整模型输出，但可能将跨领域的平均偏好错误套用到具体任务。"
+            },
+            {
+              "term": "prompt adherence",
+              "explanation": "提示词遵循度，指模型是否准确满足 prompt 中的对象、数量、关系、风格和条件约束。"
+            },
+            {
+              "term": "raster-to-vector",
+              "explanation": "栅格转矢量流程，先生成或取得像素图，再转换为 SVG 等由路径和形状构成的矢量文件。"
+            },
+            {
+              "term": "SynthID",
+              "explanation": "Google 的生成内容水印技术；评论者认为其或 GPT Image 可见水印会影响像素画等对画面纯净度要求高的输出。"
+            }
+          ],
+          "context": "OpenAI 发布的 Images 2.6 是 GPT Image 系列图像生成更新，宣称更快，并加入 GIF 动画与 SVG 输出，面向 ChatGPT、Codex 和 API 用户。评论所称的 2.5、Flare 与 Sunburst 是前代或不同输出配置；争议集中于模型虽按 token 标价未变，却在低、中质量档消耗更多 output token。GIF 功能并不等同于 Sora（OpenAI 的视频生成系统）：它更接近把多张生成帧组织为动画，因而容易暴露闪烁和帧间不一致。SVG 也不是纯粹的 text-to-vector 生成，官方文档所述流程会先生成参考位图再矢量化，这解释了其需要额外模型参数及可能的保真限制。",
+          "emoji": "🙄",
+          "sarcastic_question": "每张图贵四倍还满是瑕疵，升级在哪？"
+        }
+      },
+      "articleSummary": "无法获取正文内容，无法生成摘要。"
+    },
+    {
+      "id": 50377078,
+      "by": "pretext",
+      "title": "Baidu dropped ERNIE 5.5 Flash Base",
+      "url": "https://ernie.baidu.com/release/ernie-5-5-flash-base/",
+      "score": 132,
+      "detailUpdatedAt": 1793895184,
+      "createdAt": 1793872806,
+      "aiSummaryUpdatedAt": 1793895867,
+      "aisummary": {
+        "chinese_title": "百度发布 ERNIE 5.5 Flash Base：受限许可证与后训练价值引争议",
+        "emoji": "⚖️",
+        "sarcastic_question": "把法律风险塞进许可证，就算真正开放了吗？"
+      },
+      "classifications": {
+        "topics": [
+          1
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "ERNIE 5.5 Flash Base",
+          "Baidu",
+          "ERNIE",
+          "base models",
+          "DeepSeek",
+          "Qwen",
+          "BERT"
+        ]
+      },
+      "classificationsUpdatedAt": 1793879112,
+      "aiSummary": {
+        "chinese_title": "百度发布 ERNIE 5.5 Flash Base：受限许可证与后训练价值引争议",
+        "emoji": "⚖️",
+        "sarcastic_question": "把法律风险塞进许可证，就算真正开放了吗？"
+      },
+      "detail": {
+        "id": 50377078,
+        "by": "pretext",
+        "title": "Baidu dropped ERNIE 5.5 Flash Base",
+        "url": "https://ernie.baidu.com/release/ernie-5-5-flash-base/",
+        "score": 132,
+        "detailUpdatedAt": 1793895184,
+        "createdAt": 1793872806,
+        "aiSummaryUpdatedAt": 1793895867,
+        "aisummary": {
+          "chinese_title": "百度发布 ERNIE 5.5 Flash Base：受限许可证与后训练价值引争议",
+          "discussion_overview": [
+            {
+              "category": "地域限制许可将风险转嫁给采用者",
+              "summary": "评论者最强烈的质疑指向许可证：EU、UK 和 South Korea 被直接排除，衍生模型的发布者还须确保这些地区的用户不能使用。多数人认为这并非技术上可有效阻止下载或运行，而是发布方借此切割 EU AI Act、GDPR 等法规尚存不确定性的合规与诉讼风险。采用者因此可能承担监管处罚、民事合同或版权纠纷的风险，尤其在部署和商业化衍生版本时。也有人指出，监管机构若选择执法，仍可对当地运行者施加强力约束，因此“难检测”不等于没有后果。",
+              "supportid": [
+                "50378719",
+                "50379070",
+                "50380508",
+                "50380275",
+                "50379456",
+                "50379890",
+                "50378956"
+              ]
+            },
+            {
+              "category": "Base model 面向后训练，不等于可直接使用的聊天模型",
+              "summary": "支持者认为发布 Base model 很有价值：企业可在本地按内部规则、文风和任务继续训练，而不必接受成品模型预设的行为边界。反对“奇怪发布”的意见指出，Google 和 NVIDIA 等也发布过基础权重；相较于复现昂贵的预训练，基于已有 Base model 做后训练对更多组织可行。另一面，未经 instruction fine-tuning 的模型并不适合直接做 coding agent 或日常对话，它本质上主要完成 next-token prediction。性能比较也被认为需要谨慎，因为应拿同级的 Base model 对比，且 DeepSeek 不同版本的尺寸、发布时间和后训练状态并不相同。",
+              "supportid": [
+                "50377311",
+                "50379451",
+                "50377350",
+                "50377335",
+                "50378010",
+                "50377548",
+                "50377866"
+              ]
+            },
+            {
+              "category": "开放基础权重究竟改善还是恶化 AI alignment",
+              "summary": "一派把广泛发布基础权重视为分散 AI 能力和价值选择的办法：不同群体会将模型后训练到不同方向，彼此制衡，避免少数公司垄断所谓“aligned”的模型。该观点还批评前沿公司将模型对齐于自身商业目标，而非具体个人或全体人类。反方认为这是对 alignment 的误解：只要一个团体训练出足够强且失控的系统，其他人的普通模型未必能形成有效抵消。争论的核心是风险来自能力集中，还是来自任何单个高能力、目标失配系统的出现。",
+              "supportid": [
+                "50378112",
+                "50378393",
+                "50378923",
+                "50379799"
+              ]
+            },
+            {
+              "category": "280B MoE 的本地运行与集群后训练门槛",
+              "summary": "评论将该模型概括为 280B 总参数、14B active parameters 的 MoE 模型，这使其推理计算量看起来更接近较小模型，但权重存储仍受总参数量主导。按 4-bit quantization 并保留完整 1M context，估算需要约 175GB VRAM，其中约 150GB 是权重；因此 2 张 128GB GPU 可以较稳妥运行。active parameter count 主要影响 inference speed，不能据此简单推断 RAM/VRAM 需求很低，因为还需容纳权重、KV cache 和并发余量。有人已在询问以 InfiniBand 多节点集群继续训练时，应选 NeMo Framework 还是 Hugging Face TRL 加 Accelerate，说明目标用户是具备基础设施的模型开发者。",
+              "supportid": [
+                "50377335",
+                "50377859",
+                "50379047",
+                "50379791",
+                "50378427"
+              ]
+            },
+            {
+              "category": "ERNIE 名称与“dropped”标题引发的文化调侃",
+              "summary": "不少评论认为 ERNIE 和 BERT 这两个名字带有早期 ML 时代感，并自然联想到《Sesame Street》中的 Bert 与 Ernie，而非前沿模型品牌。技术上，ERNIE 是“Enhanced Representation through kNowledge IntEgration”的缩写，也被认为是向 Google 2018 年的 BERT 致意；另有人联想到英国 Premium Bonds 的 ERNIE 随机数发生器。标题中的“dropped”也被批评有歧义，既可能表示“发布”，也可能表示“停止支持”。围绕 DONALD、Big Bird、ELMO 的玩笑反映出讨论者对模型命名和科技圈俚语的戏谑态度。",
+              "supportid": [
+                "50377420",
+                "50377745",
+                "50377466",
+                "50377691",
+                "50377592",
+                "50378983"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Base model（基础模型）",
+              "explanation": "完成大规模预训练、通常尚未做指令微调和安全对齐的语言模型权重，可作为后续定制训练的起点。"
+            },
+            {
+              "term": "post-training（后训练）",
+              "explanation": "在预训练基础上继续进行指令微调、偏好优化、推理训练或领域训练，以改变模型的可用性、风格和行为边界。"
+            },
+            {
+              "term": "MoE（Mixture of Experts）",
+              "explanation": "混合专家架构；每次推理只激活部分专家参数，因此 active parameters 可远小于总参数，但全部权重仍需占用大量存储。"
+            },
+            {
+              "term": "RLHF / RLVR",
+              "explanation": "分别指基于人类反馈、基于可验证奖励的强化学习，常用于后训练以改善指令遵循、推理或特定任务表现。"
+            },
+            {
+              "term": "KV cache",
+              "explanation": "推理时缓存 Transformer 已处理 token 的 Key/Value 状态，用于加速生成；长上下文会显著增加显存占用。"
+            },
+            {
+              "term": "open weights（开放权重）",
+              "explanation": "公开可下载的模型参数，但不必然等同于开源：许可证仍可能限制地区、用途或衍生分发。"
+            }
+          ],
+          "context": "百度（中国互联网与搜索公司）发布的 ERNIE 5.5 Flash Base 是一个公开权重的基础语言模型；讨论中将其描述为 280B 总参数、14B 激活参数的 MoE（混合专家）模型。它不是已完成指令微调的聊天产品，使用者预期应通过 post-training（预训练后的定制训练）加入指令遵循、推理能力、企业规则或安全策略。此类发布处在开放权重与监管的拉扯中：许可证排除了 EU、UK 和 South Korea，评论者将其与 EU AI Act（欧盟人工智能监管法规）及 GDPR（欧盟数据保护法规）的合规不确定性联系起来。争议也延伸到 AI alignment（让模型行为符合人类目标的技术与治理问题）：开放权重究竟能分散权力、促进多元对齐，还是会降低阻止危险能力扩散的门槛。",
+          "emoji": "⚖️",
+          "sarcastic_question": "把法律风险塞进许可证，就算真正开放了吗？"
+        },
+        "classifications": {
+          "topics": [
+            1
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "ERNIE 5.5 Flash Base",
+            "Baidu",
+            "ERNIE",
+            "base models",
+            "DeepSeek",
+            "Qwen",
+            "BERT"
+          ]
+        },
+        "classificationsUpdatedAt": 1793879112,
+        "aiSummary": {
+          "chinese_title": "百度发布 ERNIE 5.5 Flash Base：受限许可证与后训练价值引争议",
+          "discussion_overview": [
+            {
+              "category": "地域限制许可将风险转嫁给采用者",
+              "summary": "评论者最强烈的质疑指向许可证：EU、UK 和 South Korea 被直接排除，衍生模型的发布者还须确保这些地区的用户不能使用。多数人认为这并非技术上可有效阻止下载或运行，而是发布方借此切割 EU AI Act、GDPR 等法规尚存不确定性的合规与诉讼风险。采用者因此可能承担监管处罚、民事合同或版权纠纷的风险，尤其在部署和商业化衍生版本时。也有人指出，监管机构若选择执法，仍可对当地运行者施加强力约束，因此“难检测”不等于没有后果。",
+              "supportid": [
+                "50378719",
+                "50379070",
+                "50380508",
+                "50380275",
+                "50379456",
+                "50379890",
+                "50378956"
+              ]
+            },
+            {
+              "category": "Base model 面向后训练，不等于可直接使用的聊天模型",
+              "summary": "支持者认为发布 Base model 很有价值：企业可在本地按内部规则、文风和任务继续训练，而不必接受成品模型预设的行为边界。反对“奇怪发布”的意见指出，Google 和 NVIDIA 等也发布过基础权重；相较于复现昂贵的预训练，基于已有 Base model 做后训练对更多组织可行。另一面，未经 instruction fine-tuning 的模型并不适合直接做 coding agent 或日常对话，它本质上主要完成 next-token prediction。性能比较也被认为需要谨慎，因为应拿同级的 Base model 对比，且 DeepSeek 不同版本的尺寸、发布时间和后训练状态并不相同。",
+              "supportid": [
+                "50377311",
+                "50379451",
+                "50377350",
+                "50377335",
+                "50378010",
+                "50377548",
+                "50377866"
+              ]
+            },
+            {
+              "category": "开放基础权重究竟改善还是恶化 AI alignment",
+              "summary": "一派把广泛发布基础权重视为分散 AI 能力和价值选择的办法：不同群体会将模型后训练到不同方向，彼此制衡，避免少数公司垄断所谓“aligned”的模型。该观点还批评前沿公司将模型对齐于自身商业目标，而非具体个人或全体人类。反方认为这是对 alignment 的误解：只要一个团体训练出足够强且失控的系统，其他人的普通模型未必能形成有效抵消。争论的核心是风险来自能力集中，还是来自任何单个高能力、目标失配系统的出现。",
+              "supportid": [
+                "50378112",
+                "50378393",
+                "50378923",
+                "50379799"
+              ]
+            },
+            {
+              "category": "280B MoE 的本地运行与集群后训练门槛",
+              "summary": "评论将该模型概括为 280B 总参数、14B active parameters 的 MoE 模型，这使其推理计算量看起来更接近较小模型，但权重存储仍受总参数量主导。按 4-bit quantization 并保留完整 1M context，估算需要约 175GB VRAM，其中约 150GB 是权重；因此 2 张 128GB GPU 可以较稳妥运行。active parameter count 主要影响 inference speed，不能据此简单推断 RAM/VRAM 需求很低，因为还需容纳权重、KV cache 和并发余量。有人已在询问以 InfiniBand 多节点集群继续训练时，应选 NeMo Framework 还是 Hugging Face TRL 加 Accelerate，说明目标用户是具备基础设施的模型开发者。",
+              "supportid": [
+                "50377335",
+                "50377859",
+                "50379047",
+                "50379791",
+                "50378427"
+              ]
+            },
+            {
+              "category": "ERNIE 名称与“dropped”标题引发的文化调侃",
+              "summary": "不少评论认为 ERNIE 和 BERT 这两个名字带有早期 ML 时代感，并自然联想到《Sesame Street》中的 Bert 与 Ernie，而非前沿模型品牌。技术上，ERNIE 是“Enhanced Representation through kNowledge IntEgration”的缩写，也被认为是向 Google 2018 年的 BERT 致意；另有人联想到英国 Premium Bonds 的 ERNIE 随机数发生器。标题中的“dropped”也被批评有歧义，既可能表示“发布”，也可能表示“停止支持”。围绕 DONALD、Big Bird、ELMO 的玩笑反映出讨论者对模型命名和科技圈俚语的戏谑态度。",
+              "supportid": [
+                "50377420",
+                "50377745",
+                "50377466",
+                "50377691",
+                "50377592",
+                "50378983"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "Base model（基础模型）",
+              "explanation": "完成大规模预训练、通常尚未做指令微调和安全对齐的语言模型权重，可作为后续定制训练的起点。"
+            },
+            {
+              "term": "post-training（后训练）",
+              "explanation": "在预训练基础上继续进行指令微调、偏好优化、推理训练或领域训练，以改变模型的可用性、风格和行为边界。"
+            },
+            {
+              "term": "MoE（Mixture of Experts）",
+              "explanation": "混合专家架构；每次推理只激活部分专家参数，因此 active parameters 可远小于总参数，但全部权重仍需占用大量存储。"
+            },
+            {
+              "term": "RLHF / RLVR",
+              "explanation": "分别指基于人类反馈、基于可验证奖励的强化学习，常用于后训练以改善指令遵循、推理或特定任务表现。"
+            },
+            {
+              "term": "KV cache",
+              "explanation": "推理时缓存 Transformer 已处理 token 的 Key/Value 状态，用于加速生成；长上下文会显著增加显存占用。"
+            },
+            {
+              "term": "open weights（开放权重）",
+              "explanation": "公开可下载的模型参数，但不必然等同于开源：许可证仍可能限制地区、用途或衍生分发。"
+            }
+          ],
+          "context": "百度（中国互联网与搜索公司）发布的 ERNIE 5.5 Flash Base 是一个公开权重的基础语言模型；讨论中将其描述为 280B 总参数、14B 激活参数的 MoE（混合专家）模型。它不是已完成指令微调的聊天产品，使用者预期应通过 post-training（预训练后的定制训练）加入指令遵循、推理能力、企业规则或安全策略。此类发布处在开放权重与监管的拉扯中：许可证排除了 EU、UK 和 South Korea，评论者将其与 EU AI Act（欧盟人工智能监管法规）及 GDPR（欧盟数据保护法规）的合规不确定性联系起来。争议也延伸到 AI alignment（让模型行为符合人类目标的技术与治理问题）：开放权重究竟能分散权力、促进多元对齐，还是会降低阻止危险能力扩散的门槛。",
+          "emoji": "⚖️",
+          "sarcastic_question": "把法律风险塞进许可证，就算真正开放了吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n百度开源了 ERNIE-5.5-Flash-Base，这是一个 280B 总参数、14B 激活参数的 MoE 基座模型，通过一系列极致的架构创新（如混合稀疏注意力、多路由 MoE、ECHO 预测）在长文本和推理场景下实现了效率与成本的平衡。\n\n## 正文\n\n### 基座模型的“性价比”突围\n现在的 LLM 开发，大家越来越意识到：基座模型决定了上限，但训练和推理的成本决定了你敢不敢用它。百度这次开源的 ERNIE-5.5-Flash-Base，核心目标很明确——既要模型能力强，还要跑得起、训得动。这是一个稀疏 MoE 架构的模型，总参数量 280B，但每个 token 只激活 14B 参数。它在 33.5T tokens 上从头预训练，支持 128K 训练上下文，微调和推理甚至能撑到 1M tokens。最重要的是，它发布的是纯粹的预训练权重，没经过任何中间训练或后训练，给开发者留出了一个干净的“毛坯房”，方便做领域适配或 RL 研究。\n\n### 混合稀疏注意力：把 KV Cache 省在刀刃上\n长上下文最大的拦路虎是 KV Cache。ERNIE 5.5 Flash 的解法很有意思：既然大部分层只需要粗略的历史信息，那就没必要层层都看那么细。它采用了混合注意力机制——每 7 层里只有 1 层用 MLA（Multi-head Latent Attention）保留完整的 token 级上下文，其余 6 层用 HCA（Heavily Compressed Attention）。HCA 把每 128 个 token 压缩成一个缓存条目，虽然看的是“模糊像”，但极大节省了显存。更有意思的是，它根据层的“贵贱”分配 head 维度：便宜的 HCA 层用 512 维宽头，昂贵的 MLA 层用 256 维窄头。这种“好钢用在刀刃上”的设计，让模型在同等 KV Cache 预算下，效果明显优于传统的 CSA 压缩方案。\n\n### 多路由 MoE：解决“专家选不对”的顽疾\n传统的 MoE 用单路由选专家，有个致命问题：路由分数和专家的实际效用相关性很弱，尤其在中间层和深层。而且没被选中的专家收不到梯度，路由错了也不知道改，导致错误累积。ERNIE 5.5 Flash 引入了 Multi-Router 机制，用多个独立初始化的 Sigmoid 路由联合打分。说白了，就是让多个“考官”一起投票，而不是一个人说了算。这样，某个路由的噪音或偏差容易被其他路由纠正，路由分数和专家效用的相关性显著提升。配合 Latent MoE 设计（先投影到 2048 维 latent 空间再分派），通信量和计算量直接减半。\n\n### 细节里的魔鬼：从残差连接到输出头\n除了大架构，模型在细节上也做了不少微创新。它抛弃了传统的残差连接，改用 mHC（Manifold-Constrained Hyper-Connections），让每层能通过 4 个并行的残差流传递信息，信息通道更宽。输出头方面，传统的 Softmax 温度很难调：低了抑制噪音但也杀掉了合理选项，高了又让长尾分布太肥。ERNIE 用 MultiMax 把单一温度换成了分段可学习温度，既压住了不靠谱的长尾，又保留了多个合理候选，显著降低了预训练 Loss。此外，Tokenizer 采用了从右向左的分词方式（如 `1234567` 分为 `1` `234` `567`），保证不同长度的数字位值对齐，这对算术任务非常关键。\n\n### ECHO：让模型“多看一步”\n现在的模型普遍用 Multi-Token Prediction (MTP) 来提升推理能力，但通常是在主干网络外挂一个模块。这有个问题：预测未来 token 的 Loss 主要训练外挂模块，主干网络其实没学到多少。ERNIE 5.5 Flash 用 ECHO 替代了 MTP，直接复用主干网络的最后一层来预测未来 token。因为参数是共享的，Loss 直接反向传播给主干，强迫模型在预测下一个 token 时就得想好后面怎么走。这种设计不仅让推理和代码能力提升明显，还能直接作为 Speculative Decoding 的草稿模型，且泛化性更好——虽然只训练了预测一个额外 token，推理时却能推测好几个，接受率比专门的 MTP 模块还高。\n\n### 数据与基建：为 Agent 和长文本打底\n模型再好，数据不行也是白搭。预训练数据除了常规的高质量网页和代码，还特别针对 Agent 场景加入了软件演化数据（commits、PRs、CI 验证修复等）。长文本数据则由自然长文档、语义拼接数据和合成检索数据组成，专门训练长程依赖。在基础设施层面，为了让 Muon 优化器在千卡规模上跑起来，团队重构了通信逻辑，把密集参数同步和 MoE 专家通信合并，大幅降低了节点间延迟。配合自研的 FlashMask-4 注意力核函数，这才撑起了 33.5T tokens 的全量训练。"
+    },
+    {
+      "id": 50369106,
+      "by": "olexsmir",
+      "title": "A New Go API for JSON",
+      "url": "https://go.dev/blog/jsonv2",
+      "score": 370,
+      "detailUpdatedAt": 1793895187,
+      "createdAt": 1793817605,
+      "aiSummaryUpdatedAt": 1793895573,
+      "aisummary": {
+        "chinese_title": "Go encoding/json/v2：新 API、语义取舍与 AI 编程之争",
+        "emoji": "🤹",
+        "sarcastic_question": "JSON都说简单，为何六年才修好？"
+      },
+      "classifications": {
+        "topics": [
+          4
+        ],
+        "facets": [
+          4
+        ],
+        "tags": [
+          "Go",
+          "JSON",
+          "encoding/json/v2",
+          "jsontext"
+        ]
+      },
+      "classificationsUpdatedAt": 1793821808,
+      "aiSummary": {
+        "chinese_title": "Go encoding/json/v2：新 API、语义取舍与 AI 编程之争",
+        "emoji": "🤹",
+        "sarcastic_question": "JSON都说简单，为何六年才修好？"
+      },
+      "detail": {
+        "id": 50369106,
+        "by": "olexsmir",
+        "title": "A New Go API for JSON",
+        "url": "https://go.dev/blog/jsonv2",
+        "score": 266,
+        "detailUpdatedAt": 1793857383,
+        "createdAt": 1793817605,
+        "aiSummaryUpdatedAt": 1793857764,
+        "aisummary": {
+          "chinese_title": "Go 新 JSON API：默认值改良、类型安全与 AI 编程之争",
+          "discussion_overview": [
+            {
+              "category": "新 API 的实用改进与兼容性顾虑",
+              "summary": "不少人认可 encoding/json/v2 改善了旧 Marshal API 的别扭之处，尤其欢迎更清晰的接口与 jsontext 提供的低层解析能力。有开发者已用 jsontext 为苛刻客户端生成逐类错误信息，同时保持很高性能，认为它适合非简单的 JSON 输入。关于格式化输出，担心 MarshalIndent 被移除的人被指出可用 jsontext.Value.Indent 或 jsontext.WithIndent 实现。nil slice 和 map 默认编码为空数组或对象也引发分歧：支持者认为这避免了未初始化的 Go 容器意外泄漏成 null，反对者则担心这会成为未来必须修正的破坏性默认值。",
+              "supportid": [
+                "50369853",
+                "50370004",
+                "50370310",
+                "50372538",
+                "50371745",
+                "50371845",
+                "50375100"
+              ]
+            },
+            {
+              "category": "JSON 并不简单：规范、数值和 Schema 的边界",
+              "summary": "评论者质疑 JSON 被称为“简单数据交换格式”，因为真正实现时必须处理超出 IEEE 754 double 范围的 1e1000、重复键、嵌套深度、字符串限制和扩展语法等问题。RFC 8259 对实现可接受的大小、深度及数值精度留有余地，因此不同库即使都声称支持 JSON，行为也可能不一致。另一派讨论希望按 JSON Schema 专化解析器，以 staged parsing 和 SIMD 获得静态类型模型及 simdjson 级吞吐；反对意见认为 JSON 的核心价值恰是宽松、通用、人类可读和跨语言互操作，强类型协议更适合交给 gRPC 一类方案。",
+              "supportid": [
+                "50371995",
+                "50372575",
+                "50372863",
+                "50370463",
+                "50370605",
+                "50370783",
+                "50371997"
+              ]
+            },
+            {
+              "category": "Go 演进太慢，还是稳定优先",
+              "summary": "新 JSON API 历时六年才落地，使一些人质疑 Go 团队的交付速度，并联想到 generics 和 Go modules 的长期等待。支持慢节奏者认为旧 encoding/json 对约 99% 的后端场景已经足够，性能瓶颈通常在 I/O 而非数十纳秒的序列化开销；稳定的标准库也比频繁变动、两年就难以编译的生态更易掌握。批评者则认为 JSON 在 Go 中素有性能和接口问题，六年仍显得过长；辩护者补充，generics 涉及编译器重大改动，设计还借助了 Featherweight Go 等类型系统研究。",
+              "supportid": [
+                "50370631",
+                "50370767",
+                "50370883",
+                "50372702",
+                "50371060",
+                "50374686"
+              ]
+            },
+            {
+              "category": "AI 辅助编程下 Go 的位置与手写技能",
+              "summary": "多位开发者把 Go 看作适合 LLM 或 agentic coding 的目标语言：语法结构小、控制流较直接、缺少复杂重载，并且编译速度远快于 Rust，可缩短生成—编译—验证循环。也有人认为 Go 是性能、GC 内存安全和可维护性的折中，而 Rust、Kotlin、C#、OCaml、Crystal 分别在速度、表达力或易用性上构成竞争选择；Go 的 WASM 产物体积则被视为弱点。对是否仍应手写代码，争论集中于技能退化：一方认为未来重点是业务逻辑、架构和测试，模型让设计反馈更快；另一方认为设计判断源于亲手处理实现细节，且当前模型仍会产出需反复审查和重写的低质量代码。",
+              "supportid": [
+                "50370500",
+                "50370517",
+                "50371342",
+                "50371017",
+                "50371672",
+                "50371362",
+                "50372431",
+                "50374796",
+                "50374799"
+              ]
+            },
+            {
+              "category": "Marshal 的错误返回与编译期类型安全",
+              "summary": "有人认为 json.Marshal 对不可序列化值返回 error 很烦，因为这通常像程序员错误，宁可 panic 或在编译期拒绝。反驳者指出序列化失败并非只由静态类型决定：any 内可在运行时装入未知值，自定义 MarshalJSON 可以失败，NaN 和 Infinity 又不符合 JSON，懒加载对象也可能在编码时出错。争论进一步落到 Go 的反射式通用接口与 Rust、Haskell、Scala 的派生序列化机制之别：后者可在类型不支持序列化时给出编译期错误，但仍无法静态证明所有运行时数据值有效。",
+              "supportid": [
+                "50369779",
+                "50370539",
+                "50370457",
+                "50370940",
+                "50370319",
+                "50371540",
+                "50375214"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "encoding/json/v2",
+              "explanation": "Go 标准库 JSON 编解码 API 的第二代接口，意在改进旧版的语义、选项和可组合性。"
+            },
+            {
+              "term": "jsontext",
+              "explanation": "配合 encoding/json/v2 的低层 JSON 语法处理包，可直接处理 JSON 文本、缩进和更细致的解析错误。"
+            },
+            {
+              "term": "Marshal / Unmarshal",
+              "explanation": "将 Go 值编码为 JSON、以及将 JSON 解码到 Go 值的过程；失败原因可能来自类型、运行时数值或自定义编码逻辑。"
+            },
+            {
+              "term": "staged parsing",
+              "explanation": "根据已知 Schema 或类型信息生成专门解析器的技术，以减少通用解析开销并提升类型保证和性能。"
+            },
+            {
+              "term": "SIMD / simdjson",
+              "explanation": "SIMD 是单指令多数据并行计算；simdjson 是利用它进行高速 JSON 解析的实现与性能标杆。"
+            }
+          ],
+          "context": "讨论围绕 Go 标准库 JSON 功能的新版 encoding/json/v2 及其配套 jsontext（低层 JSON 文本处理包）展开，目标是在保留 Go 简洁使用方式的同时修正旧接口的语义和可扩展性问题。重点变化包括将 nil slice、map 更倾向编码为 JSON 空容器，以及用 Options 和 jsontext 承担缩进等控制；这些选择会直接影响 API 合约中的 null 与 []、{} 区分。JSON 虽是跨语言常用文本格式，却在数值范围、重复键、解析限制、Schema 和高吞吐解析上存在大量实现取舍。评论还将此事放入 AI 辅助编码背景：Go 的快速编译和较小语言表面被认为适合 LLM 反复生成验证，而人类是否仍需保持手写与审查能力成为更大的职业焦虑。",
+          "emoji": "🤔",
+          "sarcastic_question": "六年重写 JSON，下一版要等错误处理吗？"
+        },
+        "classifications": {
+          "topics": [
+            4
+          ],
+          "facets": [
+            4
+          ],
+          "tags": [
+            "Go",
+            "JSON",
+            "encoding/json/v2",
+            "jsontext"
+          ]
+        },
+        "classificationsUpdatedAt": 1793821808,
+        "aiSummary": {
+          "chinese_title": "Go 新 JSON API：默认值改良、类型安全与 AI 编程之争",
+          "discussion_overview": [
+            {
+              "category": "新 API 的实用改进与兼容性顾虑",
+              "summary": "不少人认可 encoding/json/v2 改善了旧 Marshal API 的别扭之处，尤其欢迎更清晰的接口与 jsontext 提供的低层解析能力。有开发者已用 jsontext 为苛刻客户端生成逐类错误信息，同时保持很高性能，认为它适合非简单的 JSON 输入。关于格式化输出，担心 MarshalIndent 被移除的人被指出可用 jsontext.Value.Indent 或 jsontext.WithIndent 实现。nil slice 和 map 默认编码为空数组或对象也引发分歧：支持者认为这避免了未初始化的 Go 容器意外泄漏成 null，反对者则担心这会成为未来必须修正的破坏性默认值。",
+              "supportid": [
+                "50369853",
+                "50370004",
+                "50370310",
+                "50372538",
+                "50371745",
+                "50371845",
+                "50375100"
+              ]
+            },
+            {
+              "category": "JSON 并不简单：规范、数值和 Schema 的边界",
+              "summary": "评论者质疑 JSON 被称为“简单数据交换格式”，因为真正实现时必须处理超出 IEEE 754 double 范围的 1e1000、重复键、嵌套深度、字符串限制和扩展语法等问题。RFC 8259 对实现可接受的大小、深度及数值精度留有余地，因此不同库即使都声称支持 JSON，行为也可能不一致。另一派讨论希望按 JSON Schema 专化解析器，以 staged parsing 和 SIMD 获得静态类型模型及 simdjson 级吞吐；反对意见认为 JSON 的核心价值恰是宽松、通用、人类可读和跨语言互操作，强类型协议更适合交给 gRPC 一类方案。",
+              "supportid": [
+                "50371995",
+                "50372575",
+                "50372863",
+                "50370463",
+                "50370605",
+                "50370783",
+                "50371997"
+              ]
+            },
+            {
+              "category": "Go 演进太慢，还是稳定优先",
+              "summary": "新 JSON API 历时六年才落地，使一些人质疑 Go 团队的交付速度，并联想到 generics 和 Go modules 的长期等待。支持慢节奏者认为旧 encoding/json 对约 99% 的后端场景已经足够，性能瓶颈通常在 I/O 而非数十纳秒的序列化开销；稳定的标准库也比频繁变动、两年就难以编译的生态更易掌握。批评者则认为 JSON 在 Go 中素有性能和接口问题，六年仍显得过长；辩护者补充，generics 涉及编译器重大改动，设计还借助了 Featherweight Go 等类型系统研究。",
+              "supportid": [
+                "50370631",
+                "50370767",
+                "50370883",
+                "50372702",
+                "50371060",
+                "50374686"
+              ]
+            },
+            {
+              "category": "AI 辅助编程下 Go 的位置与手写技能",
+              "summary": "多位开发者把 Go 看作适合 LLM 或 agentic coding 的目标语言：语法结构小、控制流较直接、缺少复杂重载，并且编译速度远快于 Rust，可缩短生成—编译—验证循环。也有人认为 Go 是性能、GC 内存安全和可维护性的折中，而 Rust、Kotlin、C#、OCaml、Crystal 分别在速度、表达力或易用性上构成竞争选择；Go 的 WASM 产物体积则被视为弱点。对是否仍应手写代码，争论集中于技能退化：一方认为未来重点是业务逻辑、架构和测试，模型让设计反馈更快；另一方认为设计判断源于亲手处理实现细节，且当前模型仍会产出需反复审查和重写的低质量代码。",
+              "supportid": [
+                "50370500",
+                "50370517",
+                "50371342",
+                "50371017",
+                "50371672",
+                "50371362",
+                "50372431",
+                "50374796",
+                "50374799"
+              ]
+            },
+            {
+              "category": "Marshal 的错误返回与编译期类型安全",
+              "summary": "有人认为 json.Marshal 对不可序列化值返回 error 很烦，因为这通常像程序员错误，宁可 panic 或在编译期拒绝。反驳者指出序列化失败并非只由静态类型决定：any 内可在运行时装入未知值，自定义 MarshalJSON 可以失败，NaN 和 Infinity 又不符合 JSON，懒加载对象也可能在编码时出错。争论进一步落到 Go 的反射式通用接口与 Rust、Haskell、Scala 的派生序列化机制之别：后者可在类型不支持序列化时给出编译期错误，但仍无法静态证明所有运行时数据值有效。",
+              "supportid": [
+                "50369779",
+                "50370539",
+                "50370457",
+                "50370940",
+                "50370319",
+                "50371540",
+                "50375214"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "encoding/json/v2",
+              "explanation": "Go 标准库 JSON 编解码 API 的第二代接口，意在改进旧版的语义、选项和可组合性。"
+            },
+            {
+              "term": "jsontext",
+              "explanation": "配合 encoding/json/v2 的低层 JSON 语法处理包，可直接处理 JSON 文本、缩进和更细致的解析错误。"
+            },
+            {
+              "term": "Marshal / Unmarshal",
+              "explanation": "将 Go 值编码为 JSON、以及将 JSON 解码到 Go 值的过程；失败原因可能来自类型、运行时数值或自定义编码逻辑。"
+            },
+            {
+              "term": "staged parsing",
+              "explanation": "根据已知 Schema 或类型信息生成专门解析器的技术，以减少通用解析开销并提升类型保证和性能。"
+            },
+            {
+              "term": "SIMD / simdjson",
+              "explanation": "SIMD 是单指令多数据并行计算；simdjson 是利用它进行高速 JSON 解析的实现与性能标杆。"
+            }
+          ],
+          "context": "讨论围绕 Go 标准库 JSON 功能的新版 encoding/json/v2 及其配套 jsontext（低层 JSON 文本处理包）展开，目标是在保留 Go 简洁使用方式的同时修正旧接口的语义和可扩展性问题。重点变化包括将 nil slice、map 更倾向编码为 JSON 空容器，以及用 Options 和 jsontext 承担缩进等控制；这些选择会直接影响 API 合约中的 null 与 []、{} 区分。JSON 虽是跨语言常用文本格式，却在数值范围、重复键、解析限制、Schema 和高吞吐解析上存在大量实现取舍。评论还将此事放入 AI 辅助编码背景：Go 的快速编译和较小语言表面被认为适合 LLM 反复生成验证，而人类是否仍需保持手写与审查能力成为更大的职业焦虑。",
+          "emoji": "🤔",
+          "sarcastic_question": "六年重写 JSON，下一版要等错误处理吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\nGo 1.27 正式引入 `encoding/json/v2`，通过将语法处理与语义映射解耦、引入流式接口和 Caller-specified 定制化，彻底解决了 v1 遗留的行为缺陷、API 限制和性能瓶颈。\n\n## 正文\n\n### 老牌标准库的“历史包袱”\n`encoding/json` 作为 Go 元老级标准库，虽然“能用”，但在过去十几年里攒下了不少“陈年旧疾”。最让人头疼的是行为缺陷：它对 JSON 语法的处理不够严谨，比如接受无效的 UTF-8 编码、允许对象中出现重复的键名。前者可能导致静默数据损坏，后者更是潜在的安全漏洞（想想 CVE-2017-12635）。此外，它默认将 nil slice 编码为 `null` 而非空数组，以及那令人费解的大小写不敏感匹配，都让开发者在跨语言交互时踩过不少坑。\n\n### 想修却修不动的 API 设计\n除了行为问题，API 的设计限制也让人束手束脚。想要从 `io.Reader` 解码 JSON？常用的 `json.NewDecoder(r).Decode(v)` 居然不拒绝输入末尾的垃圾数据，这在处理网络流时简直是噩梦。更麻烦的是，`MarshalJSON` 接口强制方法返回 `[]byte`，这不仅带来了额外的内存分配，还迫使库校验和重新格式化数据。由于 Go 1 兼容性承诺，这些深植于 API 设计中的问题，靠修修补补已经无济于事，必须推倒重来。\n\n### 另起炉灶：语法与语义的彻底解耦\n既然旧 API 动不得，Go 团队决定引入 `encoding/json/v2`，并带来了核心架构变革：将 JSON 处理明确划分为“语法层”和“语义层”。底层的新包 `encoding/json/jsontext` 专注于纯粹的 JSON 语法处理，也就是所谓的“编码”和“解码”。它提供了 `Encoder` 和 `Decoder`，能够以流的方式高效读写 JSON Token 和 Value。这种设计完全剥离了对 Go 反射的依赖，为上层的高性能实现打下了基础。\n\n### v2 API：让选项成为一等公民\n在 `jsontext` 的地基之上，`json/v2` 构建了新的语义层 API。乍一看，`Marshal` 和 `Unmarshal` 的签名似乎没变，但关键在于它们现在接受 `...Options` 参数。这意味着配置选项不再是 `Encoder/Decoder` 的专属，而是可以在任何调用链中传递。新增的 `MarshalWrite` 和 `UnmarshalRead` 直接对接 `io.Writer/Reader`，省去了手动构造 Encoder 的繁琐，整个 API 变得更加一致和灵活。\n\n### 告别二次解析：流式接口的胜利\n为了彻底解决 v1 中自定义方法导致的性能损耗（如二次解析、强制分配），v2 引入了 `MarshalJSONTo` 和 `UnmarshalJSONFrom` 接口。这设计非常巧妙：自定义方法不再处理原始字节，而是直接操作 `jsontext.Encoder` 或 `jsontext.Decoder`。这样一来，实现者可以直接流式写入或读取 Token，既避免了额外的内存分配，也甩掉了校验 JSON 边界的负担，性能瓶颈迎刃而解。\n\n### 调用者说了算：控制权的反转\nv2 还带来了一个极具杀伤力的特性：Caller-specified customization（调用者指定定制化）。以前，如果你无法修改某个类型的源码，就很难控制它的 JSON 序列化行为。现在，调用者可以通过 `WithMarshalers` 选项，为任意类型注入自定义的序列化逻辑，且优先级高于类型自身的方法。这相当于给了开发者一把“上帝钥匙”，在不改动第三方库代码的情况下，也能完美掌控 JSON 的输入输出。"
+    },
     {
       "id": 50377821,
       "by": "erikgahner",
@@ -2154,285 +3559,6 @@
       }
     },
     {
-      "id": 50372945,
-      "by": "davidbarker",
-      "title": "Introducing Images 2.6",
-      "url": "https://openai.com/index/introducing-images-2-6/",
-      "score": 268,
-      "detailUpdatedAt": 1793868183,
-      "createdAt": 1793839205,
-      "aiSummaryUpdatedAt": 1793868566,
-      "aisummary": {
-        "chinese_title": "OpenAI Images 2.6：SVG/GIF新功能引发质量、成本与“AI味”质疑",
-        "emoji": "🖼️",
-        "sarcastic_question": "速度快一半，为什么每张图贵四倍还更像废片？"
-      },
-      "classifications": {
-        "topics": [
-          1,
-          11,
-          3
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "OpenAI",
-          "Images 2.6",
-          "GPT Image",
-          "ChatGPT",
-          "SVG",
-          "SynthID",
-          "image generation"
-        ]
-      },
-      "classificationsUpdatedAt": 1793839808,
-      "aiSummary": {
-        "chinese_title": "OpenAI Images 2.6：SVG/GIF新功能引发质量、成本与“AI味”质疑",
-        "emoji": "🖼️",
-        "sarcastic_question": "速度快一半，为什么每张图贵四倍还更像废片？"
-      },
-      "detail": {
-        "id": 50372945,
-        "by": "davidbarker",
-        "title": "Introducing Images 2.6",
-        "url": "https://openai.com/index/introducing-images-2-6/",
-        "score": 160,
-        "detailUpdatedAt": 1793850183,
-        "createdAt": 1793839205,
-        "aiSummaryUpdatedAt": 1793850569,
-        "aisummary": {
-          "chinese_title": "OpenAI Images 2.6 发布：GIF、SVG 与更快生成背后仍是瑕疵、涨价和审美争议",
-          "discussion_overview": [
-            {
-              "category": "画质与“AI look”仍令人反感",
-              "summary": "许多评论认为新模型的宣传图本身就暴露了问题：彩绘玻璃鲸的反射、投光方向和阴影关系混乱，即使题材是超现实的，也应能维持内部一致的光照逻辑。食物图、手指、镊子和复杂微距场景尤其容易出现令人不适的纹理、解剖与物理错误。有人把这种廉价感归因于用户偏好和 RLHF 收敛，也有人反驳说，人类对难看食物等案例有很高共识，真正问题是模型无法在具体任务和领域中正确映射这些偏好。",
-              "supportid": [
-                "50373441",
-                "50373778",
-                "50374385",
-                "50373586",
-                "50373693",
-                "50373686",
-                "50373733"
-              ]
-            },
-            {
-              "category": "进步是否停滞：2.6 与旧版表现参差",
-              "summary": "部分实际用户测试后认为 2.6-flare 比 2.5-flare 更简化，UI 和设计输出缺少细节，甚至出现结构性错误，因此回退到了旧模型；公开 arena 的排名也被援引为 2.5 更高。另一些测试则显示，模型能在单张图中较好地维持大量 Pokémon、序号条件和整体构图的一致性，说明复杂 prompt adherence 有所提升。争议还在于 ChatGPT 网页端并不披露具体调用的图像模型与推理强度，使得基于网页结果判断 2.6 本身并不可靠。评论普遍认为不存在绝对最佳模型：Nano Banana Pro、GPT Image、Midjourney 和 Seedream 各自在照片、海报、文字遵循、风格保真与速度上有不同取舍。",
-              "supportid": [
-                "50373420",
-                "50373861",
-                "50373536",
-                "50373197",
-                "50373260",
-                "50374803",
-                "50373501",
-                "50373425"
-              ]
-            },
-            {
-              "category": "标价不变但低中档实际成本大涨",
-              "summary": "OpenAI 虽称 Images 2.6 生成速度提高 50%，且 output token 单价与 2.5 相同，但评论者用官方计算器和实际工作流发现，低、中质量档每张图消耗的 token 大幅增加。1024×1024 的 low 从约 196 token 增至 823 至 824，成本从约 0.006 美元增至 0.025 美元；medium 从 439 增至 1,449，成本约从 0.013 至 0.043 美元。高质量档的 token 用量则基本未变，因此批评者认为“价格不变”的说法掩盖了低中档 3 至 4 倍的实际单图费用。有人承认 2.6 更快，但其测试的 medium 仍约需 7.9 秒，是否值得额外成本取决于具体工作流。",
-              "supportid": [
-                "50373444",
-                "50374754",
-                "50373535",
-                "50373156"
-              ]
-            },
-            {
-              "category": "GIF 与 SVG 功能：可用但更像拼接式工具链",
-              "summary": "原生 GIF 生成功能让一些人意外于模型能完成简单动画和把现有照片转成动画，但棋盘等简单案例的斑驳、闪烁与帧间不连续也被认为非常明显。评论指出，用 grid 或 sprites 生成多帧以保持角色一致性早已存在，而真正难点仍是跨帧一致性；First-Last-Frame 视频工具在效果上可能更好。SVG 并非扩散模型直接生成矢量图：文档显示系统先产生 raster reference image，再经 raster-to-vector 转换输出 SVG，且 API 还要求提供额外的 `svg.model`。GIF 当前仅支持二值透明度、不支持 animated WebP，SVG 也似乎仅限静态图形，因此尚未满足高质量动画 sprite 的需求。",
-              "supportid": [
-                "50373156",
-                "50374424",
-                "50373694",
-                "50373729",
-                "50373834",
-                "50373890",
-                "50374515"
-              ]
-            },
-            {
-              "category": "“AI slop”的市场接受度与传播机制",
-              "summary": "一方认为普通用户未必能区分人制与 AI 图，只要更便宜或让原本不会创作的人能产出内容，就会继续采用；每周 40 亿张图的说法也被视为这种低成本反复生成的信号。另一方观察到餐馆 AI 菜单和广告经常被公众直接骂作 AI slop，尤其拟真却有油腻纹理和怪异食物细节时，会落入 uncanny valley，反而降低食欲与品牌可信度。也有人认为，对于原本只会出现拼错手写招牌的低预算场所，可读的 AI 图已是改善，使用者本来也不会购买专业设计。移动端分享 GIF 时被导向 ChatGPT 静态链接，则被批评为把社交分享变成导流和数据变现，而非便利用户。",
-              "supportid": [
-                "50374095",
-                "50374115",
-                "50373876",
-                "50374414",
-                "50374320",
-                "50373148",
-                "50373711",
-                "50373769"
-              ]
-            },
-            {
-              "category": "创作价值与训练数据的伦理分歧",
-              "summary": "少数评论将完整生成的软件、文字、音乐和图像视为对人的价值与长期技艺的剥夺，尤其质疑将互联网和书籍数据大规模扫描进模型是否能让创作者受益。反驳意见则指出，模型并非数据自动组织而成，其背后有数十年研究、工程和人的劳动，因此也可被视为人类能力的产物。争论的核心不是功能是否存在，而是生成系统创造的价值如何与训练材料的贡献者、专业创作劳动及社会尊严相对应。",
-              "supportid": [
-                "50373901",
-                "50373911",
-                "50373942",
-                "50374030"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "AI slop",
-              "explanation": "指低成本批量生成、带有怪异纹理、光照或解剖错误的 AI 内容；常用于批评其廉价、同质化且令人不适的视觉风格。"
-            },
-            {
-              "term": "RLHF",
-              "explanation": "Reinforcement Learning from Human Feedback（基于人类反馈的强化学习）；通过人类偏好评价调整模型输出，但可能将跨领域的平均偏好错误套用到具体任务。"
-            },
-            {
-              "term": "prompt adherence",
-              "explanation": "提示词遵循度，指模型是否准确满足 prompt 中的对象、数量、关系、风格和条件约束。"
-            },
-            {
-              "term": "raster-to-vector",
-              "explanation": "栅格转矢量流程，先生成或取得像素图，再转换为 SVG 等由路径和形状构成的矢量文件。"
-            },
-            {
-              "term": "SynthID",
-              "explanation": "Google 的生成内容水印技术；评论者认为其或 GPT Image 可见水印会影响像素画等对画面纯净度要求高的输出。"
-            }
-          ],
-          "context": "OpenAI 发布的 Images 2.6 是 GPT Image 系列图像生成更新，宣称更快，并加入 GIF 动画与 SVG 输出，面向 ChatGPT、Codex 和 API 用户。评论所称的 2.5、Flare 与 Sunburst 是前代或不同输出配置；争议集中于模型虽按 token 标价未变，却在低、中质量档消耗更多 output token。GIF 功能并不等同于 Sora（OpenAI 的视频生成系统）：它更接近把多张生成帧组织为动画，因而容易暴露闪烁和帧间不一致。SVG 也不是纯粹的 text-to-vector 生成，官方文档所述流程会先生成参考位图再矢量化，这解释了其需要额外模型参数及可能的保真限制。",
-          "emoji": "🙄",
-          "sarcastic_question": "每张图贵四倍还满是瑕疵，升级在哪？"
-        },
-        "classifications": {
-          "topics": [
-            1,
-            11,
-            3
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "OpenAI",
-            "Images 2.6",
-            "GPT Image",
-            "ChatGPT",
-            "SVG",
-            "SynthID",
-            "image generation"
-          ]
-        },
-        "classificationsUpdatedAt": 1793839808,
-        "aiSummary": {
-          "chinese_title": "OpenAI Images 2.6 发布：GIF、SVG 与更快生成背后仍是瑕疵、涨价和审美争议",
-          "discussion_overview": [
-            {
-              "category": "画质与“AI look”仍令人反感",
-              "summary": "许多评论认为新模型的宣传图本身就暴露了问题：彩绘玻璃鲸的反射、投光方向和阴影关系混乱，即使题材是超现实的，也应能维持内部一致的光照逻辑。食物图、手指、镊子和复杂微距场景尤其容易出现令人不适的纹理、解剖与物理错误。有人把这种廉价感归因于用户偏好和 RLHF 收敛，也有人反驳说，人类对难看食物等案例有很高共识，真正问题是模型无法在具体任务和领域中正确映射这些偏好。",
-              "supportid": [
-                "50373441",
-                "50373778",
-                "50374385",
-                "50373586",
-                "50373693",
-                "50373686",
-                "50373733"
-              ]
-            },
-            {
-              "category": "进步是否停滞：2.6 与旧版表现参差",
-              "summary": "部分实际用户测试后认为 2.6-flare 比 2.5-flare 更简化，UI 和设计输出缺少细节，甚至出现结构性错误，因此回退到了旧模型；公开 arena 的排名也被援引为 2.5 更高。另一些测试则显示，模型能在单张图中较好地维持大量 Pokémon、序号条件和整体构图的一致性，说明复杂 prompt adherence 有所提升。争议还在于 ChatGPT 网页端并不披露具体调用的图像模型与推理强度，使得基于网页结果判断 2.6 本身并不可靠。评论普遍认为不存在绝对最佳模型：Nano Banana Pro、GPT Image、Midjourney 和 Seedream 各自在照片、海报、文字遵循、风格保真与速度上有不同取舍。",
-              "supportid": [
-                "50373420",
-                "50373861",
-                "50373536",
-                "50373197",
-                "50373260",
-                "50374803",
-                "50373501",
-                "50373425"
-              ]
-            },
-            {
-              "category": "标价不变但低中档实际成本大涨",
-              "summary": "OpenAI 虽称 Images 2.6 生成速度提高 50%，且 output token 单价与 2.5 相同，但评论者用官方计算器和实际工作流发现，低、中质量档每张图消耗的 token 大幅增加。1024×1024 的 low 从约 196 token 增至 823 至 824，成本从约 0.006 美元增至 0.025 美元；medium 从 439 增至 1,449，成本约从 0.013 至 0.043 美元。高质量档的 token 用量则基本未变，因此批评者认为“价格不变”的说法掩盖了低中档 3 至 4 倍的实际单图费用。有人承认 2.6 更快，但其测试的 medium 仍约需 7.9 秒，是否值得额外成本取决于具体工作流。",
-              "supportid": [
-                "50373444",
-                "50374754",
-                "50373535",
-                "50373156"
-              ]
-            },
-            {
-              "category": "GIF 与 SVG 功能：可用但更像拼接式工具链",
-              "summary": "原生 GIF 生成功能让一些人意外于模型能完成简单动画和把现有照片转成动画，但棋盘等简单案例的斑驳、闪烁与帧间不连续也被认为非常明显。评论指出，用 grid 或 sprites 生成多帧以保持角色一致性早已存在，而真正难点仍是跨帧一致性；First-Last-Frame 视频工具在效果上可能更好。SVG 并非扩散模型直接生成矢量图：文档显示系统先产生 raster reference image，再经 raster-to-vector 转换输出 SVG，且 API 还要求提供额外的 `svg.model`。GIF 当前仅支持二值透明度、不支持 animated WebP，SVG 也似乎仅限静态图形，因此尚未满足高质量动画 sprite 的需求。",
-              "supportid": [
-                "50373156",
-                "50374424",
-                "50373694",
-                "50373729",
-                "50373834",
-                "50373890",
-                "50374515"
-              ]
-            },
-            {
-              "category": "“AI slop”的市场接受度与传播机制",
-              "summary": "一方认为普通用户未必能区分人制与 AI 图，只要更便宜或让原本不会创作的人能产出内容，就会继续采用；每周 40 亿张图的说法也被视为这种低成本反复生成的信号。另一方观察到餐馆 AI 菜单和广告经常被公众直接骂作 AI slop，尤其拟真却有油腻纹理和怪异食物细节时，会落入 uncanny valley，反而降低食欲与品牌可信度。也有人认为，对于原本只会出现拼错手写招牌的低预算场所，可读的 AI 图已是改善，使用者本来也不会购买专业设计。移动端分享 GIF 时被导向 ChatGPT 静态链接，则被批评为把社交分享变成导流和数据变现，而非便利用户。",
-              "supportid": [
-                "50374095",
-                "50374115",
-                "50373876",
-                "50374414",
-                "50374320",
-                "50373148",
-                "50373711",
-                "50373769"
-              ]
-            },
-            {
-              "category": "创作价值与训练数据的伦理分歧",
-              "summary": "少数评论将完整生成的软件、文字、音乐和图像视为对人的价值与长期技艺的剥夺，尤其质疑将互联网和书籍数据大规模扫描进模型是否能让创作者受益。反驳意见则指出，模型并非数据自动组织而成，其背后有数十年研究、工程和人的劳动，因此也可被视为人类能力的产物。争论的核心不是功能是否存在，而是生成系统创造的价值如何与训练材料的贡献者、专业创作劳动及社会尊严相对应。",
-              "supportid": [
-                "50373901",
-                "50373911",
-                "50373942",
-                "50374030"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "AI slop",
-              "explanation": "指低成本批量生成、带有怪异纹理、光照或解剖错误的 AI 内容；常用于批评其廉价、同质化且令人不适的视觉风格。"
-            },
-            {
-              "term": "RLHF",
-              "explanation": "Reinforcement Learning from Human Feedback（基于人类反馈的强化学习）；通过人类偏好评价调整模型输出，但可能将跨领域的平均偏好错误套用到具体任务。"
-            },
-            {
-              "term": "prompt adherence",
-              "explanation": "提示词遵循度，指模型是否准确满足 prompt 中的对象、数量、关系、风格和条件约束。"
-            },
-            {
-              "term": "raster-to-vector",
-              "explanation": "栅格转矢量流程，先生成或取得像素图，再转换为 SVG 等由路径和形状构成的矢量文件。"
-            },
-            {
-              "term": "SynthID",
-              "explanation": "Google 的生成内容水印技术；评论者认为其或 GPT Image 可见水印会影响像素画等对画面纯净度要求高的输出。"
-            }
-          ],
-          "context": "OpenAI 发布的 Images 2.6 是 GPT Image 系列图像生成更新，宣称更快，并加入 GIF 动画与 SVG 输出，面向 ChatGPT、Codex 和 API 用户。评论所称的 2.5、Flare 与 Sunburst 是前代或不同输出配置；争议集中于模型虽按 token 标价未变，却在低、中质量档消耗更多 output token。GIF 功能并不等同于 Sora（OpenAI 的视频生成系统）：它更接近把多张生成帧组织为动画，因而容易暴露闪烁和帧间不一致。SVG 也不是纯粹的 text-to-vector 生成，官方文档所述流程会先生成参考位图再矢量化，这解释了其需要额外模型参数及可能的保真限制。",
-          "emoji": "🙄",
-          "sarcastic_question": "每张图贵四倍还满是瑕疵，升级在哪？"
-        }
-      },
-      "articleSummary": "无法获取正文内容，无法生成摘要。"
-    },
-    {
       "id": 50370610,
       "by": "speckx",
       "title": "Insects Don't Swarm at LED Lights",
@@ -3568,259 +4694,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n作者历时十年，通过逆向工程经典 DOS 游戏《Wing Commander》的内存与汇编逻辑，利用 DOSBox 沙箱环境注入代码，成功实现了原本不支持的合作多人游戏模式。\n\n## 正文\n\n### 兄弟俩的执念：把“双头怪”变成真正的僚机\n故事的起点非常感性。作者和兄弟小时候玩《Wing Commander》时，只能两人操作一艘飞船——一个管驾驶，一个管开火，活像个“双头怪”。他们一直梦想着能像真正的僚机那样，各自驾驶战机并肩作战。2015年10月，作者在 DOSBox 里重温经典时突然意识到：这游戏整个内存才 640K，如果能找到玩家和僚机的坐标内存地址，通过网络包控制僚机岂不是美滋滋？于是，一场长达十年的逆向工程拉开了序幕。\n\n### 像大海捞针一样找坐标\n问题很直接：在不到 1MB 的内存里，怎么定位那几个坐标字节？作者采用了经典的“差分法”。他先在太空中找个没人的角落，停住飞船，Dump 一次内存；然后直线飞行一段距离，再 Dump 一次。通过对比两次快照，结合逻辑运算（静止时不变、移动时变），他成功把范围缩小到了几百个字节。最终，他在地址 `13D3:A9C2` 锁定了位置数据，向该地址写入整数后，飞船瞬间“瞬移”，位置锁定成功。\n\n### 程序员的冷笑话帮了大忙\n位置找到了，朝向（Orientation）却更难搞。因为向量数据用的是 4 字节标量，微小的转向可能只改变一个字节。有意思的是，原作者在代码里留了个“梗”：游戏预留了 64 个实体槽位（0x00 到 0x3F），但程序员把 0x3D 用作了 3D 摄像机——毕竟 3D 嘛。这导致临时变量、摄像机变量和飞船的朝向向量紧挨在一起。作者利用这个布局特征，通过观察翻滚飞船时的符号位扩展（0x00 变 0xFF），成功定位了朝向向量的内存地址。\n\n### 光改内存不够，得“劫持”函数\n到了 2016 年底，作者发现光改内存地址不够用。开火、发射导弹这些复杂逻辑，没法简单通过写内存来模拟。必须得调用游戏原本的函数。但《Wing Commander》使用 Borland 编译器的 Overlay 机制，代码段会根据玩家路径动态加载，函数地址并不固定。好在 Overlay 机制留了一层“桩代码”（Stub），作者通过拦截这些 Stub，实现了对动态加载函数的调用。他们甚至利用内存里的一块“死字符串”区域（原本显示 \"Loading WING COMMANDER\" 的地方）来存放汇编指令，充当跳板。\n\n### 构建完美的“特洛伊木马”\n为了让注入的代码不破坏游戏现场，作者最初的跳板代码只是简单的 `pushf; pusha`。结果 Borland 的 Overlay 加载器会遍历栈帧去修正返回地址，作者那简陋的跳板没有栈帧，导致加载器读到垃圾数据，游戏随机崩溃。这问题困扰了他们好几个月。最终的解决方案非常巧妙：把跳板代码伪装成一个标准的 Borland 函数——`push bp; mov bp, sp; nop; pop bp; retf`。DOSBox 监控到 CPU 执行到那个 `nop` 时，就注入任务队列里的调用，完美避开了栈帧检查。\n\n### 终于，两架战机并肩飞向星辰\n2017 年 8 月，网络协议终于登场。作者用 TCP + Protobuf 搭建了简单的 C/S 架构，每帧同步位置、开火和伤害事件。最棘手的是，两边的游戏里“玩家”都是 Slot 0，“僚机”都是 Slot 1，接收包时必须做数据交换。此外，像导弹这种临时生成的实体，两边的内存槽位可能不一致，还得通过 Hook 生成函数来动态映射。历经十年，从内存定位、汇编 Hook 到网络同步，作者终于把那个童年的梦想变成了现实——在浏览器里，你真的可以和朋友一起，各自驾驶战机，飞向那片熟悉的星空。"
-    },
-    {
-      "id": 50369106,
-      "by": "olexsmir",
-      "title": "A New Go API for JSON",
-      "url": "https://go.dev/blog/jsonv2",
-      "score": 266,
-      "detailUpdatedAt": 1793857383,
-      "createdAt": 1793817605,
-      "aiSummaryUpdatedAt": 1793857764,
-      "aisummary": {
-        "chinese_title": "Go 新 JSON API：默认值改良、类型安全与 AI 编程之争",
-        "emoji": "🤔",
-        "sarcastic_question": "六年重写 JSON，下一版要等错误处理吗？"
-      },
-      "classifications": {
-        "topics": [
-          4
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "Go",
-          "JSON",
-          "encoding/json/v2",
-          "jsontext"
-        ]
-      },
-      "classificationsUpdatedAt": 1793821808,
-      "aiSummary": {
-        "chinese_title": "Go 新 JSON API：默认值改良、类型安全与 AI 编程之争",
-        "emoji": "🤔",
-        "sarcastic_question": "六年重写 JSON，下一版要等错误处理吗？"
-      },
-      "detail": {
-        "id": 50369106,
-        "by": "olexsmir",
-        "title": "A New Go API for JSON",
-        "url": "https://go.dev/blog/jsonv2",
-        "score": 266,
-        "detailUpdatedAt": 1793857383,
-        "createdAt": 1793817605,
-        "aiSummaryUpdatedAt": 1793857764,
-        "aisummary": {
-          "chinese_title": "Go 新 JSON API：默认值改良、类型安全与 AI 编程之争",
-          "discussion_overview": [
-            {
-              "category": "新 API 的实用改进与兼容性顾虑",
-              "summary": "不少人认可 encoding/json/v2 改善了旧 Marshal API 的别扭之处，尤其欢迎更清晰的接口与 jsontext 提供的低层解析能力。有开发者已用 jsontext 为苛刻客户端生成逐类错误信息，同时保持很高性能，认为它适合非简单的 JSON 输入。关于格式化输出，担心 MarshalIndent 被移除的人被指出可用 jsontext.Value.Indent 或 jsontext.WithIndent 实现。nil slice 和 map 默认编码为空数组或对象也引发分歧：支持者认为这避免了未初始化的 Go 容器意外泄漏成 null，反对者则担心这会成为未来必须修正的破坏性默认值。",
-              "supportid": [
-                "50369853",
-                "50370004",
-                "50370310",
-                "50372538",
-                "50371745",
-                "50371845",
-                "50375100"
-              ]
-            },
-            {
-              "category": "JSON 并不简单：规范、数值和 Schema 的边界",
-              "summary": "评论者质疑 JSON 被称为“简单数据交换格式”，因为真正实现时必须处理超出 IEEE 754 double 范围的 1e1000、重复键、嵌套深度、字符串限制和扩展语法等问题。RFC 8259 对实现可接受的大小、深度及数值精度留有余地，因此不同库即使都声称支持 JSON，行为也可能不一致。另一派讨论希望按 JSON Schema 专化解析器，以 staged parsing 和 SIMD 获得静态类型模型及 simdjson 级吞吐；反对意见认为 JSON 的核心价值恰是宽松、通用、人类可读和跨语言互操作，强类型协议更适合交给 gRPC 一类方案。",
-              "supportid": [
-                "50371995",
-                "50372575",
-                "50372863",
-                "50370463",
-                "50370605",
-                "50370783",
-                "50371997"
-              ]
-            },
-            {
-              "category": "Go 演进太慢，还是稳定优先",
-              "summary": "新 JSON API 历时六年才落地，使一些人质疑 Go 团队的交付速度，并联想到 generics 和 Go modules 的长期等待。支持慢节奏者认为旧 encoding/json 对约 99% 的后端场景已经足够，性能瓶颈通常在 I/O 而非数十纳秒的序列化开销；稳定的标准库也比频繁变动、两年就难以编译的生态更易掌握。批评者则认为 JSON 在 Go 中素有性能和接口问题，六年仍显得过长；辩护者补充，generics 涉及编译器重大改动，设计还借助了 Featherweight Go 等类型系统研究。",
-              "supportid": [
-                "50370631",
-                "50370767",
-                "50370883",
-                "50372702",
-                "50371060",
-                "50374686"
-              ]
-            },
-            {
-              "category": "AI 辅助编程下 Go 的位置与手写技能",
-              "summary": "多位开发者把 Go 看作适合 LLM 或 agentic coding 的目标语言：语法结构小、控制流较直接、缺少复杂重载，并且编译速度远快于 Rust，可缩短生成—编译—验证循环。也有人认为 Go 是性能、GC 内存安全和可维护性的折中，而 Rust、Kotlin、C#、OCaml、Crystal 分别在速度、表达力或易用性上构成竞争选择；Go 的 WASM 产物体积则被视为弱点。对是否仍应手写代码，争论集中于技能退化：一方认为未来重点是业务逻辑、架构和测试，模型让设计反馈更快；另一方认为设计判断源于亲手处理实现细节，且当前模型仍会产出需反复审查和重写的低质量代码。",
-              "supportid": [
-                "50370500",
-                "50370517",
-                "50371342",
-                "50371017",
-                "50371672",
-                "50371362",
-                "50372431",
-                "50374796",
-                "50374799"
-              ]
-            },
-            {
-              "category": "Marshal 的错误返回与编译期类型安全",
-              "summary": "有人认为 json.Marshal 对不可序列化值返回 error 很烦，因为这通常像程序员错误，宁可 panic 或在编译期拒绝。反驳者指出序列化失败并非只由静态类型决定：any 内可在运行时装入未知值，自定义 MarshalJSON 可以失败，NaN 和 Infinity 又不符合 JSON，懒加载对象也可能在编码时出错。争论进一步落到 Go 的反射式通用接口与 Rust、Haskell、Scala 的派生序列化机制之别：后者可在类型不支持序列化时给出编译期错误，但仍无法静态证明所有运行时数据值有效。",
-              "supportid": [
-                "50369779",
-                "50370539",
-                "50370457",
-                "50370940",
-                "50370319",
-                "50371540",
-                "50375214"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "encoding/json/v2",
-              "explanation": "Go 标准库 JSON 编解码 API 的第二代接口，意在改进旧版的语义、选项和可组合性。"
-            },
-            {
-              "term": "jsontext",
-              "explanation": "配合 encoding/json/v2 的低层 JSON 语法处理包，可直接处理 JSON 文本、缩进和更细致的解析错误。"
-            },
-            {
-              "term": "Marshal / Unmarshal",
-              "explanation": "将 Go 值编码为 JSON、以及将 JSON 解码到 Go 值的过程；失败原因可能来自类型、运行时数值或自定义编码逻辑。"
-            },
-            {
-              "term": "staged parsing",
-              "explanation": "根据已知 Schema 或类型信息生成专门解析器的技术，以减少通用解析开销并提升类型保证和性能。"
-            },
-            {
-              "term": "SIMD / simdjson",
-              "explanation": "SIMD 是单指令多数据并行计算；simdjson 是利用它进行高速 JSON 解析的实现与性能标杆。"
-            }
-          ],
-          "context": "讨论围绕 Go 标准库 JSON 功能的新版 encoding/json/v2 及其配套 jsontext（低层 JSON 文本处理包）展开，目标是在保留 Go 简洁使用方式的同时修正旧接口的语义和可扩展性问题。重点变化包括将 nil slice、map 更倾向编码为 JSON 空容器，以及用 Options 和 jsontext 承担缩进等控制；这些选择会直接影响 API 合约中的 null 与 []、{} 区分。JSON 虽是跨语言常用文本格式，却在数值范围、重复键、解析限制、Schema 和高吞吐解析上存在大量实现取舍。评论还将此事放入 AI 辅助编码背景：Go 的快速编译和较小语言表面被认为适合 LLM 反复生成验证，而人类是否仍需保持手写与审查能力成为更大的职业焦虑。",
-          "emoji": "🤔",
-          "sarcastic_question": "六年重写 JSON，下一版要等错误处理吗？"
-        },
-        "classifications": {
-          "topics": [
-            4
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "Go",
-            "JSON",
-            "encoding/json/v2",
-            "jsontext"
-          ]
-        },
-        "classificationsUpdatedAt": 1793821808,
-        "aiSummary": {
-          "chinese_title": "Go 新 JSON API：默认值改良、类型安全与 AI 编程之争",
-          "discussion_overview": [
-            {
-              "category": "新 API 的实用改进与兼容性顾虑",
-              "summary": "不少人认可 encoding/json/v2 改善了旧 Marshal API 的别扭之处，尤其欢迎更清晰的接口与 jsontext 提供的低层解析能力。有开发者已用 jsontext 为苛刻客户端生成逐类错误信息，同时保持很高性能，认为它适合非简单的 JSON 输入。关于格式化输出，担心 MarshalIndent 被移除的人被指出可用 jsontext.Value.Indent 或 jsontext.WithIndent 实现。nil slice 和 map 默认编码为空数组或对象也引发分歧：支持者认为这避免了未初始化的 Go 容器意外泄漏成 null，反对者则担心这会成为未来必须修正的破坏性默认值。",
-              "supportid": [
-                "50369853",
-                "50370004",
-                "50370310",
-                "50372538",
-                "50371745",
-                "50371845",
-                "50375100"
-              ]
-            },
-            {
-              "category": "JSON 并不简单：规范、数值和 Schema 的边界",
-              "summary": "评论者质疑 JSON 被称为“简单数据交换格式”，因为真正实现时必须处理超出 IEEE 754 double 范围的 1e1000、重复键、嵌套深度、字符串限制和扩展语法等问题。RFC 8259 对实现可接受的大小、深度及数值精度留有余地，因此不同库即使都声称支持 JSON，行为也可能不一致。另一派讨论希望按 JSON Schema 专化解析器，以 staged parsing 和 SIMD 获得静态类型模型及 simdjson 级吞吐；反对意见认为 JSON 的核心价值恰是宽松、通用、人类可读和跨语言互操作，强类型协议更适合交给 gRPC 一类方案。",
-              "supportid": [
-                "50371995",
-                "50372575",
-                "50372863",
-                "50370463",
-                "50370605",
-                "50370783",
-                "50371997"
-              ]
-            },
-            {
-              "category": "Go 演进太慢，还是稳定优先",
-              "summary": "新 JSON API 历时六年才落地，使一些人质疑 Go 团队的交付速度，并联想到 generics 和 Go modules 的长期等待。支持慢节奏者认为旧 encoding/json 对约 99% 的后端场景已经足够，性能瓶颈通常在 I/O 而非数十纳秒的序列化开销；稳定的标准库也比频繁变动、两年就难以编译的生态更易掌握。批评者则认为 JSON 在 Go 中素有性能和接口问题，六年仍显得过长；辩护者补充，generics 涉及编译器重大改动，设计还借助了 Featherweight Go 等类型系统研究。",
-              "supportid": [
-                "50370631",
-                "50370767",
-                "50370883",
-                "50372702",
-                "50371060",
-                "50374686"
-              ]
-            },
-            {
-              "category": "AI 辅助编程下 Go 的位置与手写技能",
-              "summary": "多位开发者把 Go 看作适合 LLM 或 agentic coding 的目标语言：语法结构小、控制流较直接、缺少复杂重载，并且编译速度远快于 Rust，可缩短生成—编译—验证循环。也有人认为 Go 是性能、GC 内存安全和可维护性的折中，而 Rust、Kotlin、C#、OCaml、Crystal 分别在速度、表达力或易用性上构成竞争选择；Go 的 WASM 产物体积则被视为弱点。对是否仍应手写代码，争论集中于技能退化：一方认为未来重点是业务逻辑、架构和测试，模型让设计反馈更快；另一方认为设计判断源于亲手处理实现细节，且当前模型仍会产出需反复审查和重写的低质量代码。",
-              "supportid": [
-                "50370500",
-                "50370517",
-                "50371342",
-                "50371017",
-                "50371672",
-                "50371362",
-                "50372431",
-                "50374796",
-                "50374799"
-              ]
-            },
-            {
-              "category": "Marshal 的错误返回与编译期类型安全",
-              "summary": "有人认为 json.Marshal 对不可序列化值返回 error 很烦，因为这通常像程序员错误，宁可 panic 或在编译期拒绝。反驳者指出序列化失败并非只由静态类型决定：any 内可在运行时装入未知值，自定义 MarshalJSON 可以失败，NaN 和 Infinity 又不符合 JSON，懒加载对象也可能在编码时出错。争论进一步落到 Go 的反射式通用接口与 Rust、Haskell、Scala 的派生序列化机制之别：后者可在类型不支持序列化时给出编译期错误，但仍无法静态证明所有运行时数据值有效。",
-              "supportid": [
-                "50369779",
-                "50370539",
-                "50370457",
-                "50370940",
-                "50370319",
-                "50371540",
-                "50375214"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "encoding/json/v2",
-              "explanation": "Go 标准库 JSON 编解码 API 的第二代接口，意在改进旧版的语义、选项和可组合性。"
-            },
-            {
-              "term": "jsontext",
-              "explanation": "配合 encoding/json/v2 的低层 JSON 语法处理包，可直接处理 JSON 文本、缩进和更细致的解析错误。"
-            },
-            {
-              "term": "Marshal / Unmarshal",
-              "explanation": "将 Go 值编码为 JSON、以及将 JSON 解码到 Go 值的过程；失败原因可能来自类型、运行时数值或自定义编码逻辑。"
-            },
-            {
-              "term": "staged parsing",
-              "explanation": "根据已知 Schema 或类型信息生成专门解析器的技术，以减少通用解析开销并提升类型保证和性能。"
-            },
-            {
-              "term": "SIMD / simdjson",
-              "explanation": "SIMD 是单指令多数据并行计算；simdjson 是利用它进行高速 JSON 解析的实现与性能标杆。"
-            }
-          ],
-          "context": "讨论围绕 Go 标准库 JSON 功能的新版 encoding/json/v2 及其配套 jsontext（低层 JSON 文本处理包）展开，目标是在保留 Go 简洁使用方式的同时修正旧接口的语义和可扩展性问题。重点变化包括将 nil slice、map 更倾向编码为 JSON 空容器，以及用 Options 和 jsontext 承担缩进等控制；这些选择会直接影响 API 合约中的 null 与 []、{} 区分。JSON 虽是跨语言常用文本格式，却在数值范围、重复键、解析限制、Schema 和高吞吐解析上存在大量实现取舍。评论还将此事放入 AI 辅助编码背景：Go 的快速编译和较小语言表面被认为适合 LLM 反复生成验证，而人类是否仍需保持手写与审查能力成为更大的职业焦虑。",
-          "emoji": "🤔",
-          "sarcastic_question": "六年重写 JSON，下一版要等错误处理吗？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nGo 1.27 正式引入 `encoding/json/v2`，通过将语法处理与语义映射解耦、引入流式接口和 Caller-specified 定制化，彻底解决了 v1 遗留的行为缺陷、API 限制和性能瓶颈。\n\n## 正文\n\n### 老牌标准库的“历史包袱”\n`encoding/json` 作为 Go 元老级标准库，虽然“能用”，但在过去十几年里攒下了不少“陈年旧疾”。最让人头疼的是行为缺陷：它对 JSON 语法的处理不够严谨，比如接受无效的 UTF-8 编码、允许对象中出现重复的键名。前者可能导致静默数据损坏，后者更是潜在的安全漏洞（想想 CVE-2017-12635）。此外，它默认将 nil slice 编码为 `null` 而非空数组，以及那令人费解的大小写不敏感匹配，都让开发者在跨语言交互时踩过不少坑。\n\n### 想修却修不动的 API 设计\n除了行为问题，API 的设计限制也让人束手束脚。想要从 `io.Reader` 解码 JSON？常用的 `json.NewDecoder(r).Decode(v)` 居然不拒绝输入末尾的垃圾数据，这在处理网络流时简直是噩梦。更麻烦的是，`MarshalJSON` 接口强制方法返回 `[]byte`，这不仅带来了额外的内存分配，还迫使库校验和重新格式化数据。由于 Go 1 兼容性承诺，这些深植于 API 设计中的问题，靠修修补补已经无济于事，必须推倒重来。\n\n### 另起炉灶：语法与语义的彻底解耦\n既然旧 API 动不得，Go 团队决定引入 `encoding/json/v2`，并带来了核心架构变革：将 JSON 处理明确划分为“语法层”和“语义层”。底层的新包 `encoding/json/jsontext` 专注于纯粹的 JSON 语法处理，也就是所谓的“编码”和“解码”。它提供了 `Encoder` 和 `Decoder`，能够以流的方式高效读写 JSON Token 和 Value。这种设计完全剥离了对 Go 反射的依赖，为上层的高性能实现打下了基础。\n\n### v2 API：让选项成为一等公民\n在 `jsontext` 的地基之上，`json/v2` 构建了新的语义层 API。乍一看，`Marshal` 和 `Unmarshal` 的签名似乎没变，但关键在于它们现在接受 `...Options` 参数。这意味着配置选项不再是 `Encoder/Decoder` 的专属，而是可以在任何调用链中传递。新增的 `MarshalWrite` 和 `UnmarshalRead` 直接对接 `io.Writer/Reader`，省去了手动构造 Encoder 的繁琐，整个 API 变得更加一致和灵活。\n\n### 告别二次解析：流式接口的胜利\n为了彻底解决 v1 中自定义方法导致的性能损耗（如二次解析、强制分配），v2 引入了 `MarshalJSONTo` 和 `UnmarshalJSONFrom` 接口。这设计非常巧妙：自定义方法不再处理原始字节，而是直接操作 `jsontext.Encoder` 或 `jsontext.Decoder`。这样一来，实现者可以直接流式写入或读取 Token，既避免了额外的内存分配，也甩掉了校验 JSON 边界的负担，性能瓶颈迎刃而解。\n\n### 调用者说了算：控制权的反转\nv2 还带来了一个极具杀伤力的特性：Caller-specified customization（调用者指定定制化）。以前，如果你无法修改某个类型的源码，就很难控制它的 JSON 序列化行为。现在，调用者可以通过 `WithMarshalers` 选项，为任意类型注入自定义的序列化逻辑，且优先级高于类型自身的方法。这相当于给了开发者一把“上帝钥匙”，在不改动第三方库代码的情况下，也能完美掌控 JSON 的输入输出。"
     },
     {
       "id": 50373308,
@@ -11018,1078 +11891,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n这篇文章展示了日本 2026 年“地味万圣节”的精选案例，这种反传统的活动不比惊悚创意，比的是谁能把日常生活中那些尴尬、微妙又真实的瞬间还原得最到位。\n\n## 正文\n\n### 当不想扮鬼怪的大人决定玩点“真实”的\n万圣节在日本通常意味着涩谷街头的奇装异服和狂欢。但 Daily Portal Z 的一群成年人在 2014 年开了个头：他们想过节，但又觉得扮僵尸、女巫太尴尬。于是他们反其道而行之，搞起了“地味万圣节”。核心规则很简单： costumes 必须平淡无奇，平淡到如果不解释，别人根本看不出来你在扮什么。这种“不仅不吓人，反而还要费口舌解释”的反差，成了这个活动的灵魂。\n\n### 那些让人会心一笑的“社死”瞬间\n看今年的精选，你会发现这根本不是化妆比赛，而是一场大型的“人类观察实录”。比如有人扮成了“正准备问能不能把座椅靠背往后调的人”，或者“在狭窄居酒屋里努力找角度拍大合照的人”。这些不是具体的角色，而是我们在生活中都会遇到的那种小心翼翼、甚至带着点社交压力的瞬间。这种 costume 的精髓不在于外表，而在于它瞬间唤起了观众的共同记忆。\n\n### 细节里的魔鬼：尴尬是第一生产力\n有意思的地方在于，入选的作品往往抓住了社交中最微妙的痛点。比如“没料到商务聚餐要脱鞋，穿着破袜子的人”，或者“把搅拌棒当成吸管的人”。这些场景之所以好笑，是因为它们精准地踩中了我们在公共场合那种“想找个地缝钻进去”的尴尬心理。与其说是扮装，不如说是对现代社交礼仪的一次幽默解构。\n\n### 每个人都是生活的“影帝”\n除了社交尴尬，还有对日常行为的精准捕捉。比如“在电车上忍住不笑的人”，或者“背包明明很空，手里却拿满东西的人”。甚至还有人扮成了“正在给洗手液瓶子加满补充装的女人”。这些画面不需要特效，只需要一个眼神、一个动作，就能让围观群众秒懂。说白了，这考验的是参与者对生活细节的观察力和表现力。\n\n### 这里的“无聊”才是最高级的幽默\n这就是“地味万圣节”能持续十多年依然迷人的原因。它剥离了传统节日的喧闹，把目光投向了那些我们习以为常、甚至视而不见的“无聊”生活。在这里，最普通的日常行为反而成了最硬核的创意源泉。如果你想看更多，可以去社交媒体上搜 #地味ハロウィン，你会发现，原来观察生活本身就是一种最好的娱乐。"
-    },
-    {
-      "id": 50358562,
-      "by": "paddingtone",
-      "title": "Safari introduces Adaptive Dark Mode in 27.3",
-      "url": "https://webkit.org/blog/18541/introducing-adaptive-dark-mode/",
-      "score": 359,
-      "detailUpdatedAt": 1793769207,
-      "createdAt": 1793742629,
-      "aiSummaryUpdatedAt": 1793770189,
-      "aisummary": {
-        "chinese_title": "Safari 27.3 自动深色化网页：无深色主题站点的福音还是可访问性新灾难？",
-        "emoji": "🌗",
-        "sarcastic_question": "网站连两套颜色都懒得做，还谈什么用户体验？"
-      },
-      "classifications": {
-        "topics": [
-          5,
-          11
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "Safari",
-          "WebKit",
-          "Adaptive Dark Mode",
-          "Dark Reader",
-          "prefers-color-scheme",
-          "CSS",
-          "color-scheme"
-        ]
-      },
-      "classificationsUpdatedAt": 1793744129,
-      "aiSummary": {
-        "chinese_title": "Safari 27.3 自动深色化网页：无深色主题站点的福音还是可访问性新灾难？",
-        "emoji": "🌗",
-        "sarcastic_question": "网站连两套颜色都懒得做，还谈什么用户体验？"
-      },
-      "detail": {
-        "id": 50358562,
-        "by": "paddingtone",
-        "title": "Safari introduces Adaptive Dark Mode in 27.3",
-        "url": "https://webkit.org/blog/18541/introducing-adaptive-dark-mode/",
-        "score": 359,
-        "detailUpdatedAt": 1793769207,
-        "createdAt": 1793742629,
-        "aiSummaryUpdatedAt": 1793770189,
-        "aisummary": {
-          "chinese_title": "Safari 27.3 自动深色化网页：无深色主题站点的福音还是可访问性新灾难？",
-          "discussion_overview": [
-            {
-              "category": "视觉需求高度分化，应由用户选择",
-              "summary": "许多用户欢迎自动深色化，因为夜间低亮度、OLED 屏幕和从其他深色应用切回白底网页时的“闪白”都会造成明显不适。另一些人则因散光、视觉雪花、偏头痛、残像或边界辨识困难，认为白字黑底会模糊、刺眼甚至难以阅读；即使散光已矫正，问题也未必消失。评论者普遍认为不存在绝对更优的模式：有人按日出日落切换，有人希望应用外框为深色但正文保持浅色。结论是网站和浏览器应跟随系统偏好，同时提供逐站点或手动覆盖，而不能把任一模式强加给所有人。",
-              "supportid": [
-                "50358886",
-                "50359570",
-                "50360203",
-                "50358864",
-                "50359801",
-                "50359068",
-                "50359103",
-                "50359198",
-                "50361439",
-                "50358804"
-              ]
-            },
-            {
-              "category": "浏览器自动转换的价值与失真风险",
-              "summary": "支持者认为大量网站至今没有原生 dark mode，而逐页面、逐组件维护两套主题会显著增加设计、测试和 UI QA 成本；后台系统、CRM 和管理面板尤其常只获批一份浅色设计。Safari 的自动转换可让用户立即获得较暗页面，并允许作者用 `color-scheme: light only` 排除不适合转换的网站，因此被视为兼顾用户和开发者的务实方案。反对者担忧自动算法会弄坏 Google Docs、QR code、图表、照片和复杂品牌界面，已有扩展及 Chrome 强制深色模式都有类似失败案例；演示中白色图表与深色页面的突兀反差也说明转换并不完美。部分开发者因此主张自动模式只是兜底，认真经营体验的网站仍应自行设计深色主题，而非把责任完全交给浏览器。",
-              "supportid": [
-                "50359578",
-                "50359085",
-                "50359393",
-                "50360218",
-                "50359364",
-                "50359391",
-                "50358812",
-                "50358912",
-                "50358941"
-              ]
-            },
-            {
-              "category": "用户代理控制权对抗作者像素控制",
-              "summary": "一方认为 Apple 改写网页的颜色、图形和品牌呈现颇为傲慢，网页作者本应掌握最终视觉效果，自动处理也会让不同用户看到难以预测的版本。另一方强调浏览器本来就是 user agent：显示器、字体、缩放、Reader Mode、屏幕阅读器、高对比度设置和用户样式表早已让网页不是固定画布，用户有权重排公开网页内容、屏蔽广告及调整样式。Safari 刻意不让页面检测 Adaptive Dark Mode，并让 JavaScript 读取原始颜色，被批评为“对网站说谎”，但支持者认为这既能避免依赖 CSS 状态的脆弱前端损坏，也减少指纹识别面。争论的核心并非是否允许深色模式，而是谁应拥有默认呈现和覆盖呈现的最后决定权。",
-              "supportid": [
-                "50358660",
-                "50359015",
-                "50358733",
-                "50358701",
-                "50358780",
-                "50358765",
-                "50358745",
-                "50359503",
-                "50359797",
-                "50358948"
-              ]
-            },
-            {
-              "category": "现有 CSS 标准与主题模型的缺口",
-              "summary": "评论指出 `:prefers-color-scheme` 已获主流浏览器支持约七年，`color-scheme`、meta 声明及新出现的 `light-dark()` 已能让网站按偏好输出两套样式，因此认为 HN 等网站不支持原生主题并无技术借口。围绕 Chrome 的争议显示问题更多在 UX：其 Appearance 设置可以改变浏览器自身外观，却不清楚是否、以及如何影响网页，开发者只能在 DevTools 临时模拟网页偏好。有人批评 `light-dark()` 把 light 和 dark 固化为唯一方案，堵塞任意用户主题的扩展空间；回应则区分了亮度模式与审美主题，并指出 Halloween 等主题仍可拥有各自的浅色、深色和高对比度变体。技术层面还有人警告仅用 `filter: invert()` 制作深色模式会反转图片并损害文字 subpixel rendering，不能替代经过设计的颜色系统。",
-              "supportid": [
-                "50358866",
-                "50358958",
-                "50359025",
-                "50359769",
-                "50359275",
-                "50360469",
-                "50358824",
-                "50359782",
-                "50358898"
-              ]
-            },
-            {
-              "category": "扩展生态、HN 缺位与安全顾虑",
-              "summary": "Dark Reader、Noir、Stylus、DuckDuckGo Browser 和浏览器内置强制深色功能，早已为不支持深色模式的网站提供替代方案；不少人正用它们为 HN、Wikipedia 或手机夜读服务。Noir 被认为在 Safari 上性能和细节优于 Dark Reader，因 Safari 原生功能到来而被戏称将遭 Apple “Sherlocking”。但扩展需要“读取和修改所有网站”的权限，可能拖慢加载、发送背景请求、被页面检测，甚至出现过被封禁的恶意同名克隆；工作环境用户尤其难以接受这种授权。HN 被反复作为典型案例：其简约页面很容易加入 `prefers-color-scheme`，但官方长期缺席，迫使用户依赖自定义 CSS、uBlock Origin 或第三方客户端。",
-              "supportid": [
-                "50359073",
-                "50359172",
-                "50359559",
-                "50359191",
-                "50359245",
-                "50360009",
-                "50358704",
-                "50358973",
-                "50359083",
-                "50360465",
-                "50360129"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "Adaptive Dark Mode",
-              "explanation": "Safari 27.3 在浏览器渲染层自动将原本浅色的网页转换为深色外观的功能，面向未提供原生 dark mode 的网站，并允许作者声明排除。"
-            },
-            {
-              "term": "`prefers-color-scheme`",
-              "explanation": "CSS media query，用于让网站根据用户或浏览器表达的 light/dark 偏好加载相应样式。"
-            },
-            {
-              "term": "`color-scheme`",
-              "explanation": "CSS 属性或 meta 声明，用于告知浏览器页面支持哪些颜色方案；如 `light only` 可要求不要被自动深色化。"
-            },
-            {
-              "term": "`light-dark()`",
-              "explanation": "CSS 颜色函数，可根据当前颜色方案在提供的浅色与深色值之间选择。"
-            },
-            {
-              "term": "`filter: invert()`",
-              "explanation": "CSS 滤镜，可快速反转页面色彩以模拟深色模式，但会连图片一起反转，并可能降低文字渲染质量。"
-            },
-            {
-              "term": "Dark Reader",
-              "explanation": "跨浏览器网页改色扩展，可为网站生成深色或浅色外观，并提供站点级调整。"
-            }
-          ],
-          "context": "Safari 27.3 引入 Adaptive Dark Mode，由 WebKit（Safari 的浏览器引擎）在渲染阶段为缺少深色主题的网页自动变换颜色，并声称高效且不让网站检测到变换结果。网站仍可借助 CSS 的 `color-scheme` 和 `:prefers-color-scheme` 自行提供原生 light/dark 设计，或用 `light only` 选择退出自动转换。讨论建立在一个长期现实上：许多网站没有响应系统主题，用户因而依赖 Dark Reader（网页改色扩展）、Noir（Safari 网页主题扩展）或自定义 CSS。争议同时涉及 Web 可访问性：不同视觉状况和环境对亮暗、对比度的需求相反，WCAG 2 的 4.5:1 对比度规则也被指出未必能准确衡量浅字深底的可读性。",
-          "emoji": "🌗",
-          "sarcastic_question": "网站连两套颜色都懒得做，还谈什么用户体验？"
-        },
-        "classifications": {
-          "topics": [
-            5,
-            11
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "Safari",
-            "WebKit",
-            "Adaptive Dark Mode",
-            "Dark Reader",
-            "prefers-color-scheme",
-            "CSS",
-            "color-scheme"
-          ]
-        },
-        "classificationsUpdatedAt": 1793744129,
-        "aiSummary": {
-          "chinese_title": "Safari 27.3 自动深色化网页：无深色主题站点的福音还是可访问性新灾难？",
-          "discussion_overview": [
-            {
-              "category": "视觉需求高度分化，应由用户选择",
-              "summary": "许多用户欢迎自动深色化，因为夜间低亮度、OLED 屏幕和从其他深色应用切回白底网页时的“闪白”都会造成明显不适。另一些人则因散光、视觉雪花、偏头痛、残像或边界辨识困难，认为白字黑底会模糊、刺眼甚至难以阅读；即使散光已矫正，问题也未必消失。评论者普遍认为不存在绝对更优的模式：有人按日出日落切换，有人希望应用外框为深色但正文保持浅色。结论是网站和浏览器应跟随系统偏好，同时提供逐站点或手动覆盖，而不能把任一模式强加给所有人。",
-              "supportid": [
-                "50358886",
-                "50359570",
-                "50360203",
-                "50358864",
-                "50359801",
-                "50359068",
-                "50359103",
-                "50359198",
-                "50361439",
-                "50358804"
-              ]
-            },
-            {
-              "category": "浏览器自动转换的价值与失真风险",
-              "summary": "支持者认为大量网站至今没有原生 dark mode，而逐页面、逐组件维护两套主题会显著增加设计、测试和 UI QA 成本；后台系统、CRM 和管理面板尤其常只获批一份浅色设计。Safari 的自动转换可让用户立即获得较暗页面，并允许作者用 `color-scheme: light only` 排除不适合转换的网站，因此被视为兼顾用户和开发者的务实方案。反对者担忧自动算法会弄坏 Google Docs、QR code、图表、照片和复杂品牌界面，已有扩展及 Chrome 强制深色模式都有类似失败案例；演示中白色图表与深色页面的突兀反差也说明转换并不完美。部分开发者因此主张自动模式只是兜底，认真经营体验的网站仍应自行设计深色主题，而非把责任完全交给浏览器。",
-              "supportid": [
-                "50359578",
-                "50359085",
-                "50359393",
-                "50360218",
-                "50359364",
-                "50359391",
-                "50358812",
-                "50358912",
-                "50358941"
-              ]
-            },
-            {
-              "category": "用户代理控制权对抗作者像素控制",
-              "summary": "一方认为 Apple 改写网页的颜色、图形和品牌呈现颇为傲慢，网页作者本应掌握最终视觉效果，自动处理也会让不同用户看到难以预测的版本。另一方强调浏览器本来就是 user agent：显示器、字体、缩放、Reader Mode、屏幕阅读器、高对比度设置和用户样式表早已让网页不是固定画布，用户有权重排公开网页内容、屏蔽广告及调整样式。Safari 刻意不让页面检测 Adaptive Dark Mode，并让 JavaScript 读取原始颜色，被批评为“对网站说谎”，但支持者认为这既能避免依赖 CSS 状态的脆弱前端损坏，也减少指纹识别面。争论的核心并非是否允许深色模式，而是谁应拥有默认呈现和覆盖呈现的最后决定权。",
-              "supportid": [
-                "50358660",
-                "50359015",
-                "50358733",
-                "50358701",
-                "50358780",
-                "50358765",
-                "50358745",
-                "50359503",
-                "50359797",
-                "50358948"
-              ]
-            },
-            {
-              "category": "现有 CSS 标准与主题模型的缺口",
-              "summary": "评论指出 `:prefers-color-scheme` 已获主流浏览器支持约七年，`color-scheme`、meta 声明及新出现的 `light-dark()` 已能让网站按偏好输出两套样式，因此认为 HN 等网站不支持原生主题并无技术借口。围绕 Chrome 的争议显示问题更多在 UX：其 Appearance 设置可以改变浏览器自身外观，却不清楚是否、以及如何影响网页，开发者只能在 DevTools 临时模拟网页偏好。有人批评 `light-dark()` 把 light 和 dark 固化为唯一方案，堵塞任意用户主题的扩展空间；回应则区分了亮度模式与审美主题，并指出 Halloween 等主题仍可拥有各自的浅色、深色和高对比度变体。技术层面还有人警告仅用 `filter: invert()` 制作深色模式会反转图片并损害文字 subpixel rendering，不能替代经过设计的颜色系统。",
-              "supportid": [
-                "50358866",
-                "50358958",
-                "50359025",
-                "50359769",
-                "50359275",
-                "50360469",
-                "50358824",
-                "50359782",
-                "50358898"
-              ]
-            },
-            {
-              "category": "扩展生态、HN 缺位与安全顾虑",
-              "summary": "Dark Reader、Noir、Stylus、DuckDuckGo Browser 和浏览器内置强制深色功能，早已为不支持深色模式的网站提供替代方案；不少人正用它们为 HN、Wikipedia 或手机夜读服务。Noir 被认为在 Safari 上性能和细节优于 Dark Reader，因 Safari 原生功能到来而被戏称将遭 Apple “Sherlocking”。但扩展需要“读取和修改所有网站”的权限，可能拖慢加载、发送背景请求、被页面检测，甚至出现过被封禁的恶意同名克隆；工作环境用户尤其难以接受这种授权。HN 被反复作为典型案例：其简约页面很容易加入 `prefers-color-scheme`，但官方长期缺席，迫使用户依赖自定义 CSS、uBlock Origin 或第三方客户端。",
-              "supportid": [
-                "50359073",
-                "50359172",
-                "50359559",
-                "50359191",
-                "50359245",
-                "50360009",
-                "50358704",
-                "50358973",
-                "50359083",
-                "50360465",
-                "50360129"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "Adaptive Dark Mode",
-              "explanation": "Safari 27.3 在浏览器渲染层自动将原本浅色的网页转换为深色外观的功能，面向未提供原生 dark mode 的网站，并允许作者声明排除。"
-            },
-            {
-              "term": "`prefers-color-scheme`",
-              "explanation": "CSS media query，用于让网站根据用户或浏览器表达的 light/dark 偏好加载相应样式。"
-            },
-            {
-              "term": "`color-scheme`",
-              "explanation": "CSS 属性或 meta 声明，用于告知浏览器页面支持哪些颜色方案；如 `light only` 可要求不要被自动深色化。"
-            },
-            {
-              "term": "`light-dark()`",
-              "explanation": "CSS 颜色函数，可根据当前颜色方案在提供的浅色与深色值之间选择。"
-            },
-            {
-              "term": "`filter: invert()`",
-              "explanation": "CSS 滤镜，可快速反转页面色彩以模拟深色模式，但会连图片一起反转，并可能降低文字渲染质量。"
-            },
-            {
-              "term": "Dark Reader",
-              "explanation": "跨浏览器网页改色扩展，可为网站生成深色或浅色外观，并提供站点级调整。"
-            }
-          ],
-          "context": "Safari 27.3 引入 Adaptive Dark Mode，由 WebKit（Safari 的浏览器引擎）在渲染阶段为缺少深色主题的网页自动变换颜色，并声称高效且不让网站检测到变换结果。网站仍可借助 CSS 的 `color-scheme` 和 `:prefers-color-scheme` 自行提供原生 light/dark 设计，或用 `light only` 选择退出自动转换。讨论建立在一个长期现实上：许多网站没有响应系统主题，用户因而依赖 Dark Reader（网页改色扩展）、Noir（Safari 网页主题扩展）或自定义 CSS。争议同时涉及 Web 可访问性：不同视觉状况和环境对亮暗、对比度的需求相反，WCAG 2 的 4.5:1 对比度规则也被指出未必能准确衡量浅字深底的可读性。",
-          "emoji": "🌗",
-          "sarcastic_question": "网站连两套颜色都懒得做，还谈什么用户体验？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nSafari 27.3 推出的 Adaptive Dark Mode 通过 WebKit 引擎层面的智能算法，在保护用户隐私的前提下，自动将浅色网站转换为深色模式，填补了 40% 的深色模式用户需求与仅 10% 的网站支持率之间的巨大鸿沟。\n\n## 正文\n\n### 浅色网站的“强制深色”困境\n早在 2019 年，Safari 12.1 就率先支持了 Web 深色模式，但现实很骨感：虽然近 40% 的页面加载请求来自深色模式用户，但真正支持深色模式的网站只有 10%。这意味着用户在浏览网页时，经常会被突如其来的“白色闪光”刺眼。为了解决这个问题，Safari 27.3 引入了 Adaptive Dark Mode。它的逻辑很清晰：如果网站已经通过 `<meta name=\"color-scheme\">` 或 CSS 声明支持了深色模式，Safari 就不做任何干预；但如果网站没有声明，Safari 就会快速分析页面，如果发现是浅色背景，就自动将其“变身”为深色。\n\n### 核心魔法：保留色相的亮度反转\n要把浅色网站变成深色，最简单的办法是直接反转颜色，但那样会把红色的按钮变成诡异的青色。Safari 的做法很巧妙，它开发了一个颜色矩阵，专门用于反转颜色的亮度，同时保留原本的色相。这样，浅色背景变深，深色文字变浅，视觉效果依然自然。在处理文本时，算法会以 WCAG 4.5:1 的对比度标准为目标，确保文字清晰可读。对于 CSS 渐变，它也能智能处理，把浅色渐变转换为深色渐变。\n\n### 图片与特效的“小心翼翼”\n图片处理是最棘手的部分。Adaptive Dark Mode 的策略是“小心为上”：绝大多数图片保持原样，避免破坏内容原意。但对于 SVG 图标和 Logo，如果背景反转导致它们看不清了，Safari 会检查并转换其颜色；对于位图，它会分析像素直方图，识别并反转简单的黑白 Logo。更有意思的是，对于 `mix-blend-mode` 和 mask 等特效，如果颜色转换会导致显示异常，Safari 会直接关闭这些特效。至于 `<canvas>`，因为内容不可预测，Safari 选择完全不动它。\n\n### 开发者的应对之道\n如果你的网站遵循现代 Web 开发规范，Adaptive Dark Mode 通常能处理得很好。但如果你想让它表现得更完美，文章建议把位图图标换成 SVG，用 CSS 替代老旧的图片精灵（sprites），并确保内容图片背景透明。如果你只想让页面的某一部分保持原样或自定义深色样式，直接在对应元素上应用 `color-scheme: light dark` 并添加你自己的样式即可。当然，如果你想完全掌控深色模式的外观，最好的办法还是自己实现一套，利用 `prefers-color-scheme` 媒体查询和新的 `light-dark()` CSS 函数。\n\n### 隐私保护：网站无法感知的“隐形转换”\n这里有个关键的设计细节：Apple 把隐私保护放在了首位。如果网站能检测到用户开启了 Adaptive Dark Mode，这就会成为新的指纹追踪手段。所以，Safari 选择“瞒天过海”：当 JavaScript 查询 CSS 颜色时，拿到的是原始的浅色值，而不是转换后的深色值；绘制到 Canvas 上的图片也是原始模样。这意味着，网站完全不知道自己已经被 Safari 在底层“美颜”了。如果开发者实在不希望网站被转换，可以使用 `color-scheme: light only` 来明确拒绝（不过目前 Beta 1 版本还不支持 `only` 关键字，后续版本会更新）。"
-    },
-    {
-      "id": 50356944,
-      "by": "colejohnson66",
-      "title": "macOS 27 does not support CoreStorage volumes",
-      "url": "https://wadetregaskis.com/macos-27-golden-gate-does-not-actually-support-corestorage-or-hfs-volumes/",
-      "score": 122,
-      "detailUpdatedAt": 1793765611,
-      "createdAt": 1793741429,
-      "aiSummaryUpdatedAt": 1793766584,
-      "aisummary": {
-        "chinese_title": "macOS 27 移除 CoreStorage，旧加密 HFS+ 备份与 FireWire 设备受冲击",
-        "emoji": "🗑️",
-        "sarcastic_question": "删掉旧盘支持后，苹果的“专业”还剩多少？"
-      },
-      "classifications": {
-        "topics": [
-          6
-        ],
-        "facets": [],
-        "tags": [
-          "macOS",
-          "CoreStorage",
-          "HFS",
-          "Apple",
-          "FireWire",
-          "Fusion Drive"
-        ]
-      },
-      "classificationsUpdatedAt": 1793742630,
-      "aiSummary": {
-        "chinese_title": "macOS 27 移除 CoreStorage，旧加密 HFS+ 备份与 FireWire 设备受冲击",
-        "emoji": "🗑️",
-        "sarcastic_question": "删掉旧盘支持后，苹果的“专业”还剩多少？"
-      },
-      "detail": {
-        "id": 50356944,
-        "by": "colejohnson66",
-        "title": "macOS 27 does not support CoreStorage volumes",
-        "url": "https://wadetregaskis.com/macos-27-golden-gate-does-not-actually-support-corestorage-or-hfs-volumes/",
-        "score": 122,
-        "detailUpdatedAt": 1793765611,
-        "createdAt": 1793741429,
-        "aiSummaryUpdatedAt": 1793766584,
-        "aisummary": {
-          "chinese_title": "macOS 27 移除 CoreStorage，旧加密 HFS+ 备份与 FireWire 设备受冲击",
-          "discussion_overview": [
-            {
-              "category": "加密备份在 APFS、HFS+ 与网络 Time Machine 间陷入取舍",
-              "summary": "评论者担心 CoreStorage 被移除后，旧式加密 HFS+ 外接盘将失去原生可读性或可创建性，而 APFS 在机械 HDD 上的体验被认为很差。有人实测同一块外接 HDD 使用 APFS 时，Time Machine 单次增量备份可耗时 20 至 30 分钟，远慢于 SSD；也有人指出 APFS 本身能工作，备份场景未必特别依赖随机 I/O。网络 Time Machine 虽能实现集中、加密备份，却被多名用户称为会周期性损坏 sparse bundle，尤其经 SMB over OpenVPN 时更频繁。TrueNAS 的 Samba/ZFS 快照、Borg 或 SuperDuper、Carbon Copy 等工具被视为绕过系统限制和恢复损坏备份的替代方案。",
-              "supportid": [
-                "50359218",
-                "50359714",
-                "50360756",
-                "50360875",
-                "50360846",
-                "50359254",
-                "50359404",
-                "50360118",
-                "50360148"
-              ]
-            },
-            {
-              "category": "CoreStorage 的实际用途与迁移影响存在争议",
-              "summary": "CoreStorage 被解释为 macOS 的逻辑卷管理层，但并不等同于 Linux LVM 的完整实现，因此是否应直接称为 LVM 引发争论。它曾用于 Fusion Drive，即把独立 SSD 与 HDD 合并为单一逻辑设备，也用于 HFS+ 加密外接存储和 Time Machine 归档。部分评论者认为 Fusion Drive 早已停产，绝大多数存储硬件只要迁移数据、重新格式化即可继续使用，因此“硬件完全报废”的说法夸张。反方强调问题不在硬件能否写入，而在历史加密 HFS+ 卷可能无法被新版系统读取，归档数据的可访问性才是风险所在。",
-              "supportid": [
-                "50358416",
-                "50358511",
-                "50358538",
-                "50359061",
-                "50359418",
-                "50358888",
-                "50358997",
-                "50359231"
-              ]
-            },
-            {
-              "category": "苹果的兼容性取舍与弃用预警不足",
-              "summary": "不少人将此事视为苹果一贯优先清理不用技术、而非长期维持兼容性的体现，并与更重视向后兼容的 Microsoft 对比。HFS+ 已在 2017 年被 APFS 取代，因而有人认为其获得多年缓冲期，停止维护并不意外；但评论者指出公开技术说明曾称加密 HFS+ 要到 macOS 28 才不再支持，macOS 27 的变化显得提前且缺乏充分预警。FireWire 驱动器支持也已在 macOS 26 移除，批评者最不满的是旧盘接入后没有警告或读取路径。支持者则认为 Apple 最后一台带 FireWire 端口的电脑已过去十多年，技术淘汰有其合理性，且可借由旧版 macOS、Asahi 或转接链路抢救数据。",
-              "supportid": [
-                "50360093",
-                "50360110",
-                "50360040",
-                "50358492",
-                "50358717",
-                "50359401",
-                "50361261",
-                "50360364"
-              ]
-            },
-            {
-              "category": "macOS 27 被指稳定性、性能和产品方向倒退",
-              "summary": "多位升级者把 macOS 27 称为“灾难”，报告卡顿、随机崩溃、CPU 突增和网络 DNS 会周期性失效等日常工作问题。还有用户称 M1 MacBook Air 在 macOS 26 与 27 上的续航约降至原先一半，因此连续两年停留在 Sequoia。批评者将这些体验归因于 macOS 的 iOS 化、界面优先于专业工作流，以及对旧软件和旧机器的快速抛弃。也有较温和的不同体验：有人认为 macOS 26 比 27 更糟，自己等待数月才升级 26，却立即升级了 27，说明故障程度可能依赖具体硬件与配置。",
-              "supportid": [
-                "50358455",
-                "50359258",
-                "50359187",
-                "50358500",
-                "50359630",
-                "50358645",
-                "50360036",
-                "50360546"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "CoreStorage",
-              "explanation": "苹果曾使用的逻辑卷管理框架，可组合或加密存储卷；曾服务于 Fusion Drive 和部分加密 HFS+ 卷。"
-            },
-            {
-              "term": "HFS+",
-              "explanation": "苹果 APFS 之前长期使用的 Mac 文件系统；旧外接盘和部分 Time Machine 归档仍在使用它。"
-            },
-            {
-              "term": "APFS",
-              "explanation": "Apple File System，苹果自 2017 年起主推的文件系统，面向 SSD 优化并支持快照和加密。"
-            },
-            {
-              "term": "Time Machine",
-              "explanation": "macOS 内置的版本化备份工具，可备份至本地磁盘或网络共享；网络备份常使用 sparse bundle 磁盘映像。"
-            },
-            {
-              "term": "Fusion Drive",
-              "explanation": "苹果将独立 SSD 和 HDD 通过软件合并为单一存储卷的混合存储方案，依赖 CoreStorage 的早期实现。"
-            },
-            {
-              "term": "ZFS",
-              "explanation": "带校验、快照等数据完整性功能的文件系统与卷管理器，常被 TrueNAS 等 NAS 系统用于保护备份。"
-            }
-          ],
-          "context": "CoreStorage 是苹果旧有的逻辑卷管理框架，曾将 Fusion Drive（把 SSD 与 HDD 合并的混合存储）呈现为单一磁盘，也承载部分加密 HFS+（苹果旧版文件系统）卷。macOS 27 的发布说明已将其列为 deprecated，这意味着依赖它的旧加密卷和相关恢复流程面临兼容性风险；而苹果另一份技术说明曾预计加密 HFS+ 到 macOS 28 才停止支持。苹果现行的 APFS（面向 SSD 优化的文件系统）虽然可用于 HDD，却被一些用户认为在机械盘上的 Time Machine（macOS 内置版本化备份）性能明显较差。为保存多台电脑的备份，用户常用 NAS（网络附属存储）提供 Samba 文件共享，并借助 ZFS（支持快照与校验的文件系统）在 Time Machine 备份损坏时回滚。",
-          "emoji": "🗑️",
-          "sarcastic_question": "删掉旧盘支持后，苹果的“专业”还剩多少？"
-        },
-        "classifications": {
-          "topics": [
-            6
-          ],
-          "facets": [],
-          "tags": [
-            "macOS",
-            "CoreStorage",
-            "HFS",
-            "Apple",
-            "FireWire",
-            "Fusion Drive"
-          ]
-        },
-        "classificationsUpdatedAt": 1793742630,
-        "aiSummary": {
-          "chinese_title": "macOS 27 移除 CoreStorage，旧加密 HFS+ 备份与 FireWire 设备受冲击",
-          "discussion_overview": [
-            {
-              "category": "加密备份在 APFS、HFS+ 与网络 Time Machine 间陷入取舍",
-              "summary": "评论者担心 CoreStorage 被移除后，旧式加密 HFS+ 外接盘将失去原生可读性或可创建性，而 APFS 在机械 HDD 上的体验被认为很差。有人实测同一块外接 HDD 使用 APFS 时，Time Machine 单次增量备份可耗时 20 至 30 分钟，远慢于 SSD；也有人指出 APFS 本身能工作，备份场景未必特别依赖随机 I/O。网络 Time Machine 虽能实现集中、加密备份，却被多名用户称为会周期性损坏 sparse bundle，尤其经 SMB over OpenVPN 时更频繁。TrueNAS 的 Samba/ZFS 快照、Borg 或 SuperDuper、Carbon Copy 等工具被视为绕过系统限制和恢复损坏备份的替代方案。",
-              "supportid": [
-                "50359218",
-                "50359714",
-                "50360756",
-                "50360875",
-                "50360846",
-                "50359254",
-                "50359404",
-                "50360118",
-                "50360148"
-              ]
-            },
-            {
-              "category": "CoreStorage 的实际用途与迁移影响存在争议",
-              "summary": "CoreStorage 被解释为 macOS 的逻辑卷管理层，但并不等同于 Linux LVM 的完整实现，因此是否应直接称为 LVM 引发争论。它曾用于 Fusion Drive，即把独立 SSD 与 HDD 合并为单一逻辑设备，也用于 HFS+ 加密外接存储和 Time Machine 归档。部分评论者认为 Fusion Drive 早已停产，绝大多数存储硬件只要迁移数据、重新格式化即可继续使用，因此“硬件完全报废”的说法夸张。反方强调问题不在硬件能否写入，而在历史加密 HFS+ 卷可能无法被新版系统读取，归档数据的可访问性才是风险所在。",
-              "supportid": [
-                "50358416",
-                "50358511",
-                "50358538",
-                "50359061",
-                "50359418",
-                "50358888",
-                "50358997",
-                "50359231"
-              ]
-            },
-            {
-              "category": "苹果的兼容性取舍与弃用预警不足",
-              "summary": "不少人将此事视为苹果一贯优先清理不用技术、而非长期维持兼容性的体现，并与更重视向后兼容的 Microsoft 对比。HFS+ 已在 2017 年被 APFS 取代，因而有人认为其获得多年缓冲期，停止维护并不意外；但评论者指出公开技术说明曾称加密 HFS+ 要到 macOS 28 才不再支持，macOS 27 的变化显得提前且缺乏充分预警。FireWire 驱动器支持也已在 macOS 26 移除，批评者最不满的是旧盘接入后没有警告或读取路径。支持者则认为 Apple 最后一台带 FireWire 端口的电脑已过去十多年，技术淘汰有其合理性，且可借由旧版 macOS、Asahi 或转接链路抢救数据。",
-              "supportid": [
-                "50360093",
-                "50360110",
-                "50360040",
-                "50358492",
-                "50358717",
-                "50359401",
-                "50361261",
-                "50360364"
-              ]
-            },
-            {
-              "category": "macOS 27 被指稳定性、性能和产品方向倒退",
-              "summary": "多位升级者把 macOS 27 称为“灾难”，报告卡顿、随机崩溃、CPU 突增和网络 DNS 会周期性失效等日常工作问题。还有用户称 M1 MacBook Air 在 macOS 26 与 27 上的续航约降至原先一半，因此连续两年停留在 Sequoia。批评者将这些体验归因于 macOS 的 iOS 化、界面优先于专业工作流，以及对旧软件和旧机器的快速抛弃。也有较温和的不同体验：有人认为 macOS 26 比 27 更糟，自己等待数月才升级 26，却立即升级了 27，说明故障程度可能依赖具体硬件与配置。",
-              "supportid": [
-                "50358455",
-                "50359258",
-                "50359187",
-                "50358500",
-                "50359630",
-                "50358645",
-                "50360036",
-                "50360546"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "CoreStorage",
-              "explanation": "苹果曾使用的逻辑卷管理框架，可组合或加密存储卷；曾服务于 Fusion Drive 和部分加密 HFS+ 卷。"
-            },
-            {
-              "term": "HFS+",
-              "explanation": "苹果 APFS 之前长期使用的 Mac 文件系统；旧外接盘和部分 Time Machine 归档仍在使用它。"
-            },
-            {
-              "term": "APFS",
-              "explanation": "Apple File System，苹果自 2017 年起主推的文件系统，面向 SSD 优化并支持快照和加密。"
-            },
-            {
-              "term": "Time Machine",
-              "explanation": "macOS 内置的版本化备份工具，可备份至本地磁盘或网络共享；网络备份常使用 sparse bundle 磁盘映像。"
-            },
-            {
-              "term": "Fusion Drive",
-              "explanation": "苹果将独立 SSD 和 HDD 通过软件合并为单一存储卷的混合存储方案，依赖 CoreStorage 的早期实现。"
-            },
-            {
-              "term": "ZFS",
-              "explanation": "带校验、快照等数据完整性功能的文件系统与卷管理器，常被 TrueNAS 等 NAS 系统用于保护备份。"
-            }
-          ],
-          "context": "CoreStorage 是苹果旧有的逻辑卷管理框架，曾将 Fusion Drive（把 SSD 与 HDD 合并的混合存储）呈现为单一磁盘，也承载部分加密 HFS+（苹果旧版文件系统）卷。macOS 27 的发布说明已将其列为 deprecated，这意味着依赖它的旧加密卷和相关恢复流程面临兼容性风险；而苹果另一份技术说明曾预计加密 HFS+ 到 macOS 28 才停止支持。苹果现行的 APFS（面向 SSD 优化的文件系统）虽然可用于 HDD，却被一些用户认为在机械盘上的 Time Machine（macOS 内置版本化备份）性能明显较差。为保存多台电脑的备份，用户常用 NAS（网络附属存储）提供 Samba 文件共享，并借助 ZFS（支持快照与校验的文件系统）在 Time Machine 备份损坏时回滚。",
-          "emoji": "🗑️",
-          "sarcastic_question": "删掉旧盘支持后，苹果的“专业”还剩多少？"
-        }
-      },
-      "articleSummary": "## 一句话总结\nmacOS 27 彻底“砍掉”了 CoreStorage 支持，导致加密 HFS+ 卷不仅无法正常挂载或转换，甚至连抹掉都报错，唯一的解法是强行删除逻辑卷后重启。\n\n### 从“勉强能用”到“彻底罢工”\n如果你还在用 macOS 15 Sequoia，虽然 CoreStorage 和加密 HFS+ 已经被标记为废弃，工具也各种残缺，但好歹还能凑合用。作者之前虽然偶尔需要手动解锁，或者遇到无法转换 APFS 的情况，但数据终究还是能读写的。但到了 macOS 27（代号 Golden Gate），情况急转直下：系统直接拒绝挂载、转换甚至抹掉这些卷，你的加密 HFS+ 硬件瞬间变成一块“砖头”。更离谱的是，系统弹窗还误导说是 macOS 28 才不支持，简直是错上加错。\n\n### 上层工具全线崩溃，报错全是“烟雾弹”\n面对这种情况，你第一反应可能是用 Disk Utility 或者 `diskutil` 挽救。但现实是，Disk Utility 直接报个晦涩的 `error 49,153`。命令行下的 `diskutil mount` 也没好到哪去，它提示卷已锁定，建议用 `diskutil coreStorage unlockVolume`。但当你照做时，系统却告诉你卷早就解锁了——`diskutil cs list` 明确显示状态是 `Unlocked`。说白了，这些上层工具完全是在胡言乱语，根本无法反映底层的真实状态。\n\n### 底层命令虽能挂载，却只能“只读”\n有意思的地方在于，macOS 27 的内核其实还认得这些卷。如果你绕过那些“智障”的上层工具，直接调用 `mount_hfs`，卷竟然能顺利挂载。但别高兴太早，作者试遍了各种方法，发现只能以只读模式（`-o rdonly`）挂载。一旦尝试读写模式，系统立马报 `Resource busy` (EBUSY) 错误。这就很尴尬了：数据能看，但拿不出来，也改不了。\n\n### 想抹盘重修？系统依然“死锁”\n既然读写无望，那抹掉数据重新格式化总行吧？不行。无论是 `diskutil` 还是 Disk Utility，所有尝试抹掉卷的操作全部撞墙，依然是那个万恶的 `Resource busy` 错误。甚至连第三方工具 `hfsutils` 也无法识别这些设备。此时你面对的是一个逻辑上已解锁、但被系统死死占用的“僵尸卷”，进退两难。\n\n### 绝境求生的“暴力”解法\n那怎么办？作者在 Gemini 4 Argon 的协助下，终于找到了一个极其隐蔽的解法。核心思路其实很简单：既然“Resource busy”是因为系统在搞鬼，那就骗过它。执行 `diskutil cs delete` 删除 Logical Volume Group 时，虽然会报错说无法抹掉底层物理盘，但实际上逻辑卷已经被删掉了。此时物理盘依然报错“忙”，但只要重启一次，那个顽固的锁就消失了。\n\n### 重启后的“重生”\n重启之后，那个导致 `Resource busy` 的幽灵进程终于消失，你终于可以正常抹掉物理卷并重新开始。作者推测，这个 Bug 的根源在于某个系统组件死死抓住了逻辑卷不放，只要逻辑卷还在，物理盘就别想动。虽然数据保不住了，但至少昂贵的存储硬件算是抢救回来了。如果你也遇到了同样的困境，别费劲调试了，备份数据、删卷、重启，这是目前唯一的出路。"
-    },
-    {
-      "id": 50339288,
-      "by": "xx_ns",
-      "title": "Jailbreaking my car's navigation system just so I can change the time",
-      "url": "https://blog.nns.ee/2026/11/02/renault-hack/",
-      "score": 641,
-      "detailUpdatedAt": 1793762005,
-      "createdAt": 1793721632,
-      "aiSummaryUpdatedAt": 1793763004,
-      "aisummary": {
-        "chinese_title": "车载导航时钟被 SD 卡锁死：越狱与可维修性争议",
-        "emoji": "🔓",
-        "sarcastic_question": "四位时间，为何要先破解整辆车？"
-      },
-      "classifications": {
-        "topics": [
-          7,
-          3
-        ],
-        "facets": [
-          5
-        ],
-        "tags": [
-          "Renault",
-          "car navigation system",
-          "SD card",
-          "jailbreaking"
-        ]
-      },
-      "classificationsUpdatedAt": 1793724933,
-      "aiSummary": {
-        "chinese_title": "车载导航时钟被 SD 卡锁死：越狱与可维修性争议",
-        "emoji": "🔓",
-        "sarcastic_question": "四位时间，为何要先破解整辆车？"
-      },
-      "detail": {
-        "id": 50339288,
-        "by": "xx_ns",
-        "title": "Jailbreaking my car's navigation system just so I can change the time",
-        "url": "https://blog.nns.ee/2026/11/02/renault-hack/",
-        "score": 641,
-        "detailUpdatedAt": 1793762005,
-        "createdAt": 1793721632,
-        "aiSummaryUpdatedAt": 1793763004,
-        "aisummary": {
-          "chinese_title": "车载导航时钟被 SD 卡锁死：越狱与可维修性争议",
-          "discussion_overview": [
-            {
-              "category": "手动校时应是最低保障",
-              "summary": "许多人认为，无论 GPS、联网或地图数据多么自动化，车机都应保留一个直接的“clock set”入口。旧车因 DST 规则过期、地区更改时区、GPS 时区配置错误或网络服务退役而长期显示错误时间，用户只能半年手调一次甚至完全无从修改。评论者特别批评将基本设置藏进多层菜单、强制数据共享，或干脆移除手动选项的做法。相比之下，小时和分钟物理按钮、DST 开关或只显示 UTC 的朴素方案被视为更可靠。",
-              "supportid": [
-                "50354057",
-                "50354306",
-                "50353866",
-                "50353583",
-                "50357673",
-                "50357987"
-              ]
-            },
-            {
-              "category": "时间同步并非只要“有 GPS”",
-              "summary": "评论指出，GPS 能提供高精度时间和位置，但并不直接提供本地时区；设备还需要可更新的时区规则数据库，历史上还要处理闰秒等问题。部分老车依赖 2G/3G、OnStar 或广播时间服务，蜂窝网络退网或服务合约结束后，自动校时功能便悄然失效。RDS 和 DAB 等广播标准能够传送日期时间，因而被认为是低成本却常被忽略的备选方案。多个独立时钟若不经 CAN bus 协调，还会各自漂移，造成仪表、导航和副屏同时显示不同时间的荒谬局面。",
-              "supportid": [
-                "50355141",
-                "50359677",
-                "50354541",
-                "50354574",
-                "50355752",
-                "50354274"
-              ]
-            },
-            {
-              "category": "车机软件的生命周期、质量与隐私",
-              "summary": "不少车主将问题归因于汽车业的软件开发模式：整车平台周期长，硬件在上市前数年就已冻结，车企又常把 UI 和软件当作可压价的零部件。实际案例包括 Subaru infotainment 频繁崩溃、CarPlay 连接不稳、蓝牙导航语音延迟，以及 infotainment 异常耗电导致电池亏电。即使持续 OTA 更新的 Tesla 也被质疑会让旧处理器获得更少功能，说明封闭更新并不能自动保证长期支持。更令人反感的是某些车机为自动更新时区或启用功能而索取驾驶数据，或在每次启动时反复弹出同意追踪的 EULA。",
-              "supportid": [
-                "50354739",
-                "50355284",
-                "50357149",
-                "50357928",
-                "50355384",
-                "50354935"
-              ]
-            },
-            {
-              "category": "越狱、OBD 与替换车机的自主权",
-              "summary": "评论者普遍欢迎通过 root、逆向工程或 OBD-II 编码恢复车辆主人本应拥有的设置权，例如更改地区编码、关闭自动启停或修复温度单位。已有 Nissan、Mazda 等车机的漏洞或 root 项目被提及，表明许多系统本质上运行着可被研究的嵌入式 Linux 软件。较务实的路线则是换装符合 2DIN 规格的 aftermarket head unit，或使用后视镜式 Android Auto/CarPlay 屏幕，避免与原厂 MMI 纠缠。也有人提醒，改装必须处理签名分区、固件刷写和转向盘控制等兼容性问题，错误操作可能使车机变砖。",
-              "supportid": [
-                "50355355",
-                "50353489",
-                "50354810",
-                "50359914",
-                "50359331",
-                "50354520"
-              ]
-            },
-            {
-              "category": "Subaru 的实用价值与电子系统短板",
-              "summary": "围绕 Subaru 的讨论把车机缺陷扩大到品牌评价：有人描述多个不互通的时钟、漂移的 RTC，以及不稳定的 infotainment，但也有人认为这些不影响其耐用、安全和 AWD 的核心卖点。AWD 是否更安全引发激烈争论，较一致的结论是它主要改善起步、爬坡和脱困，并不会缩短四轮制动距离。评论援引冰雪路面统计称，AWD 可能因给驾驶员虚假的抓地信心而伴随更高事故率或冲击速度。冬季胎、3PMSF 认证和合理车速被反复强调比驱动形式更关键。",
-              "supportid": [
-                "50355141",
-                "50355284",
-                "50355732",
-                "50359908",
-                "50360490",
-                "50360834"
-              ]
-            },
-            {
-              "category": "保留资料、记录过程与回归简单设计",
-              "summary": "原配地图卡被误扔的经过让许多人感叹，即使地图过期，也应保留带有功能和授权信息的小小 SD 卡。评论者建议把逆向、维修和个人项目中的参数、文件位置、失败尝试记录到 engineering notebook、内部 wiki 或 MEMORY.md，否则半年后的 DST 调整又得从头摸索。另一批人干脆主张减少无意义的时钟：微波炉、烤箱和车内多个独立时钟既会漂移又增加干扰。机械钟、简单数字钟、物理按键乃至用胶带遮住错误时间，都被当作比“智能”系统更省心的方案。",
-              "supportid": [
-                "50353939",
-                "50354216",
-                "50354042",
-                "50354400",
-                "50354657",
-                "50358672"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "DST（Daylight Saving Time）",
-              "explanation": "夏令时制度；其启停日期和偏移规则会因地区政策变化而改变，旧车机若规则未更新便会显示错误本地时间。"
-            },
-            {
-              "term": "CAN bus",
-              "explanation": "Controller Area Network，总线式车载通信网络；可让仪表、导航和其他控制器共享时间等状态信息。"
-            },
-            {
-              "term": "head unit",
-              "explanation": "车载主机，通常集成音响、导航、蓝牙、屏幕和车辆设置，是车机改装或逆向的主要对象。"
-            },
-            {
-              "term": "CID（Card Identification）",
-              "explanation": "SD 卡出厂烧录的唯一标识；有些导航系统把它与文件签名绑定，以 DRM 阻止直接复制地图卡。"
-            },
-            {
-              "term": "OBD-II",
-              "explanation": "车辆标准诊断接口；配合扫描器或编码工具可读取故障、修改部分配置或关闭特定功能。"
-            },
-            {
-              "term": "RDS",
-              "explanation": "Radio Data System，FM 广播附加数据标准；可选传输日期和时间，供收音机或车载时钟校时。"
-            }
-          ],
-          "context": "旧式车载导航常把地图、菜单定义和 tzdata（时区规则数据库）放在原厂 SD 卡中；当地图卡丢失时，本应普通的校时入口也可能随之消失。该系统还以 CID（SD 卡的唯一硬件标识）和文件签名实施 DRM（数字版权管理），所以不能简单把文件复制到新卡。文章中的车主为了修正 DST（夏令时）造成的错误时间而破解导航主机，并继续研究如何绕过限制执行自定义软件。讨论由此延伸到 GPS（卫星定位系统）校时、蜂窝网络退网、车机长期维护、驾驶数据追踪，以及车辆所有者是否应有修改软硬件的权利。",
-          "emoji": "🔓",
-          "sarcastic_question": "四位时间，为何要先破解整辆车？"
-        },
-        "classifications": {
-          "topics": [
-            7,
-            3
-          ],
-          "facets": [
-            5
-          ],
-          "tags": [
-            "Renault",
-            "car navigation system",
-            "SD card",
-            "jailbreaking"
-          ]
-        },
-        "classificationsUpdatedAt": 1793724933,
-        "aiSummary": {
-          "chinese_title": "车载导航时钟被 SD 卡锁死：越狱与可维修性争议",
-          "discussion_overview": [
-            {
-              "category": "手动校时应是最低保障",
-              "summary": "许多人认为，无论 GPS、联网或地图数据多么自动化，车机都应保留一个直接的“clock set”入口。旧车因 DST 规则过期、地区更改时区、GPS 时区配置错误或网络服务退役而长期显示错误时间，用户只能半年手调一次甚至完全无从修改。评论者特别批评将基本设置藏进多层菜单、强制数据共享，或干脆移除手动选项的做法。相比之下，小时和分钟物理按钮、DST 开关或只显示 UTC 的朴素方案被视为更可靠。",
-              "supportid": [
-                "50354057",
-                "50354306",
-                "50353866",
-                "50353583",
-                "50357673",
-                "50357987"
-              ]
-            },
-            {
-              "category": "时间同步并非只要“有 GPS”",
-              "summary": "评论指出，GPS 能提供高精度时间和位置，但并不直接提供本地时区；设备还需要可更新的时区规则数据库，历史上还要处理闰秒等问题。部分老车依赖 2G/3G、OnStar 或广播时间服务，蜂窝网络退网或服务合约结束后，自动校时功能便悄然失效。RDS 和 DAB 等广播标准能够传送日期时间，因而被认为是低成本却常被忽略的备选方案。多个独立时钟若不经 CAN bus 协调，还会各自漂移，造成仪表、导航和副屏同时显示不同时间的荒谬局面。",
-              "supportid": [
-                "50355141",
-                "50359677",
-                "50354541",
-                "50354574",
-                "50355752",
-                "50354274"
-              ]
-            },
-            {
-              "category": "车机软件的生命周期、质量与隐私",
-              "summary": "不少车主将问题归因于汽车业的软件开发模式：整车平台周期长，硬件在上市前数年就已冻结，车企又常把 UI 和软件当作可压价的零部件。实际案例包括 Subaru infotainment 频繁崩溃、CarPlay 连接不稳、蓝牙导航语音延迟，以及 infotainment 异常耗电导致电池亏电。即使持续 OTA 更新的 Tesla 也被质疑会让旧处理器获得更少功能，说明封闭更新并不能自动保证长期支持。更令人反感的是某些车机为自动更新时区或启用功能而索取驾驶数据，或在每次启动时反复弹出同意追踪的 EULA。",
-              "supportid": [
-                "50354739",
-                "50355284",
-                "50357149",
-                "50357928",
-                "50355384",
-                "50354935"
-              ]
-            },
-            {
-              "category": "越狱、OBD 与替换车机的自主权",
-              "summary": "评论者普遍欢迎通过 root、逆向工程或 OBD-II 编码恢复车辆主人本应拥有的设置权，例如更改地区编码、关闭自动启停或修复温度单位。已有 Nissan、Mazda 等车机的漏洞或 root 项目被提及，表明许多系统本质上运行着可被研究的嵌入式 Linux 软件。较务实的路线则是换装符合 2DIN 规格的 aftermarket head unit，或使用后视镜式 Android Auto/CarPlay 屏幕，避免与原厂 MMI 纠缠。也有人提醒，改装必须处理签名分区、固件刷写和转向盘控制等兼容性问题，错误操作可能使车机变砖。",
-              "supportid": [
-                "50355355",
-                "50353489",
-                "50354810",
-                "50359914",
-                "50359331",
-                "50354520"
-              ]
-            },
-            {
-              "category": "Subaru 的实用价值与电子系统短板",
-              "summary": "围绕 Subaru 的讨论把车机缺陷扩大到品牌评价：有人描述多个不互通的时钟、漂移的 RTC，以及不稳定的 infotainment，但也有人认为这些不影响其耐用、安全和 AWD 的核心卖点。AWD 是否更安全引发激烈争论，较一致的结论是它主要改善起步、爬坡和脱困，并不会缩短四轮制动距离。评论援引冰雪路面统计称，AWD 可能因给驾驶员虚假的抓地信心而伴随更高事故率或冲击速度。冬季胎、3PMSF 认证和合理车速被反复强调比驱动形式更关键。",
-              "supportid": [
-                "50355141",
-                "50355284",
-                "50355732",
-                "50359908",
-                "50360490",
-                "50360834"
-              ]
-            },
-            {
-              "category": "保留资料、记录过程与回归简单设计",
-              "summary": "原配地图卡被误扔的经过让许多人感叹，即使地图过期，也应保留带有功能和授权信息的小小 SD 卡。评论者建议把逆向、维修和个人项目中的参数、文件位置、失败尝试记录到 engineering notebook、内部 wiki 或 MEMORY.md，否则半年后的 DST 调整又得从头摸索。另一批人干脆主张减少无意义的时钟：微波炉、烤箱和车内多个独立时钟既会漂移又增加干扰。机械钟、简单数字钟、物理按键乃至用胶带遮住错误时间，都被当作比“智能”系统更省心的方案。",
-              "supportid": [
-                "50353939",
-                "50354216",
-                "50354042",
-                "50354400",
-                "50354657",
-                "50358672"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "DST（Daylight Saving Time）",
-              "explanation": "夏令时制度；其启停日期和偏移规则会因地区政策变化而改变，旧车机若规则未更新便会显示错误本地时间。"
-            },
-            {
-              "term": "CAN bus",
-              "explanation": "Controller Area Network，总线式车载通信网络；可让仪表、导航和其他控制器共享时间等状态信息。"
-            },
-            {
-              "term": "head unit",
-              "explanation": "车载主机，通常集成音响、导航、蓝牙、屏幕和车辆设置，是车机改装或逆向的主要对象。"
-            },
-            {
-              "term": "CID（Card Identification）",
-              "explanation": "SD 卡出厂烧录的唯一标识；有些导航系统把它与文件签名绑定，以 DRM 阻止直接复制地图卡。"
-            },
-            {
-              "term": "OBD-II",
-              "explanation": "车辆标准诊断接口；配合扫描器或编码工具可读取故障、修改部分配置或关闭特定功能。"
-            },
-            {
-              "term": "RDS",
-              "explanation": "Radio Data System，FM 广播附加数据标准；可选传输日期和时间，供收音机或车载时钟校时。"
-            }
-          ],
-          "context": "旧式车载导航常把地图、菜单定义和 tzdata（时区规则数据库）放在原厂 SD 卡中；当地图卡丢失时，本应普通的校时入口也可能随之消失。该系统还以 CID（SD 卡的唯一硬件标识）和文件签名实施 DRM（数字版权管理），所以不能简单把文件复制到新卡。文章中的车主为了修正 DST（夏令时）造成的错误时间而破解导航主机，并继续研究如何绕过限制执行自定义软件。讨论由此延伸到 GPS（卫星定位系统）校时、蜂窝网络退网、车机长期维护、驾驶数据追踪，以及车辆所有者是否应有修改软硬件的权利。",
-          "emoji": "🔓",
-          "sarcastic_question": "四位时间，为何要先破解整辆车？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n为了解决车载导航系统必须插正版地图 SD 卡才能修改时间的荒谬设定，作者通过逆向工程发现系统漏洞，利用 Linux 内核的 `core_pattern` 机制成功越狱，最终实现了任意代码执行。\n\n## 正文\n\n### 令人抓狂的“防盗版”设计\n事情的起因简单得让人无奈：作者开着一辆 2014 款 Renault Latitude，由于爱沙尼亚实行冬令时切换，仪表盘时间慢了一小时。他本以为进设置菜单调一下就行，结果发现那个“时间设置”选项根本不存在。经过一番逆向研究，他不得不承认前车主没说谎——这套 TomTom Carminat LIVE 系统（代号 `beaumont`，基于 Linux 2.6.28.10）的设计简直反人类：设置菜单的定义文件竟然放在导航 SD 卡里。没卡？那你连设置入口都进不去。更绝的是，系统还有严格的 DRM 校验，会验证 SD 卡的唯一 CID 和文件签名，想随便找张卡拷贝数据都不行。作者不想花 60 欧元买个过时的地图卡，于是决定：干脆把系统给黑了。\n\n### 硬啃固件与碰壁的尝试\n既然要黑，就得先搞到固件。好在有人做过类似工作，作者顺藤摸瓜下载了更新文件，解压出一个名为 `ttsystem` 的 ext3 文件系统镜像。起初他以为这很容易：修改 init 脚本，打包刷机，完事。结果现实打脸，系统会验证镜像末尾的高熵数据（疑似 DSA-SHA1 签名），修改过的镜像直接被拒。为了调试，作者不得不搭建了 QEMU 模拟器，配合定制内核和 CAN 总线模拟，才让这个 2011 年的老系统“勉强”跑起来。这一跑不要紧，他发现系统的安全策略异常严格：关键分区全是 `ro`（只读）或 `noexec`（不可执行），连 SD 卡挂载点也不例外。这年头的车机，防得比手机还严。\n\n### 脚本解析器里的“鸡肋”漏洞\n既然强攻不行，只能智取。作者发现系统启动时会读取 SD卡根目录下的 `master.script`，这是一个自定义语言的脚本，用来自动化 UI 操作。逆向解析器 `ttn` 后，他找到了一个 `SHEX` 命令，可以执行任意二进制文件。但这有个大坑：参数无法控制，只能执行 rootfs 里已有的程序，且无法传参。更让人绝望的是，SD 卡挂载为 `noexec`，想直接跑自己的脚本门儿都没有。他又尝试了 `LOG` 命令，发现存在路径遍历漏洞，可以往系统任意路径写 ASCII 字符。但问题依旧：rootfs 只读，其他分区不可执行，写了也白写。甚至尝试 fuzz 图片解码器找内存破坏漏洞，也只撞出几个无用的越界读取。\n\n### 借力打力的内核技巧\n就在一筹莫展时，作者灵光一闪，想到了 Linux 内核漏洞利用中常用的技巧——`core_pattern`。这个内核参数定义了程序崩溃时的转储处理方式，而且支持管道符语法（如 `|/bin/handler`），内核会以 root 权限执行指定的程序。关键在于，`core_pattern` 可以通过写入 `/proc/sys/kernel/core_pattern` 来修改，而且该系统内核版本（2.6.28）恰好支持管道语法。这下之前的“鸡肋”漏洞全活了：利用 `LOG` 命令的路径遍历，将 `|/bin/sh /media/sdcard/payload.sh` 写入 `/proc/sys/kernel/core_pattern`；再利用 `SHEX` 命令执行 `/bin/dbus-monitor`，这个程序因找不到 D-Bus 总线会触发 SIGABRT 崩溃。一崩溃，内核就会乖乖执行我们的脚本。\n\n### 完美的越狱收尾\n最终的攻击脚本异常简洁：三行代码。第一行定义 `LOGFILE` 指向内核接口，第二行写入恶意路径，第三行触发崩溃。当作者插入 SD 卡，车机弹出“是否执行 master.script”的提示，按下“Yes”后，系统成功重启——代码执行权到手。作者最后提到，他甚至不需要修改 NVRAM 来持久化 Root，因为车机每次启动都会读取 SD 卡上的脚本。这场耗时费力的“黑客马拉松”，仅仅是为了把时间调快一小时。这大概是“极客精神”最生动的注脚：不为作恶，不为盗版，只为了掌控自己花钱买来的设备。"
-    },
-    {
-      "id": 50333332,
-      "by": "shcallaway",
-      "title": "Why Don't We Live in an Art Nouveau World?",
-      "url": "https://asteriskmag.com/issues/16/why-don-t-we-life-in-an-art-nouveau-world",
-      "score": 122,
-      "detailUpdatedAt": 1793753013,
-      "createdAt": 1793715030,
-      "aiSummaryUpdatedAt": 1793753389,
-      "aisummary": {
-        "chinese_title": "为何新艺术建筑未成日常：成本、标准化与现代主义审美之争",
-        "emoji": "🏢",
-        "sarcastic_question": "既然盒子最适销，城市为何还要让人喜欢？"
-      },
-      "classifications": {
-        "topics": [
-          11
-        ],
-        "facets": [
-          9
-        ],
-        "tags": [
-          "Art Nouveau",
-          "architecture",
-          "modernism",
-          "Sagrada Família",
-          "Antoni Gaudí"
-        ]
-      },
-      "classificationsUpdatedAt": 1793715934,
-      "aiSummary": {
-        "chinese_title": "为何新艺术建筑未成日常：成本、标准化与现代主义审美之争",
-        "emoji": "🏢",
-        "sarcastic_question": "既然盒子最适销，城市为何还要让人喜欢？"
-      },
-      "detail": {
-        "id": 50333332,
-        "by": "shcallaway",
-        "title": "Why Don't We Live in an Art Nouveau World?",
-        "url": "https://asteriskmag.com/issues/16/why-don-t-we-life-in-an-art-nouveau-world",
-        "score": 122,
-        "detailUpdatedAt": 1793753013,
-        "createdAt": 1793715030,
-        "aiSummaryUpdatedAt": 1793753389,
-        "aisummary": {
-          "chinese_title": "为何新艺术建筑未成日常：成本、标准化与现代主义审美之争",
-          "discussion_overview": [
-            {
-              "category": "规模化住房与商业地产偏好中性盒子",
-              "summary": "许多人认为，当代建筑首先是可交易、可出租、可改造的资产，而非为特定住户长期营造的作品。开发商偏好少数户型、灰白中性色和可替换的招牌，使教堂、快餐店或服装店都能迅速改作他用；风格越强，潜在买家和投资组合的标准化管理就越困难。也有人反驳，风格并不必然损害价值：复古家电、Art Deco 仍有稳定市场，鲜明色彩也能提高特定买家的吸引力。争论的核心是市场所谓“适销”究竟代表真实偏好，还是房地产行业用最低整备成本塑造出的平均化选择。",
-              "supportid": [
-                "50352580",
-                "50352924",
-                "50356111",
-                "50357510",
-                "50354753",
-                "50355333",
-                "50354627"
-              ]
-            },
-            {
-              "category": "人工劳动、维护成本与功能约束",
-              "summary": "一派将装饰消失归因于熟练工人工资上升、城市人口激增和建设速度要求：手工镶木、雕刻、定制构件需要大量高技能工时，难以大规模复制。装饰性立面还会增加清洁、修补和防风雨、防鸟害的负担，历史构件损坏后往往难以配制替件。反方指出，平屋顶、隐蔽排水、巨型玻璃幕墙等现代主义细节同样可能漏水、冻裂、保温差且维修昂贵，不能把现代盒子简单当作耐用廉价的答案。还有人认为资源本身并不稀缺，富裕社会只是选择将资金投向面积、利润或其他消费，而非公共建筑美感。",
-              "supportid": [
-                "50352645",
-                "50352264",
-                "50353396",
-                "50352712",
-                "50354118",
-                "50356424",
-                "50355456"
-              ]
-            },
-            {
-              "category": "现代主义教育与意识形态的主导",
-              "summary": "批评者认为，战后建筑院系将古典或传统形式贴上“复古拼贴、昂贵、不原创”的标签，学生为迎合教授、竞赛和行业评审而接受反装饰的现代主义规范。相关论点援引 Adolf Loos 的《Ornament and Crime》，认为断裂不只是审美换代，而是将实用、坚固和“永恒性”抬升为道德理想的意识形态转向。也有人把美国的“Yale box”归于企业偏爱低成本建筑，以及学院派抽象批评压过实际营造技艺；后来的 Postmodernism 虽承认其失败，却常以讽刺式 kitsch 回避传统。反驳意见则提醒，建筑风格从来都与政治部落绑定，19世纪英国的 Gothic 与 Italianate 也分别传达保守民族传统和自由派商业国际主义，不能虚构一个曾经纯粹统一的传统黄金时代。",
-              "supportid": [
-                "50354896",
-                "50352378",
-                "50355790",
-                "50356065",
-                "50352246",
-                "50353089",
-                "50356481",
-                "50357745"
-              ]
-            },
-            {
-              "category": "幸存者偏差、精英建筑与新艺术的不可复制性",
-              "summary": "评论者提醒，人们今天欣赏的 Barcelona、Brussels 或 Riga 的新艺术地标，多为富裕阶层公寓、教堂或被保存下来的杰作；同时代大量平庸住房、肮脏贫民区和廉价木构早已被遗忘或消失。Art Nouveau 依赖建筑师的个人才华与 bespoke 装饰，缺少一套稳定、可组合的基本语法，因此更像容纳多种风格的运动，难以形成可规模化复制的体系。Sagrada Família 被视为极端例子：有人赞赏其长期投入与沉浸感，也有人认为它过度刺激、近似 H. R. Giger 的 Alien 美学，并不代表典型 Art Nouveau。由此，要求整座城市都达到少数遗产建筑的视觉密度，可能既误读历史供给，也忽视日常居住的多样偏好。",
-              "supportid": [
-                "50357800",
-                "50358004",
-                "50352031",
-                "50352260",
-                "50357191",
-                "50357446",
-                "50355456"
-              ]
-            },
-            {
-              "category": "美感、精神价值与当代社会优先级",
-              "summary": "不少人以讽刺口吻把金属玻璃长方体与可替换劳动者并置，认为当代建筑映照了消费主义、公司治理和屏幕驱动的社会：实体空间被降格，注意力转移到 endless scroll 与数字刺激。支持装饰的一方认为，愉悦、归属感、色彩和历史痕迹本身应算建筑功能，而不应只用可量化成本衡量；有人甚至喜欢房屋保留前住户的色彩、涂鸦和“幽灵般”的痕迹。另一方则质疑华丽建筑未必代表崇高共同体，也可能只是财富和阶层信号；极端装饰并非客观更好。讨论因而落在价值选择上：社会是否愿意以时间、金钱和维护换取非功利的公共美感。",
-              "supportid": [
-                "50352319",
-                "50352536",
-                "50355456",
-                "50352259",
-                "50352390",
-                "50353058",
-                "50357962",
-                "50358610",
-                "50359427"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "Art Nouveau／新艺术运动",
-              "explanation": "19世纪末至20世纪初的欧洲建筑与装饰艺术潮流，常用植物曲线、手工细部和整体化室内设计；德语地区常称 Jugendstil。"
-            },
-            {
-              "term": "现代主义（Modernism）",
-              "explanation": "20世纪建筑主流思潮，强调功能、工业材料、简洁几何和去装饰；常与钢、玻璃、混凝土盒状建筑联系在一起。"
-            },
-            {
-              "term": "Bauhaus／包豪斯",
-              "explanation": "德国现代设计与建筑学派，主张艺术、工艺和工业生产结合；讨论中也被用来指称简洁功能主义建筑的谱系。"
-            },
-            {
-              "term": "Art Deco",
-              "explanation": "兴盛于1920至1930年代的装饰风格，以几何化、扁平化装饰和可工业化制作的细节著称，被视为手工新艺术与极简现代主义之间的折中。"
-            },
-            {
-              "term": "trad critique",
-              "explanation": "网络上对现代建筑的传统主义批评，主张恢复古典、传统或人尺度建筑，通常指责现代主义制造了单调的“灰盒子”。"
-            }
-          ],
-          "context": "原文追问为何以 Barcelona 的 Gaudí、Brussels 的 Victor Horta 等为代表的新艺术运动，没有发展成现代城市的普遍日常风貌。新艺术运动（Art Nouveau，一种强调曲线、自然意象和定制装饰的19世纪末建筑潮流）在第一次世界大战前后迅速退潮，随后被古典复兴及现代主义（强调功能、工业材料与简化形式的20世纪建筑思潮）取代。讨论还涉及 Sagrada Família（Gaudí 设计、至今仍在建设的巴塞罗那大型天主教堂），其艺术价值、实用性和是否属于典型新艺术均有争议。评论者将建筑选择放入房地产金融化、劳动力价格、建筑法规、院校训练、战争后的社会变迁及政治身份表达等背景中理解，而非归结为单一审美失误。",
-          "emoji": "🏢",
-          "sarcastic_question": "既然盒子最适销，城市为何还要让人喜欢？"
-        },
-        "classifications": {
-          "topics": [
-            11
-          ],
-          "facets": [
-            9
-          ],
-          "tags": [
-            "Art Nouveau",
-            "architecture",
-            "modernism",
-            "Sagrada Família",
-            "Antoni Gaudí"
-          ]
-        },
-        "classificationsUpdatedAt": 1793715934,
-        "aiSummary": {
-          "chinese_title": "为何新艺术建筑未成日常：成本、标准化与现代主义审美之争",
-          "discussion_overview": [
-            {
-              "category": "规模化住房与商业地产偏好中性盒子",
-              "summary": "许多人认为，当代建筑首先是可交易、可出租、可改造的资产，而非为特定住户长期营造的作品。开发商偏好少数户型、灰白中性色和可替换的招牌，使教堂、快餐店或服装店都能迅速改作他用；风格越强，潜在买家和投资组合的标准化管理就越困难。也有人反驳，风格并不必然损害价值：复古家电、Art Deco 仍有稳定市场，鲜明色彩也能提高特定买家的吸引力。争论的核心是市场所谓“适销”究竟代表真实偏好，还是房地产行业用最低整备成本塑造出的平均化选择。",
-              "supportid": [
-                "50352580",
-                "50352924",
-                "50356111",
-                "50357510",
-                "50354753",
-                "50355333",
-                "50354627"
-              ]
-            },
-            {
-              "category": "人工劳动、维护成本与功能约束",
-              "summary": "一派将装饰消失归因于熟练工人工资上升、城市人口激增和建设速度要求：手工镶木、雕刻、定制构件需要大量高技能工时，难以大规模复制。装饰性立面还会增加清洁、修补和防风雨、防鸟害的负担，历史构件损坏后往往难以配制替件。反方指出，平屋顶、隐蔽排水、巨型玻璃幕墙等现代主义细节同样可能漏水、冻裂、保温差且维修昂贵，不能把现代盒子简单当作耐用廉价的答案。还有人认为资源本身并不稀缺，富裕社会只是选择将资金投向面积、利润或其他消费，而非公共建筑美感。",
-              "supportid": [
-                "50352645",
-                "50352264",
-                "50353396",
-                "50352712",
-                "50354118",
-                "50356424",
-                "50355456"
-              ]
-            },
-            {
-              "category": "现代主义教育与意识形态的主导",
-              "summary": "批评者认为，战后建筑院系将古典或传统形式贴上“复古拼贴、昂贵、不原创”的标签，学生为迎合教授、竞赛和行业评审而接受反装饰的现代主义规范。相关论点援引 Adolf Loos 的《Ornament and Crime》，认为断裂不只是审美换代，而是将实用、坚固和“永恒性”抬升为道德理想的意识形态转向。也有人把美国的“Yale box”归于企业偏爱低成本建筑，以及学院派抽象批评压过实际营造技艺；后来的 Postmodernism 虽承认其失败，却常以讽刺式 kitsch 回避传统。反驳意见则提醒，建筑风格从来都与政治部落绑定，19世纪英国的 Gothic 与 Italianate 也分别传达保守民族传统和自由派商业国际主义，不能虚构一个曾经纯粹统一的传统黄金时代。",
-              "supportid": [
-                "50354896",
-                "50352378",
-                "50355790",
-                "50356065",
-                "50352246",
-                "50353089",
-                "50356481",
-                "50357745"
-              ]
-            },
-            {
-              "category": "幸存者偏差、精英建筑与新艺术的不可复制性",
-              "summary": "评论者提醒，人们今天欣赏的 Barcelona、Brussels 或 Riga 的新艺术地标，多为富裕阶层公寓、教堂或被保存下来的杰作；同时代大量平庸住房、肮脏贫民区和廉价木构早已被遗忘或消失。Art Nouveau 依赖建筑师的个人才华与 bespoke 装饰，缺少一套稳定、可组合的基本语法，因此更像容纳多种风格的运动，难以形成可规模化复制的体系。Sagrada Família 被视为极端例子：有人赞赏其长期投入与沉浸感，也有人认为它过度刺激、近似 H. R. Giger 的 Alien 美学，并不代表典型 Art Nouveau。由此，要求整座城市都达到少数遗产建筑的视觉密度，可能既误读历史供给，也忽视日常居住的多样偏好。",
-              "supportid": [
-                "50357800",
-                "50358004",
-                "50352031",
-                "50352260",
-                "50357191",
-                "50357446",
-                "50355456"
-              ]
-            },
-            {
-              "category": "美感、精神价值与当代社会优先级",
-              "summary": "不少人以讽刺口吻把金属玻璃长方体与可替换劳动者并置，认为当代建筑映照了消费主义、公司治理和屏幕驱动的社会：实体空间被降格，注意力转移到 endless scroll 与数字刺激。支持装饰的一方认为，愉悦、归属感、色彩和历史痕迹本身应算建筑功能，而不应只用可量化成本衡量；有人甚至喜欢房屋保留前住户的色彩、涂鸦和“幽灵般”的痕迹。另一方则质疑华丽建筑未必代表崇高共同体，也可能只是财富和阶层信号；极端装饰并非客观更好。讨论因而落在价值选择上：社会是否愿意以时间、金钱和维护换取非功利的公共美感。",
-              "supportid": [
-                "50352319",
-                "50352536",
-                "50355456",
-                "50352259",
-                "50352390",
-                "50353058",
-                "50357962",
-                "50358610",
-                "50359427"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "Art Nouveau／新艺术运动",
-              "explanation": "19世纪末至20世纪初的欧洲建筑与装饰艺术潮流，常用植物曲线、手工细部和整体化室内设计；德语地区常称 Jugendstil。"
-            },
-            {
-              "term": "现代主义（Modernism）",
-              "explanation": "20世纪建筑主流思潮，强调功能、工业材料、简洁几何和去装饰；常与钢、玻璃、混凝土盒状建筑联系在一起。"
-            },
-            {
-              "term": "Bauhaus／包豪斯",
-              "explanation": "德国现代设计与建筑学派，主张艺术、工艺和工业生产结合；讨论中也被用来指称简洁功能主义建筑的谱系。"
-            },
-            {
-              "term": "Art Deco",
-              "explanation": "兴盛于1920至1930年代的装饰风格，以几何化、扁平化装饰和可工业化制作的细节著称，被视为手工新艺术与极简现代主义之间的折中。"
-            },
-            {
-              "term": "trad critique",
-              "explanation": "网络上对现代建筑的传统主义批评，主张恢复古典、传统或人尺度建筑，通常指责现代主义制造了单调的“灰盒子”。"
-            }
-          ],
-          "context": "原文追问为何以 Barcelona 的 Gaudí、Brussels 的 Victor Horta 等为代表的新艺术运动，没有发展成现代城市的普遍日常风貌。新艺术运动（Art Nouveau，一种强调曲线、自然意象和定制装饰的19世纪末建筑潮流）在第一次世界大战前后迅速退潮，随后被古典复兴及现代主义（强调功能、工业材料与简化形式的20世纪建筑思潮）取代。讨论还涉及 Sagrada Família（Gaudí 设计、至今仍在建设的巴塞罗那大型天主教堂），其艺术价值、实用性和是否属于典型新艺术均有争议。评论者将建筑选择放入房地产金融化、劳动力价格、建筑法规、院校训练、战争后的社会变迁及政治身份表达等背景中理解，而非归结为单一审美失误。",
-          "emoji": "🏢",
-          "sarcastic_question": "既然盒子最适销，城市为何还要让人喜欢？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n新艺术运动的衰落并非现代主义的“背叛”，而是因为它自身高昂的成本、对实用性的妥协以及审美上的“易耗品”属性，注定使其无法成为城市建筑的常态。\n\n## 正文\n\n### 圣家堂的奇迹与“传统派”的质疑\n巴塞罗那的圣家堂历经 144 年建设，终于在今年封顶，成为世界最高的教堂。这座高迪的杰作不仅是地标，更是一种名为 *Modernisme*（加泰罗尼亚版新艺术运动）的极致表达。现在的网络上流行一种“传统派”观点：认为人类曾在这个时期拥有装饰建筑的审美能力，却在 1950 年代后转向了平庸、无装饰的现代主义，从而制造了遍地丑陋的建筑。这听起来像是个阴谋论，但核心疑问确实存在：既然人们普遍认为这种装饰风格更美，为什么当年富庶的社会没有把它铺满全城，反而让它迅速消亡了？\n\n### 圣保罗医院：美感与功能的第一次交锋\n为了寻找答案，作者实地考察了离圣家堂不远的圣保罗医院。这座由建筑师 Lluís Domènech i Montaner 设计的建筑群，堪称“最美医院”。然而，美丽的背后藏着尴尬：最华丽的楼阁竟是行政楼，而非病房。当年的建设过程中，医院管理层希望优先建设医疗设施以救治穷人，而出资方的遗嘱执行人则坚持先建一座“建筑宣言”式的门面。结果是，项目后期因资金耗尽，后续楼阁的装饰不得不缩水。这直接戳破了“那个时代只重美学”的滤镜——即使在那个年代，美学与实用性的冲突依然存在，且过度装饰往往意味着高昂的成本代价。\n\n### 审美疲劳：新艺术运动的“易耗品”属性\n更有意思的是作者的主观体验。初见圣保罗医院确实令人惊叹，但这种美感消退得极快。在浏览了半小时后，过度的装饰反而成了认知负担，让人感到疲惫，反倒是院内的橙子树让人感到真正的放松。这与学术研究不谋而合：医院建筑中真正对患者有益的是自然元素，而非繁复的装饰。作者意识到，新艺术运动的美更像是一种“易耗品”，它适合作为旅游景点让人短暂惊叹，却不适合作为日常生活的背景——没人愿意每天面对一座像白蚁巢一样的建筑。\n\n### 里加的实证：过度装饰注定是短命的\n这种审美疲劳在历史上是有据可查的。拉脱维亚首都里加拥有世界上最集中的新艺术运动建筑群（约 800 栋），但这并非因为当时的人更爱装饰，而是因为那段时间恰逢城市人口翻倍。即便如此，像 Mikhail Eisenstein 设计的那些极度华丽的立面，很快就招致了“过于繁琐”的批评。到了 1907 年，当地的风格就迅速转向了更冷静、几何化甚至新古典主义的方向。这表明，新艺术运动作为一种反历史的激进尝试，其“保质期”极短，人们很快就开始怀念秩序与克制。\n\n### 风格的自然更替：不是背叛，是回归\n新艺术运动从诞生之初就是为了打破历史主义，创造全新的美学。但这种激进的反叛并没有持续太久。一战前后，无论是加泰罗尼亚的 *Noucentista* 运动，还是法国的“回归秩序”，都标志着社会审美重新拥抱了理性和古典。这并非是现代主义强行夺权，而是建筑师和大众在短暂的狂热后，发现完全脱离历史的创新既昂贵又难以维持。那些曾经激进的新艺术运动建筑师，如 Henri Sauvage，后来也纷纷回归到了更务实、更经典的风格。\n\n### 现代主义的胜利：不仅是便宜，更是需求\n说到底，新艺术运动之所以没能统治世界，是因为它无法回答现代生活的核心需求。它昂贵、耗时，且容易让人产生审美疲劳。相比之下，现代主义建筑不仅造价低廉，更提供了大窗户、开放空间等符合现代居住需求的特性。我们今天之所以没有生活在一个充满新艺术运动建筑的世界里，并不是因为现代人丧失了审美能力，而是因为那种风格本身就不具备成为城市“基础设施”的基因——它太像一场华丽的梦，醒来后，生活还得继续。"
     }
   ]
 }
