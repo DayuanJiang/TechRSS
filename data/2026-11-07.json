@@ -1,0 +1,196 @@
+{
+  "date": "2026-11-07",
+  "total_feeds": 92,
+  "success_feeds": 83,
+  "total_articles": 2545,
+  "filtered_articles": 17,
+  "articles": [
+    {
+      "title": "Weekend at Bernie’s II",
+      "title_zh": "AI 代理让 421 个死寂关键包仓库起死回生",
+      "link": "https://nesbitt.io/2026/11/06/weekend-at-bernies-ii.html",
+      "pub_date": "2026-11-06T10:00:00.000Z",
+      "summary": "## 一句话总结\nAI 编程助手正在成为开源维护者的“还魂丹”：大量曾经死寂的关键项目，在原维护者利用 AI 清理积压工作后重新活跃，但 GitHub 安全公告的审核积压却让这些修复陷入了“已修但未告警”的尴尬境地。\n\n## 正文\n\n### 僵尸项目的“还魂”实录\n\n六个月前，作者曾对关键开源项目进行过一次“生死普查”。最近他重跑了一遍数据，发现了一个有意思的现象：原本被判定为死亡、休眠或未知状态的 5,874 个关键仓库中，竟有 421 个重新活了过来。这让人想起电影《老板渡假去 2》（Weekend at Bernie’s II）里的情节——尸体听到音乐就会动。而在开源世界里，这“音乐”往往就是 AI 编程助手。\n\n数据的变化很微妙。整体来看，活跃项目的比例从 48.8% 微涨至 49.9%，死亡项目比例略有下降。但这背后是剧烈的内部流动：421 个仓库“复活”了，同时也有 295 个原本活跃或休眠的仓库走向了死亡。这说明开源生态并非一潭死水，而是在不断震荡。\n\n### 复活并非因为易主\n\n通常我们以为项目复活是因为有了新维护者接盘，但这次的数据打破了这种刻板印象。在 421 个复活的仓库里，只有 16 个发生了注册表维护者的变更。仔细排查后发现，其中大部分只是公司内部的人员轮换（如 Docker 和 Google），或者是账号改名。真正由新人接手的情况只有 6 例。\n\n剩下的 405 个项目，全都是原班人马回归。这意味着，并没有多少“英雄”骑着白马来拯救废弃的项目，绝大多数情况是：原来的维护者回来了。那他们为什么回来？又是怎么做到的？\n\n### AI 是清理积压工作的利器\n\n为了探究原因，作者使用 CHAOSS 的 disclosure 工具扫描了这些仓库的提交历史。结果非常直观：在复活的仓库中，AI 辅助提交的比例从半年前的 3.3% 飙升至 7.9%。更关键的是，这些提交大多来自该项目原本的头号提交者。\n\n典型的案例如 `rack-proxy`，这个项目原本已经死亡。原作者 Jacek Becela 利用 AI 助手进行了 39 次提交，不仅发布了现代化的 1.0.0 和 2.0.0 版本，还修复了安全漏洞。类似的还有 `python-json-patch` 和 `lz4`。说白了，AI 并没有取代维护者，而是降低了他们重新上手的心智负担。对于那些“已完成但被忽视”的库，AI 能迅速清理掉积压的小问题，让懂代码的原作者能轻松完成审核和合并。\n\n### 修复已出，警报未至\n\n既然项目复活了，那安全问题解决得怎么样？在复活的仓库中，有 43 个修复了漏洞。维护者的响应速度其实非常快，通常在发布修复版本的当天就会发布安全公告。\n\n但问题出在下游。Dependabot 和 `npm audit` 读取的是 GitHub 审核后的全球公告数据库。数据显示，活跃项目的公告平均 11 天就能进入数据库，而那些原本休眠或死亡的项目，平均等待时间长达 38 天。比如 Ruby 的 CSS 解析器 `crass`，作者在 6 月就修复了漏洞并提交了公告，但直到 10 月才被审核入库。在这漫长的等待期里，下游用户根本收不到漏洞警报，哪怕修复代码已经摆在那里了。\n\n### 被遗忘的报告与 AI 生成的 PR\n\n除了主动回归的维护者，还有一部分“未知”状态的项目迎来了外部的测试——有人提了 Issue 或 PR。结果很残酷：在收到外部反馈的 78 个仓库中，维护者毫无响应，这些项目直接滑入了“死亡”分类。\n\n更有意思的是 AI 扫描者的介入。一位安全研究员在 8 月底到 9 月初向至少 14 个仓库发送了来自 `codex/` 分支的 PR。有些项目（如 `net-sftp`）合并了这些 PR 并因此复活，但也有些项目（如 `websocket-extensions-ruby`）选择了拒绝。维护者 James Coglan 明确表示，项目不接受没有实质人类投入的 LLM 生成代码，因为他无法确认这些代码到底修复了什么。\n\n### 未发布的修复与遗留的坑\n\n虽然代码动了，但发布却没跟上。在复活的仓库中，有 99 个虽然有了提交和合并，却没有发布新版本。这意味着，普通用户依然无法通过包管理器获取这些修复，只能自己打补丁或 Fork。\n\n此外，作者还发现了一个令人头疼的数据：目前有 133 条安全公告没有对应的修复版本。深入分析后发现，这大多是元数据问题。比如 `phpoffice/phpexcel` 有 19 条未修复公告，实际上这些漏洞早在其继任者 `PhpSpreadsheet` 中修复了。但因为包名变了，公告系统没能关联上。这种“名义上的未修复”占据了绝大多数，反映出当前包管理与安全公告系统在应对项目演进时的笨拙。",
+      "source_name": "nesbitt.io",
+      "score": 18,
+      "depth": 9,
+      "novelty": 9,
+      "category": "engineering",
+      "keywords": [
+        "Claude Code",
+        "open source maintenance",
+        "AI agents",
+        "supply chain security"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "How Do Building Codes Affect the Price of Housing?",
+      "title_zh": "建筑规范如何推高房价：成本与收益的量化分析",
+      "link": "https://www.construction-physics.com/p/how-do-building-codes-affect-the",
+      "pub_date": "2026-11-06T13:01:35.000Z",
+      "summary": "## 一句话总结\n文章通过拆解 NAHB 和学术研究的数据，揭示了建筑规范虽然每年只推高约 1% 的成本，但真正的痛点在于少数几条“杀手级”条款，以及我们往往只算了成本账，却忽略了收益账。\n\n## 正文\n\n### 土地管制不是唯一的“背锅侠”\n提到高房价，大家习惯把矛头指向土地使用管制，比如著名的 Glaeser 研究和 YIMBY 运动，核心逻辑都是管制限制了供给。但问题在于，管制抬高房价还有另一条路：直接推高生产成本。在美国，硬性施工成本占了建房大头，而建筑规范就是这其中最大的变量。所以，如果不搞清楚建筑规范到底怎么影响成本，我们对高房价的理解就少了一半。\n\n### 规范的“源头”与迭代节奏\n美国的建筑规范体系其实挺有意思。大部分州不会自己从头写规范，而是直接采用“范本规范”，最主流的就是国际建筑规范（IBC）和国际住宅规范（IRC）。这些规范每三年更新一次，各州再根据自己的节奏跟进。比如乔治亚州每六年更新一次。这就形成了一个持续演进的系统：规范不断变严，房子也不断变贵，我们需要搞清楚的就是，这中间的量化关系到底有多大。\n\n### 真正的成本增幅：每年 1%\n那到底涨了多少？这里有个关键数据。根据全美住宅建筑商协会（NAHB）的长期追踪，自 2006 年以来，IRC 的规范变更让新建住宅成本增加了约 4 万美元。折算下来，规范趋严每年大约推高 0.5% 到 1% 的建造成本。另一份针对公寓楼的研究也得出了类似结论：2012 到 2021 年间，成本累计上涨 9.9%，年均涨幅约 0.8%。虽然看起来是个小数，但复利效应下，对房价的影响不容小觑。\n\n### 少数条款贡献了大部分涨幅\n有意思的地方在于，成本上涨并不是“雨露均沾”。不管是 NAHB 的数据，还是 Eriksen 等人的学术论文，都指向同一个现象：极少数条款贡献了绝大部分的成本增量。Eriksen 的研究发现，2012 到 2021 年间，仅“非工作时间施工现场消防监控”这一项要求，就占了总成本增量的近一半。NAHB 的数据也显示，60% 的成本上涨仅仅源自 10 条具体规定。这说明，规范改革的靶子其实很明确，不需要全盘推翻，只需精准狙击这几条“昂贵”的条款。\n\n### 建筑商的“体感”更痛\n除了硬核的数据分析，NAHB 还会对建筑商做感知调查。调查结果显示，建筑商们普遍认为规范导致成本每年上涨约 1%。这和前面的量化研究基本吻合。不过，这种主观感知往往存在偏差，且不同开发商之间的差异很大。但这也侧面印证了一个事实：对于一线开发者来说，规范变更带来的成本压力是实实在在的痛点，而不是纸面上的数字游戏。\n\n### 典型案例：消防喷淋系统的成本博弈\n为了看清单一条款的影响，文章专门分析了消防喷淋系统。这是一个典型的“昂贵”条款。NIST 和 NFPA 的研究显示，安装喷淋系统的成本差异巨大，从几千美元到两万美元不等。更有趣的发现是，在那些强制要求安装喷淋的州，安装成本反而更低。这暗示了规模效应和学习曲线的重要性——当一项规范普及时，供应链成熟，成本反而能降下来。\n\n### 别忘了算“收益账”\n最后，文章指出了一个很多人容易忽略的逻辑漏洞：我们只算了成本账，没算收益账。规范变严确实增加了成本，但也带来了收益。比如消防喷淋，虽然增加了前期投入，但减少了火灾损失和人员伤亡。如果我们只盯着成本看，就会觉得规范越松越好；但如果把收益算进来，很多看似昂贵的条款其实是“物有所值”的。这才是评估建筑规范影响的完整视角。",
+      "source_name": "construction-physics.com",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "building codes",
+        "construction costs",
+        "cost-benefit analysis",
+        "housing regulation"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Deus Ex",
+      "title_zh": "Deus Ex：沉浸式模拟的里程碑与阴谋论叙事的陷阱",
+      "link": "https://www.filfre.net/2026/11/deus-ex/",
+      "pub_date": "2026-11-06T15:34:48.000Z",
+      "summary": "## 一句话总结\n《Deus Ex》并非凭空出世的完美神作，它是Looking Glass工作室“Immersive Sim”理念的集大成者，在系统自由度与叙事线性之间做出了精妙的妥协。\n\n## 正文\n\n### 被过度神话的“预言家”与主角名字的真相\n千禧年发布的《Deus Ex》在过去二十五年里被越捧越高，甚至被许多后来的评论家奉为“预测了未来的最重要游戏”。但有意思的是，这种神话往往脱离了当时的文化背景。最典型的一个例子是主角J.C. Denton的名字。多年来，玩家和评论家都坚信“J.C.”代表“Jesus Christ”（耶稣基督），以此佐证游戏深刻的哲学隐喻——毕竟在某个结局中，主角确实如“机械降神”般与AI合体统治世界。直到2017年，制作人Warren Spector在GDC上揭晓了谜底：名字确实来源于“Jesus Christ”，但原因仅仅是Spector有个叫Denton的朋友太热心，让他忍不住吐槽“Jesus Christ, Denton!”。这听起来很让人大跌眼镜，但这正是《Deus Ex》的常态：它是一个扎实的游戏，而非每一处都暗藏深意的哲学圣杯。\n\n### Looking Glass的“精神续作”\n要理解《Deus Ex》，必须先理解Looking Glass工作室。这家工作室是id Software的“阴”面：当id专注于爽快的纯射击体验时，Looking Glass坚持做复杂的“Immersive Sim”（沉浸式模拟）。其1994年的作品《System Shock》是这一理念的巅峰，它不给玩家预设解法，而是提供一个充满可能性的沙盒。Warren Spector正是被《System Shock》深深震撼，才决定加入这个行业。后来他在测试《Thief》（神偷）时感到受限——如果潜行失败只能读档，为什么不能让我硬刚？这种对“单一解法”的不满，直接催生了《Deus Ex》的核心设计哲学：“Problems, not puzzles”（提供问题，而非谜题）。游戏只负责设置障碍，至于怎么解决，是玩家的事。\n\n### 为了体验做出的妥协：从纯粹模拟到RPG化\n虽然继承了《System Shock》的衣钵，但《Deus Ex》并没有死磕“纯粹”的沉浸式模拟。它做了一些关键的妥协。在《System Shock》里，角色的成长是完全有机的，而在《Deus Ex》中，Spector引入了显性的RPG技能树：电脑、电子、开锁、医疗等。玩家需要从菜单里手动选择培养什么样的J.C. Denton。这是一个打破“黑盒”的设计，让玩家能更直观地定制自己的游戏风格。这种改动在当时看来可能略显出戏，但它降低了门槛，让更多玩家能享受到多路径解决问题的乐趣，而不是在毫无头绪的模拟中迷失。\n\n### 关卡结构的得与失：更广阔的世界，更受限的叙事\n《System Shock》发生在一个连贯的空间站里，而《Deus Ex》采用了更传统的任务制结构。游戏被切分为十二个独立任务，玩家从纽约杀到香港，再到巴黎，最终抵达51区。这种设计带来了丰富多变的场景，避免了《System Shock》那种令人窒息的单一走廊感。但代价是叙事的“涌现感”被削弱了。虽然每个任务内部你可以选择潜入、强攻或黑客，解法千变万化，但任务之间的衔接是固定的。无论你扮演的是嗜血的杀戮机器，还是心存疑虑的特工，你都得按部就班地走过同样的剧情节点，最终在终点面对同样的三选一结局。所谓的“活生生的世界”，其实只存在于单个关卡的微观层面。\n\n### 真正的创新在于“解决问题的自由”\n所以，与其说《Deus Ex》创造了什么惊天动地的叙事革命，不如说它在关卡设计上做到了极致。它没有试图解决“完全互动叙事”这个至今无解的难题，而是把精力花在了“局部自由度”上。在每个关卡里，游戏提供了大量的“affordances”（可供性）：通风管道、可黑客的炮塔、可撬开的门、可搬动的箱子。设计师并不预设你的解法，他们只是搭建舞台。这种“问题-解法”的分离，让玩家真正感觉到了自由。虽然从宏观叙事看，它依然是线性的老套路，但在微观体验上，它确实让玩家觉得自己是那个解决问题的人，而不是在解一道设计师预设好的谜题。这或许才是它被奉为经典的真正原因。",
+      "source_name": "filfre.net",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "opinion",
+      "keywords": [
+        "Deus Ex",
+        "immersive sim",
+        "game design",
+        "conspiracy theory"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "Premium: Fault Lines",
+      "title_zh": "美国中期选举暴露AI数据中心泡沫的致命弱点",
+      "link": "https://www.wheresyoured.at/premium-fault-lines/",
+      "pub_date": "2026-11-06T16:44:41.000Z",
+      "summary": "## 一句话总结\n文章指出美国中期选举后的“蓝潮”打破了科技巨头无限扩张 AI 数据中心的必然性幻想，揭示了 AI 泡沫在政治阻力面前极其脆弱的本质。\n\n## 正文\n\n### 政治风向突变，科技巨头的好日子到头了\n作者开篇坦言，过去两年令人窒息的政治环境让人感觉毫无希望，仿佛永远无法摆脱里根、克林顿和奥巴马时代确立的系统性思维。但周二的选举结果证明，看似不可战胜的运动可能在几个月内崩溃。更有意思的是，市场迅速做出了反应：彭博社直言“科技股大涨，因为赌民主党会拯救 AI 挥霍者”。投资经理 Robert Pavlik 说得很直白：如果 Hyperscalers 不再疯狂砸钱建设算力，他们就能重新实现现金流为正。\n\n### 选民用选票对数据中心说“不”\nAI 泡沫的所谓“必然性”，其实建立在富豪和权贵总能如愿以偿的假设之上。比如有人计划建设 190GW 的数据中心，甚至单是 Sam Altman 和 OpenAI 就要搞 7.1GW。这种规划只有在不受约束的资本主义逻辑下才讲得通。但现实很骨感：选举结果显示，选民强烈反对在社区新建数据中心。UBS 的全球宏观策略主管 Keith Parker 指出，“蓝潮”将直接影响股市，最大的冲击来自州一级对数据中心监管的收紧。\n\n### 监管铁幕降临，扩张计划岌岌可危\n具体数据触目惊心。德克萨斯州除了州参议院外已全面翻蓝，而该州规划了高达 57.7GW 的 IT 容量，其中一半以上由首次开发者建设。更关键的是，全美有 33 项限制数据中心的投票措施获得通过，仅俄亥俄州就有 21 个市镇投票限制建设。从佐治亚到宾夕法尼亚，多州的州长竞选结果可能导致全美一半拟建的 AI 数据中心面临更严格的审查和阻力。\n\n### 两党共识：没人喜欢这些“庞然大物”\nThe Information 的报道进一步佐证了这一点：12 个州的州长当选人呼吁暂停数据中心开发，另外 24 个新任州长中，有 22 人支持至少一项限制措施。最普遍的支持是“纳税人保护”，即不让家庭承担电力需求增加的成本。此外，27 人支持限制用水或环保相关措施。AI 行业意外创造了一个最简单的两党共识话题：向农村社区强行推销昂贵的大型设施来抢工作，结果遭到了全面反对。\n\n### 泡沫的软肋：傲慢与忽视\nAI 泡沫的傲慢在于，它以为可以在不征求受影响者同意的情况下无限扩张。它威胁要抢走工作、恶化工作条件、增加生活成本，还要强迫人们住在嘈杂、污染的设施旁边。Sam Altman、Musk 和 Amodei 等人以为大众会默默顺从，或者最终接受他们的“智慧”。但他们错了，选民绝对可以说“不”。这暴露了 AI 泡沫的一个关键软肋：它只能存在于不受约束的资本主义环境中。\n\n### 一旦叙事反转，崩塌就开始了\n逻辑链条很清晰：NVIDIA 的增长完全依赖于不受阻碍的数据中心建设。如果没有更多容量，Anthropic 和 OpenAI 等实验室就无法兜售无限增长的故事。一旦“增长叙事”破灭，一切都会开始内爆。作者最后预告，接下来的内容将分析哪些市场和公司最容易受到 AI 数据中心 Capex 泡沫破裂的冲击，以及需要关注哪些数据点来观察崩塌的迹象。",
+      "source_name": "wheresyoured.at",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "AI bubble",
+        "data centers",
+        "regulation",
+        "politics"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "Static site generators are weird",
+      "title_zh": "静态网站生成器的",
+      "link": "https://evanhahn.com/static-site-generators-are-weird/",
+      "pub_date": "2026-11-06T17:00:00.000Z",
+      "summary": "静态网站生成器（SSG）如 Jekyll、Gatsby、Hugo 各自构建了独特的技术世界，用户必须学习每个工具的模板系统、资源管理、路由机制、RSS 生成等专属方案。作者的个人博客先后迁移过这三个框架，每次都要重新理解其设计哲学和实现细节。更不用说大量为单一网站定制的 SSG 项目，往往采用冷门编程语言、功能集参差不齐、文档风格各异。这种",
+      "source_name": "evanhahn.com",
+      "score": 10,
+      "depth": 5,
+      "novelty": 5,
+      "category": "engineering",
+      "keywords": [
+        "SSG",
+        "static sites",
+        "Jekyll",
+        "Hugo"
+      ],
+      "rank": 5
+    },
+    {
+      "title": "Quoting Nilay Patel",
+      "title_zh": "AI 产品价值撑不起成本，行业需要真正有用的东西",
+      "link": "https://simonwillison.net/2026/Nov/6/nilay-patel/",
+      "pub_date": "2026-11-06T17:13:12.000Z",
+      "summary": "Nilay Patel 在 The Vergecast 节目中尖锐批评 AI 行业：产品价值不足以支撑其成本。数据中心噪音、能源消耗、deepfake 泛滥——这些代价换来的只是 \"AI overviews\" 和 \"hilarious deep fake slop\"。agents 尚未真正可用，所有公司都在烧钱换增长。更荒诞的是，欧洲的血库冰箱被黑客攻击，而 AI 公司 CEO 们却在白宫与特朗普握手、为 \"Gulf of America\" 更名仪式买单。Patel 将此定性为 \"crypto-corruption\"——以公众利益为代价的权力寻租。他的结论直白：AI 行业唯一的出路是做出真正有用的产品，让用户无需广告轰炸就能感受到价值，而不是靠公关和政商关系强行推销。",
+      "source_name": "simonwillison.net",
+      "score": 9,
+      "depth": 2,
+      "novelty": 7,
+      "category": "opinion",
+      "keywords": [
+        "AI industry",
+        "product value",
+        "agents",
+        "deepfake"
+      ],
+      "rank": 6
+    },
+    {
+      "title": "A video game which caused real world violence",
+      "title_zh": "2004 年 AR 游戏引发的误解与暴力事件",
+      "link": "https://shkspr.mobi/blog/2026/11/a-video-game-which-caused-real-world-violence/",
+      "pub_date": "2026-11-06T12:34:34.000Z",
+      "summary": "2004 年，增强现实游戏 Mozzies 在新加坡引发了一起暴力事件。玩家 Heriyano 在电玩城外用西门子 SX1 手机玩这款",
+      "source_name": "shkspr.mobi",
+      "score": 9,
+      "depth": 3,
+      "novelty": 6,
+      "category": "other",
+      "keywords": [
+        "augmented reality",
+        "Mozzies",
+        "gaming",
+        "misunderstanding"
+      ],
+      "rank": 7
+    },
+    {
+      "title": "Apple Support: ‘About the Illuminated Apple Logo on MacBook Pro With PROLED XDR Display’",
+      "title_zh": "MacBook Pro 发光 Logo 的控制方法",
+      "link": "https://support.apple.com/en-us/149248",
+      "pub_date": "2026-11-06T15:03:51.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 7,
+      "depth": 3,
+      "novelty": 4,
+      "category": "tools",
+      "keywords": [
+        "MacBook Pro",
+        "terminal",
+        "defaults"
+      ],
+      "rank": 8
+    },
+    {
+      "title": "What happened to Transmeta, the last big dotcom IPO",
+      "title_zh": "Transmeta：互联网泡沫时代最后的 CPU 公司兴衰史",
+      "link": "https://dfarq.homeip.net/what-happened-to-transmeta-the-last-big-dotcom-ipo/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=what-happened-to-transmeta-the-last-big-dotcom-ipo",
+      "pub_date": "2026-11-06T12:00:53.000Z",
+      "summary": "Transmeta 是 2000 年 11 月上市的 CPU 公司，IPO 募资 2.73 亿美元，被称为互联网泡沫时代最后一家大型科技公司上市。公司由贝尔实验室校友 Dave Ditzel 联合创立，Linus Torvalds 曾在此工作。Transmeta 采用软件翻译层实现 x86 兼容，Crusoe 处理器 700 MHz 性能相当于 500 MHz Pentium III，效率低约 30%；2004 年推出的 Efficeon 最高 1.7 GHz，无法与 2.4 GHz 的 Pentium 4 和 AMD Athlon 64 竞争。2005 年公司转向 IP 授权，2009 年被 Novafora 收购，专利组合最终落入 Intellectual Ventures 手中。Transmeta 的失败展示了在 Intel 和 AMD 双寡头格局下，新 CPU 架构难以突破市场壁垒。",
+      "source_name": "dfarq.homeip.net",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "engineering",
+      "keywords": [
+        "Transmeta",
+        "CPU",
+        "x86",
+        "Crusoe"
+      ],
+      "rank": 9
+    },
+    {
+      "title": "The President is Coping Well",
+      "title_zh": "WSJ 文章无法访问",
+      "link": "https://www.wsj.com/politics/policy/trump-signs-proclamation-he-says-will-protect-oval-office-from-major-changes-93f3285b",
+      "pub_date": "2026-11-06T15:00:22.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "other",
+      "keywords": [
+        "wsj",
+        "paywall"
+      ],
+      "rank": 10
+    }
+  ]
+}
