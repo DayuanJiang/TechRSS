@@ -1,0 +1,129 @@
+{
+  "id": 50354308,
+  "by": "wondersky",
+  "title": "The Ubuntu 26.04 Rust sudo is not compatible with standard sudo",
+  "url": "https://utcc.utoronto.ca/~cks/space/blog/linux/Ubuntu2604RustSudoNotCompatible",
+  "score": 182,
+  "createdAt": 1794005422,
+  "aiSummary": {
+    "chinese_title": "Ubuntu 26.04 以 sudo-rs 替换 sudo，通配符规则与自动化兼容性破裂",
+    "discussion_overview": [
+      {
+        "category": "同名替换却不兼容是稳定版回归",
+        "summary": "批评者认为，sudo-rs 禁止 sudoers 命令参数中的大多数 wildcard/glob 写法，却仍保留末尾的“*”，会让原先有效且可精确限制权限的规则在升级后静默失效。即使这是项目文档明确的刻意安全决定，Ubuntu 原地升级后既有配置不再按原语义工作，依然构成发行版层面的 regression。评论者主张若功能语义不同，应采用 doas 或新命令名，而非继续以 sudo 名义充当 drop-in replacement。对于 sudo 这类核心提权工具，至少应提供预升级兼容性扫描、醒目警告、迁移工具和明确失败，而不是依赖管理员事后排错。",
+        "supportid": [
+          "50399422",
+          "50399760",
+          "50400958",
+          "50400773",
+          "50400479",
+          "50400349",
+          "50401851"
+        ]
+      },
+      {
+        "category": "安全取舍：通配符本就是 sudoers 的权限陷阱",
+        "summary": "另一方认为 sudoers 的 glob 表达式本来就是危险 footgun，移除它们能避免管理员把宽泛模式误当成严格授权；受影响的邮件队列示例可拆成数条无参数的显式命令规则。有人进一步认为，若 sudo 被用来细粒度许可复杂命令，本身就常意味着权限模型设计有问题；诸如 apt update/upgrade 也可能借由环境变量、配置冲突处理或中断升级获得意外能力。批评者反驳说，“配置应当更简单”不等于可在 LTS 升级中默默改写既有权限语义，尤其当唯一保留的“*”反而可能最宽泛。即便认可安全目标，讨论中仍普遍要求提供自动化检测正常 sudo 与 sudo-rs 的差异。",
+        "supportid": [
+          "50360204",
+          "50399538",
+          "50399965",
+          "50399592",
+          "50399873",
+          "50399993",
+          "50400918",
+          "50400098"
+        ]
+      },
+      {
+        "category": "Rust 重写的价值与成熟度争论",
+        "summary": "支持 Rust 的声音指出，C 代码库往往存在大量 memory-safety footgun，许多开发者不愿维护 C；重写也能帮助发现原 sudo 的缺陷并回馈 upstream。反对者则认为，从零重写必然引入新 bug，把 cp、ls、rm、sudo 等成熟工具全面 Rust 化常以想象中的威胁为由，却低估了数十年积累的边角兼容性。实际案例扩大了担忧：有人在 Ubuntu 26 LTS 的 Rust coreutils 中遇到 chown、sudo、date、ls、sort 问题，另有 ln -h 从 GNU 的报错变成成功 no-op，也有人称 Ansible 无法配合 sudo-rs。较温和的观点是 Rust 本身没有问题，问题在于将尚未充分验证的替代实现提前放进 LTS，并把语言选择演变成阵营对立。",
+        "supportid": [
+          "50399303",
+          "50399319",
+          "50399703",
+          "50400125",
+          "50399985",
+          "50403112",
+          "50401758",
+          "50400002",
+          "50400047"
+        ]
+      },
+      {
+        "category": "用户以 Debian、Fedora、NixOS 等替代 Ubuntu",
+        "summary": "不少长期 Ubuntu 用户把 sudo-rs、uutils、Snap 推行方式和内核更新体验视作累积性问题，表示正把实验室机器、服务器和容器迁往 Debian，或计划在 Ubuntu 24.04 支持结束后转向 NixOS。替代建议呈现分工：Debian 或 Rocky Linux 用于服务器，Fedora、Bluefin、Mint、Arch/CachyOS 用于桌面；也有人因硬件支持和安全补丁速度转向滚动发行版。反方提醒 Debian 的 RAID 配置、软件包时效、testing 的历史稳定性和 backports 质量仍有取舍，因此迁移并非零成本。NixOS 也被质疑同样具有强意识形态和社区内耗，说明“逃离 Ubuntu”不自动等于找到无争议方案。",
+        "supportid": [
+          "50399311",
+          "50399877",
+          "50399496",
+          "50400509",
+          "50399882",
+          "50399923",
+          "50400629",
+          "50401041",
+          "50400562"
+        ]
+      },
+      {
+        "category": "Ubuntu 的存续理由与惯性网络效应",
+        "summary": "尽管批评猛烈，评论者指出 Ubuntu 仍有广泛第三方软件、驱动和专业文档支持，许多厂商只正式支持 Ubuntu 或 Red Hat；NVIDIA Jetson 等平台也直接随 Ubuntu 提供系统。其长生命周期支持、Canonical 的商业支持、PPAs、Snap，以及针对 GNOME 的新手友好调整，仍适合需要稳定旧版 PHP、Apache 或 Nginx 环境的组织。大量个人用户则因早年入门、公司标准、长期积累的 dotfiles 和 Ubuntu 特定脚本而留在原地，重装迁移的时间成本很高。关于软件新旧，评论者指出 Debian 与 Ubuntu 约两年交错发布，Ubuntu 看似更新往往只是发布时间不同，testing、unstable 和 backports 会使比较更复杂。",
+        "supportid": [
+          "50399803",
+          "50399526",
+          "50399374",
+          "50399468",
+          "50399536",
+          "50399634",
+          "50399713",
+          "50399868"
+        ]
+      },
+      {
+        "category": "许可证、GNU 与责任边界的旁支争执",
+        "summary": "有评论把 Rust 替换视为企业逐步以宽松许可证项目取代 GNU/GPL 组件，并担忧 copyleft 对“修改后回馈”能力的保护被削弱。其他人指出此案的原 sudo 与 sudo-rs 都是 MIT 许可证，因而“以非 GPL 取代 GPL”并不适用于 sudo；MIT 同样提供源代码，用户可以自行修改。争论随后延伸到 GPL 令企业法务顾虑、LLVM/Clang 与 GCC 的历史竞争，以及 Linux 发行版 userland 本就长期不完全兼容。另一个冲突是责任归属：有人认为免费开源软件用户应报 bug 或提交 PR，反方认为被发行版强制迁移到新实现的用户并没有义务充当 Canonical 或项目的 QA。",
+        "supportid": [
+          "50362744",
+          "50399375",
+          "50399659",
+          "50399837",
+          "50399299",
+          "50399384",
+          "50399913",
+          "50399367",
+          "50399930",
+          "50401010"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "sudoers",
+        "explanation": "sudo 的权限策略配置格式，可按用户、主机、命令及参数决定谁能以 root 或其他身份执行什么。"
+      },
+      {
+        "term": "wildcard / glob",
+        "explanation": "以 * 等模式匹配命令参数的规则机制；便于简写，但在提权配置中可能意外放宽允许范围。"
+      },
+      {
+        "term": "sudo-rs",
+        "explanation": "以 Rust 编写的 sudo 重实现，Ubuntu 26.04 将其用于替换传统 C 版 sudo；其目标并非完全复刻所有 sudoers 语义。"
+      },
+      {
+        "term": "uutils/coreutils",
+        "explanation": "以 Rust 重写 GNU Coreutils 的项目，覆盖 ls、ln、sort、chown 等基础命令；争议集中于其与 GNU 行为的兼容程度。"
+      },
+      {
+        "term": "doas",
+        "explanation": "源于 OpenBSD 的精简提权工具，配置与代码规模都比 sudo 小，通常被视为明确采用不同语义的 sudo 替代方案。"
+      },
+      {
+        "term": "LTS",
+        "explanation": "Long-Term Support，长期支持版本；企业常依赖其多年安全更新，因此尤其要求升级不破坏既有脚本和配置。"
+      }
+    ],
+    "context": "Ubuntu 26.04 是 Canonical（Ubuntu 背后的商业 Linux 发行版公司）计划采用 sudo-rs（Rust 编写的 sudo 重实现）的版本，而传统 sudo 是 Unix/Linux 中依据 sudoers 配置进行受控提权的核心工具。争议源于 sudo-rs 不支持传统 sudoers 中命令参数的大多数 wildcard/glob 模式，导致旧规则可能被按字面处理或失效；文章认为这会在原地升级时破坏既有运维权限配置，并影响 Ansible（自动化配置管理工具）等自动化流程。此事与 Ubuntu 推进 uutils/coreutils（Rust 编写的 GNU 基础命令替代实现）相连，批评者担心 LTS 过早替换成熟组件会带来不兼容和回归，支持者则强调 Rust 的内存安全与收紧危险权限模式的价值。讨论也折射出 Linux 发行版之间长期存在的兼容性差异，以及 Debian、Fedora、NixOS 等替代方案在稳定性、软件新旧、硬件支持和维护成本上的取舍。",
+    "emoji": "⚠️",
+    "sarcastic_question": "同名 sudo 却不兼容，LTS 是来替你验收的吗？"
+  }
+}
