@@ -1,0 +1,109 @@
+{
+  "id": 50407882,
+  "by": "shmulc",
+  "title": "Claude Code's \"Don't Ask Again\" exposes passwords in 1,122 public GitHub files",
+  "url": "https://apiiro.com/blog/coding-agents-leaking-secrets-github-dont-ask-again",
+  "score": 247,
+  "createdAt": 1794085833,
+  "aiSummary": {
+    "chinese_title": "Claude Code“不要再问”将密钥写入项目设置，1,122个公开文件泄露",
+    "discussion_overview": [
+      {
+        "category": "责任归属与泄露链条",
+        "summary": "泄露并非点击“Don't Ask Again”立即公开密码，而是该操作把含密钥的命令或规则保存到`.claude/settings.local.json`，随后该文件被提交并推送到公开 GitHub repo。官方强调此文件应仅保留本地、自动创建时会被 gitignore，并建议启用 secret scanning；批评者则认为把敏感内容写进项目目录本身就是可预见的 foot gun。争议尤其集中于默认行为：用户、Claude 或迁移文件时都可能把它纳入提交，不能只以“本不该提交”免责。已追踪的含真实 secret repo 中，有539个的相关提交带有 Claude co-author，因而有人认为工具至少应承担更强的预防责任。",
+        "supportid": [
+          "50408126",
+          "50408084",
+          "50408116",
+          "50409356",
+          "50409772",
+          "50409326",
+          "50408130"
+        ]
+      },
+      {
+        "category": "Auto mode与人工审批的安全争论",
+        "summary": "支持 Auto mode 的一方认为，密集的 Bash 命令会造成 approval fatigue，用户最终会不经阅读就连续点击批准；自动分类可减少提示数量，从实践上降低误批概率。反对者认为这不是可证明的安全边界：模型对“恶意”的判断会随模型版本、任务和 prompt injection 攻击而变化，无法像 VM 或 container 那样明确限定文件、网络服务和权限。评论还指出 Auto mode 既可能错误拦截确定性的 CI/CD 或只读生产查询，也可能对实际危险操作判断宽松，因此不应宣称适用于所有人。许多人要求保留可审计、确定性的 permission rules，并把模型审核定位为辅助层而非安全保证。",
+        "supportid": [
+          "50409545",
+          "50409701",
+          "50408237",
+          "50408367",
+          "50408580",
+          "50408322",
+          "50410053",
+          "50410185"
+        ]
+      },
+      {
+        "category": "真正边界应是隔离与最小权限",
+        "summary": "较一致的安全建议是把 agent 放入一次性 VM 或 container，隔离网络、home directory、ENV、SSH key 和宿主机其他目录，再通过 Git 输出结果。即使开启`--dangerously-skip-permissions`，这种隔离也能把 agent 的自由操作限制在可丢弃环境中，避免将其直接视为可信本机进程。对于外部服务，评论建议由 API proxy 或 egress proxy 保存真实凭证、替换为受限的临时身份，并为高风险写操作要求手机确认或审计流量。也有人承认 sandbox 不可能同时绝对安全且完全好用：推理、MCP 和真实系统任务常需要开口，但限制隐藏文件、sudo 和网络仍能防住大量事故。",
+        "supportid": [
+          "50409507",
+          "50410284",
+          "50409821",
+          "50410348",
+          "50408976",
+          "50409636",
+          "50409745"
+        ]
+      },
+      {
+        "category": "Git卫生与秘密管理仍是最后防线",
+        "summary": "一派将事件视作长期存在的 Git 基础问题：明文 secret 不应入库，开发者应审阅 diff、避免`git add .`，并在 GitHub 或 pre-push 阶段启用 secret scanning。另一派反驳说，agent 驱动的工作流会让用户更依赖自动化，vibe coder 或习惯全量提交的人更难发现工具临时生成的隐藏目录，因此旧有纪律不足以抵消坏默认值。实际建议包括把个人 agent 设置移至`$HOME`或 app-data 目录、使用私有开发 repo 向公开发布 repo 进行白名单 cherry-pick、用 password manager 按需授权，以及采用专门的 agent secret manager。即便 private repo 不会对公众公开，含生产数据库密码的设置文件仍会随着 clone 和 fork 向不应持有该凭证的协作者扩散。",
+        "supportid": [
+          "50409641",
+          "50409753",
+          "50410228",
+          "50408405",
+          "50410013",
+          "50410344",
+          "50408406"
+        ]
+      },
+      {
+        "category": "权限界面与工具调用设计失效",
+        "summary": "许多用户认为问题不仅是是否自动批准，而是 Claude Code 常把简单读写拆成很长的 Bash、sed、awk 和管道链，使人类和 Auto mode 都难以理解。现有 UI 通常只提供单次允许、按模式永久允许或拒绝，用户不能方便地编辑500字符命令、缩小允许范围或保存合理的细粒度规则。建议包括让阻拦后的命令进入带解释的 assisted manual review，由对抗性 reviewer 提示风险并要求用户给出理由；也可让用户编辑命令或 permission filter。另有用户以 PreToolUse hook 和自建 MCP server 实现按路径、只读数据源的门控，但指出 hook 容易写错、模型还可能绕过自己生成的规则，说明需要一等公民级的受限工具接口。",
+        "supportid": [
+          "50409372",
+          "50409413",
+          "50409420",
+          "50408341",
+          "50409824",
+          "50409124",
+          "50409151"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Auto mode",
+        "explanation": "Claude Code 的自动权限判定模式：由模型/分类器对工具调用判定并拦截部分高风险操作，以减少逐条人工确认。"
+      },
+      {
+        "term": "approval fatigue（审批疲劳）",
+        "explanation": "用户面对大量重复权限弹窗后形成机械性点击“允许”的习惯，从而漏看危险操作的现象。"
+      },
+      {
+        "term": "sandbox（沙箱）",
+        "explanation": "用 container、VM 或受限运行时隔离进程可访问的文件、网络和系统权限，以限制 agent 造成的损害范围。"
+      },
+      {
+        "term": "secret scanning",
+        "explanation": "在提交、推送或代码托管平台中检测 API key、密码、token 等敏感凭证的扫描机制。"
+      },
+      {
+        "term": "MCP",
+        "explanation": "Model Context Protocol，一种让 AI agent 通过标准化工具服务器访问文件、数据库或外部服务的协议。"
+      },
+      {
+        "term": "hook / PreToolUse hook",
+        "explanation": "工具调用前执行的自定义脚本，可按命令、路径或参数允许、拒绝或审计 agent 操作。"
+      }
+    ],
+    "context": "Claude Code（Anthropic 的命令行编程 agent）会在项目内保存权限设置；当用户对含密码或 API token 的命令选择“Don't Ask Again”时，相关内容可能进入`.claude/settings.local.json`。报道扫描到1,122个公开 GitHub 文件含此类内容，但完整泄露链还需要该本地设置文件被提交到公开 repo，因此标题被批评为容易让人误以为单次点击就会自动公开密码。争议发生在 AI coding agent 越来越能读写代码、运行 shell、安装依赖和提交 Git 的背景下：传统的`.gitignore`、代码审查和 secret scanning 是否足够，还是必须以 sandbox、最小权限和凭证代理建立硬边界。Claude Code 团队主张 Auto mode 可缓解人工批准疲劳，批评者则要求可验证的隔离保证，拒绝把模型自身判断当作安全控制。",
+    "emoji": "😬",
+    "sarcastic_question": "代码都“解决了”，为何连密码不入库都解决不了？"
+  },
+  "articleSummary": "无法获取正文内容，无法生成摘要。"
+}
