@@ -2,8 +2,8 @@
   "date": "2026-11-09",
   "total_feeds": 92,
   "success_feeds": 83,
-  "total_articles": 2546,
-  "filtered_articles": 7,
+  "total_articles": 2547,
+  "filtered_articles": 8,
   "articles": [
     {
       "title": "Reverse engineering a vintage diode-transistor logic chip",
@@ -25,6 +25,44 @@
       "rank": 1
     },
     {
+      "title": "parse_number() as a SQLite extension: C vs Rust",
+      "title_zh": "SQLite 扩展开发：C 比 Rust 快一倍",
+      "link": "https://simonwillison.net/2026/Nov/8/sqlite-parse-number-c-vs-rust/",
+      "pub_date": "2026-11-08T22:26:00.000Z",
+      "summary": "## 一句话总结\n一次始于好奇的 SQLite 扩展开发对比实验，最终演变成了一场针对 C 语言 `strtod()` 性能瓶颈的优化攻坚战，结果证明手写的优化 C 代码能以 16-19 ns 的速度碾压 Rust 实现。\n\n## 正文\n\n### 遛狗时的突发奇想：C 和 Rust 谁更适合写扩展？\n故事的起因很简单，作者在遛狗时突发奇想，想给 SQLite 写个 `parse_number()` 扩展。需求很实际：把 `-$1,234.56` 或 `'12.5%'` 这种带符号的字符串清洗成可以计算和排序的数值。他没自己动手，而是直接把问题抛给了 Claude (Opus 5.5)，让它分别用 C 和 Rust 实现一版，顺便对比一下性能、代码复杂度和编译产物体积。这不仅是技术选型，更像是一次 AI 辅助编程的实战演练。\n\n### 第一回合：Rust 居然比 C 快？\n第一轮生成的代码跑起来，结果有点反直觉。Rust 版本的动态库体积确实大，Rusqlite 版本 321 KB，sqlite-loadable-rs 版本 298 KB，而 C 版本只有 14 KB。但在性能上，Rust 却反超了 C。这是怎么回事？作者很快定位到了原因：C 语言标准库里的 `strtod()` 函数太慢了。Rust 对应的解析逻辑速度几乎是 C 的两倍，直接抹平了语言层面的开销差异。这说明在现代硬件上，标准库的选择往往比语言本身更关键。\n\n### 第二回合：手写优化，C 语言绝地反击\n既然找到了病灶，那就对症下药。作者让 Claude 放弃 `strtod()`，手写一个专门针对这次任务的解析函数，目标就是追平甚至反超 Rust。这一招立竿见影。优化后的 C 代码在 200 万行数据的测试中，性能直接起飞。处理混合数据只需 19 ns，纯整数 16 ns，纯小数更是降到了 18 ns。相比之下，Rusqlite 版本还在 36-55 ns 徘徊，sqlite-loadable-rs 也在 32-47 ns 之间。\n\n### 最终复盘：小众场景下的极致优化\n更有意思的是小数处理的数据。最初的 C 版本处理小数要 106 ns，优化后直接降到了 18 ns，提升了近 6 倍。这背后的逻辑其实很简单：通用的标准库函数为了处理各种边界情况，牺牲了大量性能；而针对特定格式的“快速路径”代码，虽然通用性差，但在特定场景下就是快。作者最后还让 Claude 把整个探索过程整理成了一份正式的研究报告，并放到了 GitHub 仓库里。整个实验不仅证明了 C 语言在极致优化下的统治力，也展示了 AI 辅助开发如何快速验证技术假设。",
+      "source_name": "simonwillison.net",
+      "score": 16,
+      "depth": 9,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "SQLite",
+        "Rust",
+        "performance",
+        "benchmark"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Finite Projective Planes",
+      "title_zh": "有限射影平面：从 Fano 平面到密码学应用",
+      "link": "https://www.johndcook.com/blog/2026/11/08/finite-geometries/",
+      "pub_date": "2026-11-08T23:23:49.000Z",
+      "summary": "## 一句话总结\n文章通过解析有限射影平面的公理体系，以著名的 Fano plane 为例，揭示了这种“有限几何”如何在纯粹的公理满足与实际的组合数学、密码学应用之间建立桥梁。\n\n## 正文\n\n### 听起来像悖论，其实公理严丝合缝\n“有限几何”这个词，初听上去像是在说“干的水”或者“冷的火”，充满了矛盾感。毕竟我们在欧几里得几何里习惯了无限的概念。但数学上的定义其实很宽容：只要满足特定公理体系，哪怕是有限个点的集合，也能被称为几何。文章列出了射影平面的三条核心公理：任意两点确定唯一一条直线，任意两条直线交于唯一一点，以及必须存在四个点，使得任意三点不共线。这就构成了一个严密的逻辑闭环。\n\n### Fano plane：最完美的特例\n满足上述公理最著名的例子就是 Fano plane，它只包含 7 个点和 7 条线。虽然我们可以画出它的图形（通常是一个三角形加内切圆），但文章提醒我们，不要被直观图形误导。从集合论的角度看，这其实就是 7 个单元素集合作为“点”，以及 7 个三元素集合作为“线”。你需要做的只是验证：任意两个单元素集合都唯一包含于某个三元素集合中，且任意两个三元素集合的交集恰好是一个单元素集合。这种视角的切换，比单纯的几何图形更触及本质。\n\n### 点数增加，复杂性陡增\nFano plane 的美妙之处在于它是唯一的——7 个点的射影平面只有这一种构型。但一旦点数增加，情况立刻变得复杂。文章提到，如果是 10 个点，就存在四种非等价的射影平面。更有意思的是，关于不同阶数下有限射影平面的存在性，数学界至今仍有许多未解的猜想。这说明有限几何并非只是简单的计数游戏，其背后的结构复杂性远超想象。\n\n### 为什么我们要关心这些“奇怪”的空间？\n你可能会问，这种看起来像是为了满足公理而强行构造的“反直觉”空间，到底有什么用？文章给出了两个强有力的理由。首先，意外的反例能帮我们把“公理推导出的结论”和“我们直觉中的常识”剥离开来，防止思维惯性。其次，也是开发者最关心的，有限几何在组合数学和密码学中有实实在在的应用。虽然几何直觉能帮我们在大脑中构建模型、提出假设，但最终还需要落实到具体的离散计算上——这正是有限几何连接理论与应用的独特价值。",
+      "source_name": "johndcook.com",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "finite geometry",
+        "projective plane",
+        "Fano plane",
+        "cryptography"
+      ],
+      "rank": 3
+    },
+    {
       "title": "The problem with Micron MT 4264 RAM",
       "title_zh": "Micron MT 4264：80年代计算机维修的常见故障",
       "link": "https://dfarq.homeip.net/the-problem-with-micron-mt-4264-ram/?utm_source=rss&#038;utm_medium=rss&#038;utm_campaign=the-problem-with-micron-mt-4264-ram",
@@ -41,7 +79,7 @@
         "retro computing",
         "hardware failure"
       ],
-      "rank": 2
+      "rank": 4
     },
     {
       "title": "Is AI crashing?",
@@ -60,7 +98,7 @@
         "dotcom crash",
         "STAR50"
       ],
-      "rank": 3
+      "rank": 5
     },
     {
       "title": "Some thoughts on restaurant menu QR codes",
@@ -79,7 +117,45 @@
         "user experience",
         "restaurants"
       ],
-      "rank": 4
+      "rank": 6
+    },
+    {
+      "title": "Jensen Huang Betrayed Nvidia, Not Just His Family",
+      "title_zh": "黄仁勋被指背叛英伟达",
+      "link": "https://www.nytimes.com/2026/11/06/us/politics/chinese-spy-agency-nvidia-jensen-huang.html?unlocked_article_code=1.O1E.DRyO.9mNcxhaxhtlI",
+      "pub_date": "2026-11-08T23:56:32.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "opinion",
+      "keywords": [
+        "Jensen Huang",
+        "Nvidia",
+        "ethics",
+        "corporate governance"
+      ],
+      "rank": 7
+    },
+    {
+      "title": "Nvidia CEO Jensen Huang Was Banging a Chinese Spy, Who Was Feeding Information Back to Beijing",
+      "title_zh": "黄仁勋被指与中国情报人员有染",
+      "link": "https://www.nytimes.com/2026/11/08/technology/nvidia-investigation-jensen-huang-china.html?unlocked_article_code=1.O1E.Soow.6UjrM7Ch-C8L",
+      "pub_date": "2026-11-08T21:50:31.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Nvidia",
+        "Jensen Huang",
+        "espionage",
+        "China"
+      ],
+      "rank": 8
     }
   ]
 }
