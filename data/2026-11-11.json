@@ -1,9 +1,9 @@
 {
   "date": "2026-11-11",
   "total_feeds": 92,
-  "success_feeds": 84,
-  "total_articles": 2571,
-  "filtered_articles": 27,
+  "success_feeds": 83,
+  "total_articles": 2546,
+  "filtered_articles": 24,
   "articles": [
     {
       "title": "Jensen's Bizarre Adventure",
@@ -120,6 +120,25 @@
       "rank": 6
     },
     {
+      "title": "Monads in Lean",
+      "title_zh": "Lean 4 中的 Monad 实战：从表达式求值到状态管理",
+      "link": "https://eli.thegreenplace.net/2026/monads-in-lean/",
+      "pub_date": "2026-11-11T03:25:00.000Z",
+      "summary": "## 一句话总结\n文章通过重构一个表达式求值器的过程，引出了 Monad 的本质：一种用于解耦“计算逻辑”与“副作用处理（如错误传播、状态管理）”的设计模式。\n\n## 正文\n\n### 代码里的“样板代码”就是 Monad 的切入点\n故事从一个经典的痛点开始：写一个表达式求值器 `eval`，处理加法和除法。除法有个大麻烦——除以零。为了安全，我们用 `Option` 类型来包装结果，`safeDiv` 返回 `none` 表示失败。但这就带来了连锁反应：一旦中间步骤失败，整个计算链都要跟着返回 `none`。于是，代码里充斥着大量的 `match` 嵌套：检查 `eval a`，如果是 `none` 就返回，否则继续……这不仅是视觉污染，更是维护噩梦。这种“检查-传递”的重复模式，恰恰是 Monad 试图解决的问题。\n\n### 不要重复自己：提取模式与发明 `bind`\n既然模式是重复的，聪明的程序员自然会想到封装。文章演示了如何提取出一个辅助函数 `withSome`：它接收一个 `Option` 结果和一个后续计算函数。如果结果是 `none`，直接返回 `none`（短路）；如果是 `some x`，就把 `x` 传给后续函数继续跑。通过运算符重载 `>>?`，原本层层嵌套的 `match` 代码瞬间变成了链式调用：`eval a >>? fun x => eval b >>? fun y => ...`。到这里，其实我们已经重新发明了 Monad 的核心操作——`bind`（在 Lean 中写作 `>>=`），以及它的“语法糖” `do` notation。\n\n### 剥去糖衣：Monad 到底定义了什么？\n说白了，Monad 就是一个定义了 `pure` 和 `bind` 的类型类。`pure` 负责把普通值包装进 Monad 容器（比如 `some`），`bind` 负责把容器里的值取出来传给下一个计算（同时处理副作用）。Lean 中的 `do` 代码块本质上就是 `bind` 的语法糖。比如 `let x ← eval a` 这一行，编译器背后其实是在调用 `bind`，自动处理了“取出值”和“传递副作用”的过程。这让代码看起来像命令式语言一样自然，底层却依然是纯函数式的逻辑。\n\n### 从错误处理到副作用隔离：Monad 的通用性\nMonad 的威力不止于错误处理（`Option`），它还能优雅地封装其他副作用。文章展示了 `Except` 类型（类似 Rust 的 `Result`），通过定义一个通用的求值器 `evalM`，我们可以灵活切换底层 Monad：传入 `safeDiv` 它就是 `Option` 版本，传入 `safeDivExc` 它就变成了带错误信息的 `Except` 版本。核心思路在于：副作用被封装在 Monad 内部，业务代码只需关注计算流程，`bind` 负责串联起这些带有副作用的计算块。\n\n### Writer Monad：悄悄记下每一笔账\n如果不仅要计算结果，还要记录计算过程怎么办？文章引入了 `LoggedOption`，它不仅返回结果，还带着一个日志列表 `log`。这就是 Writer Monad 的变体。其 `bind` 实现非常巧妙：当串联两个计算时，它会自动把前一个计算的日志和后一个的拼接起来。对于上层业务代码来说，它只需要在计算过程中生成日志条目，完全不用操心日志是如何在计算链中传递和累积的——这些繁琐的“记账”工作都交给 Monad 实例去做了。\n\n### State Monad：在纯函数世界里模拟变量\n更复杂的场景是处理可变状态，比如支持变量赋值和读取的表达式求值。文章介绍了 State Monad 的实现：将状态定义为变量列表 `Vars`，计算被建模为一个函数：接收初始状态，返回结果和新状态的二元组。在 `evalState` 中，`.store` 操作负责更新状态，`.load` 操作负责查找状态。Monad 的 `bind` 在这里充当了状态传递的“隐形管道”，自动把上一个操作的更新状态传给下一个操作。甚至能处理 `(x := 12) + (x / 3)` 这种赋值后立即读取的场景，因为状态在计算链中是实时流动的。\n\n### IO Monad：与真实世界交互的终极容器\n最后，文章谈到了最著名的 Monad——`IO`。在 Lean 这种纯函数语言中，你不能随意打印字符串，因为那是不纯的副作用。`IO` Monad 将“整个外部世界”抽象为状态。`IO.println` 之类的操作就像是接收一个“世界状态”，返回一个新的“世界状态”。为了组合 `Option`（处理除零错误）和 `IO`（打印日志），文章使用了 Monad Transformer `OptionT`，将两者叠加在一起。这展示了 Monad 在处理多层副作用叠加时的扩展能力。\n\n### 最后的约束：Monad Laws\n虽然 Monad 用起来很爽，但它必须遵守三条定律：左单位元（`pure v >>= f` 等价于 `f v`）、右单位元（`m >>= pure` 等价于 `m`）和结合律（运算顺序不影响结果）。文章以 `Option` 为例验证了这些定律。虽然 Lean 不会强制检查这些定律，但为了程序的逻辑正确性，尤其是涉及定理证明时，遵循 `LawfulMonad` 的约束至关重要。",
+      "source_name": "eli.thegreenplace.net",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "Lean 4",
+        "Monad",
+        "functional programming",
+        "type class"
+      ],
+      "rank": 7
+    },
+    {
       "title": "Pluralistic: The EU should go big and hard over border IT failure (10 Nov 2026)",
       "title_zh": "欧盟 2.12 亿欧元边境 IT 系统失败，秘密起诉 IBM 等承包商",
       "link": "https://pluralistic.net/2026/11/10/worst-of-all-worlds/",
@@ -136,7 +155,26 @@
         "IT failure",
         "outsourcing"
       ],
-      "rank": 7
+      "rank": 8
+    },
+    {
+      "title": "Making a Website in 2026",
+      "title_zh": "AI 生成网站的隐藏依赖与商业黑箱",
+      "link": "https://blog.jim-nielsen.com/2026/making-websites-in-2026/",
+      "pub_date": "2026-11-10T19:00:00.000Z",
+      "summary": "## 一句话总结\nAI 让生成网站变得极其容易，但背后的技术选型逻辑和商业利益输送，却让开发者在不知不觉中背上了一艘难以维护的“航空母舰”。\n\n### 静态页面易得，技术依赖难选\n作者 Jim Nielsen 读过 Pete Millspaugh 的实验文章后，点出了一个关键矛盾：LLM 生成单机 HTML 很在行，可一旦引入数据库、支付、认证等技术依赖，问题就来了。对于非技术用户来说，让 AI 在 React 和 Vue 之间做选择已经够呛，更别提让它决定用 Auth0 还是 WorkOS 做认证了。Pete 在实验中故意模糊了这些细节，结果发现生成的网站虽然跑得通，但技术栈的选择完全是个黑箱。\n\n### 你想要艘帆船，AI 给了你艘航母\nPete 在使用 Lovable 生成网站后发现，系统自动选择了全栈 React 架构，文件数量多达几十个，还自动集成了 Supabase 作为数据库。这就好比你只想要一艘简单的帆船，结果对方交付了一艘满载各种设施的航空母舰。对于非技术用户而言，他们根本不知道这背后意味着什么——为了一个简单的静态内容站，他们背负了 JavaScript 框架、路由、水合运行时以及各种分析工具的沉重包袱。\n\n### 隐藏在算法背后的“推荐费”生意\n更有意思的是服务供应商的选择逻辑。为什么是 Supabase 而不是 Firebase？为什么 v0 推荐了 Neon 数据库，甚至自动帮用户创建了账号？这像极了房地产行业的推荐生意：你的经纪人会“热心”推荐房贷公司、验房公司，这背后往往有利益输送。AI 编程工具领域也存在同样的可能性——服务商是否向平台支付了费用以获得默认推荐？如果 LLM 的决策本身就不可预测，再加上金钱激励，生成的代码只会离用户真正的需求越来越远。\n\n### 扑朔迷离的“积分”消费陷阱\n除了技术选型的不透明，用户在使用这些工具时还面临着计费的不透明。Pete 抱怨说，看着“积分”一格格往下掉，完全不知道这对应多少钱。有的工具跑 5 分钟扣 0.07 个积分，有的跑 1 分钟扣 0.024 个积分，换算起来简直是折磨。作者对此毫不客气：别再搞什么积分系统了，直接显示美元成本不好吗？计算机最擅长算术，别让用户在脑子里做算术题，这种金融抽象层只会让用户对真实成本失去感知。\n\n### 生成容易，理解难\nPete 最后总结道，他对现状既乐观又悲观：乐观在于“终端用户编程”终于触手可及，普通人也能定制软件；悲观在于，缺乏思考的 AI 生成网站往往比没有网站还糟糕。Jim Nielsen 深以为然：生成一个网站确实前所未有的容易，但要搞懂你到底生成了什么、依赖了谁、为什么这么选，反而比以前更难了。",
+      "source_name": "blog.jim-nielsen.com",
+      "score": 13,
+      "depth": 6,
+      "novelty": 7,
+      "category": "ai-ml",
+      "keywords": [
+        "AI code generation",
+        "dependencies",
+        "vendor lock-in",
+        "credits system"
+      ],
+      "rank": 9
     },
     {
       "title": "Balanced Incomplete Block Designs",
@@ -155,7 +193,7 @@
         "combinatorial design",
         "statistics"
       ],
-      "rank": 8
+      "rank": 10
     },
     {
       "title": "Microsoft Fixes Nearly 1,100 Security Vulnerabilities",
@@ -174,7 +212,7 @@
         "zero-day",
         "Microsoft"
       ],
-      "rank": 9
+      "rank": 11
     },
     {
       "title": "Safari 27.3 Adds Support for Global Privacy Control",
@@ -193,7 +231,7 @@
         "privacy",
         "Do Not Track"
       ],
-      "rank": 10
+      "rank": 12
     },
     {
       "title": "Finally, Payment by Bank Transfer Comes to Have I Been Pwned",
@@ -212,7 +250,7 @@
         "Stripe",
         "procurement"
       ],
-      "rank": 11
+      "rank": 13
     },
     {
       "title": "Novell’s lawsuits with Microsoft",
@@ -231,7 +269,7 @@
         "antitrust",
         "WordPerfect"
       ],
-      "rank": 12
+      "rank": 14
     },
     {
       "title": "Steven Levy on John Ternus",
@@ -250,7 +288,7 @@
         "product",
         "AI"
       ],
-      "rank": 13
+      "rank": 15
     },
     {
       "title": "U.S. Commerce Dept. Inquiry Into Megaspeed Was Halted After Nvidia Name-Dropped Trump Appointee",
@@ -269,7 +307,7 @@
         "politics",
         "investigation"
       ],
-      "rank": 14
+      "rank": 16
     },
     {
       "title": "Microsoft employee price list from 1987",
@@ -288,7 +326,7 @@
         "software history",
         "price list"
       ],
-      "rank": 15
+      "rank": 17
     },
     {
       "title": "20 years of blogging",
@@ -307,7 +345,7 @@
         "LLM from scratch",
         "project documentation"
       ],
-      "rank": 16
+      "rank": 18
     },
     {
       "title": "OurCal",
@@ -326,7 +364,7 @@
         "messaging",
         "privacy"
       ],
-      "rank": 17
+      "rank": 19
     },
     {
       "title": "Book Review: The Unfinished Harauld Hughes - Richard Ayoade ★★★⯪☆",
@@ -345,7 +383,7 @@
         "satire",
         "fiction"
       ],
-      "rank": 18
+      "rank": 20
     },
     {
       "title": "I am searching for a coffee alternative",
@@ -364,7 +402,7 @@
         "energy drinks",
         "taste test"
       ],
-      "rank": 19
+      "rank": 21
     },
     {
       "title": "Gary Marcus: ‘Just Say No to Anthropic’s IPO’",
@@ -383,7 +421,7 @@
         "Gary Marcus",
         "AI ethics"
       ],
-      "rank": 20
+      "rank": 22
     },
     {
       "title": "Altar II Keyboard on Kickstarter",
@@ -401,7 +439,7 @@
         "hardware",
         "crowdfunding"
       ],
-      "rank": 21
+      "rank": 23
     },
     {
       "title": "Bloomberg: ‘Nvidia Intervened in U.S. Probe of Megaspeed Chip Smuggling’",
@@ -419,7 +457,7 @@
         "chip smuggling",
         "investigation"
       ],
-      "rank": 22
+      "rank": 24
     },
     {
       "title": "‘A Scandal at the Center of the Economy’",
@@ -438,7 +476,7 @@
         "espionage",
         "The Atlantic"
       ],
-      "rank": 23
+      "rank": 25
     }
   ]
 }
