@@ -1,0 +1,112 @@
+{
+  "id": 50382401,
+  "by": "speckx",
+  "title": "I deleted all my SSH keys",
+  "url": "https://blog.infected.systems/posts/2026-11-03-i-deleted-all-my-ssh-keys/",
+  "score": 160,
+  "createdAt": 1794333054,
+  "aiSummary": {
+    "chinese_title": "删掉 SSH 私钥后：YubiKey、TPM 与可恢复性的取舍",
+    "discussion_overview": [
+      {
+        "category": "硬件密钥的安全边界与实现差异",
+        "summary": "支持者认为，YubiKey、Mac Secure Enclave 等硬件安全模块可让私钥不可被软件直接导出，客户端只能请求设备完成签名；配合触摸确认，攻击者即使拿到文件系统也较难复制凭据并横向进入其他机器。FIDO2 的 ed25519-sk 密钥、PIV/OpenPGP 槽位和 TPM 的保障并不相同：YubiKey 可在设备内完成签名，而常见 ssh-tpm-agent 方案实际仍把加密后的私钥文件放在磁盘，再由 TPM 解封。有人指出 TPM 可使用 hierarchy keys 避免额外密钥文件，但若未设 owner password，能访问 TPM 的人可能重建密钥。反对者则强调，只要私钥或解密态进入 userspace 内存，恶意软件和被攻陷的软件供应链仍可能截获它；真正关键的是 HSM 是否从不吐出私钥、只接受签名挑战。",
+        "supportid": [
+          "50443581",
+          "50443632",
+          "50445240",
+          "50445470",
+          "50445378",
+          "50445441"
+        ]
+      },
+      {
+        "category": "FIDO2 resident/non-resident、PIV 与日常操作体验",
+        "summary": "讨论详细区分了 resident 与 non-resident FIDO2 凭据：resident 密钥的元数据可从 YubiKey 恢复，换电脑时可直接插入设备并用 ssh-keygen -K 导入；non-resident 则还必须持有本地的 handle 文件，但不占用 YubiKey 有限的凭据槽位。resident 模式的代价是失窃者可枚举设备上的凭据，若 PIN 和保护策略不足，设备本身可能成为更完整的攻击材料。对于交互体验，PIV/OpenPGP 可实现插入后首次 PIN+触摸、之后仅触摸的流程；也有人称为 -sk 私钥设置 passphrase 并加入 ssh-agent 可近似达到这一效果。实际部署者倾向用带触摸的 -sk 密钥负责高价值签名，用专用 deploy key 执行自动化，再以密码管理器中的次级密钥处理低风险 Git 操作。",
+        "supportid": [
+          "50444917",
+          "50445360",
+          "50445228",
+          "50445256",
+          "50444043",
+          "50445112",
+          "50443697"
+        ]
+      },
+      {
+        "category": "故障恢复、兼容性与复杂度阻碍普及",
+        "summary": "硬件密钥的最大现实疑问是丢失、损坏、升级或更换电脑后如何恢复访问；已有用户报告 YubiKey 使用一年就失效，因此不宜把唯一密钥用于难以重新配对的系统。有人购买三把 YubiKey，分别常驻电脑、随身携带和离线备份；另有长期用户称八年前的设备仍可用，但物理损耗通常比 flash bit rot 更早出现。WSL2 对 YubiKey 和 TPM 的支持需要复杂且可能不安全的绕过方案，Qubes 下硬件驻留密钥也被认为基本无用。命令行配置、GnuPG/PCSC 依赖及 PIN 缓存等细节，也让一些人觉得安全方案的操作负担超过收益。",
+        "supportid": [
+          "50446059",
+          "50445765",
+          "50445571",
+          "50445221",
+          "50445205",
+          "50445281",
+          "50445414",
+          "50443676"
+        ]
+      },
+      {
+        "category": "跳板机、短期凭据与分层访问设计",
+        "summary": "硬件密钥并不能自动解决多跳 SSH 的认证与网络路径问题。通过 ProxyJump 可以让本机密钥用于任意跳板链且不把 agent 放到中间主机，但如果真正需要让欧洲的 B 主机与 C 主机直接高速传输数据，这种方式会把流量绕回远端堡垒机，无法满足本地 B→C 路径需求。ssh -A 可转发载入 agent 的 FIDO2 或 PIV 凭据，但 PIV 转发会有效缓存 PIN，需用 ssh-add -c 要求每次确认来降低滥用风险。替代思路包括让 YubiKey 作为 SSH CA 签发短时、限定 principal 的 SSH certificate，或用 Teleport、Tailscale SSH、Kerberos 等集中式身份系统减少长期个人私钥的使用范围。",
+        "supportid": [
+          "50443604",
+          "50444251",
+          "50444596",
+          "50443722",
+          "50444425",
+          "50445361",
+          "50445836",
+          "50443697"
+        ]
+      },
+      {
+        "category": "简化方案与纵深防御的争论",
+        "summary": "一派认为每台端点生成独立 ed25519 私钥、仅分发公钥，或通过 Bitwarden CLI/Vaultwarden 保存和取用密钥，已经足够实用；但若把 passphrase 与私钥放在同一密码库，口令几乎不再提供独立保护。另一派强调硬件不可导出的核心价值是把“设备—密钥”绑定为一对一，而不是方便在所有机器复制同一密钥。还有人保留传统 SSH 公钥，却将 authorized_keys 固化并监测校验和、写入 CIDR from 限制，并以 nftables、VPN、HAProxy ACL 限制入口。极端的纵深防御案例甚至移除 sudo 和 suid 程序，只允许隔离 LAN 中一台专用无 Wi‑Fi 笔记本携带 YubiKey 以 SSH 登录 root，体现安全设计必须按威胁模型权衡而非套用单一工具。",
+        "supportid": [
+          "50444201",
+          "50444613",
+          "50445630",
+          "50445767",
+          "50443590",
+          "50443784"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "FIDO2 / -sk 密钥",
+        "explanation": "OpenSSH 的 security-key 密钥类型；私钥操作由符合 FIDO2 的安全密钥执行，通常可要求触摸确认。"
+      },
+      {
+        "term": "resident key（驻留凭据）",
+        "explanation": "凭据元数据存于 YubiKey，可在新电脑上从设备恢复；相对地 non-resident 模式还需要本地 handle 文件。"
+      },
+      {
+        "term": "PIV",
+        "explanation": "Personal Identity Verification 智能卡接口标准；YubiKey 的 PIV 槽位可通过 PKCS#11 供 SSH 使用。"
+      },
+      {
+        "term": "TPM",
+        "explanation": "Trusted Platform Module，设备内置的硬件信任模块，可绑定密钥解封或签名操作，但具体 SSH 工具未必把私钥完全留在 TPM 内。"
+      },
+      {
+        "term": "ssh-agent",
+        "explanation": "为 SSH 客户端暂存并代为使用认证密钥的进程；便于转发和复用，但可能扩大内存驻留密钥或 PIN 缓存的风险。"
+      },
+      {
+        "term": "SSH certificate / SSH CA",
+        "explanation": "由 SSH 证书颁发机构签发的短期登录证书，可限制有效期和允许登录的 principals，减少长期公钥授权。"
+      },
+      {
+        "term": "PAM",
+        "explanation": "Pluggable Authentication Modules，Linux 的可插拔认证框架，可把 YubiKey/FIDO 等认证接入控制台登录、sudo 和磁盘解锁。"
+      }
+    ],
+    "context": "原文讨论的是放弃磁盘上的传统 SSH 私钥文件，改用 YubiKey（支持 FIDO2、PIV 等协议的硬件安全密钥）、TPM（电脑内置的硬件信任模块）或 Mac Secure Enclave（苹果设备的隔离安全芯片）执行 SSH 签名。核心目标不是让任何攻击都失效，而是避免私钥被误上传、被文件系统复制，或在多台机器间无控制地扩散。OpenSSH 已支持 FIDO2 的 -sk 密钥，但其 resident/non-resident 选择决定了凭据能否从令牌恢复、是否还需本地文件，以及失窃时的暴露面。讨论也延伸到跳板机的 agent forwarding、短期 SSH certificate、PAM 登录，以及备份令牌和故障恢复：硬件绑定提高防复制性，却以兼容性、管理复杂度和可用性为代价。",
+    "emoji": "🔐",
+    "sarcastic_question": "删了私钥，丢了 YubiKey 谁给你开门？"
+  },
+  "articleSummary": "## 一句话总结\n作者通过 YubiKey、TPM 和 Apple Secure Enclave 三种硬件方案彻底消灭了磁盘上的 SSH 私钥文件，利用硬件绑定的特性让私钥无法被导出，从而实现了更高阶的安全防护。\n\n## 正文\n\n### 传统 passphrase 方案为何“差点意思”\n很多开发者觉得给 SSH key 加个强密码就万事大吉了。确实，bcrypt 和 AES 加密后的私钥即使泄露也很难破解，而且在 ssh-agent 的加持下，每次会话只需要输入一次密码，解密后的密钥只活在 RAM 里。这听起来没问题，但作者觉得还不够。核心痛点在于：只要私钥文件存在于磁盘上，理论上就存在被窃取或离线暴力破解的可能性。作者想要的是一种“私钥根本无法离开硬件”的终极方案，也就是所谓的 hardware-resident keys。\n\n### YubiKey：最原生的硬件级防护\n首先登场的是 YubiKey，这是目前最成熟的方案。OpenSSH 原生支持 `ed25519-sk` 类型，这里的 `-sk` 代表 Security Key。生成密钥时加上 `-O resident` 参数，私钥就会直接生成并存储在 YubiKey 内部。有意思的是，虽然磁盘上还会生成一个 `id_ed25519-sk` 文件，但它其实不是私钥，只是一个指向硬件设备的“句柄”。这意味着即使黑客拿到了这个文件和你的磁盘权限，没有物理上的 YubiKey 也无济于事。使用时，SSH 会要求你物理触碰 YubiKey 来确认身份，这有效防止了远程恶意脚本在后台偷偷调用你的密钥。\n\n### 无人值守场景下的权衡\n物理触碰虽然安全，但在自动化脚本或某些无人值守的场景下会变成阻碍。作者提到，可以通过 `-O no-touch-required` 参数生成不需要触碰的密钥，但这降低了安全性——任何能接触到你主机的人都能使用该密钥。如果你必须这么做，记得在目标服务器的 `authorized_keys` 文件里给公钥前面加上 `no-touch-required` 前缀，否则 OpenSSH 默认会拒绝这种操作。这是一个典型的安全与便利的权衡：为了自动化，你得接受“只要机器被攻破，密钥就能被滥用”的风险。\n\n### TPM：挖掘主板上的安全芯片\nYubiKey 虽好，但毕竟要花钱买。其实大多数现代主板都自带 TPM 芯片，完全可以利用起来。这里需要用到一个第三方工具 `ssh-tpm-agent`。它的原理是利用 TPM 的加密能力，将私钥加密后存储在磁盘上（文件后缀为 `.tpm`）。这里有个关键区别：YubiKey 方案是私钥完全在硬件内部生成且不可导出，而 TPM 方案是私钥被 TPM 加密后存在磁盘上。虽然私钥文件还在，但如果没有这台机器的 TPM 芯片，这个文件就是一堆乱码，无法在其他机器上解密使用。这依然有效防止了私钥文件泄露带来的风险。\n\n### Apple Secure Enclave：Mac 用户的原生福利\n如果你是 macOS Sequoia 用户，苹果自带的 Secure Enclave 也能派上用场。通过系统自带的 `sc_auth` 命令，可以生成一个非导出型（`-ne`）的 P-256 密钥，并绑定 Touch ID（`-t bio`）。这比 YubiKey 更方便，因为你的指纹就是密钥。配置稍微繁琐一点，需要设置环境变量 `SSH_SK_PROVIDER` 指向 `/usr/lib/ssh-keychain.dylib`，让 OpenSSH 知道去哪里调用安全芯片。不过这里有个坑：如果你习惯合盖使用 Mac（Clamshell mode），Touch ID 会失效，导致密钥无法使用。这时候要么外接带 Touch ID 的键盘，要么只能妥协使用 YubiKey。\n\n### 硬件绑定带来的“幸福的烦恼”\n这套方案的核心逻辑是“密钥与硬件绑定”，但这同时也引入了单点故障的风险。如果 YubiKey 丢了、主板 TPM 损坏了，或者 Mac 主板坏了，你的密钥也就彻底没了。这不像以前那样备份一个私钥文件就能解决问题。作者的建议非常务实：不要把鸡蛋放在一个篮子里，多生成几把不同的密钥备用。毕竟 `authorized_keys` 文件支持存放多个公钥，通过冗余配置来对抗硬件损坏或丢失的风险，这才是使用硬件密钥的正确姿势。"
+}
