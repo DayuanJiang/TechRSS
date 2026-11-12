@@ -1,0 +1,80 @@
+{
+  "id": 50459485,
+  "by": "gslin",
+  "title": "Lock Your GitHub Actions",
+  "url": "https://hugovk.dev/blog/2026/lock-github-actions/",
+  "score": 149,
+  "createdAt": 1794436254,
+  "aiSummary": {
+    "chinese_title": "GitHub Actions lockfile：锁住依赖仍锁不住执行链",
+    "discussion_overview": [
+      {
+        "category": "Lockfile 可改善 SHA pinning 的依赖解析",
+        "summary": "支持者认为，传统的 commit SHA pinning 主要固定直接引用，第三方 Action 内部若以可变 tag 引用另一个 Action，仍可能被替换后的代码攻破。GitHub Actions 的 lockfile 旨在把 Action 及其 transitive dependencies 一并解析和固定，从而覆盖这一常见缺口。评论还指出，lockfile 不允许把任意 fork 中的冒名 commit 锁入目标仓库的依赖记录，避免了手工 SHA pinning 需要额外确认 commit 来源的问题。因而它的价值不只是把 SHA 挪到另一份文件，而是让平台参与依赖身份与解析结果的约束。",
+        "supportid": [
+          "50460169",
+          "50460831",
+          "50461771",
+          "50459931"
+        ]
+      },
+      {
+        "category": "锁文件无法保证完整不可变执行环境",
+        "summary": "目前的 workflow lockfile 只锁定常规 Action 调用，reusable workflows 仍需手工 hash-pin。Composite actions 本身不会单独被锁定，而是依赖调用方的传递性锁定；默认工具若移除 composite action 内的 hash-pin，外部调用者反而可能失去保护。Docker image 等其他 uses: 形式也未纳入锁定范围，Action 运行时执行 npx、docker pull abc:latest 或下载“latest”工具更完全可以绕过该机制。评论因此强调，锁定 Action 引用不等于锁定 Action 实际执行的全部代码、镜像和网络获取内容。",
+        "supportid": [
+          "50459919",
+          "50460291",
+          "50459698",
+          "50459824",
+          "50460808"
+        ]
+      },
+      {
+        "category": "审计与验证成本只是从 YAML 转移到 lockfile",
+        "summary": "批评者认为，新机制表面上只是“带版本注释的 SHA pinning”改成了将 SHA 放入独立 lockfile，审查者仍必须确认更新是否可信。若 lockfile 更新工具引入数百个 transitive dependencies，开发者需要审计的内容反而更庞大，自动更新过程本身也成为新的信任点。另有观点指出，若 lockfile 没有由 GitHub runner 在平台层强制校验，手动运行 workflow 或使用 act（本地 GitHub Actions 模拟器）仍可能执行被篡改的 Action。有人主张 GitHub 应让 Marketplace 发布必须使用 immutable tags，并从语义上消除可随意移动 tag 的危险设计。",
+        "supportid": [
+          "50460400",
+          "50461950",
+          "50462262",
+          "50460461",
+          "50459589",
+          "50460502"
+        ]
+      },
+      {
+        "category": "减少或弃用第三方 GitHub Actions",
+        "summary": "一部分人从供应链风险出发，建议尽量不要使用 GitHub Actions，改由外部 build orchestrator（构建编排系统）执行 CI 并向 GitHub 回报状态。对于简单任务，有人主张直接把一行 shell 命令或 Action 内容 vendoring 到仓库，以便完全自行控制，而非引用陌生账户维护的黑盒脚本。更保守的实践是仅使用 GitHub 官方或本组织 fork 的上游 Action，甚至连官方 checkout Action 也不用，因为其实现和依赖树可能超出实际需求。反驳意见则是现实中的 Actions 往往并不只是简单 shell 命令，复制维护也未必容易。",
+        "supportid": [
+          "50460909",
+          "50461007",
+          "50459686",
+          "50461844",
+          "50460461",
+          "50460808"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "SHA pinning",
+        "explanation": "在 workflow 中用特定 Git commit 的 SHA 哈希而非可变 tag 引用 Action，以固定所执行的版本。"
+      },
+      {
+        "term": "lockfile（锁文件）",
+        "explanation": "记录依赖解析后的精确版本或身份信息的文件，目标是让后续安装或运行复用同一组依赖。"
+      },
+      {
+        "term": "transitive dependencies（传递依赖）",
+        "explanation": "直接依赖所继续引用的下游依赖；它们若未固定版本，也会成为供应链攻击入口。"
+      },
+      {
+        "term": "immutable tags（不可变标签）",
+        "explanation": "发布后不能被重新指向其他 commit 的 Git tag，可避免同一版本名在事后悄悄换成恶意代码。"
+      }
+    ],
+    "context": "GitHub 近期为 GitHub Actions（GitHub 托管的 CI/CD 自动化工作流服务）推出了 actions.lock 机制，并提供 gh actions-lock（GitHub CLI 扩展）来生成 Action 及其传递依赖的锁定记录。此前常见做法是在 workflow YAML 的 uses: 引用中直接写 commit SHA；这能避开 tag 可被移动的问题，却难以审计 SHA 是否确属目标仓库的正式发布，也难以覆盖下游 Action。争论的核心是软件供应链安全：Action 作为可执行代码，仍可在内部拉取 Docker 镜像、执行 npx 或调用未固定的子依赖，因此引用层的锁定无法自动带来端到端可复现性。评论也延续了对 GitHub fork 处理、Marketplace 发布规则与第三方 CI 依赖治理的长期质疑。",
+    "emoji": "🔒",
+    "sarcastic_question": "把 SHA 挪进锁文件，就算供应链安全了吗？"
+  },
+  "articleSummary": "## 一句话总结\nGitHub Actions 正式支持 workflow lockfiles，让你既能用易读的 tag 管理依赖，又能享受 SHA 哈希的供应链安全保障。\n\n## 正文\n\n### 以前我们为什么要死磕 SHA 哈希\n过去，GitHub Actions 的安全最佳实践是必须把第三方 action 锁死在完整的 SHA 哈希上。原因很简单：Git tags 是可变的。如果一个攻击者劫持了上游仓库，把原本安全的 tag（比如 `v3.1.0`）指向包含恶意代码的 commit，你的 CI 就会在不知不觉中中招。为了防范这种供应链攻击，大家不得不牺牲代码可读性，在 workflow 文件里写满一长串毫无语义的哈希值，比如 `actions/checkout@3d3c42e5...`。\n\n### 现在有了更优雅的解法：Lockfile\nGitHub 现在官方支持 workflow lockfiles，这彻底改变了游戏规则。核心思路其实很简单：把版本锁定的工作剥离出来。你的 workflow 文件可以回归人类友好的写法，直接引用 `vX.Y.Z` tag，同时生成一个独立的 `actions.lock` 文件来记录对应的 SHA 哈希、Repo ID 和 Owner ID。这就像 Python 的 `requirements.txt` 之于 `requirements.lock`，既保留了语义化版本的清晰，又锁住了不可变的构建依赖。\n\n### 动手迁移：从 CLI 开始\n迁移过程非常顺滑。首先安装官方提供的 `gh-actions-lock` 扩展到 GitHub CLI。然后在项目根目录运行 `gh actions-lock`，它会自动扫描你的 workflow 文件，把原本写死的 SHA 哈希替换回 tag 引用，并生成那个至关重要的 lockfile。比如原本的 `actions/checkout@3d3c42e5...` 会变回 `actions/checkout@v7.0.1`，同时 lockfile 里记录下这个 tag 对应的真实 commit 哈希。\n\n### 自动化工具已经就位\n如果你担心 lockfile 的维护成本，好消息是 Renovate 和 Dependabot 这两大依赖更新工具已经支持这种 lockfile 格式了。这意味着你现有的自动化更新流程依然有效，工具会自动帮你更新 workflow 里的 tag 和 lockfile 里的哈希。作者还特别提醒，记得配合使用 dependency cooldowns 策略，避免被上游的频繁更新\"轰炸\"。\n\n### CI 里的验证闭环\n光有 lockfile 还不够，你还需要在 CI 里验证它。GitHub 建议在流水线中加入一个验证步骤，确保 lockfile 没有过期或损坏。作者的做法很直接：在现有的 lint workflow 里加了一个独立的 `lockfile` job，使用轻量级的 `ubuntu-slim` runner，运行 `gh actions-lock --verify`。这里有个小细节需要注意：验证工具本身也需要安装，作者选择 pin 到特定版本 `v0.4.1`，虽然这又引入了一个需要手动更新的依赖，但为了安全是值得的。\n\n### 安全扫描工具的配合\n如果你是 `zizmor`（GitHub Actions 安全 linter）的用户，这里有个关键版本要求：v1.32.0 之前的版本只会教你如何 hash-pin，而 v1.32.0 才是第一个正式支持 lockfile 的版本。你需要把 `.pre-commit-config.yaml` 里的 zizmor 更新到这个版本以上，才能让安全扫描工具正确识别并验证你的 lockfile 策略。作者强烈推荐使用这个工具，它能帮你发现 workflow 里的其他安全隐患。"
+}
