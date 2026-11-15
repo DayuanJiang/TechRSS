@@ -1,0 +1,57 @@
+{
+  "id": 50497589,
+  "by": "VaibhaavTiwari",
+  "title": "Show HN: DeepSeek V3 in ~200 lines of pure Jax",
+  "url": "https://github.com/Vaibhaav-Tiwari/deepseek-v3-jax",
+  "score": 210,
+  "createdAt": 1794678622,
+  "aiSummary": {
+    "chinese_title": "190行纯JAX复刻DeepSeek V3：教学价值获赞，AMD/ROCm兼容仍踩坑",
+    "discussion_overview": [
+      {
+        "category": "极简复刻的教学与可复现价值",
+        "summary": "评论普遍认为，从第一性原理重建模型比直接调用框架更能理解架构细节，190行实现尤其适合作为学习入口。读者赞赏文章提供架构图、样例输出、训练数据和 checkpoint，使人既能观察系统流程，也能跳过训练直接生成文本。也有人指出，使用与其他项目相同的数据集有助于横向比较结果；不过作者选用旧侦探小说作为实验数据仍被视为有趣的个人探索。多位读者表示会自行重写该项目，并希望把思路用于不足1000万参数的小模型。",
+        "supportid": [
+          "50497618",
+          "50499902",
+          "50499974",
+          "50500641",
+          "50503201"
+        ]
+      },
+      {
+        "category": "AMD消费级GPU上的ROCm实践与软件支持批评",
+        "summary": "一位使用 RX 7600 XT 16GB 的读者报告，该项目首次让其在 Fedora 上通过 ROCm 和 JAX 完成端到端本地训练。其采用 rootless Podman 容器、AMD 的 rocm/jax 镜像和内核 amdgpu 驱动，主机无需安装 ROCm，说明容器化能降低部署门槛。实际运行仍需设置 HSA_OVERRIDE_GFX_VERSION=11.0.0 以绕过 JAX 对 gfx1102 的拒绝，并关闭 Triton GEMM 以避免 GPU 卡死。回应者因此批评 AMD 对非数据中心显卡的软件支持长期薄弱，认为这会损失开发者和消费者市场。",
+        "supportid": [
+          "50500124",
+          "50504302"
+        ]
+      },
+      {
+        "category": "从普通软件开发入门与移植扩展需求",
+        "summary": "有 Java、Python 和常规软件工程背景的读者希望获得从直觉到动手实现推理模型的学习路线。建议先借助 3blue1brown、Welch Labs 的可视化内容建立神经网络和 LLM 直觉，再学习 Karpathy 的 Python 教程，从玩具网络引擎逐步走向 tokenizer 与 Transformer。补充资源包括 jaxformer、nanochat，以及奠定 Transformer 架构的《Attention Is All You Need》论文。另一些提问则将兴趣延伸到能否用同样方式构建 V4.1，或是否存在 C++ 版本，反映出对模型规模与语言生态的实际需求。",
+        "supportid": [
+          "50500767",
+          "50501111",
+          "50502367",
+          "50503574",
+          "50503770"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "JAX",
+        "explanation": "面向高性能数值计算与机器学习的 Python 框架，可通过 XLA 编译并在 GPU、TPU 等设备上执行数组运算。"
+      },
+      {
+        "term": "ROCm",
+        "explanation": "AMD 的开源 GPU 计算软件栈，用于让 PyTorch、JAX 等框架在 Radeon 和数据中心 GPU 上运行。"
+      }
+    ],
+    "context": "DeepSeek V3（DeepSeek 发布的 Mixture-of-Experts 大语言模型）以 Multi-head Latent Attention、基于 bias 的专家负载均衡和 multi-token prediction 等设计受到关注。该项目用 JAX（可经 XLA 编译执行的机器学习数值计算框架）在约190行代码中重建这些关键思路，但实现的是3600万参数的教学缩小版，并非原始大模型的完整复现。它在配备24GB内存的 MacBook Air M5 上借助 jax-metal（JAX 的 Apple Metal 后端），以207本旧侦探小说训练12000步，耗时约2.6小时，并公开 checkpoint 与数据。讨论也涉及 ROCm（AMD GPU 计算软件栈）在消费级 Radeon 显卡上的兼容性问题，显示简洁模型代码仍依赖不够平滑的底层驱动和编译器生态。",
+    "emoji": "🧠",
+    "sarcastic_question": "190行都能讲懂，AMD驱动何时才肯跑通？"
+  },
+  "articleSummary": "## 一句话总结\n作者用 190 行纯 JAX 代码复现了 DeepSeek-V3 的核心架构，在 MacBook Air 上从零训练了一个 36.2M 参数的模型，以此验证了 MLA、MoE 负载均衡等关键设计的有效性。\n\n## 正文\n\n### 极简主义的技术宣言\n现在的深度学习框架越来越重，但这项目偏要反其道而行之。作者扔掉了 Flax、Equinox 甚至 PyTorch，只用原生 JAX 就把 DeepSeek-V3 的架构撸出来了。核心代码 `deepseek_v3.py` 只有 190 行，参数就是普通的 dict，模型就是纯函数。说白了，作者想证明：只要逻辑理顺了，复杂的架构也能写得像脚本一样清爽。\n\n### MLA 的“偷懒”艺术\nDeepSeek-V3 最亮眼的改进之一是 Multi-head Latent Attention (MLA)。传统的 KV Cache 占用显存太凶，MLA 的思路很直接：别存完整的 keys 和 values 了，存一个压缩后的 latent 向量就行。在这个实现里，每个 token 每层的缓存从 480 个数压到了 144 个。那 RoPE 怎么办？作者用了 Decoupled RoPE，把旋转位置编码单独拆出来，作为一把共享的 key 独立于压缩的 latent 之外，既省了内存又不破坏位置信息。\n\n### 不靠损失函数也能搞定负载均衡\nMoE (Mixture of Experts) 最怕的就是所有 token 都往那几个“明星专家”里钻，导致负载极度不均。DeepSeek-V3 提出了一个大胆的方案：去掉传统的 auxiliary loss，改用动态 bias 来调节。代码里的 `update_bias` 会给那些闲着没事干的专家加个 bias，引导 router 把 token 分过去。有意思的是，作者做了对比实验：加 bias 和不加 bias，验证集 loss 几乎一样（3.921 vs 3.923），但专家负载从 0.09%-18.6% 的剧烈失衡变成了 5.7%-6.9% 的完美均衡。这数据直接印证了论文的结论：这种机制真的能在不牺牲性能的前提下实现负载均衡。\n\n### 预测下一个 token 还不够\n为了增强模型能力，作者还实现了 Multi-token prediction (MTP)。普通模型只预测下一个 token，这个模块额外加了一个头，去预测“下下个” token，在 loss 里加权 λ=0.3。这就像是逼着模型不仅要看眼前，还得往后多想一步，从而强迫中间层学到更丰富的语义特征。\n\n### 在笔记本上跑出的真实数据\n理论说得再好听，还得看疗效。作者在 MacBook Air M5 (24GB) 上跑通了训练，模型配置为 36.2M 参数，每 token 激活 13.6M 参数。数据集是 207 本公版侦探小说（比如 Hammett 的作品），共 21.7M tokens。跑了 12000 步，耗时约 2.6 小时，验证集 loss 从 5.02 降到了 3.51。虽然这只是个架构 Demo，生成的句子还比较简单（\"The fog came in off the bay...\"），但作为一个教学性质的极简实现，这个收敛效果已经足够说明问题。\n\n### 为了跑通做出的妥协\n当然，要在 190 行里塞进一个 SOTA 架构，肯定得做些简化。这里的 MoE 计算没有做稀疏调度，而是把所有专家都跑一遍，把没选中的权重置零——逻辑是对的，但速度会慢一些。MLA 也没有做权重吸收，而是显式解压 latent，为了代码可读性牺牲了推理速度。至于 FP8 训练、DualPipe 并行、YaRN 长文本扩展这些“重型武器”，统统没加。这正好符合项目定位：这不是要复刻一个 671B 的巨兽，而是提供一个能跑、能读、能验证原理的最小原型。"
+}
