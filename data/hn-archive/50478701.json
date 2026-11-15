@@ -1,0 +1,92 @@
+{
+  "id": 50478701,
+  "by": "pjmlp",
+  "title": "Memory Safety Bugs in Rust Standard Library",
+  "url": "https://forge-blog.github.io/posts/rust-std-memory-safety/",
+  "score": 140,
+  "createdAt": 1794721823,
+  "aiSummary": {
+    "chinese_title": "Rust 标准库 unsafe 信任 panic 与 trait，实现漏洞撼动“内存安全”叙事",
+    "discussion_overview": [
+      {
+        "category": "内存安全承诺的边界与实现缺陷",
+        "summary": "一方认为，Rust 编译器和标准库出现 soundness 漏洞并不反常：大型复杂软件无法一次写对，漏洞被发现和修复正是工程常态。另一方认为，既然 Rust 的卖点常被传播为“重写即安全”，标准库的 memory safety 漏洞就足以戳破这种自动安全的营销印象。较温和的立场区分语言模型与具体实现：Rust 的价值在于通常需先有编译器、标准库或 `unsafe` 代码的缺陷，safe Rust 才会触及 UB，而 C/C++ 中同类错误更容易由普通代码造成。争议还延伸到 Rust 尚缺独立正式规范，批评者认为“安全模型”难以脱离实现验证，支持者则认为现有类型系统与 Ferrocene 等形式化工作已足以说明方向。",
+        "supportid": [
+          "50504923",
+          "50505252",
+          "50505064",
+          "50505085",
+          "50505317",
+          "50505165",
+          "50505381",
+          "50505535"
+        ]
+      },
+      {
+        "category": "panic、unwinding 与恢复能力的代价",
+        "summary": "评论者批评 panic unwinding 类似 C++ 的 exception safety：每个函数都要推演大量异常路径，现实系统很难真正做到 panic-safe，因此应将 panic 视为进程终止并据此设计。反方指出，测试框架、插件平台和运行用户代码的 worker 系统需要隔离单个失败；若取消 unwinding，往往只能转为多进程架构。支持终止策略的人回应说，插件仍可能在 `unsafe` 中 segfault、耗尽资源或用 C 改写内存，unwinding 本来也无法可靠防御任意扩展。讨论因此聚焦于威胁模型：panic 恢复对受控、可信但可能出错的任务有用，却不能替代进程隔离。",
+        "supportid": [
+          "50505533",
+          "50504896",
+          "50505058",
+          "50505383",
+          "50505235",
+          "50505392"
+        ]
+      },
+      {
+        "category": "越界索引应 panic 还是返回 Option",
+        "summary": "有人认为 `vector[i]` 越界即 panic 与 Rust 的显式错误处理风格不协调，也可能让网络输入触发 DoS；返回 `Option` 或通过 `?` 传播错误会迫使调用者处理失败。反方认为索引语法需要直接返回引用，若每次访问都要 `unwrap()`，多维或重复索引将极其嘈杂；需要可恢复行为时已有 `.get(i)`。支持 panic 的观点把越界看作逻辑错误和前置条件违约，而非应由 `Result` 表示的外部输入错误，输入校验应发生在索引之前。还有人指出 `Option` 泛滥会导致开发者机械 `unwrap`，反而遗漏真正可能失败的位置；兼容性也限制了对既有索引语义的改动。",
+        "supportid": [
+          "50504566",
+          "50504619",
+          "50504744",
+          "50504875",
+          "50504648",
+          "50505338",
+          "50505278",
+          "50504829"
+        ]
+      },
+      {
+        "category": "不可信 trait 实现与 effect system 设想",
+        "summary": "文章所指的一类问题是标准库中的 `unsafe` 假定用户实现的 safe trait 行为稳定，例如 `AsRef` 或 `Borrow` 连续调用应返回一致的对象；违反该假定可令 safe Rust 触发内存不安全。有人将这视为恶意代码故意破坏契约，并质疑 Rust 是否承诺防御恶意插件；反驳是“貌似恶意”的条件也可能因无能或疏忽触发。按 Rust 的 soundness 目标，即使 safe trait 的实现逻辑错误，也不应导致 UB，至多产生错误结果或性能退化。部分评论建议引入 effect system，显式标记会 panic 或受限副作用的调用；质疑者则认为 `Option`/`Result` 已覆盖一部分需求，而异质副作用难以用统一系统泛化。",
+        "supportid": [
+          "50505166",
+          "50505375",
+          "50505463",
+          "50505225",
+          "50505176",
+          "50505295",
+          "50505320"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "soundness / UB",
+        "explanation": "soundness 指语言承诺 safe Rust 不会造成未定义行为（UB）；UB 可表现为越界访问、内存破坏等，编译器不再保证结果可预测。"
+      },
+      {
+        "term": "panic unwinding",
+        "explanation": "Rust 默认 panic 时会展开调用栈并执行析构清理；这要求 `unsafe` 代码在中途退出时仍保持内部状态一致。"
+      },
+      {
+        "term": "unsafe",
+        "explanation": "Rust 中允许绕过部分编译期安全检查的代码区域；标准库常用它实现底层高性能抽象，因此必须手工维护安全不变量。"
+      },
+      {
+        "term": "effect system（效果系统）",
+        "explanation": "在类型系统中标注函数可能产生的副作用，如 panic、抛错、I/O 或状态修改，以便调用方和编译器追踪、限制这些行为。"
+      },
+      {
+        "term": "trait",
+        "explanation": "Rust 的接口/行为约定机制；标准库泛型代码会调用用户类型的 trait 实现，若 `unsafe` 实现对其行为作了过强假设，可能破坏安全性。"
+      }
+    ],
+    "context": "该文来自 Microsoft Security 的 Frontier Offensive Research & Generative Exploitation Lab，审视 Rust 标准库中 `unsafe` 实现的 soundness 缺陷，并归纳出三种错误信任：假定不会 panic、假定用户提供的 trait 实现正确、假定底层系统行为可靠。Rust 的核心承诺不是程序没有所有 bug，而是在不写 `unsafe` 的前提下不应出现 UB；因此 safe Rust 能通过标准库漏洞触及内存不安全，属于特别严重的违约。标准库为了以零成本抽象提供集合、引用和并发等底层能力，必须使用 `unsafe`，其正确性依赖大量未由类型系统完全表达的前置条件。讨论也关联系统编程中的长期取舍：GC（garbage collection，垃圾回收）语言依靠运行时管理内存，Rust 则试图用所有权和借用在无 GC 的条件下获得大部分内存安全。",
+    "emoji": "⚠️",
+    "sarcastic_question": "safe trait 随手变脸，unsafe 还敢替它担保？"
+  },
+  "articleSummary": "## 一句话总结\n微软 FORGE Lab 利用 AI 工具在 Rust 标准库中挖出了多个内存安全漏洞，揭示了即使是 Safe Rust 代码，如果底层依赖的 Unsafe 代码存在“错误的信任假设”，依然会触发未定义行为。\n\n## 正文\n\n### Safe Rust 的安全防线，被 Unsafe 代码的“信任”撕开了口子\nRust 最引以为傲的就是其内存安全保证，但这并不意味着绝对安全。Rust 的标准库（`std` 和 `core`）为了性能和底层交互，大量使用了 `unsafe` 块，并将其封装在 Safe API 之下。问题在于，这些 Unsafe 代码必须时刻维护某种“契约”，才能保证上层的 Safe 代码不出乱子。微软 FORGE Lab 团队利用名为 Hyenas 的 AI 漏洞扫描系统，对标准库进行了深度审计。结果发现，很多漏洞的根源并非复杂的指针运算，而是 Unsafe 代码对某些条件产生了“错误的信任”。\n\n### 模式一：以为代码不会 Panic，结果状态没复原\n第一种错误信任是“信任代码不会 Panic”。Unsafe 代码经常会暂时打破内部不变式，比如先分配未初始化内存，稍后再填入数据。如果一切顺利，这没问题；但如果在填充数据时发生了 Panic，Rust 的默认 Unwinding 机制会触发析构函数，此时内存状态是“坏”的，就会导致未定义行为。这被称为 Panic Safety Bug。比如 `MapWindows::clone` 的实现，先创建了一个未初始化的 Buffer，然后调用用户的 `clone` 方法。如果用户的 `clone` Panic 了，析构函数就会尝试释放未初始化的内容，导致崩溃。修复方案是使用 `ManuallyDrop` 暂时接管，直到数据完全写好才交出所有权。\n\n### 自定义分配器：当“信任”变成“隐患”\nPanic Safety 最棘手的地方在于，你很难预料哪里会 Panic。以前标准库假设内存分配失败会直接 Abort，不会 Unwind。但随着 `Allocator` API 的稳定化，用户可以自定义分配器，如果这个分配器在分配失败时选择 Panic，就会打破标准库的假设。审计发现，像 `BTreeMap::insert` 等多处代码在这种情况都会变得 Unsound。由于修复这种问题需要大规模审计，Rust 团队最终决定在 Rust 1.100 版本中强制要求：`Allocator` trait 的实现者必须保证相关方法绝不 Panic。\n\n### 模式二：轻信了用户传入的实现\n第二种错误信任是“信任用户提供的实现是正确的”。Unsafe 代码经常需要调用用户传入的闭包或 Trait 实现。在 C++ 中，如果用户传给 `std::sort` 的比较器不符合严格弱序，那是用户的责任，程序会 UB。但在 Rust 中，哲学不同：不管用户传什么乱七八糟的比较器，Safe Rust 都不应该产生 UB。这意味着 Unsafe 代码必须防御性地处理所有可能的错误输入。比如 `str::replace` 在处理 ASCII 替换优化时，轻信了自定义 `Pattern` trait 返回的字节一定是 ASCII，结果导致生成了非法的 UTF-8 字符串，破坏了 Rust 的核心安全保证。\n\n### 模式三：底层系统的“背叛”\n第三种错误信任是“信任底层系统”。这部分文章虽然着墨不多，但逻辑类似。Unsafe 代码往往假设操作系统或底层 API 会遵守某种契约。如果底层系统行为异常（比如返回意外的错误码或信号），上层封装如果处理不当，同样可能引发安全问题。这再次印证了编写正确 Unsafe Rust 的难度：你不仅要懂语言层面的规范，还要懂操作系统层面的各种边界情况。\n\n### 为什么这很重要？因为 Rust 已无处不在\n这些漏洞不仅仅是学术研究，它们具有极高的现实意义。如今，从 Microsoft Windows、Android、Linux 内核，到 GitHub Copilot 的运行时，数十亿人每天都在使用 Rust 编写的软件。标准库是所有这些软件的基石，一旦 `std` 或 `core` 出现漏洞，影响范围将呈指数级扩散。微软将 Rust 定为 Tier-1 语言，正是看中了其安全性，但这次研究提醒我们：Rust 的安全并非“零成本”的魔法，它依赖于标准库编写者极其严苛的自律和对边界情况的周全考虑。\n\n### 给开发者的启示：如何写出安全的 Unsafe 代码\n对于有经验的开发者，这篇文章不仅是看热闹，更是学门道。编写 Unsafe 代码时，必须时刻警惕这三类信任陷阱。对于 Panic Safety，要么在打破不变式前完成所有可能 Panic 的操作，要么用 `ManuallyDrop` 或 Guard 对象确保即使 Panic 也能恢复状态。对于用户输入，要么做校验，要么通过类型系统强制约束（比如将 `&[u8]` 改为 `&str` 来保证 UTF-8），实在不行就把 Trait 标记为 `unsafe`，把责任交还给调用者。Rust 的安全模型依然有效且强大，但它的安全边界需要开发者用极其严谨的代码去守护。"
+}
