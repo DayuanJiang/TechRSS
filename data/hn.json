@@ -1,6 +1,515 @@
 {
-  "updatedAt": "2026-11-17T18:54:55.995Z",
+  "updatedAt": "2026-11-17T19:15:49.760Z",
   "items": [
+    {
+      "id": 50470523,
+      "by": "eatonphil",
+      "title": "Rows vs. Columns: How different are they, really?",
+      "url": "https://spiraldb.com/blog/rows-vs-columns",
+      "score": 130,
+      "detailUpdatedAt": 1794940987,
+      "createdAt": 1794916208,
+      "aiSummaryUpdatedAt": 1794941971,
+      "aisummary": {
+        "chinese_title": "行存与列存：HTAP、索引和压缩能否兼得？",
+        "emoji": "⚖️",
+        "sarcastic_question": "既要零延迟分析又要极致事务，物理定律肯让路吗？"
+      },
+      "classifications": {
+        "topics": [
+          6
+        ],
+        "facets": [],
+        "tags": [
+          "SpiralDB",
+          "row-oriented storage",
+          "column-oriented storage",
+          "HTAP",
+          "Vortex",
+          "compression",
+          "run-length encoding",
+          "FastLanes",
+          "PostgreSQL",
+          "Lakebase"
+        ]
+      },
+      "classificationsUpdatedAt": 1794921909,
+      "aiSummary": {
+        "chinese_title": "行存与列存：HTAP、索引和压缩能否兼得？",
+        "emoji": "⚖️",
+        "sarcastic_question": "既要零延迟分析又要极致事务，物理定律肯让路吗？"
+      },
+      "detail": {
+        "id": 50470523,
+        "by": "eatonphil",
+        "title": "Rows vs. Columns: How different are they, really?",
+        "url": "https://spiraldb.com/blog/rows-vs-columns",
+        "score": 130,
+        "detailUpdatedAt": 1794940987,
+        "createdAt": 1794916208,
+        "aiSummaryUpdatedAt": 1794941971,
+        "aisummary": {
+          "chinese_title": "行存与列存：HTAP、索引和压缩能否兼得？",
+          "discussion_overview": [
+            {
+              "category": "HTAP 可行但难成通用默认",
+              "summary": "评论认为 HTAP（同时处理事务与分析）在技术上完全可行，CedarDB、TiDB、SingleStore 等系统已用单引擎或行列副本展示了这一方向。反对其成为默认架构的理由是，OLTP 与 OLAP 的延迟、写入、扫描和扩缩容需求不同；拆分层能隔离负载，并分别按各自目标优化。许多实践更偏好接近实时的分析副本或低延迟存储交接：能获得大部分新鲜数据分析价值，却少承担单一 HTAP 系统的运维复杂度。也有人认为大多数普通软件其实可由 HTAP 满足，但通常先用 Postgres，真正遇到规模瓶颈后才引入专门 OLAP 方案。",
+              "supportid": [
+                "50531747",
+                "50535134",
+                "50535039",
+                "50532523",
+                "50533269",
+                "50531439",
+                "50534648",
+                "50535812"
+              ]
+            },
+            {
+              "category": "列存优势来自连续布局、压缩与批量执行",
+              "summary": "行存/列存被比作 AoS 与 SoA 的基本布局差异，但数据库讨论的不只是内存布局，还包括磁盘 I/O、压缩和查询执行方式。列值连续存放后，扫描少量列无需读取整行，且相同类型、相近数值更适合 RLE 和 delta encoding；递增 ID 可先编码为大量 delta=1，再用 RLE 极大压缩。传统观点认为这类压缩会牺牲随机访问和索引能力，但 Vortex 宣称 FastLanes、ALP、FSST 等编码可在递归压缩下保留快速随机访问。分析型执行还受益于 Arrow 式紧凑向量表示，减少序列化、反序列化及复杂控制流。",
+              "supportid": [
+                "50530202",
+                "50530262",
+                "50530615",
+                "50530869",
+                "50531979"
+              ]
+            },
+            {
+              "category": "索引不能等同于列式主存储",
+              "summary": "有观点指出，只要建立覆盖所需字段的索引，行存数据库也可能直接读取索引而非完整记录，因此无需把“读取两列必须读整行”绝对化。回应强调 clustered index 通常只是按索引顺序组织完整 tuple，定位到主键后仍可能需要读取整条记录；只有聚合或查询所需字段均在索引叶节点中时，才可能避免回表。是否采用 index-only scan 还取决于优化器和索引列顺序，例如索引为 `(col_a, col_b)` 时，仅按 `col_b` 过滤通常不占优势。列存的关键并非“存在一个索引”，而是将主数据做成连续列向量；把它复制为列式索引会在 PB 级和 Cloud 场景带来显著存储成本。",
+              "supportid": [
+                "50530608",
+                "50530948",
+                "50534614",
+                "50531979",
+                "50530819"
+              ]
+            },
+            {
+              "category": "跨列关联依靠位置、选择向量和分块",
+              "summary": "对列存如何恢复同一行多个字段关系的疑问，回答是同一 block 或 row group 内各列向量按位置对齐，不必为每个值额外保存行 ID。执行 `SELECT SUM(col1) WHERE col2=x` 时，系统先从 `col2` 产生匹配位置，再据此筛选 `col1` 并聚合。早期做法可用 bitmap 表示选择结果，但在稀疏匹配时逐行检查会造成大量分支；现代向量化执行更常使用 compact selection vector，只遍历命中的位置。数据常被分为 row group，组内按列存放，既保留位置关联，也便于按列读取和压缩。",
+              "supportid": [
+                "50532763",
+                "50532992",
+                "50534950",
+                "50533096",
+                "50532657"
+              ]
+            },
+            {
+              "category": "术语表达与历史脉络",
+              "summary": "讨论将行/列布局追溯到 2008 年比较 column-store 与 row-store 的经典论文，并指出 PAX 在 2001 年已提出按页分组、组内按列布局的设计。Parquet 延续了 row group 思路，但其组通常远大于磁盘页，因此单个页能更纯粹地容纳单列数据。另有评论认为 Oracle、Sybase、SQL Server 在 1990 年代就已支持覆盖索引和 indexed views，后续才增加 columnstore、内存列存等能力。围绕 AoS/SoA 缩写是否应首次展开，也形成可读性争论：技术论坛不等于所有读者都熟悉领域缩写，首次释义能避免 SOA 被误解成 Service-Oriented Architecture。",
+              "supportid": [
+                "50535714",
+                "50532657",
+                "50532927",
+                "50530819",
+                "50530408",
+                "50531997",
+                "50532464"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "行存 / 列存（row store / column store）",
+              "explanation": "行存将一条记录的字段放在一起，适合按主键读写整行；列存将同一字段连续保存，适合扫描少量列、压缩和批量聚合。"
+            },
+            {
+              "term": "HTAP",
+              "explanation": "Hybrid Transactional/Analytical Processing，同时在同一系统中处理 OLTP 事务和 OLAP 分析的数据库架构。"
+            },
+            {
+              "term": "OLTP / OLAP",
+              "explanation": "OLTP 是高并发、低延迟的事务处理；OLAP 是面向大量扫描、聚合和报表的分析处理。"
+            },
+            {
+              "term": "AoS / SoA",
+              "explanation": "Array of Structures / Structure of Arrays，分别对应按对象字段聚合与按字段数组聚合的数据布局，是理解行存和列存的类比。"
+            },
+            {
+              "term": "RLE / delta encoding",
+              "explanation": "RLE（run-length encoding）用“连续重复次数”压缩相同值；delta encoding 存储相邻数值的差值，两者可组合以压缩有序数列。"
+            },
+            {
+              "term": "row group",
+              "explanation": "列式文件将表拆成的一组行；每组内部各列分开存储，以在分块管理和列扫描之间折中。"
+            }
+          ],
+          "context": "这场讨论围绕一篇解释 row store（按记录存储）与 column store（按字段存储）差异的文章展开，其问题可追溯至 Abadi 等人在 2008 年发表的行存、列存性能比较论文。事务型系统通常偏向 OLTP（在线事务处理）的随机读写与一致性，而分析型系统偏向 OLAP（在线分析处理）的列扫描、向量化聚合和高压缩率，因此长期常采用两个独立系统及数据同步。HTAP（混合事务/分析处理）试图缩短或取消这条同步链路：例如 CedarDB（源自慕尼黑工业大学 Umbra 研究项目的商业数据库）主张单引擎单副本，Lakebase（Databricks 的数据库产品）则以 Postgres 行存事务引擎配合 lakehouse 列式分析存储。争论的核心不是二者能否结合，而是相较于专用引擎、分析副本和低延迟数据交接，单体方案能否在性能、隔离性、成本和运维复杂度上胜出。",
+          "emoji": "⚖️",
+          "sarcastic_question": "既要零延迟分析又要极致事务，物理定律肯让路吗？"
+        },
+        "classifications": {
+          "topics": [
+            6
+          ],
+          "facets": [],
+          "tags": [
+            "SpiralDB",
+            "row-oriented storage",
+            "column-oriented storage",
+            "HTAP",
+            "Vortex",
+            "compression",
+            "run-length encoding",
+            "FastLanes",
+            "PostgreSQL",
+            "Lakebase"
+          ]
+        },
+        "classificationsUpdatedAt": 1794921909,
+        "aiSummary": {
+          "chinese_title": "行存与列存：HTAP、索引和压缩能否兼得？",
+          "discussion_overview": [
+            {
+              "category": "HTAP 可行但难成通用默认",
+              "summary": "评论认为 HTAP（同时处理事务与分析）在技术上完全可行，CedarDB、TiDB、SingleStore 等系统已用单引擎或行列副本展示了这一方向。反对其成为默认架构的理由是，OLTP 与 OLAP 的延迟、写入、扫描和扩缩容需求不同；拆分层能隔离负载，并分别按各自目标优化。许多实践更偏好接近实时的分析副本或低延迟存储交接：能获得大部分新鲜数据分析价值，却少承担单一 HTAP 系统的运维复杂度。也有人认为大多数普通软件其实可由 HTAP 满足，但通常先用 Postgres，真正遇到规模瓶颈后才引入专门 OLAP 方案。",
+              "supportid": [
+                "50531747",
+                "50535134",
+                "50535039",
+                "50532523",
+                "50533269",
+                "50531439",
+                "50534648",
+                "50535812"
+              ]
+            },
+            {
+              "category": "列存优势来自连续布局、压缩与批量执行",
+              "summary": "行存/列存被比作 AoS 与 SoA 的基本布局差异，但数据库讨论的不只是内存布局，还包括磁盘 I/O、压缩和查询执行方式。列值连续存放后，扫描少量列无需读取整行，且相同类型、相近数值更适合 RLE 和 delta encoding；递增 ID 可先编码为大量 delta=1，再用 RLE 极大压缩。传统观点认为这类压缩会牺牲随机访问和索引能力，但 Vortex 宣称 FastLanes、ALP、FSST 等编码可在递归压缩下保留快速随机访问。分析型执行还受益于 Arrow 式紧凑向量表示，减少序列化、反序列化及复杂控制流。",
+              "supportid": [
+                "50530202",
+                "50530262",
+                "50530615",
+                "50530869",
+                "50531979"
+              ]
+            },
+            {
+              "category": "索引不能等同于列式主存储",
+              "summary": "有观点指出，只要建立覆盖所需字段的索引，行存数据库也可能直接读取索引而非完整记录，因此无需把“读取两列必须读整行”绝对化。回应强调 clustered index 通常只是按索引顺序组织完整 tuple，定位到主键后仍可能需要读取整条记录；只有聚合或查询所需字段均在索引叶节点中时，才可能避免回表。是否采用 index-only scan 还取决于优化器和索引列顺序，例如索引为 `(col_a, col_b)` 时，仅按 `col_b` 过滤通常不占优势。列存的关键并非“存在一个索引”，而是将主数据做成连续列向量；把它复制为列式索引会在 PB 级和 Cloud 场景带来显著存储成本。",
+              "supportid": [
+                "50530608",
+                "50530948",
+                "50534614",
+                "50531979",
+                "50530819"
+              ]
+            },
+            {
+              "category": "跨列关联依靠位置、选择向量和分块",
+              "summary": "对列存如何恢复同一行多个字段关系的疑问，回答是同一 block 或 row group 内各列向量按位置对齐，不必为每个值额外保存行 ID。执行 `SELECT SUM(col1) WHERE col2=x` 时，系统先从 `col2` 产生匹配位置，再据此筛选 `col1` 并聚合。早期做法可用 bitmap 表示选择结果，但在稀疏匹配时逐行检查会造成大量分支；现代向量化执行更常使用 compact selection vector，只遍历命中的位置。数据常被分为 row group，组内按列存放，既保留位置关联，也便于按列读取和压缩。",
+              "supportid": [
+                "50532763",
+                "50532992",
+                "50534950",
+                "50533096",
+                "50532657"
+              ]
+            },
+            {
+              "category": "术语表达与历史脉络",
+              "summary": "讨论将行/列布局追溯到 2008 年比较 column-store 与 row-store 的经典论文，并指出 PAX 在 2001 年已提出按页分组、组内按列布局的设计。Parquet 延续了 row group 思路，但其组通常远大于磁盘页，因此单个页能更纯粹地容纳单列数据。另有评论认为 Oracle、Sybase、SQL Server 在 1990 年代就已支持覆盖索引和 indexed views，后续才增加 columnstore、内存列存等能力。围绕 AoS/SoA 缩写是否应首次展开，也形成可读性争论：技术论坛不等于所有读者都熟悉领域缩写，首次释义能避免 SOA 被误解成 Service-Oriented Architecture。",
+              "supportid": [
+                "50535714",
+                "50532657",
+                "50532927",
+                "50530819",
+                "50530408",
+                "50531997",
+                "50532464"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "行存 / 列存（row store / column store）",
+              "explanation": "行存将一条记录的字段放在一起，适合按主键读写整行；列存将同一字段连续保存，适合扫描少量列、压缩和批量聚合。"
+            },
+            {
+              "term": "HTAP",
+              "explanation": "Hybrid Transactional/Analytical Processing，同时在同一系统中处理 OLTP 事务和 OLAP 分析的数据库架构。"
+            },
+            {
+              "term": "OLTP / OLAP",
+              "explanation": "OLTP 是高并发、低延迟的事务处理；OLAP 是面向大量扫描、聚合和报表的分析处理。"
+            },
+            {
+              "term": "AoS / SoA",
+              "explanation": "Array of Structures / Structure of Arrays，分别对应按对象字段聚合与按字段数组聚合的数据布局，是理解行存和列存的类比。"
+            },
+            {
+              "term": "RLE / delta encoding",
+              "explanation": "RLE（run-length encoding）用“连续重复次数”压缩相同值；delta encoding 存储相邻数值的差值，两者可组合以压缩有序数列。"
+            },
+            {
+              "term": "row group",
+              "explanation": "列式文件将表拆成的一组行；每组内部各列分开存储，以在分块管理和列扫描之间折中。"
+            }
+          ],
+          "context": "这场讨论围绕一篇解释 row store（按记录存储）与 column store（按字段存储）差异的文章展开，其问题可追溯至 Abadi 等人在 2008 年发表的行存、列存性能比较论文。事务型系统通常偏向 OLTP（在线事务处理）的随机读写与一致性，而分析型系统偏向 OLAP（在线分析处理）的列扫描、向量化聚合和高压缩率，因此长期常采用两个独立系统及数据同步。HTAP（混合事务/分析处理）试图缩短或取消这条同步链路：例如 CedarDB（源自慕尼黑工业大学 Umbra 研究项目的商业数据库）主张单引擎单副本，Lakebase（Databricks 的数据库产品）则以 Postgres 行存事务引擎配合 lakehouse 列式分析存储。争论的核心不是二者能否结合，而是相较于专用引擎、分析副本和低延迟数据交接，单体方案能否在性能、隔离性、成本和运维复杂度上胜出。",
+          "emoji": "⚖️",
+          "sarcastic_question": "既要零延迟分析又要极致事务，物理定律肯让路吗？"
+        }
+      },
+      "articleSummary": "## 一句话总结\n行存和列存的本质差异不仅仅是数据摆放方式，而是由此引发的从 I/O 读取、CPU 指令执行到数据压缩的全方位性能优化链路。\n\n## 正文\n\n### 为什么 OLTP 数据库天生就是“行存”思维\n我们习惯按“行”思考数据，比如 CSV 文件、JSON 对象或者 C 语言的结构体数组。这种直觉非常契合 OLTP（在线事务处理）场景：用户登录、下单、转账，通常只涉及单条或极少数记录的增删改查。像 Postgres 和 MySQL 这类行存数据库，把同一条记录的所有字段紧挨着存放，就是为了在修改某条记录时能“一锅端”，减少磁盘寻址的开销。这符合人类直觉，也契合事务处理的逻辑。\n\n### 分析型查询的痛点：只想读两列，却被迫读全表\n但问题来了。当你想做数据分析（OLAP）时，逻辑完全变了。比如查找“周一早高峰最繁忙的街区”，SQL 语句只需要扫描 `start_area` 和 `started_at` 这两列，根本不关心其他字段。但在行存布局下，数据是按行打包的，CPU 读取内存的最小单位是 Cache Line（通常 64 字节）。如果你想读的 4 字节 `duration_min` 藏在一个 48 字节的 `Ride` 结构体里，CPU 为了拿到这 4 字节，必须把包含它的整条 Cache Line 都读进来。这导致实际读取的数据量是所需数据的 12 倍，I/O 浪费极其严重。\n\n### 列存的核心红利：只读所需，且更懂 CPU\n列存的思路很简单：把原本的“结构体数组”拆成“数组的结构体”。所有记录的 `duration_min` 连续存放在一起。这样在做聚合计算时，只需顺序读取那一个数组，完全避开其他字段。更有意思的是，这种连续内存布局开启了“向量化执行”的大门。既然数据是连续的同类型数组，CPU 就不必像处理行存那样频繁地在解释器里跳转，而是可以一批处理几千个值。这种批处理不仅减少了函数调用的开销，还让编译器能利用 SIMD 指令（如 AVX-512），一条指令同时处理 8 个甚至更多数值，直接把计算密度拉满。\n\n### 压缩的隐藏福利：列存让数据“更规矩”\n除了计算快，列存在存储上也占便宜。行存数据杂乱无章，只能用通用的压缩算法（类似 Zip），解压时必须整块解开，无法随机读取。列存则不同，同一列数据类型相同、规律性强。比如 `bike_type` 只有“电瓶/脚踏”两种，`ride_id` 单调递增。利用这些特征，我们可以使用轻量级编码，既大幅压缩空间，又保留了随机访问的能力——想读第 100 万行，直接跳转偏移量即可，无需解压整块数据。这种“直接在压缩数据上计算”的能力，进一步消除了 I/O 瓶颈。\n\n### 没有银弹：列存也有它的“软肋”\n当然，列存不是万能药。如果你要查 `SELECT * FROM rides WHERE ride_id = 1004`，行存只需找到位置，读取一两个 Cache Line 就能把整条记录的所有字段拿全。但列存就很尴尬，因为这条记录的各个字段被打散到了五个不同的数组里，查询引擎必须去五个地方把数据“拼”回来，这就产生了多次随机 I/O。所以，列存是 OLAP 场景的利器，却也是 OLTP 场景的噩梦。作者最后提到的 Vortex 项目，正是基于这些列存原理构建的开源文件格式，试图把这些优化落地到实际系统中。"
+    },
+    {
+      "id": 50532849,
+      "by": "monkeydust",
+      "title": "Highly classified US national security communications network goes down",
+      "url": "https://www.cnn.com/2026/11/17/politics/highly-classified-national-security-communications-network-goes-down",
+      "score": 235,
+      "detailUpdatedAt": 1794940989,
+      "createdAt": 1794932409,
+      "aiSummaryUpdatedAt": 1794941675,
+      "aisummary": {
+        "chinese_title": "NSA Net据报宕机叠加多起故障，引发网络战与系统失修之争",
+        "emoji": "🤔",
+        "sarcastic_question": "服务器少配人叫降本，宕机就自动变敌袭？"
+      },
+      "classifications": {
+        "topics": [
+          6,
+          3,
+          9
+        ],
+        "facets": [
+          8
+        ],
+        "tags": [
+          "NSANet",
+          "National Security Agency",
+          "CNN",
+          "JWICS"
+        ]
+      },
+      "classificationsUpdatedAt": 1794936009,
+      "aiSummary": {
+        "chinese_title": "NSA Net据报宕机叠加多起故障，引发网络战与系统失修之争",
+        "emoji": "🤔",
+        "sarcastic_question": "服务器少配人叫降本，宕机就自动变敌袭？"
+      },
+      "detail": {
+        "id": 50532849,
+        "by": "monkeydust",
+        "title": "Highly classified US national security communications network goes down",
+        "url": "https://www.cnn.com/2026/11/17/politics/highly-classified-national-security-communications-network-goes-down",
+        "score": 235,
+        "detailUpdatedAt": 1794940989,
+        "createdAt": 1794932409,
+        "aiSummaryUpdatedAt": 1794941675,
+        "aisummary": {
+          "chinese_title": "NSA Net据报宕机叠加多起故障，引发网络战与系统失修之争",
+          "discussion_overview": [
+            {
+              "category": "连环故障是否意味着协调网络攻击",
+              "summary": "部分评论者把 FAA 停飞、Microsoft 和 Chase 故障、United 航班停飞、Optimizely 恶意软件事件以及 NSA Net 宕机并列，认为短期密集出现不应轻易视为巧合。推测包括伊朗等国家行为者、AI 驱动的自动化攻击，以及攻击者刻意伪装成普通运维事故以隐藏来源。也有人提出攻击者若只造成有限混乱却不认领，动机并不清晰；但涉及国防能力或政府对外行动时，官方也可能避免公开承认受损。讨论中普遍承认缺乏时间线、技术取证和归因证据，许多结论仍是“扶手椅式”猜测。",
+              "supportid": [
+                "50534089",
+                "50534596",
+                "50534373",
+                "50533493",
+                "50534670",
+                "50534779"
+              ]
+            },
+            {
+              "category": "注意力偏差与媒体放大，而非共同原因",
+              "summary": "怀疑论者认为各类大型服务每天都会发生故障，只是在 FAA 事件后，公众和媒体开始把原先不会登上头条的事故串联起来。评论将这种现象比作 Baader-Meinhof frequency illusion：一旦关注某类事件，便误以为它出现得异常频繁。Optimizely 的 malware 与 Outlook 或银行服务中断之间没有明确技术关联，而 Chase 的问题还可能主要表现为其他银行无法与其互通。还有人指出，上市公司必须在四天内披露重大 cybersecurity incident，因此若多家公司的事故真是国家级网络战，完全没有相关披露会降低该假设的可信度。",
+              "supportid": [
+                "50535214",
+                "50534573",
+                "50533646",
+                "50533949",
+                "50535215",
+                "50533485"
+              ]
+            },
+            {
+              "category": "根因更可能是裁员、技术债、仓促迁移和 AI 变更",
+              "summary": "许多评论把故障归因于长期削减 IT 与运维人力、追求短期效率及复杂系统的技术债，而不是外部入侵。观点认为大规模裁员会移除懂得历史优化、故障恢复和日常维护的备份人员，使少量疲惫员工支撑彼此粘接的关键系统。AI 既可能帮助攻击者挖掘陈年漏洞，也可能让不理解 PR 后果的人快速提交大量代码，迫使维护者在压力下批准“AI slop”变更。另有具体猜测称 Broadcom 提高 VMware 价格，迫使组织仓促迁移至 OpenShift 等平台，原架构团队和积累的运行经验却未随之迁移。",
+              "supportid": [
+                "50534365",
+                "50535441",
+                "50536044",
+                "50536089",
+                "50535476",
+                "50533311"
+              ]
+            },
+            {
+              "category": "NSA Net 的隔离程度、可靠性与泄密含义",
+              "summary": "熟悉政府网络的评论指出，NSANet 可承载从 confidential 到 TS//SCI 的资料，并被描述为与公共互联网基础设施高度隔离、拥有独立骨干的网络；SIPRNET 和 JWICS 则是相关的保密通信网络。也有人反驳“完全隔离”的想象，称部分网络会使用常规线路并依赖加密，且历史上可移动介质曾成为跨隔离网传播恶意软件的途径。网络的存在和运行状态未必本身属于机密，真正受保护的是承载的数据、拓扑和运作细节；安全优先的系统发生异常时，先隔离或关闭也可能比维持可用性更合理。由于公开没有状态页和可靠 uptime 数据，外界无法据此判断此次故障究竟罕见、严重，还是普通内部事故。",
+              "supportid": [
+                "50534227",
+                "50534823",
+                "50534505",
+                "50534374",
+                "50533684",
+                "50533767"
+              ]
+            },
+            {
+              "category": "报道可信度、泄密机制与政治叙事",
+              "summary": "报道据称依赖六名知情人士，评论者因此质疑 CNN 的核验标准、其过往失实报道，以及 Reuters 对该消息仍是转引 CNN 的局限。另一派认为涉密系统的异常不必然无法报道：大型网络每天由全球大量设施和人员使用，网络是否在线与流量内容是两回事。对于“若是攻击必定泄露技术证据”的说法，有人指出泄露涉密归因会危及职业、自由和国家行动，官员可能只谨慎确认宕机而不披露原因。政治化讨论则担心媒体、政府或利益集团会把恐惧转化为预算、监管或扩权理由，使信息真空进一步助长不信任。",
+              "supportid": [
+                "50534012",
+                "50535480",
+                "50533452",
+                "50534168",
+                "50533485",
+                "50535928"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "NSANet / NSA Net",
+              "explanation": "美国国家安全局使用的内部保密通信网络；公开讨论通常只能涉及其存在或状态，不能据此推断其传输内容与具体架构。"
+            },
+            {
+              "term": "SIPRNET",
+              "explanation": "Secret Internet Protocol Router Network，美国政府和军方用于传输 Secret 级信息的保密 IP 网络。"
+            },
+            {
+              "term": "JWICS",
+              "explanation": "Joint Worldwide Intelligence Communications System，美国情报体系用于处理 TS/SCI 级信息的全球通信网络。"
+            },
+            {
+              "term": "TS//SCI",
+              "explanation": "Top Secret / Sensitive Compartmented Information，Top Secret 级且受额外分区访问控制的信息标记。"
+            },
+            {
+              "term": "Hanlon's razor（汉隆剃刀）",
+              "explanation": "一种经验法则：能由愚蠢或失误充分解释的事，不应优先归咎于恶意；讨论中有人认为它不适合地缘政治归因。"
+            },
+            {
+              "term": "vibe coding",
+              "explanation": "依靠自然语言提示让 LLM 大量生成或修改代码、而人类审查和测试不足的开发方式，常被批评会放大质量与安全风险。"
+            }
+          ],
+          "context": "CNN 据称援引六名知情人士报道 NSANet（美国国家安全局的内部保密通信网络）发生中断，Reuters 等媒体对该消息进行了转引。该新闻出现在 FAA 航班停飞、United Airlines、Microsoft、Chase、Apple 等服务故障相继受关注的时期，因此被部分人解读为国家级 cyber warfare 的迹象。反对者认为这些系统的技术栈、运营主体和事故性质并不相同，媒体与社交平台的集中报道会制造“连环故障”的观感。争论还建立在美国政府削减技术岗位、DOGE（美国政府效率部门相关削减行动）、AI 辅助编程以及 VMware 迁移等背景之上：它们被认为可能削弱复杂关键系统的可靠性与维护能力。",
+          "emoji": "🤔",
+          "sarcastic_question": "服务器少配人叫降本，宕机就自动变敌袭？"
+        },
+        "classifications": {
+          "topics": [
+            6,
+            3,
+            9
+          ],
+          "facets": [
+            8
+          ],
+          "tags": [
+            "NSANet",
+            "National Security Agency",
+            "CNN",
+            "JWICS"
+          ]
+        },
+        "classificationsUpdatedAt": 1794936009,
+        "aiSummary": {
+          "chinese_title": "NSA Net据报宕机叠加多起故障，引发网络战与系统失修之争",
+          "discussion_overview": [
+            {
+              "category": "连环故障是否意味着协调网络攻击",
+              "summary": "部分评论者把 FAA 停飞、Microsoft 和 Chase 故障、United 航班停飞、Optimizely 恶意软件事件以及 NSA Net 宕机并列，认为短期密集出现不应轻易视为巧合。推测包括伊朗等国家行为者、AI 驱动的自动化攻击，以及攻击者刻意伪装成普通运维事故以隐藏来源。也有人提出攻击者若只造成有限混乱却不认领，动机并不清晰；但涉及国防能力或政府对外行动时，官方也可能避免公开承认受损。讨论中普遍承认缺乏时间线、技术取证和归因证据，许多结论仍是“扶手椅式”猜测。",
+              "supportid": [
+                "50534089",
+                "50534596",
+                "50534373",
+                "50533493",
+                "50534670",
+                "50534779"
+              ]
+            },
+            {
+              "category": "注意力偏差与媒体放大，而非共同原因",
+              "summary": "怀疑论者认为各类大型服务每天都会发生故障，只是在 FAA 事件后，公众和媒体开始把原先不会登上头条的事故串联起来。评论将这种现象比作 Baader-Meinhof frequency illusion：一旦关注某类事件，便误以为它出现得异常频繁。Optimizely 的 malware 与 Outlook 或银行服务中断之间没有明确技术关联，而 Chase 的问题还可能主要表现为其他银行无法与其互通。还有人指出，上市公司必须在四天内披露重大 cybersecurity incident，因此若多家公司的事故真是国家级网络战，完全没有相关披露会降低该假设的可信度。",
+              "supportid": [
+                "50535214",
+                "50534573",
+                "50533646",
+                "50533949",
+                "50535215",
+                "50533485"
+              ]
+            },
+            {
+              "category": "根因更可能是裁员、技术债、仓促迁移和 AI 变更",
+              "summary": "许多评论把故障归因于长期削减 IT 与运维人力、追求短期效率及复杂系统的技术债，而不是外部入侵。观点认为大规模裁员会移除懂得历史优化、故障恢复和日常维护的备份人员，使少量疲惫员工支撑彼此粘接的关键系统。AI 既可能帮助攻击者挖掘陈年漏洞，也可能让不理解 PR 后果的人快速提交大量代码，迫使维护者在压力下批准“AI slop”变更。另有具体猜测称 Broadcom 提高 VMware 价格，迫使组织仓促迁移至 OpenShift 等平台，原架构团队和积累的运行经验却未随之迁移。",
+              "supportid": [
+                "50534365",
+                "50535441",
+                "50536044",
+                "50536089",
+                "50535476",
+                "50533311"
+              ]
+            },
+            {
+              "category": "NSA Net 的隔离程度、可靠性与泄密含义",
+              "summary": "熟悉政府网络的评论指出，NSANet 可承载从 confidential 到 TS//SCI 的资料，并被描述为与公共互联网基础设施高度隔离、拥有独立骨干的网络；SIPRNET 和 JWICS 则是相关的保密通信网络。也有人反驳“完全隔离”的想象，称部分网络会使用常规线路并依赖加密，且历史上可移动介质曾成为跨隔离网传播恶意软件的途径。网络的存在和运行状态未必本身属于机密，真正受保护的是承载的数据、拓扑和运作细节；安全优先的系统发生异常时，先隔离或关闭也可能比维持可用性更合理。由于公开没有状态页和可靠 uptime 数据，外界无法据此判断此次故障究竟罕见、严重，还是普通内部事故。",
+              "supportid": [
+                "50534227",
+                "50534823",
+                "50534505",
+                "50534374",
+                "50533684",
+                "50533767"
+              ]
+            },
+            {
+              "category": "报道可信度、泄密机制与政治叙事",
+              "summary": "报道据称依赖六名知情人士，评论者因此质疑 CNN 的核验标准、其过往失实报道，以及 Reuters 对该消息仍是转引 CNN 的局限。另一派认为涉密系统的异常不必然无法报道：大型网络每天由全球大量设施和人员使用，网络是否在线与流量内容是两回事。对于“若是攻击必定泄露技术证据”的说法，有人指出泄露涉密归因会危及职业、自由和国家行动，官员可能只谨慎确认宕机而不披露原因。政治化讨论则担心媒体、政府或利益集团会把恐惧转化为预算、监管或扩权理由，使信息真空进一步助长不信任。",
+              "supportid": [
+                "50534012",
+                "50535480",
+                "50533452",
+                "50534168",
+                "50533485",
+                "50535928"
+              ]
+            }
+          ],
+          "terminologies": [
+            {
+              "term": "NSANet / NSA Net",
+              "explanation": "美国国家安全局使用的内部保密通信网络；公开讨论通常只能涉及其存在或状态，不能据此推断其传输内容与具体架构。"
+            },
+            {
+              "term": "SIPRNET",
+              "explanation": "Secret Internet Protocol Router Network，美国政府和军方用于传输 Secret 级信息的保密 IP 网络。"
+            },
+            {
+              "term": "JWICS",
+              "explanation": "Joint Worldwide Intelligence Communications System，美国情报体系用于处理 TS/SCI 级信息的全球通信网络。"
+            },
+            {
+              "term": "TS//SCI",
+              "explanation": "Top Secret / Sensitive Compartmented Information，Top Secret 级且受额外分区访问控制的信息标记。"
+            },
+            {
+              "term": "Hanlon's razor（汉隆剃刀）",
+              "explanation": "一种经验法则：能由愚蠢或失误充分解释的事，不应优先归咎于恶意；讨论中有人认为它不适合地缘政治归因。"
+            },
+            {
+              "term": "vibe coding",
+              "explanation": "依靠自然语言提示让 LLM 大量生成或修改代码、而人类审查和测试不足的开发方式，常被批评会放大质量与安全风险。"
+            }
+          ],
+          "context": "CNN 据称援引六名知情人士报道 NSANet（美国国家安全局的内部保密通信网络）发生中断，Reuters 等媒体对该消息进行了转引。该新闻出现在 FAA 航班停飞、United Airlines、Microsoft、Chase、Apple 等服务故障相继受关注的时期，因此被部分人解读为国家级 cyber warfare 的迹象。反对者认为这些系统的技术栈、运营主体和事故性质并不相同，媒体与社交平台的集中报道会制造“连环故障”的观感。争论还建立在美国政府削减技术岗位、DOGE（美国政府效率部门相关削减行动）、AI 辅助编程以及 VMware 迁移等背景之上：它们被认为可能削弱复杂关键系统的可靠性与维护能力。",
+          "emoji": "🤔",
+          "sarcastic_question": "服务器少配人叫降本，宕机就自动变敌袭？"
+        }
+      }
+    },
     {
       "id": 50522980,
       "by": "pcompeau",
@@ -12228,482 +12737,6 @@
         }
       },
       "articleSummary": "## 一句话总结\n作者主张 AI 生成的代码理应开源，因为这既是对训练数据来源的道德回馈，也是对现行版权法中“非人类创作不受保护”原则的法理遵循。\n\n## 正文\n\n### 训练数据本身就是“借来”的\n文章开篇就抛出了一个很硬的理由：AI 模型的能力并非凭空而来。它们是建立在海量开源代码之上的，这些代码自 RMS 发起 GNU Project 和自由软件运动以来积累至今。作者指出，这些代码被直接从互联网上抓取，既没有获得许可，也没有给予适当的署名。此外，模型还使用了 Stack Overflow 等网站的数据，而这些内容本就要求署名。把这种集体智慧结晶转化为私有、闭源的代码，作者认为这本质上就是一种“洗白”行为。\n\n### 非人类创作本就不该有版权\n除了道德层面的“债”，法律层面上也有依据。作者提到了美国版权法的一个核心原则：纯粹由 AI 生成的代码并非人类撰写，因此不应享有版权。这个逻辑的源头可以追溯到著名的“猴子自拍案”，该案确立了非人类主体不能拥有版权的原则。美国版权局后来也引用了这一先例来处理 AI 相关问题。维基百科甚至已经规定，所有纯 AI 生成的媒体内容必须标记为公有领域。\n\n### 全球法律差异下的公平解法\n但问题在于，全球法律并不统一。比如英国法律就给予计算机生成作品有限的版权保护。为了在不同司法管辖区之间实现公平，也为了致敬那个孕育了 AI 的开放生态系统，作者给出了具体的建议。开发者和公司应该主动将 AI 生成的代码以开源协议发布，或者直接使用 CC0 协议将其贡献给公有领域。\n\n### “复制粘贴”式的开发不该被私有化\n当然，现实中的代码往往介于“纯手工”和“全自动”之间。但作者观察到，越来越多的开发者过度依赖 AI，甚至不看生成的代码，更别提根据需求修改了。这种情况下，人类除了写提示词外几乎没付出什么实质性劳动。作者认为，这种投入极低人力成本的代码，理应被归类为开源。"
-    },
-    {
-      "id": 50506376,
-      "by": "vismit2000",
-      "title": "Understanding Positional Embeddings in Modern LLMs",
-      "url": "https://magazine.sebastianraschka.com/p/understanding-positional-embeddings",
-      "score": 180,
-      "detailUpdatedAt": 1794780802,
-      "createdAt": 1794751822,
-      "aiSummaryUpdatedAt": 1794782076,
-      "aisummary": {
-        "chinese_title": "Positional Embeddings：RoPE 的群论基础还是事后包装？",
-        "emoji": "🤔",
-        "sarcastic_question": "调参碰巧有效，套上群论就算理解了吗？"
-      },
-      "classifications": {
-        "topics": [
-          1
-        ],
-        "facets": [
-          4
-        ],
-        "tags": [
-          "LLMs",
-          "positional embeddings",
-          "Rotary Positional Embeddings",
-          "RoPE",
-          "NoPE"
-        ]
-      },
-      "classificationsUpdatedAt": 1794773122,
-      "aiSummary": {
-        "chinese_title": "Positional Embeddings：RoPE 的群论基础还是事后包装？",
-        "emoji": "🤔",
-        "sarcastic_question": "调参碰巧有效，套上群论就算理解了吗？"
-      },
-      "detail": {
-        "id": 50506376,
-        "by": "vismit2000",
-        "title": "Understanding Positional Embeddings in Modern LLMs",
-        "url": "https://magazine.sebastianraschka.com/p/understanding-positional-embeddings",
-        "score": 180,
-        "detailUpdatedAt": 1794780802,
-        "createdAt": 1794751822,
-        "aiSummaryUpdatedAt": 1794782076,
-        "aisummary": {
-          "chinese_title": "Positional Embeddings：RoPE 的群论基础还是事后包装？",
-          "discussion_overview": [
-            {
-              "category": "群表示论可系统构造位置编码",
-              "summary": "有观点认为，位置编码的核心理论是群表示：相对位置对应某种变换群，而 embedding 是该群在向量空间中的表示。RoPE 可被理解为平移群的表示；通过不同的动量向量构造复指数旋转，从而使 attention 自然依赖相对位移。该框架不仅解释文本序列，也可推广到 quadtree、octree 等层次空间，甚至为图像、视频中的平移与旋转不变性设计位置机制。支持者认为，这不是无关的抽象代数炫技，而是选择和参数化相对位置结构的通用方法。",
-              "supportid": [
-                "50508006",
-                "50510379",
-                "50510455",
-                "50510388"
-              ]
-            },
-            {
-              "category": "ML 实践多靠试错，理论常为事后解释",
-              "summary": "另一派认为，许多 ML 方法首先是大量实验筛选出的有效技巧，而不是由完整理论推导出来的必然结果。RoPE 被广泛采用，主要是因为当时实验表现优于若干替代方案；之后仍出现了效果更好的位置方案，因此不能把其成功完全归结于数学优雅。评论者批评论文常把经验方法形式化后直接宣称有效，却没有清楚区分已知机理、猜测解释和试验观察。也有人采取折中立场：先通过探索找到有效方案，再发展理论，仍可能让未来的搜索更高效、更可泛化。",
-              "supportid": [
-                "50509963",
-                "50510992",
-                "50511400",
-                "50511083",
-                "50510786",
-                "50510012"
-              ]
-            },
-            {
-              "category": "以粒子物理类比群表示存在误导",
-              "summary": "关于“高维群的不可约表示就是电子、质子等粒子”的说法，评论指出这混淆了数学分类与物理实体。时空对称性至多给出以质量和 spin 描述粒子的框架，并不能推出电子、quark 的电荷、color、weak hypercharge 或具体相互作用。质子本身还是由 quark 组成的复合粒子，原表述随后也更正为 quark。更严格地说，与粒子质量和 spin 相关的是 Poincaré group 而非 Euclidean group；即使经 Wick rotation 联系两者，也仍需要 gauge group 和实验输入才能接近真实粒子。",
-              "supportid": [
-                "50510873",
-                "50510958",
-                "50511123",
-                "50511471"
-              ]
-            },
-            {
-              "category": "文章定位与读者门槛之争",
-              "summary": "部分读者认为题为“Understanding”应涵盖理论理解，而原文实际上偏向位置编码的实现机制，因此标题与内容预期不完全一致。反对者则认为博客不必遵循学术论文的命名规范，面向实践者的实现导读同样合理。还有评论补充，位置关系不一定要靠显式 embedding 表示；NoPE 等结构性方案可通过架构本身产生或保留位置信息。争论反映出 ML 读者对“理解”究竟是会实现、会调参，还是掌握对称性理论，存在不同标准。",
-              "supportid": [
-                "50508554",
-                "50508685",
-                "50509554"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "群表示（group representation）",
-              "explanation": "把平移、旋转等抽象变换映射为矩阵或线性算子，使神经网络能以可计算的方式编码对称性与相对关系。"
-            },
-            {
-              "term": "RoPE（Rotary Positional Embedding）",
-              "explanation": "旋转位置编码；按位置对特征维度施加不同角度的旋转，使 Transformer 的 attention 易于表达 token 间的相对距离。"
-            },
-            {
-              "term": "不可约表示（irreducible representation, irrep）",
-              "explanation": "不能再分解为更小不变子空间的群表示；它们常被视为构造一般表示和分析对称性的基本单元。"
-            },
-            {
-              "term": "平移不变性（translation invariance）",
-              "explanation": "整体坐标平移后模型关系不变的性质；在位置编码中通常意味着模型主要关注相对位移而非绝对坐标。"
-            }
-          ],
-          "context": "Transformer 的 self-attention 若没有位置信号，对 token 排列本身不敏感，因此 LLM 需要 positional embeddings 或其他架构机制来表达顺序。RoPE（Rotary Positional Embedding，一种通过二维特征旋转编码位置的方法）是现代 LLM 常用方案，原帖旨在讲解其及相关位置机制的实现。评论将讨论提升到群表示论：平移群、旋转群等对称性的表示可为相对位置编码提供系统化设计语言，并可扩展到 quadtree（把二维空间递归分成四块的层次数据结构）等非线性空间。争议在于这种理论究竟是指导模型设计的原理，还是对实验成功方法的事后解释；涉及粒子物理的类比也被指出必须区分 Poincaré group（狭义相对论时空对称群）与真实粒子的额外交互属性。",
-          "emoji": "🤔",
-          "sarcastic_question": "调参碰巧有效，套上群论就算理解了吗？"
-        },
-        "classifications": {
-          "topics": [
-            1
-          ],
-          "facets": [
-            4
-          ],
-          "tags": [
-            "LLMs",
-            "positional embeddings",
-            "Rotary Positional Embeddings",
-            "RoPE",
-            "NoPE"
-          ]
-        },
-        "classificationsUpdatedAt": 1794773122,
-        "aiSummary": {
-          "chinese_title": "Positional Embeddings：RoPE 的群论基础还是事后包装？",
-          "discussion_overview": [
-            {
-              "category": "群表示论可系统构造位置编码",
-              "summary": "有观点认为，位置编码的核心理论是群表示：相对位置对应某种变换群，而 embedding 是该群在向量空间中的表示。RoPE 可被理解为平移群的表示；通过不同的动量向量构造复指数旋转，从而使 attention 自然依赖相对位移。该框架不仅解释文本序列，也可推广到 quadtree、octree 等层次空间，甚至为图像、视频中的平移与旋转不变性设计位置机制。支持者认为，这不是无关的抽象代数炫技，而是选择和参数化相对位置结构的通用方法。",
-              "supportid": [
-                "50508006",
-                "50510379",
-                "50510455",
-                "50510388"
-              ]
-            },
-            {
-              "category": "ML 实践多靠试错，理论常为事后解释",
-              "summary": "另一派认为，许多 ML 方法首先是大量实验筛选出的有效技巧，而不是由完整理论推导出来的必然结果。RoPE 被广泛采用，主要是因为当时实验表现优于若干替代方案；之后仍出现了效果更好的位置方案，因此不能把其成功完全归结于数学优雅。评论者批评论文常把经验方法形式化后直接宣称有效，却没有清楚区分已知机理、猜测解释和试验观察。也有人采取折中立场：先通过探索找到有效方案，再发展理论，仍可能让未来的搜索更高效、更可泛化。",
-              "supportid": [
-                "50509963",
-                "50510992",
-                "50511400",
-                "50511083",
-                "50510786",
-                "50510012"
-              ]
-            },
-            {
-              "category": "以粒子物理类比群表示存在误导",
-              "summary": "关于“高维群的不可约表示就是电子、质子等粒子”的说法，评论指出这混淆了数学分类与物理实体。时空对称性至多给出以质量和 spin 描述粒子的框架，并不能推出电子、quark 的电荷、color、weak hypercharge 或具体相互作用。质子本身还是由 quark 组成的复合粒子，原表述随后也更正为 quark。更严格地说，与粒子质量和 spin 相关的是 Poincaré group 而非 Euclidean group；即使经 Wick rotation 联系两者，也仍需要 gauge group 和实验输入才能接近真实粒子。",
-              "supportid": [
-                "50510873",
-                "50510958",
-                "50511123",
-                "50511471"
-              ]
-            },
-            {
-              "category": "文章定位与读者门槛之争",
-              "summary": "部分读者认为题为“Understanding”应涵盖理论理解，而原文实际上偏向位置编码的实现机制，因此标题与内容预期不完全一致。反对者则认为博客不必遵循学术论文的命名规范，面向实践者的实现导读同样合理。还有评论补充，位置关系不一定要靠显式 embedding 表示；NoPE 等结构性方案可通过架构本身产生或保留位置信息。争论反映出 ML 读者对“理解”究竟是会实现、会调参，还是掌握对称性理论，存在不同标准。",
-              "supportid": [
-                "50508554",
-                "50508685",
-                "50509554"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "群表示（group representation）",
-              "explanation": "把平移、旋转等抽象变换映射为矩阵或线性算子，使神经网络能以可计算的方式编码对称性与相对关系。"
-            },
-            {
-              "term": "RoPE（Rotary Positional Embedding）",
-              "explanation": "旋转位置编码；按位置对特征维度施加不同角度的旋转，使 Transformer 的 attention 易于表达 token 间的相对距离。"
-            },
-            {
-              "term": "不可约表示（irreducible representation, irrep）",
-              "explanation": "不能再分解为更小不变子空间的群表示；它们常被视为构造一般表示和分析对称性的基本单元。"
-            },
-            {
-              "term": "平移不变性（translation invariance）",
-              "explanation": "整体坐标平移后模型关系不变的性质；在位置编码中通常意味着模型主要关注相对位移而非绝对坐标。"
-            }
-          ],
-          "context": "Transformer 的 self-attention 若没有位置信号，对 token 排列本身不敏感，因此 LLM 需要 positional embeddings 或其他架构机制来表达顺序。RoPE（Rotary Positional Embedding，一种通过二维特征旋转编码位置的方法）是现代 LLM 常用方案，原帖旨在讲解其及相关位置机制的实现。评论将讨论提升到群表示论：平移群、旋转群等对称性的表示可为相对位置编码提供系统化设计语言，并可扩展到 quadtree（把二维空间递归分成四块的层次数据结构）等非线性空间。争议在于这种理论究竟是指导模型设计的原理，还是对实验成功方法的事后解释；涉及粒子物理的类比也被指出必须区分 Poincaré group（狭义相对论时空对称群）与真实粒子的额外交互属性。",
-          "emoji": "🤔",
-          "sarcastic_question": "调参碰巧有效，套上群论就算理解了吗？"
-        }
-      },
-      "articleSummary": "## 一句话总结\n从 GPT-2 的绝对位置编码到如今主流的 RoPE，LLM 处理位置信息的范式正在从“给向量加位置”转向“给注意力机制注入相对位置”，甚至开始尝试完全抛弃显式编码。\n\n## 正文\n\n### 为什么 Transformer 必须要“知道”位置？\nTransformer 的核心是 Self-Attention，但这个机制天生是“无视距离”的。这就带来一个要命的问题：如果输入是“The red fox jumps over the gray fox”，调换 red 和 gray 的位置，句子意思完全变了，但在 Attention 看来，如果不加处理，这两个句子里的 token 计算出来的注意力分数可能是一模一样的。\n\n你可能会说，GPT 这种自回归模型不是有 Causal Mask（因果掩码）吗？确实，Causal Mask 让后面的 token 看不到前面的，这隐式地引入了一点顺序感。但这还不够，它只能告诉模型“谁在前谁在后”，却无法区分“隔了一个词”和“隔了十个词”的区别。说白了，Causal Mask 解决了顺序问题，但解决不了距离问题。所以，显式的位置编码依然是必不可少的。\n\n### GPT-2 的老办法：简单粗暴的绝对位置编码\n最直观的方案就是 GPT-2 用的 Learned Absolute Positional Embeddings。做法很简单：模型有一个固定的最大长度（比如 1024），每个位置（第 0 个、第 1 个……）都对应一个可学习的向量。输入进 Transformer 块之前，直接把这个位置向量加到 token 的 embedding 上。\n\n这个方法虽然简单有效，但缺点也很明显：缺乏外推能力。模型训练时只学了 1024 个位置向量，推理时如果序列长度超过 1024，就没法处理了。虽然可以通过插值强行扩展，但效果通常会打折扣。而且，如果要支持超长上下文（比如 100k tokens），这个位置编码表会变得极其庞大，甚至占到模型参数的 20% 以上，这在工程上是不可接受的。\n\n### RoPE 的巧妙设计：用旋转解决相对位置问题\n为了解决绝对位置编码的局限性，RoPE（Rotary Positional Embeddings）成为了现代 LLM 的主流选择。它的核心思路不再是把位置信息“加”到输入向量上，而是直接在 Attention 计算时，根据位置对 Query 和 Key 向量进行“旋转”。\n\n具体来说，RoPE 利用复数的性质，将向量所在的二维平面进行旋转。位置为 $m$ 的 token，其 Query 向量会旋转 $m\\theta$ 的角度。有意思的地方在于，当两个 token（位置分别为 $m$ 和 $n$）计算点积注意力时，旋转角度会相互抵消，最终结果只与它们的相对距离 $(m-n)$ 有关。这就天然地引入了相对位置信息，而且由于正弦函数的周期性，RoPE 在处理超长序列时的外推能力远强于绝对位置编码。\n\n### 现代架构的抉择：RoPE 成为主流，NoPE 悄然兴起\n纵观 2026 年的开源模型架构，RoPE 已经占据了统治地位。比如 Llama 3、Mistral、Qwen 2.5 等主流模型，无一例外都采用了 RoPE 或其变体（如 RoPE with NTK-aware scaling）。这主要是因为 RoPE 在长上下文场景下表现优异，且实现成本相对较低。\n\n但更有趣的是，文中提到了一种“反直觉”的趋势：NoPE（No Positional Embedding）。研究发现，对于某些特定的任务（特别是短文本或特定结构的数据），完全去掉显式的位置编码，仅依靠 Causal Mask 的隐式顺序信息，模型依然能工作得不错。这引发了学术界对“位置信息到底是不是必须显式编码”的新一轮思考。不过，目前 RoPE 依然是兼顾性能和泛化能力的最佳实践。"
-    },
-    {
-      "id": 50506719,
-      "by": "MacAnorak",
-      "title": "The MacBook Pro's OLED PWM Problem: When a 'Better' Display Becomes Worse to Use",
-      "url": "https://macanorak.com/the-macbook-pros-oled-pwm-problem-when-a-better-display-becomes-worse-to-use/",
-      "score": 326,
-      "detailUpdatedAt": 1794775399,
-      "createdAt": 1794751822,
-      "aiSummaryUpdatedAt": 1794776686,
-      "aisummary": {
-        "chinese_title": "MacBook Pro Tandem OLED疑似240Hz PWM：高端屏幕的眩晕与测量争议",
-        "emoji": "👁️",
-        "sarcastic_question": "屏幕越贵越晕，苹果把频闪也叫Pro？"
-      },
-      "classifications": {
-        "topics": [
-          11,
-          7
-        ],
-        "facets": [
-          9
-        ],
-        "tags": [
-          "Apple",
-          "MacBook Pro",
-          "OLED",
-          "PWM",
-          "display accessibility"
-        ]
-      },
-      "classificationsUpdatedAt": 1794753923,
-      "aiSummary": {
-        "chinese_title": "MacBook Pro Tandem OLED疑似240Hz PWM：高端屏幕的眩晕与测量争议",
-        "emoji": "👁️",
-        "sarcastic_question": "屏幕越贵越晕，苹果把频闪也叫Pro？"
-      },
-      "detail": {
-        "id": 50506719,
-        "by": "MacAnorak",
-        "title": "The MacBook Pro's OLED PWM Problem: When a 'Better' Display Becomes Worse to Use",
-        "url": "https://macanorak.com/the-macbook-pros-oled-pwm-problem-when-a-better-display-becomes-worse-to-use/",
-        "score": 326,
-        "detailUpdatedAt": 1794775399,
-        "createdAt": 1794751822,
-        "aiSummaryUpdatedAt": 1794776686,
-        "aisummary": {
-          "chinese_title": "MacBook Pro Tandem OLED疑似240Hz PWM：高端屏幕的眩晕与测量争议",
-          "discussion_overview": [
-            {
-              "category": "PWM引发眼疲劳并非边缘体验",
-              "summary": "多位用户称，OLED手机、显示器和掌机的低频PWM会带来眼睛发红、干涩、头痛、眩晕、难以聚焦甚至 ocular migraine，换回 IPS 或 LCD 后明显改善。有人在 iPhone、Pixel、Samsung、Steam Deck OLED 和 LG OLED 显示器上都有相似经历，说明问题并不局限于这台 MacBook Pro。评论者认为受影响者未必能把症状归因于屏幕，因此即使比例不高，按 Apple 的出货规模也可能对应大量人群。敏感程度还会随年龄、脑震荡等健康经历改变，不能仅以“自己没感觉”否定问题。",
-              "supportid": [
-                "50510641",
-                "50508123",
-                "50509865",
-                "50507668",
-                "50509638",
-                "50507276"
-              ]
-            },
-            {
-              "category": "240Hz结论与测试波形存在争议",
-              "summary": "围绕评测中的 240Hz 数字，评论者逐格解读示波器图，认为相邻波谷约为 2ms，可能对应 480Hz；若 Tandem OLED 的两层面板以 180 度反相工作，整体节律甚至可能呈现约 960Hz。另一种解释是光电探测器同时接收不同区域、子像素或面板层的光，因相位不同而形成深浅交替的波谷，仪器则按最低谷重复周期报出 240Hz。也有人指出，光学传感器测到的是发光输出而非驱动电信号，面板材料响应和测量链路可能使 PWM 脉冲看起来像斜坡。结论是需要公开测试配置、用可聚焦的传感器或独立设备复测，不能只凭一张波形图断定 DC dimming 或实际调制频率。",
-              "supportid": [
-                "50507268",
-                "50508308",
-                "50509062",
-                "50509235",
-                "50509323",
-                "50509780"
-              ]
-            },
-            {
-              "category": "可感知性、标准与证据强度的分歧",
-              "summary": "批评者认为若调制深度足够大，240Hz 低于 IEEE 1789（关于 LED 调制光生物效应风险的推荐实践）所暗示的低风险范围；他们主张屏幕调光应提升至 kHz 级，或至少提供高频模式。支持这一担忧的人强调，问题不只是盯着静止画面时能否“看见闪烁”，眼球快速扫视会形成 phantom array effect，即把连续画面分解成重叠残像。怀疑者则指出，直接证明 240Hz 会造成身体不适的严格、盲法研究很少，已有高频感知研究使用的是黑白区域交替等更极端刺激，不能直接外推。双方都认可需要把新 OLED MacBook 与旧 mini-LED 机型进行盲测，并控制 nocebo、环境光和既有头痛等混杂因素。",
-              "supportid": [
-                "50507253",
-                "50507046",
-                "50507367",
-                "50509128",
-                "50507589",
-                "50508464"
-              ]
-            },
-            {
-              "category": "OLED画质收益伴随长期与运动代价",
-              "summary": "部分评论者不接受“OLED 天然更好”的叙事，除 PWM 外还担心静态桌面使用导致 burn-in、颜色衰退，以及文字边缘因子像素布局而不如 IPS 平滑。也有人提到 OLED 的 sample-and-hold 特性会令低帧率慢速运动产生 stutter/judder；开启 motion interpolation 虽可缓解，却会引入被嫌弃的 soap opera effect。反方指出 LCD 同样可能有残影、burn-in 和颜色老化，且 OLED 的对比度、黑位和峰值亮度确有显著优势；Tandem OLED 也被设计为改善单层 OLED 的寿命和亮度问题。因而争议核心不是 OLED 是否一无是处，而是笔记本这种长时间生产力场景是否应保留高品质、无闪 IPS、mini-LED 或 5K/6K LCD 选择。",
-              "supportid": [
-                "50507374",
-                "50508273",
-                "50507619",
-                "50508454",
-                "50507352",
-                "50507170"
-              ]
-            },
-            {
-              "category": "闪烁与光谱质量是更广泛的照明无障碍问题",
-              "summary": "讨论将问题扩展到廉价 LED 灯、汽车尾灯和刹车灯：半波整流或低成本电源会让灯随市电以约 60Hz 或 120Hz 同步闪烁，挥手时可看到断续残影。评论者建议用手机 slow-motion 或高速快门拍摄来筛查灯具闪烁，但也指出不同手机相机、快门和环境会影响观察结果。除频闪外，低 CRI 的冷白 LED 被认为会造成不适和失真；有人以自然光下能区分、LED 下却难辨 Lego 绿色与灰色为例说明光谱质量影响。实际采购上，90/95 CRI、可调光且 flicker-free 的灯具较舒适，但价格更高、地区供给不稳定，令普通照明选择变得复杂。",
-              "supportid": [
-                "50507567",
-                "50508453",
-                "50508797",
-                "50508850",
-                "50508459",
-                "50509099"
-              ]
-            },
-            {
-              "category": "Apple的工程取舍、固件修复与产品责任",
-              "summary": "许多人意外于 Apple 在高价笔记本上采用疑似低频 PWM，因为 iPhone 和 iPad 的 PWM 敏感性早已被长期讨论；他们要求至少提供调光模式开关或软件调光替代方案。有人推测高 PWM 可能损害色准、功耗或面板驱动时序，低亮度下像素一致性变差也可能迫使厂商采用混合调光，但 Lenovo 的 Tandem OLED 已被举例为可达 1200Hz，说明并非不可克服。若问题主要来自亮度控制固件，用户提出可让面板恒定高亮、以软件叠加暗层，或通过 firmware 改变 PWM 参数；但 HDR 峰值亮度、VRR 与 OLED 非线性使实际方案不简单。另一派则认为敏感者可退货或接外接屏，反驳者认为这忽略了无障碍设计应在产品层面覆盖小众但规模可观的群体。",
-              "supportid": [
-                "50508218",
-                "50508455",
-                "50509046",
-                "50507094",
-                "50507182",
-                "50507390",
-                "50507088"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "PWM（Pulse Width Modulation，脉宽调制）",
-              "explanation": "通过高速开关像素或光源、改变点亮时间占比来调节表观亮度；频率低或明暗幅度大时，部分人会感到频闪、残像或不适。"
-            },
-            {
-              "term": "DC dimming（直流调光）",
-              "explanation": "通过连续降低驱动电流来降低亮度，理论上比开关式 PWM 更平滑，但低亮度色彩一致性、效率和像素均匀性可能更难控制。"
-            },
-            {
-              "term": "Tandem OLED（串联双层 OLED）",
-              "explanation": "将两层发光 OLED 结构串联以提高亮度和寿命、降低单层负担的面板方案，代价通常是成本和驱动复杂度上升。"
-            },
-            {
-              "term": "CRI（Color Rendering Index，显色指数）",
-              "explanation": "衡量光源还原物体颜色能力的指标；高 CRI 灯具的光谱通常更接近自然光或白炽灯，颜色辨识更自然。"
-            },
-            {
-              "term": "temporal dithering（时间抖动）",
-              "explanation": "显示器在连续帧间交替相邻色阶，以模拟更高色深；部分用户怀疑其时间性变化也会加剧视觉不适。"
-            },
-            {
-              "term": "phantom array effect（幻影阵列效应）",
-              "explanation": "人在快速移动眼睛或物体时，脉冲光源会在视野中分裂为一串残像，即使平均看来没有明显闪烁也可能被察觉。"
-            }
-          ],
-          "context": "争议围绕配备 Tandem OLED（串联双层有机发光二极管面板）的 MacBook Pro：外部评测以光电探测器和示波器测得疑似约 240Hz 的亮度调制，而 OLED 常用 PWM（脉宽调制）或混合调光来处理低亮度和像素一致性。OLED 没有 LCD 的背光层，调光时的全屏时间性亮度变化、较大的观看面积和长时间近距离办公，可能让部分对频闪敏感者出现眼疲劳或头痛。Notebookcheck（德国笔记本评测网站）的波形解读成为技术焦点：信号可能反映 240Hz 的最低谷循环，也可能包含两层面板或不同区域的 480Hz 反相节律。讨论同时连接到 IEEE 1789（LED 调制光风险建议）、手机 OLED、低质量 LED 室内照明，以及显示器无障碍设计是否应给敏感用户提供可验证的无闪模式。",
-          "emoji": "👁️",
-          "sarcastic_question": "屏幕越贵越晕，苹果把频闪也叫Pro？"
-        },
-        "classifications": {
-          "topics": [
-            11,
-            7
-          ],
-          "facets": [
-            9
-          ],
-          "tags": [
-            "Apple",
-            "MacBook Pro",
-            "OLED",
-            "PWM",
-            "display accessibility"
-          ]
-        },
-        "classificationsUpdatedAt": 1794753923,
-        "aiSummary": {
-          "chinese_title": "MacBook Pro Tandem OLED疑似240Hz PWM：高端屏幕的眩晕与测量争议",
-          "discussion_overview": [
-            {
-              "category": "PWM引发眼疲劳并非边缘体验",
-              "summary": "多位用户称，OLED手机、显示器和掌机的低频PWM会带来眼睛发红、干涩、头痛、眩晕、难以聚焦甚至 ocular migraine，换回 IPS 或 LCD 后明显改善。有人在 iPhone、Pixel、Samsung、Steam Deck OLED 和 LG OLED 显示器上都有相似经历，说明问题并不局限于这台 MacBook Pro。评论者认为受影响者未必能把症状归因于屏幕，因此即使比例不高，按 Apple 的出货规模也可能对应大量人群。敏感程度还会随年龄、脑震荡等健康经历改变，不能仅以“自己没感觉”否定问题。",
-              "supportid": [
-                "50510641",
-                "50508123",
-                "50509865",
-                "50507668",
-                "50509638",
-                "50507276"
-              ]
-            },
-            {
-              "category": "240Hz结论与测试波形存在争议",
-              "summary": "围绕评测中的 240Hz 数字，评论者逐格解读示波器图，认为相邻波谷约为 2ms，可能对应 480Hz；若 Tandem OLED 的两层面板以 180 度反相工作，整体节律甚至可能呈现约 960Hz。另一种解释是光电探测器同时接收不同区域、子像素或面板层的光，因相位不同而形成深浅交替的波谷，仪器则按最低谷重复周期报出 240Hz。也有人指出，光学传感器测到的是发光输出而非驱动电信号，面板材料响应和测量链路可能使 PWM 脉冲看起来像斜坡。结论是需要公开测试配置、用可聚焦的传感器或独立设备复测，不能只凭一张波形图断定 DC dimming 或实际调制频率。",
-              "supportid": [
-                "50507268",
-                "50508308",
-                "50509062",
-                "50509235",
-                "50509323",
-                "50509780"
-              ]
-            },
-            {
-              "category": "可感知性、标准与证据强度的分歧",
-              "summary": "批评者认为若调制深度足够大，240Hz 低于 IEEE 1789（关于 LED 调制光生物效应风险的推荐实践）所暗示的低风险范围；他们主张屏幕调光应提升至 kHz 级，或至少提供高频模式。支持这一担忧的人强调，问题不只是盯着静止画面时能否“看见闪烁”，眼球快速扫视会形成 phantom array effect，即把连续画面分解成重叠残像。怀疑者则指出，直接证明 240Hz 会造成身体不适的严格、盲法研究很少，已有高频感知研究使用的是黑白区域交替等更极端刺激，不能直接外推。双方都认可需要把新 OLED MacBook 与旧 mini-LED 机型进行盲测，并控制 nocebo、环境光和既有头痛等混杂因素。",
-              "supportid": [
-                "50507253",
-                "50507046",
-                "50507367",
-                "50509128",
-                "50507589",
-                "50508464"
-              ]
-            },
-            {
-              "category": "OLED画质收益伴随长期与运动代价",
-              "summary": "部分评论者不接受“OLED 天然更好”的叙事，除 PWM 外还担心静态桌面使用导致 burn-in、颜色衰退，以及文字边缘因子像素布局而不如 IPS 平滑。也有人提到 OLED 的 sample-and-hold 特性会令低帧率慢速运动产生 stutter/judder；开启 motion interpolation 虽可缓解，却会引入被嫌弃的 soap opera effect。反方指出 LCD 同样可能有残影、burn-in 和颜色老化，且 OLED 的对比度、黑位和峰值亮度确有显著优势；Tandem OLED 也被设计为改善单层 OLED 的寿命和亮度问题。因而争议核心不是 OLED 是否一无是处，而是笔记本这种长时间生产力场景是否应保留高品质、无闪 IPS、mini-LED 或 5K/6K LCD 选择。",
-              "supportid": [
-                "50507374",
-                "50508273",
-                "50507619",
-                "50508454",
-                "50507352",
-                "50507170"
-              ]
-            },
-            {
-              "category": "闪烁与光谱质量是更广泛的照明无障碍问题",
-              "summary": "讨论将问题扩展到廉价 LED 灯、汽车尾灯和刹车灯：半波整流或低成本电源会让灯随市电以约 60Hz 或 120Hz 同步闪烁，挥手时可看到断续残影。评论者建议用手机 slow-motion 或高速快门拍摄来筛查灯具闪烁，但也指出不同手机相机、快门和环境会影响观察结果。除频闪外，低 CRI 的冷白 LED 被认为会造成不适和失真；有人以自然光下能区分、LED 下却难辨 Lego 绿色与灰色为例说明光谱质量影响。实际采购上，90/95 CRI、可调光且 flicker-free 的灯具较舒适，但价格更高、地区供给不稳定，令普通照明选择变得复杂。",
-              "supportid": [
-                "50507567",
-                "50508453",
-                "50508797",
-                "50508850",
-                "50508459",
-                "50509099"
-              ]
-            },
-            {
-              "category": "Apple的工程取舍、固件修复与产品责任",
-              "summary": "许多人意外于 Apple 在高价笔记本上采用疑似低频 PWM，因为 iPhone 和 iPad 的 PWM 敏感性早已被长期讨论；他们要求至少提供调光模式开关或软件调光替代方案。有人推测高 PWM 可能损害色准、功耗或面板驱动时序，低亮度下像素一致性变差也可能迫使厂商采用混合调光，但 Lenovo 的 Tandem OLED 已被举例为可达 1200Hz，说明并非不可克服。若问题主要来自亮度控制固件，用户提出可让面板恒定高亮、以软件叠加暗层，或通过 firmware 改变 PWM 参数；但 HDR 峰值亮度、VRR 与 OLED 非线性使实际方案不简单。另一派则认为敏感者可退货或接外接屏，反驳者认为这忽略了无障碍设计应在产品层面覆盖小众但规模可观的群体。",
-              "supportid": [
-                "50508218",
-                "50508455",
-                "50509046",
-                "50507094",
-                "50507182",
-                "50507390",
-                "50507088"
-              ]
-            }
-          ],
-          "terminologies": [
-            {
-              "term": "PWM（Pulse Width Modulation，脉宽调制）",
-              "explanation": "通过高速开关像素或光源、改变点亮时间占比来调节表观亮度；频率低或明暗幅度大时，部分人会感到频闪、残像或不适。"
-            },
-            {
-              "term": "DC dimming（直流调光）",
-              "explanation": "通过连续降低驱动电流来降低亮度，理论上比开关式 PWM 更平滑，但低亮度色彩一致性、效率和像素均匀性可能更难控制。"
-            },
-            {
-              "term": "Tandem OLED（串联双层 OLED）",
-              "explanation": "将两层发光 OLED 结构串联以提高亮度和寿命、降低单层负担的面板方案，代价通常是成本和驱动复杂度上升。"
-            },
-            {
-              "term": "CRI（Color Rendering Index，显色指数）",
-              "explanation": "衡量光源还原物体颜色能力的指标；高 CRI 灯具的光谱通常更接近自然光或白炽灯，颜色辨识更自然。"
-            },
-            {
-              "term": "temporal dithering（时间抖动）",
-              "explanation": "显示器在连续帧间交替相邻色阶，以模拟更高色深；部分用户怀疑其时间性变化也会加剧视觉不适。"
-            },
-            {
-              "term": "phantom array effect（幻影阵列效应）",
-              "explanation": "人在快速移动眼睛或物体时，脉冲光源会在视野中分裂为一串残像，即使平均看来没有明显闪烁也可能被察觉。"
-            }
-          ],
-          "context": "争议围绕配备 Tandem OLED（串联双层有机发光二极管面板）的 MacBook Pro：外部评测以光电探测器和示波器测得疑似约 240Hz 的亮度调制，而 OLED 常用 PWM（脉宽调制）或混合调光来处理低亮度和像素一致性。OLED 没有 LCD 的背光层，调光时的全屏时间性亮度变化、较大的观看面积和长时间近距离办公，可能让部分对频闪敏感者出现眼疲劳或头痛。Notebookcheck（德国笔记本评测网站）的波形解读成为技术焦点：信号可能反映 240Hz 的最低谷循环，也可能包含两层面板或不同区域的 480Hz 反相节律。讨论同时连接到 IEEE 1789（LED 调制光风险建议）、手机 OLED、低质量 LED 室内照明，以及显示器无障碍设计是否应给敏感用户提供可验证的无闪模式。",
-          "emoji": "👁️",
-          "sarcastic_question": "屏幕越贵越晕，苹果把频闪也叫Pro？"
-        }
-      },
-      "articleSummary": "无法获取正文内容，无法生成摘要。"
     }
   ]
 }
