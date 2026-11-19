@@ -1,9 +1,9 @@
 {
   "date": "2026-11-19",
   "total_feeds": 92,
-  "success_feeds": 83,
-  "total_articles": 2549,
-  "filtered_articles": 10,
+  "success_feeds": 82,
+  "total_articles": 2539,
+  "filtered_articles": 16,
   "articles": [
     {
       "title": "Quoting Daniel Stenberg",
@@ -44,6 +44,63 @@
       "rank": 2
     },
     {
+      "title": "Inside PyPy: first contact with RPython",
+      "title_zh": "RPython 入门：用受限 Python 构建高性能语言实现",
+      "link": "https://bernsteinbear.com/blog/inside-pypy-first-contact-with-rpython/?utm_source=rss",
+      "pub_date": "2026-11-19T00:00:00.000Z",
+      "summary": "## 一句话总结\nRPython 作为一个受限的 Python 方言，通过“写解释器送 JIT”的独特机制，为构建高性能语言实现提供了可能，但其粗糙的开发体验和元追踪（Meta-tracing）的局限性也让人爱恨交织。\n\n## 正文\n\n### 为什么还要造轮子构建语言实现工具？\n很多开发者都有过想实现一门新语言的冲动，但往往在第一步就卡住了：用什么写？C++ 太繁琐，Rust 的内存模型让人头大。现有的通用工具各有千秋：Truffle 依赖 Java 生态做部分评估，Deegen 用 C++ DSL 生成编译器。而 RPython 走了一条独特的路：它让你用受限的 Python 2 语法写解释器，然后通过工具链自动把它翻译成 C 代码，并附赠一个 JIT 编译器。这听起来很美，但实际体验如何？作者决定亲自上手一探究竟。\n\n### RPython 的“双重人格”开发模式\n上手 RPython 的第一感觉是“分裂”。你需要写一个看起来像 Python 2 的程序，比如定义一个 `double` 函数并在 `entry_point` 里调用它。这个脚本有两种运行模式：既可以直接用 Python 2 解释执行，也可以被 RPython 编译器翻译成 C 代码生成原生可执行文件。这种设计让开发迭代变得有趣：你可以先用熟悉的 Python 调试逻辑，确认无误后再交给 RPython 编译。编译过程并不快，你会看到控制台输出一堆日志，甚至还有个曼德博集合的 ASCII 动画，最后才生成那个名为 `double-c` 的二进制文件。\n\n### 类型推断带来的“文化冲击”\n如果你习惯了 Python 的动态类型，RPython 会给你当头一棒。当你尝试让 `double` 函数既支持字符串拼接又支持整数相加时，编译器直接报错 `UnionError`。原因很简单：RPython 虽然语法上没有类型声明，但编译器会进行全局类型推断，要求函数参数必须是单态的。当字符串 `\"a\"` 和整数 `3` 都流向同一个参数 `x` 时，类型系统崩溃了。这其实是 RPython 为了生成高效 C 代码所做的妥协——它必须在编译期确定变量的具体类型。\n\n### 用装饰器模拟 C++ 的模板特化\n那怎么解决上面的问题？RPython 提供了一个类似 C++ 模板的解法：函数特化。你只需要加上 `@specialize.argtype(0)` 装饰器，RPython 就会为第一个参数的每种类型生成一份独立的函数副本。这样一来，整数和字符串各有各的 `double` 实现，编译顺利通过。有意思的是，加上这个装饰器后，代码依然可以在标准 Python 环境下运行（只要引入了 RPython 的库）。这种设计既保留了 Python 的开发灵活性，又满足了底层优化的需求，算是一个巧妙的折中方案。\n\n### 省心的内存管理与 JIT 加持\nRPython 最吸引人的地方在于它替开发者承担了繁重的底层工作。首先是自动内存优化，Python 本身是内存分配大户，但 RPython 的 AOT 编译器会进行全程序分析，尽可能消除不必要的内存分配。其次是 GC 和栈扫描，RPython 自动帮你搞定，不需要手动处理 `GC_PROTECT` 这种琐事。最核心的是 JIT：你不需要懂编译器原理，只需要在解释器的主循环处做个标记，RPython 就会通过元追踪技术自动为你生成 JIT。这种“买一送一”的体验，让开发者能专注于语言本身的语义实现。\n\n### 理想很丰满，现实很骨感\n但 RPython 并非完美，甚至有些地方让人抓狂。首先是开发体验，错误信息晦涩难懂，编译速度慢，文档也不完善。其次是它依赖的元追踪技术属于“濒危物种”，虽然 PyPy 和 LuaJIT 证明了它的威力，但相比方法 JIT，它的行为有时难以预测。此外，RPython 的生态比较封闭，你想复用现有的 Python 解析器几乎不可能，因为 RPython 有自己的一套规则，且只支持 Python 2。对于静态类型语言的支持、与 C 代码交互时的优化壁垒，也都是悬而未决的问题。\n\n### 我们需要更好的下一代工具\n作者最后表达了对未来的期许：他希望看到一种更轻量、更现代的 VM 开发工具。这个工具应该保留 RPython 的优点（如 AOT+JIT、自动内存管理），同时改进开发体验，提供更好的性能反馈，甚至支持像 Zig 那样的编译期执行。虽然目前还没有完美的答案，但像 Weval、Virgil 或 Mojo 等项目都在尝试解决类似的问题。对于想造轮子的开发者来说，RPython 提供了一个极佳的蓝本，但距离“顺手好用”，中间还隔着一道需要填补的鸿沟。",
+      "source_name": "bernsteinbear.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "RPython",
+        "PyPy",
+        "JIT",
+        "compiler"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "datasette-arrows 0.1a0",
+      "title_zh": "Datasette 新插件支持 Apache Arrow 流式导出",
+      "link": "https://simonwillison.net/2026/Nov/18/datasette-arrows/",
+      "pub_date": "2026-11-18T17:09:59.000Z",
+      "summary": "## 一句话总结\n作者利用 Datasette 新增的流式导出钩子，在 Claude 辅助下几乎一次性开发出 `datasette-arrows` 插件，实现了 Apache Arrow IPC 格式的高效数据导出。\n\n### 新钩子解锁流式导出能力\nDatasette 1.0a43 版本引入了一个关键特性：插件现在可以通过 `register_output_renderer()` 钩子实现流式导出格式。在此之前，Datasette 核心只支持 CSV 和 TSV 的流式导出。这意味着你可以从表中导出数百万行数据，而无需一次性将所有数据加载到内存中。核心思路其实很简单：利用这些文件格式支持分块流式传输的特性，来突破内存限制。\n\n### 不发布“裸”特性的原则\n有意思的地方在于作者的发布哲学：“永远不要在没有配套插件的情况下发布新的插件功能”。这不仅是演示新 API 的最佳实践，也是验证设计是否合理的试金石。如果新功能连作者自己都懒得用或者很难用，那设计肯定有问题。所以，伴随新的流式导出钩子，作者决定写一个插件来验证它。\n\n### Claude 一发入魂\n作者把目光投向了 Apache Arrow IPC stream 格式。这是一个非常适合流式处理的二进制格式，能被 DuckDB、pandas、Polars 等主流数据分析工具直接读取。这里有个有趣的细节：这个插件几乎完全由 Claude Fable 5.2 模型编写。AI 建议使用 Arrow streaming 格式，并几乎“一次性”完成了插件代码的生成。这既验证了新钩子的易用性，也展示了 AI 辅助编程在构建小型工具时的效率。\n\n### 安装即用的 Arrow 导出\n使用体验非常顺滑。只需执行 `datasette install datasette-arrows`，导出对话框就会新增一个 Arrow 选项。这个新选项与原有的 TSV 和 CSV 并列，允许用户下载全量数据。从截图可以看到，界面清晰地显示了 \"All 927 rows\" 以及 \"Apache Arrow IPC stream\" 的描述，并提供了 Download 和 Copy URL 两个按钮。\n\n### 界面分组的后续优化\n目前的界面展示还有一点小瑕疵。在最新的 Datasette 稳定版中，Arrow 这种流式格式还没有和 TSV、CSV 一起归类到 \"All rows in this table\" 区块中。不过这已经在 Datasette 的 `main` 分支里得到了修复，预计下一个 alpha 版本发布时，流式格式在 UI 上就会获得正确的分组归类。",
+      "source_name": "simonwillison.net",
+      "score": 14,
+      "depth": 8,
+      "novelty": 6,
+      "category": "tools",
+      "keywords": [
+        "Datasette",
+        "Apache Arrow",
+        "streaming export",
+        "plugin"
+      ],
+      "rank": 4
+    },
+    {
+      "title": "llm-gemini 0.38",
+      "title_zh": "Gemini 4 Neon 定价混乱，实测图像生成质量",
+      "link": "https://simonwillison.net/2026/Nov/18/llm-gemini/",
+      "pub_date": "2026-11-18T23:59:20.000Z",
+      "summary": "Google 发布 Gemini 4 Neon，定价策略比之前更混乱。当前 Neon 定价 $3/百万输入、$15/百万输出，比促销期的 Carbon（$2/$10）更贵，但 12 月 1 日 Carbon 涨价后将反超 Neon。作者用 pelican 骑自行车的 SVG 图像测试三个模型的推理能力，结果显示 Carbon 细节最丰富、Hydrogen 最简洁、Neon 居中，成本从 2.25 美分到 20.31 美分不等。Neon 的四个推理级别（low/medium/high/xhigh）提供了比 Carbon 多一档的选择。",
+      "source_name": "simonwillison.net",
+      "score": 11,
+      "depth": 6,
+      "novelty": 5,
+      "category": "ai-ml",
+      "keywords": [
+        "Gemini 4",
+        "Neon",
+        "pricing",
+        "comparison"
+      ],
+      "rank": 5
+    },
+    {
       "title": "Are vibe-coded games making me a substance dualist?",
       "title_zh": "AI 生成游戏的「灵魂缺失」困境",
       "link": "https://rakhim.exotext.com/are-vibe-coded-games-making-me-a-substance-dualist",
@@ -60,7 +117,45 @@
         "uncanny valley",
         "creative authenticity"
       ],
-      "rank": 3
+      "rank": 6
+    },
+    {
+      "title": "If the Windows documentation doesn’t list a particular technology as supporting an operation, does that mean that it doesn’t support it?",
+      "title_zh": "Windows 文档未列出的技术不代表不支持",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20261118-00/?p=112870/",
+      "pub_date": "2026-11-18T15:00:00.000Z",
+      "summary": "Windows 文档中的技术支持表格仅列出微软有明确信息的文件系统和网络协议，未列出的技术不代表不支持，只是微软没有相关信息。如果某技术明确不支持，表格中会标注“No”。由于第三方可以实现自己的网络协议（如 AFS、APFS），Windows 文档无法穷尽所有情况，需要查阅对应产品的文档。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 7,
+      "depth": 4,
+      "novelty": 3,
+      "category": "engineering",
+      "keywords": [
+        "Windows",
+        "documentation",
+        "file system",
+        "network protocol"
+      ],
+      "rank": 7
+    },
+    {
+      "title": "SO Is Back! No, Not Stack Overflow, but Its Spirit",
+      "title_zh": "LLM 的审查比 Stack Overflow 更让人窒息",
+      "link": "https://idiallo.com/byte-size/stackoverflow-is-back-in-spirit",
+      "pub_date": "2026-11-19T07:27:09.000Z",
+      "summary": "Stack Overflow 曾因问题被标记为重复而遭开发者诟病，但至少重复问题会指向已有答案，仍有参考价值。LLM 取代后，情况更糟：模型会直接拒绝回答看似涉及安全问题的请求，甚至封禁账户，且不提供任何替代路径。作者指出，这种\"知道答案但不告诉你\"的体验，比当年的 Stack Overflow 更令人沮丧，解决问题的方式从\"去读那个重复问题\"变成了\"付钱买更贵的模型\"。",
+      "source_name": "idiallo.com",
+      "score": 6,
+      "depth": 3,
+      "novelty": 3,
+      "category": "opinion",
+      "keywords": [
+        "Stack Overflow",
+        "LLM",
+        "content moderation",
+        "developer experience"
+      ],
+      "rank": 8
     },
     {
       "title": "The PSF end-of-year fundraiser",
@@ -78,7 +173,7 @@
         "Python",
         "fundraiser"
       ],
-      "rank": 4
+      "rank": 9
     },
     {
       "title": "Jensen Huang Tweets",
@@ -96,7 +191,7 @@
         "NVIDIA",
         "CEO"
       ],
-      "rank": 5
+      "rank": 10
     },
     {
       "title": "\"No way to prevent this\" say users of only language where this regularly happens",
@@ -115,7 +210,7 @@
         "memory safety",
         "C"
       ],
-      "rank": 6
+      "rank": 11
     },
     {
       "title": "This Week in Source Control: 18 November 2026",
@@ -134,7 +229,7 @@
         "Gitea",
         "GitHub"
       ],
-      "rank": 7
+      "rank": 12
     },
     {
       "title": "Push button telephones introduced November 18, 1963",
@@ -153,7 +248,7 @@
         "telephone",
         "retro"
       ],
-      "rank": 8
+      "rank": 13
     },
     {
       "title": "★ The 50-Yard Line",
@@ -172,7 +267,64 @@
         "corporate politics",
         "Trump"
       ],
-      "rank": 9
+      "rank": 14
+    },
+    {
+      "title": "Email Dumpster Diving",
+      "title_zh": "翻垃圾邮件的日常：钓鱼套路与误判趣事",
+      "link": "https://blog.jim-nielsen.com/2026/email-dumpster-diving/",
+      "pub_date": "2026-11-18T19:00:00.000Z",
+      "summary": "作者分享翻检 Gmail 垃圾邮件的习惯，观察钓鱼邮件如何利用云服务计费通知（\"额度耗尽\"、\"信用卡过期\"）制造紧迫感。指出钓鱼策略与合法 SaaS 营销的相似性——两者都用\"不行动就失去访问权限\"的话术。展示了一封声称来自 Gina Rinehart 的邮件，通过维基百科链接建立可信度但无直接 CTA。最后发现一封被 Gmail 标记为垃圾邮件的 IRS 官方邮件，发件人 irs@service.govdelivery.com 确系 IRS 官方地址，所有链接均指向正规网站。",
+      "source_name": "blog.jim-nielsen.com",
+      "score": 5,
+      "depth": 3,
+      "novelty": 2,
+      "category": "security",
+      "keywords": [
+        "phishing",
+        "spam",
+        "email security",
+        "social engineering"
+      ],
+      "rank": 15
+    },
+    {
+      "title": "How to install an app on your Commodore 64",
+      "title_zh": "1986 年：在 Commodore 64 上安装一个程序需要 8 小时",
+      "link": "https://anildash.com/2026/10/08/install-an-app-commodore-64/",
+      "pub_date": "2026-11-19T03:52:10.000Z",
+      "summary": "作者以 1986 年的视角详细还原了在 Commodore 64 上获取并运行一个游戏的全过程：骑车去商场购买 COMPUTE!'s Gazette 杂志（3 美元），回家后先手工输入 31 行 BASIC 代码创建 Automatic Proofreader，再输入约 100 行代码构建 MLX 工具，最后才能开始输入游戏本体——约 30 行 BASIC 加 345 行十六进制机器码，全部必须零错误。整个过程耗时约 8 小时，完成后还需用软盘或磁带保存。文章对比了 C64 的 320×200 分辨率与现代 iPhone 屏幕的差异，并以 POKE 53281,1 等命令演示了当时的",
+      "source_name": "anildash.com",
+      "score": 5,
+      "depth": 3,
+      "novelty": 2,
+      "category": "opinion",
+      "keywords": [
+        "Commodore 64",
+        "retro computing",
+        "software distribution",
+        "user experience"
+      ],
+      "rank": 16
+    },
+    {
+      "title": "NYC’s venture capitalists need to love themselves",
+      "title_zh": "纽约 VC 们，别再跪舔硅谷了",
+      "link": "https://anildash.com/2026/11/03/nyc-venture-capitalists-love-themselves/",
+      "pub_date": "2026-11-19T03:52:10.000Z",
+      "summary": "纽约科技社区在过去五年增长了 23%，而湾区同期流失了科技岗位，但本地投资人仍在向厌恶这座城市的西海岸资本低头。作者批评纽约立法者向硅谷巨头提供数十亿补贴，质疑为何要讨好那些公开贬低纽约、拥抱偏见的 VC。少数几家晚期基金控制了绝大部分资本，成为它们的 feeder fund 毫无差异化优势。真正的机会在于押注本地创业者、拒绝与反纽约价值观的资本合作，这既是道德选择，也是投资策略。",
+      "source_name": "anildash.com",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "opinion",
+      "keywords": [
+        "venture capital",
+        "New York City",
+        "Silicon Valley",
+        "tech ecosystem"
+      ],
+      "rank": 17
     },
     {
       "title": "Once More Unto The Breach - Another Year In Review",
@@ -190,7 +342,7 @@
         "year-in-review",
         "personal"
       ],
-      "rank": 10
+      "rank": 18
     }
   ]
 }
