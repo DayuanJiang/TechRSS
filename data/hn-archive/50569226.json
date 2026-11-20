@@ -1,0 +1,103 @@
+{
+  "id": 50569226,
+  "by": "JacobHenner",
+  "title": "OpenSSL: Buffer overflow in EVP_EncodeBlock() (CVE-2026-121481, CVSS 9.8)",
+  "url": "https://github.com/openssl/openssl/pull/33652",
+  "score": 165,
+  "createdAt": 1795142456,
+  "aiSummary": {
+    "chinese_title": "OpenSSL 4 的 Base64 编码整数溢出或致越界，CVSS 9.8 实际风险存疑",
+    "discussion_overview": [
+      {
+        "category": "API 设计与整数边界",
+        "summary": "讨论认为，EVP_EncodeBlock() 让调用方按 Base64 的扩容规则自行分配输出缓冲区，却不接收输出缓冲区长度，库本身因而无法验证容量。约 1.5GB 以上输入触及 signed int 长度计算边界时，OpenSSL 4.x 的实现可能把数据写出缓冲区；输出还需考虑 padding 和 NUL terminator，使“4/3 再加一点”的手算并不可靠。另一方认为 Base64 的长度关系足够明确，分配本就是调用方职责，但反驳者指出公共 API 不应依赖每个调用点都正确处理边界。对于 size_t 是否比 signed integer 更安全也有分歧：它能扩大范围，却不能自动消除算术、转换和接口设计错误。",
+        "supportid": [
+          "50569705",
+          "50569772",
+          "50569831",
+          "50570383",
+          "50571149",
+          "50570120"
+        ]
+      },
+      {
+        "category": "CVSS 9.8 与真实可利用性",
+        "summary": "多名评论者认为 9.8 分脱离调用场景，不能等同于“所有暴露 OpenSSL 的服务器已被攻破”。漏洞是否可利用取决于攻击者能否把超大、未受信任的数据送进这个非流式 Base64 编码函数；例如长度受 16-bit 字段约束的协议调用点不会触发它。TLS 协议本身通常不做 Base64 编解码，且相关长度字段有限，因此不能从 OpenSSL 被网络使用直接推导出 TLS 远程利用。评论还批评 CVSS 把 Attack Vector、权限、CIA 影响等带有上下文的判断压成单一分数，完整 vector 比总分更有诊断价值。",
+        "supportid": [
+          "50569917",
+          "50569929",
+          "50571212",
+          "50570398",
+          "50570812"
+        ]
+      },
+      {
+        "category": "遗留生态、兼容性与 OpenSSL 质量",
+        "summary": "OpenSSL 是最早被广泛采用的 cryptography library 之一，早期的参数类型、错误处理和 API 风格已被大量软件依赖，彻底修正会触及 API/ABI 兼容性。2014 年 Heartbleed 事件虽促成 BoringSSL、LibreSSL 等 fork，也暴露过项目长期资源不足的问题，但评论指出对其设计的不满早于 Heartbleed。此次问题被认为尤其尴尬之处在于它出现在近一年编写的 OpenSSL 4.x 代码，而非只能归咎于陈旧遗留代码；有评论称 LibreSSL 在 OpenSSL v3 前已分叉，因而不受这一 v4 问题影响。是否应迁移到替代库仍受制于生态默认部署、兼容成本及替代方案覆盖范围。",
+        "supportid": [
+          "50570447",
+          "50569844",
+          "50570999",
+          "50570169",
+          "50569967",
+          "50570535"
+        ]
+      },
+      {
+        "category": "Rust 与 LLM 能否替代",
+        "summary": "“用 Rust 重写”被视为避免此类内存越界的方向，但评论强调 rustls（一个 Rust TLS library）并不是 OpenSSL 的 drop-in replacement，兼容封装仍不成熟。cryptography library 不只要求内存安全，还涉及 FIPS 合规、广泛平台支持、性能，以及避免 timing side channel 的 constant-time 实现；底层实现常仍需 assembly。对 LLM 的看法也两极：支持者认为它可加速测试、重构和修复，反对者则认为复杂 cryptography API 的设计、行业兼容细节与安全审查无法由缺乏持续上下文的模型取代。有人补充，即使使用 C，也可以通过更安全的封装接口和 formal verification 降低风险。",
+        "supportid": [
+          "50570871",
+          "50571079",
+          "50570963",
+          "50569986",
+          "50571107",
+          "50570981"
+        ]
+      },
+      {
+        "category": "补丁疲劳与纵深防御",
+        "summary": "运维人员表达了持续修复重大依赖漏洞的疲劳感，银行场景的例子称发布节奏已变成一天部署功能、两天部署 CVE 修复。也有人把频繁披露视为漏洞被修好、软件正在改善，而非单纯变得更糟。另一种判断是，仅靠追补丁难以跟上自动化漏洞发现速度，应结合 live-patching、工作负载隔离和最小权限等韧性措施。具体建议包括以 eBPF policy 限制应用异常行为，以及让 LLM 辅助分析日志和处置入侵，但这类工具不能替代基础加固。",
+        "supportid": [
+          "50570653",
+          "50571103",
+          "50570968",
+          "50569928",
+          "50569939",
+          "50570684",
+          "50571131"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "EVP_EncodeBlock()",
+        "explanation": "OpenSSL 的 EVP 编码接口之一，用于把完整输入块编码为 Base64；调用方需准备足够大的输出缓冲区。"
+      },
+      {
+        "term": "CVSS",
+        "explanation": "Common Vulnerability Scoring System，按攻击路径、权限和机密性/完整性/可用性影响计算漏洞严重度的评分框架。"
+      },
+      {
+        "term": "Heartbleed",
+        "explanation": "2014 年 OpenSSL 的严重内存泄露漏洞，促使社区更重视该项目的审计、资助与替代实现。"
+      },
+      {
+        "term": "API/ABI 兼容性",
+        "explanation": "API 是源代码调用接口，ABI 是已编译程序的二进制交互约定；维持兼容会使旧接口难以大幅改造。"
+      },
+      {
+        "term": "size_t",
+        "explanation": "C/C++ 中用于表示对象大小和数组索引的无符号整数类型，范围通常随平台字长变化。"
+      },
+      {
+        "term": "BoringSSL / LibreSSL",
+        "explanation": "由 OpenSSL 代码分叉发展出的 TLS/cryptography library，分别由 Google 生态和 OpenBSD 社区主导维护。"
+      }
+    ],
+    "context": "该 CVE 指向 OpenSSL（广泛使用的 cryptography library）4.x 中的 EVP_EncodeBlock()；该接口把二进制数据转成 Base64（每 3 字节通常扩展为 4 字符），并要求调用方分配输出空间。讨论认为，函数以 signed int 接收输入长度，超大输入可能令长度计算失真，而没有输出容量参数又使实现难以在写入前自检。Heartbleed（2014 年的 OpenSSL 内存泄露漏洞）后，BoringSSL 和 LibreSSL（两个 OpenSSL 分叉实现）相继出现；评论称 LibreSSL 在 v3 前已分叉，因而预计不受该 v4 缺陷影响。CVSS 9.8 是通用严重度模型的结果，但该漏洞的真实风险取决于具体应用是否允许未受信任的大型数据抵达该编码调用点，而不是 TLS 服务是否单纯链接了 OpenSSL。",
+    "emoji": "😩",
+    "sarcastic_question": "连输出长度都不收，9.8分又吓谁呢？"
+  },
+  "articleSummary": "## 一句话总结\nOpenSSL 修复了一个评分高达 9.8 的严重溢出漏洞（CVE-2026-121481），核心手段是对导致未定义行为的输入直接触发 `OPENSSL_assert()` 强制断言。\n\n## 正文\n\n### 高危漏洞现身，Base64 编码函数\"翻车\"\n这次的主角是 `EVP_EncodeBlock()`，一个处理 Base64 编码的底层函数。看似不起眼，但它被曝出了一个 CVSS 9.8 的高危漏洞（CVE-2026-121481）。问题出在缓冲区溢出（Buffer Overflow），攻击者一旦利用成功，后果就是远程代码执行。对于开发者来说，这种藏在广泛使用的加密库底下的炸弹，杀伤力不言而喻。\n\n### 修复思路的博弈：返回错误还是直接崩溃？\n有意思的是，修复方案在提交过程中发生过变动。最初的补丁尝试通过返回 `-1` 来拒绝非法输入，这是一种温和的容错处理。但最终的合并版本选择了更决绝的手段：调用 `OPENSSL_assert()`。说白了，既然输入已经导致了未定义行为，与其带着错误继续跑，不如直接让程序断言失败并终止，避免更严重的后果。\n\n### 顺带修补的\"难兄难弟\"\n除了主角 `EVP_EncodeBlock()`，开发者还顺手修了它的搭档 `EVP_DecodeBlock()`。同样的逻辑，同样的防御性编程，防止解码时出现类似的溢出问题。另外，`http_client.c` 文件里的 `base64encode()` 函数也被揪出了一个错误的长度检查逻辑，一并得到了修正。这属于典型的\"拔出萝卜带出泥\"，修一个漏洞，扫清了一片隐患。\n\n### 文档与测试补位，明确边界\n代码修好了，但故事没完。开发者并没有止步于改几行代码，而是更新了文档，并添加了新的测试用例。特别是针对\"零长度输入\"这种边缘情况，现在的行为被明确记录了下来。这不仅仅是修 Bug，更是在划定契约：告诉调用者，什么样的输入是合法的，什么样的输入会直接导致程序崩溃。\n\n### 社区争议：该不该让程序\"自杀\"？\n从 PR 记录看，这个修复并非一帆风顺。维护者 `bob-beck` 给 PR 打上了 \"hold: discussion\" 标签，明确表示社区需要达成共识才能推进。争议的焦点在于：在库函数里直接调用 `assert()` 终止进程，是否过于激进？毕竟在某些高可用场景下，让进程崩溃可能比被攻击更让运维头疼。这背后其实是安全性与可用性之间的经典博弈。"
+}
