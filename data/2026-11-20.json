@@ -1,9 +1,9 @@
 {
   "date": "2026-11-20",
   "total_feeds": 92,
-  "success_feeds": 82,
-  "total_articles": 2501,
-  "filtered_articles": 12,
+  "success_feeds": 84,
+  "total_articles": 2549,
+  "filtered_articles": 15,
   "articles": [
     {
       "title": "Pluralistic: How to forfeit one of copyright's best labor policies (19 Nov 2026)",
@@ -25,6 +25,25 @@
       "rank": 1
     },
     {
+      "title": "PostgreSQL 19 Released",
+      "title_zh": "PostgreSQL 19 新增读己之写一致性",
+      "link": "https://simonwillison.net/2026/Nov/19/postgresql-19/",
+      "pub_date": "2026-11-19T20:43:57.000Z",
+      "summary": "## 一句话总结\nPostgreSQL 19 虽因处理 AI 安全漏洞迟到了两个月，但带来的 `WAIT FOR LSN` 特性完美解决了读写分离场景下的“读己之写”一致性问题。\n\n## 正文\n\n### 迟到的发布，是因为 AI 掀起了漏洞风暴\nPostgreSQL 习惯在每年九月发新版，但今年足足晚了两个月。这倒不是因为开发进度拖延，而是因为 AI 带来的安全风暴。随着 AI 工具被广泛用于代码审计，PostgreSQL 团队收到了海量的漏洞报告，不得不花大量时间逐一排查和修复。虽然过程痛苦，但这说明开源社区正在适应新的安全挑战。好在，这份等待是值得的，新版本带来的特性足以让开发者眼前一亮。\n\n### 读写分离的老大难问题：刚写的数据读不到\n这次最重磅的更新是新增了 `WAIT FOR LSN` 命令，专门用来解决读写分离架构下的一个经典痛点。在传统的流复制架构中，应用把写请求发往 Primary，读请求发往 Standby。但问题是，Standby 的同步总有延迟。结果就是，用户前一秒刚提交了修改，下一秒刷新页面却看不到变化——因为读请求可能路由到了还没同步完的 Standby 上。这种体验上的“回退”让很多开发者头疼不已。\n\n### 核心思路：让 Standby 等一等再干活\n新引入的 `WAIT FOR LSN` 实现了“读己之写”的一致性。核心思路其实很简单：既然 Standby 落后于 Primary，那就让它在执行读请求前先“暂停”一下，等到同步进度追上为止。LSN 是 Log Sequence Number，也就是 WAL 日志的唯一坐标。Session 可以在 Standby 上等待直到指定的 LSN 已经回放，然后再执行查询。这样一来，用户读到的数据一定包含他刚才写入的那些改动。\n\n### 具体怎么用？存个 LSN 就行\n实际操作起来非常直观。当你在 Primary 上执行完写操作后，调用 `SELECT pg_current_wal_insert_lsn()` 拿到当前的 LSN 位置，比如 `0/0306EE20`。你需要把这个值存起来，比如放在签名的 Cookie 里。等后续请求被路由到 Standby 时，先执行 `WAIT FOR LSN '0/0306EE20' WITH (TIMEOUT '0.1s')`。这条命令会阻塞当前会话，直到 Standby 回放到这个 LSN，或者超时返回错误。\n\n### 这不是新发明，Wikipedia 早就验证过了\n有意思的地方在于，这个设计并非凭空捏造，它其实是对业界成熟实践的标准化。文章提到 Wikipedia 的 MediaWiki 早在多年前就针对 MySQL 实现了类似的机制。他们的做法是在 Session 里存下 Primary 的 binlog 位置，然后在每次请求开始时，强制 Replica 先追上这个位置再读。MediaWiki 甚至为此维护了一套复杂的 fallback 逻辑，从 `WAIT_FOR_EXECUTED_GTID_SET()` 到老旧的 `SOURCE_POS_WAIT()` 都有覆盖。PostgreSQL 19 等于把这个经过验证的“野路子”扶正成了原生的 SQL 标准。",
+      "source_name": "simonwillison.net",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "PostgreSQL",
+        "replication",
+        "WAIT FOR LSN",
+        "consistency"
+      ],
+      "rank": 2
+    },
+    {
       "title": "My Least Favorite Example in Software Engineering",
       "title_zh": "属性测试教学中最糟糕的经典示例",
       "link": "https://buttondown.com/hillelwayne/archive/my-least-favorite-example-in-software-engineering/",
@@ -41,7 +60,7 @@
         "examples",
         "teaching"
       ],
-      "rank": 2
+      "rank": 3
     },
     {
       "title": "Unburden yourself of the backlog",
@@ -60,7 +79,7 @@
         "leadership",
         "productivity"
       ],
-      "rank": 3
+      "rank": 4
     },
     {
       "title": "Tandy 1000 models",
@@ -78,7 +97,121 @@
         "IBM PC compatible",
         "retro computing"
       ],
-      "rank": 4
+      "rank": 5
+    },
+    {
+      "title": "Closing The Sandwich Shop",
+      "title_zh": "Salon 关停：媒体失去自主权的代价",
+      "link": "https://feed.tedium.co/link/15204/17535724/salon-media-ownership-tech-destiny",
+      "pub_date": "2026-11-19T18:38:35.000Z",
+      "summary": "独立媒体 Salon 在运营 31 年后宣布关闭，成为数字媒体生存困境的最新案例。文章回顾了 Salon 从苹果和 Adobe 种子资金起步，经历搜索、社交、视频等多轮技术浪潮，最终被马耳他博彩公司 Find.co 收购的历程。作者指出，媒体将基础设施和命运交给外部平台（从评论系统到 SEO 流量）的决策，最终削弱了自身的根基。Google AI Mode 盈利能力下降、Facebook ",
+      "source_name": "tedium.co",
+      "score": 6,
+      "depth": 3,
+      "novelty": 3,
+      "category": "opinion",
+      "keywords": [
+        "media",
+        "Salon",
+        "independence",
+        "platform"
+      ],
+      "rank": 6
+    },
+    {
+      "title": "★ Jon McCormack Retires From Apple",
+      "title_zh": "苹果相机软件副总裁 Jon McCormack 退休",
+      "link": "https://daringfireball.net/2026/11/mccormack_retires_from_apple",
+      "pub_date": "2026-11-19T22:25:12.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 5,
+      "depth": 3,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "Apple",
+        "iPhone",
+        "Camera",
+        "photography"
+      ],
+      "rank": 7
+    },
+    {
+      "title": "Google’s Spark AI Agent Becomes ‘Tasks’",
+      "title_zh": "Google 将 Spark AI 代理更名为 Tasks 并免费开放",
+      "link": "https://www.theverge.com/tech/1035756/google-spark-ai-tasks-free?view_token=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IksyWGFvWkdyWVIiLCJwIjoiL3RlY2gvMTAzNTc1Ni9nb29nbGUtc3BhcmstYWktdGFza3MtZnJlZSIsImV4cCI6MTc5NTU1MzQxMiwiaWF0IjoxNzk1MTIxNDEyfQ.GdsUKdRXeGBskw7-FDgCXEmIYhdLPPexImzdWhJqA-c&utm_medium=gift-link",
+      "pub_date": "2026-11-19T20:54:10.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "ai-ml",
+      "keywords": [
+        "Google Tasks",
+        "Gemini",
+        "AI agent",
+        "rebrand"
+      ],
+      "rank": 8
+    },
+    {
+      "title": "Grand Theft Auto 6",
+      "title_zh": "GTA VI 评测：值得等待的开放世界新标杆",
+      "link": "https://www.theverge.com/games/1035801/grand-theft-auto-6-review?view_token=eyJhbGciOiJIUzI1NiJ9.eyJpZCI6IjJ2dm1YT25YaEwiLCJwIjoiL2dhbWVzLzEwMzU4MDEvZ3JhbmQtdGhlZnQtYXV0by02LXJldmlldyIsImV4cCI6MTc5NTU1MTkzNiwiaWF0IjoxNzk1MTE5OTM2fQ.XQt8Qcs5vUE3Paa_aDtLGeZOo2ZDaOU7mB0dTBzXrrQ&utm_medium=gift-link",
+      "pub_date": "2026-11-19T20:30:10.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 5,
+      "depth": 2,
+      "novelty": 3,
+      "category": "other",
+      "keywords": [
+        "GTA VI",
+        "Rockstar Games",
+        "open-world",
+        "review"
+      ],
+      "rank": 9
+    },
+    {
+      "title": "Another company I've never heard of lost my Data",
+      "title_zh": "数据泄露的荒诞现实：陌生公司丢了我的数据",
+      "link": "https://idiallo.com/byte-size/another-company-lost-my-data-and-free-credit-monitoring",
+      "pub_date": "2026-11-19T23:27:30.000Z",
+      "summary": "作者收到 Premise Health Holding 的通知信，称其员工在 2026 年 3 月至 9 月间非法访问客户数据，泄露了姓名、地址和社会安全号等敏感信息。作者从未与该公司有过业务往来，却不知为何其数据被该公司持有。更荒诞的是，这已是今年第二次遭遇此类事件——另一家陌生公司也曾泄露其数据并提供了相同的\"补偿\"：一年免费信用监控服务。作者指出，社会安全号无法更改，攻击者完全可以等待信用监控期满后再利用这些信息。现行惩罚机制形同虚设，企业只需提供大多数人不会使用的信用监控服务即可免责，数据泄露因此成为常态。",
+      "source_name": "idiallo.com",
+      "score": 5,
+      "depth": 3,
+      "novelty": 2,
+      "category": "security",
+      "keywords": [
+        "data breach",
+        "privacy",
+        "credit monitoring",
+        "SSN"
+      ],
+      "rank": 10
+    },
+    {
+      "title": "Breaking: It doesn’t look Anthropic’s IPO is going to save the tech industry",
+      "title_zh": "Anthropic IPO 难救科技市场颓势",
+      "link": "https://garymarcus.substack.com/p/breaking-it-doesnt-look-anthropics",
+      "pub_date": "2026-11-19T20:36:26.000Z",
+      "summary": "",
+      "source_name": "garymarcus.substack.com",
+      "score": 3,
+      "depth": 1,
+      "novelty": 2,
+      "category": "opinion",
+      "keywords": [
+        "Anthropic",
+        "IPO",
+        "tech industry",
+        "market"
+      ],
+      "rank": 11
     },
     {
       "title": "Theatre Review: FORT – a new opera ★★★☆☆",
@@ -96,7 +229,24 @@
         "theatre review",
         "performance"
       ],
-      "rank": 5
+      "rank": 12
+    },
+    {
+      "title": "Anthropic IPOs, Topping SpaceX for the Largest Ever",
+      "title_zh": "Anthropic IPO 传闻：被拦截的报道",
+      "link": "https://www.techmeme.com/261118/p34#a261118p34",
+      "pub_date": "2026-11-19T16:33:16.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 2,
+      "depth": 1,
+      "novelty": 1,
+      "category": "other",
+      "keywords": [
+        "IPO",
+        "Anthropic"
+      ],
+      "rank": 13
     }
   ]
 }
