@@ -1,0 +1,113 @@
+{
+  "id": 50570628,
+  "by": "renehsz",
+  "title": "Jujutsu Primer",
+  "url": "https://ethanlowman.com/posts/jj-primer/",
+  "score": 135,
+  "createdAt": 1795156258,
+  "aiSummary": {
+    "chinese_title": "Jujutsu：以可改写提交和非阻塞冲突重做 Git 工作流",
+    "discussion_overview": [
+      {
+        "category": "用“工作提交”取代暂存区",
+        "summary": "许多人认为 jj 并非取消了 staging area，而是把工作目录的全部修改持续放进当前的 working commit；它因此既不会遗留未提交状态，也可随时回到其他任务。需要拆分工作时，可用 `jj split -i` 交互式把文件或 hunk 分至多个提交；需要归并到父提交或既有提交时则用 `jj squash`。支持者认为这让提交历史可以在开发后期再整理，既保留探索过程，又能产出按“重构、数据模型、API、UI”等逻辑步骤排列的干净历史。反对者则认为 GUI 暂存 hunk 能迫使开发者审查内容，自动追踪临时文件尤其令人不安，宁愿明确选择加入或忽略。",
+        "supportid": [
+          "50571488",
+          "50571822",
+          "50571600",
+          "50572654",
+          "50572692",
+          "50572847",
+          "50572797",
+          "50571626",
+          "50572147",
+          "50573230"
+        ]
+      },
+      {
+        "category": "冲突、历史恢复与 stacked PR 的优势",
+        "summary": "jj 的拥护者特别看重其 rebase 不会因冲突立即中断：系统尽力完成图上的变换，再保留可逐提交处理的冲突状态，而不是让整个流程停摆。对于多个依赖的 PR，可整体 rebase 到上游新版本，通常只需处理一次相同冲突，并能继续保持提交图整洁。`jj evolog` 被视为另一项关键能力，它记录一个 change 曾经拥有过的版本，使开发者甚至能找回当天早些时候未显式保存的工作状态。批评者承认这本质仍是冲突解决和分支操作，但支持者认为其过程更连贯、更少与工具搏斗。",
+        "supportid": [
+          "50573164",
+          "50572147",
+          "50571973",
+          "50572218",
+          "50572922"
+        ]
+      },
+      {
+        "category": "Git 兼容性、原生 forge 与网络效应",
+        "summary": "一方期待 jj 摆脱 Git backend，发展原生 forge 和以 changeset 为中心的 code review；这样可查看单项变更如何随审查意见演化，而不必依赖 PR stack 或把修复硬塞回旧提交。另一方指出 Mercurial 的历史说明，脱离 Git repository format 和 GitHub 社会网络会显著抬高协作门槛，即使工具 UX 或技术设计更优。反驳意见认为当下 Git/GitHub 在大型仓库和高速团队中的可扩展性已受质疑，GitLab、企业自建 VCS 与其他 forge 的增长或许削弱了 GitHub 的锁定效应。讨论最终没有共识：Git 的胜出究竟主要来自技术、Linux 采用，还是 GitHub 带来的网络效应，仍是核心分歧。",
+        "supportid": [
+          "50570993",
+          "50573187",
+          "50571150",
+          "50571277",
+          "50571849",
+          "50571900",
+          "50572033",
+          "50572325"
+        ]
+      },
+      {
+        "category": "AI agents：既是采用阻力，也是 jj 工作流受益者",
+        "summary": "不少人表示 Claude、Codex、Gemini 等 agent 曾默认执行 Git 命令，且 jj workspace 与 Git worktree 的兼容缺口会让依赖 `.git` 的工具强制退回 Git。实际缓解方式包括提供 `AGENTS.md`、jj skill、命令 hook 禁止调用 `git`，以及使用 colocated workspace 让 workspace 生成 `.git` 目录；使用者称较新的模型已明显改善。jj 的“命名目标提交加顶层匿名提交”模式也很适合 agent：AI 的修改先落在顶层，人工审查后将可接受部分 squash 进目标提交，未完成部分继续迭代。有人因此认为 AI 已减少学习 VCS 的必要性，但反驳者指出 jj 的可恢复历史仍能撤销 agent 的错误，并帮助管理深层提交栈。",
+        "supportid": [
+          "50571558",
+          "50572471",
+          "50571015",
+          "50573250",
+          "50571237",
+          "50571348",
+          "50571041",
+          "50571184",
+          "50571352",
+          "50571199"
+        ]
+      },
+      {
+        "category": "迁移成本、工具成熟度与大型仓库替代方案",
+        "summary": "已经熟练使用 Git、lazygit 或让机器人代管 VCS 的开发者，常认为 jj 的收益不足以抵消学习新模型和日常摩擦；Git wrapper 已能覆盖自己最常用的流程。试用者列出的具体问题包括文档与功能尚不成熟、bookmark 与远程 forge branch 的映射不顺、临时文件自动进入历史，以及 `jj` 与 `jj git` 子命令的界线需要记忆。另一方面，有人针对巨大 monorepo 提出 gitfold：它用 FUSE 将 Git 对象库直接呈为虚拟 worktree，把新 worktree 创建从约一分钟降到一秒，并可提供分支树、低成本合并预览和跨 worktree 冲突提示。该项目强调自己不同于 GitFS、EdenFS、VFS for Git 等主要解决远端 lazy fetching 的系统：目标是保持原生 Git 行为，同时避免实体 checkout 的成本。",
+        "supportid": [
+          "50572542",
+          "50571043",
+          "50572187",
+          "50571790",
+          "50572270",
+          "50572037",
+          "50572264"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "working commit（工作提交）",
+        "explanation": "jj 将工作目录修改自动快照到当前提交；开发者随后通过 split、squash 等操作再拆分、归并或丢弃内容。"
+      },
+      {
+        "term": "`jj split` / `jj squash`",
+        "explanation": "jj 的历史编辑命令：`split` 可按文件或 hunk 将一个提交拆开，`squash` 可将修改并入父提交或指定提交。"
+      },
+      {
+        "term": "bookmark",
+        "explanation": "jj 中指向某个 change 的可移动命名引用，常用于与 Git branch 或远程协作的对应关系，但不必限定为“一书签一 PR”。"
+      },
+      {
+        "term": "colocated workspace",
+        "explanation": "同时具备 jj workspace 和 `.git` 目录的工作区模式，使假定 Git worktree 的 IDE、agent 或脚本也能操作该目录。"
+      },
+      {
+        "term": "stacked PR",
+        "explanation": "一串存在依赖关系、按顺序审查和合并的 Pull Request；jj 的提交图重排和批量 rebase 被认为尤其适合维护这类结构。"
+      },
+      {
+        "term": "FUSE",
+        "explanation": "Filesystem in Userspace，一种让普通用户态程序实现虚拟文件系统的机制；gitfold 用它把 Git 对象直接呈现为工作目录文件。"
+      }
+    ],
+    "context": "Jujutsu（通常简称 jj）是一个现代分布式版本控制系统，可与 Git 仓库和 Git hosting 服务协作，但以可随时改写的 change graph 为核心工作模型。其关键设计是自动将工作目录快照为 working commit，并允许通过 `split`、`squash`、rebase 在事后重组历史；冲突会被表示为提交状态而非阻塞全部操作。讨论所说的 forge 是 GitHub、GitLab 一类托管代码、PR 与 code review 的协作平台，争议在于 jj 是否应继续受 Git 格式和 PR 模型约束。AI coding agents 普及后，VCS 交互越来越由 Claude、Codex、Gemini 等模型执行，因此 jj 是否被模型、worktree 工具链和现有 Git 自动化支持，成为实际迁移的重要条件。",
+    "emoji": "🧩",
+    "sarcastic_question": "既然 Claude 会敲 git，人类还要学 jj 吗？"
+  },
+  "articleSummary": "## 一句话总结\nJujutsu（`jj`）通过消除暂存区、引入稳定的 Change ID 和自动 Rebase 机制，解决了 Git 中上下文切换繁琐和历史重写痛苦的问题，让版本控制回归到“修改代码”本身。\n\n## 正文\n\n### 为什么 Git 用起来总觉得“重”？\n如果你习惯了 Git，可能没意识到我们在版本控制上耗费了多少“工作记忆”。`jj` 的核心卖点很简单：它提供了更原语化的操作，这些操作能优雅地组合成强大的工作流。比如自动 rebase 和原生 undo 功能，抚平了 Git 的尖锐棱角。最妙的是，`jj` 兼容 Git 仓库，你可以在同一个 Repo 里侧写 `jj`，不用彻底迁移。作者提到，这大大提升了他的效率，因为版本管理的琐事不再占用大脑内存，尤其是处理 Stacked Diff 工作流时，自动 rebase 让一切变得异常顺滑。\n\n### 消灭暂存区，工作区即提交\n`jj` 和 Git 最大的观念差异在于：没有暂存区。当你修改文件后运行任何 `jj` 命令（如 `jj status`），它会自动把工作区快照成一个新的物理提交。这听起来很激进，但逻辑很顺畅：你的工作区（Working Copy）在 `jj log` 里就是一个名为 `@` 的真实提交。如果你改了代码，`@` 就不再是 `(empty)`，Commit ID 会变，但 Change ID 保持不变。这意味着你不需要反复执行 `git add` 和 `git commit`，代码的状态就是历史的状态。\n\n### Change ID：追踪逻辑变更的“定海神针”\n在 Git 里，一旦你 rebase 或 amend，Commit Hash 就变了，想找回之前的引用很麻烦。`jj` 引入了 Change ID 的概念。这是逻辑变更的稳定标识符，无论底层的 Commit ID（Hash）如何随 rebase 或描述修改而变化，Change ID 始终不变。比如你修改了提交信息，Commit ID 会变，但你可以只用输入 Change ID 的最短唯一前缀（比如 `k`）来定位它。这为后续的操作提供了稳定的锚点。\n\n### 像“搭积木”一样组织提交\n创建新提交的流程也变了。在 `jj` 里，你不需要先想好分支名。你可以直接用 `jj new` 在当前提交上新建一个空的 `@`，填上内容后，再用 `jj commit`（这其实是 `jj desc` 加 `jj new` 的快捷方式）完成并创建下一个空提交。有意思的是，你可以随时用 `jj new k -m \"Document the feature\"` 在某个 Change ID 之上分叉出新的提交。这展示了 `jj` 的“无分支”模型：你是在操作一个提交图，而不是在分支之间跳来跳去。只有当你要推送到远程时，才需要处理分支。\n\n### 用 Revsets 精准圈定提交范围\n既然提交图变得这么灵活，怎么高效查询呢？`jj` 借鉴了 Mercurial 的 Revsets 概念。这就像在提交图上写 SQL 查询。你可以用 `@-` 指代父提交，用 `r::@` 指代从 `r` 到 `@` 的闭区间，甚至可以用 `author(\"...\")` 结合逻辑运算符来筛选。这种表达式可以传给大多数 `jj` 命令作为参数，让你能极其精准地定位要操作的一组提交，而不需要记忆复杂的 Git reflog 语法。\n\n### 无痛切换上下文与自动 Rebase\n在 Git 里，如果你想回头修改之前的提交，通常得用 `git stash` 或者 `git rebase -i`，步骤繁琐且容易出错。但在 `jj` 里，你只需要 `jj edit k`，工作区就会瞬间切换到那个提交的状态，`@` 指针也移过去。更强大的是，如果你修改了历史提交的内容，`jj` 会自动把所有后代提交 rebase 到新基础上。比如你改了 `k`，依赖它的 `n` 和 `q` 会自动获得新的 Commit ID，但 Change ID 不变。这种自动化消除了手动维护提交栈的巨大痛苦，让你敢于随时修改历史。"
+}

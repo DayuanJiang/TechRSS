@@ -1,0 +1,75 @@
+{
+  "id": 50569516,
+  "by": "craigkerstiens",
+  "title": "Postgres 19 Repack: Faster, Built-In Table Bloat Cleanup",
+  "url": "https://www.snowflake.com/en/blog/engineering/postgres-19-repack-table-bloat/",
+  "score": 132,
+  "createdAt": 1795149057,
+  "aiSummary": {
+    "chinese_title": "Postgres 19 内建 Repack 清理表膨胀：运维期待与 MVCC、分区隐忧",
+    "discussion_overview": [
+      {
+        "category": "内建清理功能降低高风险运维负担",
+        "summary": "评论者普遍欢迎将表膨胀清理纳入 PostgreSQL 核心，而非依赖 pg_repack、pg_squeeze、pg_reorg 等外部工具。有人曾在新年前夜对数 TB 的生产库执行 Repack，任务运行数小时后因连接中断而必须从头再来，凸显此类操作的脆弱性。旧工具被视为需要严格按说明使用的高级工具，误操作可能造成严重后果，因此核心实现可吸收既有经验并改善可靠性。也有人建议长任务使用 screen、tmux 或在服务器本机/LAN 执行，避免把昂贵操作系于不稳定的远程连接。",
+        "supportid": [
+          "50570575",
+          "50570597",
+          "50570600",
+          "50572634",
+          "50573354",
+          "50570850"
+        ]
+      },
+      {
+        "category": "大规模场景的正确性、分区与性能问题",
+        "summary": "有人质疑新方案若牺牲 MVCC consistency，是否会让查询偶发返回空结果，且难以诊断；这被认为是不能轻忽的语义代价。另一位有交易数据库经验的评论者指出，REPACK CONCURRENTLY 尚不支持分区表，而恰恰在数据规模足够大、膨胀治理最重要时常会使用分区。表膨胀的伤害不只是占满磁盘，ctid 与 B-tree 叶节点链表膨胀会让点查接近全表扫描。其团队最终依靠 HOT 减少死元组产生，并让常规 SELECT 分摊回收成本，避免危险累积。",
+        "supportid": [
+          "50570913",
+          "50570978"
+        ]
+      },
+      {
+        "category": "通过观察 PostgreSQL 内部状态扩展行为",
+        "summary": "有开发者更欣赏 pg_squeeze 一类直接追踪 PostgreSQL 内部状态的路线，相比 pg_repack 依赖 triggers，这种方式能更贴近事务真实语义。SpiceDB 曾通过挂接 pg_xact 事务层，在复用 PostgreSQL 可见性判断与全序关系的基础上叠加自己的 MVCC，以实现 strict serializability。此方法甚至不必编写 PostgreSQL extension，因此可部署在禁止安装扩展的托管 PostgreSQL 服务上。评论也由此追问是否还有其他通过“窥探”数据库内部状态实现功能的案例。",
+        "supportid": [
+          "50570379"
+        ]
+      },
+      {
+        "category": "Plan hint 的接口与应急机制之争",
+        "summary": "对于新加入的 plan hinting，有人不满应用需先发出 SET，认为每次查询都可能增加一次网络往返，而 pipelining 或批处理 API 又不够易用。反驳意见称可把 SET 与 SQL 用分号合成一次 simple protocol 请求，或用 pg_stash_advice 预存 advice，无须修改应用源码。随后有人指出合并语句会失去 parameter binding，并可能让重复查询每次重新规划；extended protocol 虽可 pipeline，调用体验仍较差。还有观点认为 SQL comments 本不该承载语法，而嵌入查询的 hint 与按 query ID 保存的应急 hint 并不冲突：前者用于开发时声明，后者用于线上查询突发退化时快速止血。",
+        "supportid": [
+          "50572160",
+          "50573328",
+          "50573479",
+          "50573868",
+          "50573914",
+          "50573960",
+          "50573760"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "表膨胀（table bloat）",
+        "explanation": "PostgreSQL 更新或删除后留下的旧行版本及索引残留未及时回收，导致表和索引占用更多空间、扫描与查找变慢。"
+      },
+      {
+        "term": "MVCC",
+        "explanation": "Multi-Version Concurrency Control，多版本并发控制；数据库保留行的多个版本，让并发事务按各自快照读取一致的数据。"
+      },
+      {
+        "term": "pg_repack / REPACK CONCURRENTLY",
+        "explanation": "用于在线重组 PostgreSQL 表和索引、回收膨胀空间的机制；CONCURRENTLY 意味着尽量降低对并发业务的阻塞。"
+      },
+      {
+        "term": "plan hinting",
+        "explanation": "向查询规划器提供执行计划建议或约束的机制，例如影响索引、连接方式或扫描策略的选择。"
+      }
+    ],
+    "context": "PostgreSQL（开源关系型数据库）采用 MVCC（多版本并发控制），更新和删除会留下死元组；若 VACUUM 未能及时回收，就会形成表膨胀并拖慢索引和查询。Postgres 19 将 Repack（在线重组并回收表空间的功能）内建化，意在替代或减少对 pg_repack、pg_squeeze 等外部维护工具的依赖。大型数据库尤其在意 ctid（PostgreSQL 的行物理位置标识）和 B-tree（平衡树索引）叶节点链表的膨胀，因为它会使原本的点查代价显著上升。讨论同时涉及该版本的 plan hinting（向查询规划器提供建议的功能）：其 SET、simple/extended protocol 和预存 advice 的接口设计，关系到线上紧急修复查询计划时的延迟与可操作性。",
+    "emoji": "🫠",
+    "sarcastic_question": "清个膨胀表，为什么还得先赌网络不断？"
+  },
+  "articleSummary": "无法获取正文内容，无法生成摘要。"
+}
