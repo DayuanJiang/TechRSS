@@ -1,0 +1,83 @@
+{
+  "date": "2026-11-22",
+  "total_feeds": 92,
+  "success_feeds": 83,
+  "total_articles": 2549,
+  "filtered_articles": 12,
+  "articles": [
+    {
+      "title": "Linear scan register allocation in Datalog",
+      "title_zh": "用 Datalog 实现线性扫描寄存器分配",
+      "link": "https://bernsteinbear.com/blog/lsra-datalog/?utm_source=rss",
+      "pub_date": "2026-11-21T00:00:00.000Z",
+      "summary": "## 一句话总结\n作者展示了如何用声明式的 Datalog 实现本质上高度命令式的 Linear Scan 寄存器分配算法，核心亮点在于利用“forall 模拟”这一高级模式解决了算法中的状态遍历难题。\n\n## 正文\n\n### 从 Ruby 实现到 Datalog 的“坑”\n作者去年曾用 Ruby 写过一个 Linear Scan 寄存器分配器，当时就有人建议他用 Datalog 试试，但他一直没动手。直到今年 PLDI 会议上，他遇到了 Datalog 大牛 Yannis Smaragdakis，两人一拍即合，几小时（外加几杯啤酒）后就捣鼓出了一个 Datalog 版本。这个项目的核心价值在于“演示”：它既展示了 Datalog 处理基本块计算和活跃性分析（Liveness Analysis）时的优雅——只需寥寥数行代码；同时也暴露了用 Datalog 实现强制顺序执行算法（如 Linear Scan）时的别扭与挑战。\n\n### 为“指令”而非“基本块”建模\n为了适配 Datalog 的推理逻辑，作者对输入程序（Wimmer2010 CFG）的编码方式做了精心调整。他们没有沿用传统的基于基本块的建模，而是基于指令序列建模，并给每条指令编了号。有意思的地方在于对“定义”的处理：如果一个变量在指令 N 处被定义，系统会将其拆分为两个事件——在 N 处使用输入，在 N+1 处定义输出。这种拆分是为了保证逻辑处理的时序正确性：旧的活跃区间必须先结束，才能腾出寄存器给新的变量赋值。控制流也被建模为指令间的跳转关系，甚至基本块的边界和 CFG 结构都是通过 Datalog 规则反向推导出来的。\n\n### 活跃性分析：教科书级的优雅\n活跃性分析是 Datalog 的主场。这部分实现非常标准，通过 4 条相互递归的规则定义了 `live_out` 和 `live_in`，完美对应了教科书里的数据流方程。具体来说，变量在指令处活跃，要么是因为它被使用，要么是因为它在出口处活跃且未被定义。有了每条指令的活跃状态后，作者利用聚合操作 `min` 和 `max` 直接提取出每个变量的完整活跃区间。这部分计算是在数据流不动点收敛之后才进行的，因此可以安全地使用这些聚合函数。\n\n### 寄存器分配：用“伪变量”模拟状态机\n真正的挑战在于 Linear Scan 算法本身。这是一个典型的、高度命令式的算法，包含“过期删除”、“栈顶踢出”等步骤，而 Datalog 天生不支持这种可变的顺序状态。为了解决这个问题，作者设计了一个谓词 `reg_assignment`，用来模拟算法在每一步指令执行后的寄存器状态。这里有个巧妙的设计：为了统一处理寄存器分配和溢出，作者引入了“伪变量”（如 `none_0`）来代表空寄存器。这样，所有的决策逻辑都可以转化为对变量的比较，比如在决定踢出谁时，算法总是优先“踢出”伪变量（即优先使用空寄存器）。\n\n### 核心难点：forall 模拟\n最精彩的部分在于如何选择被溢出的受害者。Linear Scan 的策略是踢出那个活跃区间结束最晚的变量。在命令式语言里，这只是一个简单的遍历比较；但在 Datalog 里，由于谓词间存在相互递归，无法简单使用“not exists”逻辑。作者不得不祭出一种高级模式——forall 模拟。他们定义了 `better_victim_var` 等谓词，利用底层的排序，在声明式的框架下强行模拟了一个遍历过程：每一步迭代都保留当前的“最佳受害者”，直到遍历完所有寄存器。从复杂度理论角度看，这种模式至关重要，它让 Datalog 具备了表达所有 PTIME 算法的能力。\n\n### 潜在的优化空间\n目前的实现虽然跑通了，但作者也承认还有优化空间。现在的算法是对每一条指令都进行状态传播，其实完全可以跳过那些“无趣”的指令（即没有定义也没有区间过期的指令），直接在关键节点间跳跃。此外，当前的暴力比较策略预先计算了所有变量对的比较结果，如果能改成按需计算，效率会更高。这需要引入一种“请求-响应”的编程模式，只在真正需要比较时才触发规则。\n\n### 结语\nDatalog 很有趣，虽然它并不适合所有场景。这篇文章最大的价值在于，它不仅展示了 Datalog 擅长什么，更通过一个反直觉的实现，展示了如何用它攻克那些看似不适合声明式处理的难题。感兴趣的读者可以直接查看作者的实现代码。",
+      "source_name": "bernsteinbear.com",
+      "score": 15,
+      "depth": 8,
+      "novelty": 7,
+      "category": "engineering",
+      "keywords": [
+        "Datalog",
+        "register allocation",
+        "compiler",
+        "linear scan"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "Apple Documents Extra Apple Intelligence Usage Limits Per iCloud+ Paid Tier",
+      "title_zh": "Apple Intelligence 功能将按 iCloud+ 套餐分级限流",
+      "link": "https://support.apple.com/en-us/127901",
+      "pub_date": "2026-11-21T18:02:51.000Z",
+      "summary": "Apple 公布 Apple Intelligence 和 Siri AI 的使用量限制政策，免费用户和 50GB 套餐用户获得标准设备限额，200GB/2TB/6TB/12TB 套餐用户分别获得最高 2X/5X/10X/20X 的限额提升。Shortcuts 中的 AFM Cloud Pro 模型访问权限也按套餐等级分配，200GB 套餐起可用。Home 应用中的视频摘要功能限制摄像头数量：2TB 套餐最多 1 个，6TB 套餐最多 2 个，12TB 套餐最多 5 个。每日限额在午夜重置，不累积到次日。用户达到限额后会收到通知，基础功能如设置定时器仍可正常使用。该政策从 2027 年软件版本开始实施，中国大陆、巴西、欧盟、英国和韩国不提供 iCloud+ 增强访问权限。",
+      "source_name": "daringfireball.net",
+      "score": 8,
+      "depth": 3,
+      "novelty": 5,
+      "category": "tools",
+      "keywords": [
+        "Apple Intelligence",
+        "iCloud+",
+        "usage limits",
+        "Siri"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "The U.S. — Utterly Predictably — Has Lost Measles Elimination Status Under Trump and RFK Jr.",
+      "title_zh": "美国失去麻疹消除地位",
+      "link": "https://www.wsj.com/health/measles-is-back-it-will-take-years-to-eliminate-it-again-9971736e?st=GKiu3E",
+      "pub_date": "2026-11-21T18:28:22.000Z",
+      "summary": "",
+      "source_name": "daringfireball.net",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "measles",
+        "public health",
+        "vaccination"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "Reading List 11/21/2026",
+      "title_zh": "建筑与基础设施领域每周阅读清单",
+      "link": "https://www.construction-physics.com/p/reading-list-11212026",
+      "pub_date": "2026-11-21T13:04:03.000Z",
+      "summary": "",
+      "source_name": "construction-physics.com",
+      "score": 4,
+      "depth": 2,
+      "novelty": 2,
+      "category": "other",
+      "keywords": [
+        "reading list",
+        "infrastructure",
+        "manufacturing"
+      ],
+      "rank": 4
+    }
+  ]
+}
