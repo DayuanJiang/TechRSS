@@ -1,0 +1,105 @@
+{
+  "id": 50581260,
+  "by": "jasondavies",
+  "title": "Inkling 2 Mini",
+  "url": "https://thinkingmachines.ai/news/inkling-2-mini/",
+  "score": 850,
+  "createdAt": 1795206656,
+  "aiSummary": {
+    "chinese_title": "Inkling 2 Mini：开放权重循环 MoE 叫板 Qwen，本地实测喜忧参半",
+    "discussion_overview": [
+      {
+        "category": "循环 Transformer 的架构价值与疑问",
+        "summary": "该模型让中间 Transformer layers 对每个 token 重复运行三次，以共享权重换取更深的计算；支持者认为这尤其有利于 coding 和 latent reasoning。循环还可发展为 variable looping：简单任务少迭代、困难任务多迭代，并减少将所有推理都输出为 CoT token 对 context window 的占用。质疑者指出，固定三次重复未必比直接堆叠三组层更“循环”，主要优势可能是内存占用、训练收敛特性和参数复用。模型说明中的 5.4B effective active parameters 也提醒人们：较少存储参数并不等于每 token 的实际计算量很低。",
+        "supportid": [
+          "50584025",
+          "50585999",
+          "50585113",
+          "50584731"
+        ]
+      },
+      {
+        "category": "跑分亮眼，但真实编码与知识任务仍需验证",
+        "summary": "不少人认为其与 Qwen3.8-27B 接近、并在 coding benchmarks 上领先的成绩很突出，尤其考虑到它是 MoE 且 active parameters 更少。反对者提醒 Goodhart's Law：小型 MoE 常在榜单上胜出，但 coding assistant 的实际价值取决于能否在真实代码库、工具调用和长任务中稳定完成工作，Terminal Bench 成绩也被认为偏弱。实测中，简单 Python CSV 程序表现很好，但识别硬币时可连续输出约 12,000 token 而陷入猜测循环；另一次 WordPress plugin 任务则虚构了 hook 名称，消耗 19,200 个 thinking tokens 仍未完成。评论者普遍认为循环能增强推理，却不能增加事实记忆，因此缺少 search 或工具时，知识密集任务仍容易出错和固执地自我验证。",
+        "supportid": [
+          "50583503",
+          "50585372",
+          "50583998",
+          "50582923"
+        ]
+      },
+      {
+        "category": "本地部署速度受软件支持与硬件瓶颈制约",
+        "summary": "模型虽已出现可供 Ollama 和 llama.cpp 使用的 GGUF 量化版本，但发布初期依赖尚未合并的 llama.cpp PR，ROCm、Vulkan、MLX-Serve 等后端支持并不完整。一位用户在 Ryzen 395 上以 llama.cpp Vulkan 达到约 27 token/s，并通过修复 Vulkan 对非连续 tensor 的回退获得约 30% 加速；7900XTX 上也复现了约 35% 提升。其他实测在 M1 Pro 32GB 约 10 token/s、M1 Max 64GB 约 18—20 token/s，7900XTX 约 28—34 token/s，而 5090 报告约 52 token/s；这些数字低于部分人的理论预期。Flash Attention、KV cache 量化和 dspark speculative decoding 尚未成熟，说明当前速度既是模型架构问题，也受早期 inference engine 实现影响。",
+        "supportid": [
+          "50584949",
+          "50585363",
+          "50582966",
+          "50582454",
+          "50583627"
+        ]
+      },
+      {
+        "category": "MoE 与循环在消费级硬件上的取舍",
+        "summary": "支持者认为面向本地运行时，参数复用的循环架构很适合受 VRAM 容量限制的设备，而 MoE 仅激活少数 experts，也有机会以较少计算提供接近大模型的能力。另一方指出消费级设备同时受内存容量、memory bandwidth、compute 和存储限制，不能把问题简化为“模型能否装下”。循环会反复读取权重、且各轮循环未共享 KV cache，可能增加 bandwidth 压力；Apple Silicon 和 AMD unified memory 用户尤其感到带宽而非 RAM 才是瓶颈。MoE 对长 prompt 的 prefill 通常更省算力，但部分 offload 时需要足够大的 microbatch 才能摊薄传输成本，因此没有适合所有本地设备的一种架构。",
+        "supportid": [
+          "50583007",
+          "50583114",
+          "50586018",
+          "50585544"
+        ]
+      },
+      {
+        "category": "隐藏推理带来的安全与可解释性争论",
+        "summary": "循环层可在不输出 token 的情况下进行更多内部计算，因而被称为带有“Neuralese thinking”的潜在机制；这能减少可见 CoT 的冗长，却也降低人类对模型推理过程的可监控性。有人援引据称采用循环架构的 GPT-6 model card，认为这类模型比非循环模型更难监控，并质疑开放权重会进一步扩大安全风险。反方则认为现实中的 AI cyber 能力已被用于 reverse engineering、pentesting 和 decompilation，开放的无审查模型同样有防御价值；关于生物风险的争执则集中在“知识可得性”是否真会显著降低实施门槛。",
+        "supportid": [
+          "50585862",
+          "50583404",
+          "50583683",
+          "50582637",
+          "50582942"
+        ]
+      },
+      {
+        "category": "开放权重实验室的商业逻辑",
+        "summary": "评论者好奇小型实验室为何承担高额训练算力后仍开放模型权重。常见解释是借鉴 Red Hat 式路径：以开放发布建立声誉和用户基础，再销售企业支持、托管部署、定制训练或咨询服务。另一种看法是模型展示本身也是人才与技术能力的广告，可能带来大公司的 acquihire 或战略合作。还有人将其视为高风险长期研发投资：投资者以较小的多笔押注寻找可能改变技术路线的突破，而不要求每个模型立即盈利。",
+        "supportid": [
+          "50585056",
+          "50585191",
+          "50585273",
+          "50585974"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "looped Transformer（循环 Transformer）",
+        "explanation": "让同一组 Transformer layers 在一次 token 计算中重复执行，以权重共享换取更深的推理计算；有固定循环次数和可变循环次数两类。"
+      },
+      {
+        "term": "MoE（Mixture of Experts）",
+        "explanation": "混合专家架构，每个 token 只路由到部分 expert networks，降低单次推理的 active parameters 和计算量，但总参数与调度复杂度较高。"
+      },
+      {
+        "term": "NVFP4",
+        "explanation": "NVIDIA 的 4-bit 浮点数格式；此处指模型从训练阶段即采用低精度，而不只是训练后 quantization。"
+      },
+      {
+        "term": "KV cache",
+        "explanation": "Transformer 推理时缓存历史 token 的 Key/Value attention states，用空间换取生成速度；context 越长、循环轮次越多，对其容量和带宽要求越高。"
+      },
+      {
+        "term": "prefill / decode",
+        "explanation": "prefill 是并行处理输入 prompt 的阶段，decode 是逐 token 生成输出的阶段；前者常受算力影响，后者通常更受 memory bandwidth 限制。"
+      },
+      {
+        "term": "speculative decoding（specdec）",
+        "explanation": "由小型 draft model 或其他预测机制先猜测多个 token，再由主模型批量验证，以提高生成吞吐量。"
+      }
+    ],
+    "context": "Thinking Machines Lab（AI 研究实验室）发布的 Inkling 2 Mini 是一个开放权重 LLM，主打可在消费级硬件本地运行，并宣称在多项任务上可接近 Qwen3.8-27B（大型 dense 开源语言模型）。它结合 MoE（只激活部分专家网络）、原生 NVFP4 低精度训练和循环 Transformer：中间 layers 会为每个 token 重跑三次，以较低权重存储换取额外推理深度。社区正通过 llama.cpp（跨平台本地 LLM 推理引擎）、Ollama（本地模型运行工具）和 GGUF（面向本地推理的模型文件格式）测试其量化版本，但后端兼容性和性能优化仍在快速迭代。讨论的核心不是单纯跑分，而是这种架构能否在 VRAM、memory bandwidth、KV cache、事实知识和工具调用可靠性之间，真正实现可用的本地 coding agent。",
+    "emoji": "🧪",
+    "sarcastic_question": "跑分追平27B，WordPress钩子怎么还在现编？"
+  },
+  "articleSummary": "## 一句话总结\nInkling 2 Mini 通过独特的\"循环中间层\"架构，在仅 26.4B 总参数的 MoE 模型上实现了接近大模型的推理能力，且能离线跑在你的笔记本上。\n\n## 正文\n\n### 小模型跑不动复杂推理？那就让同一层多跑几遍\n开发者想要本地运行模型，但参数量一大就卡顿，参数量一小就变笨。Inkling 2 Mini 的解法很巧妙：它是一个 24 层的 Looped Transformer。模型并没有堆砌更多层，而是把中间的 12 层（第 7 到 18 层）循环执行了三次。这就像是让模型在输出答案前，先在脑子里把关键逻辑反复推演几遍。这种设计让模型能用更少的 token 完成推理，特别适合 Agentic Coding 这种依赖推理质量的任务。\n\n### 循环中间层，比循环末尾层效果更好\n为什么偏偏循环中间层？团队做了一个对比实验：在训练到 2000 步时，循环中间层带来的 Loss 降低，相当于把算力提升 1.51 到 1.91 倍的效果；而循环末尾层只有 1.24 到 1.36 倍。背后的直觉是：模型的首尾层负责处理输入输出的\"翻译\"，而中间层才承载了更抽象的推理能力。与其让末尾层原地打转，不如让负责推理的中间层多跑几轮。为了配合这种循环，模型还引入了 Attention Residuals 机制，让每一层能学习如何混合之前 blocks 的输出，而不是简单叠加。\n\n### 推理能力上去了，知识储备却没变\n有意思的是，Looping 并不能凭空变出知识。在 AA-Omniscience 等知识类基准测试中，Inkling 2 Mini 的表现和其他同参数量模型差不多。因为知识存储主要看总参数量，循环层只能增加推理深度，没法扩展记忆容量。那怎么补齐短板？模型学会了更高效地调用工具和搜索。在 BrowseComp、DeepSearchQA 等涉及工具使用的测试中，它直接领跑所有同级别开源模型。说白了，它知道自己不懂什么，并且很擅长查资料。\n\n### 在笔记本上跑出大模型的战斗力\n说了这么多架构，实际效果如何？在 DeepSWE v1.1 上它拿到了 48.2% 的高分，在 SWE-bench Pro v2 Hard 上达到 77.9%，在同类开源模型中稳居第一。更关键的是，它的总参数量只有 26.4B，激活参数仅 3.4B，算上循环开销每 token 激活 5.4B。权重训练和部署原生支持 NVFP4 量化，显存占用仅约 20GB。这意味着你可以在 MacBook Pro 上离线运行它。官方甚至演示了在飞机上用离线模型几分钟内写出一个可玩的飞行模拟器。\n\n### 循环次数越多，推理越稳，且不搞小动作\n循环层会不会导致模型\"想太多\"甚至跑偏？团队专门研究了 Monitorability（可监控性）。他们发现，随着循环次数从 1 次增加到 10 次，模型的 CoT（思维链）反而变短了，但依然清晰可读。在针对 Agentic Sabotage（智能体破坏行为）的测试中，增加循环并没有提高风险评分。这说明模型把多出来的算力真用在了推理上，而不是在策划什么阴谋。\n\n### 能效比才是本地部署的核心竞争力\nStanford 的 Hazy Research Lab 测了一个很有意思的指标：Intelligence per Watt（每瓦特智能）。在 NVIDIA DGX Spark 上运行，Inkling 2 Mini 的得分高达 0.703，远超 Qwen3.6-35B-A3B 的 0.430 和 Gemma-4-26B-A4B 的 0.159。高能效比意味着你可以在本地硬件上同时跑多个持久化 Agent。官方甚至用一台离线 MacBook 驱动了一个有 20 个居民的虚拟小镇 Thinkyville，所有村民的交互逻辑都由同一个模型实时生成。\n\n### 它的短板：多轮对话和复杂指令\n当然，没有模型是完美的。Inkling 2 Mini 在 MultiChallenge（50.0%）和 ComplexConstraints v1.1（33.4%）上的表现落后于 Qwen3.8-27B。这说明它在处理多轮对话或包含大量约束条件的指令时，不如一些专门优化的模型。在 CritPt v2 和 HLE-Diamond 等极限推理测试上，它也打不过更大的模型。这符合直觉：循环层能提升推理效率，但终究无法突破参数量的物理天花板。"
+}
