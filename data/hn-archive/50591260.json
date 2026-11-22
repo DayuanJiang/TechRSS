@@ -1,0 +1,83 @@
+{
+  "id": 50591260,
+  "by": "valyala",
+  "title": "PostgreSQL Extensions in Go",
+  "url": "https://jespino.github.io/gopgext/",
+  "score": 130,
+  "createdAt": 1795282840,
+  "aiSummary": {
+    "chinese_title": "Go 编写 PostgreSQL 扩展：易用性、性能与语言选型之争",
+    "discussion_overview": [
+      {
+        "category": "Go 适合性与扩展生态",
+        "summary": "评论者普遍认可降低 PostgreSQL 扩展开发门槛会壮大生态，也认为用 Go 编写扩展颇具吸引力。不过有人质疑 Go 的优势主要在 Kubernetes、网络代理等 platform-level 场景，而数据库扩展更接近 data plane，未必是其最自然的应用位置。另一部分人则直接表示会继续选 pgrx，说明 Rust 工具链在 PostgreSQL 扩展领域已是有力竞争者。",
+        "supportid": [
+          "50595652",
+          "50593479"
+        ]
+      },
+      {
+        "category": "PL/pgSQL、JavaScript 与原生语言的取舍",
+        "summary": "有人讽刺称，LLM 已能生成 PL/pgSQL，若业务复杂到超出它的能力，可能意味着设计本身出了问题。反驳者指出 CPU-heavy 操作中 C 或 Rust 明显快于 PL/pgSQL，且存储引擎级扩展并不能用简单过程语言替代。JavaScript 阵营则推荐 PLV8 和更轻量的 pljs：PLV8 支持 WASM、适合长运行函数，pljs 启动更快，因此短小函数往往执行更快。",
+        "supportid": [
+          "50592838",
+          "50594292",
+          "50594263",
+          "50593662",
+          "50595632",
+          "50593501",
+          "50594261"
+        ]
+      },
+      {
+        "category": "摆脱传统数据库包袱的诉求",
+        "summary": "有评论借此追问：既然重新实现旧思想已很廉价，为何不直接建一个没有历史包袱的新数据库。其具体不满集中于 SQL、难以预测且复杂的 query planning，以及默认隔离级别的安全性不足。回应中列出 Turborel 和 pgrust 等项目，表明一些开发者正在尝试另起炉灶，而非仅为 PostgreSQL 增加新的语言绑定。",
+        "supportid": [
+          "50593626",
+          "50593857",
+          "50594824",
+          "50594657",
+          "50593775"
+        ]
+      },
+      {
+        "category": "语言吉祥物与页面细节的轻松讨论",
+        "summary": "最高层讨论意外聚焦 Go 的 gopher 吉祥物，认为它可爱且便于项目营销时进行创意改造。评论者将其与 Rust 的 Ferris 螃蟹、PHP 的 elephpant 大象及 Java 的 Duke 对比，认为 PHP 吉祥物衍生品尤其丰富，而 Duke 的辨识度较低。另有人指出网页 dark mode 下代码片段的括号不可见，属于文档可读性问题。",
+        "supportid": [
+          "50592016",
+          "50594719",
+          "50594900",
+          "50594665",
+          "50595963",
+          "50592600"
+        ]
+      },
+      {
+        "category": "相关项目的补充",
+        "summary": "评论者补充了 plgo，说明在 PostgreSQL 中使用 Go 并非孤立的新尝试。原作者此前还做过 gokm，即用 Go 编写 Linux kernel modules 的项目，显示其持续探索将 Go 带入传统上由 C 主导的底层扩展场景。这些链接也使讨论从单一实现方案扩展到 Go 的系统编程边界。",
+        "supportid": [
+          "50592811",
+          "50592937"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "PL/pgSQL",
+        "explanation": "PostgreSQL 内置的过程式语言，可在数据库内编写函数、触发器和存储过程。"
+      },
+      {
+        "term": "PLV8",
+        "explanation": "将 Google V8 JavaScript 引擎嵌入 PostgreSQL 的扩展，使数据库函数可用 JavaScript 编写，并可支持 WASM。"
+      },
+      {
+        "term": "pljs",
+        "explanation": "另一种 PostgreSQL JavaScript 过程语言实现，强调较低启动开销和轻量执行。"
+      }
+    ],
+    "context": "PostgreSQL（开源关系型数据库）允许通过 extension 扩展函数、索引、数据类型乃至存储访问方法；传统上这类底层扩展多用 C 编写。帖子介绍以 Go 编写 PostgreSQL 扩展的方案，并引出 pgrx（用于开发 PostgreSQL 扩展的 Rust 框架）、plgo（Go 语言的 PostgreSQL 扩展项目）等替代路径。讨论的核心前提是：简单数据库逻辑可用 PL/pgSQL（PostgreSQL 内置过程语言）完成，但高 CPU 负载或存储引擎级工作常需 C/Rust；JavaScript 路径则在 PLV8（基于 V8 的扩展）与 pljs（较轻量的 JS 过程语言）之间权衡启动成本和功能。更广泛的争论还涉及 SQL、query planner（将 SQL 转换为执行计划的优化器）和事务隔离模型是否构成传统数据库的历史负担。",
+    "emoji": "🤔",
+    "sarcastic_question": "能跑在数据库里，就非得把每种语言都塞进去吗？"
+  },
+  "articleSummary": "## 一句话总结\ngopgext 是一个实验性工具，利用 TinyGo 将纯 Go 代码编译成 PostgreSQL 扩展，自动生成 C 胶水代码，让你能用 Go 轻松编写存储过程、触发器甚至索引访问方法。\n\n## 正文\n\n### 把 Go 塞进大象肚子的野心\n写 PostgreSQL 扩展 traditionally 是件苦差事，通常得用 C 或者受限于 PL/pgSQL 的性能。这个项目叫 `gopgext`，它的核心思路很直接：能不能直接写 Go，然后把它变成 PostgreSQL 能懂的扩展？作者给出的方案是利用 TinyGo。你只需要在 Go 函数上加个注释 `//gopgext:function`，剩下的 C 胶水代码、安装脚本、控制文件，全都由工具自动生成。这就像是给 Go 穿上了一件大象的外套，让数据库以为这就是个原生扩展。\n\n### 别高兴太早，这是“硬核实验品”\n在深入技术细节前，必须先泼盆冷水。作者明确标示这是 Experimental。千万别直接上生产环境。为什么？因为生成的代码和 Go runtime 是直接跑在 PostgreSQL 服务器进程里的。如果 Go 代码崩了或者内存坏了，整个数据库进程可能直接挂掉，甚至导致数据损坏。这不像普通的客户端应用，这是在心脏上动手术，风险自担。\n\n### 只要能编译通过，就能跑成 SQL 函数\n抛开风险，看看它怎么工作的。一个项目就是普通的 Go 文件，标准库里的 `fmt`、`regexp`、`encoding/json` 甚至 `crypto/*` 都能用，泛型、迭代器、`defer`/`recover` 也都支持。类型映射方面做得挺完善，Go 里的 string、数字、数组、UUID、JSON 都能自动映射到对应的 SQL 类型。你甚至可以在 Go 里定义自己的复合类型。比如写一个 `Hello(name string) string` 函数，加上注解，编译安装后，就能直接在 psql 里 `SELECT hello('world')`。\n\n### 错误处理与并发：不仅仅是简单的函数映射\n如果只是简单的类型转换，那也没多大意思。有意思的地方在于它对数据库交互的深度支持。你可以通过 SPI（Server Programming Interface）在 Go 里执行 SQL，错误处理也对接了 PostgreSQL 的 SQLSTATE 机制。比如代码里的 `pg.Errorf(pg.CodeInvalidParameterValue, \"nothing to shout\")`，会直接抛出数据库能识别的错误码。此外，它还支持 `parallel=safe` 这样的标记，确保函数在并发环境下安全运行，不会搞垮 backend。\n\n### 玩得更深：触发器、索引与内核级扩展\n这个工具的能力上限远不止写几个函数。如果你想玩点高级的，它支持编写 Triggers、Aggregates，甚至能实现 GiST、GIN、SP-GiST 和 BRIN 这种底层的 Operator Classes 和 Index Access Methods。连 Foreign Data Wrappers（FDW）和 Query Hooks 都能写。说白了，它不只是让你写逻辑，而是让你用 Go 去扩展数据库的引擎本身。为了证明这套架构的可靠性，作者甚至把 PostgreSQL 官方的 contrib 模块（像 `pgcrypto`、`hstore`、`cube` 等）用 Go 重写了一遍，并且通过了原版的回归测试。\n\n### 安全共存与底层实现\n你可能会担心，一个 backend 里加载多个 Go 扩展会不会打架？作者的设计是安全的。PostgreSQL 的错误不会穿过 Go 的调用栈乱窜，返回结果也是复制进 PostgreSQL 的内存管理的。这背后的实现原理，其实借鉴了作者另一个项目 `gokm`——那个项目是用 Go 写 Linux 内核模块的。套路一样：定制 TinyGo 的 target 和 runtime，配合宿主（这里是 PGXS）的构建系统，最后生成胶水代码把两边粘起来。虽然现在还处于实验阶段，但这套“Go 进军系统底层”的打法，确实让人眼前一亮。"
+}

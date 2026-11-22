@@ -1,0 +1,103 @@
+{
+  "id": 50590279,
+  "by": "reverseblade2",
+  "title": "Show HN: Zero C#, Power of C# without any GC",
+  "url": "https://onurgumus.github.io/zero-csharp/index.html",
+  "score": 124,
+  "createdAt": 1795278040,
+  "aiSummary": {
+    "chinese_title": "Zero C#：用 arenas 去 GC 换裸机小二进制，却丢失 C# 生态",
+    "discussion_overview": [
+      {
+        "category": "生态与兼容性代价过高",
+        "summary": "批评者认为，C# 的语言、标准库和 CLR runtime 从根本上都围绕 GC 设计；移除 GC 后，既有程序和库通常无法直接使用。该方案连 strings、许多标准库 API 与 Reflection 都不完整或缺失，实际项目会很快退化为“语法较漂亮的 C”。即使是很小的 Windows 工具，若频繁调用 WinAPI，也可能需要重写全部资源与对象生命周期管理。因而它较难承接普通 .NET 应用，而非仅是替换编译后端。",
+        "supportid": [
+          "50592488",
+          "50593226",
+          "50591690",
+          "50594139",
+          "50591330",
+          "50594098"
+        ]
+      },
+      {
+        "category": "GC 并非天然性能瓶颈",
+        "summary": "许多观点强调 GC 是以降低内存泄漏、double-free 和 use-after-free 风险为代价很划算的工程特性，而不是必须消灭的缺陷。现代 .NET 提供 unsafe pointers、Marshal、Span<T>、ref struct、stackalloc、对象复用和 unmanaged memory，使热点路径可显著减少分配。Generational moving GC 对短命对象类似高速 bump allocator，且避免了 malloc/free 的簿记成本与碎片化问题。实践案例包括以 SustainedLowLatency 运行的工业相机系统持续处理 8 路约 800Mb/s 数据流，数月内未发生额外分配；另一个 LOH 问题也通过 GCHeapHardLimit 和 compaction 得到缓解。",
+        "supportid": [
+          "50591011",
+          "50592804",
+          "50590877",
+          "50593596",
+          "50591105",
+          "50593672"
+        ]
+      },
+      {
+        "category": "暂停不可预测性与显式内存模型",
+        "summary": "支持无 GC 或更强控制的一方主要担心 tracing GC 带来的随机 pause，而非认为所有 GC 程序都慢。Zero C# 采用 arena allocator：内存在一个 arena 中累积，并在明确的阶段整体释放，这适合请求结束等边界清晰的工作负载。反对者指出，复杂对象生命周期和并发场景很难恰好落在这些边界内，arenas 并不通用，仍可能需要 malloc/free 式能力。也有人主张 reference counting 更贴合 C# 风格，因为可保证确定性释放，但必须承受原子计数、循环引用和级联释放等新成本；另一种诉求是 .NET 提供更可靠的 frozen GC 模式，允许先加载后长期只分配、由应用自行选择暂停时机。",
+        "supportid": [
+          "50590748",
+          "50591068",
+          "50592329",
+          "50593334",
+          "50593298",
+          "50593021"
+        ]
+      },
+      {
+        "category": "定位应是裸机、演示与极端延迟场景",
+        "summary": "较宽容的评价将项目视为建立在 bflat（将 C# 编译成极小型 native/bare-metal 程序的项目）之上的有趣 POC，适合 demo-scene、小型游戏、UEFI 或 MS-DOS 之类的特殊目标。它可能产出远小于常规 .NET 的二进制，并以 C# 语法编写无需完整 runtime 的 native 代码。NativeAOT 不能等同于它：NativeAOT 主要消除 JIT、尽力保留 CLR/BCL 兼容性且仍有 GC，而此方案主动剥离 runtime 和生态。评论者因此普遍不建议用它建设长期产品，维护 .NET runtime fork 的成本也很高。",
+        "supportid": [
+          "50591360",
+          "50593372",
+          "50594049",
+          "50592170",
+          "50590973",
+          "50594029"
+        ]
+      },
+      {
+        "category": "为何不直接选择 Rust、Zig、C++ 或 Beef",
+        "summary": "多数人认为，若目标就是无 GC 的通用应用，Rust、Zig、C 或 C++ 已有成熟的内存模型、工具链和生态，通常是更现实的选择。Rust 被看作能提供 memory safety 的强候选，而 Zig 的 arena 使用方式也更完善；Beef 则被提及为更接近“native C# 风格语言”的尝试。支持项目者反驳说，C++ 的规则、依赖管理和历史包袱令人厌烦，熟悉 C# 的开发者可能仍想要更低层的 C# 语法。争议最终落在：仅保留语法是否足以抵消失去库、运行时能力与安全保障的代价。",
+        "supportid": [
+          "50591983",
+          "50595003",
+          "50591519",
+          "50590693",
+          "50591611",
+          "50591280"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Generational GC（分代垃圾回收）",
+        "explanation": "将对象按存活时间分代处理；短命对象可在年轻代快速回收，常具有类似 bump allocation 的高吞吐特性。"
+      },
+      {
+        "term": "Arena allocator（区域/arena 分配器）",
+        "explanation": "把多次分配归入一个内存区域，通常在一个明确阶段整体释放，避免逐对象 free，但要求对象生命周期适合该边界。"
+      },
+      {
+        "term": "NativeAOT",
+        "explanation": ".NET 的提前编译机制，移除 JIT 以生成 native binary，但通常仍保留 CLR/BCL 兼容性和 GC，并不等于无运行时内存管理。"
+      },
+      {
+        "term": "CLR/BCL",
+        "explanation": "CLR 是 .NET 的公共语言运行时；BCL 是其基础类库。两者提供 GC、类型系统、字符串、反射及大量常用 API。"
+      },
+      {
+        "term": "LOH（Large Object Heap）",
+        "explanation": ".NET 中存放大对象的堆区域；其分配和压缩策略与普通托管堆不同，可能影响内存峰值与延迟。"
+      },
+      {
+        "term": "Reflection（反射）",
+        "explanation": "程序在运行时检查类型、成员和元数据并动态调用的机制；通常需要保留额外元数据和 runtime 支持。"
+      }
+    ],
+    "context": "Zero C# 是一个基于 bflat（将受限 C# 编译为小型 native 或 bare-metal 程序的项目）的实验性方向：它剥离 .NET 的 CLR（公共语言运行时）、BCL（基础类库）与自动 GC，改以 arenas 等显式方式管理内存。它与 NativeAOT 不同：NativeAOT 是 .NET 的提前编译方案，重点是移除 JIT 并尽量保持正常 .NET 兼容性，GC 仍存在；Zero C# 则以大幅不兼容换取更小、更简单的产物。讨论的核心背景是低延迟、游戏、嵌入式和裸机程序不希望遭遇不可预测的 GC pause，但现代 .NET 也已提供 Span<T>、unsafe、stackalloc、NoGCRegion 和低延迟 GC 模式来控制分配。争论因此不是 GC 是否绝对好坏，而是极端可预测性是否值得放弃成熟的 C# 库、运行时功能和内存安全便利。",
+    "emoji": "🤔",
+    "sarcastic_question": "删掉运行时和生态后，C#还剩多少不是语法糖？"
+  },
+  "articleSummary": "## 一句话总结\n这是一个基于 bflat 的 C# 编译器分支，通过剔除 GC 和 Runtime、引入 Arena 内存管理，将 C# 代码编译为极小的原生二进制文件，甚至能在 DOS 上运行。\n\n## 正文\n\n### 留下语法糖，扔掉整个运行时\n如果你曾羡慕 C# 的语法优雅，却又头疼于 .NET Runtime 的臃肿，这个项目就是为你准备的。它的核心思路很直接：把 C# 编译成纯粹的原生代码，不带任何运行时依赖。结果相当惊人——一个 Hello World 程序在 Windows 上只有 11 KB，在 Linux 上也不过 40 KB。这意味着你不需要在目标机器上安装任何框架，生成的二进制文件直接就能跑。\n\n### 语法特性一个不少，但内存管理得自己动手\n别以为砍掉 Runtime 就要回到原始时代写 C 代码，现代 C# 的甜头你都能尝到。编译器完整保留了 C# 15 的特性，包括 Unions、扩展成员，以及最新的内存安全规则。泛型是真正的泛型，会为每个类型生成专门的拷贝；Record、Tuple、Lambda 这些高级特性也照常工作。甚至 `Parallel.For` 这种多线程支持都在。但代价也是显而易见的：没有垃圾回收（GC），没有反射，也没有 Async。`new` 出来的对象不会自动回收，异常也不能被捕获——`throw` 直接终结程序，错误处理得靠返回 Union 类型来解决。\n\n### 用 Arena 内存池替代 GC 的那一套\n那没有 GC，内存怎么管？项目给出的方案是 Arena（内存池）。说白了就是一次性申请一大块内存，程序运行期间随意使用，等到某个生命周期结束时，一次性全部释放。这种方式虽然不如 GC 精细，但胜在确定性强、没有 STW 停顿。字符串处理也做了特殊优化，`Out.Line` 直接格式化输出到缓冲区，避免了中间字符串对象的创建。必须长期保存的数据，就扔进 Arena 里存着。\n\n### 同一份代码，横跨 40 年的硬件都能跑\n最让人眼前一亮的是它的跨平台能力，这可不是简单的\"支持 Linux 和 macOS\"。同一份代码，编译后能在 Linux、macOS、Windows 上跑，也能编译成 WebAssembly (WASI) 模块。最绝的是，它甚至支持 DOS 系统——只要 386 处理器就能跑。作者在 Bochs 模拟器的 i386 模式下测试通过，生成的 EXE 文件只有 16 KB。这种\"一份代码，从 DOS 跑到 WebAssembly\"的能力，确实展示了原生编译的威力。\n\n### 开发体验：安全规则强制上线\n为了弥补没有 GC 带来的内存安全隐患，编译器强制开启了 C# 15 的内存安全规则。创建指针是安全的，但通过指针读取数据会被标记和解释。这种设计在给予开发者底层控制权的同时，试图通过编译期的严格检查来规避常见的内存错误。对于有经验开发者来说，这是一种在性能和安全之间寻找平衡的尝试，既不像 Rust 那样所有权系统极其严格，也不像 C/C++ 那样完全放养。"
+}

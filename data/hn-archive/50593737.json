@@ -1,0 +1,101 @@
+{
+  "id": 50593737,
+  "by": "raphlinus",
+  "title": "Advice for the next 100 Rust GUIs",
+  "url": "https://linebender.org/blog/next-100-guis/",
+  "score": 137,
+  "createdAt": 1795302638,
+  "aiSummary": {
+    "chinese_title": "下一代 Rust GUI：成熟生态、渲染架构与“AI 会写代码”之争",
+    "discussion_overview": [
+      {
+        "category": "生态仍缺成熟统一方案，Slint、Egui 与新框架各有取舍",
+        "summary": "一些人认为 Slint（面向嵌入式和跨平台的 Rust UI 框架）被低估：其团队有 Qt 背景，DSL 让布局和数据绑定较直接，桌面端采用 Skia 渲染器也同时覆盖软件与 GPU 加速。反对者指出其商业授权会阻碍采用，尽管开源产品和融资或营收低于 200 万美元的公司可免费使用；其更可能依靠需认证和合规的嵌入式、汽车或航空市场盈利。Egui 仍被视为 Rust GUI 中相对成熟、稳定且灵活的选择，而 GPUI 等方案的组件完整度尚未达到同一水平。新近出现的 Native Shell 则以 React 风格响应式、CSS/Tailwind 样式、Taffy 布局及 Web 输出吸引前端开发者，但其快速迭代是否等于长期成熟仍有待验证。",
+        "supportid": [
+          "50595927",
+          "50595961",
+          "50595994",
+          "50595553",
+          "50595468",
+          "50595520"
+        ]
+      },
+      {
+        "category": "Rust 自研 GUI 性能亮眼，但生产级细节成本高",
+        "summary": "实际开发者描述，自定义 Rust GUI 能实现流畅滚动、Markdown 渲染和 shader 动画，性能上限与 TypeScript 方案有显著差距。代价是文本选择、换行、输入光标定位等看似基础的能力都需投入大量工程工作，而这些细节恰是成熟 UI 社区和完整工具包的价值所在。有人因此主张直接以 Flutter 负责 UI、通过 flutter_rust_bridge 调用 Rust；也有人建议沿用 Qt 的跨平台能力，只把非 UI 部分放进 Rust。对此的核心障碍是 Qt 传统的可变对象树和重继承模型与 Rust 的所有权、借用约束并不自然契合，桥接层又可能重演 React Native 的性能问题。",
+        "supportid": [
+          "50595515",
+          "50594841",
+          "50595594",
+          "50596419",
+          "50594782",
+          "50596595",
+          "50596901"
+        ]
+      },
+      {
+        "category": "Immediate mode 与 retained mode 不存在简单的性能胜负",
+        "summary": "对 immediate-mode GUI 的常见批评是：生产级设计或效率应用需要稳定 widget identity、accessibility tree、文本布局缓存和合成器分层，最终会逐步长成 retained-mode 的混合系统。该观点用编译器作类比：起初避开 SSA 可降低实现复杂度，但当需要成熟优化时，缺乏合适中间表示会使补丁式簿记越来越困难。另一方认为 Egui 已缓存 galley、glyph 与布局，使用纹理图集减少 GPU 上传，并按输入和动画按需绘制；许多 retained-mode UI 反而因通用布局、多轮更新和 change tracking 变慢。支持 immediate mode 的人还强调，可针对真实瓶颈选择性加入缓存，并把状态直接置于 Bevy 的 ECS 中；而 React、SwiftUI 一类系统常要求把数据重塑为 keys、signals、stores 或可 diff 的小对象，才能让框架识别变化。",
+        "supportid": [
+          "50595125",
+          "50596733",
+          "50596926",
+          "50595575",
+          "50595741"
+        ]
+      },
+      {
+        "category": "渲染、视频层与可访问性是框架架构试金石",
+        "summary": "渲染后端的选择涉及兼容性而非单纯新旧：有人偏好 wgpu（Rust 的跨图形 API 抽象），也有人认为 Skia 对缺少现代 GPU 的设备更稳妥；反驳意见则指出 wgpu 也覆盖 WebGL2、OpenGL、Metal 和 Vulkan。视频播放暴露了窗口合成架构的限制：当游戏引擎只拥有一个 swapchain 时，视频帧可能只能复制到纹理后再合成，无法获得独立的硬件加速 layer。可访问性也被视为生产 GUI 的基本能力，因为自动化工具可借助按钮的 role 和 name 精确定位控件；设计不佳的应用则迫使工具退回截图识别。Windows 所谓“没有明确原生选择”并非没有 MFC，而是微软的多套原生 UI toolkit 并存、视觉风格分裂。",
+        "supportid": [
+          "50596567",
+          "50596832",
+          "50597010",
+          "50595690",
+          "50596173",
+          "50596234",
+          "50596470"
+        ]
+      },
+      {
+        "category": "AI 是否抹平语言选择，引发对工程现实的反讽",
+        "summary": "一派认为当 AI 能生成和重写代码时，围绕语言的争论已过时，产品体验比技术栈更重要；甚至有人因模型更擅长 C++ 而将其作为默认选择。质疑者认为这类说法等同于既不写也不读代码，因此不能构成选择 Rust 的理由；AI 降低样板代码成本，并未自动消除维护、调试和架构责任。性能讨论也不能只归因于语言：在有数 MB RAM 的一般桌面环境中，GUI 性能常被布局、渲染和框架架构主导，但 Rust 的不成熟 toolkit 仍可能输给 WinUI+C++ 或 SwiftUI+Swift。另有观点指出 C++、ObjC、Swift 各自具有工具链、历史包袱或团队治理问题，Rust 并非完美，却也不是无缘无故被考虑。",
+        "supportid": [
+          "50596431",
+          "50594838",
+          "50595605",
+          "50595239",
+          "50596690",
+          "50595957",
+          "50596147"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "immediate mode GUI（即时模式 GUI）",
+        "explanation": "应用在每帧重新描述和绘制界面；编程直接，但通常需自行处理状态、缓存、控件 identity 和 accessibility 等生产需求。"
+      },
+      {
+        "term": "retained mode GUI（保留模式 GUI）",
+        "explanation": "框架持久保存 UI 对象树、布局和状态，并通过变更追踪进行局部更新；功能体系较完整，但可能带来 diff、簿记和布局开销。"
+      },
+      {
+        "term": "Egui / imgui",
+        "explanation": "Egui 是 Rust 的 immediate-mode GUI 库；imgui 泛指即时模式界面范式，也常指 Dear ImGui 这一具体实现。"
+      },
+      {
+        "term": "widget identity（控件身份）",
+        "explanation": "用于跨渲染周期稳定识别同一控件的标识，是保留状态、增量更新和构建 accessibility tree 的关键。"
+      },
+      {
+        "term": "Skia 与 wgpu",
+        "explanation": "Skia 是成熟的 2D 图形渲染库；wgpu 是 Rust 的跨平台 GPU API 抽象，面向 Vulkan、Metal、DX12、OpenGL 和 WebGL 等后端。"
+      }
+    ],
+    "context": "原讨论围绕一篇为未来 Rust GUI 框架提出设计建议的文章展开，背景是 Rust 在安全性和性能上有吸引力，但桌面与跨平台 UI 生态仍高度分散。争论的核心架构选择是 immediate mode（每帧描述界面）与 retained mode（持久维护控件树）如何兼顾性能、文本排版、accessibility 和复杂应用的可维护性。Egui（Rust 的即时模式 GUI 库）、Slint（兼顾桌面和嵌入式的声明式 UI 框架）、Native Shell（基于 gpui-fast 的新型跨平台框架）被拿来作为不同路线的实例。讨论还将 Rust 自建 UI 与 Qt（成熟的 C++ 跨平台 UI toolkit）、Flutter（以 Dart 为主的跨平台 UI 框架）及 Web/React 式开发比较，并质疑 LLM 编程是否真能消除工具链成熟度和架构设计的差异。",
+    "emoji": "🦀",
+    "sarcastic_question": "AI 都替你写了，缺的控件谁来补？"
+  },
+  "articleSummary": "## 一句话总结\nRust GUI 的基础设施已日渐成熟，但在系统合成与架构设计上仍需打破“大一统”的幻想，转向模块化、关注性能极限的精细化构建。\n\n### 核心驱动力：AI 正在重写 Rust GUI 的成本公式\nRust 做 GUI 的诱惑一直都在：Electron 太吃内存，原生工具箱又停滞不前。但过去几年，真正能打的旗舰应用寥寥无几，Zed 编辑器及其背后的 GPUI 框架算是为数不多的亮点。Zed 证明了 Rust GUI 确实能跑起来，甚至 Discord 都在基于它重写桌面端。但 GPUI 并非万能药，它的渲染引擎是为文本编辑器量身定制的，缺乏成熟的渐变和滤镜支持，并不适合所有通用场景。更有意思的是，AI 正在改变游戏规则。虽然写 Rust 比 TypeScript 难，但 LLM 生成 Rust 代码的成本并不比其他语言高，反而因为其强类型系统更容易维护。既然成本拉平，何不选个更安全、更快的？\n\n### 移动端的现实：原生 UI 依然是最佳解，但 Rust 正在突围\n在桌面端，“原生”定义模糊，Windows 甚至没有连贯的 GUI 策略。但在移动端，细节决定成败。iOS 的 Liquid Glass 效果、手势识别、输入法（IME）体验，跨平台工具箱很难做到 100% 还原。所以，像 Shopify 放弃 React Native、1Password 和 Discord Mobile 那样，用原生 UI 包裹 Rust 业务逻辑，目前看来是条极其务实的路子。不过，纯 Rust 移动端 UI 也在进步，比如 `android-view` 已经搞定了滑动输入、语义删除等复杂的 IME 功能，甚至 CJK 的组合输入也能跑通了。\n\n### 基础设施翻身仗：文本布局与无障碍访问不再是拦路虎\n回望 2022 年，文本布局曾是个大坑。现在，得益于 Google、Canva 等公司的持续投入，Parley 已经成为生态圈的标准解法，绝大多数新出的 Rust UI 工具箱都在用它。Cosmic Text 则是一个不错的备胎，避免了生态 monoculture（单一文化）的风险。无障碍方面，AccessKit 也已经站稳脚跟。但这里有个坑：好的集成和“打勾式”集成是两码事。比如 egui，虽然支持了无障碍，但因为它每帧都要重建和 diff 树，一旦开启无障碍功能，性能就会断崖式下跌，这就背刺了 Immediate Mode 的设计初衷。\n\n### 系统合成器的缺失：视频流畅度的最后一公里\n文本搞定了，但系统合成器还是个老大难。现在的应用越来越依赖视频，如果你不能利用硬件加速层来播放视频，低端设备上的帧率就没法看。目前虽然有 `subduction` 库在尝试解决，但离普及还很远。理想方案是提供一个像 Apple `CALayer` 那样的高层接口，并在其他平台上用 GPU Shader 做 polyfill。这活儿很难，因为各平台能力差异巨大，但必须得有人做，哪怕是“为了存在而存在”。\n\n### 架构之争：Immediate Mode 只能走完前 90% 的路\nImmediate Mode（立即模式）写起来爽，代码少，逻辑简单，游戏开发里用得很多。但作者直言不讳：它很难 Scale。它擅长解决前 90% 的问题，却让后 90% 的优化变得地狱难度。要实现生产级应用，你需要稳定的 Widget ID 来更新无障碍树，还要缓存昂贵的中间产物（比如文本布局）。Immediate Mode 倾向于每帧重绘，这直接跟利用系统合成器 Layer 的优化思路背道而驰。这也是为什么作者不看好 ArtCraft 项目选用 egui 的原因——做生产力工具，Immediate Mode 并不是最佳选择。\n\n### 模块化设计：LLM 时代的生存法则\n现在的趋势是：LLM 擅长处理边界清晰的模块。所以，未来的 UI 架构应该把“设计”和“执行”拆开。SwiftUI 把控件、响应式框架和语言揉在一起，这在 LLM 时代可能不是最优解。反观 Xilem/Masonry 的分离设计，Xilem 管响应式，Masonry 管底层控件，互不干扰，这才是更灵活的姿势。作者建议借鉴 Web 标准（毕竟有 WPT 这种金标准测试集），但不要盲从。DOM 太重，CSS 解析太慢，我们需要的是经过性能优化的 Web 标准子集。\n\n### 性能优化的极限：向低端 Android 手机要流畅\n其实，只要用优化过的 Rust 代码跑，性能通常已经爆杀现有的 GUI 框架了。但能不能在低端 Android 手机上跑出丝滑感？这才是挑战。一个思路是“动静分离”：把静态设计部分预计算，只对动态部分做全量处理。另一个是优化 Layer 的使用。Layer 能避免重绘，但占内存，开多了反而慢。这需要精细的权衡，要么靠测量，要么靠分析，单纯靠启发式规则已经不够用了。\n\n### 结语：告别大一统，拥抱多样性\n以前大家总想做一个“大一统”的通用 GUI 框架，这个想法可能过时了。不同应用的需求差异太大，与其追求通用，不如利用 LLM 针对特定场景做深度优化。未来的 Rust GUI 生态，可能不会由某一个框架统治，而是涌现出一批针对不同垂直领域优化的、模块化的高质量组件。"
+}

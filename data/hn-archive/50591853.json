@@ -1,0 +1,102 @@
+{
+  "id": 50591853,
+  "by": "k__",
+  "title": "Inkling-2-Mini in 5.4 GB Memory",
+  "url": "https://github.com/ShinMegamiBoson/lookatmyquant",
+  "score": 378,
+  "createdAt": 1795285839,
+  "aiSummary": {
+    "chinese_title": "Inkling-2-Mini 压至 5.4GB：量化宣传、实测质量与推理支持均受质疑",
+    "discussion_overview": [
+      {
+        "category": "5.4GB 量化结果缺乏可信验证",
+        "summary": "多位评论者认为该 GitHub repo 的 README 混杂多个模型和历史版本，连“1.2GB 文件”“Text Size”等表述都难以对应当前产物，因此“12X better”等标题级宣传不应直接采信。针对 Inkling-2-Mini 的数据，有人指出 5.4GB 版本在 English/chat/code 上的 KL divergence 为 0.0895，已差于 Unsloth 的 UD-IQ1_S 的 0.0808；在 13 种语言上的差距更大，为 0.287 对 0.124。评论还称 GSM8K 与 HumanEval 的提升处在噪声范围，却被夸大叙述。结论是应优先使用官方 GGML、Unsloth 或成熟社区量化版本，并等待可复现实测，而非相信凌乱 README 的压缩奇迹。",
+        "supportid": [
+          "50593478",
+          "50593690",
+          "50592929"
+        ]
+      },
+      {
+        "category": "KL divergence 与基准分数不能替代实际可用性",
+        "summary": "评论者警告，logits 分布相近或单项 benchmark 分数漂亮，并不保证模型在真实任务中仍然可靠；极低 bit 的 GLM-5.3 虽在散度图上约有原模型 80% 水平，实际体验却很差。一个关键漏洞是 calibration data 与 validation dataset 的选择往往未公开，若都使用 WikiText，KLD 验证就可能只是数据泄漏式的好看数字。实际案例中，glm-5.3-flash 的 q2 版本连 tool call 都很吃力，q3 才勉强可用。部分用户因此偏好 q8_0，内存紧张时才退到 q4_0，并对进一步量化 KV cache 保持谨慎。",
+        "supportid": [
+          "50593582",
+          "50594412",
+          "50594479",
+          "50594983",
+          "50594189",
+          "50595494"
+        ]
+      },
+      {
+        "category": "本地模型进步迅速，但能力边界仍依任务而定",
+        "summary": "一派认为开源本地模型与 frontier lab 模型主要是约半年到一年的时间差，而不是不可跨越的能力鸿沟；知识广度不足可通过 web search、预审知识包和工具调用补足。另一派则不相信 Inkling-2-Mini 可实际媲美 Opus 4.6：它虽富有创造性、写作自然且工具调用不错，但官方也承认其不擅长多轮聊天及多约束指令，并且对纠错的响应不如 Muse Glimmer 等模型。讨论强调，post-training 所塑造的验证、检查和协作行为，会显著影响“好不好用”的主观感受，未必只由参数规模或原始知识决定。用户认可本地部署的隐私、模型不被 sunset、不会被限流等价值，但 Cursor 等 coding harness 尚未默认开源模型，也被视为能力或产品成熟度仍有差距的反证。",
+        "supportid": [
+          "50593225",
+          "50594724",
+          "50594979",
+          "50595099",
+          "50594241",
+          "50594666",
+          "50594921"
+        ]
+      },
+      {
+        "category": "速度争议主要归因于推理引擎尚未适配",
+        "summary": "有人在 R9700 上发现该模型只有 Qwen 27B 约三分之一速度，怀疑 looped transformer 架构或 kernel 尚未优化；但另一些硬件组合报告了截然不同的结果。RTX 4060 8GB 上有人得到约 6.7 tok/s，而使用特定 ninfer build 的案例达到 77 tok/s，对比 llama.cpp 的 30 tok/s；在 Strix Halo 配合 optimized kernels 和 speculative decoding 时，full weights 的 decode 可达 30–45 tok/s。评论普遍认为模型发布尚不足一天，llama.cpp 等通用引擎还未充分适配，使用 NVIDIA toolkit 编译、调整 `-ub`，或改用 vLLM、MLX、Radiance、专用引擎都会改变结论。因而当前慢速不必然代表模型本身低效，但也不能把未来可能的优化当成现有可得性能。",
+        "supportid": [
+          "50592987",
+          "50593168",
+          "50593400",
+          "50594336",
+          "50595186",
+          "50593045",
+          "50593278",
+          "50593845"
+        ]
+      },
+      {
+        "category": "原生低精度训练与平台限制使部署更复杂",
+        "summary": "模型卡称原始 checkpoint 约 20GB，采用混合 NVFP4 与 MXFP8；评论指出这不是普通的 QAT 后量化，而是大部分权重原生以 NVFP4 训练和部署，最后四层使用 MXFP8。质疑者因此追问：既然 QAT 或原生低精度训练是为特定格式适配量化误差，再压到不对应的格式是否仍有理论保障。支持者解释，流程可能先回到 BF16，再以较小格式重新量化和 finetune，目标是让仅有 8GB 或 16GB 空闲内存的 Apple Silicon Mac 也能运行。当前发布文件和 drafter 偏向 MLX/Apple Silicon，ht2/ht3 的 trellis code 依赖定制 Metal kernels，llama.cpp 尚不能直接运行，进一步限制了“5.4GB 随处可用”的含义。",
+        "supportid": [
+          "50592509",
+          "50592650",
+          "50594181",
+          "50593019",
+          "50592907"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "量化（Quantization）",
+        "explanation": "把模型权重或缓存从高精度数值压缩为低 bit 表示，以减少 RAM/VRAM 占用；bit 越低通常越省内存，也越可能损失推理质量。"
+      },
+      {
+        "term": "KL divergence（KLD，KL 散度）",
+        "explanation": "衡量量化模型输出概率分布与原模型输出分布差异的指标；它依赖验证数据集，数值较低不必然等同于真实任务表现更好。"
+      },
+      {
+        "term": "QAT（Quantization-Aware Training）",
+        "explanation": "量化感知训练：在训练或微调时模拟量化误差，使模型更能适应指定低精度格式；不自动保证换一种量化格式后仍保持质量。"
+      },
+      {
+        "term": "KV cache",
+        "explanation": "Transformer 在生成时缓存历史 token 的 Key/Value 张量，用于避免重复计算；量化它可节省长上下文显存，但可能影响输出稳定性。"
+      },
+      {
+        "term": "tok/s",
+        "explanation": "tokens per second，每秒生成 token 数，是本地 LLM decode 速度的常用指标；其结果高度依赖硬件、上下文长度、kernel 和推理引擎。"
+      },
+      {
+        "term": "NVFP4 / MXFP8",
+        "explanation": "面向低精度推理的浮点格式；NVFP4 与 NVIDIA 生态关联紧密，MXFP8 则是另一种微缩浮点表示，本模型以两者混合保存权重。"
+      }
+    ],
+    "context": "Inkling-2-Mini 是 Thinking Machines Lab 发布的开源权重小型模型，原始模型卡描述其约 20GB checkpoint 使用混合 NVFP4/MXFP8 低精度权重；标题所称 5.4GB 则来自第三方 repo 对该模型做的进一步压缩与评测。该 repo 涉及基于 Fisher information（衡量参数对输出敏感度的统计量）分配权重重要性、importance matrix（记录张量元素重要度以指导量化）的方案，但评论者认为其评测和文档不足以证明优于主流量化。模型采用 looped transformer（重复使用部分 Transformer 层以降低活跃参数量的架构）等特性，现有 llama.cpp、MLX、vLLM 等本地推理引擎的支持和优化程度并不一致。讨论也置于本地 LLM 与云端 frontier 模型的竞争中：用户希望用低成本、隐私可控且不会被服务商下线的本地部署，替代部分 Claude、Opus 等云端模型工作流。",
+    "emoji": "🤨",
+    "sarcastic_question": "README都拼错模型了，5.4GB还剩多少能力？"
+  },
+  "articleSummary": "## 一句话总结\nLookAtMyQuant 推出了一套基于敏感度测量的量化编译器和配套配方，成功将 Inkling-2-Mini 压缩至 5.4 GB 内存运行，且在极低比特率下仍保持了可用的推理能力。\n\n## 正文\n\n### 量化编译器的核心逻辑：谁敏感就保护谁\nLookAtMyQuant 的本质是一个“编译器”。它不是简单粗暴地对所有参数一视同仁，而是先测量模型中每个部分的“敏感度”。说白了，就是看压缩哪一块对输出结果的伤害最大。测量完敏感度后，编译器会在预算范围内为每个部分挑选最合适的编码，力求在体积和精度之间找到最优解。这种思路在 Gemma 4 E2B 上效果显著：在相同文件大小下，其 GGUF 文件的 KL 散度比常见的 Q4_K_M 降低了 12 倍。\n\n### 小模型上的极限挑战：2.3 比特的数学推理\n这套方案首先在 Qwen3.5-4B 上进行了验证。作者将其压缩到了 1.23 GB，平均权重仅 2.3 bits。为了保住数学推理能力，配方设计得很精细：校准数据集直接使用了模型自己生成的数学解题步骤，并且把数字 token 的权重提高了 10 倍。此外，还引入了 Fisher information 来分配每行的比特数，并进行了 4000 步蒸馏。结果是，它在 540 道数学题中做对了 330 道，略优于 Prism ML 的 Bonsai 方案，且 KL 散度更低。\n\n### 大模型压缩实战：27B 参数压缩至 7.2 GB\n同样的配方应用到 Qwen3.8-27B 上，模型从 53.7 GB 缩减到了 7.2 GB，平均权重 2.1 bits。有意思的是，压缩后的模型在 GSM8K 上做对了 401 题，和原版持平，甚至比 Unsloth 同体积的 GGUF 多做了 50 多题。在 HumanEval 和 MMLU 等基准测试中，这套方案也全面胜出。配合一个 4-bit 的 DSpine drafter，还能在 Apple Silicon 上实现解码速度翻倍。\n\n### MoE 模型的攻坚：Inkling-2-Mini 的六档压缩\n文章的重头戏是对 Inkling-2-Mini（一个 26.4B 物理/5.4B 激活的 MoE 模型）的压缩。作者一口气发布了六个版本，体积从 12.8 GB 一路下探到 3.9 GB。其中 12.8 GB 的版本表现完美，在所有测试中均与 BF16 原版持平，相当于用原版 67% 的内存实现了无损压缩。即便是 8.9 GB 的版本，也在多项指标上保留了 99% 以上的能力，且 KL 散度明显优于 Unsloth 的同级别方案。\n\n### 极端压缩下的抢救：SQYFR v2 如何避免崩盘\n当压缩比进一步拉高，问题就来了：低于 2 bpp 时，模型能力会断崖式下跌。为了解决这个问题，作者引入了 SQYFR v2 技术。核心思路是联合训练所有 MoE 专家和 Attention 投影，利用 Hessian 投影和特定的控制边界加权进行微调。这一招把 5.4 GB 版本（1.65 bpp）的 GSM8K 成绩拉回了 87%，甚至把本该崩盘的 3.9 GB 版本（1.18 bpp）从 1% 的废柴水平抢救回了 78.5% 的可用状态。\n\n### Apple Silicon 上的极致优化\n这些模型并非仅存在于理论，作者专门为 Apple Silicon 打造了运行时。通过统一的 Metal 内核，模型支持混合 NVFP4 和 Trellis 编码，还能配合 speculative decoding 加速。在 M5 Max 上，12.8 GB 版本预填充速度可达 2016 tok/s，解码速度也能稳定在 60 tok/s 左右。配合 Drafter 后，5.4 GB 版本在数学任务上的解码速度甚至能飙升到 142.9 tok/s。\n\n### 开源与复现：从直接使用到自己编译\n作者提供了完整的工具链。你可以直接通过 `pip` 安装运行时，用 `lamq` 命令行工具加载发布在 Hugging Face 上的模型。如果你想自己动手，文章也给出了在 SmolLM2-360M 上运行编译器的完整流程：Measure（测量敏感度）、Allocate（分配比特）、Build（构建模型）。整个流程逻辑清晰，甚至复现 Qwen3.5-4B 的配方也只需要几行 Modal 命令，成本仅需约 34 美元的 GPU 时间。"
+}
