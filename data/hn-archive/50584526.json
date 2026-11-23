@@ -1,0 +1,71 @@
+{
+  "id": 50584526,
+  "by": "kristianpaul",
+  "title": "Elixir HLS makes FPGA circuits from functions written in Elixir",
+  "url": "https://github.com/elixir-hls/elixir-hls",
+  "score": 137,
+  "createdAt": 1795434613,
+  "aiSummary": {
+    "chinese_title": "Elixir HLS：以 Elixir 函数综合 FPGA 电路，软硬件能否同语言分工",
+    "discussion_overview": [
+      {
+        "category": "HLS 与传统 HDL 的性能权衡",
+        "summary": "评论认为，procedural programming 与硬件设计之间存在很大鸿沟：FPGA 开发需要主动利用并行性，并围绕流水线、时序和芯片资源优化，不能简单等同于普通软件编码。若有充足时间，Verilog 等 HDL 通常能实现更精确的结构控制、更好的极限结果，并可直接利用 FPGA primitives。另一方面，HLS 让开发者聚焦算法、类型和 DSP 中的 rounding、saturation 等逻辑，编译器可通过 SAT solving 等方法映射流水线；需要快速交付且减少 bug 时可能更合适。",
+        "supportid": [
+          "50612520",
+          "50615513"
+        ]
+      },
+      {
+        "category": "Elixir 并发不等于硬件并行",
+        "summary": "有人指出 Elixir/BEAM 很擅长并发编程，因此可能与 FPGA 设计存在天然契合点。反驳则强调，BEAM 的模型主要是多个独立进程通过消息传递并发运行，运行时再将它们并行调度。硬件并行更常指单个计算过程的多个步骤同时执行，或对多组数据复制同一运算，因此两者不能直接画等号。",
+        "supportid": [
+          "50613344",
+          "50616732"
+        ]
+      },
+      {
+        "category": "用同一语言进行软硬件分区",
+        "summary": "支持者将 Elixir HLS 看作 embedded SW/HW partitioning 的途径：先用 Elixir 构建由独立消息传递进程组成的完整系统，再找出性能关键进程迁移到 FPGA。只要迁移后进程的外部行为不变，软件与硬件可在同一门语言下协作演进。另一个相关项目 xc 也试图自动识别 data-parallel 任务，并将工作分配到 CPU、GPU、网络 GPU 或 FPGA，首先瞄准 Ultrascale Zynq 一类 SoC FPGA 以降低集成门槛。",
+        "supportid": [
+          "50618902",
+          "50613596"
+        ]
+      },
+      {
+        "category": "硬件 DSL 的历史延续与社区态度",
+        "summary": "评论将该项目联系到 Lava：这是一个用 Haskell combinators 描述电路并编译至 RTL 的早期 eDSL。Lava 的思想后来成为 Clash（一个基于 Haskell 的硬件描述语言）的基础，说明函数式语言生成硬件并非全新概念。有人以“又一个没人关心的高级语言”讽刺，但其他人认为 Hacker News 本就值得关注这种小众、实验性且有趣的项目；也有人记得多年前 ElixirConf 的相关演讲，肯定项目仍在持续推进。",
+        "supportid": [
+          "50615415",
+          "50616092",
+          "50612526",
+          "50613067",
+          "50616202",
+          "50617914"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "HLS（High-Level Synthesis）",
+        "explanation": "高层次综合：从较高层的算法或函数描述自动生成 FPGA/ASIC 的硬件实现，以开发效率交换部分底层结构控制。"
+      },
+      {
+        "term": "HDL（Hardware Description Language）",
+        "explanation": "硬件描述语言，如 Verilog，用于明确描述寄存器、组合逻辑、时序和芯片结构。"
+      },
+      {
+        "term": "FPGA（Field-Programmable Gate Array）",
+        "explanation": "现场可编程门阵列：部署后仍可重构数字逻辑的芯片，常用于加速、DSP 和嵌入式系统。"
+      },
+      {
+        "term": "BEAM",
+        "explanation": "Erlang/Elixir 的虚拟机运行时，采用大量独立进程和消息传递的并发模型。"
+      }
+    ],
+    "context": "Elixir HLS 是一个尝试把 Elixir（运行于 Erlang/BEAM 虚拟机的函数式并发语言）函数综合为 FPGA（可重构逻辑芯片）电路的项目，属于 HLS（High-Level Synthesis，高层次综合）路线。其核心设想是先以 Elixir 写系统，再把 CPU 热点或关键进程迁移为硬件加速器，而不是从一开始就手写 Verilog 等 HDL（硬件描述语言）。讨论将其放在 Lava（基于 Haskell 的早期嵌入式硬件描述 DSL）及其后继 Clash（Haskell 硬件描述语言）的脉络中，也涉及 xc（自动分配 data-parallel 工作到异构计算资源的项目）。争论焦点在于：高级抽象能否显著降低硬件开发门槛，同时仍保有足够的流水线性能、时序确定性与对 FPGA 专用资源的控制。",
+    "emoji": "🤔",
+    "sarcastic_question": "把 Elixir 函数丢给 FPGA，就能忘掉时序与硅片吗？"
+  },
+  "articleSummary": "## 一句话总结\nElixir HLS 让你用 `defhls` 把 Elixir 函数直接编译成 FPGA 电路，函数本身既是 CPU 上的代码，也是硬件的“黄金参考”规范。\n\n## 正文\n\n### 摆脱 RTL 的微观泥潭\n写 FPGA 电路通常意味着和 Verilog 或 VHDL 死磕，你需要精确控制每个时钟、每个寄存器的值，这叫 RTL（寄存器传输级）。这种开发模式效率极低，因为开发者要把精力花在“怎么算”而不是“算什么”上。High-level synthesis (HLS) 就是为了解决这个问题，它让你用软件语言描述逻辑，工具自动生成 RTL。Elixir HLS 的独特之处在于，它选用的语言是 Elixir，这意味着你可以用同一套代码，既在 CPU 上运行，又能生成 FPGA 电路。\n\n### 函数即规范，运行即验证\n核心设计非常巧妙：被 `defhls` 宏定义的函数，首先是一个普通的 Elixir 函数。当你在 `mix ehls.compile` 编译时，工具会生成 SystemVerilog 电路，并自动进行仿真。如果电路的输出和原 Elixir 函数的输出不一致，编译就会报错。说白了，原来的 Elixir 函数就是硬件电路的 Spec（规范）。这解决了硬件开发中“文档与实现脱节”的顽疾——你的代码就是文档，也是验证标准。\n\n### 类型约束：为了硬件而妥协\n既然要生成硬件，就不能像写纯软件那样随意。Elixir HLS 引入了 `u8`、`s16` 这样的类型标注，明确指定位宽。这是因为在 FPGA 里，每一位都需要物理连线，位宽越窄，电路越小、速度越快。相应的，浮点数、递归、除法以及需要遍历整个集合的 Enum 操作目前都不支持。这很合理，硬件设计本质上就是资源与能力的权衡。不过，它支持有符号/无符号整数、元组、常量查找表，以及基于 `for` 和 `reduce` 的固定循环展开，这已经覆盖了大部分数据处理的核心逻辑。\n\n### 流式处理：数据像流水线一样流动\nElixir 引以为傲的 `Stream` 模块在这里找到了完美的硬件映射。在 FPGA 上，数据往往是以流的形式在时钟节拍间流动的。Elixir HLS 允许你使用 `EHLS.Stream.map/2`、`filter/2`、`transform/2` 等操作。比如，你可以把一个 ADC 的输入流，通过 `map` 接入一个处理函数，再输出到 DAC。在硬件上，这会被编译成流水线结构，数据像流过水管一样经过各个逻辑门，不需要 CPU 干预。\n\n### 实例化：打通软硬件的任督二脉\n光有函数还不够，你需要通过 `definstance` 把函数“放置”到硬件里。这就像是把逻辑图腾具象化。实例化后的电路可以直接像函数一样调用：`my_inst(x)`。如果传入 List 或 Binary，它会自动处理并返回结果。更有意思的是，你可以通过 `on: :cpu | :fpga` 选项指定运行位置。这意味着同一份代码，在开发机上跑 CPU 模拟，部署到板子上就跑 FPGA 硬件，实现了“Write Once, Run Anywhere”的硬件版。\n\n### 从 GPIO 到 GenServer：完整的生态系统\n这个项目不仅仅是编译器，它还构建了一套完整的硬件抽象层。你可以直接在代码里操作 GPIO 引脚、处理按键上升沿、驱动 I2S 音频或 USB 设备，甚至把一个硬件实例封装成 `GenServer`，挂到 Elixir 的 Supervision Tree 里。比如文中提到的 FM 收音机例子，整个解调器都在 FPGA 里跑，CPU 只负责高层控制。这让不懂底层时序的软件开发者，也能利用 FPGA 的并行能力。\n\n### 现状与工具链\n目前发布的是 0.1.0 版本，属于早期阶段。目标硬件是 Sipeed Tang Primer 25K，配合 AtomVM 运行。工具链方面，它依赖 LLVM 旗下的 CIRCT 项目来生成 RTL，用 Icarus Verilog 做仿真。虽然目前还不支持浮点和除法，但对于整数运算密集的信号处理任务，这套工具链已经足够展示其潜力。它展示了一种未来：硬件加速不再是少数硬件工程师的专利，而是普通软件开发者触手可及的工具。"
+}
