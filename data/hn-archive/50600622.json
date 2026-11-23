@@ -1,0 +1,94 @@
+{
+  "id": 50600622,
+  "by": "fortran77",
+  "title": "I joined the NTP Pool, but not with my Stratum 1 Pi",
+  "url": "https://www.jeffgeerling.com/blog/2026/i-joined-the-ntp-pool/",
+  "score": 123,
+  "createdAt": 1795368039,
+  "aiSummary": {
+    "chinese_title": "加入 NTP Pool：Pi 精密授时、硬件验证与公共时间服务取舍",
+    "discussion_overview": [
+      {
+        "category": "Pi、x86 与 FPGA 的授时精度之争",
+        "summary": "评论认为 Raspberry Pi 的 NIC、GPIO 中断和普通晶振都会引入误差，若目标是低成本但高精度，FPGA 方案可将协议处理与硬件授时结合，并把预算更多投入 GNSS 接收机和天线。也有人指出 x86 的 PCIe PTM、TGPIO 和高端 NIC 并非装上就可靠：实际组合可能锁死总线，兼容硬件也不易低价获得。对于多数用途，接入 PPS 的 Linux 主机已经能做到 1µs 以内；要继续逼近纳秒级，则需用 GNSS 驯服 PTP NIC 的 PHC，并以独立 PPS、GPSDO 和 TICC 等硬件交叉测量。软件显示的 system clock 与 PHC 偏差并不能自动包含 PCIe 读取延迟，因此不能当作端到端准确度证明。",
+        "supportid": [
+          "50602304",
+          "50602428",
+          "50602993",
+          "50603262",
+          "50605301"
+        ]
+      },
+      {
+        "category": "NTP Pool 的可用性、负载与冗余价值",
+        "summary": "有用户因早年遇到无响应节点和偏离真实时间数天至数月的服务器，放弃 NTP Pool，转向 Google、Apple、Microsoft 等大型服务商。另一种看法是，自己运行多台廉价 Stratum 1 节点可形成冗余，并让本地节点互相比较，从而比单个昂贵设备更实用。Pool 节点的请求量会逐月增长，因为客户端常长期固定使用选中的 IP；示例中，100 Mbit 配额约对应 180—250 req/s，250 Mbit 时为 500—600 req/s。整点附近还会出现大量 crontab 触发的 SNTP 请求，因此测量时段会显著影响看到的峰值。",
+        "supportid": [
+          "50604644",
+          "50601911",
+          "50601991",
+          "50602078",
+          "50605504"
+        ]
+      },
+      {
+        "category": "时间服务软件与商用设备的运维选择",
+        "summary": "参与者主要提到 NTPSec、chrony 与新兴的 Rust 实现 ntpd-rs；NTPSec 是 Debian 安装 NTP 时的默认选择之一，而 chrony 因监控、调钟管理和硬件 timestamping 支持而受到偏好。ntpd-rs 被视为值得关注的替代品，但其 PTP 支持仍在开发，对依赖 PTP 的场景尚不成熟。对于不想自建设备的 SMB 或爱好者，CenterClick 的成品 NTP 服务器被认为是方便选项；二手 Spectracom 等企业级设备则可借助 rubidium 或 OCXO 实现 GNSS 中断期间更好的 holdover。实际商用品也并非免维护，有部署者称约每半年会有一台 CenterClick 270 死机，需要通过 PoE 断电重启恢复。",
+        "supportid": [
+          "50601911",
+          "50602011",
+          "50602008",
+          "50602073",
+          "50602852"
+        ]
+      },
+      {
+        "category": "虚拟机能否提供可信 NTP",
+        "summary": "讨论回顾了 VPS 曾被排斥的原因：OpenVZ 一类容器式虚拟化更像共享宿主机的 jail，宿主机随时调整即可影响客户机时钟。评论者普遍不建议在不控制物理宿主机的 VM 上提供 NTP 服务，尤其不能轻易将 PTP 服务虚拟化，因为它更依赖靠近硬件的时间戳。另一方面，KVM 可让 chrony 调整客户机时钟，稳定性显著优于部分会产生跳变时钟的虚拟化方案。结论不是所有 VM 都不可用，而是 KVM 可胜任一般 NTP，PTP 和高精度授时仍应尽量落在物理硬件上。",
+        "supportid": [
+          "50602777",
+          "50602938",
+          "50603186",
+          "50603238",
+          "50603436"
+        ]
+      },
+      {
+        "category": "廉价时钟漂移与无线校时的现实",
+        "summary": "照片中两只墙钟相差约 10 秒，引出不同授时来源的差异：下方时钟以低频 NTP 更新，上方使用 WWVB 无线电报时。由于工作室近似法拉第笼，WWVB 时钟需要移到门边并朝西放置一夜才易成功同步。约一周未同步后，它会快 10 秒，即约 +16 ppm，这被认为是廉价石英晶体的典型漂移。机械指针钟若走快，校时又只能向前转动，收到修正后得整圈走近 12 小时，反而非常麻烦。",
+        "supportid": [
+          "50602431",
+          "50603153",
+          "50604244",
+          "50604773",
+          "50605632"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Stratum 1",
+        "explanation": "直接连接 GNSS、原子钟或无线电时间源等参考时钟的 NTP 服务器层级，而非从其他 NTP 服务器间接取时。"
+      },
+      {
+        "term": "PPS",
+        "explanation": "Pulse Per Second，每秒一个脉冲的硬件时间信号，用于将主机或网络时钟精确对齐到参考时间。"
+      },
+      {
+        "term": "PTP / PHC",
+        "explanation": "PTP 是用于局域网高精度同步的 Precision Time Protocol；PHC 是网卡内的 PTP Hardware Clock，可由 GNSS 等参考源硬件驯服。"
+      },
+      {
+        "term": "GPSDO",
+        "explanation": "GPS-disciplined oscillator，以 GNSS 时间长期校准本地振荡器，在卫星信号短暂消失时仍维持较高精度。"
+      },
+      {
+        "term": "holdover",
+        "explanation": "外部时间源不可达时，设备依靠自身高稳定度振荡器继续维持时间准确度的能力。"
+      }
+    ],
+    "context": "NTP Pool 是由志愿者公开提供服务器、供客户端从大量节点中选择时间源的分布式网络；原帖作者加入该网络，但公共服务并非直接由其 Stratum 1 Raspberry Pi 提供。Stratum 1 服务器通常借助 GNSS（全球卫星导航系统）和 PPS 硬件获得直接参考时间，而普通 Linux 主机还会受晶振、内核调度、网卡时间戳和总线延迟影响。讨论围绕“可用的 NTP”与“可验证的高精度授时”之间的差别：前者常由 chrony 等软件和多个上游源即可满足，后者则需要 PTP NIC、FPGA、GPSDO 和外部测量设备。公共池还涉及节点品质、带宽配额、长期客户端黏性及虚拟化时钟稳定性等运营问题。",
+    "emoji": "⏱️",
+    "sarcastic_question": "软件报纳秒同步，PCIe 延迟谁来报时？"
+  },
+  "articleSummary": "## 一句话总结\n作者虽然搭建了高精度的 Stratum 1 树莓派时间服务器，但出于安全和稳定考虑，最终选择通过 WireGuard 隧道连接一台 VPS 作为 Stratum 2 节点加入 NTP Pool。\n\n### 为什么不用 Stratum 1 直接入池？\n作者手里有一套硬核装备：基于树莓派的 Time Pi，挂载了 TimeHAT v6 和高精度的 u-blox ZED-F9T GNSS 模块。这本来足够搭建一个顶级的 Stratum 1 时间服务器。但他没有直接把它暴露在公网。原因很现实：家庭 IP 暴露在公网风险太大，他之前就因此遭遇过 DDoS 攻击，被折腾了一个月。而且 NTP Pool 的入池门槛不仅是硬件，更看重长期在线率、IP 稳定性以及运维承诺。一旦加入，流量会持续不断，即便退出，错误配置的客户端可能还会纠缠几年。\n\n### 两层架构：安全隔离与精准测量\n为了解决暴露家庭 IP 的风险，作者设计了两层架构。Stratum 1 的 Time Pi 藏在工作室里，通过 WireGuard 隧道把时间同步给位于圣路易斯的一台 VPS。这台 VPS 作为 Stratum 2 节点（`ntp-01.jeffgeerling.com`）对外服务。有意思的是，他在 Stratum 1 的 `chrony` 配置里把 VPS 设为 `noselect` 源。这样既不参与时间同步决策，又能生成图表，直观监控公网延迟和隧道性能。\n\n### 硬件时间戳与 Chrony 的调优细节\n在工作室内部，Time Pi 扮演着更专业的角色。TimeHAT 上的 Intel i226 网卡支持硬件时间戳，配合 `ts2phc` 工具，能将 PTP 硬件时钟（PHC）校准到与 UTC 相差仅几十纳秒。但这里有个坑：作者发现使用 `phc2sys` 会出现 200ms 的跳变。解决方案是改用 `chrony` 的 `refclock PHC` 直接读取硬件时钟。虽然 PCIe 总线会引入微秒级的延迟，但稳定性大幅提升。此外，Debian 默认的 DHCP NTP 源差点\"污染\"了高精度的 GNSS 时间，这也促使他彻底清理了配置。\n\n### VPS 宕机引发的运维思考\n作者选了一家名为 Oxtrys 的 VPS 供应商来托管 Stratum 2 节点。结果就在写博客的当晚，服务器掉线了。起初他担心是防火墙把 NTP 流量当成了攻击，结果查日志发现是自动更新内核并重启导致的故障。这次宕机让他在 NTP Pool 的评分跌破 10 分，花了 6 到 12 个小时才慢慢恢复。这也印证了入池承诺的重要性：随意测试不仅浪费资源，恢复信任也需要时间。"
+}
