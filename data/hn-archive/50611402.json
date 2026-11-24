@@ -1,0 +1,106 @@
+{
+  "id": 50611402,
+  "by": "toebee",
+  "title": "NariQ: BF16-level Qwen3.8-27B in a 10 GB file",
+  "url": "https://huggingface.co/nari-labs/Qwen3.8-27B-NariQ-GGUF",
+  "score": 141,
+  "createdAt": 1795459812,
+  "aiSummary": {
+    "chinese_title": "NariQ称10GB量化Qwen3.8-27B达BF16级，基准与实际速度仍受质疑",
+    "discussion_overview": [
+      {
+        "category": "长程 Agent benchmark 的价值与证据标准",
+        "summary": "有评论者原本不信任高计算量的 QAT 风格量化，因为它们可能针对类似 benchmark 的数据过拟合，真实使用时达不到“几乎无损”的承诺。NariQ 的评测被认可之处在于覆盖多类 long-horizon 任务，而非只测 coding，并明确采用 held-out 数据。项目方强调其重点是 Claude Code、Codex 一类 agentic 工作流中的长程任务，声称在 3-bpw 以下首次达到 BF16 parity。另一种看法是，短任务表现良好的既有量化方法未必能保住长程工具调用、持续规划和软件工程能力。",
+        "supportid": [
+          "50618333",
+          "50618692",
+          "50622432"
+        ]
+      },
+      {
+        "category": "Harness 差异使“优于 BF16”结论存疑",
+        "summary": "质疑者认为图表中的大部分增益可能来自 evaluation harness，而不是量化模型本身；控制组在不同 harness 中差异很大，会削弱横向比较。回应给出的 DeepSWE 数据显示，其 harness 上 BF16 每轮解出 45.0 个任务，接近另一方报告的约 45.65，因此该主比较不应主要归因于 harness。按同一 harness 内的相对值，6.75GB 的 2-bit 为 BF16 的 71.9%，8.44GB 的 2.5-bit 和 10.12GB 的 3-bit 分别为 105.2% 与 103.0%。但对其他量化文件的数据只是从对方公开图表读取、并未在同一环境复跑，故仍需要统一 harness 的直接实验。",
+        "supportid": [
+          "50619545",
+          "50622021",
+          "50620722",
+          "50622392"
+        ]
+      },
+      {
+        "category": "16GB Mac 可运行，但吞吐限制交互式用途",
+        "summary": "评论普遍认为 27B 模型被压进约 8.5—10GB 后，16GB MacBook 或 Mac mini 能运行本地 LLM 已很有吸引力，尤其适合异步工作流。NariQ 在 M3 Pro 18GB 上的 3.0-bpw decode 约为 3.8 tok/s，2.0-bpw 约 4.9 tok/s，明显慢于 CUDA；按 4 tok/s 生成 1000 token 约需四分钟。作为对照，Bonsai 2 的约 8.5GB PTQ 文件曾在 M3 Air 上达到 16.3 tok/s 的短例速度，但 prefill 仍慢，另一台 16GB Mac mini 通常只有约 4 tok/s、最好 8 tok/s。结论是本地长上下文和较强模型已可勉强容纳，但对需要快速迭代的 coding assistant，速度仍常不够用。",
+        "supportid": [
+          "50617193",
+          "50620674",
+          "50622180",
+          "50617744",
+          "50622057"
+        ]
+      },
+      {
+        "category": "量化究竟丢失什么：保留主结构，牺牲细节与稳定性",
+        "summary": "提问者指出 benchmark 不可能覆盖训练数据的全部信息，因此文件大幅缩小不应被简单理解为只去除了噪声。解释认为 Trellis 类量化会先旋转权重，使其近似 Gaussian noise，再寻找最合适的 bit 编码；结果是近似原权重，但会削去数值能量与细粒度信息。模型通常对这类误差有韧性，过度量化却可能损失细节知识、降低精确累积和状态跟踪能力，甚至因 activation 过度舍入而重复循环。calibration 的目标是最小化原模型与量化模型在代表性路径上的误差；覆盖广泛路径可保住常见能力，但校准集外的能力仍无法保证。",
+        "supportid": [
+          "50617761",
+          "50618217",
+          "50617970",
+          "50620428",
+          "50620937"
+        ]
+      },
+      {
+        "category": "格式创新性与优化目标之争",
+        "summary": "有技术评论认为 NariQ 的 codebook 与 exl3 的 MUL1 高度接近，所谓 k2.5 更像对相邻位宽的平均，低 bit rate 下未必优于已有 pmcgx；其伪权重测试估计 pmcgx 的误差低 1.1%—3.1%。项目方承认缺少与 MUL1 的正面对比，也承认编码格式并非核心贡献，选择该格式的原因是权重可在 BF16 和 INT8 Tensor Core 上保持精确，未来或利于 activation quantization。其主张的创新是只对 agent session 中模型写出的 token 计算 loss，并以 width allocator、分带 output-layer 位宽和双向 rounding 分配比特，使 KL 相对普通 Trellis 约降三倍。另一位量化开发者则发现，使用完整 session 做 calibration、仅按模型输出 token 分配位宽，效果可能更好，说明最优校准策略和格式仍未定论。",
+        "supportid": [
+          "50617252",
+          "50622379",
+          "50623885"
+        ]
+      },
+      {
+        "category": "上下文窗口并未被降到64K",
+        "summary": "有人怀疑该文件为了节省内存而把 Qwen3.8-27B 的 context 从约 200K 以上缩至 64K。回应称全部 benchmark 均在完整 262K context 下执行，速度表仅展示到 64K。3-bit 文件在 24GB GPU 上约可容纳 135K context，在未使用 KV 或 Activation quantization 时，约 30GB 显存可容纳完整 262K。因而模型文件缩小主要降低权重内存，但长 context 的 KV cache 仍是部署时的重要内存成本。",
+        "supportid": [
+          "50618147",
+          "50622069",
+          "50618898"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "量化（quantization）",
+        "explanation": "将模型权重以更少 bit 表示来减少文件、内存和带宽占用；位宽越低，通常越容易损失能力。"
+      },
+      {
+        "term": "BF16",
+        "explanation": "bfloat16 浮点格式，常作为较高精度模型权重和量化效果的基准。"
+      },
+      {
+        "term": "bpw（bits per weight）",
+        "explanation": "每个权重平均使用的 bit 数；3-bpw 表示平均每个参数约占 3 bit。"
+      },
+      {
+        "term": "Trellis / codebook",
+        "explanation": "Trellis 是通过结构化编码近似权重的量化思路，codebook 则是将有限 bit 模式映射为一组可重构数值的规则。"
+      },
+      {
+        "term": "calibration",
+        "explanation": "量化时用代表性输入比较原模型和量化模型输出，并据此调整编码或各层位宽的过程。"
+      },
+      {
+        "term": "KV cache",
+        "explanation": "Transformer 推理中缓存历史 token 的 Key/Value 张量；context 越长，它占用的显存越大。"
+      },
+      {
+        "term": "KL divergence",
+        "explanation": "衡量两个概率分布差异的指标；这里用于度量量化模型输出分布偏离原模型的程度。"
+      }
+    ],
+    "context": "NariQ 是针对 Qwen3.8-27B（约 270 亿参数的开源语言模型）制作的低比特量化方案，声称以约 10.12GB 的 3-bpw 文件，在长程 agent 任务上接近甚至达到 BF16（bfloat16 高精度权重）表现；原始 BF16 权重约为 53.8GB。争论的核心不只是压缩率，还包括 DeepSWE（面向自主软件工程任务的评测）是否因 Claude Code（代码代理工具）等 harness 差异而不可直接横比，以及 held-out 长程任务能否代表真实能力。此类模型即使权重能放入 16GB 设备，长上下文仍受 KV cache（Transformer 历史上下文缓存）支配；完整 262K context 还需要约 30GB 显存，除非进一步量化 KV 或 activation。技术上，NariQ 与 Trellis（结构化权重量化方法）、MUL1 和 pmcgx 等 codebook 方案竞争，开发者也在争论应如何用 agent session 的 token 做 calibration 和逐层位宽分配。",
+    "emoji": "🤔",
+    "sarcastic_question": "十GB装下BF16，丢掉的能力恰好都不考吗？"
+  },
+  "articleSummary": "## 一句话总结\nNari Labs 发布了 NariQ 量化方案，通过基于真实 Agent 轨迹的网格编码校准，成功将 Qwen3.8-27B 压缩至 3-bit（10GB），在长周期 Agent 任务上保持了 BF16 级别的性能。\n\n## 正文\n\n### 极限压缩的真正挑战：Agent 任务不掉点\n大模型量化的痛点从来不在于简单的文本生成，而在于那些需要多步推理、长上下文交互的 Agent 任务。传统的量化方案一旦把模型压到 3-bit 以下，模型的\"脑子\"就像短路了一样，逻辑链断裂严重。Nari Labs 这次发布的 NariQ v1，核心目标非常明确：要把 Qwen3.8-27B 这个 27B 参数的模型塞进 10GB 的文件里，还得保证它在写代码、跑 Agent 这种高难度任务时不拉胯。结果确实令人意外，他们的 3-bit 版本不仅做到了体积减半，在 DeepSWE 和 Terminal-Bench 等 Agent 基准测试中，得分甚至略微超过了 BF16 原版。\n\n### 为什么是 3-bit？数据里的玄机\n文章给出的 Benchmark 数据非常硬核，直接对比了 BF16 原版与 3-bit、2.5-bit、2-bit 三个量化版本。在 DeepSWE v1.1 测试中，BF16 原版平均解决 45.0 个任务，而 NariQ 3-bit 版本解决了 46.3 个，2.5-bit 版本更是达到了 47.3 个，竟然实现了\"越压缩越强\"的怪象。在数学题 AIME 测试上，3-bit 版本得分 98.3，略高于 BF16 的 97.7。但有意思的地方在于，一旦压缩到 2-bit，性能就开始断崖式下跌，DeepSWE 得分直接掉到 32.3。这说明在当前技术下，2.5-bit 到 3-bit 是一个关键的临界点，能守住模型智能的底线。\n\n### 核心思路：用 Agent 轨迹\"校准\"网格编码\nNariQ 的技术原理其实很巧妙，它没有使用常规的均匀量化，而是采用了 Trellis Coded Quantization（网格编码量化）。说白了，这是一种来自通信领域的信道编码技术，通过引入冗余比特来纠正量化误差。更关键的是校准数据的选择：他们没有用通用的文本语料，而是专门收集了真实的 Coding Agent 运行轨迹进行校准。这解释了为什么它在 Agent 任务上表现如此出色——模型在量化过程中\"见过了\"真实的 Agent 思考过程。图表显示，在 Held-out 的 Agent Traces 上，NariQ 相比 BF16 的 KL 散度远低于同类竞品 Unsloth 的 Dynamic V3.1。\n\n### 显存与速度的权衡：24GB 显卡也能跑\n对于开发者来说，显存占用是生死线。BF16 原版模型加载就需要 53.8 GB，根本无法在消费级显卡上运行。NariQ 3-bit 版本文件体积仅 10.1 GB，配合他们的 llama.cpp fork，在 24GB 显存的 GPU 上能跑起 135K 的上下文。如果显存足够（32GB+），甚至可以跑满模型原生的 262K 上下文。速度方面也有惊喜，在 RTX PRO 6000 (Blackwell) 上，3-bit 版本的解码速度达到 88.9 tok/s，比同体积的 Unsloth IQ3_XXS 还要快一点。\n\n### 必须要用定制版 llama.cpp\n这里有个坑需要注意：NariQ 目前不能直接在官方 llama.cpp、Ollama 或 LM Studio 上跑。因为它引入了新的张量类型，必须使用 Nari Labs 提供的 [llama.cpp fork](https://github.com/nari-labs/nari-llama.cpp)。作者也很实诚地承认了目前的局限性：代码主要针对 SM120 架构（如 RTX PRO 6000）优化，在 Ampere、Ada 和 Hopper 架构上速度还不如标准的 GGUF，Apple M 系列更是慢得可怜（M3 Pro 上只有 3.8 tok/s）。AMD 和 Intel 显卡目前则直接不支持。\n\n### 最佳实践：推荐 3-bit 或 2.5-bit\n综合来看，如果你想在本地跑这个模型，作者推荐使用 3-bit（默认选择）或 2.5-bit（更省显存且 Agent 性能依然强劲）。2-bit 版本虽然体积最小（6.8 GB），但在数学和 Agent 任务上明显乏力，不建议作为主力使用。另外，目前只有语言模型部分被量化了，Vision Tower（视觉塔）依然保留在 BF16，Multi-Token Prediction (MTP) 模块也尚未集成。作者在路线图中提到，下一步计划量化 KV Cache 和激活层，届时将进一步降低长上下文场景的显存门槛。"
+}
