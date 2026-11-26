@@ -1,0 +1,97 @@
+{
+  "id": 50642939,
+  "by": "encyclopedism",
+  "title": "I checked Clojure's core with Lean and found unreported bugs",
+  "url": "https://s.conao3.com/blog/2026/e4f733",
+  "score": 129,
+  "createdAt": 1795626658,
+  "aiSummary": {
+    "chinese_title": "Lean 审计 Clojure core：真 bug、边界语义与验证热潮",
+    "discussion_overview": [
+      {
+        "category": "部分发现是实质 correctness bug，部分只是语义争议或测试噪声",
+        "summary": "评论者指出，最严重的例子与类型无关：核心数据结构的 vector 达到 65505 个元素后执行 reduce 会陷入无限循环，属于可明确复现的 correctness 与终止性问题。另一方面，byte-array 上以 Long 类型的 2 调用 `.indexOf` 失败，被认为只是调用者没有匹配 byte 类型，简单检查便可排除，不应计入库 bug。`(get \"abc\" 1.9)` 将浮点 key 截断为整数索引则更难定性：有人认为这符合动态语言的宽容行为，有人认为违背 Clojure 偏好显式而非隐式的原则。争论核心是审计所依据的 specification：在没有先定义哪些动态 coercion 合法时，形式化工具会把意外行为与真正缺陷混在一起。",
+        "supportid": [
+          "50645750",
+          "50646929",
+          "50647292",
+          "50644853",
+          "50644812",
+          "50644931"
+        ]
+      },
+      {
+        "category": "动态类型不妨碍形式化验证，Haskell 类型也不等于完整证明",
+        "summary": "有观点起初认为 Lisp、Clojure、Scheme 的动态类型特性使其标准库很难承诺形式化验证所暗示的严格性质，并以 Haskell 标准库作对照。反驳者强调 Lisp 并非“无类型”，而是 dynamically typed，且库完全可以对终止性、性能和结果正确性作出可验证的承诺；类型系统只是 formal methods 的一种特殊形式。讨论还指出，即使 Haskell 的类型系统比 Clojure 静态得多，通常仍不足以表达完整形式化证明所需的性质。具备 dependent types 的 Idris、Agda、Lean、Rocq 才更接近能把高阶程序性质写成机器可检查证明的工具层级。",
+        "supportid": [
+          "50644774",
+          "50644858",
+          "50646747",
+          "50644931",
+          "50645189",
+          "50645663"
+        ]
+      },
+      {
+        "category": "Lean 的兴起与 Rocq/Isabelle 自动化工具之争",
+        "summary": "一些人惊讶于这类审计使用 Lean，因为过去验证程序正确性常联想到 Rocq（原 Coq）或 Isabelle。评论认为 Rocq 和 Isabelle 的 Sledgehammer 类自动证明搜索工具，曾是它们在程序验证中更常见的重要原因。也有人推测，LLM 降低了生成证明脚本的门槛，削弱了传统自动化工具的相对优势，而前沿实验室对 Lean 配置的 RLVR 环境及 Mathlib 数学库生态又强化了 Lean 的曝光。另有保留意见认为，这可能主要是 LLM-powered auto-formalization 的宣传周期，并不代表 Lean 在所有验证任务上已取代其他 proof assistant。",
+        "supportid": [
+          "50646090",
+          "50646288",
+          "50646230",
+          "50646642",
+          "50647331"
+        ]
+      },
+      {
+        "category": "商业使用与 JVM 现实限制：缺陷多在冷门边角",
+        "summary": "Nubank（巴西数字银行）大规模使用 Clojure、并收购 Cognitect（Clojure 创始团队的商业公司）的背景，使一些人原本预期 core 的 primitive types 和函数应当近乎无瑕。回应认为，被发现的问题多处于语言中少用的“阴暗角落”，普通商业业务很少会触及，因此长期生产使用并不能覆盖全部边界组合。更根本的现实限制是 Clojure 运行在庞大的 JVM（Java Virtual Machine，Java 虚拟机）之上；即使把 Clojure 层性质证明得很严密，也不能自动验证整个运行时栈。由此，这项工作在理论上有吸引力，但其端到端工程保证仍受底层平台规模制约。",
+        "supportid": [
+          "50645910",
+          "50647044",
+          "50647168",
+          "50645350",
+          "50645804"
+        ]
+      },
+      {
+        "category": "Clojure 与 LLM 编程：自动化是否仍是工具",
+        "summary": "讨论延伸到 Clojure 创始人对 LLM 的批评：他将其视为“intrinsic automation”而非普通工具，担忧开发者把判断和工作本身交给系统。支持者认为，任何工具都会替代手工动作，关键是效果与控制权，而非是否仍亲手完成每一步；也有人警告“AI 写得比人好”的默认心态会促使人放弃理解代码。关于 Clojure 是否适合 LLM，反对意见称其偏 human-first、惯用写法性能较低，LLM 不如直接大量生成 C++；支持者则指出优化后的 Clojure 可接近 Java，快速 REPL 迭代比编译测试周期长的语言更适合 agent 循环。括号平衡被认为已不是大型模型的主要障碍，但小模型仍常在 Lisp 的闭括号上失败，实际更常见的问题是用 sed 或 Python 做文本替换时误判修改边界。",
+        "supportid": [
+          "50644967",
+          "50645430",
+          "50645812",
+          "50646038",
+          "50646889",
+          "50645083",
+          "50645153",
+          "50645146",
+          "50646237",
+          "50645781"
+        ]
+      }
+    ],
+    "terminologies": [
+      {
+        "term": "Lean",
+        "explanation": "基于 dependent types 的 theorem prover／证明助手，可把程序行为规格和证明写成由内核检查的对象。"
+      },
+      {
+        "term": "formal verification（形式化验证）",
+        "explanation": "使用数学规格、逻辑推理和机器检查，证明或反驳程序的终止性、结果正确性等性质，而不只是靠测试发现样例错误。"
+      },
+      {
+        "term": "REPL",
+        "explanation": "Read-Eval-Print Loop，交互式读取、执行并显示结果的环境；Clojure 常用它实现快速试验和调试循环。"
+      },
+      {
+        "term": "Sledgehammer",
+        "explanation": "Isabelle 等证明助手中的自动化证明工具类别，会调用自动定理证明器来寻找可用证明步骤。"
+      }
+    ],
+    "context": "原文声称以 Lean（一个支持 dependent types 的交互式 theorem prover）检查 Clojure core（Clojure 的基础标准库）并发现未报告问题，其中评论特别提到 vector 在 65505 个元素以上 reduce 不返回的无限循环。Clojure 是运行在 JVM（Java Virtual Machine，Java 虚拟机）上的动态类型 Lisp 方言；因此争议不仅是代码是否异常，也包括诸如字符串索引接受 1.9 并截断为整数的行为是否属于既有语义。此事置于 LLM 辅助形式化的背景中：Lean、Rocq（原 Coq 的证明助手）和 Isabelle（交互式定理证明系统）都可用于表达和检查程序性质，但生态、自动化与模型生成证明的能力不同。评论还关联到 Rich Hickey（Clojure 创始人）对 LLM 自动化的批评，以及 Clojure 的 REPL（交互式执行环境）是否能提升 agent 编码迭代速度。",
+    "emoji": "🧪",
+    "sarcastic_question": "连65505个元素都化约不了，也叫core？"
+  },
+  "articleSummary": "## 一句话总结\n作者受 Rust 项目形式验证的启发，用 Lean 4 对 Clojure 1.12.7 的核心代码进行了建模验证和差分测试，在看似稳固的持久化数据结构和 Java 互操作中挖出了 17 个从未被报告的 Bug。\n\n## 正文\n\n### 为什么是 Clojure？为什么是 Lean？\n作者读了一篇日文文章，讲的是有人用 Lean 4 验证 Rust 明星项目，结果挖出了一堆 Bug。这让他产生了一个大胆的想法：Clojure 的持久化数据结构（Persistent Data Structures）自 1.0 以来被无数人使用，代码早已被磨得光滑如镜，如果用 Lean 这把“手术刀”去探查，还能发现问题吗？\n\n他选择了 Clojure 1.12.7（发布于 2024-11-18）作为靶子。验证策略分为两路：对于纯计算逻辑（如整数位运算），直接在 Lean 中建模，利用 `bv_decide` 自动搜索反例；对于复杂的数据结构（如 HAMT），则采用差分测试，把 Clojure 实现和 `java.util` 标准库进行对拍。结果令人咋舌，他在 JIRA 和官方论坛上均未查到记录的 17 个 Bug 就此浮出水面。\n\n### vector-of 的死循环：一个掩码引发的惨案\n第一个重灾区是 `vector-of`，这是 Clojure 用于存储原生类型数组的特殊 Vector。作者发现，当元素数量超过 65505 个时，对 `(drop 1 ...)` 后的结果调用 `reduce`，程序会陷入死循环。\n\n罪魁祸首在 `gvec.clj` 第 79 行。代码试图用 `0xffe0` 掩码将索引对齐到 32 的倍数，但这个掩码同时也把第 16 位及更高位清零了。当索引走到 65504 时，下一个块本应是 65536，结果被掩码“截胡”归零，导致 `reduce` 以为自己在开头，无限循环。Lean 模型精准地捕捉到了这个溢出点，作者通过将掩码改为 `(bit-not 0x1f)` 修复了该问题，并在 Lean 中完成了正确性证明。\n\n### HAMT 的碰撞节点：丢失的 Hash\nClojure 的 `hash-map` 基于 HAMT（Hash Array Mapped Trie）实现。当两个 Key 的 32 位 Hash 值完全相同时，它们会共存于一个 `HashCollisionNode`。作者发现，当从这个碰撞节点中 `dissoc` 一个 Key 时，代码错误地使用了参数 `hash`（被删除 Key 的 Hash），而不是 `this.hash`（节点自身的 Hash）。\n\n这会导致什么问题？在 Clojure 中，Vector 和 `ArrayList` 即使 `=` 相等，Hash 值也可能不同。如果利用这个特性构造场景，`dissoc` 后的节点会记录错误的 Hash，随后的 `assoc` 会因为 Hash 不匹配而错误地拆分节点，导致原本存在的 Key 在 `get` 查询时神秘消失。差分测试显示，HAMT 主逻辑在 300 万次操作下稳如泰山，Bug 却藏在了这种边界处理逻辑里。\n\n### 类型提示的陷阱：反射与直接调用的不一致\nClojure 1.12 增强了对 Java 函数式接口（Functional Interface）的适配。作者发现，同一个 `.removeIf` 调用，有没有类型提示竟然会有截然不同的结果。\n\n如果编译器知道类型，会直接调用适配器，此时若传入的 Clojure 函数返回非布尔值（如 Set 返回元素本身），会抛出 `ClassCastException`。但如果加上 `identity` 遮蔽类型，调用走反射路径，`Reflector` 会强行把返回值转为布尔真值，导致元素被静默删除。这种同一行代码在不同上下文行为不一致的问题，极难通过常规测试发现。\n\n### 溢出的边界：drop 与 subvec 的盲点\nClojure 1.12 为了性能优化了 `drop` 实现，却引入了整型溢出风险。在 `StringSeq` 中，计算新位置时直接将当前索引和 `n` 相加，当两者都足够大时（如 `MAX_VALUE` 附近），相加结果溢出为负数，直接抛出 `StringIndexOutOfBoundsException`。\n\n另一个类似的问题是 `subvec` 的 `assoc`。虽然 `nth` 早就修复了负数索引问题，但 `assoc` 依然没防住。对 `subvec` 结果使用负数索引 `assoc`，会穿透到底层的 Vector 进行修改，返回一个看似没变、实则内部数据被篡改的“幽灵” Vector。\n\n### 那些没被 Lean 发现的角落\n除了上述重点，作者还列出了一打影响较小但确实存在的 Bug，比如 `reduce-kv` 在 `vector-of` 上抛异常、`long` 处理 `NaN` 返回 0 等。\n\n有意思的是，作者也坦诚了验证的局限性。对于 `PersistentHashMap` 和 `PersistentVector` 的核心树形结构，Lean 证明了它们在数百万次操作下的正确性；对于加法溢出检测，Lean 甚至在 64 位宽度下完成了证明。但在乘法验证时，`bv_decide` 在 16 位就超时了，作者只能退而求其次验证了 8 到 10 位。这说明，形式验证虽好，但算力依然是瓶颈，不过它依然帮我们在“以为没 Bug”的代码里挖出了金矿。"
+}
