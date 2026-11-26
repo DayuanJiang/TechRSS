@@ -1,0 +1,85 @@
+{
+  "date": "2026-11-27",
+  "total_feeds": 92,
+  "success_feeds": 82,
+  "total_articles": 2493,
+  "filtered_articles": 12,
+  "articles": [
+    {
+      "title": "What happens when you put a non-agile object in the CoreApplication Properties?",
+      "title_zh": "WinRT 非敏捷对象在 CoreApplication.Properties 中的生命周期陷阱",
+      "link": "https://devblogs.microsoft.com/oldnewthing/20261126-00/?p=112899/",
+      "pub_date": "2026-11-26T15:00:00.000Z",
+      "summary": "## 一句话总结\n`CoreApplication.Properties` 对非敏捷对象的“异常”销毁行为，实际上是 `RoGetAgileReference` 机制在 Apartment 关闭时的正常反应，导致对象销毁但键值仍存，形成无法访问的“中毒”条目。\n\n## 正文\n\n### 现象背后的统一逻辑\n上一篇文章我们观察到，放在 `CoreApplication.Properties` 里的非敏捷对象似乎会在创建它的应用关闭后自动失效。这看起来像是某种特殊处理，但如果我们换个视角，逻辑其实是一致的。规则很简单：**对象只要还有能访问它的 Apartment 存在，它就会一直存活**。敏捷对象可以在任何 Apartment 访问，所以只有当所有 Apartment 都关闭时它才会失效；而非敏捷对象只能在创建它的那个 Apartment 里访问，一旦这个宿主 Apartment 关闭，它就自然失效了。\n\n### 幕后黑手：Agile Reference 的包装机制\n`CoreApplication.Properties` 内部存储对象时，其实调用了 `RoGetAgileReference` 来包装所有对象，以确保存储安全。对于敏捷对象，这层包装是个空操作；但对于非敏捷对象，这就成了一个关键的生命周期管理者。无论内部使用哪种机制，`RoGetAgileReference` 的核心行为是：**一旦非敏捷对象所属的 Apartment 关闭，它就会释放对该对象的引用**。所以，我们看到的对象销毁行为，根源在于 `RoGetAgileReference`，而非 `Properties` 集合本身的特殊逻辑。\n\n### 代码实证：对象何时销毁\n为了验证这一点，我们可以写一段测试代码。在主线程之外创建一个新的线程，初始化一个单线程 Apartment (STA)，并插入一个非敏捷对象，然后立即关闭该线程的 Apartment。通过在对象析构函数中打印日志，你会发现对象确实是在 `uninit_apartment` 调用时被销毁的。这就是 Global Interface Table 在 Apartment 关闭时释放引用的直接结果。\n\n### 键值犹在，对象已亡\n有意思的地方在于对象销毁后的状态。当宿主 Apartment 关闭、非敏捷对象被销毁后，`Properties` 集合并没有自动移除这个条目。如果你调用 `HasKey()` 检查，返回值依然是 `true`。这说明 `Properties` 集合本身并没有感知到对象的消亡，它依然忠实且“天真”地持有着那个已经失效的 Agile Reference 包装器。\n\n### 访问“中毒”条目的后果\n既然键还在，那尝试取值会发生什么？一旦你调用 `Lookup` 尝试获取这个对象，程序会直接抛出异常。因为此时条目已经“中毒”了——它指向的是一个已经被销毁的对象。你无法再从中获取有意义的值，唯一的处理方式就是手动将其移除。这里还有一个细节：抛出的异常错误码是 `E_INVALIDARG`，原因是 Global Interface Table 的条目已失效。作者也指出，这是一个“抽象泄漏”，如果设计得更好，本应返回更贴切的 `RPC_E_SERVER_DIED`。",
+      "source_name": "devblogs.microsoft.com/oldnewthing",
+      "score": 13,
+      "depth": 7,
+      "novelty": 6,
+      "category": "engineering",
+      "keywords": [
+        "WinRT",
+        "agile reference",
+        "apartment",
+        "COM"
+      ],
+      "rank": 1
+    },
+    {
+      "title": "★ Obvious Affordances Are Due for a Comeback",
+      "title_zh": "可点击元素必须看起来可点击",
+      "link": "https://daringfireball.net/2026/11/obvious_affordances_are_due_for_a_comeback",
+      "pub_date": "2026-11-26T15:11:46.000Z",
+      "summary": "Apple Notes 的时间戳可以点击切换创建日期和编辑日期，但这个功能完全隐藏——时间戳没有任何视觉提示表明它是可点击的。作者 John Gruber 指出，这违反了 UI 设计的基本原则：可点击的元素必须看起来可点击。问题源于 Apple 自 iOS 7 以来的极端扁平化设计语言，过度追求视觉简洁而牺牲了可用性。更糟糕的是，时间戳的初始状态没有标签（\"November 26, 2026 at 1:00 pm\"），点击后变成 \"Created:\" 或 \"Edited:\" 前缀的标签，但无法回到初始的无标签状态——只能关闭重开笔记。这是一个设计失误而非 bug。作者引用 Dan Wineman 2013 年对 affordance 的经典论述：affordances 是 skeuomorphism 的精华而非糟粕，它们让用户在看到界面元素时就能预判如何操作。解决方案很简单：始终显示 \"Created:\" 或 \"Edited:\" 标签，既能消除歧义，又能暗示这个元素可以交互。",
+      "source_name": "daringfireball.net",
+      "score": 11,
+      "depth": 5,
+      "novelty": 6,
+      "category": "opinion",
+      "keywords": [
+        "affordance",
+        "UI design",
+        "Apple Notes",
+        "usability"
+      ],
+      "rank": 2
+    },
+    {
+      "title": "Quoting Jack Despain Zhou",
+      "title_zh": "AI 正在让一切声音变得千篇一律",
+      "link": "https://simonwillison.net/2026/Nov/26/jack-despain-zhou/",
+      "pub_date": "2026-11-26T15:09:31.000Z",
+      "summary": "Jack Despain Zhou 观察到一个蔓延的现象：打开 YouTube 视频、坐在会议演讲中、翻阅邮箱里的严肃投稿，到处都能辨认出 Claude 的语气和句式。AI 生成内容的普及带来了内容的「去个性化」——原本应该承载个人声誉和专业背书的内容，现在听起来都出自同一个模子。这个现象折射出一个更深层的问题：当 AI 写作成为默认，人类声音的独特性正在被系统性稀释。",
+      "source_name": "simonwillison.net",
+      "score": 8,
+      "depth": 3,
+      "novelty": 5,
+      "category": "opinion",
+      "keywords": [
+        "Claude",
+        "AI-generated content",
+        "homogenization",
+        "authenticity"
+      ],
+      "rank": 3
+    },
+    {
+      "title": "The New York Times warns photographers not to update Photoshop over AI features",
+      "title_zh": "纽约时报禁止摄影师使用 Photoshop AI 功能",
+      "link": "https://simonwillison.net/2026/Nov/26/hn-50651685/",
+      "pub_date": "2026-11-26T05:08:46.000Z",
+      "summary": "纽约时报对新闻摄影有严格的职业操守要求，摄影师不得对照片进行除裁剪和色彩平衡之外的任何编辑。作者分享了自己接受时报拍摄的经历，摄影师会花时间寻找最佳自然光线，但绝不会修复衬衫上的污渍等问题。这体现了新闻摄影与商业摄影的本质区别——照片必须如实呈现拍摄时的场景。时报警告摄影师不要更新 Photoshop 的 AI 功能，正是为了维护这一职业底线。",
+      "source_name": "simonwillison.net",
+      "score": 5,
+      "depth": 3,
+      "novelty": 2,
+      "category": "opinion",
+      "keywords": [
+        "New York Times",
+        "Photoshop",
+        "photojournalism",
+        "AI features"
+      ],
+      "rank": 4
+    }
+  ]
+}
